@@ -1,0 +1,16 @@
+###############################################################
+# SITE-SPECIFIC PARAMETERS FOR THE SOFUN MODEL
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+longitude                               131.15
+latitude                                -12.49
+altitude                                9999.0
+
+# boolean defining which PFTs to include (lpft1: pftcode=1)
+lpft1                                   .true.
+
+#                                      |
+# write value behind this position:    |->
+## EOF 

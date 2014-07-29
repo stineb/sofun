@@ -1,0 +1,19 @@
+###############################################################
+# SIMULATION PARAMETERS FOR THE SOFUN MODEL
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+sitename                                RHIN
+
+spinup                                  .true.
+spinupyears                             10
+
+firstyeartrend                          1998
+nyeartrend                              10
+
+co2_forcing_file                        cCO2_rcp85_const850-1765.dat
+
+#                                      |
+# write value behind this position:    |->
+## EOF 

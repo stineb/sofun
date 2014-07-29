@@ -1,0 +1,13 @@
+###############################################################
+# SITE-SPECIFIC PARAMETERS FOR THE SOFUN MODEL
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+longitude                               -89.63 
+latitude                                45.68
+altitude                                490.0
+
+#                                      |
+# write value behind this position:    |->
+## EOF 
