@@ -13,7 +13,7 @@ spinupyears                             10
 firstyeartrend                          2002
 nyeartrend                              4
 
-input_dir                               /alphadata01/bstocker/sofun/input/
+input_dir                               /alphadata01/bstocker/sofun/trunk/input/
 co2_forcing_file                        cCO2_rcp85_const850-1765.dat
 
 #                                      |
