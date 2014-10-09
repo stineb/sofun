@@ -4,8 +4,8 @@
       !  year.
       !----------------------------------------------------------------
       use classdefs
-      use params_modl, only: lu_category, long_leaf, long_root, long_sapw, npft
-      use pools, only: pleaf, proot, plitt_af, plitt_bg
+      use params_modl, only: lu_category, long_leaf, long_root, long_sapw, npft, F_NRETAIN
+      use pools, only: pleaf, proot, plitt_af, plitt_bg, plabl
       use annvars, only: nind, ispresent
 
       implicit none
@@ -40,7 +40,14 @@
           lm_turn = orgfrac( droot, proot(pft,jpngr) )
           
           ! Move turnover to litter
-          call orgmv( lm_turn, pleaf(pft,jpngr), plitt_af(pft,jpngr), scale=nind(pft,jpngr) )
+          ! All C from leaf turnover goes to litter
+          call cmv( lm_turn%c, pleaf(pft,jpngr)%c, plitt_af(pft,jpngr)%c, scale=nind(pft,jpngr) )
+          ! A fraction (F_NRETAIN) of leaf N turnover is retained and moved to temporary storage (plabl) ...
+          call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plabl(pft,jpngr)%n,    scale=nind(pft,jpngr)*F_NRETAIN )
+          ! ... rest goes to litter
+          call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr)*(1.-F_NRETAIN) )
+
+          ! No root N is retained (xxx is this viable? xxx)
           call orgmv( rm_turn, proot(pft,jpngr), plitt_bg(pft,jpngr), scale=nind(pft,jpngr) )
 
           ! done here: Set isotopes to MISSING_VALUE if pools are empty

@@ -114,7 +114,7 @@
 
        !--------------------------CARBON----------------------------------
 
-       subroutine cmv(amount,from,to)
+       subroutine cmv(amount,from,to,scale)
          !////////////////////////////////////////////////////////////////
          !  Generic SR to "move" only C from organic mass ('amount') from 
          !  source pool ('from') to destination pool ('to'). Substracts 
@@ -126,9 +126,15 @@
          type (carbon), intent(in) :: amount
          type (carbon), intent(inout) :: from
          type (carbon), intent(inout) :: to
+         real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
-         call ccp(amount,to)
-         call csub(amount,from)
+         if (present(scale)) then
+           call ccp(cfrac(scale,amount),to)
+           call csub(amount,from)
+         else
+           call ccp(amount,to)
+           call csub(amount,from)
+         endif
 
        end subroutine cmv
 
@@ -173,7 +179,7 @@
 
        !--------------------------NITROGEN--------------------------------
 
-       subroutine nmv(amount,from,to)
+       subroutine nmv(amount,from,to,scale)
          !////////////////////////////////////////////////////////////////
          !  Generic SR to "move" only C from organic mass ('amount') from 
          !  source pool ('from') to destination pool ('to'). Substracts 
@@ -185,9 +191,15 @@
          type (nitrogen), intent(in) :: amount
          type (nitrogen), intent(inout) :: from
          type (nitrogen), intent(inout) :: to
+         real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
-         call ncp(amount,to)
-         call nsub(amount,from)
+         if (present(scale)) then
+           call ncp(nfrac(scale,amount),to)
+           call nsub(amount,from)
+         else
+           call ncp(amount,to)
+           call nsub(amount,from)
+         endif
 
        end subroutine nmv
 

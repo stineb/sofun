@@ -93,8 +93,12 @@
       drh(:)     = carbon(0.0)
       dra(:)     = carbon(0.0)
 
-      dnfix_free(:) = 0.0
       dnup(:)    = nitrogen(0.0)
+      dnfix_free(:) = 0.0
+      dnup_pas(:) = 0.0
+      dnup_act(:) = 0.0
+      dnup_fix(:) = 0.0
+      dnup_ret(:) = 0.0
 
       ! xxx try
       ! hold soil carbon and litter pools at a constant size
@@ -123,4 +127,3 @@
       agpp(:)   = carbon(0.0)
 
       end subroutine initannual
-

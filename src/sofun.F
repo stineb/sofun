@@ -176,7 +176,7 @@
             call npp( jpngr, day, dtemp(day), 1.0 )
 
             ! calculate otpimal C expenditure for N uptake (FUN approach)
-            !call nuptake( jpngr )
+            call nuptake( jpngr )
 
             ! litter and soil turnover
             call littersom( dm, mo, jpngr )
@@ -185,7 +185,7 @@
             call ntransform( dm, mo, jpngr, dprec )
 
             ! collect daily output variables from daily updated state variables
-            call getoutdaily( jpngr )
+            call getout_daily( jpngr )
 
           end do
 

@@ -27,7 +27,8 @@ standard:
 	 $(FCOM) -c allocation.F
 	 $(FCOM) -c establishment.F
 	 $(FCOM) -c getout.F
-	 $(FCOM) params_core.mod.o classdefs.mod.o params_siml.mod.o params_site.mod.o params_modl.mod.o gridvars.mod.o vars.mod.o forcing.mod.o rates.mod.o pools.mod.o init.o update.o kill.o gpp.o npp.o littersom.o ntransform.o turnover.o allocation.o establishment.o getout.o sofun.F -o $(EXE)
+	 $(FCOM) -c nuptake.F
+	 $(FCOM) params_core.mod.o classdefs.mod.o params_siml.mod.o params_site.mod.o params_modl.mod.o gridvars.mod.o vars.mod.o forcing.mod.o rates.mod.o pools.mod.o init.o update.o kill.o gpp.o npp.o littersom.o ntransform.o turnover.o allocation.o establishment.o getout.o sofun.F nuptake.o -o $(EXE)
 
 .PHONY: clean
 clean:

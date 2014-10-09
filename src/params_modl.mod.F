@@ -33,6 +33,14 @@
        real :: lmtorm0           ! 20 leaf to root ratio under non-water stressed conditionss
        real :: kbeer             ! 21 canopy light extinction coefficient
        real :: kresp             ! 22 additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
+       real :: MINIMUMCOSTFIX    ! 23 minimum cost of N fixation (at optimal temperature)
+       real :: FIXOPTIMUM        ! 24 optimum temperature for N fixation
+       real :: FIXWIDTH          ! 25 shape parameter for width of N fixation cost function
+       real :: KN_ACTIVE_NO3     ! 26 N-availability constant in cost function for active NO3 uptake
+       real :: KN_ACTIVE_NH4     ! 27 N-availability constant in cost function for active NH4 uptake
+       real :: KC_ACTIVE_NO3     ! 28 root exploration constant in cost function for active NO3 uptake
+       real :: KC_ACTIVE_NH4     ! 29 root exploration constant in cost function for active NH4 uptake
+       real :: F_NRETAIN         ! 30 fraction of N retained at leaf abscission 
 
 
        ! PFT-DEPENDENT PARAMETERS
@@ -50,6 +58,7 @@
        real, dimension(npft) :: cton_pro            ! C:N ratio of new production [1]
        integer, dimension(npft) :: pftcode          ! code for identification of PFT (1=C3 grass)
        real, dimension(npft) :: respcoeff           ! maintenance respiration coefficient
+       logical, dimension(npft) :: nfixer           ! whether plant is capable of symbiotically fixing N
 
        contains
 
@@ -62,10 +71,10 @@
 
        ! local variables
        integer :: pft
-       integer, parameter :: npar = 22
+       integer, parameter :: npar = 26
        real, dimension(npar) :: params_array
 
-       integer, parameter :: npar_pft = 10
+       integer, parameter :: npar_pft = 11
        real, dimension(npar_pft) :: pft_params_array
 
        real, dimension(npft) :: lu_category_prov    ! land use category associated with PFT (provisional)
@@ -145,6 +154,35 @@
        ! additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
        kresp = params_array(22)
 
+       ! shape parameter of cost function of N fixation 
+       ! Below parameters (MINIMUMCOSTFIX, FIXOPTIMUM, FIXWIDTH ) are based on 
+       ! the assumption that the cost of symbiotic N fixation is the 
+       ! inverse of nitrogenase activity. 
+       ! After Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
+       ! (value from Gutschik 1981)
+       MINIMUMCOSTFIX = params_array(23)
+
+       ! shape parameter of cost function of N fixation 
+       FIXOPTIMUM = params_array(24)
+
+       ! shape parameter of cost function of N fixation 
+       FIXWIDTH = params_array(25)
+
+       ! N-availability constant in cost function for active NO3 uptake
+       KN_ACTIVE_NO3 = params_array(26)
+       
+       ! N-availability constant in cost function for active NH4 uptake
+       KN_ACTIVE_NH4 = params_array(27)
+
+       ! root exploration constant in cost function for active NO3 uptake
+       KC_ACTIVE_NO3 = params_array(28)
+       
+       ! root exploration constant in cost function for active NH4 uptake
+       KC_ACTIVE_NH4 = params_array(29)
+
+       ! fraction of N retained at leaf abscission 
+       F_NRETAIN = params_array(30)        
+
 
        !----------------------------------------------------------------
        ! PFT DEPENDENT PARAMETERS
@@ -208,6 +246,13 @@
 
               ! maintenance respiration coefficient
               respcoeff(pft) = pft_params_array(10)
+
+              ! N-fixing plant? (0=false, 1=true)
+              if (pft_params_array(11)==0.) then
+                     nfixer(pft) = .false.
+              else
+                     nfixer(pft) = .true.
+              endif
 
        end do
 

@@ -1,4 +1,4 @@
-      subroutine getoutdaily
+      subroutine getout_daily
       !////////////////////////////////////////////////////////////////
       !  SR called daily to sum up output variables.
       !  June 2014
@@ -16,6 +16,8 @@
         call ccp( dgpp(pft), agpp(pft) )
         call ccp( dnpp(pft), anpp(pft) )
 
+        call ncp( dnup(pft), anup(pft) )
+
       end do
 
-      end subroutine getoutdaily
+      end subroutine getout_daily
