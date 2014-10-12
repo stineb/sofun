@@ -9,7 +9,7 @@
       !----------------------------------------------------------------
       use params_core
       use classdefs
-      use params_siml, only: init
+      !use params_siml, only: init
       use params_modl
       use rates
       use pools, only: nh4, no3, no2, no_w, no_d, n2o_w, n2o_d, n2_w

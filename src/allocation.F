@@ -6,7 +6,7 @@
       use params_core
       use classdefs
       use pools, only: pleaf, proot, plitt_af, plitt_as, plabl
-      use annvars, only: ispresent, nind, anpp
+      use annvars, only: ispresent, nind
       use params_modl, only: lmtorm0, grass, rcton_LS, rcton_LR, cton_pro
 
       ! ARGUMENTS
@@ -91,10 +91,10 @@
 
               ! not used : call ncp( (-lminc_ind)*ntoc(pleaf(pft,jpngr))*nind(pft,jpngr), plitt_af(pft,jpngr)%n ) 
 
-!              ! 'tmp' is the amount of N necessary for (reduced) leaf C, assuming const. leaf-C:N 
-!              tmp = max( pleaf(pft,jpngr,n_id) + lminc_ind*afntoc_lm(pft,jpngr), 0.0 )
-!              call ncp( (pleaf(pft,jpngr)%n-tmp)*nind(pft,jpngr), plitt_af(pft,jpngr)%n )
-!              pleaf(pft,jpngr)%n = tmp
+              ! ! 'tmp' is the amount of N necessary for (reduced) leaf C, assuming const. leaf-C:N 
+              ! tmp = max( pleaf(pft,jpngr,n_id) + lminc_ind*afntoc_lm(pft,jpngr), 0.0 )
+              ! call ncp( (pleaf(pft,jpngr)%n-tmp)*nind(pft,jpngr), plitt_af(pft,jpngr)%n )
+              ! pleaf(pft,jpngr)%n = tmp
               
             endif
 
@@ -128,16 +128,14 @@
                
             endif
             
-            plantN = pleaf(pft,jpngr)%n%n14+proot(pft,jpngr)%n%n14
-     $           +nalloc_ind                   !Eq.1, Tab.3, XP08 (growth.cpp:1181)
+            plantN = pleaf(pft,jpngr)%n%n14+proot(pft,jpngr)%n%n14+nalloc_ind                   !Eq.1, Tab.3, XP08 (growth.cpp:1181)
             
             pleaf(pft,jpngr)%n%n14 = plantN*f_nl
             proot(pft,jpngr)%n%n14 = plantN*f_nr            !Eq.3, Tab.3, XP08 (growth.cpp:1184)
                         
 
-        ! spahni 2010-02-10: check if compartments are still positive
-            if (pleaf(pft,jpngr)%c%c12<1.0d-15 .or.
-     $          proot(pft,jpngr)%c%c12<1.0d-15) then
+            ! spahni 2010-02-10: check if compartments are still positive
+            if (pleaf(pft,jpngr)%c%c12<1.0d-15 .or.proot(pft,jpngr)%c%c12<1.0d-15) then
               !remove PFT
               ispresent(pft,jpngr) = .false. 
               ! xxx try: uncomment and define 'kill' SR

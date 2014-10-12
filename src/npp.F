@@ -1,18 +1,17 @@
-      subroutine npp(jpngr,day,dtemp,dtemp_soil)
+      subroutine npp(jpngr,dtemp,dtemp_soil)
 
       use classdefs
       use params_core, only: npft, nlu
-      use params_modl, only: cton_pro, respcoeff, kresp, lu_category
+      use params_modl, only: respcoeff, kresp, lu_category
       use rates
       use dailyvars, only: dgpp, dnpp, dra
-      use pools, only: pleaf,proot,pexud, plabl
+      use pools, only: pleaf, proot
       use annvars, only: nind, ispresent
 
       implicit none
 
       ! ARGUMENTS
       integer, intent(in)              :: jpngr
-      integer, intent(in)              :: day
       real, intent(in)                 :: dtemp      ! air temperature at this day
       real, dimension(nlu), intent(in) :: dtemp_soil ! soil temperature temperature at this day
 

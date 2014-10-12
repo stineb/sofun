@@ -173,13 +173,13 @@
 
             ! substract autotrophic respiration to get NPP
             ! xxx try: second argument is dtemp_soil
-            call npp( jpngr, day, dtemp(day), 1.0 )
+            call npp( jpngr, dtemp(day), 1.0 )
 
             ! calculate otpimal C expenditure for N uptake (FUN approach)
             call nuptake( jpngr )
 
             ! litter and soil turnover
-            call littersom( dm, mo, jpngr )
+            call littersom( jpngr )
 
             ! inorganic soil N chemistry
             call ntransform( dm, mo, jpngr, dprec )
@@ -207,6 +207,8 @@
 
       end do
 
+      ! try xxx
+      c_uptake = 1.e15 ! in gC
 
       ! write output
       !call write_output

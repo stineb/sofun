@@ -1,4 +1,4 @@
-      subroutine littersom( dm, mo, jpngr )
+      subroutine littersom( jpngr )
       !////////////////////////////////////////////////////////////////
       !  Litter and SOM decomposition and nitrogen mineralisation.
       !  1st order decay of litter and SOM pools, governed by temperature
@@ -17,8 +17,6 @@
       implicit none
 
       ! ARGUMENTS
-      integer, intent(in) :: mo                       ! month
-      integer, intent(in) :: dm                       ! day of the current month
       integer, intent(in) :: jpngr                    ! grid cell number
 
       ! LOCAL VARIABLES

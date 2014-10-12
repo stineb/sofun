@@ -45,7 +45,7 @@
 
        ! PFT-DEPENDENT PARAMETERS
        real, dimension(npft) :: cton_soil           ! 1 C:N ratio of soil organic matter [1]
-       real, dimension(npft) :: lu_category         ! 2 land use category associated with PFT
+       integer, dimension(npft) :: lu_category      ! 2 land use category associated with PFT
        logical, dimension(npft) :: grass            ! boolean for growth form 'grass'
        logical, dimension(npft) :: tree             ! boolean for growth form 'tree'
        real, dimension(npft) :: lai0                ! sapling (or grass on initialisation) LAI (=lai_sapl)
@@ -71,7 +71,7 @@
 
        ! local variables
        integer :: pft
-       integer, parameter :: npar = 26
+       integer, parameter :: npar = 30
        real, dimension(npar) :: params_array
 
        integer, parameter :: npar_pft = 11
@@ -233,7 +233,7 @@
               ! defined as a function of 'long_leaf'
               ! Include conversion (multiplier of 2.0) from m2/g(dry wt) to m2/gC
               ! Equation based on Reich et al 1997, Fig 1f:
-              sla(pft)=2.0d-4*exp(6.15d0-0.46d0*log(long_leaf(pft)*12.0d0))
+              sla(pft)=2.0e-4*exp(6.15-0.46*log(long_leaf(pft)*12.0))
 
               ! PFT identification code (1=C3 grass)
               pftcode(pft) = int(pft_params_array(7))

@@ -4,6 +4,7 @@
       !  b.stocker@imperial.ac.uk
       !----------------------------------------------------------------
       use params_modl
+      use params_site, only: lpft1
       use annvars
       use pools
       use gridvars, only: lu_area
@@ -11,17 +12,17 @@
       implicit none
 
       ! ARGUMENTS
-      integer,intent(in)      :: jpngr
+      integer,intent(in)       :: jpngr
 
       ! LOCAL VARIABLES
-      integer                 :: pft
-      integer                 :: lu
-      real,dimension(nlu)     :: fpc_total
-      integer,dimension(nlu)  :: npft_estab
-      integer,dimension(nlu)  :: ngrass
-      real,dimension(nlu)     :: bare
+      integer                  :: pft
+      integer                  :: lu
+      real, dimension(nlu)     :: fpc_total
+      integer, dimension(nlu)  :: npft_estab
+      integer, dimension(nlu)  :: ngrass
+      real, dimension(nlu)     :: bare
 
-      logical,dimension(npft) :: estab
+      logical, dimension(npft) :: estab
 
       ! was done here: Check if 'survive' is false or nind<nind_min. If so, kill PFT.
 
@@ -29,8 +30,11 @@
       ! minimum precipitation for establishment to bioclim? (100 mm/yr used in LPX)
 
       ! define which PFTs to establish
+      estab(:) = .false.
       do pft=1,npft
-        call allowpft(pft)
+        if (pft==1) then
+          if (lpft1) estab(pft) = .true.
+        endif
       end do
 
 
@@ -142,22 +146,6 @@
           call update_fpc( pft, jpngr )
         endif
       enddo  
-
-
-      contains
-
-      subroutine allowpft(pft)
-      !////////////////////////////////////////////////////////////////
-      !  June 2014
-      !  b.stocker@imperial.ac.uk
-      !----------------------------------------------------------------
-        use params_site, only: lpft1
-        implicit none
-        integer, intent(in) :: pft
-
-        if (lpft1) estab(1) = .true.
-
-      end subroutine allowpft
 
 
       end subroutine establishment

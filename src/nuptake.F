@@ -13,7 +13,7 @@
       use params_core
       use params_modl, only: lu_category, cton_pro, nfixer
       use dailyvars, only: dnpp, dtransp, dnup, dnup_pas, dnup_act, dnup_fix, dnup_ret
-      use annvars, only: anup, nind, ispresent
+      use annvars, only: nind, ispresent
       use pools, only: nh4, no3, pexud, plabl, proot
 
       implicit none
@@ -32,7 +32,7 @@
       integer, parameter :: MAXSTEP = 100         ! maximum number of sub-time steps in N uptake optimisation
       integer, parameter :: PARTS = 100           ! number of parts of split up of inorganic N for uptake
 
-      real, parameter :: SMALLVALUE = 1.d-9       ! to prevent numerical instability
+      real, parameter :: SMALLVALUE = 1.e-9       ! to prevent numerical instability
       real, parameter :: BIG_COST = 999999.       ! dummy value
 
       logical unmetDemand
@@ -40,7 +40,7 @@
       logical empty
       logical option(3)                           ! whether N-fixation is an option
 
-      integer :: j, i, ppft, pft, iz, istep, lu   ! counter variables
+      integer :: pft, iz, istep, lu   ! counter variables
       integer :: iminCost(nsl_eff)                ! info which source (-ID) is cheapest in each layer
       integer :: mloc(1)                          ! used to hold result of minloc
       integer :: cheapRank(nsl_eff)               ! ranking of layers: e.g. cheapRank(1) contains layer number with cheapest N
@@ -71,9 +71,7 @@
       real :: Cacq                                           ! C spent for N acquisition
       real :: Nacq               ! N acquired by spending Cacq
       real :: excess
-      
-      !real :: tmp
-      
+            
       ! xxx try
       soilmoist = 0.4
       soiltemp = 18.0
@@ -104,9 +102,6 @@
       
       ! Absolute water content corresponding to permanent wilting point [gH2O].
       !epsilon_wtot = Fpwp( nlayers-nsl+1, jpngr ) * sum( Dz_soil(:) ) * 1000.
-      ! xxx try:
-      epsilon_wtot = 0.05
-      dtransp(pft) = 1000.0
       !-------------------------------------------------------------------------
 
       do lu=1,nlu
@@ -115,6 +110,10 @@
         !-------------------------------------------------------------------------
         do pft=1,npft
           
+          ! xxx try:
+          epsilon_wtot = 0.05
+          dtransp(pft) = 1000.0
+
           ! ! Change the order in which pfts get access to N stores daily.
           ! do ppft=1,npft
           !   pft = modulo(ppft+day-2,npft)+1
@@ -144,10 +143,10 @@
               Cacq_active    = 0.
               Cacq_fix       = 0.
                
-              no3_conc(:)    = 9999.d27                     ! assign dummy value before variable is passed to SR
-              nh4_conc(:)    = 9999.d27                     ! assign dummy value before variable is passed to SR
-              avail_no3(:)   = 9999.d27                     ! assign dummy value before variable is passed to SR
-              avail_nh4(:)   = 9999.d27                     ! assign dummy value before variable is passed to SR
+              no3_conc(:)    = 9999.e27                     ! assign dummy value before variable is passed to SR
+              nh4_conc(:)    = 9999.e27                     ! assign dummy value before variable is passed to SR
+              avail_no3(:)   = 9999.e27                     ! assign dummy value before variable is passed to SR
+              avail_nh4(:)   = 9999.e27                     ! assign dummy value before variable is passed to SR
                
               option(:)      = .true. 
 
@@ -331,7 +330,7 @@
                    
                   ! Split NPP to pay for into steps
                   !--------------------------------------------------------------------------
-                  npp_remaining_step = npp_remaining/dble(nstep)
+                  npp_remaining_step = npp_remaining/real(nstep)
 
 
                   !//////////////////////////////////////////////////////////////////////////
