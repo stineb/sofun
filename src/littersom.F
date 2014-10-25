@@ -87,22 +87,11 @@
              !-------------------------------------------------------------------------
              
               ! define decomposition rates for current soil temperature and moisture
-              klitt_af(pft) = klitt_af10
-     $             * ftemp(soiltemp,"lloyd_and_taylor")
-     $             * fmoist(soilmoist,"foley") ! alternative: "gerten"
-              
-              klitt_as(pft) = klitt_as10
-     $             * ftemp(soiltemp,"lloyd_and_taylor") ! alternative: "brovkin"
-     $             * fmoist(soilmoist,"foley") ! alternative: "gerten"
+              klitt_af(pft) = klitt_af10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
+              klitt_as(pft) = klitt_as10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
+              klitt_bg(pft) = klitt_bg10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
+              kexu(pft)     = kexu10     * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
 
-              klitt_bg(pft) = klitt_bg10
-     $             * ftemp(soiltemp,"lloyd_and_taylor")
-     $             * fmoist(soilmoist,"foley") ! alternative: "gerten"
-
-              kexu(pft)     = kexu10
-     $             * ftemp(soiltemp,"lloyd_and_taylor")
-     $             * fmoist(soilmoist,"foley") ! alternative: "gerten"
-              
             end if
           end do
 
@@ -112,16 +101,12 @@
           ! Moisture: Foley, 1995; Fang and Moncrieff, 1999; Gerten et al., 2004;
           !           Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
           !-------------------------------------------------------------------------
-          ksoil_fs(lu) = ksoil_fs10
-     $         * ftemp(soiltemp,"lloyd_and_taylor")
-     $         * fmoist(soilmoist,"foley")     ! alternative: "gerten"
+          ksoil_fs(lu) = ksoil_fs10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley")     ! alternative: "gerten"
           
-          ksoil_sl(lu) = ksoil_sl10
-     $         * ftemp(soiltemp,"lloyd_and_taylor")
-     $         * fmoist(soilmoist,"foley")     ! alternative: "gerten"
+          ksoil_sl(lu) = ksoil_sl10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley")     ! alternative: "gerten"
 
           do pft=1,npft
-            if (lu.eq.lu_category(pft)) then
+            if (lu==lu_category(pft)) then
               
               !////////////////////////////////////////////////////////////////
               ! EXUDATES DECAY
@@ -140,12 +125,9 @@
               ! All goes to daily updated litter decomposition pool
               ! xxx what is justification for PFT-dependent decay constants? xxx
               !----------------------------------------------------------------
-              dlitt_af = orgfrac( 1.-exp(-klitt_af(pft)),
-     $             plitt_af(pft,jpngr) )
-              dlitt_as = orgfrac( 1.-exp(-klitt_as(pft)),
-     $             plitt_as(pft,jpngr) )
-              dlitt_bg = orgfrac( 1.-exp(-klitt_bg(pft)),
-     $             plitt_bg(pft,jpngr) )
+              dlitt_af = orgfrac( 1.-exp(-klitt_af(pft)), plitt_af(pft,jpngr) )
+              dlitt_as = orgfrac( 1.-exp(-klitt_as(pft)), plitt_as(pft,jpngr) )
+              dlitt_bg = orgfrac( 1.-exp(-klitt_bg(pft)), plitt_bg(pft,jpngr) )
                             
 
               ! Update the litter pools
@@ -172,9 +154,7 @@
               ! calculate actually required N to satisfy C:N ratio of soil
               ! = eff*delta(litter)*NCratio(soil)
               ! prescribe soil C:N ratio per PFT
-              req = 1/ cton_soil(pft)
-     $            * dlitt(pft)%c%c12
-     $            * eff
+              req = 1./ cton_soil(pft) * dlitt(pft)%c%c12 * eff
               
               ! gross N mineralisation 
               grossmin = (1.-eff) * dlitt(pft)%n%n14 ! defined as scalar
@@ -183,23 +163,11 @@
               netmin   = grossmin - req                         ! defined as scalar
               
               ! move fraction 'eff' of C and N from litter to soil
-              call orgmv(
-     $             orgfrac(eff*fastfrac,dlitt(pft)),
-     $             dlitt(pft),
-     $             psoil_fs(lu,jpngr)
-     $             )
-              call orgmv(
-     $             orgfrac(eff*(1.-fastfrac),dlitt(pft)),
-     $             dlitt(pft),
-     $             psoil_sl(lu,jpngr)
-     $             )
+              call orgmv( orgfrac(eff*fastfrac,dlitt(pft)), dlitt(pft), psoil_fs(lu,jpngr) )
+              call orgmv( orgfrac(eff*(1.-fastfrac),dlitt(pft)), dlitt(pft), psoil_sl(lu,jpngr) )
 
               ! move fraction '(1-eff)' of C and N to heterotrophic respiration
-              call cmv(
-     $             cfrac((1.-eff),dlitt(pft)%c),
-     $             dlitt(pft)%c,
-     $             drh(lu)
-     $             )
+              call cmv( cfrac((1.-eff),dlitt(pft)%c), dlitt(pft)%c, drh(lu) )
 
               if (netmin>0) then                
                 ! mineralised litter enters ammonium pool
@@ -213,20 +181,14 @@
                 
                 if (avl .ge. req) then
                   ! enough mineral N for immobilisation
-                  psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14
-     $                 + req*fastfrac
-                  psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14
-     $                 + req*(1.-fastfrac)             
-                  nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14
-     $                 - req
+                  psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14 + req*fastfrac
+                  psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14 + req*(1.-fastfrac)             
+                  nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - req
                 else
                   ! not enough mineral N for immobilisation -> additional free-living fixation
-                  psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14
-     $                 + req*fastfrac
-                  psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14
-     $                 + req*(1.-fastfrac)
-                  nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14
-     $                 - avl
+                  psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14 + req*fastfrac
+                  psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14 + req*(1.-fastfrac)
+                  nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - avl
                   dnfix_free(lu) = dnfix_free(lu) + (req - avl)
                 end if
 

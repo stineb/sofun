@@ -35,7 +35,7 @@
         print*,'abort'
        endif
       ! write simulation name to standard output (screen)
-       write(0,*) '-------------SOFUN : '//trim(runname)//'--------------'
+       write(0,*) '------------SOFUN : '//trim(runname)//'-------------'
 !       write (*,200)
 !200    format ('SIMULATION NAME: '$)
 !      write (*,*) runname
@@ -57,7 +57,7 @@
 
 
       ! LOOP THROUGH YEARS
-      write(0,*) '-------------START OF SIMULATION--------------'
+      write(0,*) '------------START OF SIMULATION-------------'
       do year=1,runyears
 
        !----------------------------------------------------------------
@@ -66,7 +66,7 @@
         call getsteering(year,realyear)
 
         if (year == spinupyears+1 ) then
-          write(0,*) '------------TRANSIENT SIMULATION--------------'
+          write(0,*) '-----------TRANSIENT SIMULATION-------------'
         endif
 
         !----------------------------------------------------------------
@@ -185,7 +185,7 @@
             call ntransform( dm, mo, jpngr, dprec )
 
             ! collect daily output variables from daily updated state variables
-            call getout_daily( jpngr )
+            call getout_annual
 
           end do
 
@@ -204,6 +204,9 @@
         !call mortality
         !call fire
         call establishment(jpngr)
+
+        ! collect output field variables
+        !call getout_fields
 
       end do
 

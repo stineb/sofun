@@ -173,8 +173,12 @@
          type (carbon), intent(in) :: amount
          type (carbon), intent(inout) :: from
 
-         from%c12 = from%c12 - amount%c12
-
+         if (from%c12>0) then
+           from%c12 = from%c12 - amount%c12
+         else if (from%c12>0) then
+           stop 'in SR csub: trying to remove c12 from empty pool'
+         endif
+           
        end subroutine csub
 
        !--------------------------NITROGEN--------------------------------
@@ -229,7 +233,11 @@
          type (nitrogen), intent(in) :: amount
          type (nitrogen), intent(inout) :: from
 
-         from%n14 = from%n14 - amount%n14
+         if (from%n14>0) then
+           from%n14 = from%n14 - amount%n14
+         else if (from%n14>0) then
+           stop 'in SR csub: trying to remove n14 from empty pool'
+         endif
 
        end subroutine nsub
 

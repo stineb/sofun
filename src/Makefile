@@ -1,5 +1,17 @@
-# FCOM=pgf95 -Mextend
-FCOM=gfortran -ffixed-line-length-0 -fdefault-real-8
+
+# standard
+FCOM=pgf95 -Mextend
+
+# for debugging
+# FCOM=pgf95 -Mextend -g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp 
+
+
+# standard
+# FCOM=gfortran -ffixed-line-length-0 -fdefault-real-8
+
+# for debugging
+# FCOM=gfortran -ffixed-line-length-0 -fdefault-real-8 -g -fbounds-check -Wall -fbacktrace -finit-real=nan
+
 export FCOM
 
 # name of executable
@@ -28,7 +40,7 @@ standard:
 	 $(FCOM) -c establishment.F
 	 $(FCOM) -c getout.F
 	 $(FCOM) -c nuptake.F
-	 $(FCOM) params_core.mod.o classdefs.mod.o params_siml.mod.o params_site.mod.o params_modl.mod.o gridvars.mod.o vars.mod.o forcing.mod.o rates.mod.o pools.mod.o init.o update.o kill.o gpp.o npp.o littersom.o ntransform.o turnover.o allocation.o establishment.o getout.o sofun.F nuptake.o -o $(EXE)
+	 $(FCOM) params_core.mod.o classdefs.mod.o params_siml.mod.o params_site.mod.o params_modl.mod.o gridvars.mod.o vars.mod.o forcing.mod.o rates.mod.o pools.mod.o init.o update.o kill.o gpp.o npp.o littersom.o ntransform.o turnover.o allocation.o establishment.o getout.o nuptake.o sofun.F -o $(EXE)
 
 .PHONY: clean
 clean:

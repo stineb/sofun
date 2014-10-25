@@ -14,7 +14,7 @@
       use params_modl, only: lu_category, cton_pro, nfixer
       use dailyvars, only: dnpp, dtransp, dnup, dnup_pas, dnup_act, dnup_fix, dnup_ret
       use annvars, only: nind, ispresent
-      use pools, only: nh4, no3, pexud, plabl, proot
+      use pools, only: nh4, no3, pexud, plabl, proot, wtot ! xxx try: wtot included here
 
       implicit none
       
@@ -75,6 +75,8 @@
       ! xxx try
       soilmoist = 0.4
       soiltemp = 18.0
+      wtot(:,:) = 12.
+      
 
       !-------------------------------------------------------------------------
       ! FUN treats different soil layers explicitly. In LPX N-pools represent a
@@ -321,9 +323,10 @@
                   !          Ninorg/PARTS = n_demand_remaining/nstep
                   ! => solve for nstep...
                   !--------------------------------------------------------------------------
-                  nstep = MIN(INT(n_demand_remaining*PARTS/MAX(no3(lu,jpngr)%n14,nh4(lu,jpngr)%n14))+1,MAXSTEP)
-                   
-
+                  !print*,'MAX(no3(lu,jpngr)%n14,nh4(lu,jpngr)%n14))',MAX(no3(lu,jpngr)%n14,nh4(lu,jpngr)%n14)
+                  !nstep = MIN(INT(n_demand_remaining*real(PARTS)/MAX(no3(lu,jpngr)%n14,nh4(lu,jpngr)%n14)),MAXSTEP)
+                  nstep = 100
+                  
                   ! Calculate NPP still to pay for after passive uptake and retranslocation
                   !--------------------------------------------------------------------------
                   npp_remaining = n_demand_remaining*cton_pro(pft)

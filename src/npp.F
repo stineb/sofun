@@ -50,13 +50,9 @@
           ! done here: alternative method in LPX: directly from photosynthesis ('dresp' in LPX-Bern)
 
           ! daily leaf and root maintenance respiration
-          dresp_leaf = respcoeff(pft)*kresp*pleaf(pft,jpngr)%c%c12*
-     $         nind(pft,jpngr)*ntoc( pleaf(pft,jpngr) )
-     $         *ftemp_air   ! xxx try: *dphen(day,pft)
+          dresp_leaf = respcoeff(pft)*kresp*pleaf(pft,jpngr)%c%c12*nind(pft,jpngr)*ntoc( pleaf(pft,jpngr) )*ftemp_air   ! xxx try: *dphen(day,pft)
 
-          dresp_root = respcoeff(pft)*kresp*proot(pft,jpngr)%c%c12*
-     $           nind(pft,jpngr)*ntoc( proot(pft,jpngr) )
-     $           *ftemp_soil  ! xxx try: *dphen(d,pft) !(canexch.cpp:976)
+          dresp_root = respcoeff(pft)*kresp*proot(pft,jpngr)%c%c12*nind(pft,jpngr)*ntoc( proot(pft,jpngr) )*ftemp_soil  ! xxx try: *dphen(d,pft) !(canexch.cpp:976)
 
           ! done here: sapwood respiration for trees
           

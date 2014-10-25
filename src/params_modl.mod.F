@@ -218,14 +218,6 @@
               ! sapling (or grass on initialisation) LAI
               lai0(pft) = pft_params_array(4)
 
-              ! leaf mass of sapling
-              if (grass(pft)) then
-                     lm_sapl(pft)%c%c12 = lai0(pft)/sla(pft)
-                     lm_sapl(pft)%n%n14 = lm_sapl(pft)%c%c12/cton_pro(pft)
-              end if
-              rm_sapl(pft)%c%c12 = (1.0/lmtorm0)*lm_sapl(pft)%c%c12
-              rm_sapl(pft)%n%n14 = rm_sapl(pft)%c%c12/cton_pro(pft)
-
               ! leaf longevity [yr]
               long_leaf(pft) = pft_params_array(5)
 
@@ -234,6 +226,14 @@
               ! Include conversion (multiplier of 2.0) from m2/g(dry wt) to m2/gC
               ! Equation based on Reich et al 1997, Fig 1f:
               sla(pft)=2.0e-4*exp(6.15-0.46*log(long_leaf(pft)*12.0))
+
+              ! leaf mass of sapling
+              if (grass(pft)) then
+                     lm_sapl(pft)%c%c12 = lai0(pft)/sla(pft)
+                     lm_sapl(pft)%n%n14 = lm_sapl(pft)%c%c12/cton_pro(pft)
+              end if
+              rm_sapl(pft)%c%c12 = (1.0/lmtorm0)*lm_sapl(pft)%c%c12
+              rm_sapl(pft)%n%n14 = rm_sapl(pft)%c%c12/cton_pro(pft)
 
               ! PFT identification code (1=C3 grass)
               pftcode(pft) = int(pft_params_array(7))

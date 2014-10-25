@@ -1,4 +1,4 @@
-      subroutine getout_daily
+      subroutine getout_annual
       !////////////////////////////////////////////////////////////////
       !  SR called daily to sum up output variables.
       !  June 2014
@@ -20,4 +20,4 @@
 
       end do
 
-      end subroutine getout_daily
+      end subroutine getout_annual
