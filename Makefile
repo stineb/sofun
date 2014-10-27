@@ -9,7 +9,7 @@
 # pgf     - PGF95 compiler
 # gfor    - gfortran compiler
 
-PROFILE=gfor
+PROFILE=test
 
 ##################
 ## pgf profile ##
