@@ -1,3 +1,9 @@
+========================================
+IMPORTANT NOTICE:
+this repository has been transferred to 
+https://bitbucket.org/labprentice/sofun
+27 Oct 2014
+========================================
 This program serves as a structure for a global vegetation model and is based on LPX-Bern.
 It emerges from the project SOFUN (thus its name): Seasonal Optimisation of Uptake and Fixation of Nitrogen.
 Code is programmed in Fortran 90 and can be compiles using either the PGI90 compiler or gfortran (others not tested).
