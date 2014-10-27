@@ -1,48 +1,74 @@
+# The following variables are imported from Makefile in ../
+# and don't need to be set here explicitly:
+#FCOM
+#CPPFLAGS
+#COMPFLAGS
+#DEBUGFLAGS
 
-# standard
-FCOM=pgf95 -Mextend
+# List of source code files:  xxx where to put sofun (main) ??? xxx
+SOURCES=sofun.F init.F update.F kill.F gpp.F npp.F littersom.F ntransform.F turnover.F allocation.F establishment.F getout.F nuptake.F
+MODS=params_core.mod.F classdefs.mod.F params_siml.mod.F params_site.mod.F params_modl.mod.F gridvars.mod.F vars.mod.F forcing.mod.F rates.mod.F pools.mod.F 
 
-# for debugging
-# FCOM=pgf95 -Mextend -g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp 
+# List of build dependencies (Makefile and include files):
+DEPEND=Makefile ../Makefile 
 
+# Generate list of .o, .do files from SOURCES
+OBJS=$(SOURCES:.F=.o)
+MODOBJS=$(MODS:.F=.o)
+DEBUGOBJS=$(SOURCES:.F=.do)
+DEBUGMODOBJS=$(MODS:.F=.do)
 
-# standard
-# FCOM=gfortran -ffixed-line-length-0 -fdefault-real-8
+# Archive file names
+ARCHIVE=sofun.a
+# CDFARCHIVE=./cdfcode/cdf.a
 
-# for debugging
-# FCOM=gfortran -ffixed-line-length-0 -fdefault-real-8 -g -fbounds-check -Wall -fbacktrace -finit-real=nan
+# Export variables that are needed by Makefiles in the subdirectories (called below)
+export FCOM CPPFLAGS COMPFLAGS DEBUGFLAGS #LIBS
 
-export FCOM
+# Targets
+# -------
+# standard source code: (depends on object files)
+all:	$(MODOBJS) $(OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(MODOBJS) $(OBJS) 
 
-# name of executable
-EXE = runsofun
+# code for debugging:
+debug:	$(DEBUGMODOBJS) $(DEBUGOBJS)
+	# $(MAKE) debug -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(DEBUGMODOBJS) $(DEBUGOBJS)
 
-standard: 
-	 $(FCOM) -c params_core.mod.F
-	 $(FCOM) -c classdefs.mod.F
-	 $(FCOM) -c params_siml.mod.F
-	 $(FCOM) -c params_site.mod.F
-	 $(FCOM) -c params_modl.mod.F
-	 $(FCOM) -c gridvars.mod.F
-	 $(FCOM) -c vars.mod.F
-	 $(FCOM) -c forcing.mod.F
-	 $(FCOM) -c rates.mod.F
-	 $(FCOM) -c pools.mod.F
-	 $(FCOM) -c init.F
-	 $(FCOM) -c update.F
-	 $(FCOM) -c kill.F
-	 $(FCOM) -c gpp.F
-	 $(FCOM) -c npp.F
-	 $(FCOM) -c littersom.F
-	 $(FCOM) -c ntransform.F
-	 $(FCOM) -c turnover.F
-	 $(FCOM) -c allocation.F
-	 $(FCOM) -c establishment.F
-	 $(FCOM) -c getout.F
-	 $(FCOM) -c nuptake.F
-	 $(FCOM) params_core.mod.o classdefs.mod.o params_siml.mod.o params_site.mod.o params_modl.mod.o gridvars.mod.o vars.mod.o forcing.mod.o rates.mod.o pools.mod.o init.o update.o kill.o gpp.o npp.o littersom.o ntransform.o turnover.o allocation.o establishment.o getout.o nuptake.o sofun.F -o $(EXE)
+# default rules (.F -> .for -> .o/.do)
+# ------------
+%.for: %.F $(DEPEND)
+	echo 'doing: $(FCOM) $(CPPFLAGS) $*.F'
+	rm -f $*.for
+	$(FCOM) $(CPPFLAGS) $*.F > $*.for 
+	echo 'first step successful'
 
+$(MODOBJS): %.o: %.for
+	# echo 'doing: $(FCOM) -c -o $@ $(COMPFLAGS) $*.for'
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
+
+$(OBJS): %.o: %.for
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
+
+$(DEBUGOBJS): %.do: %.for
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.for
+
+$(DEBUGMODOBJS): %.do: %.for
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
+
+# don't delete the intermediate *.for files
+.SECONDARY:     $(SOURCES:.F=.for)
+
+# clean: remove .for, .o, .do, and .stb files
 .PHONY: clean
 clean:
-	rm $(EXE) *.o *.mod
+	-rm -f *.for *.o *.do *.stb *.mod
+#	rm $(ARCHIVE)
 
+#EOF

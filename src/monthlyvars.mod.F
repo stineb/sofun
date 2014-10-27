@@ -1,4 +1,4 @@
-       module dailyvars
+       module monthlyvars
        !////////////////////////////////////////////////////////////////
        !  Module contains all monthly variables (with explicit dimension
        !  for month). For output.
@@ -8,5 +8,5 @@
          implicit none
          type(carbon), dimension(nlu,maxgrid) :: mrh
 
-       end module dailyvars
+       end module monthlyvars
 
