@@ -22,6 +22,11 @@ rename.pl
 -------------
 This script performs bulk file renames based on regular expression search and replace.
 
+------
+rms.pl
+------
+This script reads through a file (plain text or CSV) and removes all whitespace characters from lines.
+
 -------
 sort.pl
 -------
