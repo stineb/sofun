@@ -6,7 +6,7 @@
 # Imperial College London
 #
 # 2012-06-07 -- created
-# 2014-10-27 -- last updated
+# 2014-10-28 -- last updated
 #
 # HOW TO RUN:
 # > perl sort.pl
@@ -28,50 +28,36 @@ use warnings;
 # MAIN
 # ////////////////////////////////////////////////////////////////////////////
 # Initialize script variables:
-my $counter = 0;
+my $headerline = "";
 my $fileprefix = '';
 my $writfile = "_sorted.txt";
-my @lines = ();
+my @content = ();
 
 # Ask user to select file for processing:
 my $workingfile = &getFilename($fileprefix);
 
 # Make certain file has contents and is readable:
-# Check to see if the file exists and is readable:
 if ( ( -s $workingfile ) && ( -r $workingfile ) )
 { 
-	#print "$workingfile found!\n";
-    
     # Update the writefile:
     $fileprefix = substr $workingfile, 0, -4;
     $writfile = $fileprefix . $writfile;
     
-	open RFILE, "<$workingfile" or die $!;
-	while (my $line = <RFILE>)
-	{
-		# Increment counter:
-		$counter++;
-		
-		if ($counter == 1)
-		{
-			# Header line, print out:
-			open WFILE, ">$writfile" or die $!;
-			print WFILE $line;
-			close WFILE;
-
-		}
-		else
-		{
-			chomp($line);
-			# Save each line to an array:
-			push(@lines,$line);
-		}
-	}
+    # Open file for reading, save header and content and close file:
+    open RFILE, "<$workingfile" or die $!;
+    $headerline = <RFILE>;
+    @content = <RFILE>;
+    close RFILE;
+    print "Processing " . scalar(@content) . " lines.\n";
+    
+    # Create writefile with header:
+    &writeout($writfile, $headerline);
+	
 	# Read through array and print to file:
 	open WFILE, ">>$writfile" or die $!;
-	foreach my $item (sort(@lines))
+	foreach my $item (sort(@content))
 	{
-		print WFILE "$item\n";
+		print WFILE "$item";
 	}
 	close WFILE;
 }
@@ -129,4 +115,13 @@ sub getFilename
 	{
 		die "No files found!\n";
 	}
+}
+sub writeout{
+    # Get local sent variables:
+    local($filename, $outdata) = @_;
+    #
+    # Try to open output file:
+    open WFILE, ">$filename" or die $!;
+    print WFILE $outdata;
+    close WFILE;
 }
