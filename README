@@ -20,7 +20,7 @@ To run the program, do
 
 Change 'RUNNAME' to any given simulation name. Parameter files containing 'RUNNAME' in their file name need to be adjusted accordingly (replacing the string 'RUNNAME' with your simulation name and adjusting parameter values.).
 
-Temporal structure
+Model structure
 -------------------------
 
 sofun is designed to be a modular framework that can adopt different formulation of processes by replacing subroutines called in sofun.F. These subroutines are:
