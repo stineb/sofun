@@ -1,7 +1,13 @@
+SOFUN
+-----------
+
 This program serves as a structure for a global vegetation model and is based on LPX-Bern.
 It emerges from the project SOFUN (thus its name): Seasonal Optimisation of Uptake and Fixation of Nitrogen.
 Code is programmed in Fortran 90 and can be compiles using either the PGI90 compiler or gfortran (others not tested).
 Written, developed and maintained via https://github.com/stineb/sofun by Beni Stocker (b.stocker@imperial.ac.uk).
+
+Usage
+---------
 
 To compile, do
   
@@ -44,9 +50,3 @@ State variables
 --------------------
 
 In order to satisfy modularity, inter-changeable subroutines have to use the same set of global variables, but may treat them differently and use specific, locally defined variables. Still, the the core remains the same. That is, the vegetation is described by a set of state variables. These are:
-
-
-
-
-
-
