@@ -3,8 +3,8 @@ SOFUN
 
 This program serves as a structure for a global vegetation model and is based on LPX-Bern.
 It emerges from the project SOFUN (thus its name): Seasonal Optimisation of Uptake and Fixation of Nitrogen.
-Code is programmed in Fortran 90 and can be compiles using either the PGI90 compiler or gfortran (others not tested).
-Written, developed and maintained via https://github.com/stineb/sofun by Beni Stocker (b.stocker@imperial.ac.uk).
+Code is programmed in Fortran 90 and can be compiled using either the PGI90 compiler or gfortran (others not tested).
+Written, developed and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
 
 Usage
 ---------
@@ -25,7 +25,7 @@ Model structure
 
 sofun is designed to be a modular framework that can adopt different formulation of processes by replacing subroutines called in sofun.F. These subroutines are:
 
-*called daily
+*called daily*: 
 gpp, 
 waterbalance, 
 soiltemp, 
@@ -34,7 +34,7 @@ nuptake,
 littersom, 
 ntransform
 
-*called annually
+*called annually*:
 turnover
 reproduction
 allocation
