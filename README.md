@@ -1,12 +1,17 @@
 # README #
-LAST UPDATED: 2014-10-27
-TEAM: labprentice
-REPO: utilities (public)
+* LAST UPDATED: 2014-10-28
+* TEAM: labprentice
+* REPO: utilities (public)
 
 # DESCRIPTION #
 This repository holds utility and general functionality scripts. 
 
 # FILES #
+-----------
+diffdays.pl
+-----------
+This script calculates the number of days between two given dates.
+
 -------------
 rename.pl
 -------------
