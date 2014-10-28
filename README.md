@@ -8,6 +8,11 @@ This repository holds utility and general functionality scripts.
 
 # FILES #
 -----------
+catfiles.pl
+-----------
+This script concatenates multiple time series data files into one single file.
+
+-----------
 diffdays.pl
 -----------
 This script calculates the number of days between two given dates.
