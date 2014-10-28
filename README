@@ -35,13 +35,13 @@ littersom
 ntransform
 
 *called annually
-* turnover
-* reproduction
-* allocation
-* light
-* mortality
-* fire
-* establishment
+turnover
+reproduction
+allocation
+light
+mortality
+fire
+establishment
 
 While vegetation dynamics processes are determined on a longer timescale (annual update is ok), other processes like fire, mortality, turnover are probably better suited to be updated daily to take into account the quick (primarily phenological) response to extreme events on a shorter time scale (at least ~weeks). 
 
@@ -53,15 +53,15 @@ In order to satisfy modularity, inter-changeable subroutines have to use the sam
 
 *in module 'pools'
 pleaf : leaf mass 
-proot
-plabl
-pexud
-plitt_af
-plitt_as
-plitt_bg
-psoil_sl
-psoil_fs
-wtot
-nh4
-no3
-no2
+proot : root mass
+plabl : labile pool
+pexud : exudates in soil
+plitt_af : above-ground litter (fast turnover)
+plitt_as : above-ground litter (slow turnover)
+plitt_bg : below-ground litter
+psoil_sl : soil organic matter (slow turnover)
+psoil_fs : soil organic matter (fast turnover)
+wtot : soil water storage
+nh4 : ammonium
+no3 : nitrate
+no2 : nitrogen dioxide
