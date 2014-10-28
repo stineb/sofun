@@ -35,13 +35,13 @@ littersom
 ntransform
 
 *called annually
-turnover
-reproduction
-allocation
-light
-mortality
-fire
-establishment
+* turnover
+* reproduction
+* allocation
+* light
+* mortality
+* fire
+* establishment
 
 While vegetation dynamics processes are determined on a longer timescale (annual update is ok), other processes like fire, mortality, turnover are probably better suited to be updated daily to take into account the quick (primarily phenological) response to extreme events on a shorter time scale (at least ~weeks). 
 
@@ -50,3 +50,18 @@ State variables
 --------------------
 
 In order to satisfy modularity, inter-changeable subroutines have to use the same set of global variables, but may treat them differently and use specific, locally defined variables. Still, the the core remains the same. That is, the vegetation is described by a set of state variables. These are:
+
+*in module 'pools'
+pleaf : leaf mass 
+proot
+plabl
+pexud
+plitt_af
+plitt_as
+plitt_bg
+psoil_sl
+psoil_fs
+wtot
+nh4
+no3
+no2
