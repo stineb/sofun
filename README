@@ -26,12 +26,12 @@ Model structure
 sofun is designed to be a modular framework that can adopt different formulation of processes by replacing subroutines called in sofun.F. These subroutines are:
 
 *called daily
-gpp
-waterbalance
-soiltemp
-npp
-nuptake
-littersom
+gpp, 
+waterbalance, 
+soiltemp, 
+npp, 
+nuptake, 
+littersom, 
 ntransform
 
 *called annually
@@ -52,16 +52,16 @@ State variables
 In order to satisfy modularity, inter-changeable subroutines have to use the same set of global variables, but may treat them differently and use specific, locally defined variables. Still, the the core remains the same. That is, the vegetation is described by a set of state variables. These are:
 
 *in module 'pools'
-pleaf : leaf mass 
-proot : root mass
-plabl : labile pool
-pexud : exudates in soil
-plitt_af : above-ground litter (fast turnover)
-plitt_as : above-ground litter (slow turnover)
-plitt_bg : below-ground litter
-psoil_sl : soil organic matter (slow turnover)
-psoil_fs : soil organic matter (fast turnover)
-wtot : soil water storage
-nh4 : ammonium
-no3 : nitrate
-no2 : nitrogen dioxide
+pleaf : leaf mass;
+proot : root mass; 
+plabl : labile pool; 
+pexud : exudates in soil;
+plitt_af : above-ground litter (fast turnover);
+plitt_as : above-ground litter (slow turnover);
+plitt_bg : below-ground litter;
+psoil_sl : soil organic matter (slow turnover);
+psoil_fs : soil organic matter (fast turnover);
+wtot : soil water storage;
+nh4 : ammonium;
+no3 : nitrate;
+no2 : nitrogen dioxide;
