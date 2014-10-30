@@ -18,6 +18,9 @@ This repository holds utility and general functionality scripts.
 ### diffdays.pl
 * This script calculates the number of days between two given dates.
 
+### list_dirs.R
+* This function provides a list.dirs() function (similar to existing list.files() function) that returns directory names.
+
 ### rename.pl
 * This script performs bulk file renames based on regular expression search and replace.
 
