@@ -27,5 +27,10 @@ This repository holds utility and general functionality scripts.
 ### sort.pl
 * This script performs lexicographical line sorting on a file.
 
+### water_states.R
+* Functions for calculating the temperature and pressure dependencies of:
+    * the *density* of pure water (Tumlirz and Chen equations)
+    * the *viscosity* of pure water (Huber and Vogel equations)
+
 ### zipall.pl
 * This script performs bulk file compressions (e.g., gzip). It may be modified to run any bulk system commands (e.g., tar, gunzip, pdfcrop).
