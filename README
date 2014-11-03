@@ -1,7 +1,13 @@
+SOFUN
+-----------
+
 This program serves as a structure for a global vegetation model and is based on LPX-Bern.
 It emerges from the project SOFUN (thus its name): Seasonal Optimisation of Uptake and Fixation of Nitrogen.
-Code is programmed in Fortran 90 and can be compiles using either the PGI90 compiler or gfortran (others not tested).
-Written, developed and maintained via https://github.com/stineb/sofun by Beni Stocker (b.stocker@imperial.ac.uk).
+Code is programmed in Fortran 90 and can be compiled using either the PGI90 compiler or gfortran (others not tested).
+Written, developed and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
+
+Usage
+---------
 
 To compile, do
   
@@ -13,3 +19,49 @@ To run the program, do
   echo RUNNAME | ./runsofun
 
 Change 'RUNNAME' to any given simulation name. Parameter files containing 'RUNNAME' in their file name need to be adjusted accordingly (replacing the string 'RUNNAME' with your simulation name and adjusting parameter values.).
+
+Model structure
+-------------------------
+
+sofun is designed to be a modular framework that can adopt different formulation of processes by replacing subroutines called in sofun.F. These subroutines are:
+
+*called daily*: 
+gpp, 
+waterbalance, 
+soiltemp, 
+npp, 
+nuptake, 
+littersom, 
+ntransform
+
+*called annually*:
+turnover
+reproduction
+allocation
+light
+mortality
+fire
+establishment
+
+While vegetation dynamics processes are determined on a longer timescale (annual update is ok), other processes like fire, mortality, turnover are probably better suited to be updated daily to take into account the quick (primarily phenological) response to extreme events on a shorter time scale (at least ~weeks). 
+
+
+State variables
+--------------------
+
+In order to satisfy modularity, inter-changeable subroutines have to use the same set of global variables, but may treat them differently and use specific, locally defined variables. Still, the the core remains the same. That is, the vegetation is described by a set of state variables. These are:
+
+*in module 'pools'
+pleaf : leaf mass;
+proot : root mass; 
+plabl : labile pool; 
+pexud : exudates in soil;
+plitt_af : above-ground litter (fast turnover);
+plitt_as : above-ground litter (slow turnover);
+plitt_bg : below-ground litter;
+psoil_sl : soil organic matter (slow turnover);
+psoil_fs : soil organic matter (fast turnover);
+wtot : soil water storage;
+nh4 : ammonium;
+no3 : nitrate;
+no2 : nitrogen dioxide;
