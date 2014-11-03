@@ -6,11 +6,11 @@
 #DEBUGFLAGS
 
 # List of source code files:  xxx where to put sofun (main) ??? xxx
-SOURCES=sofun.F init.F update.F kill.F gpp.F npp.F littersom.F ntransform.F turnover.F allocation.F establishment.F getout.F nuptake.F
-MODS=params_core.mod.F classdefs.mod.F params_siml.mod.F params_site.mod.F params_modl.mod.F gridvars.mod.F vars.mod.F forcing.mod.F rates.mod.F pools.mod.F 
+SOURCES=sofun.F init.F initio.F update.F kill.F gpp.F npp.F littersom.F ntransform.F turnover.F allocation.F establishment.F getout.F nuptake.F writeout_daily.F
+MODS=params_core.mod.F classdefs.mod.F params_siml.mod.F params_site.mod.F params_modl.mod.F gridvars.mod.F vars.mod.F forcing.mod.F rates.mod.F pools.mod.F input_site.mod.F
 
 # List of build dependencies (Makefile and include files):
-DEPEND=Makefile ../Makefile 
+DEPEND=Makefile ../Makefile sofun_module_control.inc
 
 # Generate list of .o, .do files from SOURCES
 OBJS=$(SOURCES:.F=.o)
@@ -44,13 +44,10 @@ debug:	$(DEBUGMODOBJS) $(DEBUGOBJS)
 # default rules (.F -> .for -> .o/.do)
 # ------------
 %.for: %.F $(DEPEND)
-	echo 'doing: $(FCOM) $(CPPFLAGS) $*.F'
 	rm -f $*.for
 	$(FCOM) $(CPPFLAGS) $*.F > $*.for 
-	echo 'first step successful'
 
 $(MODOBJS): %.o: %.for
-	# echo 'doing: $(FCOM) -c -o $@ $(COMPFLAGS) $*.for'
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
 
 $(OBJS): %.o: %.for

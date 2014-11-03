@@ -9,11 +9,11 @@
       use params_site
       use params_modl
       use forcing
+      use input_site
       use gridvars
       use dailyvars
 
       implicit none
-      character(len=maxlen_runname) :: runname
 
       integer :: year
       integer :: realyear
@@ -32,10 +32,11 @@
       read (*,*) runname
       ! make sure runname length is smaller/equal than maxlen_runname
       if (len_trim(runname)>=maxlen_runname) then
-        print*,'abort'
-       endif
+        stop'runname too long'
+      endif
+
       ! write simulation name to standard output (screen)
-       write(0,*) '------------SOFUN : '//trim(runname)//'-------------'
+      write(0,*) '------------SOFUN : '//trim(runname)//'-------------'
 !       write (*,200)
 !200    format ('SIMULATION NAME: '$)
 !      write (*,*) runname
@@ -60,9 +61,9 @@
       write(0,*) '------------START OF SIMULATION-------------'
       do year=1,runyears
 
-       !----------------------------------------------------------------
-       ! Define simulations "steering" variables (realyear, etc.)
-       !----------------------------------------------------------------
+        !----------------------------------------------------------------
+        ! Define simulations "steering" variables (realyear, etc.)
+        !----------------------------------------------------------------
         call getsteering(year,realyear)
 
         if (year == spinupyears+1 ) then
@@ -104,8 +105,8 @@
       implicit none
 
       ! arguments
-      integer, intent(in)                   :: year
-      integer, intent(in)                   :: realyear   ! used here because GPP is input from obs.
+      integer, intent(in)                   :: year       ! simulation year
+      integer, intent(in)                   :: realyear   ! year AD (=first simulation year )
       real, intent(in), dimension(ndayyear) :: dtemp
       real, intent(in), dimension(ndayyear) :: dprec
       real, intent(in), dimension(ndayyear) :: dndep
@@ -118,11 +119,11 @@
 
       if (init) then
          
-        ! Initialise variables and/or read from restart file (not implemented)
+        ! Initialise pool variables and/or read from restart file (not implemented)
         call initglobal
 
         ! Open input/output files
-        !call initio
+        call initio(runname)
 
         ! Get soil parameters (if not defined in <sitename>.parameter)
         !call getsoilpar
@@ -135,6 +136,13 @@
 
         ! Obtain land unit dependent parameters, define decomposition rates
         !call luparameters
+
+        !----------------------------------------------------------------
+        ! GET MODEL INPUT DATA
+        ! Prescribe variables instead of calculating these parts online
+        ! This reads daily values for each day of the transient simulation
+        !----------------------------------------------------------------
+        call getinput_site
 
       endif
 
@@ -160,16 +168,17 @@
           do dm=1,ndaymonth(mo)
             day=day+1
 
+            ! initialise daily updated variables 
             call initdaily
 
             ! get GPP from input
-            call gpp( dummy, realyear, mo, dm )
+            call gpp( pco2, year, realyear, mo, dm, day )
 
             ! calculate water balance
             !call waterbalance
 
             ! use SR 'sitchtemp'
-            !call heatdiff
+            !call soiltemp
 
             ! substract autotrophic respiration to get NPP
             ! xxx try: second argument is dtemp_soil
@@ -186,6 +195,9 @@
 
             ! collect daily output variables from daily updated state variables
             call getout_annual
+
+            ! write to daily output
+            call writeout_daily(year,day)
 
           end do
 

@@ -154,18 +154,25 @@
 
 
 
-         function getvalreal_STANDARD( filename, realyear, mo, dm )
+         function getvalreal_STANDARD( filename, realyear, mo, dm, day, realyear_decimal )
          !////////////////////////////////////////////////////////////////
          !  SR reads one (annual) value corresponding to the given year 
-         !  from a time series ascii file. 
+         !  from a time series ascii file. File has to be located in 
+         !  ./input/ and has to contain only rows formatted like
+         !  '2002  1  1 0.496632 0.054053', which represents 
+         !  'YYYY MM DM      GPP GPP err.'. DM is the day within the month.
+         !  If 'realyear' is dummy (-9999), then it's interpreted as to 
+         !  represent a mean climatology for the course of a year.
          !----------------------------------------------------------------
 
          implicit none
          ! arguments
          character(len=*), intent(in) :: filename
-         integer, intent(in) :: realyear
+         integer, intent(in), optional :: realyear ! year AD as integer
          integer, intent(in), optional :: mo  ! month in year (1:12)
-         integer, intent(in), optional :: dm  ! day in month (1:31)
+         integer, intent(in), optional :: dm  ! day in month (1:31 or 1:31 or 1:28)
+         integer, intent(in), optional :: day ! day in year (1:365)
+         real,    intent(in), optional :: realyear_decimal ! year AD as decimal number corresponding to day in the year
 
          ! function return value
          real :: getvalreal_STANDARD
@@ -174,6 +181,8 @@
          integer :: inyear
          integer :: inmo
          integer :: indm
+         integer :: inday
+         real    :: inyear_decimal
          real    :: inval1
          real    :: inval2
 
@@ -182,30 +191,75 @@
          ! open file
          open(20, file='./input/'//filename, status='old', form='formatted', err=888)
 
-         if (present(mo)) then
-             if (present(dm)) then
-                 ! read 2 daily values
-                 read(20, 100, err=999) inyear, inmo, indm, inval1, inval2
-                 do while ( (realyear-inyear).ne.0 .or. (mo-inmo).ne.0 .or. (dm-indm).ne.0 )
-                   read(20, 100, err=999) inyear, inmo, indm, inval1, inval2
+         if (present(realyear)) then
+             ! DATA FOR EACH YEAR
+             if (present(mo)) then
+                 ! DATA FOR EACH MONTH
+                 if (present(dm)) then
+                     ! DATA FOR EACH DAY IN THE MONTH
+                     ! read the 2 values for this day in this year
+                     read(20, 100, err=999) inyear, inmo, indm, inval1, inval2
+                     do while ( (realyear-inyear).ne.0 .or. (mo-inmo).ne.0 .or. (dm-indm).ne.0 )
+                       read(20, 100, err=999) inyear, inmo, indm, inval1, inval2
+                     enddo
+                 else           
+                     ! read the 2 values for this month in this year
+                     read(20, 200, err=999) inyear, inmo, inval1, inval2
+                     do while ( (realyear-inyear).ne.0 .or. (mo-inmo).ne.0 )
+                       read(20, 200, err=999) inyear, inmo, inval1, inval2
+                     enddo
+                 end if
+             else if (present(day)) then
+                 ! DATA FOR EACH DAY IN THE YEAR
+                 ! read the 2 values for this day in this year
+                 read(20, 700, err=999) inyear, inday, inval1, inval2
+                 do while ( (realyear-inyear).ne.0 .or. (day-inday).ne.0 )
+                   read(20, 700, err=999) inyear, inday, inval1, inval2
                  enddo
-
-             else           
-                 ! read 2 monthly values
-                 read(20, 200, err=999) inyear, inmo, inval1, inval2
-                 do while ( (realyear-inyear).ne.0 .or. (mo-inmo).ne.0 )
-                   read(20, 200, err=999) inyear, inmo, inval1, inval2
+             else
+                 ! read the 2 values for this year
+                 read(20, 300, err=999) inyear, inval1, inval2
+                 do while ( (realyear-inyear).ne.0 )
+                   read(20, 300, err=999) inyear, inval1, inval2
                  enddo
-
              end if
+         else if (present(realyear_decimal)) then
+            ! DATA PROVIDED FOR EACH DAY AS A DECIMAL OF REALYEAR
+            ! find corresponding day in first column and read 3 values on this line
+            read(20, 900, err=999) inyear_decimal, inval1, inval2  
+            do while (abs(realyear_decimal-inyear_decimal).gt.1.0d-8)
+              read(20, 900, err=999) inyear_decimal, inval1, inval2  
+            enddo
          else
-             ! read 2 annual values
-             read(20, 300, err=999) inyear, inval1, inval2
-             do while ( (realyear-inyear).ne.0 )
-               read(20, 300, err=999) inyear, inval1, inval2
-             enddo
+             ! DATA AS AVERAGE OVER MULTIPLE YEARS (recycle climatology)
+             ! FOR EACH MONTH, AND DAY-IN-THE-MONTH
+             if (present(mo)) then
+                 if (present(dm)) then
+                     ! read the 2 values for this day
+                     read(20, 400, err=999) inmo, indm, inval1, inval2
+                     do while ( (mo-inmo).ne.0 .or. (dm-indm).ne.0 )
+                       read(20, 400, err=999) inmo, indm, inval1, inval2
+                     enddo
+                 else           
+                     ! read the 2 values for this month
+                     read(20, 500, err=999) inmo, inval1, inval2
+                     do while ( (mo-inmo).ne.0 )
+                       read(20, 500, err=999) inmo, inval1, inval2
+                     enddo
 
-         end if
+                 end if
+             else if (present(day)) then
+                 ! DATA FOR EACH DAY IN THE YEAR
+                 ! read the 2 values for this day
+                 read(20, 800, err=999) inday, inval1, inval2
+                 do while ( (day-inday).ne.0 )
+                   read(20, 800, err=999) inday, inval1, inval2
+                 enddo
+             else
+                 ! read the 2 values in this input file
+                 read(20, 600, err=999) inval1, inval2
+             end if
+         endif
 
          !print*,'found realyear, mo, dm      ',inyear,inmo,indm,inval1
 
@@ -214,6 +268,13 @@
  100     format (I4,I3,I3,F9.7,F9.7)
  200     format (I4,I3,F9.7,F9.7)
  300     format (I4,F9.7,F9.7)
+ 400     format (I3,I3,F9.7,F9.7)
+ 500     format (I3,F9.7,F9.7)
+ 600     format (F9.7,F9.7)
+ 700     format (I4,I4,F9.7,F9.7)
+ 800     format (I4,F9.7,F9.7)
+ 900     format (30d16.8,F9.7,F9.7)
+
          close(20)
 
          return

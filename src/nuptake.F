@@ -463,8 +463,7 @@
                         !--------------------------------------------------------------------------
                         if ( .not. nfixer(pft) ) then
                           write(0,*) 'cost:', cost(:,:)
-                          write(0,*) 'Non-N-fixer tries to fix N! '//
-     $                         'BIG_COST too small?'
+                          write(0,*) 'Non-N-fixer tries to fix N! '//'BIG_COST too small?'
                           stop
                         endif
                          

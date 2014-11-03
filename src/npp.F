@@ -1,8 +1,14 @@
       subroutine npp(jpngr,dtemp,dtemp_soil)
+      !/////////////////////////////////////////////////////////////////////////
+      ! NET PRIMARY PRODUCTIVITY
+      ! Calculate maintenance and growth respiration and substract this from GPP 
+      ! to get NPP before additional root respiration for nutrient uptake (see 
+      ! SR nuptake).
+      !-------------------------------------------------------------------------
 
       use classdefs
       use params_core, only: npft, nlu
-      use params_modl, only: respcoeff, kresp, lu_category
+      use params_modl, only: rresp_growth, lu_category
       use rates
       use dailyvars, only: dgpp, dnpp, dra
       use pools, only: pleaf, proot
@@ -24,7 +30,7 @@
 
       real :: dresp_leaf = 0.0        ! daily leaf mainenance respiration (=lresp_d)
       real :: dresp_root = 0.0        ! daily root mainenance respiration (=rresp_d)
-      real :: dresp_maintn = 0.0      ! daily total maintenance respiration
+      real :: dresp_maint = 0.0      ! daily total maintenance respiration
       real :: dresp_growth = 0.0      ! daily growth respiration
       
       !-------------------------------------------------------------------------
@@ -42,66 +48,65 @@
           
           !/////////////////////////////////////////////////////////////////////////
           ! MAINTENANCE RESPIRATION
-          ! Calculate tissue maintenance respiration values today [Eqn (7)]
-          ! incorporating daily phenology. This is using the new leaf respiration method
-          ! (spahni 2009-12-11: set leaf_resp_rs==0 for old respiration method)
+          ! use function 'resp_main'
           !-------------------------------------------------------------------------
-          
-          ! done here: alternative method in LPX: directly from photosynthesis ('dresp' in LPX-Bern)
-
-          ! daily leaf and root maintenance respiration
-          dresp_leaf = respcoeff(pft)*kresp*pleaf(pft,jpngr)%c%c12*nind(pft,jpngr)*ntoc( pleaf(pft,jpngr) )*ftemp_air   ! xxx try: *dphen(day,pft)
-
-          dresp_root = respcoeff(pft)*kresp*proot(pft,jpngr)%c%c12*nind(pft,jpngr)*ntoc( proot(pft,jpngr) )*ftemp_soil  ! xxx try: *dphen(d,pft) !(canexch.cpp:976)
-
+          dresp_leaf = resp_maint( pleaf(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_air )
+          dresp_root = resp_maint( proot(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_soil )
           ! done here: sapwood respiration for trees
           
           ! daily total maintenance repsiration
-          dresp_maintn = dresp_leaf + dresp_root
-
+          dresp_maint = dresp_leaf + dresp_root
 
           !/////////////////////////////////////////////////////////////////////////
           ! GROWTH RESPIRATION
-          ! 25% of what's left after maintenance respiration
+          ! XXX address this: here growth respiration is calculated before exudation
+          ! is substracted from (GPP-Rmaint). This does not make sense as not all of
+          ! (GPP-Rmaint) will later be available for growth. This raises the question
+          ! whether N-uptake should be calculated here (after maintentance resp.).
+          ! Further, this raises the question whether allocation should be calculated
+          ! daily in order to calculate growth respiration on only the part that is 
+          ! allocated to actual growth and not on the part that is diverted to 'plabl'.
           !-------------------------------------------------------------------------
-          ! xxx put '0.25' to parameters!
-          dresp_growth = max( (dgpp(pft)%c12-dresp_maintn)*0.25, 0.0 )
-
+          dresp_growth = max( (dgpp(pft)%c12-dresp_maint)*rresp_growth(pft), 0.0 )
 
           !/////////////////////////////////////////////////////////////////////////
           ! DAILY NPP 
           ! NPP is the sum of C available for growth and for N uptake 
           !-------------------------------------------------------------------------
-          dnpp(pft) = carbon( dgpp(pft)%c12 - dresp_maintn - dresp_growth )
-          dra(pft)  = carbon( dresp_maintn + dresp_growth )
+          dnpp(pft) = carbon( dgpp(pft)%c12 - dresp_maint - dresp_growth )
+          dra(pft)  = carbon( dresp_maint + dresp_growth )
     
         endif                                               !(present(pft,jpngr))
       enddo                                                 !pft
 
+      contains
+
+      function resp_maint( nmass, pft, ftemp )
+      !*************************************************************************
+      ! MAINTENANCE RESPIRATION
+      ! Calculate tissue maintenance respiration values today [Eqn (7)]
+      ! incorporating daily phenology. This is using the new leaf respiration method
+      ! (spahni 2009-12-11: set leaf_resp_rs==0 for old respiration method)
+      !-------------------------------------------------------------------------
+      use params_modl, only: rresp_maint, kresp
+
+      implicit none
+#include "sofun_module_control.inc"
+      real :: resp_maint                    ! return value: maintenance respiration [gC/m2]
+      real, intent(in) :: nmass             ! N mass per unit area [gN/m2]
+      integer, intent(in) :: pft            ! PFT number
+      real, intent(in), optional :: ftemp   ! temperature modifier
+
+#if _resp_maint_makela
+      resp_maint = rresp_maint(pft) * nmass
+#else
+      resp_maint = rresp_maint(pft) * kresp * nmass * ftemp ! xxx try: *dphen(day,pft)
+#endif
+
+      ! alternative method in LPX: directly from photosynthesis ('dresp' in LPX-Bern)
+
+      end function resp_maint
 
       end subroutine npp
-      
-      
-      ! xxxxxxxxxxxxxxxxxxx
 
 
-      ! xxx try
-!      do pft=1,npft
-
-!        call ccp( cfrac( 0.5, dgpp(pft) ), dnpp(pft) )
-!        call ccp( cfrac( 0.3, dgpp(pft) ), dra(pft) )
-!        call ccp( cfrac( 0.2, dgpp(pft) ), pexud(pft,jpngr) )
-
-!        ! accolate remaining NPP to labile pool before allocation
-!        call ccp( dnpp(pft), plabl(pft,jpngr)%c )
-
-!        ! xxx try: take up as much N as needed for NPP
-!        dnup(pft) = nitrogen( dnpp(pft)%c12/cton_pro(pft) )
-
-!        call ncp( dnup(pft), plabl(pft,jpngr)%n )
-
-!        !print*,'dgpp, dnpp ',dgpp,dnpp
-
-!      end do  
-
-!      end subroutine npp

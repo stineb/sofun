@@ -110,8 +110,7 @@
         !-----------------------------------------------------------------------
         ! use mw1 for monthly timestep and wpool for daily, because this is updated daily
         ! XXX nh3max is not considered in the equations presented in the paper! XXX
-        dvol(lu) = ( nh3max*(soilwater*(1.0-soilwater))
-     $       *ftemp_ninorg*ftemp_ninorg*exp(2.*(ph_soil-10.)) ) * nh4(lu,jpngr)%n14
+        dvol(lu) = ( nh3max*(soilwater*(1.0-soilwater)) * ftemp_ninorg*ftemp_ninorg*exp(2.*(ph_soil-10.)) ) * nh4(lu,jpngr)%n14
         nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - dvol(lu)
 
         
@@ -151,12 +150,7 @@
         !///////////////////////////////////////////////////////////////////////
         ! NITRIFICATION in aerobic microsites (ntransform.cpp:123)
         !------------------------------------------------------------------
-        ftemp_ninorg = max(
-     $       min(
-     $       (((70.-soiltemp)/(70.-38.))**12.)
-     $       *exp(12.*(soiltemp-38.)/(70.-38.)),
-     $       1.),
-     $       0.)
+        ftemp_ninorg = max( min( (((70.-soiltemp)/(70.-38.))**12.) * exp(12.*(soiltemp-38.)/(70.-38.)), 1.), 0.)
 
         
         ! gross nitrification rate (Eq.1, Tab.8, XP08)

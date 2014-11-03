@@ -102,7 +102,6 @@
           !           Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
           !-------------------------------------------------------------------------
           ksoil_fs(lu) = ksoil_fs10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley")     ! alternative: "gerten"
-          
           ksoil_sl(lu) = ksoil_sl10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley")     ! alternative: "gerten"
 
           do pft=1,npft
@@ -179,7 +178,7 @@
                 req = (-1.)*netmin
                 avl = nh4(lu,jpngr)%n14
                 
-                if (avl .ge. req) then
+                if (avl>=req) then
                   ! enough mineral N for immobilisation
                   psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14 + req*fastfrac
                   psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14 + req*(1.-fastfrac)             

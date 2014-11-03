@@ -2,10 +2,18 @@
       !////////////////////////////////////////////////////////////////
       !  Module contains simulation parameters read in by getpar_siml
       !----------------------------------------------------------------
+      use params_core, only: recycle
+
       implicit none
-      integer :: runyears, spinupyears, nyeartrend, firstyeartrend
-      logical :: do_spinup       ! whether this simulation does spinup 
-      logical :: init            ! is true in first simulation year
+      integer :: runyears                    ! number of years of entire simulation (spinup+transient)
+      integer :: spinupyears                 ! number of spinup years
+      integer :: nyeartrend                  ! number of transient years
+      integer :: firstyeartrend              ! year AD of first transient year
+      logical :: do_spinup                   ! whether this simulation does spinup 
+      logical :: init                        ! is true in first simulation year
+      logical :: spinup                      ! is true during spinup
+      integer :: transyear                   ! year in transient simulation
+      character(len=256) :: runname
       character(len=6)   :: sitename
       character(len=256) :: input_dir
       character(len=256) :: co2_forcing_file
@@ -25,6 +33,11 @@
 
       if (do_spinup) then
         realyear = max( firstyeartrend, year - spinupyears + firstyeartrend - 1 )
+        if (year<=spinupyears) then
+          spinup = .true.
+        else  
+          spinup = .false.
+        endif
       else
         realyear = year + firstyeartrend
       endif
@@ -34,6 +47,12 @@
       else
         init = .false.
       endif 
+
+      if (spinup) then
+        transyear = mod(year,recycle)
+      else
+        transyear = realyear-firstyeartrend+1
+      endif
 
       end subroutine getsteering
       

@@ -10,8 +10,8 @@ sitename                                AU-How
 spinup                                  .true.
 spinupyears                             10
 
-firstyeartrend                          2002
-nyeartrend                              4
+firstyeartrend                          1982
+nyeartrend                              31
 
 input_dir                               /alphadata01/bstocker/sofun/trunk/input/
 co2_forcing_file                        cCO2_rcp85_const850-1765.dat

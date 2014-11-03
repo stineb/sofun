@@ -57,7 +57,8 @@
        real, dimension(npft) :: sla                 ! specific leaf area [m2/gC]
        real, dimension(npft) :: cton_pro            ! C:N ratio of new production [1]
        integer, dimension(npft) :: pftcode          ! code for identification of PFT (1=C3 grass)
-       real, dimension(npft) :: respcoeff           ! maintenance respiration coefficient
+       real, dimension(npft) :: rresp_maint         ! maintenance respiration coefficient
+       real, dimension(npft) :: rresp_growth        ! growth respiration coefficient
        logical, dimension(npft) :: nfixer           ! whether plant is capable of symbiotically fixing N
 
        contains
@@ -74,7 +75,7 @@
        integer, parameter :: npar = 30
        real, dimension(npar) :: params_array
 
-       integer, parameter :: npar_pft = 11
+       integer, parameter :: npar_pft = 12
        real, dimension(npar_pft) :: pft_params_array
 
        real, dimension(npft) :: lu_category_prov    ! land use category associated with PFT (provisional)
@@ -245,7 +246,7 @@
               long_root(pft) = pft_params_array(9)
 
               ! maintenance respiration coefficient
-              respcoeff(pft) = pft_params_array(10)
+              rresp_maint(pft) = pft_params_array(10)
 
               ! N-fixing plant? (0=false, 1=true)
               if (pft_params_array(11)==0.) then
@@ -253,6 +254,9 @@
               else
                      nfixer(pft) = .true.
               endif
+
+              ! growth respiration coefficient
+              rresp_growth(pft) = pft_params_array(12)
 
        end do
 
