@@ -12,7 +12,7 @@
       implicit none
 
       ! arguments
-      real, intent(in) :: co2            ! atmospheric CO2 concentration [ppm]
+      real,    intent(in) :: co2                    ! atmospheric CO2 concentration [ppm]
       integer, intent(in), optional :: year         ! simulation year
       integer, intent(in), optional :: realyear     ! year AD
       integer, intent(in), optional :: mo           ! month of year (1:12)

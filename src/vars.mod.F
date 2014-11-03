@@ -14,9 +14,14 @@
         type (carbon), dimension(npft) :: dgpp    ! gross primary production [gC/m2/d]
         type (carbon), dimension(npft) :: dnpp    ! net primary production [gC/m2/d]
          
-        type (carbon), dimension(nlu)  :: drsoil  ! soil respiration (from soil, litter, and exudates decomp.) [gC/m2/d]
-        type (carbon), dimension(nlu)  :: drh     ! heterotrophic respiration [gC/m2/d]
-        type (carbon), dimension(nlu)  :: dra     ! autotrophic respiration (growth+maintenance resp.) [gC/m2/d]
+        type (carbon), dimension(npft) :: drsoil  ! soil respiration (only from exudates decomp.) [gC/m2/d]
+        type (carbon), dimension(nlu)  :: drhet   ! heterotrophic respiration [gC/m2/d]
+        type (carbon), dimension(npft) :: drauto  ! autotrophic respiration (growth+maintenance resp. of all compartments) [gC/m2/d]
+        type (carbon), dimension(npft) :: drleaf  ! leaf maintenance respiration [gC/m2/d]
+        type (carbon), dimension(npft) :: drroot  ! root maintenance respiration [gC/m2/d]
+        type (carbon), dimension(npft) :: drgrow  ! growth respiration [gC/m2/d]
+        type (carbon), dimension(npft) :: dcex    ! labile C exudation for N uptake [gC/m2/d]
+        type (carbon), dimension(nlu)  :: dreco   ! ecosystem repsiration, sum over above individual components [gC/m2/d]
 
         real,dimension(nlu)  :: doc               ! daily soil turnover, used as surrogate for labile C (former 'doc') [gC/m2/d]
 

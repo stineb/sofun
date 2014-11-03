@@ -10,7 +10,7 @@
       use params_core
       use classdefs
       use rates
-      use dailyvars, only: drsoil, drh, dnfix_free, doc
+      use dailyvars, only: drsoil, drhet, dnfix_free, doc
       use params_modl
       use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, nh4
 
@@ -109,14 +109,14 @@
               
               !////////////////////////////////////////////////////////////////
               ! EXUDATES DECAY
-              !----------------------------------------------------------------
               ! Calculate the exudates respiration before litter respiration.
               ! Exudates are mostly short organic compounds (poly- and mono-
               ! saccharides, amino acids, organic acids, phenolic compounds and
               ! enzymes) and are quickly respired and released as CO2.
+              ! Exudates decay goes to soil respiration 'drsoil'.
               !----------------------------------------------------------------                
               dexu = cfrac( 1.-exp(-kexu(pft)), pexud(pft,jpngr) )
-              call cmv( dexu, pexud(pft,jpngr), drsoil(lu) )
+              call cmv( dexu, pexud(pft,jpngr), drsoil(pft) )
               
 
               !////////////////////////////////////////////////////////////////
@@ -166,7 +166,7 @@
               call orgmv( orgfrac(eff*(1.-fastfrac),dlitt(pft)), dlitt(pft), psoil_sl(lu,jpngr) )
 
               ! move fraction '(1-eff)' of C and N to heterotrophic respiration
-              call cmv( cfrac((1.-eff),dlitt(pft)%c), dlitt(pft)%c, drh(lu) )
+              call cmv( cfrac((1.-eff),dlitt(pft)%c), dlitt(pft)%c, drhet(lu) )
 
               if (netmin>0) then                
                 ! mineralised litter enters ammonium pool
@@ -203,16 +203,16 @@
           ! SOIL DECAY
           !----------------------------------------------------------------
           ! Calculate daily/monthly soil decomposition to the atmosphere
-!          dsoil_fs = orgfrac( (1.-exp(-ksoil_fs(lu))), psoil_fs(lu,jpngr))
-!          dsoil_sl = orgfrac( (1.-exp(-ksoil_sl(lu))), psoil_sl(lu,jpngr))
+          dsoil_fs = orgfrac( (1.-exp(-ksoil_fs(lu))), psoil_fs(lu,jpngr))
+          dsoil_sl = orgfrac( (1.-exp(-ksoil_sl(lu))), psoil_sl(lu,jpngr))
 
-!          ! Move C from soil pool to heterotrophic respiration
-!          call cmv( dsoil_fs%c, psoil_fs(lu,jpngr)%c, drh(lu) )
-!          call cmv( dsoil_sl%c, psoil_sl(lu,jpngr)%c, drh(lu) )
+          ! Move C from soil pool to heterotrophic respiration
+          call cmv( dsoil_fs%c, psoil_fs(lu,jpngr)%c, drhet(lu) )
+          call cmv( dsoil_sl%c, psoil_sl(lu,jpngr)%c, drhet(lu) )
 
-!          ! Move N from soil pool to ammonium pool
-!          call nmv( dsoil_fs%n, psoil_fs(lu,jpngr)%n, nh4(lu,jpngr) )
-!          call nmv( dsoil_sl%n, psoil_sl(lu,jpngr)%n, nh4(lu,jpngr) )
+          ! Move N from soil pool to ammonium pool
+          call nmv( dsoil_fs%n, psoil_fs(lu,jpngr)%n, nh4(lu,jpngr) )
+          call nmv( dsoil_sl%n, psoil_sl(lu,jpngr)%n, nh4(lu,jpngr) )
 
 
           ! Record monthly (daily) soil turnover flux (labile carbon availability)

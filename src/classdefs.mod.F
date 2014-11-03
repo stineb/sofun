@@ -301,7 +301,7 @@
        end function nfrac
 
 
-       function orgadd(pool1,pool2)
+       function orgplus( pool1, pool2 )
          !////////////////////////////////////////////////////////////////
          !  Generic function to return variable sum of two pools of type 
          !  'orgpool'. Sum is of type 'orgpool' as well.
@@ -312,15 +312,15 @@
          type (orgpool), intent(in) :: pool1, pool2
          
          ! function return variable
-         type (orgpool) :: orgadd
+         type (orgpool) :: orgplus
 
-         orgadd%c = cadd(pool1%c,pool2%c)
-         orgadd%n = nadd(pool1%n,pool2%n)
+         orgplus%c = cadd(pool1%c,pool2%c)
+         orgplus%n = nadd(pool1%n,pool2%n)
 
-       end function orgadd
+       end function orgplus
 
 
-       function cadd(pool1,pool2)
+       function cplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 )
          !////////////////////////////////////////////////////////////////
          !  Generic function to return variable sum of two pools of type 
          !  'carbon'. Sum is of type 'carbon' as well.
@@ -328,17 +328,51 @@
          implicit none
 
          ! arguments
-         type (carbon), intent(in) :: pool1, pool2
+         type (carbon), intent(in) :: pool1
+         type (carbon), intent(in) :: pool2
+         type (carbon), intent(in), optional :: pool3
+         type (carbon), intent(in), optional :: pool4
+         type (carbon), intent(in), optional :: pool5
+         type (carbon), intent(in), optional :: pool6
+         type (carbon), intent(in), optional :: pool7
+         type (carbon), intent(in), optional :: pool8
+         type (carbon), intent(in), optional :: pool9
+         type (carbon), intent(in), optional :: pool10
          
          ! function return variable
-         type (carbon) :: cadd
+         type (carbon) :: cplus
 
-         cadd%c12 = pool1%c12 + pool2%c12
+         cplus%c12 = pool1%c12 + pool2%c12
 
-       end function cadd
+         if (present(pool3)) then
+           cplus%c12 = cplus%c12 + pool3
+           if (present(pool4)) then
+             cplus%c12 = cplus%c12 + pool4
+             if (present(pool5)) then
+               cplus%c12 = cplus%c12 + pool5
+               if (present(pool6)) then
+                 cplus%c12 = cplus%c12 + pool6
+                 if (present(pool7)) then
+                   cplus%c12 = cplus%c12 + pool7
+                   if (present(pool8)) then
+                     cplus%c12 = cplus%c12 + pool8
+                     if (present(pool9)) then
+                       cplus%c12 = cplus%c12 + pool9
+                       if (present(pool10)) then
+                         cplus%c12 = cplus%c12 + pool10
+                       end if
+                     end if
+                   end if
+                 end if
+               end if
+             end if
+           end if
+         end if
+
+       end function cplus
 
 
-       function nadd(pool1,pool2)
+       function nplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 )
          !////////////////////////////////////////////////////////////////
          !  Generic function to return variable sum of two pools of type 
          !  'nitrogen'. Sum is of type 'nitrogen' as well.
@@ -346,14 +380,48 @@
          implicit none
 
          ! arguments
-         type (nitrogen), intent(in) :: pool1, pool2
+         type (nitrogen), intent(in) :: pool1
+         type (nitrogen), intent(in) :: pool2
+         type (nitrogen), intent(in), optional :: pool3
+         type (nitrogen), intent(in), optional :: pool4
+         type (nitrogen), intent(in), optional :: pool5
+         type (nitrogen), intent(in), optional :: pool6
+         type (nitrogen), intent(in), optional :: pool7
+         type (nitrogen), intent(in), optional :: pool8
+         type (nitrogen), intent(in), optional :: pool9
+         type (nitrogen), intent(in), optional :: pool10
          
          ! function return variable
-         type (nitrogen) :: nadd
+         type (nitrogen) :: nplus
 
-         nadd%n14 = pool1%n14 + pool2%n14
+         nplus%n14 = pool1%n14 + pool2%n14
 
-       end function nadd
+         if (present(pool3)) then
+           nplus%n14 = nplus%n14 + pool3
+           if (present(pool4)) then
+             nplus%n14 = nplus%n14 + pool4
+             if (present(pool5)) then
+               nplus%n14 = nplus%n14 + pool5
+               if (present(pool6)) then
+                 nplus%n14 = nplus%n14 + pool6
+                 if (present(pool7)) then
+                   nplus%n14 = nplus%n14 + pool7
+                   if (present(pool8)) then
+                     nplus%n14 = nplus%n14 + pool8
+                     if (present(pool9)) then
+                       nplus%n14 = nplus%n14 + pool9
+                       if (present(pool10)) then
+                         nplus%n14 = nplus%n14 + pool10
+                       end if
+                     end if
+                   end if
+                 end if
+               end if
+             end if
+           end if
+         end if
+
+       end function nplus
 
 
        function cton( pool )

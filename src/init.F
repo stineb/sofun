@@ -90,8 +90,12 @@
       dgpp(:)    = carbon(0.0)
       dnpp(:)    = carbon(0.0)
       drsoil(:)  = carbon(0.0)
-      drh(:)     = carbon(0.0)
-      dra(:)     = carbon(0.0)
+      drhet(:)   = carbon(0.0)
+      drauto(:)  = carbon(0.0)
+      drleaf(:)  = carbon(0.0)
+      drroot(:)  = carbon(0.0)
+      drgrow(:)  = carbon(0.0)
+      dcex(:)    = carbon(0.0)
 
       dnup(:)    = nitrogen(0.0)
       dnfix_free(:) = 0.0

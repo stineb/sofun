@@ -1,4 +1,4 @@
-      subroutine npp(jpngr,dtemp,dtemp_soil)
+      subroutine npp( jpngr, dtemp, dtemp_soil )
       !/////////////////////////////////////////////////////////////////////////
       ! NET PRIMARY PRODUCTIVITY
       ! Calculate maintenance and growth respiration and substract this from GPP 
@@ -10,8 +10,8 @@
       use params_core, only: npft, nlu
       use params_modl, only: rresp_growth, lu_category
       use rates
-      use dailyvars, only: dgpp, dnpp, dra
-      use pools, only: pleaf, proot
+      use dailyvars, only: dgpp, dnpp, drauto, drleaf, drroot, drhet, drgrow, dcex
+      use pools, only: pleaf, proot, pexud
       use annvars, only: nind, ispresent
 
       implicit none
@@ -28,8 +28,6 @@
       real :: ftemp_air
       real :: ftemp_soil
 
-      real :: dresp_leaf = 0.0        ! daily leaf mainenance respiration (=lresp_d)
-      real :: dresp_root = 0.0        ! daily root mainenance respiration (=rresp_d)
       real :: dresp_maint = 0.0      ! daily total maintenance respiration
       real :: dresp_growth = 0.0      ! daily growth respiration
       
@@ -50,12 +48,30 @@
           ! MAINTENANCE RESPIRATION
           ! use function 'resp_main'
           !-------------------------------------------------------------------------
-          dresp_leaf = resp_maint( pleaf(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_air )
-          dresp_root = resp_maint( proot(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_soil )
+          ! argument 'ftemp' not used when _resp_maint_makela activated
+          drleaf(pft) = carbon( resp_maint( pleaf(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_air ) )
+          drroot(pft) = carbon( resp_maint( proot(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_soil ) )
           ! done here: sapwood respiration for trees
           
           ! daily total maintenance repsiration
-          dresp_maint = dresp_leaf + dresp_root
+          dresp_maint = cadd( drleaf(pft), drroot(pft) )
+
+
+          !/////////////////////////////////////////////////////////////////////////
+          ! EXUDATION FOR N UPTAKE
+          ! Labile C exuded for N uptake in interaction with mycorrhiza.
+          !-------------------------------------------------------------------------
+          ! XXX
+          dcex(pft) = carbon(0.0)
+          call ccp( dcex(pft), pexud(pft,jpngr) )
+
+
+          !/////////////////////////////////////////////////////////////////////////
+          ! ALLOCATION
+          ! Allocation is called here to get growth for calculating growth respir.?
+          !-------------------------------------------------------------------------
+          ! XXX
+
 
           !/////////////////////////////////////////////////////////////////////////
           ! GROWTH RESPIRATION
@@ -67,15 +83,17 @@
           ! daily in order to calculate growth respiration on only the part that is 
           ! allocated to actual growth and not on the part that is diverted to 'plabl'.
           !-------------------------------------------------------------------------
-          dresp_growth = max( (dgpp(pft)%c12-dresp_maint)*rresp_growth(pft), 0.0 )
+          drgrow(pft) = cfrac( rresp_growth(pft), cminus( dgpp(pft), dresp_maint ) )
+
 
           !/////////////////////////////////////////////////////////////////////////
           ! DAILY NPP 
           ! NPP is the sum of C available for growth and for N uptake 
           !-------------------------------------------------------------------------
-          dnpp(pft) = carbon( dgpp(pft)%c12 - dresp_maint - dresp_growth )
-          dra(pft)  = carbon( dresp_maint + dresp_growth )
-    
+          drauto(pft) = cplus( dresp_maint, drgrow(pft) )
+          dnpp(pft) = cminus( dgpp(pft), drauto(pft) ) 
+
+
         endif                                               !(present(pft,jpngr))
       enddo                                                 !pft
 
@@ -91,6 +109,7 @@
       use params_modl, only: rresp_maint, kresp
 
       implicit none
+
 #include "sofun_module_control.inc"
       real :: resp_maint                    ! return value: maintenance respiration [gC/m2]
       real, intent(in) :: nmass             ! N mass per unit area [gN/m2]
@@ -104,9 +123,10 @@
 #endif
 
       ! alternative method in LPX: directly from photosynthesis ('dresp' in LPX-Bern)
-
       end function resp_maint
 
       end subroutine npp
+
+
 
 
