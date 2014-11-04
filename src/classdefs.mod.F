@@ -21,24 +21,24 @@
          type (nitrogen) :: n
        end type orgpool
 
-       ! Plants, contain leaves and roots
-       type plantclass
-         type (orgpool) :: lm ! leafmass
-         type (orgpool) :: rm ! rootmass
-       end type plantclass
+       !! Plants, contain leaves and roots
+       !type plantclass
+         !type (orgpool) :: lm ! leafmass
+         !type (orgpool) :: rm ! rootmass
+       !end type plantclass
 
        ! Soil, contains a pool with fast and slow turnover
-       type soilclass
-         type (orgpool) :: fs ! fast
-         type (orgpool) :: sl ! slow
-       end type soilclass
+       !type soilclass
+         !type (orgpool) :: fs ! fast
+         !type (orgpool) :: sl ! slow
+       !end type soilclass
 
        ! Litter, contains ...
-       type litterclass
-         type (orgpool) :: af ! above-ground fast
-         type (orgpool) :: as ! above-ground slow
-         type (orgpool) :: bg ! below-ground
-       end type litterclass
+       !type litterclass
+         !type (orgpool) :: af ! above-ground fast
+         !type (orgpool) :: as ! above-ground slow
+         !type (orgpool) :: bg ! below-ground
+       !end type litterclass
 
        contains
        !=========================LOW-LEVEL================================
@@ -314,8 +314,8 @@
          ! function return variable
          type (orgpool) :: orgplus
 
-         orgplus%c = cadd(pool1%c,pool2%c)
-         orgplus%n = nadd(pool1%n,pool2%n)
+         orgplus%c = cplus(pool1%c,pool2%c)
+         orgplus%n = nplus(pool1%n,pool2%n)
 
        end function orgplus
 
@@ -345,21 +345,21 @@
          cplus%c12 = pool1%c12 + pool2%c12
 
          if (present(pool3)) then
-           cplus%c12 = cplus%c12 + pool3
+           cplus%c12 = cplus%c12 + pool3%c12
            if (present(pool4)) then
-             cplus%c12 = cplus%c12 + pool4
+             cplus%c12 = cplus%c12 + pool4%c12
              if (present(pool5)) then
-               cplus%c12 = cplus%c12 + pool5
+               cplus%c12 = cplus%c12 + pool5%c12
                if (present(pool6)) then
-                 cplus%c12 = cplus%c12 + pool6
+                 cplus%c12 = cplus%c12 + pool6%c12
                  if (present(pool7)) then
-                   cplus%c12 = cplus%c12 + pool7
+                   cplus%c12 = cplus%c12 + pool7%c12
                    if (present(pool8)) then
-                     cplus%c12 = cplus%c12 + pool8
+                     cplus%c12 = cplus%c12 + pool8%c12
                      if (present(pool9)) then
-                       cplus%c12 = cplus%c12 + pool9
+                       cplus%c12 = cplus%c12 + pool9%c12
                        if (present(pool10)) then
-                         cplus%c12 = cplus%c12 + pool10
+                         cplus%c12 = cplus%c12 + pool10%c12
                        end if
                      end if
                    end if
@@ -397,21 +397,21 @@
          nplus%n14 = pool1%n14 + pool2%n14
 
          if (present(pool3)) then
-           nplus%n14 = nplus%n14 + pool3
+           nplus%n14 = nplus%n14 + pool3%n14
            if (present(pool4)) then
-             nplus%n14 = nplus%n14 + pool4
+             nplus%n14 = nplus%n14 + pool4%n14
              if (present(pool5)) then
-               nplus%n14 = nplus%n14 + pool5
+               nplus%n14 = nplus%n14 + pool5%n14
                if (present(pool6)) then
-                 nplus%n14 = nplus%n14 + pool6
+                 nplus%n14 = nplus%n14 + pool6%n14
                  if (present(pool7)) then
-                   nplus%n14 = nplus%n14 + pool7
+                   nplus%n14 = nplus%n14 + pool7%n14
                    if (present(pool8)) then
-                     nplus%n14 = nplus%n14 + pool8
+                     nplus%n14 = nplus%n14 + pool8%n14
                      if (present(pool9)) then
-                       nplus%n14 = nplus%n14 + pool9
+                       nplus%n14 = nplus%n14 + pool9%n14
                        if (present(pool10)) then
-                         nplus%n14 = nplus%n14 + pool10
+                         nplus%n14 = nplus%n14 + pool10%n14
                        end if
                      end if
                    end if
@@ -422,6 +422,25 @@
          end if
 
        end function nplus
+
+
+       function cminus( pool1, pool2 )
+         !////////////////////////////////////////////////////////////////
+         !  Generic function to return variable difference of two pools of 
+         !  type 'carbon'. Sum is of type 'carbon' as well.
+         !----------------------------------------------------------------
+         implicit none
+
+         ! arguments
+         type (carbon), intent(in) :: pool1
+         type (carbon), intent(in) :: pool2
+         
+         ! function return variable
+         type (carbon) :: cminus
+
+         cminus%c12 = pool1%c12 - pool2%c12
+
+       end function cminus
 
 
        function cton( pool )

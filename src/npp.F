@@ -3,15 +3,19 @@
       ! NET PRIMARY PRODUCTIVITY
       ! Calculate maintenance and growth respiration and substract this from GPP 
       ! to get NPP before additional root respiration for nutrient uptake (see 
-      ! SR nuptake).
+      ! SR nuptake). NPP is defined so as to include C allocated to growth as 
+      ! well as to exudation. Thus, exudation is not part of autotrophic respir-
+      ! ation, but diverted to the quickly decaying exudates pool. Exudates decay
+      ! is calculated in SR 'littersom' and is kept track of as soil respiration 
+      ! ('rsoil'). This implies that growth respiration is "paid" also on exu-
+      ! dates. 
       !-------------------------------------------------------------------------
-
       use classdefs
       use params_core, only: npft, nlu
-      use params_modl, only: rresp_growth, lu_category
+      use params_modl, only: rresp_growth, lu_category, cton_pro
       use rates
-      use dailyvars, only: dgpp, dnpp, drauto, drleaf, drroot, drhet, drgrow, dcex
-      use pools, only: pleaf, proot, pexud
+      use dailyvars, only: dgpp, dnpp, drauto, drleaf, drroot, drhet, drgrow, dcex, dnup, dbminc
+      use pools, only: pleaf, proot, pexud, plabl
       use annvars, only: nind, ispresent
 
       implicit none
@@ -24,12 +28,9 @@
       ! LOCAL VARIABLES
       integer :: pft
       integer :: lu
-
       real :: ftemp_air
       real :: ftemp_soil
-
-      real :: dresp_maint = 0.0      ! daily total maintenance respiration
-      real :: dresp_growth = 0.0      ! daily growth respiration
+      real :: dresp_maint = 0.0    ! daily total maintenance respiration
       
       !-------------------------------------------------------------------------
       ! PFT LOOP
@@ -49,28 +50,15 @@
           ! use function 'resp_main'
           !-------------------------------------------------------------------------
           ! argument 'ftemp' not used when _resp_maint_makela activated
-          drleaf(pft) = carbon( resp_maint( pleaf(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_air ) )
-          drroot(pft) = carbon( resp_maint( proot(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_soil ) )
+          !drleaf(pft) = carbon( resp_maint( pleaf(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_air ) )
+          !drroot(pft) = carbon( resp_maint( proot(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_soil ) )
+          drleaf(pft) = resp_maint( pleaf(pft,jpngr)%n%n14 * nind(pft,jpngr), pft, ftemp=ftemp_air )
+          drroot(pft) = resp_maint( proot(pft,jpngr)%n%n14 * nind(pft,jpngr), pft, ftemp=ftemp_soil )
           ! done here: sapwood respiration for trees
           
           ! daily total maintenance repsiration
-          dresp_maint = cadd( drleaf(pft), drroot(pft) )
-
-
-          !/////////////////////////////////////////////////////////////////////////
-          ! EXUDATION FOR N UPTAKE
-          ! Labile C exuded for N uptake in interaction with mycorrhiza.
-          !-------------------------------------------------------------------------
-          ! XXX
-          dcex(pft) = carbon(0.0)
-          call ccp( dcex(pft), pexud(pft,jpngr) )
-
-
-          !/////////////////////////////////////////////////////////////////////////
-          ! ALLOCATION
-          ! Allocation is called here to get growth for calculating growth respir.?
-          !-------------------------------------------------------------------------
-          ! XXX
+          !dresp_maint = cplus( drleaf(pft), drroot(pft) )
+          dresp_maint = drleaf(pft) + drroot(pft)
 
 
           !/////////////////////////////////////////////////////////////////////////
@@ -83,15 +71,45 @@
           ! daily in order to calculate growth respiration on only the part that is 
           ! allocated to actual growth and not on the part that is diverted to 'plabl'.
           !-------------------------------------------------------------------------
-          drgrow(pft) = cfrac( rresp_growth(pft), cminus( dgpp(pft), dresp_maint ) )
+          !drgrow(pft) = cfrac( rresp_growth(pft), cminus( dgpp(pft), dresp_maint ) )
+          drgrow(pft) = rresp_growth(pft) * ( dgpp(pft) - dresp_maint )
 
 
           !/////////////////////////////////////////////////////////////////////////
           ! DAILY NPP 
           ! NPP is the sum of C available for growth and for N uptake 
+          ! This is where isotopic signatures are introduced because only 'dbminc'
+          ! is diverted to a pool and re-emission to atmosphere gets delayed. Auto-
+          ! trophic respiration is immediate, it makes thus no sense to calculate 
+          ! full isotopic effects of gross exchange fluxes.
           !-------------------------------------------------------------------------
-          drauto(pft) = cplus( dresp_maint, drgrow(pft) )
-          dnpp(pft) = cminus( dgpp(pft), drauto(pft) ) 
+          drauto(pft) = dresp_maint + drgrow(pft)
+          dnpp(pft)   = carbon( dgpp(pft) - drauto(pft) ) 
+
+
+          !/////////////////////////////////////////////////////////////////////////
+          ! EXUDATION FOR N UPTAKE
+          ! Labile C exuded for N uptake in interaction with mycorrhiza.
+          !-------------------------------------------------------------------------
+          ! XXX
+          dcex(pft) = carbon(0.0)
+          dnup(pft) = nitrogen( dnpp(pft)%c12/cton_pro(pft) )
+
+          call ccp( dcex(pft), pexud(pft,jpngr) )
+
+
+          !/////////////////////////////////////////////////////////////////////////
+          ! ALLOCATION
+          ! The daily biomass increment 'dbminc' is what is available for growth in 
+          ! compartments including temporary storage.
+          ! XXX Allocation is called here without "paying"  growth respir.?
+          !-------------------------------------------------------------------------
+          ! XXX
+          dbminc(pft) = orgpool( cminus( dnpp(pft), dcex(pft) ), dnup(pft) )
+
+          ! xxx for the time being, dump 'dbminc' into labile pool and allocate at the
+          ! end of the year.
+          call orgcp( dbminc(pft), plabl(pft,jpngr) )
 
 
         endif                                               !(present(pft,jpngr))

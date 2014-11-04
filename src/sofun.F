@@ -4,6 +4,7 @@
       !  SOFUN (Seasonal Optimisation of Fixation and Uptake of 
       !  Nitrogen)
       !----------------------------------------------------------------
+#include "sofun_module_control.inc"
       use params_core
       use params_siml
       use params_site
@@ -184,6 +185,12 @@
             ! xxx try: second argument is dtemp_soil
             call npp( jpngr, dtemp(day), 1.0 )
 
+#if _allocation_pipe
+            ! allocate biomass increment
+            ! precompiler flag used here because option requires allocation to be called daily
+            call allocation_daily( jpngr )
+#endif
+
             ! calculate otpimal C expenditure for N uptake (FUN approach)
             call nuptake( jpngr )
 
@@ -203,14 +210,18 @@
 
         end do
 
+#if _allocation_pipe==0
+        ! allocate biomass increment
+        ! precompiler flag used here because option requires allocation to be called daily
+        call allocation_annual( jpngr )
+#endif
+
+
         ! plant biomass turnover
         call turnover(jpngr)
 
         ! reduce part of NPP for reproduction
         !call reproduction
-
-        ! allocate biomass increment 
-        call allocation(jpngr)
 
         !call light
         !call mortality

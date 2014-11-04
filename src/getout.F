@@ -13,9 +13,8 @@
 
       do pft=1,npft
 
-        call ccp( dgpp(pft), agpp(pft) )
+        agpp(pft) = agpp(pft) + dgpp(pft)
         call ccp( dnpp(pft), anpp(pft) )
-
         call ncp( dnup(pft), anup(pft) )
 
       end do

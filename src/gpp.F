@@ -37,14 +37,14 @@
 #if _prescr_gpp_site
       ! Prescribe GPP for each day for site-scale simulation
       do pft=1,npft
-        dgpp(pft) = carbon( dgpp_data( transyear, day, pft) )
+        dgpp(pft) = dgpp_data( transyear, day, pft)
       enddo
 #else
       ! Calculate GPP online
       ! xxx try: this is just a placeholder for an explicit GPP parameterisation
       do pft=1,npft
           ! read daily GPP value from input file
-          dgpp(pft) = carbon( getvalreal_STANDARD( sitename//'_daily_gpp_med_STANDARD.txt', mo=mo, dm=dm ) )
+          dgpp(pft) = getvalreal_STANDARD( sitename//'_daily_gpp_med_STANDARD.txt', mo=mo, dm=dm )
       end do  
 #endif
 

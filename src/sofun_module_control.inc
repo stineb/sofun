@@ -9,6 +9,12 @@ c Option:   After Mäkelä et al., 2008, New Phyt.
 #define _resp_maint_makela 1
 c ----------------------------------------------------------------------
 
+c ----------------------------------------------------------------------
+c ALLOCATION
+c Default: annually called, like in LPX for grass PFT
+c Option:  Pipe model as described in Mäkelä et al., 2008, New Phyt.
+#define _allocation_pipe 0
+c ----------------------------------------------------------------------
 
 c //////////////////////////////////////////////////////////////////////
 c SELECT MODEL INTEGRATION

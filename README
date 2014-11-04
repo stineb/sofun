@@ -65,3 +65,19 @@ wtot : soil water storage;
 nh4 : ammonium;
 no3 : nitrate;
 no2 : nitrogen dioxide;
+
+
+ 
+Dimensionality of mass pools/fluxes
+-----------------------------------
+
+The major loops determine the dimensionality of variables. The highest-order subroutine is 'biosphere' which simulates C exchange over the selected domain. SR 'biosphere' is called each year. Within 'biosphere', the program runs over loops for each gridcell, month, and day (in this order). This may be changed to 'biosphere' being called each day, and only the gridcell loop being governed inside 'biosphere'. 
+
+Model state variables generally have the lowest-possible number of dimensions. In most cases, this is 'pft' (for each plant functional type) or 'lu' (for each gridcell tile). An exception are pool variables which have a space dimension (representing gridcells 'jpngr'). Only input/output variables (to be kept separate from model state variables!) have an explicit time dimension (for month or day). 
+
+Variables are generally named so that the first letter represents the time scale on which the variable is updated (d for daily, m for monthly, a for annually).
+
+Fortran-derived types are used to define pools of organic matter (roots, sapwood, leaves, roots, litter, soil). This type consists of "dimensions" 'carbon' and 'nitrogen', which in turn consist of 'c12' and 'n14', respectively. There are also pools/fluxes that consist only of 'carbon' or 'nitrogen'. As a principle, the additional dimensionality of such derived-types should be introduced on the highest-possible level. E.g. it makes no sense to define GPP as 'carbon', as all variables NPP, Ra, ... carry the same signature of c12/c13/c14. The highest level is in general the step where a flux is added to a pool. In this case this is the biomass increment ('bm_inc'). I.e., only 'bm_inc' should be defined as 'carbon' and its c13/c14 signature should be explicitly defined.
+
+
+

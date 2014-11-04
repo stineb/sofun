@@ -86,16 +86,18 @@
 
       implicit none
 
-      dnep(:)    = carbon(0.0)
-      dgpp(:)    = carbon(0.0)
+      dbminc(:)  = orgpool( carbon(0.0), nitrogen(0.0) )
       dnpp(:)    = carbon(0.0)
       drsoil(:)  = carbon(0.0)
       drhet(:)   = carbon(0.0)
-      drauto(:)  = carbon(0.0)
-      drleaf(:)  = carbon(0.0)
-      drroot(:)  = carbon(0.0)
-      drgrow(:)  = carbon(0.0)
+      dnep(:)    = carbon(0.0)
       dcex(:)    = carbon(0.0)
+      dreco(:)   = carbon(0.0)
+      dgpp(:)    = 0.0
+      drauto(:)  = 0.0
+      drleaf(:)  = 0.0
+      drroot(:)  = 0.0
+      drgrow(:)  = 0.0
 
       dnup(:)    = nitrogen(0.0)
       dnfix_free(:) = 0.0
@@ -128,6 +130,6 @@
 
       aestab(:) = orgpool(carbon(0.0),nitrogen(0.0))
       anpp(:)   = carbon(0.0)
-      agpp(:)   = carbon(0.0)
+      agpp(:)   = 0.0
 
       end subroutine initannual

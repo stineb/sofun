@@ -54,12 +54,10 @@
         !-----------------------------------------------------------------------
         day = 0
 
-        
         ! Calculate soil PH using empirical relationship with annual precip
         ! Eq.5, Tab.5, XP08 (ntransform.cpp:65) (c++:aprec in mm/yr; F: mm/yr)
         !------------------------------------------------------------------
         ph_soil = 3810./(762.+sum(dprec(:)))+3.8
-
 
         ! Deprotonation of NH4 to NH3 depends on soil pH
         !------------------------------------------------------------------
@@ -70,7 +68,7 @@
         endif
         
       endif
-
+      
         
       !/////////////////////////////////////////////////////////////////////////
       ! DO EVERY DAY (in daily, as well as in monthly mode!)
@@ -122,7 +120,6 @@
         dleach(lu) = dfleach(day,lu) * no3(lu,jpngr)%n14
         no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - dleach(lu)
 
-        
         !///////////////////////////////////////////////////////////////////////
         ! SUBSTRATE PARTITIONING (ntransform.cpp:95)
         !------------------------------------------------------------------

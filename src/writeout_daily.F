@@ -4,6 +4,7 @@
       !-------------------------------------------------------------------------
       use params_siml, only: firstyeartrend, spinupyears
       use params_core, only: ndayyear
+      use params_modl, only: lu_category
       use dailyvars
 
       ! Arguments
@@ -12,15 +13,16 @@
 
       ! Local variables
       real :: itime
+      integer :: lu, pft
 
       !/////////////////////////////////////////////////////////////////////////
       ! Collect variables to output variables
       !-------------------------------------------------------------------------
       do lu=1,nlu
-        dreco(lu) = dreco(lu) + drhet(lu)
+        dreco(lu) = cplus( dreco(lu), drhet(lu) )
         do pft=1,npft
           if (lu==lu_category(pft)) then
-            dreco(lu) = dreco(lu) + drsoil(pft) + drauto(pft) + dcex(pft)
+            dreco(lu) = cplus( dreco(lu), drsoil(pft), carbon(drauto(pft)) )
           end if
         end do
       end do
@@ -33,6 +35,7 @@
       itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
 
       write(101,999) itime, dgpp
+      write(102,999) itime, dnpp%c12
 
       return
 

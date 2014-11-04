@@ -1,8 +1,9 @@
-      subroutine allocation(jpngr)
+      subroutine allocation_annual(jpngr)
       !////////////////////////////////////////////////////////////////
       !  June 2014
       !  b.stocker@imperial.ac.uk
       !----------------------------------------------------------------
+#include "sofun_module_control.inc"
       use params_core
       use classdefs
       use pools, only: pleaf, proot, plitt_af, plitt_as, plabl
@@ -11,6 +12,8 @@
 
       ! ARGUMENTS
       integer, intent(in) :: jpngr          ! gridcell number
+
+#if _allocation_pipe==0
 
       ! LOCAL VARIABLES
       integer :: pft                        ! PFT counter
@@ -30,7 +33,6 @@
       real    :: f_nl                       ! fraction of total plant N in leaves
       real    :: f_nr                       ! fraction of total plant N in roots
 
-
       ! PFT LOOP
       do pft=1,npft
          
@@ -42,6 +44,9 @@
           ! determine how much of labile pool to allocate to growth this year
           req = plabl(pft,jpngr)%c%c12/cton_pro(pft)
           avl = plabl(pft,jpngr)%n%n14
+          !req = dbminc%c%c12/cton_pro(pft)
+          !avl = dbminc%n%n14
+
           !print*,'req, avl ',req,avl
           nalloc = min(req,avl)
           calloc = cton_pro(pft)*nalloc
@@ -130,8 +135,8 @@
             
             plantN = pleaf(pft,jpngr)%n%n14+proot(pft,jpngr)%n%n14+nalloc_ind                   !Eq.1, Tab.3, XP08 (growth.cpp:1181)
             
-            pleaf(pft,jpngr)%n%n14 = plantN*f_nl
-            proot(pft,jpngr)%n%n14 = plantN*f_nr            !Eq.3, Tab.3, XP08 (growth.cpp:1184)
+            pleaf(pft,jpngr)%n = nitrogen(plantN*f_nl)
+            proot(pft,jpngr)%n = nitrogen(plantN*f_nr)            !Eq.3, Tab.3, XP08 (growth.cpp:1184)
                         
 
             ! spahni 2010-02-10: check if compartments are still positive
@@ -153,6 +158,8 @@
          
       enddo                     !pft
        
-      end subroutine allocation
+#endif
+
+      end subroutine allocation_annual
 
 
