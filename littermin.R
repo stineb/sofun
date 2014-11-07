@@ -1,15 +1,18 @@
 # This program simulates the litter C and N mineralization with transformation
 # into SOM, N mineralization and immobilization.
 
+do.mine <- FALSE
+do.xuri <- TRUE
+
 ## Model parameters
-rL <- 1/54           # litter N:C ratio
+rL <- 1/100           # litter N:C ratio
 rS <- 1/9.77         # soil N:C ratio
 rB <- 0.1            # microbial N:C ratio
 rCR <- 0.45*rL^0.76  # critical N:C ratio, fit in Fig. 3 of Manzoni et al., 2008
 eff <- rCR/rB        # carbon use efficiency of microbial growth, Eq.10 in XP14, and in Manzoni 08
 tauLit <- 20         # litter turnover time
 tauSom <- 20         # SOM turnover time
-nsteps <- 1000       # temporal integration steps
+nsteps <- 150       # temporal integration steps
 
 # Initial litter C pool size
 CLitInit <- 100
@@ -17,116 +20,132 @@ CLitInit <- 100
 # ## litter bag-type setup: Add 
 # inCLit <- array(0,c(nsteps))
 # inCLit[1] <- CLitInit
+ 
+if (do.mine) {
+	# ////////////////////////////////////
+	# MY VERSION
+	# -----------------------------------
+	# Initial inorganic N pool size
+	Ninorg <- 1
 
-# Initial inorganic N pool size
-Ninorg <- 1
+	# Initialise litter pool with CLitInit and its prescribed C:N ratio (rL)
+	CLit <- CLitInit
+	NLit <- CLitInit*rL
+	CSom <- 0
+	NSom <- 0
 
-# Initialise output variables with NA
-CLitOut <- array(NA,c(nsteps))
-NLitOut <- array(NA,c(nsteps))
-CSomOut <- array(NA,c(nsteps))
-NSomOut <- array(NA,c(nsteps))
-NinorgOut <- array(NA,c(nsteps))
-NfixOut <- array(0,c(nsteps))
+	# Initialise output variables with NA
+	CLitOut <- array(NA,c(nsteps))
+	NLitOut <- array(NA,c(nsteps))
+	CSomOut <- array(NA,c(nsteps))
+	NSomOut <- array(NA,c(nsteps))
+	NinorgOut <- array(NA,c(nsteps))
+	NfixOut <- array(0,c(nsteps))
 
-# Initialise litter pool with CLitInit and its prescribed C:N ratio (rL)
-CLit <- CLitInit
-NLit <- CLit*rL
-CSom <- 0
-NSom <- 0
-
-# Write to output of first time step
-CLitOut[1] <- CLit
-NLitOut[1] <- NLit
-CSomOut[1] <- CSom
-NSomOut[1] <- NSom
-NinorgOut[1] <- Ninorg
-
-# Record total N for budget check
-Ntot_before <- NLit + NSom + Ninorg
-
-# Integrate time steps
-for (i in 2:nsteps) {
-	
-	# Litter-C and -N decay with turnover time 'tauLit'
-	dCLit <- 1/tauLit * CLit 
-	dNLit <- 1/tauLit * NLit
-	CLit <- CLit - dCLit 
-	NLit <- NLit - dNLit 
-
-	# Fraction 'eff' of Litter C decomposition added to SOM
-	CSom <- CSom + dCLit * eff
-
-	# N requirement is calculated so that rB (N:C ratio)
-	# is maintained.
-	Nreq_B <- dCLit * rCR  # rCR = rB*eff
-
-	# This is the N requirement to maintain rS (SOM N:C ratio)
-	Nreq_S <- dCLit * eff * rS
-
-	# Difference is acquired through N fixation ???
-	Nfix   <- max( 0, Nreq_S - Nreq_B )
-
-	# N supply is given by litter N decay ('dNLit')
-	Nsuppl <- dNLit
-	
-	# If N supply is sufficient, mineralisation occurrs: positive (dNLit-Nreq).
-	# otherwise, immobilisation occurrs: negative (dNLit-Nreq).
-	# Thus, the balance for total organic N is:
-	# dN/dt = -(dNLit - Nreq)
-	#       = -(dCLit*rL - dCLit*eff*rB)
-	#       = dCLit*(rCR - rL) , rCR=eff*rB ('critical' N:C ratio)
-	# This corresponds to Eq. S3 in Manzoni et al., 2010
-	netmin <- Nsuppl - Nreq_B
-	Ninorg <- Ninorg + netmin
-
-	# Rest remains in the system: 
-	rest <- dNLit - netmin
-	NSom <- NSom + rest # rest = Nreq_B
-
-	# Add Nfix to SOM ==> should maintain soil C:N ratio
-	NSom <- NSom + Nfix
-
-	# IMPORTANT:
-	# N budget is only satisfied if rest=Nreq_B, but then soil C:N ratio is not satisfied.
-	# Soil C:N ratio is only satisfied if rest=Nreq_S, but then N budget is not satisfied.
-	# ==> something is wrong!!!
-
-	# Because soil C:N ratio is slightly lower than microbial C:N ratio, there is a budget mismatch!
-	# rest = Nreq_B
- # 	if (abs(rest-Nreq_S)>1e-9) {
-	# 	print(paste(rest,Nreq_S))
-	# }
+	# Write to output of first time step
+	CLitOut[1] <- CLit
+	NLitOut[1] <- NLit
+	CSomOut[1] <- CSom
+	NSomOut[1] <- NSom
+	NinorgOut[1] <- Ninorg
 
 	# Record total N for budget check
-	Ntot_while <- NLit + NSom + Ninorg - (Nfix+sum(NfixOut))
-	if (abs(Ntot_before-Ntot_while)>1e-9) {
-		print('N budget violated, while')
-		print(paste('diff, Nfix',Ntot_before-Ntot_while,Nfix))
+	Ntot_before <- NLit + NSom + Ninorg
+
+	# Integrate time steps
+	for (i in 2:nsteps) {
+		
+		# Litter-C and -N decay with turnover time 'tauLit'
+		dCLit <- 1/tauLit * CLit 
+		dNLit <- 1/tauLit * NLit
+		CLit <- CLit - dCLit 
+		NLit <- NLit - dNLit 
+
+		# Fraction 'eff' of Litter C decomposition added to SOM
+		CSom <- CSom + dCLit * eff
+
+		# N requirement is calculated so that rB (N:C ratio)
+		# is maintained.
+		Nreq_B <- dCLit * rCR  # rCR = rB*eff
+
+		# This is the N requirement to maintain rS (SOM N:C ratio)
+		Nreq_S <- dCLit * eff * rS
+
+		# Difference is acquired through N fixation ???
+		Nfix   <- max( 0, Nreq_S - Nreq_B )
+
+		# N supply is given by litter N decay ('dNLit')
+		Nsuppl <- dNLit
+		
+		# If N supply is sufficient, mineralisation occurrs: positive (dNLit-Nreq).
+		# otherwise, immobilisation occurrs: negative (dNLit-Nreq).
+		# Thus, the balance for total organic N is:
+		# dN/dt = -(dNLit - Nreq)
+		#       = -(dCLit*rL - dCLit*eff*rB)
+		#       = dCLit*(rCR - rL) , rCR=eff*rB ('critical' N:C ratio)
+		# This corresponds to Eq. S3 in Manzoni et al., 2010
+		netmin <- Nsuppl - Nreq_B
+		if (netmin<0){
+			req <- -netmin
+			if (Ninorg>req){
+				Ninorg <- Ninorg - req
+			} else {
+				avl <- Ninorg
+				Ninorg <- Ninorg - avl
+				Nfix <- Nfix + (req-avl)
+			}
+		}
+
+		# Rest remains in the system: 
+		rest <- dNLit - netmin
+		NSom <- NSom + rest # rest = Nreq_B
+
+		# Add Nfix to SOM ==> should maintain soil C:N ratio
+		NSom <- NSom + Nfix
+
+		# IMPORTANT:
+		# N budget is only satisfied if rest=Nreq_B, but then soil C:N ratio is not satisfied.
+		# Soil C:N ratio is only satisfied if rest=Nreq_S, but then N budget is not satisfied.
+		# ==> something is wrong!!!
+
+		# Because soil C:N ratio is slightly lower than microbial C:N ratio, there is a budget mismatch!
+		# rest = Nreq_B
+	 # 	if (abs(rest-Nreq_S)>1e-9) {
+		# 	print(paste(rest,Nreq_S))
+		# }
+
+		# Record total N for budget check
+		Ntot_while <- NLit + NSom + Ninorg - (Nfix+sum(NfixOut))
+		if (abs(Ntot_before-Ntot_while)>1e-9) {
+			print('my approach: N budget violated, while')
+			# print(paste('diff, Nfix',Ntot_before-Ntot_while,Nfix))
+		}
+
+		# Check SOM C:N ratio
+		# print( paste('  my soil C:N ',CSom/NSom) )
+
+		
+		# SOM decomposition
+		dCSom <- 1/tauSom * CSom
+		dNSom <- 1/tauSom * NSom
+		CSom <- CSom - dCSom
+		NSom <- NSom - dNSom
+		
+		# Mineralized SOM-N is added to inorganic N pool
+		Ninorg <- Ninorg + dNSom
+		
+		# Write to output
+		CLitOut[i] <- CLit
+		NLitOut[i] <- NLit
+		CSomOut[i] <- CSom
+		NSomOut[i] <- NSom
+		NinorgOut[i] <- Ninorg
+		NfixOut[i] <- Nfix
+
+		# Check SOM C:N ratio
+		# print( paste('soil C:N ',CSom/NSom) )
+											
 	}
-	
-	# SOM decomposition
-	dCSom <- 1/tauSom * CSom
-	dNSom <- 1/tauSom * NSom
-	CSom <- CSom - dCSom
-	NSom <- NSom - dNSom
-	
-	# Mineralized SOM-N is added to inorganic N pool
-	Ninorg <- Ninorg + dNSom
-	
-	# Write to output
-	CLitOut[i] <- CLit
-	NLitOut[i] <- NLit
-	CSomOut[i] <- CSom
-	NSomOut[i] <- NSom
-	NinorgOut[i] <- Ninorg
-	NfixOut[i] <- Nfix
-
-	# Check SOM C:N ratio
-	print( paste('soil C:N ',CSom/NSom) )
-										
-}
-
 
 # Define variables as in Manzoni et al., XXX
 smallc <- (CLitOut+CSomOut)/CLitInit[1]	
@@ -134,6 +153,108 @@ smalln <- (NLitOut+NSomOut)/(CLitInit[1]*rL)
 
 Ctot <- CLitOut + CSomOut
 Ntot <- NLitOut + NSomOut
+
+}
+
+if (do.xuri) {
+	# ////////////////////////////////////
+	# XU-RI VERSION
+	# ------------------------------------
+	# Initialise litter pool with CLitInit and its prescribed C:N ratio (rL)
+	CLit <- CLitInit
+	NLit <- CLitInit*rL
+	CSom <- 0
+	NSom <- 0
+
+	# Initial inorganic N pool size
+	NinorgInit <- 1
+	Ninorg <- NinorgInit
+
+	# Initialise output variables with NA
+	CLitOut_xuri <- array(NA,c(nsteps))
+	NLitOut_xuri <- array(NA,c(nsteps))
+	CSomOut_xuri <- array(NA,c(nsteps))
+	NSomOut_xuri <- array(NA,c(nsteps))
+	NinorgOut_xuri <- array(NA,c(nsteps))
+	NfixOut_xuri <- array(0,c(nsteps))
+
+	# Write to output of first time step
+	CLitOut_xuri[1] <- CLit
+	NLitOut_xuri[1] <- NLit
+	CSomOut_xuri[1] <- CSom
+	NSomOut_xuri[1] <- NSom
+	NinorgOut_xuri[1] <- Ninorg
+
+
+	# Record total N for budget check
+	Ntot_before <- NLit + NSom + Ninorg
+	print(paste('diff to initial Ntot',Ntot_before-CLitInit*rL-NinorgInit))
+
+	# Integrate time steps
+	for (i in 2:nsteps) {
+		
+		# Litter-C and -N decay with turnover time 'tauLit'
+		dCLit <- 1/tauLit * CLit 
+		dNLit <- 1/tauLit * NLit
+
+		# carbon transfer from litter to SOM
+		CLit <- CLit - dCLit 
+		CSom <- CSom + dCLit * eff
+
+		# nitrogen transfer from litter to SOM (Eq.4 in Xu-Ri)
+		NLit <- NLit - dNLit
+		# NLit <- NLit - dCLit * (1-eff) * rCR
+		NSom <- NSom + dCLit * eff * rCR
+
+		# add N fixation to SOM (Eq.8 in Xu-Ri)
+		Nfix <- dCLit * eff * ( rS - rCR )
+		NSom <- NSom + Nfix
+
+	  # net mineralisation = -1 * immobilisation
+	  netmin <- dCLit * ( rL - rCR )
+
+	  # add/remove net mineralisation to/from inorganic N pool
+		Ninorg <- Ninorg + netmin
+
+		# Record total N for budget check
+		Ntot_while <- NLit + NSom + Ninorg - (Nfix+sum(NfixOut_xuri))
+		print(paste('diff to initial Ntot',Ntot_while-CLitInit*rL-NinorgInit))
+		# if (abs(Ntot_before-Ntot_while)>1e-9) {
+		# 	print('Xu-Ri appr.: N budget violated, while')
+		# }
+
+		# Check SOM C:N ratio
+		# print( paste('xuri soil C:N ',CSom/NSom) )
+		
+		# SOM decomposition
+		dCSom <- 1/tauSom * CSom
+		dNSom <- 1/tauSom * NSom
+		CSom <- CSom - dCSom
+		NSom <- NSom - dNSom
+		
+		# Mineralized SOM-N is added to inorganic N pool
+		Ninorg <- Ninorg + dNSom
+		
+		# Write to output
+		CLitOut_xuri[i] <- CLit
+		NLitOut_xuri[i] <- NLit
+		CSomOut_xuri[i] <- CSom
+		NSomOut_xuri[i] <- NSom
+		NinorgOut_xuri[i] <- Ninorg
+		NfixOut_xuri[i] <- Nfix
+											
+	}
+
+	# Define variables as in Manzoni et al., XXX
+	smallc_xuri <- (CLitOut_xuri+CSomOut_xuri)/CLitInit[1]	
+	smalln_xuri <- (NLitOut_xuri+NSomOut_xuri)/(CLitInit[1]*rL)
+
+	Ctot <- CLitOut_xuri + CSomOut_xuri
+	Ntot <- NLitOut_xuri + NSomOut_xuri
+
+}
+
+# /////////////////////////////////////////////////
 
 # Alternatively, we can implement Eq.1 of Manzoni et al., 2008 directly as a function (n_manz) ...
 rL0 <- rL
@@ -167,12 +288,14 @@ time <- seq(1,nsteps)
 
 # This reproduces Figure 1 in Manzoni et al., 2008
 plot( 1-smallc, smalln, , type='l', xlab="1-c", ylab="n", xlim=c(0,1), ylim=c(0,3))
+lines( 1-smallc_xuri, smalln_xuri, col="blue" )
 lines( 1-c_manz, n_manz_out, col="red" )
 
 # Inorganic N pool over time
 # plot( time, NinorgOut, type='l', col='red' , xlim=c(0,nsteps))
 
 # N fixation over time
-# plot( time, cumsum(NfixOut), type='l', col='red' , xlim=c(0,nsteps))
+# plot( time, cumsum(NfixOut), type='l', col='red' , xlim=c(0,nsteps), ylim=c(0,1.76))
+# lines( time, cumsum(NfixOut_xuri), col='blue' )
 
 
