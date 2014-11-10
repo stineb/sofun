@@ -1,7 +1,7 @@
 # This program simulates the litter C and N mineralization with transformation
 # into SOM, N mineralization and immobilization.
 
-do.mine <- FALSE
+do.mine <- TRUE
 do.xuri <- TRUE
 
 ## Model parameters
@@ -52,6 +52,11 @@ if (do.mine) {
 	# Record total N for budget check
 	Ntot_before <- NLit + NSom + Ninorg
 
+	# Record total N for budget check
+	Ntot_before <- NLit + NSom + Ninorg
+	print(paste('diff to initial Ntot',Ntot_before-CLitInit*rL-NinorgInit))
+
+
 	# Integrate time steps
 	for (i in 2:nsteps) {
 		
@@ -85,6 +90,7 @@ if (do.mine) {
 		#       = dCLit*(rCR - rL) , rCR=eff*rB ('critical' N:C ratio)
 		# This corresponds to Eq. S3 in Manzoni et al., 2010
 		netmin <- Nsuppl - Nreq_B
+		
 		if (netmin<0){
 			req <- -netmin
 			if (Ninorg>req){
@@ -116,10 +122,11 @@ if (do.mine) {
 
 		# Record total N for budget check
 		Ntot_while <- NLit + NSom + Ninorg - (Nfix+sum(NfixOut))
-		if (abs(Ntot_before-Ntot_while)>1e-9) {
-			print('my approach: N budget violated, while')
-			# print(paste('diff, Nfix',Ntot_before-Ntot_while,Nfix))
-		}
+		print(paste('diff to initial Ntot',Ntot_while-CLitInit*rL-NinorgInit))
+		# if (abs(Ntot_before-Ntot_while)>1e-9) {
+		# 	print('my approach: N budget violated, while')
+		# 	# print(paste('diff, Nfix',Ntot_before-Ntot_while,Nfix))
+		# }
 
 		# Check SOM C:N ratio
 		# print( paste('  my soil C:N ',CSom/NSom) )
@@ -203,14 +210,13 @@ if (do.xuri) {
 
 		# nitrogen transfer from litter to SOM (Eq.4 in Xu-Ri)
 		NLit <- NLit - dNLit
-		# NLit <- NLit - dCLit * (1-eff) * rCR
 		NSom <- NSom + dCLit * eff * rCR
 
 		# add N fixation to SOM (Eq.8 in Xu-Ri)
 		Nfix <- dCLit * eff * ( rS - rCR )
 		NSom <- NSom + Nfix
 
-	  # net mineralisation = -1 * immobilisation
+	  # net mineralisation = -1 * immobilisation (Eq.7 in Xu-Ri)
 	  netmin <- dCLit * ( rL - rCR )
 
 	  # add/remove net mineralisation to/from inorganic N pool
@@ -218,6 +224,7 @@ if (do.xuri) {
 
 		# Record total N for budget check
 		Ntot_while <- NLit + NSom + Ninorg - (Nfix+sum(NfixOut_xuri))
+		print(paste('cumulative Nfixation',Nfix+sum(NfixOut_xuri)))
 		print(paste('diff to initial Ntot',Ntot_while-CLitInit*rL-NinorgInit))
 		# if (abs(Ntot_before-Ntot_while)>1e-9) {
 		# 	print('Xu-Ri appr.: N budget violated, while')
@@ -287,12 +294,13 @@ time <- seq(1,nsteps)
 #par(new=TRUE)
 
 # This reproduces Figure 1 in Manzoni et al., 2008
-plot( 1-smallc, smalln, , type='l', xlab="1-c", ylab="n", xlim=c(0,1), ylim=c(0,3))
+plot( 1-smallc, smalln, , type='l', xlab="1-c", ylab="n", xlim=c(0,1), ylim=c(0,2))
 lines( 1-smallc_xuri, smalln_xuri, col="blue" )
 lines( 1-c_manz, n_manz_out, col="red" )
 
 # Inorganic N pool over time
 # plot( time, NinorgOut, type='l', col='red' , xlim=c(0,nsteps))
+# lines( time, NinorgOut_xuri, col='blue', lty=2 )
 
 # N fixation over time
 # plot( time, cumsum(NfixOut), type='l', col='red' , xlim=c(0,nsteps), ylim=c(0,1.76))
