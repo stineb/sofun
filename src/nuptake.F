@@ -12,8 +12,7 @@
       !-------------------------------------------------------------------------
       use params_core
       use params_modl, only: lu_category, cton_pro, nfixer
-      use dailyvars, only: dnpp, dtransp, dnup, dnup_pas, dnup_act, dnup_fix, dnup_ret
-      use annvars, only: nind, ispresent
+      use statevars, only: dnpp, dtransp, dnup, dnup_pas, dnup_act, dnup_fix, dnup_ret, nind, ispresent
       use pools, only: nh4, no3, pexud, plabl, proot, wtot ! xxx try: wtot included here
 
       implicit none

@@ -14,9 +14,8 @@
       use params_core, only: npft, nlu
       use params_modl, only: rresp_growth, lu_category, cton_pro
       use rates
-      use dailyvars, only: dgpp, dnpp, drauto, drleaf, drroot, drhet, drgrow, dcex, dnup
+      use statevars, only: dgpp, dnpp, drauto, drleaf, drroot, drhet, drgrow, dcex, dnup, nind, ispresent
       use pools, only: pleaf, proot, pexud, plabl
-      use annvars, only: nind, ispresent
 
       implicit none
 

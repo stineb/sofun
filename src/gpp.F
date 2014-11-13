@@ -4,7 +4,7 @@
       !----------------------------------------------------------------
 #include "sofun_module_control.inc"
       use forcing
-      use dailyvars
+      use statevars
       use params_siml
 #if _prescr_gpp_site
       use input_site, only: dgpp_data

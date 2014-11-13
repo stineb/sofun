@@ -5,7 +5,7 @@
       use params_siml, only: firstyeartrend, spinupyears
       use params_core, only: ndayyear
       use params_modl, only: lu_category
-      use dailyvars
+      use statevars
       use pools
 
       ! Arguments

@@ -5,7 +5,7 @@
       !----------------------------------------------------------------
       use params_modl
       use params_site, only: lpft1
-      use annvars
+      use statevars, only: aestab, ispresent, fpc_grid, nind, crownarea
       use pools
       use gridvars, only: lu_area
 

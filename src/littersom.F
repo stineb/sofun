@@ -10,7 +10,7 @@
       use params_core
       use classdefs
       use rates
-      use dailyvars, only: drsoil, drhet, dnfix_free, doc
+      use statevars, only: drsoil, drhet, dnfix_free, doc
       use params_modl
       use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, nh4
 

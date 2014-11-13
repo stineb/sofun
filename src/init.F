@@ -6,7 +6,7 @@
       !  b.stocker@imperial.ac.uk
       !----------------------------------------------------------------
       use pools
-      use annvars
+      use statevars
 
       ! initialise all pools with zero
       pleaf(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
@@ -46,7 +46,7 @@
       !  b.stocker@imperial.ac.uk
       !----------------------------------------------------------------
       use pools
-      use annvars
+      use statevars
 
       implicit none
       integer, intent(in) :: pft
@@ -81,7 +81,7 @@
       !////////////////////////////////////////////////////////////////
       !  Initialises all daily variables with zero.
       !----------------------------------------------------------------
-      use dailyvars
+      use statevars
       use pools
 
       implicit none
@@ -115,20 +115,23 @@
       plitt_as = orgpool( carbon(1500.), nitrogen(30.))
       plitt_bg = orgpool( carbon(400.), nitrogen(8.))
 
+      ! xxx is actually an annually updated variable
+      aestab(:) = orgpool(carbon(0.0),nitrogen(0.0))
+
 
       end subroutine initdaily
 
 
-      subroutine initannual
+      subroutine initoutput
       !////////////////////////////////////////////////////////////////
       !  Initialises all daily variables with zero.
       !----------------------------------------------------------------
-      use annvars
+      use outvars
 
       implicit none
 
-      aestab(:) = orgpool(carbon(0.0),nitrogen(0.0))
-      anpp(:)   = carbon(0.0)
-      agpp(:)   = 0.0
+      outagpp(:,:)   = 0.0
+      outanpp(:,:)   = carbon(0.0)
+      outanup(:,:)   = nitrogen(0.0)
 
-      end subroutine initannual
+      end subroutine initoutput

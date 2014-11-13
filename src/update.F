@@ -1,7 +1,7 @@
       subroutine update_fpc(pft,jpngr)
 
       use params_modl, only: kbeer, sla
-      use annvars
+      use statevars
       use pools, only: pleaf
 
       implicit none

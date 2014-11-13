@@ -12,7 +12,7 @@
       use forcing
       use input_site
       use gridvars
-      use dailyvars
+      use statevars
 
       implicit none
 
@@ -147,13 +147,12 @@
 
       endif
 
+      ! Initialise output variables
+      call initoutput
+
 
       ! LOOP THROUGH GRIDCELLS
       do jpngr=1,maxgrid
-
-        ! initialise annual variables
-        ! xxx wirklich am richtigen ort?
-        call initannual
 
         !call snow
         !call summerphenology (drough-driven phenology is calculated after waterbalance)
@@ -205,7 +204,7 @@
             call ntransform( dm, mo, jpngr, dprec )
 
             ! collect from daily updated state variables for annual variables
-            call getout_daily
+            call getout_daily( jpngr )
 
             ! write to daily output
             !call writeout_daily( year, day ) 

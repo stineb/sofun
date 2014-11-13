@@ -1,4 +1,4 @@
-      module dailyvars
+      module statevars
       !////////////////////////////////////////////////////////////////
       !  Module contains all daily variables. These variables have no 
       !  spatial dimension. At the end of the daily loop, values may be 
@@ -43,19 +43,11 @@
         real,dimension(nlu)  :: dleach            ! N leaching [gN/m2/d]
 
 
-      end module dailyvars
-
-      module annvars
-      !////////////////////////////////////////////////////////////////
-      !  Module contains annually updated variables. Vegetation variables
-      !  have spatial dimension (like pool variables). 
-      !  Annual flux variables are sum of daily updated analogues and 
-      !  have no spatial dimension.
-      !----------------------------------------------------------------
-        use params_core
-        use classdefs
-
+        !////////////////////////////////////////////////////////////////
+        !  In LPX, these state variables were updated annually
+        !----------------------------------------------------------------
         ! variables with 'jpngr' dimension: have memory from one to next year (veg. variables)
+        ! therefore to be treated like pools.
         logical, dimension(npft,maxgrid)      :: ispresent      ! boolean whether PFT is present
 
         real, dimension(npft,maxgrid)         :: nind           ! number of individuals [1/m2]
@@ -65,9 +57,6 @@
 
         ! variables without spatial dimension: have NO memory from one to next year
         type(orgpool), dimension(nlu) :: aestab         ! annual C and N fixation due to establishment (=acflux_estab,an_uptake_estab)
-        real, dimension(npft) :: agpp
-        type(carbon), dimension(npft) :: anpp
-        type(nitrogen), dimension(npft) :: anup
 
-      end module annvars
+      end module statevars
 

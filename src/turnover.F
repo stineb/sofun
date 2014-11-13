@@ -6,7 +6,7 @@
       use classdefs
       use params_modl, only: lu_category, long_leaf, long_root, long_sapw, npft, F_NRETAIN
       use pools, only: pleaf, proot, plitt_af, plitt_bg, plabl
-      use annvars, only: nind, ispresent
+      use statevars, only: nind, ispresent
 
       implicit none
 

@@ -13,7 +13,7 @@
       use params_modl
       use rates
       use pools, only: nh4, no3, no2, no_w, no_d, n2o_w, n2o_d, n2_w
-      use dailyvars, only: dn2o, dnloss, ddenitr, dnitr, dvol, dleach, dn2o, dn2, dno, doc
+      use statevars, only: dn2o, dnloss, ddenitr, dnitr, dvol, dleach, dn2o, dn2, dno, doc
 
       implicit none
 
