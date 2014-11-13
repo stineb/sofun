@@ -86,7 +86,6 @@
 
       implicit none
 
-      dbminc(:)  = orgpool( carbon(0.0), nitrogen(0.0) )
       dnpp(:)    = carbon(0.0)
       drsoil(:)  = carbon(0.0)
       drhet(:)   = carbon(0.0)
@@ -114,7 +113,7 @@
 
       plitt_af = orgpool( carbon(500.), nitrogen(10.))
       plitt_as = orgpool( carbon(1500.), nitrogen(30.))
-      plitt_af = orgpool( carbon(400.), nitrogen(8.))
+      plitt_bg = orgpool( carbon(400.), nitrogen(8.))
 
 
       end subroutine initdaily

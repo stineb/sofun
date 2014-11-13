@@ -6,6 +6,7 @@
       use params_core, only: ndayyear
       use params_modl, only: lu_category
       use dailyvars
+      use pools
 
       ! Arguments
       integer, intent(in) :: year
@@ -29,13 +30,14 @@
 
       !/////////////////////////////////////////////////////////////////////////
       ! Write daily value, summed over all PFTs
-      ! xxx implement taking sum over PFTs in this land use category
+      ! xxx implement taking sum over PFTs (and gridcells) in this land use category
       !-------------------------------------------------------------------------
       ! Define 'itime' as a decimal number corresponding to day in the year + year
       itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
 
       write(101,999) itime, dgpp
       write(102,999) itime, dnpp%c12
+      write(103,999) itime, pleaf%c%c12
 
       return
 

@@ -29,3 +29,10 @@ c ----------------------------------------------------------------------
 c Prescribe GPP per day
 #define _prescr_gpp_site 1
 
+c //////////////////////////////////////////////////////////////////////
+c SANITY
+c Compile additional code for online sanity checks. This is recommended
+c for simulations during development stage. De-activate later to reduce
+c computational costs.
+c ----------------------------------------------------------------------
+#define _check_sanity 1

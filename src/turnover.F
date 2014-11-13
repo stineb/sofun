@@ -1,4 +1,4 @@
-      subroutine turnover(jpngr)
+      subroutine turnover( jpngr )
       !////////////////////////////////////////////////////////////////
       !  Annual vegetation biomass turnover, called at the end of the
       !  year.
@@ -33,17 +33,20 @@
           dleaf=1.0/long_leaf(pft)
           !dsapw=1.0/long_sapw(pft)
           droot=1.0/long_root(pft)
-          
+
           ! Calculate the biomass turnover in this year          
           lm_turn = orgfrac( dleaf, pleaf(pft,jpngr) )
           !lm_turn = orgfrac( dsapw, psapw(pft,jpngr) )
-          lm_turn = orgfrac( droot, proot(pft,jpngr) )
+          rm_turn = orgfrac( droot, proot(pft,jpngr) )
           
+          ! xxx try
+          F_NRETAIN = 0.0
+
           ! Move turnover to litter
           ! All C from leaf turnover goes to litter
           call cmv( lm_turn%c, pleaf(pft,jpngr)%c, plitt_af(pft,jpngr)%c, scale=nind(pft,jpngr) )
           ! A fraction (F_NRETAIN) of leaf N turnover is retained and moved to temporary storage (plabl) ...
-          call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plabl(pft,jpngr)%n,    scale=nind(pft,jpngr)*F_NRETAIN )
+          call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plabl(pft,jpngr)%n,    scale=F_NRETAIN )
           ! ... rest goes to litter
           call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr)*(1.-F_NRETAIN) )
 

@@ -14,7 +14,7 @@
       use params_core, only: npft, nlu
       use params_modl, only: rresp_growth, lu_category, cton_pro
       use rates
-      use dailyvars, only: dgpp, dnpp, drauto, drleaf, drroot, drhet, drgrow, dcex, dnup, dbminc
+      use dailyvars, only: dgpp, dnpp, drauto, drleaf, drroot, drhet, drgrow, dcex, dnup
       use pools, only: pleaf, proot, pexud, plabl
       use annvars, only: nind, ispresent
 
@@ -37,6 +37,9 @@
       !-------------------------------------------------------------------------
       do pft=1,npft
         if (ispresent(pft,jpngr)) then
+
+          ! xxx consider this: order of PFT within this loop is relevant for N uptake
+          ! maybe permute order? maybe divide N availability up for each PFT?
           
           lu=lu_category(pft)
           
@@ -50,6 +53,7 @@
           ! use function 'resp_main'
           !-------------------------------------------------------------------------
           ! argument 'ftemp' not used when _resp_maint_makela activated
+          ! fine roots should have a higher repsiration coefficient than other tissues (Franklin et al., 2007).
           !drleaf(pft) = carbon( resp_maint( pleaf(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_air ) )
           !drroot(pft) = carbon( resp_maint( proot(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_soil ) )
           drleaf(pft) = resp_maint( pleaf(pft,jpngr)%n%n14 * nind(pft,jpngr), pft, ftemp=ftemp_air )
@@ -82,38 +86,48 @@
           ! is diverted to a pool and re-emission to atmosphere gets delayed. Auto-
           ! trophic respiration is immediate, it makes thus no sense to calculate 
           ! full isotopic effects of gross exchange fluxes.
+          ! XXX NPP may get negative here!
           !-------------------------------------------------------------------------
           drauto(pft) = dresp_maint + drgrow(pft)
-          dnpp(pft)   = carbon( dgpp(pft) - drauto(pft) ) 
+          dnpp(pft)   = carbon( max(dgpp(pft) - drauto(pft), 0.) ) 
 
+          !if (dnpp(pft)%c12<0.) then
+            !print*,'gpp, ra ',dgpp(pft), drauto(pft)
+            !print*,'negative NPP'
+          !else
+            !print*,'positive NPP'
+          !endif 
 
           !/////////////////////////////////////////////////////////////////////////
           ! EXUDATION FOR N UPTAKE
+          ! This calculates exudation 'dcex', N uptake 'dnup', ...
           ! Labile C exuded for N uptake in interaction with mycorrhiza.
+          ! Calculate otpimal C expenditure for N uptake (FUN approach).
+          ! PFT loop has to be closed above to get total NPP over all PFTs in each 
+          ! LU. 
           !-------------------------------------------------------------------------
-          ! XXX
+          !call nuptake( jpngr, pft )
+
+          ! xxx try
           dcex(pft) = carbon(0.0)
           dnup(pft) = nitrogen( dnpp(pft)%c12/cton_pro(pft) )
 
+          ! Add exuded C to exudates pool (fast decay)
           call ccp( dcex(pft), pexud(pft,jpngr) )
 
-
           !/////////////////////////////////////////////////////////////////////////
-          ! ALLOCATION
-          ! The daily biomass increment 'dbminc' is what is available for growth in 
-          ! compartments including temporary storage.
+          ! TO LABILE POOL
+          ! NPP available for growth first enters the labile pool ('plabl ').
           ! XXX Allocation is called here without "paying"  growth respir.?
           !-------------------------------------------------------------------------
-          ! XXX
-          dbminc(pft) = orgpool( cminus( dnpp(pft), dcex(pft) ), dnup(pft) )
+          !print*,'dnpp, dcex, dnup ', dnpp(pft), dcex(pft), dnup(pft)
+          call orgcp( orgpool( cminus( dnpp(pft), dcex(pft) ), dnup(pft) ), plabl(pft,jpngr) )
 
-          ! xxx for the time being, dump 'dbminc' into labile pool and allocate at the
-          ! end of the year.
-          call orgcp( dbminc(pft), plabl(pft,jpngr) )
+          !print*,'plabl ',plabl(pft,jpngr)%c%c12
 
+        endif
 
-        endif                                               !(present(pft,jpngr))
-      enddo                                                 !pft
+      end do
 
       contains
 

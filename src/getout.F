@@ -1,4 +1,4 @@
-      subroutine getout_annual
+      subroutine getout_daily
       !////////////////////////////////////////////////////////////////
       !  SR called daily to sum up output variables.
       !  June 2014
@@ -13,10 +13,11 @@
 
       do pft=1,npft
 
+        ! Collect for annual output variables
         agpp(pft) = agpp(pft) + dgpp(pft)
         call ccp( dnpp(pft), anpp(pft) )
         call ncp( dnup(pft), anup(pft) )
 
       end do
 
-      end subroutine getout_annual
+      end subroutine getout_daily

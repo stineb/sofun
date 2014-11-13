@@ -1,4 +1,4 @@
-      subroutine nuptake( jpngr )
+      subroutine nuptake( jpngr, lu )
       !******************************************************************************
       ! SUBROUTINE N_UPTAKE FOR FUN APPROACH
       !-------------------------------------------------------------------------
@@ -96,21 +96,21 @@
         write(0,*) 'Think of something more clever wrt soil layering'
         stop
       else
-        do lu=1,nlu
-          nh4_nsl( lu, : ) = nh4( lu, jpngr )%n14
-          no3_nsl( lu, : ) = no3( lu, jpngr )%n14
-        enddo
+        nh4_nsl(lu,:) = nh4(lu,jpngr)%n14
+        no3_nsl(lu,:) = no3(lu,jpngr)%n14
       endif
       
       ! Absolute water content corresponding to permanent wilting point [gH2O].
       !epsilon_wtot = Fpwp( nlayers-nsl+1, jpngr ) * sum( Dz_soil(:) ) * 1000.
       !-------------------------------------------------------------------------
 
-      do lu=1,nlu
-        !-------------------------------------------------------------------------
-        ! PFT LOOP STARTS HERE
-        !-------------------------------------------------------------------------
-        do pft=1,npft
+      !-------------------------------------------------------------------------
+      ! PFT LOOP STARTS HERE
+      !-------------------------------------------------------------------------
+      do pft=1,npft
+        if (lu==lu_category(pft)) then
+
+          ! xxx think about this: order in which PFTs get access to Ninorg matters!
           
           ! xxx try:
           epsilon_wtot = 0.05
@@ -120,9 +120,10 @@
           ! do ppft=1,npft
           !   pft = modulo(ppft+day-2,npft)+1
 
-          if ( ispresent(pft,jpngr) .and. lu_category(pft)==lu ) then
+          if ( ispresent(pft,jpngr) ) then
 
             if (dnpp(pft)%c12 < 0.) then
+              !-------------------------------------------------------------------------
               ! In case of negative daily NPP, no N uptake is necessary, no C is exuded
               ! npp has been calculated assuming no N limitation. On exit, npp has been reduced to account
               ! for expenditure on N uptake.
@@ -166,6 +167,7 @@
 
               !tmp = dnpp(pft)
 
+              !-------------------------------------------------------------------------
               ! Keep track of how much of the NPP-driven N-demand is not yet covered.
               !--------------------------------------------------------------------------
               n_demand_remaining = n_demand
@@ -248,6 +250,7 @@
                    
                 enddo
 
+                !--------------------------------------------------------------------------
                 ! Passive uptake exceeds N-demand. Store excess in temporary storage.
                 !--------------------------------------------------------------------------
                 if ( n_demand_remaining <= n_uptake_pass ) then
@@ -263,6 +266,7 @@
 
                  
                 do iz=1,nsl_eff
+                  !--------------------------------------------------------------------------
                   ! Update N taken up and available N in soil.
                   !--------------------------------------------------------------------------
                   nh4_nsl(lu,iz) = nh4_nsl(lu,iz) - nh4_uptake(iz)
@@ -276,6 +280,7 @@
                 enddo
 
                 if (unmetDemand) then
+                  !--------------------------------------------------------------------------
                   ! If passive uptake is insufficient, consider fixation or active uptake
                   !--------------------------------------------------------------------------
 
@@ -327,10 +332,12 @@
                   !nstep = MIN(INT(n_demand_remaining*real(PARTS)/MAX(no3(lu,jpngr)%n14,nh4(lu,jpngr)%n14)),MAXSTEP)
                   nstep = 100
                   
+                  !--------------------------------------------------------------------------
                   ! Calculate NPP still to pay for after passive uptake and retranslocation
                   !--------------------------------------------------------------------------
                   npp_remaining = n_demand_remaining*cton_pro(pft)
                    
+                  !--------------------------------------------------------------------------
                   ! Split NPP to pay for into steps
                   !--------------------------------------------------------------------------
                   npp_remaining_step = npp_remaining/real(nstep)
@@ -342,6 +349,7 @@
                   do istep=1,nstep
                   !--------------------------------------------------------------------------
 
+                  !--------------------------------------------------------------------------
                   ! Initializations
                   !--------------------------------------------------------------------------
                     Nacq = 0.
@@ -357,12 +365,14 @@
                     !--------------------------------------------------------------------------
                      do iz=1,nsl_eff
                        
+                      !--------------------------------------------------------------------------
                       ! Cost of active uptake of NH4, NO3 and organic N
                       !--------------------------------------------------------------------------
                       cost(iz,icostActiveNH4) = fun_cost_active_nh4( avail_nh4(iz), proot(pft,jpngr)%c%c12*nind(pft,jpngr) )
                       cost(iz,icostActiveNO3) = fun_cost_active_no3( avail_no3(iz), proot(pft,jpngr)%c%c12*nind(pft,jpngr) )
                       ! cost(iz,icostActiveOrg) = fun_cost_active_org(litterN)
                        
+                      !--------------------------------------------------------------------------
                       ! Find the lowest cost in each soil layer and each sub-timestep
                       !--------------------------------------------------------------------------
                       mloc(1:1) =  MINLOC( cost(iz,:), mask=option(:) )
@@ -371,6 +381,7 @@
                        
                     enddo
                      
+                    !--------------------------------------------------------------------------
                     ! Rank layers in terms of cost of N uptake, cheapest first
                     !--------------------------------------------------------------------------
                     ranked(:) = .false.
@@ -380,6 +391,7 @@
                       ranked(mloc(1)) = .true.
                     enddo
                      
+                    !--------------------------------------------------------------------------
                     ! Spend C on extracting N
                     !--------------------------------------------------------------------------
 
@@ -394,6 +406,7 @@
                       ! Identify the process involved with the cheapest N
                       icost = iminCost(iz)
                        
+                      !--------------------------------------------------------------------------
                       ! Calculate NPP decrement and N increment (for derivation, see bottom of this
                       ! file). Cacq: C spent for N acquisition. Nacq: N acquired
                       !--------------------------------------------------------------------------
@@ -403,6 +416,7 @@
                       ! print*,'pft, cost(iz,icost)', pft, cost(iz,icost)
                       !--------------------------------------------------------------------------
 
+                      !--------------------------------------------------------------------------
                       ! Load values into process-specific variables and limit
                       ! increments if store exhausted. Note that the fluxes and
                       ! increments calculated so far are for this fraction, and need
@@ -478,12 +492,14 @@
 
                       endif
                        
+                      !--------------------------------------------------------------------------
                       ! Decrement unmet NPP over sub-timestep. This is necessary to know
                       ! how much is exuded (the remaing npp) when pools get empty (during
                       ! loop.)
                       !--------------------------------------------------------------------------
                       npp_remaining = npp_remaining - Cacq
                        
+                      !--------------------------------------------------------------------------
                       ! Update costs in order to update ranking of soil layers w.r.t. cost 
                       !--------------------------------------------------------------------------
                       if (istep < nstep) then
@@ -503,6 +519,7 @@
 
                         endif
 
+                        !--------------------------------------------------------------------------
                         ! Decide which source of N is now cheapest in this layer. If cheapest layer
                         ! is now not the same as the cheapest layer before, re-rank layers.
                         !--------------------------------------------------------------------------
@@ -548,6 +565,7 @@
                        
                     else                                       !not empty
 
+                      !--------------------------------------------------------------------------
                       ! Decrement unmatched NPP over sub-timestep. This is necessary to know
                       ! how much is exuded (the remaing npp) when pools get empty (during
                       ! loop.) npp_remaining is the NPP still to pay for. Cacq is the cost of
@@ -567,6 +585,7 @@
                   !  print*,'fraction of npp paid for N uptake',
                   !  $             (Cacq_fix+Cacq_active)/tmp
 
+                  !--------------------------------------------------------------------------
                   ! Update annual N-uptake of this PFT. N-retranslocation is not considered
                   ! N-uptake.
                   !--------------------------------------------------------------------------
@@ -605,13 +624,12 @@
            
           endif                                                ! if (present(pft,jpngr) .and. lu_category(pft) .eq. lu)
 
-        enddo                                                 ! pft loop
+        end if                                                 ! if lu==lu_category(pft)
+      enddo                                                    ! pft loop
 
-        ! Update common-variable-Ninorg-pools again
-        nh4(lu,jpngr)%n14 = sum(nh4_nsl(lu,:))
-        no3(lu,jpngr)%n14 = sum(no3_nsl(lu,:))
-
-      enddo                                                 ! lu loop
+      ! Update common-variable-Ninorg-pools again
+      nh4(lu,jpngr)%n14 = sum(nh4_nsl(lu,:))
+      no3(lu,jpngr)%n14 = sum(no3_nsl(lu,:))
 
 
       contains

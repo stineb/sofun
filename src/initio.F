@@ -21,6 +21,9 @@
       filnam=trim(prefix)//'.d.npp.dat'
       open(102,file=filnam,err=999,status='unknown')
 
+      filnam=trim(prefix)//'.d.cleaf.dat'
+      open(103,file=filnam,err=999,status='unknown')
+
       return
 
  999  stop 'INITIO: error opening output files'

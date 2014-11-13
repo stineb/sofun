@@ -51,9 +51,9 @@
        real, dimension(npft) :: lai0                ! sapling (or grass on initialisation) LAI (=lai_sapl)
        type(orgpool), dimension(npft) :: lm_sapl    ! sapling leaf mass
        type(orgpool), dimension(npft) :: rm_sapl    ! sapling root mass
-       real, dimension(npft) :: long_leaf           ! leaf longeivity [yr]
-       real, dimension(npft) :: long_sapw           ! sapwood longeivity [yr]
-       real, dimension(npft) :: long_root           ! root longeivity [yr]
+       real, dimension(npft) :: long_leaf           ! leaf longeivity [days]
+       real, dimension(npft) :: long_sapw           ! sapwood longeivity [days]
+       real, dimension(npft) :: long_root           ! root longeivity [days]
        real, dimension(npft) :: sla                 ! specific leaf area [m2/gC]
        real, dimension(npft) :: cton_pro            ! C:N ratio of new production [1]
        integer, dimension(npft) :: pftcode          ! code for identification of PFT (1=C3 grass)
@@ -219,8 +219,8 @@
               ! sapling (or grass on initialisation) LAI
               lai0(pft) = pft_params_array(4)
 
-              ! leaf longevity [yr]
-              long_leaf(pft) = pft_params_array(5)
+              ! leaf longevity [days], read in as [years]
+              long_leaf(pft) = pft_params_array(5)*ndayyear
 
               ! specific leaf area [m2/gC]
               ! defined as a function of 'long_leaf'
@@ -239,11 +239,11 @@
               ! PFT identification code (1=C3 grass)
               pftcode(pft) = int(pft_params_array(7))
 
-              ! sapwood turnover period
-              long_sapw(pft) = pft_params_array(8)
+              ! sapwood turnover period [days], read in as [years]
+              long_sapw(pft) = pft_params_array(8)*ndayyear
 
-              ! root turnover period
-              long_root(pft) = pft_params_array(9)
+              ! root turnover period [days], read in as [years]
+              long_root(pft) = pft_params_array(9)*ndayyear
 
               ! maintenance respiration coefficient
               rresp_maint(pft) = pft_params_array(10)

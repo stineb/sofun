@@ -33,6 +33,18 @@
       real    :: f_nl                       ! fraction of total plant N in leaves
       real    :: f_nr                       ! fraction of total plant N in roots
 
+#if _check_sanity  
+      ! xxx test
+      real    :: cbal_before
+      real    :: cbal_after
+      real    :: nbal_before
+      real    :: nbal_after
+
+      ! xxx test
+      cbal_before = plabl(pft,jpngr)%c%c12 + pleaf(pft,jpngr)%c%c12 + proot(pft,jpngr)%c%c12
+      nbal_before = plabl(pft,jpngr)%n%n14 + pleaf(pft,jpngr)%n%n14 + proot(pft,jpngr)%n%n14
+#endif
+
       ! PFT LOOP
       do pft=1,npft
          
@@ -56,13 +68,9 @@
           nalloc_ind = nalloc / nind(pft,jpngr)
 
           !print*,'anpp         ',anpp(pft)
-          !print*,'plabl before ',plabl(pft,jpngr)
-
           ! remove C and N to be allocated from labile pool
           call csub( carbon(calloc), plabl(pft,jpngr)%c )
           call nsub( nitrogen(nalloc), plabl(pft,jpngr)%n )
-
-          !print*,'plabl after  ',plabl(pft,jpngr)
 
           ! calculate this year's leaf to fine root mass ratio from mean annual 
           ! water scalar and pft specific parameter
@@ -107,7 +115,6 @@
             ! note that orgcp is used above and not orgmv.
             call ccp( carbon(lminc_ind), pleaf(pft,jpngr)%c )
             call ccp( carbon(rminc_ind), proot(pft,jpngr)%c )
-
             
             ! --------------------------------------------------------------------
             ! N ALLOCATION for Grasses
@@ -148,7 +155,7 @@
             endif
 
           endif                 ! if grass
-          
+
         endif                   !ispresent
         
         if (ispresent(pft,jpngr)) then        
@@ -158,6 +165,21 @@
          
       enddo                     !pft
        
+#if _check_sanity  
+      ! xxx test
+      cbal_after = plabl(pft,jpngr)%c%c12 + pleaf(pft,jpngr)%c%c12 + proot(pft,jpngr)%c%c12
+      nbal_after = plabl(pft,jpngr)%n%n14 + pleaf(pft,jpngr)%n%n14 + proot(pft,jpngr)%n%n14
+      if (abs(cbal_after-cbal_before)>1.d9) then
+        print*,'cbal_before, cbal_after ', cbal_before, cbal_after
+        stop 'C balance violated in ALLOCATION'
+      endif
+      if (abs(nbal_after-nbal_before)>1.d9) then
+        print*,'nbal_before, nbal_after ', nbal_before, nbal_after
+        stop 'N balance violated in ALLOCATION'
+      endif
+#endif
+
+
 #endif
 
       end subroutine allocation_annual

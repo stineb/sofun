@@ -181,7 +181,8 @@
             ! use SR 'sitchtemp'
             !call soiltemp
 
-            ! substract autotrophic respiration to get NPP
+            ! substract autotrophic respiration to get NPP, remainder is added to
+            ! labile pool (plabl)
             ! xxx try: second argument is dtemp_soil
             call npp( jpngr, dtemp(day), 1.0 )
 
@@ -191,8 +192,11 @@
             call allocation_daily( jpngr )
 #endif
 
-            ! calculate otpimal C expenditure for N uptake (FUN approach)
-            call nuptake( jpngr )
+            ! amount of NPP added to reproduction (xxx ignore at this point)
+            !call reproduction( jpngr )
+
+            ! leaf, sapwood, and fine-root turnover
+            call turnover( jpngr )
 
             ! litter and soil turnover
             call littersom( jpngr )
@@ -200,11 +204,11 @@
             ! inorganic soil N chemistry
             call ntransform( dm, mo, jpngr, dprec )
 
-            ! collect daily output variables from daily updated state variables
-            call getout_annual
+            ! collect from daily updated state variables for annual variables
+            call getout_daily
 
             ! write to daily output
-            call writeout_daily(year,day)
+            !call writeout_daily( year, day ) 
 
           end do
 
@@ -215,10 +219,6 @@
         ! precompiler flag used here because option requires allocation to be called daily
         call allocation_annual( jpngr )
 #endif
-
-
-        ! plant biomass turnover
-        call turnover(jpngr)
 
         ! reduce part of NPP for reproduction
         !call reproduction

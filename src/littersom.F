@@ -43,6 +43,10 @@
       ! temporary variables
       real :: eff                                     ! microbial growth efficiency 
       real :: ntoc_crit                               ! critical N:C ratio below which immobilisation occurrs  
+      real :: Nreq_B                                  ! N required in litter decomposition to maintain microbial C:N
+      real :: Nreq_S                                  ! N required in litter decomposition to maintain SOM C:N
+      real :: Nfix                                    ! temporary variable, N fixation implied in litter decomposition,
+      real :: rest                                    ! temporary variable
       real :: req                                     ! N required for litter decomposition 
       real :: avl                                     ! mineral N available as NH4
       real :: grossmin                                ! gross mineralisation
@@ -52,12 +56,27 @@
       real :: soilmoist
       real :: soiltemp
 
+      ! xxx test
+      type (nitrogen):: test
+      type (carbon)  :: Cbal_before
+      type (carbon)  :: Cbal_after
+      type (nitrogen):: Nbal_before
+      type (nitrogen):: Nbal_after
+      real :: Nbal2_before
+      real :: Nbal2_after
+
+      ! xxx test
+      Cbal_before = cplus( plitt_af(1,1)%c, plitt_as(1,1)%c, plitt_bg(1,1)%c, psoil_fs(1,1)%c, psoil_sl(1,1)%c, drhet(1) )
+      Nbal_before = nplus( plitt_af(1,1)%n, plitt_as(1,1)%n, plitt_bg(1,1)%n, psoil_fs(1,1)%n, psoil_sl(1,1)%n, nh4(1,1) )
 
       do lu=1,nlu
 
         ! XXX try
         soiltemp = 10.    
-        soilmoist = 0.8    
+        soilmoist = 0.8   
+
+        ! Initialise
+        dlitt = orgpool( carbon(0.0), nitrogen(0.0) ) 
 
         !/////////////////////////////////////////////////////////////////////////
         ! DECAY RATES
@@ -126,9 +145,13 @@
             dlitt_af = orgfrac( 1.-exp(-klitt_af(pft)), plitt_af(pft,jpngr) )
             dlitt_as = orgfrac( 1.-exp(-klitt_as(pft)), plitt_as(pft,jpngr) )
             dlitt_bg = orgfrac( 1.-exp(-klitt_bg(pft)), plitt_bg(pft,jpngr) )
-                          
+
+            !print*,'dlitt_af',dlitt_af
+            !print*,'dlitt_as',dlitt_as
+            !print*,'dlitt_bg',dlitt_bg
 
             ! Update the litter pools
+            call orginit( dlitt(pft) )
             call orgmv( dlitt_af, plitt_af(pft,jpngr), dlitt(pft) )
             call orgmv( dlitt_as, plitt_as(pft,jpngr), dlitt(pft) )
             call orgmv( dlitt_bg, plitt_bg(pft,jpngr), dlitt(pft) )
@@ -139,72 +162,93 @@
             ! critical C:N ratio for net mineralisation is a function of C:N
             ! ratio of decomposing litter. Eq. 9 in Xu-Ri & Prentice, 2014
             !----------------------------------------------------------------
-            ntoc_crit = ntoc_crit1 * cton( dlitt(pft) ) ** ntoc_crit2
-            eff = cton_microb * ntoc_crit
-            
+            ntoc_crit = ntoc_crit1 * ntoc( dlitt(pft) ) ** ntoc_crit2  ! = rCR
+            eff = ntoc_crit * cton_microb 
+            !print*,'ntoc_crit1', ntoc_crit1
+            !print*,'ntoc_crit2', ntoc_crit2
+            !print*,'(1./cton_microb)',(1./cton_microb)
+            !print*,'ntoc litt ',ntoc( dlitt(pft) )
+            !print*,'ntoc_crit ',ntoc_crit
+            !print*,'eff ',eff
+            !stop
 
             !////////////////////////////////////////////////////////////////
             ! LITTER -> SOIL FLUX AND NET MINERALISATION/IMMOBILISATION
             ! Calculate net mineralisation/immobilisation based on Manzoni
             ! et al. (2008) and Xu-Ri & Prentice (2014).
-            !----------------------------------------------------------------
+            !----------------------------------------------------------------    
+            ! CARBON LITTER -> SOIL TRANSFER
+            !----------------------------------------------------------------    
+            ! move fraction 'eff' of C from litter to soil
+            call ccp( cfrac( eff*fastfrac     , dlitt(pft)%c ), psoil_fs(lu,jpngr)%c )
+            call ccp( cfrac( eff*(1.-fastfrac), dlitt(pft)%c ), psoil_sl(lu,jpngr)%c )
 
-            ! calculate actually required N to satisfy C:N ratio of soil
-            ! = eff*delta(litter)*NCratio(soil)
-            ! prescribe soil C:N ratio per PFT
-            req = 1./ cton_soil(pft) * dlitt(pft)%c%c12 * eff
-            print*,'req', req
-            print*,'dlitt', dlitt
-            
-            ! gross N mineralisation 
-            grossmin = (1.-eff) * dlitt(pft)%n%n14 ! defined as scalar
+            ! move fraction '(1-eff)' of C to heterotrophic respiration
+            call ccp( cfrac( (1.-eff), dlitt(pft)%c ), drhet(lu) )
 
-            ! net N mineralisation (or immobilisation if negative)
-            netmin   = grossmin - req                         ! defined as scalar
-            
-            ! move fraction 'eff' of C and N from litter to soil
-            call orgmv( orgfrac(eff*fastfrac,dlitt(pft)), dlitt(pft), psoil_fs(lu,jpngr) )
-            call orgmv( orgfrac(eff*(1.-fastfrac),dlitt(pft)), dlitt(pft), psoil_sl(lu,jpngr) )
+            ! NITROGEN LITTER -> SOIL TRANSFER
+            !----------------------------------------------------------------    
+            ! requirement to maintain rB (N:C ratio)
+            Nreq_B =  dlitt(pft)%c%c12 * ntoc_crit 
 
-            ! move fraction '(1-eff)' of C and N to heterotrophic respiration
-            call cmv( cfrac((1.-eff),dlitt(pft)%c), dlitt(pft)%c, drhet(lu) )
+            ! N requirement to maintain rS (SOM N:C ratio)
+            Nreq_S = dlitt(pft)%c%c12 * eff / cton_soil(pft)  ! 1/cton_soil = rS
 
-            if (netmin>0) then                
-              ! mineralised litter enters ammonium pool
-              nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 + netmin 
-              
-            else
-              ! mineral N is immobilised into soil
-              ! if not enough mineral N is available imply fixation (free-living)
-              req = (-1.)*netmin
+            ! Difference is acquired through N fixation ???
+            Nfix = max( 0., Nreq_S - Nreq_B )
+
+            ! If N supply is sufficient, mineralisation occurrs: positive (dNLit-Nreq).
+            ! otherwise, immobilisation occurrs: negative (dNLit-Nreq).
+            ! Thus, the balance for total organic N is:
+            ! dN/dt = -(dNLit - Nreq)
+            !       = -(dCLit*rL - dCLit*eff*rB)
+            !       = dCLit*(rCR - rL) , rCR=eff*rB ('critical' N:C ratio)
+            ! This corresponds to Eq. S3 in Manzoni et al., 2010
+            !netmin = dlitt(pft)%n%n14 - Nreq_B XXX COMMENTED THIS OUT BECAUSE IT DOES NOT HOLD SOIL C:N RATIO CONSTANT!!!
+            netmin = dlitt(pft)%n%n14 - Nreq_B
+
+            if (netmin<0.0) then
+              ! Immobilisation of N
+              req = -1.0*netmin
               avl = nh4(lu,jpngr)%n14
-              
+
               if (avl>=req) then
                 ! enough mineral N for immobilisation
-                psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14 + req*fastfrac
-                psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14 + req*(1.-fastfrac)             
                 nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - req
               else
-                ! not enough mineral N for immobilisation -> additional free-living fixation
-                psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14 + req*fastfrac
-                psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14 + req*(1.-fastfrac)
+                ! not enough N for immobilisation => free-living N fixation
                 nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - avl
-                dnfix_free(lu) = dnfix_free(lu) + (req - avl)
-              end if
+                Nfix = Nfix + (req - avl)
+              endif
+            endif
 
-            end if
+            ! Rest remains in the system: 
+            rest = dlitt(pft)%n%n14 - netmin
+            call ncp( nfrac( fastfrac     , nitrogen(rest) ), psoil_fs(lu,jpngr)%n )
+            call ncp( nfrac( (1.-fastfrac), nitrogen(rest) ), psoil_sl(lu,jpngr)%n )
 
-            print*,'nh4',nh4(lu,jpngr)
+            ! Add Nfix to SOM ==> should maintain soil C:N ratio
+            call ncp( nfrac( fastfrac     , nitrogen(Nfix) ), psoil_fs(lu,jpngr)%n )
+            call ncp( nfrac( (1.-fastfrac), nitrogen(Nfix) ), psoil_sl(lu,jpngr)%n )
+
+            ! record this for output (free-living N fixation)
+            dnfix_free(lu) = dnfix_free(lu) + Nfix
+
+            ! xxx test
+            Nbal2_after = psoil_sl(lu,jpngr)%n%n14 + psoil_fs(lu,jpngr)%n%n14 + nh4(lu,jpngr)%n14 - dnfix_free(lu) 
+            !print*,'ok if zero: ', Nbal2_before - Nbal2_after
             
           end if
         end do ! pft loop
 
-          
-        ! xxx try : un-comment these lines again
 
         !////////////////////////////////////////////////////////////////
         ! SOIL DECAY
         !----------------------------------------------------------------
+
+        ! xxx test
+        !Nbal2_before = psoil_sl(lu,jpngr)%n%n14 + psoil_fs(lu,jpngr)%n%n14 + nh4(lu,jpngr)%n14 
+
         ! Calculate daily/monthly soil decomposition to the atmosphere
         dsoil_fs = orgfrac( (1.-exp(-ksoil_fs(lu))), psoil_fs(lu,jpngr))
         dsoil_sl = orgfrac( (1.-exp(-ksoil_sl(lu))), psoil_sl(lu,jpngr))
@@ -217,12 +261,24 @@
         call nmv( dsoil_fs%n, psoil_fs(lu,jpngr)%n, nh4(lu,jpngr) )
         call nmv( dsoil_sl%n, psoil_sl(lu,jpngr)%n, nh4(lu,jpngr) )
 
+        ! xxx test
+        !Nbal2_after = psoil_sl(lu,jpngr)%n%n14 + psoil_fs(lu,jpngr)%n%n14 + nh4(lu,jpngr)%n14
+        !print*,'ok if zero: ', Nbal2_before - Nbal2_after
 
         ! Record monthly (daily) soil turnover flux (labile carbon availability)
         !----------------------------------------------------------------
         ! doc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
 
       enddo                   !lu
+
+      ! xxx test
+      Cbal_after = cplus( plitt_af(1,1)%c, plitt_as(1,1)%c, plitt_bg(1,1)%c, psoil_fs(1,1)%c, psoil_sl(1,1)%c, drhet(1) )
+      Nbal_after = nplus( plitt_af(1,1)%n, plitt_as(1,1)%n, plitt_bg(1,1)%n, psoil_fs(1,1)%n, psoil_sl(1,1)%n, nh4(1,1) )
+      Nbal_after = nminus( Nbal_after, nitrogen(dnfix_free(lu)) )
+
+      !print*,'ok if zero: ', cminus( Cbal_after, Cbal_before )
+      !print*,'dnfix_free ', dnfix_free
+      !print*,'ok if zero: ', nminus( Nbal_after, Nbal_before )
 
 
       end subroutine littersom

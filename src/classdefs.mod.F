@@ -112,6 +112,20 @@
        end subroutine orgmv
 
 
+       subroutine orginit(pool)
+         !////////////////////////////////////////////////////////////////
+         !  Generic SR to initialise organic pool
+         !----------------------------------------------------------------
+
+         implicit none
+         type (orgpool), intent(inout) :: pool
+
+         call cinit(pool%c)
+         call ninit(pool%n)
+
+       end subroutine orginit
+
+
        !--------------------------CARBON----------------------------------
 
        subroutine cmv(amount,from,to,scale)
@@ -173,13 +187,28 @@
          type (carbon), intent(in) :: amount
          type (carbon), intent(inout) :: from
 
-         if (from%c12>0) then
-           from%c12 = from%c12 - amount%c12
-         else if (from%c12>0) then
-           stop 'in SR csub: trying to remove c12 from empty pool'
+#if _check_sanity
+         if (amount%c12>from%c12) then
+           stop 'in CSUB: attempting to remove amount > from-pool'
          endif
+#endif
+         from%c12 = from%c12 - amount%c12
            
        end subroutine csub
+
+
+       subroutine cinit(pool)
+         !////////////////////////////////////////////////////////////////
+         !  Generic SR to initialise organic pool
+         !----------------------------------------------------------------
+
+         implicit none
+         type (carbon), intent(inout) :: pool
+
+         pool%c12 = 0.
+
+       end subroutine cinit
+
 
        !--------------------------NITROGEN--------------------------------
 
@@ -233,13 +262,27 @@
          type (nitrogen), intent(in) :: amount
          type (nitrogen), intent(inout) :: from
 
-         if (from%n14>0) then
-           from%n14 = from%n14 - amount%n14
-         else if (from%n14>0) then
-           stop 'in SR csub: trying to remove n14 from empty pool'
+#if _check_sanity
+         if (amount%n14>from%n14) then
+           stop 'in NSUB: attempting to remove amount > from-pool'
          endif
-
+#endif
+         from%n14 = from%n14 - amount%n14
+  
        end subroutine nsub
+
+
+       subroutine ninit(pool)
+         !////////////////////////////////////////////////////////////////
+         !  Generic SR to initialise organic pool
+         !----------------------------------------------------------------
+
+         implicit none
+         type (nitrogen), intent(inout) :: pool
+
+         pool%n14 = 0.
+
+       end subroutine ninit
 
 
        !--------------------------FUNCTIONS--------------------------------
@@ -301,7 +344,7 @@
        end function nfrac
 
 
-       function orgplus( pool1, pool2 )
+       function orgplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 )
          !////////////////////////////////////////////////////////////////
          !  Generic function to return variable sum of two pools of type 
          !  'orgpool'. Sum is of type 'orgpool' as well.
@@ -309,13 +352,56 @@
          implicit none
 
          ! arguments
-         type (orgpool), intent(in) :: pool1, pool2
+         type (orgpool), intent(in) :: pool1
+         type (orgpool), intent(in) :: pool2
+         type (orgpool), intent(in),optional :: pool3
+         type (orgpool), intent(in),optional :: pool4
+         type (orgpool), intent(in),optional :: pool5
+         type (orgpool), intent(in),optional :: pool6
+         type (orgpool), intent(in),optional :: pool7
+         type (orgpool), intent(in),optional :: pool8
+         type (orgpool), intent(in),optional :: pool9
+         type (orgpool), intent(in),optional :: pool10
          
          ! function return variable
          type (orgpool) :: orgplus
 
          orgplus%c = cplus(pool1%c,pool2%c)
          orgplus%n = nplus(pool1%n,pool2%n)
+
+         if (present(pool3)) then
+           orgplus%c = cplus(orgplus%c,pool3%c)
+           orgplus%n = nplus(orgplus%n,pool3%n)
+           if (present(pool4)) then
+             orgplus%c = cplus(orgplus%c,pool4%c)
+             orgplus%n = nplus(orgplus%n,pool4%n)
+             if (present(pool5)) then
+               orgplus%c = cplus(orgplus%c,pool5%c)
+               orgplus%n = nplus(orgplus%n,pool5%n)
+               if (present(pool6)) then
+                 orgplus%c = cplus(orgplus%c,pool6%c)
+                 orgplus%n = nplus(orgplus%n,pool6%n)
+                 if (present(pool7)) then
+                   orgplus%c = cplus(orgplus%c,pool7%c)
+                   orgplus%n = nplus(orgplus%n,pool7%n)
+                   if (present(pool8)) then
+                     orgplus%c = cplus(orgplus%c,pool8%c)
+                     orgplus%n = nplus(orgplus%n,pool8%n)
+                     if (present(pool9)) then
+                       orgplus%c = cplus(orgplus%c,pool9%c)
+                       orgplus%n = nplus(orgplus%n,pool9%n)
+                       if (present(pool10)) then
+                         orgplus%c = cplus(orgplus%c,pool10%c)
+                         orgplus%n = nplus(orgplus%n,pool10%n)
+                       end if
+                     end if
+                   end if
+                 end if
+               end if
+             end if
+           end if
+         end if
+
 
        end function orgplus
 
@@ -438,9 +524,39 @@
          ! function return variable
          type (carbon) :: cminus
 
+
+#if _check_sanity
+         if (pool1%c12<pool2%c12) then
+           stop 'in CMINUS: arg 1 < arg 2'
+         endif
+#endif
          cminus%c12 = pool1%c12 - pool2%c12
 
        end function cminus
+
+
+       function nminus( pool1, pool2 )
+         !////////////////////////////////////////////////////////////////
+         !  Generic function to return variable difference of two pools of 
+         !  type 'carbon'. Sum is of type 'carbon' as well.
+         !----------------------------------------------------------------
+         implicit none
+
+         ! arguments
+         type (nitrogen), intent(in) :: pool1
+         type (nitrogen), intent(in) :: pool2
+         
+         ! function return variable
+         type (nitrogen) :: nminus
+
+#if _check_sanity
+         if (pool1%n14<pool2%n14) then
+           stop 'in NMINUS: arg 1 < arg 2'
+         endif
+#endif
+         nminus%n14 = pool1%n14 - pool2%n14
+
+       end function nminus
 
 
        function cton( pool )
@@ -455,6 +571,14 @@
          ! function return variable
          real :: cton
 
+#if _check_sanity
+         if (pool%n%n14==0.) then
+           stop 'in CTON: N is zero'
+         endif
+         if (pool%n%n14<0.0 .or. pool%c%c12<0.0) then
+           stop 'in CTON: C and/or N is negative'
+         endif
+#endif
          cton = pool%c%c12 / pool%n%n14
 
        end function cton
@@ -473,6 +597,14 @@
          ! function return variable
          real :: ntoc
 
+#if _check_sanity
+         if (pool%c%c12==0.) then
+           stop 'in NTOC: C is zero'
+         endif
+         if (pool%n%n14<0.0 .or. pool%c%c12<0.0) then
+           stop 'in CTON: C and/or N is negative'
+         endif
+#endif
          ntoc = pool%n%n14 / pool%c%c12 
 
        end function ntoc
