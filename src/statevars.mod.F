@@ -10,26 +10,27 @@
         implicit none
         real, dimension(npft) :: dtransp          ! daily transpiration [mm/d]
 
-        type (carbon), dimension(nlu)  :: dnep    ! net ecosystem production [gC/m2/d]
+        type(carbon), dimension(nlu)  :: dnep     ! net ecosystem production [gC/m2/d]
         real, dimension(npft)          :: dgpp    ! gross primary production [gC/m2/d]
-        type (carbon), dimension(npft) :: dnpp    ! net primary production [gC/m2/d]
+        type(carbon), dimension(npft) :: dnpp     ! net primary production [gC/m2/d]
          
-        type (carbon), dimension(npft) :: drsoil  ! soil respiration (only from exudates decomp.) [gC/m2/d]
-        type (carbon), dimension(nlu)  :: drhet   ! heterotrophic respiration [gC/m2/d]
-        real, dimension(npft)          :: drauto  ! autotrophic respiration (growth+maintenance resp. of all compartments), no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-        real, dimension(npft)          :: drleaf  ! leaf maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-        real, dimension(npft)          :: drroot  ! root maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-        real, dimension(npft)          :: drgrow  ! growth respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-        type (carbon), dimension(npft) :: dcex    ! labile C exudation for N uptake, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-        type (carbon), dimension(nlu)  :: dreco   ! ecosystem repsiration, sum over above individual components [gC/m2/d]
+        type(carbon), dimension(npft) :: drsoil   ! soil respiration (only from exudates decomp.) [gC/m2/d]
+        type(carbon), dimension(nlu)  :: drhet    ! heterotrophic respiration [gC/m2/d]
+        real, dimension(npft) :: drauto           ! autotrophic respiration (growth+maintenance resp. of all compartments), no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+        real, dimension(npft) :: drleaf           ! leaf maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+        real, dimension(npft) :: drroot           ! root maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+        real, dimension(npft) :: drgrow           ! growth respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+        real, dimension(npft) :: dcex             ! labile C exudation for N uptake, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+        real, dimension(npft) :: netmin_litt      ! net N mineralisation in litter decomposition
+        real, dimension(nlu)  :: netmin_soil      ! net N mineralisation in soil decomposition
 
-        real,dimension(nlu)  :: doc               ! daily soil turnover, used as surrogate for labile C (former 'doc') [gC/m2/d]
+        real,dimension(nlu)   :: doc               ! daily soil turnover, used as surrogate for labile C (former 'doc') [gC/m2/d]
 
-        type (nitrogen),dimension(npft) :: dnup              ! daily N uptake [gN/m2/d]
-        real,dimension(npft) :: dnup_pas
-        real,dimension(npft) :: dnup_act
-        real,dimension(npft) :: dnup_fix        
-        real,dimension(npft) :: dnup_ret
+        type(nitrogen),dimension(npft) :: dnup    ! daily N uptake [gN/m2/d]
+        real,dimension(npft) :: dnup_pas          ! daily passive N uptake [gN/m2/d]
+        real,dimension(npft) :: dnup_act          ! daily active N uptake [gN/m2/d]  
+        real,dimension(npft) :: dnup_fix          ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
+        real,dimension(npft) :: dnup_ret          ! daily N uptake [gN/m2/d]
 
         real,dimension(nlu)  :: dnfix_free        ! N fixation by free-living organisms [gN/m2/d]
 

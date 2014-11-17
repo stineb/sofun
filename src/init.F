@@ -86,24 +86,25 @@
 
       implicit none
 
-      dnpp(:)    = carbon(0.0)
-      drsoil(:)  = carbon(0.0)
-      drhet(:)   = carbon(0.0)
-      dnep(:)    = carbon(0.0)
-      dcex(:)    = carbon(0.0)
-      dreco(:)   = carbon(0.0)
-      dgpp(:)    = 0.0
-      drauto(:)  = 0.0
-      drleaf(:)  = 0.0
-      drroot(:)  = 0.0
-      drgrow(:)  = 0.0
+      dnpp(:)        = carbon(0.0)
+      drsoil(:)      = carbon(0.0)
+      drhet(:)       = carbon(0.0)
+      dnep(:)        = carbon(0.0)
+      dcex(:)        = 0.0
+      dgpp(:)        = 0.0
+      drauto(:)      = 0.0
+      drleaf(:)      = 0.0
+      drroot(:)      = 0.0
+      drgrow(:)      = 0.0
+      netmin_litt(:) = 0.0
+      netmin_soil(:) = 0.0
 
-      dnup(:)    = nitrogen(0.0)
-      dnfix_free(:) = 0.0
-      dnup_pas(:) = 0.0
-      dnup_act(:) = 0.0
-      dnup_fix(:) = 0.0
-      dnup_ret(:) = 0.0
+      dnup(:)        = nitrogen(0.0)
+      dnfix_free(:)  = 0.0
+      dnup_pas(:)    = 0.0
+      dnup_act(:)    = 0.0
+      dnup_fix(:)    = 0.0
+      dnup_ret(:)    = 0.0
 
       ! xxx try
       ! hold soil carbon and litter pools at a constant size
@@ -130,8 +131,17 @@
 
       implicit none
 
+      ! daily output variables
+      outdgpp(:,:,:)   = 0.0
+      outdnpp(:,:,:)   = 0.0
+      outdnup(:,:,:)   = 0.0
+      outdcleaf(:,:,:) = 0.0
+      outdcex(:,:,:)   = 0.0
+      outdnetmin(:,:,:)= 0.0
+
+      ! annual output variables
       outagpp(:,:)   = 0.0
-      outanpp(:,:)   = carbon(0.0)
-      outanup(:,:)   = nitrogen(0.0)
+      outanpp(:,:)   = 0.0
+      outanup(:,:)   = 0.0
 
       end subroutine initoutput

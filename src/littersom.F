@@ -10,7 +10,7 @@
       use params_core
       use classdefs
       use rates
-      use statevars, only: drsoil, drhet, dnfix_free, doc
+      use statevars, only: drsoil, drhet, dnfix_free, doc, netmin_litt, netmin_soil
       use params_modl
       use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, nh4
 
@@ -50,24 +50,20 @@
       real :: req                                     ! N required for litter decomposition 
       real :: avl                                     ! mineral N available as NH4
       real :: grossmin                                ! gross mineralisation
-      real :: netmin                                  ! net mineralisation
      
       ! xxx try
       real :: soilmoist
       real :: soiltemp
 
-      ! xxx test
-      type (nitrogen):: test
-      type (carbon)  :: Cbal_before
-      type (carbon)  :: Cbal_after
-      type (nitrogen):: Nbal_before
-      type (nitrogen):: Nbal_after
-      real :: Nbal2_before
-      real :: Nbal2_after
+#if _check_sanity
+      real :: cbal_before
+      real :: cbal_after
+      real :: nbal_before
+      real :: nbal_after
 
-      ! xxx test
-      Cbal_before = cplus( plitt_af(1,1)%c, plitt_as(1,1)%c, plitt_bg(1,1)%c, psoil_fs(1,1)%c, psoil_sl(1,1)%c, drhet(1) )
-      Nbal_before = nplus( plitt_af(1,1)%n, plitt_as(1,1)%n, plitt_bg(1,1)%n, psoil_fs(1,1)%n, psoil_sl(1,1)%n, nh4(1,1) )
+      cbal_before = plitt_af(1,1)%c%c12 + plitt_as(1,1)%c%c12 + plitt_bg(1,1)%c%c12 + psoil_fs(1,1)%c%c12 + psoil_sl(1,1)%c%c12 + drhet(1)%c12
+      nbal_before = plitt_af(1,1)%n%n14 + plitt_as(1,1)%n%n14 + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 + psoil_sl(1,1)%n%n14 + nh4(1,1)%n14
+#endif
 
       do lu=1,nlu
 
@@ -205,11 +201,11 @@
             !       = dCLit*(rCR - rL) , rCR=eff*rB ('critical' N:C ratio)
             ! This corresponds to Eq. S3 in Manzoni et al., 2010
             !netmin = dlitt(pft)%n%n14 - Nreq_B XXX COMMENTED THIS OUT BECAUSE IT DOES NOT HOLD SOIL C:N RATIO CONSTANT!!!
-            netmin = dlitt(pft)%n%n14 - Nreq_B
+            netmin_litt(pft) = dlitt(pft)%n%n14 - Nreq_B
 
-            if (netmin<0.0) then
+            if (netmin_litt(pft)<0.0) then
               ! Immobilisation of N
-              req = -1.0*netmin
+              req = -1.0*netmin_litt(pft)
               avl = nh4(lu,jpngr)%n14
 
               if (avl>=req) then
@@ -223,7 +219,7 @@
             endif
 
             ! Rest remains in the system: 
-            rest = dlitt(pft)%n%n14 - netmin
+            rest = dlitt(pft)%n%n14 - netmin_litt(pft)
             call ncp( nfrac( fastfrac     , nitrogen(rest) ), psoil_fs(lu,jpngr)%n )
             call ncp( nfrac( (1.-fastfrac), nitrogen(rest) ), psoil_sl(lu,jpngr)%n )
 
@@ -233,10 +229,6 @@
 
             ! record this for output (free-living N fixation)
             dnfix_free(lu) = dnfix_free(lu) + Nfix
-
-            ! xxx test
-            Nbal2_after = psoil_sl(lu,jpngr)%n%n14 + psoil_fs(lu,jpngr)%n%n14 + nh4(lu,jpngr)%n14 - dnfix_free(lu) 
-            !print*,'ok if zero: ', Nbal2_before - Nbal2_after
             
           end if
         end do ! pft loop
@@ -246,9 +238,6 @@
         ! SOIL DECAY
         !----------------------------------------------------------------
 
-        ! xxx test
-        !Nbal2_before = psoil_sl(lu,jpngr)%n%n14 + psoil_fs(lu,jpngr)%n%n14 + nh4(lu,jpngr)%n14 
-
         ! Calculate daily/monthly soil decomposition to the atmosphere
         dsoil_fs = orgfrac( (1.-exp(-ksoil_fs(lu))), psoil_fs(lu,jpngr))
         dsoil_sl = orgfrac( (1.-exp(-ksoil_sl(lu))), psoil_sl(lu,jpngr))
@@ -257,13 +246,12 @@
         call cmv( dsoil_fs%c, psoil_fs(lu,jpngr)%c, drhet(lu) )
         call cmv( dsoil_sl%c, psoil_sl(lu,jpngr)%c, drhet(lu) )
 
+        !! Record N mineralisation for output
+        netmin_soil(lu) = netmin_soil(lu) + dsoil_fs%n%n14 + dsoil_sl%n%n14
+
         !! Move N from soil pool to ammonium pool
         call nmv( dsoil_fs%n, psoil_fs(lu,jpngr)%n, nh4(lu,jpngr) )
         call nmv( dsoil_sl%n, psoil_sl(lu,jpngr)%n, nh4(lu,jpngr) )
-
-        ! xxx test
-        !Nbal2_after = psoil_sl(lu,jpngr)%n%n14 + psoil_fs(lu,jpngr)%n%n14 + nh4(lu,jpngr)%n14
-        !print*,'ok if zero: ', Nbal2_before - Nbal2_after
 
         ! Record monthly (daily) soil turnover flux (labile carbon availability)
         !----------------------------------------------------------------
@@ -271,14 +259,19 @@
 
       enddo                   !lu
 
-      ! xxx test
-      Cbal_after = cplus( plitt_af(1,1)%c, plitt_as(1,1)%c, plitt_bg(1,1)%c, psoil_fs(1,1)%c, psoil_sl(1,1)%c, drhet(1) )
-      Nbal_after = nplus( plitt_af(1,1)%n, plitt_as(1,1)%n, plitt_bg(1,1)%n, psoil_fs(1,1)%n, psoil_sl(1,1)%n, nh4(1,1) )
-      Nbal_after = nminus( Nbal_after, nitrogen(dnfix_free(lu)) )
-
-      !print*,'ok if zero: ', cminus( Cbal_after, Cbal_before )
-      !print*,'dnfix_free ', dnfix_free
-      !print*,'ok if zero: ', nminus( Nbal_after, Nbal_before )
+#if _check_sanity
+      cbal_after = plitt_af(1,1)%c%c12 + plitt_as(1,1)%c%c12 + plitt_bg(1,1)%c%c12 + psoil_fs(1,1)%c%c12 + psoil_sl(1,1)%c%c12 + drhet(1)%c12
+      nbal_after = plitt_af(1,1)%n%n14 + plitt_as(1,1)%n%n14 + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 + psoil_sl(1,1)%n%n14 + nh4(1,1)%n14
+      nbal_after = Nbal_after - dnfix_free(1)
+      if (abs(cbal_after-cbal_before)>1.d9) then
+        print*,'cbal_before, cbal_after ', cbal_before, cbal_after
+        stop 'C balance violated in LITTERSOM'
+      endif
+      if (abs(nbal_after-nbal_before)>1.d9) then
+        print*,'nbal_before, nbal_after ', nbal_before, nbal_after
+        stop 'N balance violated in LITTERSOM'
+      endif
+#endif
 
 
       end subroutine littersom

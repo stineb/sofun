@@ -105,14 +105,15 @@
           ! PFT loop has to be closed above to get total NPP over all PFTs in each 
           ! LU. 
           !-------------------------------------------------------------------------
-          !call nuptake( jpngr, pft )
+          ! SR nuptake calculates dcex and dnup (incl. dnup_act, dnup_pas, ...)
+          call nuptake( jpngr, pft )
 
           ! xxx try
-          dcex(pft) = carbon(0.0)
-          dnup(pft) = nitrogen( dnpp(pft)%c12/cton_pro(pft) )
+          !dcex(pft) = carbon(0.0)
+          !dnup(pft) = nitrogen( dnpp(pft)%c12/cton_pro(pft) )
 
           ! Add exuded C to exudates pool (fast decay)
-          call ccp( dcex(pft), pexud(pft,jpngr) )
+          call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
 
           !/////////////////////////////////////////////////////////////////////////
           ! TO LABILE POOL
@@ -120,12 +121,10 @@
           ! XXX Allocation is called here without "paying"  growth respir.?
           !-------------------------------------------------------------------------
           !print*,'dnpp, dcex, dnup ', dnpp(pft), dcex(pft), dnup(pft)
-          call orgcp( orgpool( cminus( dnpp(pft), dcex(pft) ), dnup(pft) ), plabl(pft,jpngr) )
-
+          call orgcp( orgpool( cminus( dnpp(pft), carbon(dcex(pft)) ), dnup(pft) ), plabl(pft,jpngr) )
           !print*,'plabl ',plabl(pft,jpngr)%c%c12
 
         endif
-
       end do
 
       contains

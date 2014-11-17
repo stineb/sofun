@@ -10,19 +10,39 @@
       character(len=256) :: prefix
       character(len=256) :: filnam
 
-      !//////////////////////////////////////////////////////////////////////////////
+      !////////////////////////////////////////////////////////////////
       ! OPEN ASCII OUTPUT FILES FOR DAILY OUTPUT
-      !------------------------------------------------------------------------------
+      !----------------------------------------------------------------
       prefix = "./output/"//trim(runname)
 
+      ! GPP
       filnam=trim(prefix)//'.d.gpp.dat'
       open(101,file=filnam,err=999,status='unknown')
 
+      ! NPP
       filnam=trim(prefix)//'.d.npp.dat'
       open(102,file=filnam,err=999,status='unknown')
 
+      ! LEAF C
       filnam=trim(prefix)//'.d.cleaf.dat'
       open(103,file=filnam,err=999,status='unknown')
+
+      ! N UPTAKE
+      filnam=trim(prefix)//'.d.nup.dat'
+      open(104,file=filnam,err=999,status='unknown')
+
+      ! C EXUDATION
+      filnam=trim(prefix)//'.d.cex.dat'
+      open(105,file=filnam,err=999,status='unknown')
+
+      ! NET N MINERALISATION
+      filnam=trim(prefix)//'.d.netmin.dat'
+      open(106,file=filnam,err=999,status='unknown')
+
+      ! INORGANIC N (NO3+NH4)
+      filnam=trim(prefix)//'.d.ninorg.dat'
+      open(106,file=filnam,err=999,status='unknown')
+
 
       return
 

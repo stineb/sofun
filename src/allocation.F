@@ -41,8 +41,12 @@
       real    :: nbal_after
 
       ! xxx test
-      cbal_before = plabl(pft,jpngr)%c%c12 + pleaf(pft,jpngr)%c%c12 + proot(pft,jpngr)%c%c12
-      nbal_before = plabl(pft,jpngr)%n%n14 + pleaf(pft,jpngr)%n%n14 + proot(pft,jpngr)%n%n14
+      cbal_before = plabl(1,1)%c%c12 + pleaf(1,1)%c%c12 + proot(1,1)%c%c12
+      nbal_before = plabl(1,1)%n%n14 + pleaf(1,1)%n%n14 + proot(1,1)%n%n14
+      !print*,'ALLOCATION'
+      !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+      !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+      !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 #endif
 
       ! PFT LOOP
@@ -50,7 +54,7 @@
          
         if (ispresent(pft,jpngr)) then
           
-          ! sanity check
+          ! sanity check`
           if(nind(pft,jpngr)==0) stop
 
           ! determine how much of labile pool to allocate to growth this year
@@ -167,8 +171,8 @@
        
 #if _check_sanity  
       ! xxx test
-      cbal_after = plabl(pft,jpngr)%c%c12 + pleaf(pft,jpngr)%c%c12 + proot(pft,jpngr)%c%c12
-      nbal_after = plabl(pft,jpngr)%n%n14 + pleaf(pft,jpngr)%n%n14 + proot(pft,jpngr)%n%n14
+      cbal_after = plabl(1,1)%c%c12 + pleaf(1,1)%c%c12 + proot(1,1)%c%c12
+      nbal_after = plabl(1,1)%n%n14 + pleaf(1,1)%n%n14 + proot(1,1)%n%n14
       if (abs(cbal_after-cbal_before)>1.d9) then
         print*,'cbal_before, cbal_after ', cbal_before, cbal_after
         stop 'C balance violated in ALLOCATION'

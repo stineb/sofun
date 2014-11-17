@@ -103,6 +103,10 @@
 
       subroutine biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_uptake )
 
+      ! xxx debug
+      use statevars
+      use pools
+
       implicit none
 
       ! arguments
@@ -121,7 +125,16 @@
       if (init) then
          
         ! Initialise pool variables and/or read from restart file (not implemented)
+        ! xxx debug
+        !print*,'A'
+        !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+        !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+        !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
         call initglobal
+        !print*,'B'
+        !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+        !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+        !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
         ! Open input/output files
         call initio(runname)
@@ -147,9 +160,18 @@
 
       endif
 
+      !print*,'C'
+      !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+      !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+      !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+
       ! Initialise output variables
       call initoutput
 
+      !print*,'D'
+      !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+      !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+      !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
       ! LOOP THROUGH GRIDCELLS
       do jpngr=1,maxgrid
@@ -171,6 +193,12 @@
             ! initialise daily updated variables 
             call initdaily
 
+            !print*,'E'
+            !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+            !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+            !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+
+
             ! get GPP from input
             call gpp( pco2, year, realyear, mo, dm, day )
 
@@ -184,6 +212,12 @@
             ! labile pool (plabl)
             ! xxx try: second argument is dtemp_soil
             call npp( jpngr, dtemp(day), 1.0 )
+
+            !print*,'F'
+            !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+            !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+            !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+
 
 #if _allocation_pipe
             ! allocate biomass increment
@@ -203,15 +237,28 @@
             ! inorganic soil N chemistry
             call ntransform( dm, mo, jpngr, dprec )
 
-            ! collect from daily updated state variables for annual variables
-            call getout_daily( jpngr )
+            !print*,'G'
+            !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+            !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+            !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
-            ! write to daily output
-            !call writeout_daily( year, day ) 
+            ! collect from daily updated state variables for annual variables
+            call getout_daily( jpngr, mo, day )
+
+            !print*,'H'
+            !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+            !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+            !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
           end do
 
         end do
+
+        !print*,'I'
+        !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+        !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+        !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+
 
 #if _allocation_pipe==0
         ! allocate biomass increment
@@ -219,16 +266,21 @@
         call allocation_annual( jpngr )
 #endif
 
+        !print*,'K'
+        !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+        !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+        !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+
         ! reduce part of NPP for reproduction
         !call reproduction
 
         !call light
         !call mortality
         !call fire
-        call establishment(jpngr)
+        call establishment( jpngr )
 
-        ! collect output field variables
-        !call getout_fields
+        ! Write to output
+        call writeout_ascii( year )
 
       end do
 

@@ -9,9 +9,23 @@
 
         implicit none
 
+        !----------------------------------------------------------------
+        ! Daily output variables
+        !----------------------------------------------------------------
+        real, dimension(npft,ndayyear,maxgrid) :: outdgpp
+        real, dimension(npft,ndayyear,maxgrid) :: outdnpp
+        real, dimension(npft,ndayyear,maxgrid) :: outdnup
+        real, dimension(npft,ndayyear,maxgrid) :: outdcleaf
+        real, dimension(npft,ndayyear,maxgrid) :: outdcex
+
+        real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin
+        real, dimension(nlu,ndayyear,maxgrid)  :: outdninorg
+
+        !----------------------------------------------------------------
+        ! Annual output variables
+        !----------------------------------------------------------------
         real, dimension(npft,maxgrid) :: outagpp
-        type(carbon), dimension(npft,maxgrid)   :: outanpp
-        type(nitrogen), dimension(npft,maxgrid) :: outanup
-
-
+        real, dimension(npft,maxgrid) :: outanpp
+        real, dimension(npft,maxgrid) :: outanup
+    
       end module outvars
