@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 SOFUN
 -----------
 
@@ -81,3 +82,26 @@ Fortran-derived types are used to define pools of organic matter (roots, sapwood
 
 
 
+=======
+========================================
+IMPORTANT NOTICE:
+this repository has been transferred to 
+https://bitbucket.org/labprentice/sofun
+27 Oct 2014
+========================================
+This program serves as a structure for a global vegetation model and is based on LPX-Bern.
+It emerges from the project SOFUN (thus its name): Seasonal Optimisation of Uptake and Fixation of Nitrogen.
+Code is programmed in Fortran 90 and can be compiles using either the PGI90 compiler or gfortran (others not tested).
+Written, developed and maintained via https://github.com/stineb/sofun by Beni Stocker (b.stocker@imperial.ac.uk).
+
+To compile, do
+  
+  make
+
+Adjust Makefile and src/Makefile to use a different compiler.
+To run the program, do
+
+  echo RUNNAME | ./runsofun
+
+Change 'RUNNAME' to any given simulation name. Parameter files containing 'RUNNAME' in their file name need to be adjusted accordingly (replacing the string 'RUNNAME' with your simulation name and adjusting parameter values.).
+>>>>>>> 9912890bb86e83fda9ff362d5867381b0d0852cb
