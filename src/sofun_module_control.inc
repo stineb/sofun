@@ -10,10 +10,27 @@ c Option:   After Mäkelä et al., 2008, New Phyt.
 c ----------------------------------------------------------------------
 
 c ----------------------------------------------------------------------
+c PHOTOSYNTHESIS
+c Default: xxx
+c Option:  After Mäkelä et al., 2008, New Phyt.
+#define _gpp_makela 1
+c ----------------------------------------------------------------------
+
+c ----------------------------------------------------------------------
+c N UPTAKE
+c Default: FUN type after Fisher et al., 2011
+c Option:  After Mäkelä et al., 2008, New Phyt.
+#define _nuptake_makela 1
+c ----------------------------------------------------------------------
+
+c ----------------------------------------------------------------------
 c ALLOCATION
 c Default: annually called, like in LPX for grass PFT
 c Option:  Pipe model as described in Mäkelä et al., 2008, New Phyt.
-#define _allocation_pipe 0
+c Note that _allocation_pipe does not account for the separation between
+c sapwood and heartwood. The pool 'psapw' is taken to represent 
+c 'live wood'. This affects how turnover is formulated (see turnover.F)
+#define _allocation_pipe 1
 c ----------------------------------------------------------------------
 
 c //////////////////////////////////////////////////////////////////////
@@ -27,7 +44,7 @@ c This is only useful for site scale simulations.
 c ----------------------------------------------------------------------
 
 c Prescribe GPP per day
-#define _prescr_gpp_site 1
+#define _prescr_gpp_site 0
 
 c //////////////////////////////////////////////////////////////////////
 c SANITY

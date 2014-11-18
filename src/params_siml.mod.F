@@ -17,6 +17,9 @@
       character(len=6)   :: sitename
       character(len=256) :: input_dir
       character(len=256) :: co2_forcing_file
+#if _nuptake_makela 
+      real :: navail_mak                     ! prescribed N availability
+#endif
 
       contains
 
@@ -65,16 +68,21 @@
       implicit none
       character(len=*), intent(in) :: runname
       
+      ! Check flag combination, abort if incompatible
+#if _prescr_gpp_site && _gpp_makela
+      print*,'flag _prescr_gpp_site is activated.'
+      print*,'flag _gpp_makela is activated.'
+      stop 'GETPAR_SIML: invalid flag combination. abort.'
+#endif
+
       ! Read in main model parameters
       write(0,*) 'reading parameter file ', runname//".sofun.parameter ..."
 
       call getstring(runname//".sofun.parameter",'sitename',sitename)
       call getlogical(runname//".sofun.parameter",'spinup',do_spinup)
       call getint(runname//".sofun.parameter",'spinupyears',spinupyears)
-      call getint(runname//".sofun.parameter",'firstyeartrend',
-     $     firstyeartrend)
-      call getint(runname//".sofun.parameter",'nyeartrend',
-     $     nyeartrend)
+      call getint(runname//".sofun.parameter",'firstyeartrend',firstyeartrend)
+      call getint(runname//".sofun.parameter",'nyeartrend',nyeartrend)
       
       call getstring(runname//".sofun.parameter",'input_dir',input_dir)
       call getstring(runname//".sofun.parameter",'co2_forcing_file',co2_forcing_file)
@@ -86,6 +94,10 @@
         spinupyears = 0
       endif
       
+#if _nuptake_makela
+      call getreal(runname//".sofun.parameter",'navail_mak',navail_mak)
+#endif
+
       end subroutine getpar_siml
 
       

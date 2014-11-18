@@ -7,6 +7,7 @@
       !----------------------------------------------------------------
       use pools
       use statevars
+      use params_modl, only: tree
 
       implicit none
 
@@ -21,9 +22,12 @@
       ! transfer killed mass to litter
       call orgmv( pleaf(pft,jpngr), pleaf(pft,jpngr), plitt_af(pft,jpngr), scale=nind(pft,jpngr) )
       call orgmv( proot(pft,jpngr), proot(pft,jpngr), plitt_bg(pft,jpngr), scale=nind(pft,jpngr) )
+      call orgmv( plabl(pft,jpngr), plabl(pft,jpngr), plitt_af(pft,jpngr), scale=nind(pft,jpngr) )  ! xxx or add this to below-ground litter?
 
-      !call orgcp( orgfrac(nind(pft,jpngr),pleaf(pft,jpngr)), plitt_af(pft,jpngr) )
-      !call orgcp( orgfrac(nind(pft,jpngr),proot(pft,jpngr)), plitt_bg(pft,jpngr) )
+      if (tree(pft)) then
+            call orgmv( psapw(pft,jpngr), psapw(pft,jpngr), plitt_af(pft,jpngr), scale=nind(pft,jpngr) )
+            call orgmv( pwood(pft,jpngr), pwood(pft,jpngr), plitt_as(pft,jpngr), scale=nind(pft,jpngr) )
+      end if
 
       call initpft(pft,jpngr)
 

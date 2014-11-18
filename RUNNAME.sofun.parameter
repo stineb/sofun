@@ -5,14 +5,18 @@
 #                                      |
 # write value behind this position:    |->
 
+# Standard site name
 sitename                                AU-How
 
+# Model spinup setting
 spinup                                  .true.
 spinupyears                             10
 
+# Start and length of simulation in years (AD)
 firstyeartrend                          1982
 nyeartrend                              31
 
+# input files
 input_dir                               /alphadata01/bstocker/sofun/trunk/input/
 co2_forcing_file                        cCO2_rcp85_const850-1765.dat
 

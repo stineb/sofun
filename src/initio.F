@@ -41,7 +41,7 @@
 
       ! INORGANIC N (NO3+NH4)
       filnam=trim(prefix)//'.d.ninorg.dat'
-      open(106,file=filnam,err=999,status='unknown')
+      open(107,file=filnam,err=999,status='unknown')
 
 
       return

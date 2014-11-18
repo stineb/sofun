@@ -12,10 +12,10 @@
       !-------------------------------------------------------------------------
       use classdefs
       use params_core, only: npft, nlu
-      use params_modl, only: rresp_growth, lu_category, cton_pro
+      use params_modl, only: rresp_growth, lu_category, cton_pro, tree
       use rates
-      use statevars, only: dgpp, dnpp, drauto, drleaf, drroot, drhet, drgrow, dcex, dnup, nind, ispresent
-      use pools, only: pleaf, proot, pexud, plabl
+      use statevars, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, drhet, drgrow, dcex, dnup, nind, ispresent
+      use pools, only: pleaf, proot, psapw, pexud, plabl
 
       implicit none
 
@@ -57,11 +57,16 @@
           !drroot(pft) = carbon( resp_maint( proot(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_soil ) )
           drleaf(pft) = resp_maint( pleaf(pft,jpngr)%n%n14 * nind(pft,jpngr), pft, ftemp=ftemp_air )
           drroot(pft) = resp_maint( proot(pft,jpngr)%n%n14 * nind(pft,jpngr), pft, ftemp=ftemp_soil )
-          ! done here: sapwood respiration for trees
+          if (tree(pft)) then
+            drsapw(pft) = resp_maint( psapw(pft,jpngr)%n%n14 * nind(pft,jpngr), pft, ftemp=ftemp_air )
+          endif
           
           ! daily total maintenance repsiration
           !dresp_maint = cplus( drleaf(pft), drroot(pft) )
           dresp_maint = drleaf(pft) + drroot(pft)
+          if (tree(pft)) then
+            dresp_maint = dresp_maint + drsapw(pft)
+          endif
 
 
           !/////////////////////////////////////////////////////////////////////////
@@ -88,6 +93,9 @@
           ! XXX NPP may get negative here!
           !-------------------------------------------------------------------------
           drauto(pft) = dresp_maint + drgrow(pft)
+
+          ! xxx do here: if drauto > dgpp then use plabl for respiration.
+
           dnpp(pft)   = carbon( max(dgpp(pft) - drauto(pft), 0.) ) 
 
           !if (dnpp(pft)%c12<0.) then
@@ -136,6 +144,7 @@
       ! incorporating daily phenology. This is using the new leaf respiration method
       ! (spahni 2009-12-11: set leaf_resp_rs==0 for old respiration method)
       !-------------------------------------------------------------------------
+      use params_core, only: ndayyear
       use params_modl, only: rresp_maint, kresp
 
       implicit none
@@ -147,6 +156,8 @@
       real, intent(in), optional :: ftemp   ! temperature modifier
 
 #if _resp_maint_makela
+      ! value from Table 1, Makela et al., 2008, converted to gC/gN/day
+      rresp_maint(pft) = 16.0 / ndayyear
       resp_maint = rresp_maint(pft) * nmass
 #else
       resp_maint = rresp_maint(pft) * kresp * nmass * ftemp ! xxx try: *dphen(day,pft)

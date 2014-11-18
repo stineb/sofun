@@ -64,201 +64,201 @@
        contains
 
        subroutine getpar_modl
-       !////////////////////////////////////////////////////////////////
-       !  Subroutine reads model parameters from input file
-       !----------------------------------------------------------------
+              !////////////////////////////////////////////////////////////////
+              !  Subroutine reads model parameters from input file
+              !----------------------------------------------------------------
 
-       implicit none
+              implicit none
 
-       ! local variables
-       integer :: pft
-       integer, parameter :: npar = 30
-       real, dimension(npar) :: params_array
+              ! local variables
+              integer :: pft
+              integer, parameter :: npar = 30
+              real, dimension(npar) :: params_array
 
-       integer, parameter :: npar_pft = 12
-       real, dimension(npar_pft) :: pft_params_array
+              integer, parameter :: npar_pft = 12
+              real, dimension(npar_pft) :: pft_params_array
 
-       real, dimension(npft) :: lu_category_prov    ! land use category associated with PFT (provisional)
-
-
-       !----------------------------------------------------------------
-       ! NON-PFT DEPENDENT PARAMETERS
-       ! read parameter input file and store values in single array
-       !----------------------------------------------------------------
-       open(unit=01,file='params_modl.dat',status='OLD')      
-       read (01,*) params_array
-       close (01)
-
-       ! above-ground fast (leaf) litter decay rate [1/d]
-       klitt_af10 = params_array(1)/ndayyear
-
-       ! above-ground slow (woody) litter decay rate [1/d] 
-       klitt_as10 = params_array(2)/ndayyear
-
-       ! below-ground (root) litter decay rate [1/d] 
-       klitt_bg10 = params_array(3)/ndayyear
-
-       ! exudates decay rate [1/d]
-       kexu10 = params_array(4)/ndayyear
-
-       ! fast soil pool decay rate [1/d]
-       ksoil_fs10 = params_array(5)/ndayyear
-
-       ! slow soil pool decay rate [1/d]
-       ksoil_sl10 = params_array(6)/ndayyear
-
-       ! factor for "Manzoni Equation" (XPXXX) [1]
-       ntoc_crit1 = params_array(7)
-
-       ! exponent for "Manzoni Equation" (XPXXX) [1]
-       ntoc_crit2 = params_array(8)
-
-       ! C:N ratio of microbial biomass [1]
-       cton_microb = params_array(9)
-
-       ! fraction of litter input to fast soil pool [1]
-       fastfrac = params_array(10)
-
-       ! constant ratio between leaf and sapwood C/N ratios (Friend et al.,2008 in XP08)
-       rcton_LS = params_array(11)
-
-       ! constant ratio between leaf and root C/N ratios (Friend et al., 2008 in XP08)
-       rcton_LR = params_array(12)
-
-       ! maximum nitrification rate
-       MAXNITR = params_array(13)
-
-       ! maximum NO from nitrification (day-1)
-       NON = params_array(14)
-
-       ! maximum N2O from nitrification (day-1)
-       N2ON = params_array(15)
-
-       ! Michaelis-Menten coefficient [gN/m2]. Use this value if soil represents top 100 cm 
-       KN = params_array(16)
-
-       ! Michaelis-Menten coefficient [gC/m2]. Use this value if soil represents top 100 cm 
-       KDOC = params_array(17)
-
-       ! DOCMAX
-       DOCMAX = params_array(18)
-
-       ! Fraction of denitrification lost as N2O. Range of possible values: 0.002 - 0.047 (Xu-Ri and Prentice, 2008)
-       DNITR2N2O = params_array(19)
-
-       ! leaf to root ratio under non-water stressed conditions
-       lmtorm0 = params_array(20)
-
-       ! canopy light extinction coefficient
-       kbeer = params_array(21)
-
-       ! additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
-       kresp = params_array(22)
-
-       ! shape parameter of cost function of N fixation 
-       ! Below parameters (MINIMUMCOSTFIX, FIXOPTIMUM, FIXWIDTH ) are based on 
-       ! the assumption that the cost of symbiotic N fixation is the 
-       ! inverse of nitrogenase activity. 
-       ! After Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
-       ! (value from Gutschik 1981)
-       MINIMUMCOSTFIX = params_array(23)
-
-       ! shape parameter of cost function of N fixation 
-       FIXOPTIMUM = params_array(24)
-
-       ! shape parameter of cost function of N fixation 
-       FIXWIDTH = params_array(25)
-
-       ! N-availability constant in cost function for active NO3 uptake
-       KN_ACTIVE_NO3 = params_array(26)
-       
-       ! N-availability constant in cost function for active NH4 uptake
-       KN_ACTIVE_NH4 = params_array(27)
-
-       ! root exploration constant in cost function for active NO3 uptake
-       KC_ACTIVE_NO3 = params_array(28)
-       
-       ! root exploration constant in cost function for active NH4 uptake
-       KC_ACTIVE_NH4 = params_array(29)
-
-       ! fraction of N retained at leaf abscission 
-       F_NRETAIN = params_array(30)        
+              real, dimension(npft) :: lu_category_prov    ! land use category associated with PFT (provisional)
 
 
-       !----------------------------------------------------------------
-       ! PFT DEPENDENT PARAMETERS
-       ! read parameter input file and store values in single array
-       !----------------------------------------------------------------
-       open(unit=02,file='params_pft.dat',status='OLD')      
-       read (02,*) pft_params_array
-       close (02)
+              !----------------------------------------------------------------
+              ! NON-PFT DEPENDENT PARAMETERS
+              ! read parameter input file and store values in single array
+              !----------------------------------------------------------------
+              open(unit=01,file='params_modl.dat',status='OLD')      
+              read (01,*) params_array
+              close (01)
 
-       ! initialise
-       grass(:) = .false.
-       tree(:)  = .false.
+              ! above-ground fast (leaf) litter decay rate [1/d]
+              klitt_af10 = params_array(1)/ndayyear
 
-       do pft=1,npft
+              ! above-ground slow (woody) litter decay rate [1/d] 
+              klitt_as10 = params_array(2)/ndayyear
 
-              ! C:N ratio of soil organic matter [1]
-              cton_soil(pft) = pft_params_array(1)
+              ! below-ground (root) litter decay rate [1/d] 
+              klitt_bg10 = params_array(3)/ndayyear
 
-              ! C:N ratio of new production
-              cton_pro(pft) = pft_params_array(6)
+              ! exudates decay rate [1/d]
+              kexu10 = params_array(4)/ndayyear
 
-              ! land use category associated with PFT (provisional)
-              lu_category_prov(pft) = pft_params_array(2)
-              if (lu_category_prov(pft)==1.) lu_category(pft) = lunat
+              ! fast soil pool decay rate [1/d]
+              ksoil_fs10 = params_array(5)/ndayyear
 
-              ! leaf type: broadleaved (1), needleleaved (2), grass (3) or moss (4)
-              if (pft_params_array(3)==3.) then
-                     grass(pft) = .true.
-              else
-                     tree(pft) = .true.
-              end if
+              ! slow soil pool decay rate [1/d]
+              ksoil_sl10 = params_array(6)/ndayyear
 
-              ! sapling (or grass on initialisation) LAI
-              lai0(pft) = pft_params_array(4)
+              ! factor for "Manzoni Equation" (XPXXX) [1]
+              ntoc_crit1 = params_array(7)
 
-              ! leaf longevity [days], read in as [years]
-              long_leaf(pft) = pft_params_array(5)*ndayyear
+              ! exponent for "Manzoni Equation" (XPXXX) [1]
+              ntoc_crit2 = params_array(8)
 
-              ! specific leaf area [m2/gC]
-              ! defined as a function of 'long_leaf'
-              ! Include conversion (multiplier of 2.0) from m2/g(dry wt) to m2/gC
-              ! Equation based on Reich et al 1997, Fig 1f:
-              sla(pft)=2.0e-4*exp(6.15-0.46*log(long_leaf(pft)*12.0))
+              ! C:N ratio of microbial biomass [1]
+              cton_microb = params_array(9)
 
-              ! leaf mass of sapling
-              if (grass(pft)) then
-                     lm_sapl(pft)%c%c12 = lai0(pft)/sla(pft)
-                     lm_sapl(pft)%n%n14 = lm_sapl(pft)%c%c12/cton_pro(pft)
-              end if
-              rm_sapl(pft)%c%c12 = (1.0/lmtorm0)*lm_sapl(pft)%c%c12
-              rm_sapl(pft)%n%n14 = rm_sapl(pft)%c%c12/cton_pro(pft)
+              ! fraction of litter input to fast soil pool [1]
+              fastfrac = params_array(10)
 
-              ! PFT identification code (1=C3 grass)
-              pftcode(pft) = int(pft_params_array(7))
+              ! constant ratio between leaf and sapwood C/N ratios (Friend et al.,2008 in XP08)
+              rcton_LS = params_array(11)
 
-              ! sapwood turnover period [days], read in as [years]
-              long_sapw(pft) = pft_params_array(8)*ndayyear
+              ! constant ratio between leaf and root C/N ratios (Friend et al., 2008 in XP08)
+              rcton_LR = params_array(12)
 
-              ! root turnover period [days], read in as [years]
-              long_root(pft) = pft_params_array(9)*ndayyear
+              ! maximum nitrification rate
+              MAXNITR = params_array(13)
 
-              ! maintenance respiration coefficient
-              rresp_maint(pft) = pft_params_array(10)
+              ! maximum NO from nitrification (day-1)
+              NON = params_array(14)
 
-              ! N-fixing plant? (0=false, 1=true)
-              if (pft_params_array(11)==0.) then
-                     nfixer(pft) = .false.
-              else
-                     nfixer(pft) = .true.
-              endif
+              ! maximum N2O from nitrification (day-1)
+              N2ON = params_array(15)
 
-              ! growth respiration coefficient
-              rresp_growth(pft) = pft_params_array(12)
+              ! Michaelis-Menten coefficient [gN/m2]. Use this value if soil represents top 100 cm 
+              KN = params_array(16)
 
-       end do
+              ! Michaelis-Menten coefficient [gC/m2]. Use this value if soil represents top 100 cm 
+              KDOC = params_array(17)
+
+              ! DOCMAX
+              DOCMAX = params_array(18)
+
+              ! Fraction of denitrification lost as N2O. Range of possible values: 0.002 - 0.047 (Xu-Ri and Prentice, 2008)
+              DNITR2N2O = params_array(19)
+
+              ! leaf to root ratio under non-water stressed conditions
+              lmtorm0 = params_array(20)
+
+              ! canopy light extinction coefficient
+              kbeer = params_array(21)
+
+              ! additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
+              kresp = params_array(22)
+
+              ! shape parameter of cost function of N fixation 
+              ! Below parameters (MINIMUMCOSTFIX, FIXOPTIMUM, FIXWIDTH ) are based on 
+              ! the assumption that the cost of symbiotic N fixation is the 
+              ! inverse of nitrogenase activity. 
+              ! After Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
+              ! (value from Gutschik 1981)
+              MINIMUMCOSTFIX = params_array(23)
+
+              ! shape parameter of cost function of N fixation 
+              FIXOPTIMUM = params_array(24)
+
+              ! shape parameter of cost function of N fixation 
+              FIXWIDTH = params_array(25)
+
+              ! N-availability constant in cost function for active NO3 uptake
+              KN_ACTIVE_NO3 = params_array(26)
+              
+              ! N-availability constant in cost function for active NH4 uptake
+              KN_ACTIVE_NH4 = params_array(27)
+
+              ! root exploration constant in cost function for active NO3 uptake
+              KC_ACTIVE_NO3 = params_array(28)
+              
+              ! root exploration constant in cost function for active NH4 uptake
+              KC_ACTIVE_NH4 = params_array(29)
+
+              ! fraction of N retained at leaf abscission 
+              F_NRETAIN = params_array(30)        
+
+
+              !----------------------------------------------------------------
+              ! PFT DEPENDENT PARAMETERS
+              ! read parameter input file and store values in single array
+              !----------------------------------------------------------------
+              open(unit=02,file='params_pft.dat',status='OLD')      
+              read (02,*) pft_params_array
+              close (02)
+
+              ! initialise
+              grass(:) = .false.
+              tree(:)  = .false.
+
+              do pft=1,npft
+
+                     ! C:N ratio of soil organic matter [1]
+                     cton_soil(pft) = pft_params_array(1)
+
+                     ! C:N ratio of new production
+                     cton_pro(pft) = pft_params_array(6)
+
+                     ! land use category associated with PFT (provisional)
+                     lu_category_prov(pft) = pft_params_array(2)
+                     if (lu_category_prov(pft)==1.) lu_category(pft) = lunat
+
+                     ! leaf type: broadleaved (1), needleleaved (2), grass (3) or moss (4)
+                     if (pft_params_array(3)==3.) then
+                            grass(pft) = .true.
+                     else
+                            tree(pft) = .true.
+                     end if
+
+                     ! sapling (or grass on initialisation) LAI
+                     lai0(pft) = pft_params_array(4)
+
+                     ! leaf longevity [days], read in as [years]
+                     long_leaf(pft) = pft_params_array(5)*ndayyear
+
+                     ! specific leaf area [m2/gC]
+                     ! defined as a function of 'long_leaf'
+                     ! Include conversion (multiplier of 2.0) from m2/g(dry wt) to m2/gC
+                     ! Equation based on Reich et al 1997, Fig 1f:
+                     sla(pft)=2.0e-4*exp(6.15-0.46*log(long_leaf(pft)*12.0))
+
+                     ! leaf mass of sapling
+                     if (grass(pft)) then
+                            lm_sapl(pft)%c%c12 = lai0(pft)/sla(pft)
+                            lm_sapl(pft)%n%n14 = lm_sapl(pft)%c%c12/cton_pro(pft)
+                     end if
+                     rm_sapl(pft)%c%c12 = (1.0/lmtorm0)*lm_sapl(pft)%c%c12
+                     rm_sapl(pft)%n%n14 = rm_sapl(pft)%c%c12/cton_pro(pft)
+
+                     ! PFT identification code (1=C3 grass)
+                     pftcode(pft) = int(pft_params_array(7))
+
+                     ! sapwood turnover period [days], read in as [years]
+                     long_sapw(pft) = pft_params_array(8)*ndayyear
+
+                     ! root turnover period [days], read in as [years]
+                     long_root(pft) = pft_params_array(9)*ndayyear
+
+                     ! maintenance respiration coefficient
+                     rresp_maint(pft) = pft_params_array(10)
+
+                     ! N-fixing plant? (0=false, 1=true)
+                     if (pft_params_array(11)==0.) then
+                            nfixer(pft) = .false.
+                     else
+                            nfixer(pft) = .true.
+                     endif
+
+                     ! growth respiration coefficient
+                     rresp_growth(pft) = pft_params_array(12)
+
+              end do
 
        end subroutine getpar_modl
 

@@ -11,6 +11,8 @@
       ! initialise all pools with zero
       pleaf(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
       proot(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
+      psapw(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
+      pwood(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
       plabl(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
 
       pexud(:,:)    = carbon(0.0)
@@ -47,6 +49,7 @@
       !----------------------------------------------------------------
       use pools
       use statevars
+      use params_modl, only: tree
 
       implicit none
       integer, intent(in) :: pft
@@ -56,6 +59,10 @@
       pleaf(pft,jpngr) = orgpool(carbon(0.),nitrogen(0.))
       proot(pft,jpngr) = orgpool(carbon(0.),nitrogen(0.))
       plabl(pft,jpngr) = orgpool(carbon(0.),nitrogen(0.))
+      if (tree(pft)) then
+            psapw(pft,jpngr) = orgpool(carbon(0.),nitrogen(0.))
+            pwood(pft,jpngr) = orgpool(carbon(0.),nitrogen(0.))
+      endif
 
       ! initialise other properties
       fpc_grid(pft,jpngr)  = 0.0
@@ -138,6 +145,7 @@
       outdcleaf(:,:,:) = 0.0
       outdcex(:,:,:)   = 0.0
       outdnetmin(:,:,:)= 0.0
+      outdninorg(:,:,:)= 0.0
 
       ! annual output variables
       outagpp(:,:)   = 0.0

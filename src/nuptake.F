@@ -1,7 +1,28 @@
+#if _nuptake_makela
       subroutine nuptake( jpngr, pft )
-      !******************************************************************************
+      !*****************************************************************
+      ! SIMPLE N UPTAKE FUNCTION AFTER MAKELA ET AL., 2008
+      !-----------------------------------------------------------------
+      use pools
+      use params_siml, only: navail_mak
+
+      implicit none
+      
+      ! ARGUMENTS
+      integer, intent(in) :: jpngr
+
+      ! LOCAL VARIABLES
+
+      ! Amount of roots capturing 50% of available N [g/m2] (given as 2000 kg-leaf-DW/ha)
+      real, parameter :: K_r = 400.0
+
+      dnup(pft) = ( navail_mak * proot(pft,jpngr)%c%c12 * nind(pft,jpngr) * K_r ) / ( proot(pft,jpngr)%c%c12 * nind(pft,jpngr) + K_r )
+
+#else
+      subroutine nuptake( jpngr, pft )
+      !*****************************************************************
       ! SUBROUTINE N_UPTAKE FOR FUN APPROACH
-      !-------------------------------------------------------------------------
+      !-----------------------------------------------------------------
       ! This model calculates first the passive uptake of N via the transpiration stream
       ! then, if that uptake is insufficient to satisfy the demand from NPP, the remaining
       ! NPP is used to pay for N uptake by one or more of fixation and active uptake. The N
@@ -9,7 +30,7 @@
       ! for growth (n_grow=n_uptake) hence we calculate the optimum amount of carbon
       ! supplied to the roots/nodules to satisfy this constraint.
       ! Adopted from Fischer et al., 2010 by Beni Stocker, July 2012
-      !-------------------------------------------------------------------------
+      !-----------------------------------------------------------------
       use classdefs
       use params_core
       use params_modl, only: lu_category, cton_pro, nfixer
@@ -20,6 +41,7 @@
       
       ! ARGUMENTS
       integer, intent(in) :: jpngr
+
       real :: soilmoist          ! is either dw1 or mw1, depending on temporal mode
       real :: soiltemp           ! is either dtemp_soil, or mtemp_soil, depending on temporal mode
       
@@ -756,6 +778,8 @@
       ! Houlton
 
       end subroutine nuptake
+
+#endif
 
       
 c$$$      subroutine n_fixation_cryptogam( day, lu, jpngr, dnfix_cpc, dnfix_cgc )

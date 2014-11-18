@@ -19,6 +19,7 @@
         real, dimension(npft) :: drauto           ! autotrophic respiration (growth+maintenance resp. of all compartments), no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
         real, dimension(npft) :: drleaf           ! leaf maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
         real, dimension(npft) :: drroot           ! root maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+        real, dimension(npft) :: drsapw           ! sapwood maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
         real, dimension(npft) :: drgrow           ! growth respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
         real, dimension(npft) :: dcex             ! labile C exudation for N uptake, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
         real, dimension(npft) :: netmin_litt      ! net N mineralisation in litter decomposition

@@ -196,11 +196,12 @@
             !print*,'E'
             !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
             !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-            !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+            !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12
+            !print*,'nh4 ',nh4(1,1)%n14 
 
 
             ! get GPP from input
-            call gpp( pco2, year, realyear, mo, dm, day )
+            call gpp( jpngr, pco2, year, realyear, mo, dm, day )
 
             ! calculate water balance
             !call waterbalance
@@ -219,11 +220,11 @@
             !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
 
-#if _allocation_pipe
+            !#if _allocation_pipe
             ! allocate biomass increment
             ! precompiler flag used here because option requires allocation to be called daily
-            call allocation_daily( jpngr )
-#endif
+            !call allocation_daily( jpngr )
+            !#endif
 
             ! amount of NPP added to reproduction (xxx ignore at this point)
             !call reproduction( jpngr )
@@ -233,6 +234,9 @@
 
             ! litter and soil turnover
             call littersom( jpngr )
+            !print*,'F'
+            !print*,'nh4 ',nh4(1,1)%n14 
+
 
             ! inorganic soil N chemistry
             call ntransform( dm, mo, jpngr, dprec )
@@ -241,6 +245,7 @@
             !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
             !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
             !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+            !print*,'nh4 ',nh4(1,1)%n14 
 
             ! collect from daily updated state variables for annual variables
             call getout_daily( jpngr, mo, day )
@@ -260,11 +265,9 @@
         !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
 
-#if _allocation_pipe==0
         ! allocate biomass increment
         ! precompiler flag used here because option requires allocation to be called daily
         call allocation_annual( jpngr )
-#endif
 
         !print*,'K'
         !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 

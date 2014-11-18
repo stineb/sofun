@@ -21,6 +21,7 @@
       !print*,'netmin_soil ',netmin_soil(1)
 
       !----------------------------------------------------------------
+      ! DAILY
       ! Collect daily output variables
       ! so far not implemented for isotopes
       !----------------------------------------------------------------
@@ -44,6 +45,7 @@
       end do
 
       !----------------------------------------------------------------
+      ! ANNUAL
       ! Collect annual output variables
       !----------------------------------------------------------------
       do pft=1,npft
