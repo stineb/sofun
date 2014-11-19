@@ -12,7 +12,7 @@
       !-------------------------------------------------------------------------
       use classdefs
       use params_core, only: npft, nlu
-      use params_modl, only: rresp_growth, lu_category, cton_pro, tree
+      use params_modl, only: rresp_growth, lu_category, tree
       use rates
       use statevars, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, drhet, drgrow, dcex, dnup, nind, ispresent
       use pools, only: pleaf, proot, psapw, pexud, plabl
@@ -43,7 +43,7 @@
           lu=lu_category(pft)
           
           ! reference temperature: 10°C
-          ftemp_air  = ftemp( dtemp, "lloyd_and_taylor" )   ! xxx leave dtemp really with day-dimension?
+          ftemp_air  = ftemp( dtemp, "lloyd_and_taylor" )
           ftemp_soil = ftemp( dtemp_soil(lu), "lloyd_and_taylor" )
 
           
@@ -116,10 +116,6 @@
           ! SR nuptake calculates dcex and dnup (incl. dnup_act, dnup_pas, ...)
           call nuptake( jpngr, pft )
 
-          ! xxx try
-          !dcex(pft) = carbon(0.0)
-          !dnup(pft) = nitrogen( dnpp(pft)%c12/cton_pro(pft) )
-
           ! Add exuded C to exudates pool (fast decay)
           call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
 
@@ -156,8 +152,8 @@
       real, intent(in), optional :: ftemp   ! temperature modifier
 
 #if _resp_maint_makela
-      ! value from Table 1, Makela et al., 2008, converted to gC/gN/day
-      rresp_maint(pft) = 16.0 / ndayyear
+      ! value for rresp_maint from Table 1, Makela et al., 2008, converted to gC/gN/day
+      ! read in as 0.04383562 = 16/365 gC/gN/yr
       resp_maint = rresp_maint(pft) * nmass
 #else
       resp_maint = rresp_maint(pft) * kresp * nmass * ftemp ! xxx try: *dphen(day,pft)

@@ -51,7 +51,7 @@
 
       do pft=1,npft
         lu=lu_category(pft)
-        if(lu_area(lu,jpngr)<1.0d-12) estab(pft)=.false.
+        !if(lu_area(lu,jpngr)<1.0d-12) estab(pft)=.false.
         if(fpc_total(lu)>1.0) estab(pft)=.false.
       enddo
 
@@ -70,7 +70,8 @@
           if (tree(pft)) then
             nind(pft,jpngr)=0.0
             crownarea(pft,jpngr)=0.0
-          else  !grass or moss              
+          else  !grass or moss  
+            stop 'ESTABLISHMENT: not implemented for trees'            
             nind(pft,jpngr)=1.0
             crownarea(pft,jpngr)=1.0
           endif
@@ -116,7 +117,7 @@
         lu=lu_category(pft)
         if(ispresent(pft,jpngr).and.estab(pft)) then
 
-          if  (grass(pft)) then
+          if (grass(pft)) then
             !------------------------------------------------------------------------------
             ! GRASS ESTABLISHMENT
             !------------------------------------------------------------------------------

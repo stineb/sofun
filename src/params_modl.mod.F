@@ -5,6 +5,7 @@
        !  Litter and soil turnover parameters are divided by 365 to 
        !  convert from [1/yr] to [1/d].
        !----------------------------------------------------------------
+#include "sofun_module_control.inc"
        use params_core
        use classdefs
 
@@ -60,6 +61,40 @@
        real, dimension(npft) :: rresp_maint         ! maintenance respiration coefficient
        real, dimension(npft) :: rresp_growth        ! growth respiration coefficient
        logical, dimension(npft) :: nfixer           ! whether plant is capable of symbiotically fixing N
+
+      !----------------------------------------------------------------
+      ! Parameter values from Makela et al., 2008, Table 1
+      !----------------------------------------------------------------
+#if _gpp_makela
+      ! Amount of foliage capturing 50% of maximum C gain [g/m2] (given as 2500 kg-leaf-DW/ha)
+      real, parameter :: K_f = 500.0
+
+      ! non-photosynthtic or structural N [gN/gC], assuming 0.5 gC/gDW (given as 0.009 kgN/kgDW)
+      real, parameter :: n_struct = 0.018
+
+      ! reference photosynthetic N [gN/gC], assuming 0.5 gC/gDW (given as 0.002 kgN/kgDW)
+      real, parameter :: n_ref = 0.004
+
+      ! N-saturated specific rate of photosynthesis [gC/g-foliage-C/yr] (given as 8.0 kgC/kgDW/yr)
+      ! xxx try: This is per year. Adjust it to get daily value: 16.0/365.0
+      real, parameter :: sigma_fm0 = 0.04383562
+
+#endif
+
+#if _allocation_makela
+       ! 'Steady-state' pipe length coefficient [m/(gC/gN)], given as 2800 m/(kg-N/kg-DW), assuming 0.5 gC/g-DW
+       real, parameter :: c_H = 5600.0
+
+       ! Sapwood weight per unit foliage and pipe length [m-1]
+       real, parameter :: alpha_w = 0.8
+
+#endif
+
+#if _nuptake_makela
+      ! Amount of roots capturing 50% of available N [g/m2] (given as 2000 kg-leaf-DW/ha)
+      real, parameter :: K_r = 400.0
+
+#endif
 
        contains
 
@@ -207,10 +242,10 @@
 
                      ! land use category associated with PFT (provisional)
                      lu_category_prov(pft) = pft_params_array(2)
-                     if (lu_category_prov(pft)==1.) lu_category(pft) = lunat
+                     if (lu_category_prov(pft)==1.0) lu_category(pft) = lunat
 
                      ! leaf type: broadleaved (1), needleleaved (2), grass (3) or moss (4)
-                     if (pft_params_array(3)==3.) then
+                     if (pft_params_array(3)==3.0) then
                             grass(pft) = .true.
                      else
                             tree(pft) = .true.
@@ -220,30 +255,34 @@
                      lai0(pft) = pft_params_array(4)
 
                      ! leaf longevity [days], read in as [years]
-                     long_leaf(pft) = pft_params_array(5)*ndayyear
+                     long_leaf(pft) = pft_params_array(5) * ndayyear
 
                      ! specific leaf area [m2/gC]
                      ! defined as a function of 'long_leaf'
                      ! Include conversion (multiplier of 2.0) from m2/g(dry wt) to m2/gC
                      ! Equation based on Reich et al 1997, Fig 1f:
-                     sla(pft)=2.0e-4*exp(6.15-0.46*log(long_leaf(pft)*12.0))
+                     sla(pft) = 2.0e-4 * exp( 6.15 - 0.46 * log( long_leaf(pft) * 12.0 ) )
 
                      ! leaf mass of sapling
                      if (grass(pft)) then
-                            lm_sapl(pft)%c%c12 = lai0(pft)/sla(pft)
-                            lm_sapl(pft)%n%n14 = lm_sapl(pft)%c%c12/cton_pro(pft)
+                            lm_sapl(pft)%c%c12 = lai0(pft) / sla(pft)
+                            lm_sapl(pft)%n%n14 = lm_sapl(pft)%c%c12 / cton_pro(pft)
+                     else
+                       xxx
                      end if
-                     rm_sapl(pft)%c%c12 = (1.0/lmtorm0)*lm_sapl(pft)%c%c12
-                     rm_sapl(pft)%n%n14 = rm_sapl(pft)%c%c12/cton_pro(pft)
+                     rm_sapl(pft)%c%c12 = ( 1.0 / lmtorm0 ) * lm_sapl(pft)%c%c12
+                     rm_sapl(pft)%n%n14 = rm_sapl(pft)%c%c12 / cton_pro(pft)
 
-                     ! PFT identification code (1=C3 grass)
+                     ! PFT identification code (same as in LPX)
+                     ! 3 = Temperate Needle Evergreen   TeNE
+                     ! 8 = C3 grass                     TeH
                      pftcode(pft) = int(pft_params_array(7))
 
                      ! sapwood turnover period [days], read in as [years]
-                     long_sapw(pft) = pft_params_array(8)*ndayyear
+                     long_sapw(pft) = pft_params_array(8) * ndayyear
 
                      ! root turnover period [days], read in as [years]
-                     long_root(pft) = pft_params_array(9)*ndayyear
+                     long_root(pft) = pft_params_array(9) * ndayyear
 
                      ! maintenance respiration coefficient
                      rresp_maint(pft) = pft_params_array(10)

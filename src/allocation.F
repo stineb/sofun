@@ -1,45 +1,48 @@
-#if _allocation_pipe
       subroutine allocation_annual( jpngr )
+        !////////////////////////////////////////////////////////////////
+        ! Annual allocation scheme adopted from LPX in case 
+        ! _allocation_pipe == 0 or adpted from Makela et al., 2008 else.
+        !----------------------------------------------------------------
+#include "sofun_module_control.inc"
+        use params_core
+        use classdefs
+        use pools, only: pleaf, proot, psapw, plitt_af, plitt_as, plabl
+        use statevars, only: ispresent, nind
+        use params_modl, only: lmtorm0, grass, rcton_LS, rcton_LR, cton_pro, c_H, alpha_w
+
+        implicit none
+
+        ! ARGUMENTS
+        integer, intent(in) :: jpngr          ! gridcell number
+
+#if _allocation_makela
         !////////////////////////////////////////////////////////////////
         ! Daily allocation scheme. Pipe model (steady state). Adopted
         ! from Makela et al., 2008
         !----------------------------------------------------------------
 
-        implicit none
-
-        ! ARGUMENTS
-        integer, intent(in) :: jpngr
-
         ! LOCAL VARIABLES
-        real :: L_ss                          ! Pipe length at quasi-steady state
+        integer :: pft 
+        real    :: L_ss                          ! Pipe length at quasi-steady state
 
-        ! 'Steady-state' pipe length coefficient [m/(gC/gN)], given as 2800 m/(kg-N/kg-DW), assuming 0.5 gC/g-DW
-        real, parameter :: c_H = 5600.0
+        do pft=1,npft
+          if (ispresent(pft,jpngr)) then
 
-        ! Pipe length at quasi-steady state (Eq.15 in Makela et al., 2008)
-        L_ss = c_H * ntoc( pleaf(pft,jpngr) )
+            ! Pipe length at quasi-steady state (Eq.15 in Makela et al., 2008)
+            L_ss = c_H * ntoc( pleaf(pft,jpngr) )
 
-        ! Mass of live wood
-        psapw(pft,jpngr)%c%c12 = alpha_w * pleaf(pft,jpngr)%c%c12  * L_ss
+            ! Mass of live wood
+            psapw(pft,jpngr)%c%c12 = alpha_w * pleaf(pft,jpngr)%c%c12  * L_ss
 
-      
+          end if
+        end do
+
       end subroutine allocation_annual
 
-
 #else
-      subroutine allocation_annual( jpngr )
         !////////////////////////////////////////////////////////////////
-        ! Annual allocation scheme adopted from LPX
+        ! Annual allocation scheme adopted from LPX.
         !----------------------------------------------------------------
-#include "sofun_module_control.inc"
-        use params_core
-        use classdefs
-        use pools, only: pleaf, proot, plitt_af, plitt_as, plabl
-        use statevars, only: ispresent, nind
-        use params_modl, only: lmtorm0, grass, rcton_LS, rcton_LR, cton_pro
-
-        ! ARGUMENTS
-        integer, intent(in) :: jpngr          ! gridcell number
 
         ! LOCAL VARIABLES
         integer :: pft                        ! PFT counter
@@ -60,13 +63,11 @@
         real    :: f_nr                       ! fraction of total plant N in roots
 
 #if _check_sanity  
-        ! xxx test
         real    :: cbal_before
         real    :: cbal_after
         real    :: nbal_before
         real    :: nbal_after
 
-        ! xxx test
         cbal_before = plabl(1,1)%c%c12 + pleaf(1,1)%c%c12 + proot(1,1)%c%c12
         nbal_before = plabl(1,1)%n%n14 + pleaf(1,1)%n%n14 + proot(1,1)%n%n14
         !print*,'ALLOCATION'
@@ -162,38 +163,40 @@
                  
                 ! Calculate partitioning coefficients (fraction of total N allocated to different compartments)
                 ! (Eq.2, Tab.3, XP08)
-                f_nl=1.0/(1.0+(rcton_LR*f_cr)/f_cl)
-                f_nr=rcton_LR*f_nl*f_cr/f_cl
+                f_nl = 1.0 / ( 1.0 + ( rcton_LR * f_cr ) / f_cl )
+                f_nr = rcton_LR * f_nl * f_cr / f_cl
                  
               else
                  
-                f_nl=0.0
-                f_nr=1.0
+                f_nl = 0.0
+                f_nr = 1.0
                  
               endif
               
-              plantN = pleaf(pft,jpngr)%n%n14+proot(pft,jpngr)%n%n14+nalloc_ind                   !Eq.1, Tab.3, XP08 (growth.cpp:1181)
+              plantN = pleaf(pft,jpngr)%n%n14 + proot(pft,jpngr)%n%n14 + nalloc_ind                   !Eq.1, Tab.3, XP08 (growth.cpp:1181)
               
               pleaf(pft,jpngr)%n = nitrogen(plantN*f_nl)
               proot(pft,jpngr)%n = nitrogen(plantN*f_nr)            !Eq.3, Tab.3, XP08 (growth.cpp:1184)
                           
 
+              ! xxx try
               ! spahni 2010-02-10: check if compartments are still positive
-              if (pleaf(pft,jpngr)%c%c12<1.0d-15 .or.proot(pft,jpngr)%c%c12<1.0d-15) then
+              !if (pleaf(pft,jpngr)%c%c12<1.0d-15 .or.proot(pft,jpngr)%c%c12<1.0d-15) then
                 !remove PFT
-                ispresent(pft,jpngr) = .false. 
+                !ispresent(pft,jpngr) = .false. 
                 ! xxx try: uncomment and define 'kill' SR
                 !call kill(pft,jpngr) !move any carbon (and nitrogen) to litter
-              endif
+              !endif
 
             endif                 ! if grass
 
           endif                   !ispresent
           
-          if (ispresent(pft,jpngr)) then        
+          ! xxx try
+          !if (ispresent(pft,jpngr)) then        
             ! Update LAI and FPC
-            call update_fpc(pft,jpngr)
-          endif                   !ispresent
+            !call update_fpc(pft,jpngr)
+          !endif                   !ispresent
            
         enddo                     !pft
        
@@ -211,9 +214,7 @@
         endif
 #endif
 
-
-#endif
-
       end subroutine allocation_annual
 
+#endif
 

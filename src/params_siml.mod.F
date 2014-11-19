@@ -17,6 +17,7 @@
       character(len=6)   :: sitename
       character(len=256) :: input_dir
       character(len=256) :: co2_forcing_file
+      character(len=256) :: pftparfil
 #if _nuptake_makela 
       real :: navail_mak                     ! prescribed N availability
 #endif
@@ -86,6 +87,7 @@
       
       call getstring(runname//".sofun.parameter",'input_dir',input_dir)
       call getstring(runname//".sofun.parameter",'co2_forcing_file',co2_forcing_file)
+      call getstring(runname//"sofun.parameter",'pftparfil',pftparfil)
 
       if (do_spinup) then
         runyears = nyeartrend + spinupyears

@@ -16,6 +16,12 @@ spinupyears                             10
 firstyeartrend                          1982
 nyeartrend                              31
 
+# Model parameter file (not PFT-specific)
+modparfil                               params_modl_mak.dat
+
+# PFT parameter file
+pftparfil                               params_pft_mak.dat
+
 # input files
 input_dir                               /alphadata01/bstocker/sofun/trunk/input/
 co2_forcing_file                        cCO2_rcp85_const850-1765.dat

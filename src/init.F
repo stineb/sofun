@@ -9,20 +9,20 @@
       use statevars
 
       ! initialise all pools with zero
-      pleaf(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
-      proot(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
-      psapw(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
-      pwood(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
-      plabl(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))
+      pleaf(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! leaves   , organic pool [gC/m2/ind. and gN/m2/ind.]
+      proot(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! roots    , organic pool [gC/m2/ind. and gN/m2/ind.]
+      psapw(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! sapwood  , organic pool [gC/m2/ind. and gN/m2/ind.]
+      pwood(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! heartwood, organic pool [gC/m2/ind. and gN/m2/ind.]
+      plabl(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! labile   , organic pool [gC/m2/ind. and gN/m2/ind.]
 
-      pexud(:,:)    = carbon(0.0)
+      pexud(:,:)    = carbon(0.0)                           ! exudates in soil, carbon pool [gC/m2]
 
-      plitt_af(:,:) = orgpool(carbon(0.0),nitrogen(0.0))
-      plitt_as(:,:) = orgpool(carbon(0.0),nitrogen(0.0))
-      plitt_bg(:,:) = orgpool(carbon(0.0),nitrogen(0.0))
+      plitt_af(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! above-ground fine   litter, organic pool [gC/m2 and gN/m2]
+      plitt_as(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! above-ground coarse litter, organic pool [gC/m2 and gN/m2]
+      plitt_bg(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! below-ground fine   litter, organic pool [gC/m2 and gN/m2]
 
-      psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))
-      psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))
+      psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! fast decomposing soil organic matter, organic pool [gC/m2 and gN/m2]
+      psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! recalcitrant soil organic matter    , organic pool [gC/m2 and gN/m2]
 
       nh4(:,:)      = nitrogen(0.0)
       no3(:,:)      = nitrogen(0.0)

@@ -4,6 +4,7 @@
        !  to define variables, dimension lengths, etc.
        !----------------------------------------------------------------
          implicit none
+         
          integer,parameter :: recycle = 31             ! length of standard recycling period
          integer,parameter :: ndayyear = 365           ! number of days in a year
          integer,parameter :: nmonth = 12              ! number of months in a year

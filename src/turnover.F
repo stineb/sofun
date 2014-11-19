@@ -17,7 +17,7 @@
       integer :: pft
       integer :: lu
       real :: dleaf
-      !real :: dsapw
+      real :: dsapw
       real :: droot
       type(orgpool) :: lm_turn
       type(orgpool) :: sm_turn
@@ -37,29 +37,31 @@
           ! Calculate the biomass turnover in this year          
           lm_turn = orgfrac( dleaf, pleaf(pft,jpngr) )
           rm_turn = orgfrac( droot, proot(pft,jpngr) )
-          sm_turn = orgfrac( dsapw, psapw(pft,jpngr) )
+          !if (tree(pft)) then
+            sm_turn = orgfrac( dsapw, psapw(pft,jpngr) )
+          !endif
 
-#if _allocation_pipe
+#if _allocation_makela
           ! C: plant -> litter
           call cmv( lm_turn%c, pleaf(pft,jpngr)%c, plitt_af(pft,jpngr)%c, scale=nind(pft,jpngr) )
           call cmv( rm_turn%c, proot(pft,jpngr)%c, plitt_bg(pft,jpngr)%c, scale=nind(pft,jpngr) )
-          if (tree(pft)) then
+          !if (tree(pft)) then
             call cmv( sm_turn%c, psapw(pft,jpngr)%c, plitt_af(pft,jpngr)%c, scale=nind(pft,jpngr) )
-          endif
+          !endif
        
           ! N: plant -> storage pool
           call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plabl(pft,jpngr)%n, scale=F_NRETAIN )
           call nmv( rm_turn%n, proot(pft,jpngr)%n, plabl(pft,jpngr)%n, scale=F_NRETAIN )
-          if (tree(pft)) then
+          !if (tree(pft)) then
             call nmv( sm_turn%n, psapw(pft,jpngr)%n, plabl(pft,jpngr)%n, scale=F_NRETAIN )
-          endif
+          !endif
 
           ! N: plant -> litter
           call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr)*(1.-F_NRETAIN) )
           call nmv( rm_turn%n, proot(pft,jpngr)%n, plitt_bg(pft,jpngr)%n, scale=nind(pft,jpngr)*(1.-F_NRETAIN) )
-          if (tree(pft)) then
+          !if (tree(pft)) then
             call nmv( sm_turn%n, psapw(pft,jpngr)%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr)*(1.-F_NRETAIN) )
-          endif
+          !endif
 
 #else
           ! xxx try
@@ -75,9 +77,12 @@
 
           ! No root N is retained (xxx is this viable? xxx)
           call orgmv( rm_turn, proot(pft,jpngr), plitt_bg(pft,jpngr), scale=nind(pft,jpngr) )
-          ! Sapwood turns over into heartwood (non-living wood)
-          call orgmv( sm_turn, psapw(pft,jpngr), pwood(pft,jpngr) )
 
+          if (tree(pft)) then
+            ! Sapwood turns over into heartwood (non-living wood)
+            call orgmv( sm_turn, psapw(pft,jpngr), pwood(pft,jpngr) )
+          endif
+          
           ! done here: Set isotopes to MISSING_VALUE if pools are empty
 #endif
           

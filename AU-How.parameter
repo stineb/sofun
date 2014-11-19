@@ -10,6 +10,14 @@ altitude                                9999.0
 
 # boolean defining which PFTs to include (lpft1: pftcode=1)
 lpft1                                   .true.
+lpft2                                   .false.
+lpft3                                   .false.
+lpft4                                   .false.
+lpft5                                   .false.
+lpft6                                   .false.
+lpft7                                   .false.
+lpft8                                   .false.
+lpft9                                   .false.
 
 #                                      |
 # write value behind this position:    |->

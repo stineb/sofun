@@ -11,11 +11,11 @@
 
        implicit none
 
-       type (orgpool), dimension(npft,maxgrid)  :: pleaf    ! leaf biomass [gC/m2/ind.] (=lm_ind)
-       type (orgpool), dimension(npft,maxgrid)  :: proot    ! root biomass [gC/m2/ind.] (=rm_ind)
-       type (orgpool), dimension(npft,maxgrid)  :: psapw    ! sapwood biomass [gC/m2/ind.] (=sm_ind)
-       type (orgpool), dimension(npft,maxgrid)  :: pwood    ! heartwood (non-living) biomass [gC/m2/ind.] (=hm_ind)
-       type (orgpool), dimension(npft,maxgrid)  :: plabl    ! labile pool, temporary storage of N and C [gC/m2/ind.] (=bm_inc but contains also N) 
+       type (orgpool), dimension(npft,maxgrid)  :: pleaf    ! leaf biomass [gC/ind.] (=lm_ind)
+       type (orgpool), dimension(npft,maxgrid)  :: proot    ! root biomass [gC/ind.] (=rm_ind)
+       type (orgpool), dimension(npft,maxgrid)  :: psapw    ! sapwood biomass [gC/ind.] (=sm_ind)
+       type (orgpool), dimension(npft,maxgrid)  :: pwood    ! heartwood (non-living) biomass [gC/ind.] (=hm_ind)
+       type (orgpool), dimension(npft,maxgrid)  :: plabl    ! labile pool, temporary storage of N and C [gC/ind.] (=bm_inc but contains also N) 
 
        type (carbon),  dimension(npft,maxgrid)  :: pexud    ! exudates pool (very short turnover) [gC/m2]
 

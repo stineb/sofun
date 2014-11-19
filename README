@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 SOFUN
 -----------
 
@@ -81,27 +80,8 @@ Variables are generally named so that the first letter represents the time scale
 Fortran-derived types are used to define pools of organic matter (roots, sapwood, leaves, roots, litter, soil). This type consists of "dimensions" 'carbon' and 'nitrogen', which in turn consist of 'c12' and 'n14', respectively. There are also pools/fluxes that consist only of 'carbon' or 'nitrogen'. As a principle, the additional dimensionality of such derived-types should be introduced on the highest-possible level. E.g. it makes no sense to define GPP as 'carbon', as all variables NPP, Ra, ... carry the same signature of c12/c13/c14. The highest level is in general the step where a flux is added to a pool. In this case this is the biomass increment ('bm_inc'). I.e., only 'bm_inc' should be defined as 'carbon' and its c13/c14 signature should be explicitly defined.
 
 
+Units
+-----
 
-=======
-========================================
-IMPORTANT NOTICE:
-this repository has been transferred to 
-https://bitbucket.org/labprentice/sofun
-27 Oct 2014
-========================================
-This program serves as a structure for a global vegetation model and is based on LPX-Bern.
-It emerges from the project SOFUN (thus its name): Seasonal Optimisation of Uptake and Fixation of Nitrogen.
-Code is programmed in Fortran 90 and can be compiles using either the PGI90 compiler or gfortran (others not tested).
-Written, developed and maintained via https://github.com/stineb/sofun by Beni Stocker (b.stocker@imperial.ac.uk).
+All plant-related pools (pleaf, proot, psapw, pwood, plabl) are in units of gC/ind. and gN/ind. 'nind' is the number of individuals per m2, [nind]=ind./m2. Other pools (plitt, psoil, pexud, inorganic N pools) are in units of gC/m2 and/or gN/m2. Note that C and N transfers from plant to litter have to be multiplied by 'nind' (number of individuals). Fluxes (dgpp, dnpp, dexud, dnup, ...) are in units of gC/m2/day or gN/m2/day. 
 
-To compile, do
-  
-  make
-
-Adjust Makefile and src/Makefile to use a different compiler.
-To run the program, do
-
-  echo RUNNAME | ./runsofun
-
-Change 'RUNNAME' to any given simulation name. Parameter files containing 'RUNNAME' in their file name need to be adjusted accordingly (replacing the string 'RUNNAME' with your simulation name and adjusting parameter values.).
->>>>>>> 9912890bb86e83fda9ff362d5867381b0d0852cb

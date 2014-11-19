@@ -24,10 +24,10 @@
       integer :: pft                                  ! counter variable for PFT number
 
       ! decay constants
-      real, dimension(npft) :: klitt_af               ! decay rate, above-ground fast (leaf) litter (= k_litter_leaf)
-      real, dimension(npft) :: klitt_as               ! decay rate, above-ground slow (woody) litter (= k_litter_woody)
-      real, dimension(npft) :: klitt_bg               ! decay rate, below-ground fast litter (= k_litter_root)
-      real, dimension(npft) :: kexu                   ! decay rate, exudates (= k_exu)
+      real, dimension(nlu)  :: klitt_af               ! decay rate, above-ground fast (leaf) litter (= k_litter_leaf)
+      real, dimension(nlu)  :: klitt_as               ! decay rate, above-ground slow (woody) litter (= k_litter_woody)
+      real, dimension(nlu)  :: klitt_bg               ! decay rate, below-ground fast litter (= k_litter_root)
+      real, dimension(nlu)  :: kexu                   ! decay rate, exudates (= k_exu)
       real, dimension(nlu)  :: ksoil_fs               ! decay rate, fast soil (= k_fast)
       real, dimension(nlu)  :: ksoil_sl               ! decay rate, slow soil (= k_slow)
 
@@ -101,10 +101,10 @@
             !-------------------------------------------------------------------------
              
             ! define decomposition rates for current soil temperature and moisture
-            klitt_af(pft) = klitt_af10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
-            klitt_as(pft) = klitt_as10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
-            klitt_bg(pft) = klitt_bg10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
-            kexu(pft)     = kexu10     * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
+            klitt_af(lu) = klitt_af10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
+            klitt_as(lu) = klitt_as10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
+            klitt_bg(lu) = klitt_bg10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
+            kexu(lu)     = kexu10     * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
 
           end if
         end do
@@ -129,18 +129,17 @@
             ! enzymes) and are quickly respired and released as CO2.
             ! Exudates decay goes to soil respiration 'drsoil'.
             !----------------------------------------------------------------                
-            dexu = cfrac( 1.-exp(-kexu(pft)), pexud(pft,jpngr) )
+            dexu = cfrac( 1.-exp(-kexu(lu)), pexud(pft,jpngr) )
             call cmv( dexu, pexud(pft,jpngr), drsoil(pft) )
             
 
             !////////////////////////////////////////////////////////////////
             ! LITTER DECAY
             ! All goes to daily updated litter decomposition pool
-            ! xxx what is justification for PFT-dependent decay constants? xxx
             !----------------------------------------------------------------
-            dlitt_af = orgfrac( 1.-exp(-klitt_af(pft)), plitt_af(pft,jpngr) )
-            dlitt_as = orgfrac( 1.-exp(-klitt_as(pft)), plitt_as(pft,jpngr) )
-            dlitt_bg = orgfrac( 1.-exp(-klitt_bg(pft)), plitt_bg(pft,jpngr) )
+            dlitt_af = orgfrac( 1.-exp(-klitt_af(lu)), plitt_af(pft,jpngr) )
+            dlitt_as = orgfrac( 1.-exp(-klitt_as(lu)), plitt_as(pft,jpngr) )
+            dlitt_bg = orgfrac( 1.-exp(-klitt_bg(lu)), plitt_bg(pft,jpngr) )
 
             !print*,'dlitt_af',dlitt_af
             !print*,'dlitt_as',dlitt_as

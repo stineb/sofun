@@ -5,18 +5,15 @@
       !-----------------------------------------------------------------
       use pools
       use params_siml, only: navail_mak
+      use params_modl, only: K_r
 
       implicit none
       
       ! ARGUMENTS
       integer, intent(in) :: jpngr
 
-      ! LOCAL VARIABLES
-
-      ! Amount of roots capturing 50% of available N [g/m2] (given as 2000 kg-leaf-DW/ha)
-      real, parameter :: K_r = 400.0
-
       dnup(pft) = ( navail_mak * proot(pft,jpngr)%c%c12 * nind(pft,jpngr) * K_r ) / ( proot(pft,jpngr)%c%c12 * nind(pft,jpngr) + K_r )
+      dcex(pft) = 0.0
 
 #else
       subroutine nuptake( jpngr, pft )

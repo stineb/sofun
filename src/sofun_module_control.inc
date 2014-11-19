@@ -30,7 +30,7 @@ c Option:  Pipe model as described in Mäkelä et al., 2008, New Phyt.
 c Note that _allocation_pipe does not account for the separation between
 c sapwood and heartwood. The pool 'psapw' is taken to represent 
 c 'live wood'. This affects how turnover is formulated (see turnover.F)
-#define _allocation_pipe 1
+#define _allocation_makela 1
 c ----------------------------------------------------------------------
 
 c //////////////////////////////////////////////////////////////////////

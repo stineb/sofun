@@ -6,6 +6,7 @@
       use forcing
       use statevars
       use params_siml
+      use params_modl
       use pools, only: pleaf
 #if _prescr_gpp_site
       use input_site, only: dgpp_data
@@ -27,24 +28,8 @@
 #if _gpp_makela
       real :: n_photo
       real :: sigma_fm 
-
-      !----------------------------------------------------------------
-      ! Parameter values from Makela et al., 2008, Table 1
-      !----------------------------------------------------------------
-      ! Amount of foliage capturing 50% of maximum C gain [g/m2] (given as 2500 kg-leaf-DW/ha)
-      real, parameter :: K_f = 500.0
-
-      ! non-photosynthtic or structural N [gN/gC], assuming 0.5 gC/gDW (given as 0.009 kgN/kgDW)
-      real, parameter :: n_struct = 0.018
-
-      ! reference photosynthetic N [gN/gC], assuming 0.5 gC/gDW (given as 0.002 kgN/kgDW)
-      real, parameter :: n_ref = 0.004
-
-      ! N-saturated specific rate of photosynthesis [gC/g-foliage-C/yr] (given as 8.0 kgC/kgDW/yr)
-      ! xxx try: This is per year. Adjust it to get daily value: 16.0/365.0
-      real, parameter :: sigma_fm0 = 0.04383562
-
 #endif
+
        ! necessary because of keyword arguments used in function call
 !       interface
 !         function getvalreal( filename, realyear, day, dm, mo )
@@ -78,11 +63,7 @@
       dgpp(pft) = ( sigma_fm * pleaf(pft,jpngr)%c%c12 * nind(pft,jpngr) * K_f ) / ( pleaf(pft,jpngr)%c%c12 * nind(pft,jpngr) + K_f )
 
 #else
-      ! xxx try: this is just a placeholder for an explicit GPP parameterisation
-      do pft=1,npft
-          ! read daily GPP value from input file
-          dgpp(pft) = getvalreal_STANDARD( sitename//'_daily_gpp_med_STANDARD.txt', mo=mo, dm=dm )
-      end do  
+      stop 'GPP: no GPP parametrisation selected. no default defined. abort.'
 
 #endif
 
