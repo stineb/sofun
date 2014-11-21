@@ -45,3 +45,22 @@ This repository holds utility and general functionality scripts.
 * Ferret script to convert an ASCII file (gridded, geo-referenced data in text format) into NetCDF.
 
 ### cdf.write.R
+* R function to write a numeric array (maximum 4 dimensions: lon, lat, xxx, time) into a NetCDF file.
+
+### get.f.luc.R
+* Get global CO2 emissions due to land use change from outputs of two LPX-Bern simulations (with and without landuse).
+
+### get_mean_seasonal_cycle.jnl
+* Ferret script to calculate monthly climatology from a multi-annual time series.
+
+### get.nbp.R
+* R function to get global NBP (total land-atmosphere C flux) from a LPX-Bern simulation.
+
+### mean.bymonth.R
+* R function to calculate monthly climatology from a multi-annual time series (analogue to 'get_mean_seasonal_cycle.jnl').
+
+### regrid_landuse.R
+* R function to regrid (remap) landuse data conserving total area in categories cropland, pasture, urban. 
+
+
+
