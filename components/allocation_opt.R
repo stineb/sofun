@@ -31,6 +31,7 @@ if (do.pine||do.spruce) {
     c_H       <- 2800
     r_0       <- 0.009
     r_ref     <- 0.002
+    
   } else if (do.spruce){
     ## Parameters for Picea abies
     K_r       <- 2000
@@ -57,11 +58,10 @@ if (do.pine||do.spruce) {
 
   ## actual (productive) photosynthetic N concentration (eq. 11)
   r_p <- function( r_f, r_0=r_0 ) {
-    r_p <- max( r_f - r_0, 0.0 )  
+    r_p <- max( (r_f - r_0), 0.0 )  
   }
 
   ## Set range of foliar N:C ratio (1.2 kgN/kgDW)
-  #r_f <- 0.024 
   r_f0 <- 0.012
   n_r_f0 <- 100
   r_f_range <- seq( from=r_f0-r_f0*0.5, to=r_f0+r_f0*0.5 , by=((r_f0+r_f0*0.5)-(r_f0-r_f0*0.5))/n_r_f0 )
@@ -303,6 +303,10 @@ par(las=1)
 ## Fig. 3c: Photosynthesis (leaf-specific)
 plot( sigma_rM_range*1000, val_sigma_fM_max, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="Photosynthesis (tC/tDW/yr)" )
 title("Fig.3c")
+
+## Fig. 4a: C allocation vs. N availability
+# plot( sigma_rM_range*1000, W_w_max/(W_f_max+W_w_max+W_r_max)*100, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="C allocation (%)", ylim=c(0,100) )
+# lines( sigma_rM_range*1000, W_r_max/(W_f_max+W_w_max+W_r_max)*100, col="red" )
 
 
 
