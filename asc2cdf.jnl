@@ -1,0 +1,33 @@
+!! //////////////////////////////////////////////////////////////////////////////////////
+!! ASCII -> NetCDF conversion with FERRET
+!! Geographical ASCII files are commonly provided with 6 header lines defining
+!! the longitudes, latitudes, missing value flag, etc., followed by a number of rows
+!! corresponding to the latitudes, and a number of data entries per row corresponding to
+!! the number of longitudes.
+!! This can easily be read in by Ferret and written/saved as a NetCDF.
+!! beni@climate.unibe.ch
+!! 17.06.2013
+!! --------------------------------------------------------------------------------------
+
+!! Define the grid
+DEFINE AXIS/x=-179.75E:179.75E:0.5/units=degrees LON
+DEFINE AXIS/y=-89.75N:89.75N:0.5/units=degrees LAT
+DEFINE GRID/x=LON/y=LAT gridname
+
+!! Read ASCII file and interpret to grid
+FILE/COLUMNS=720/GRID=gridname/SKIP=6/VAR=varname_reversed in.ascii
+
+!! Save to NetCDF file (unfortunately this saves in messed up dimensions)
+SAVE/CLOBBER/FILE=out_reversed.nc varname_reversed
+
+CANCEL DATA/ALL
+CANCEL VAR/ALL
+
+!! Read NetCDF with messed up dimensions so that they are no longer messed up
+USE/ORDER=X-Y out_reversed.nc
+
+!! Define variable to finally be written to NetCDF nicely.
+SET VARIABLE/BAD=-9999/TITLE=varname varname_reversed
+LET/units="units" varname=varname_reversed
+
+SAVE/CLOBBER/FILE=out.nc varname
