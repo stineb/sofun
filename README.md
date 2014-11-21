@@ -37,3 +37,11 @@ This repository holds utility and general functionality scripts.
 
 ### zipall.pl
 * This script performs bulk file compressions (e.g., gzip). It may be modified to run any bulk system commands (e.g., tar, gunzip, pdfcrop).
+
+### area.R
+* R function to calculate the surface area of a rectangular gridcell on a sphere.
+
+### asc2cdf.jnl
+* Ferret script to convert an ASCII file (gridded, geo-referenced data in text format) into NetCDF.
+
+### cdf.write.R
