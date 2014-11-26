@@ -21,6 +21,11 @@ This repository holds utility and general functionality scripts.
 ### list_dirs.R
 * This function provides a list.dirs() function (similar to existing list.files() function) that returns directory names.
 
+### ocr.py
+* This script converts JPG images to text files (e.g., those pesky journal articles online where each page is an image file).
+* Depends on [imagemagick](http://www.imagemagick.org/) (for image processing) and [tesseract](https://code.google.com/p/tesseract-ocr/) (for OCR) software packages.
+* Includes __ocr_example.jpg__ for testing purposes. 
+
 ### rename.pl
 * This script performs bulk file renames based on regular expression search and replace.
 
@@ -60,7 +65,4 @@ This repository holds utility and general functionality scripts.
 * R function to calculate monthly climatology from a multi-annual time series (analogue to 'get_mean_seasonal_cycle.jnl').
 
 ### regrid_landuse.R
-* R function to regrid (remap) landuse data conserving total area in categories cropland, pasture, urban. 
-
-
-
+* R function to regrid (remap) landuse data conserving total area in categories cropland, pasture, urban.
