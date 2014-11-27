@@ -27,6 +27,9 @@ This repository holds utility and general functionality scripts.
 ### diffdays.pl
 * This script calculates the number of days between two given dates.
 
+### etsrad
+* Python (__etsrad.py__) and R (__etsrad.R__) scripts that calculate the half-hourly extraterrestrial solar radiation flux, daylight hours, sunset hour, daily solar irradation, half-hourly PAR, and daily PAR (as well as other parameters) for a given day and location.
+
 ### get.f.luc.R
 * Get global CO2 emissions due to land use change from outputs of two LPX-Bern simulations (with and without landuse).
 
