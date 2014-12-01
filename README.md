@@ -15,6 +15,9 @@ This repository holds utility and general functionality scripts.
 ### asc2cdf.jnl
 * Ferret script to convert an ASCII file (gridded, geo-referenced data in text format) into NetCDF.
 
+### calc_centroids.R
+* Writes CSV file (ID, LAT, LON) of regular grid pixel centroids for given map extents and pixel resolution.
+
 ### calc_statistics.R
 * This R function calculates a variety of statistics for a given data vector.
 
