@@ -10,25 +10,27 @@ get.f.luc <- function( name.nolu, name.lu, dir,
   
   if (netcdf){
     
-    ## ////////////////////////////////////////////
-    ## use NetCDF outputs
-    ## --------------------------------------------
-    library(RNetCDF)
+    ## /////////////////////////////////////////////////////////////////
+    ## use NetCDF outputs from LPX
+    ## -----------------------------------------------------------------
+    library(ncdf)
         
-    ## read NetCDF files
+    ##------------------------------------------------------------------
+    ## Read dimensions in NetCDF file with LUC
+    ##------------------------------------------------------------------
     print("reading LPX NetCDF output ...")
     print(paste("LU sim:",name.lu))
     if (monthly) {
-      nc <- open.nc( paste(dir,name.lu,"_m.cdf",sep="") )
+      nc <- open.ncdf( paste(dir,name.lu,"_m.cdf",sep=""), readunlim=FALSE )
     } else {
-      nc <- open.nc( paste(dir,name.lu,".cdf",sep="") )
+      nc <- open.ncdf( paste(dir,name.lu,".cdf",sep=""), readunlim=FALSE )
     }
     print("reading lon, lat, and time ...")
-    lon <- var.get.nc(nc,"LONGITUDE")
-    lat <- var.get.nc(nc,"LATITUDE")
-    time <- var.get.nc(nc,"TIME")
+    lon <- get.var.ncdf(nc, varid="LONGITUDE")
+    lat <- get.var.ncdf(nc, varid="LATITUDE")
+    time <- get.var.ncdf(nc, varid="TIME")
     print("reading with-LU-variable (example) ...")
-    nep.lu <- var.get.nc(nc,"nep")
+    nep.lu <- get.var.ncdf(nc, varid="nep")
 
     ## Determine domain to be read (time)
     if (!is.na(tstart)&&!is.na(tend)){
@@ -58,78 +60,104 @@ get.f.luc <- function( name.nolu, name.lu, dir,
       stop
     }
     
+    ##------------------------------------------------------------------
     ## Read with-LU file
+    ##------------------------------------------------------------------
     print(paste("LU sim:",name.lu))
     print("reading NEP ...")
-    nep.lu <- var.get.nc(nc,"nep"
+    nep.lu <- get.var.ncdf(nc, varid="nep"
                          ,start=start.lu,count=count.lu
                          )
     print("reading PRODUCT C FLUX ...")
-    cflux.prod.lu <- var.get.nc(nc,"acflux_products"
+    cflux.prod.lu <- get.var.ncdf(nc, varid="acflux_products"
                                 ,start=start.lu,count=count.lu
                                 )
     print("reading LU_AREA ...")
-    luarea.lu <- var.get.nc(nc,"lu_area"
+    luarea.lu <- get.var.ncdf(nc, varid="lu_area"
                             ,start=start.lu,count=count.lu
                             )
     if (offset) {
       count.offset <- count.lu
       count.offset[length(count.offset)] <- 1
       print("reading C pool variables ...")
-      littera.lu <- var.get.nc(nc,"littercarbon_ag",start=start.lu,count=count.offset)
-      litterb.lu <- var.get.nc(nc,"littercarbon_bg",start=start.lu,count=count.offset)
-      vegc.lu <- var.get.nc(nc,"vegcarbon",start=start.lu,count=count.offset)
-      soilc.lu <- var.get.nc(nc,"soilcarbon",start=start.lu,count=count.offset)
-      exuc.lu <- var.get.nc(nc,"exucarbon",start=start.lu,count=count.offset)
-      prodc.lu <- var.get.nc(nc,"products",start=start.lu,count=count.offset)
+      littera.lu <- get.var.ncdf(nc, varid="littercarbon_ag",start=start.lu,count=count.offset)
+      litterb.lu <- get.var.ncdf(nc, varid="littercarbon_bg",start=start.lu,count=count.offset)
+      vegc.lu <- get.var.ncdf(nc, varid="vegcarbon",start=start.lu,count=count.offset)
+      soilc.lu <- get.var.ncdf(nc, varid="soilcarbon",start=start.lu,count=count.offset)
+      exuc.lu <- get.var.ncdf(nc, varid="exucarbon",start=start.lu,count=count.offset)
+      prodc.lu <- get.var.ncdf(nc, varid="products",start=start.lu,count=count.offset)
       totc.lu <- littera.lu+litterb.lu+vegc.lu+soilc.lu+exuc.lu
       rm(littera.lu,litterb.lu,vegc.lu,soilc.lu,exuc.lu)
       gc()
     }
-    close.nc(nc)
+    close.ncdf(nc)
     gc() # garbage collection
-    
+
+    ##------------------------------------------------------------------
     ## Read no-LU file
+    ##------------------------------------------------------------------
     print(paste("no-LU sim:",name.nolu))
     if (monthly) {
-      nc <- open.nc( paste(dir,name.nolu,"_m.cdf",sep="") )
+      nc <- open.ncdf( paste(dir,name.nolu,"_m.cdf",sep=""), readunlim=FALSE )
     } else {
-      nc <- open.nc( paste(dir,name.nolu,".cdf",sep="") )
+      nc <- open.ncdf( paste(dir,name.nolu,".cdf",sep=""), readunlim=FALSE )
     }
     print("reading time ...")
-    time <- var.get.nc(nc,"TIME")
+    time <- get.var.ncdf(nc, varid="TIME")
     print("reading without-LU-variable (example) ...")
-    nep.nolu <- var.get.nc(nc,"nep")
+    nep.nolu <- get.var.ncdf(nc, varid="nep")
 
+    print("dimensions of NEP in no-LU file:")
+    print(dim(nep.nolu))
+    
     ## determine whether no-landuse simulation has k dimension
     noludim <- FALSE
     if (length(dim(nep.nolu))==3){
       print("no LU dimension in file without LUC")
       noludim <- TRUE
-      count.nolu[3] <- 1
-      if (offset) { count.offset[3] <- 1 }
     } else {
       print("full LU dimension in file without LUC")
       llu.nolu <- dim(nep.nolu)[3]
     }
 
     ## Determine domain to be read (time)
-    if (!is.na(tstart)&&!is.na(tend)){
-      print(paste("cutting to years ",tstart,tend))
-      start.nolu <- dim(nep.nolu)
-      start.nolu[] <- 1
-      start.nolu[length(start.nolu)] <- which.min(abs(time-tstart))
-      count.nolu <- dim(nep.nolu)
-      count.nolu[length(count.nolu)] <- which.min(abs(time-tend))-which.min(abs(time-tstart))+1
+    if (noludim) {
+      ## File has LU dimension with length = 1
+      ## Problem with ncdf: count and start have to have length 4 if netcdf variable has 4
+      ## dimensions, even if one of the dimensions has length 1. In this case, after reading
+      ## in, R reduces the array automatically to 3 dimensions.
+      if (!is.na(tstart)&&!is.na(tend)){
+        print(paste("cutting to years ",tstart,tend))
+        start.nolu <- rep(1,4)
+        start.nolu[length(start.nolu)] <- which.min(abs(time-tstart))
+        count.nolu <- start.nolu
+        count.nolu[1:2] <- dim(nep.nolu)[1:2]
+        count.nolu[length(count.nolu)] <- which.min(abs(time-tend))-which.min(abs(time-tstart))+1
+      } else {
+        print(paste("reading all time steps "))
+        start.nolu <- rep(1,4)
+        count.nolu <- start.nolu
+        count.nolu[1:2] <- dim(nep.nolu)[1:2]
+        count.nolu[length(count.nolu)] <- dim(nep.nolu)[length(dim(nep.nolu))]
+      }
     } else {
-      print(paste("reading all time steps "))
-      start.nolu <- dim(nep.nolu)
-      start.nolu[] <- 1
-      count.nolu <- dim(nep.nolu)
+      ## File has LU dimension with length > 1
+      if (!is.na(tstart)&&!is.na(tend)){
+        print(paste("cutting to years ",tstart,tend))
+        start.nolu <- dim(nep.nolu)
+        start.nolu[] <- 1
+        start.nolu[length(start.nolu)] <- which.min(abs(time-tstart))
+        count.nolu <- dim(nep.nolu)
+        count.nolu[length(count.nolu)] <- which.min(abs(time-tend))-which.min(abs(time-tstart))+1
+      } else {
+        print(paste("reading all time steps "))
+        start.nolu <- dim(nep.nolu)
+        start.nolu[] <- 1
+        count.nolu <- dim(nep.nolu)
+      }
     }
     rm(nep.nolu)
     gc() # garbage collection
-
     
     ## Cut time vector to desired length
     if (!is.na(tstart)&&!is.na(tend)){
@@ -138,46 +166,43 @@ get.f.luc <- function( name.nolu, name.lu, dir,
   
     ## Now reading variables from non-LU file
     print("reading NEP ...")
-    nep.nolu <- var.get.nc(nc,"nep"
+    nep.nolu <- get.var.ncdf(nc, varid="nep"
                            ,start=start.nolu,count=count.nolu
                            )
     print("reading LU_AREA ...")
-    luarea.nolu <- var.get.nc(nc,"lu_area"
+    luarea.nolu <- get.var.ncdf(nc, varid="lu_area"
                               ,start=start.nolu,count=count.nolu
                               )
     if (offset) {
-      ## print("start")
-      ## print(start)
-      ## print("count.offset")
-      ## print(count.offset)
       print("reading C pool variables ...")
-      littera.nolu <- var.get.nc(nc,"littercarbon_ag",start=start.nolu,count=count.offset)
-      litterb.nolu <- var.get.nc(nc,"littercarbon_bg",start=start.nolu,count=count.offset)
-      vegc.nolu <- var.get.nc(nc,"vegcarbon",start=start.nolu,count=count.offset)
-      soilc.nolu <- var.get.nc(nc,"soilcarbon",start=start.nolu,count=count.offset)
-      exuc.nolu <- var.get.nc(nc,"exucarbon",start=start.nolu,count=count.offset)
+      littera.nolu <- get.var.ncdf(nc, varid="littercarbon_ag",start=start.nolu,count=count.offset)
+      litterb.nolu <- get.var.ncdf(nc, varid="littercarbon_bg",start=start.nolu,count=count.offset)
+      vegc.nolu <- get.var.ncdf(nc, varid="vegcarbon",start=start.nolu,count=count.offset)
+      soilc.nolu <- get.var.ncdf(nc, varid="soilcarbon",start=start.nolu,count=count.offset)
+      exuc.nolu <- get.var.ncdf(nc, varid="exucarbon",start=start.nolu,count=count.offset)
       totc.nolu <- littera.nolu+litterb.nolu+vegc.nolu+soilc.nolu+exuc.nolu
       rm(littera.nolu,litterb.nolu,vegc.nolu,soilc.nolu,exuc.nolu)
       gc()
     }
-    close.nc(nc)
+    close.ncdf(nc)
     gc() # garbage collection
 
     ## get gridcell area
-    nc <- open.nc( paste(dir,name.nolu,".cdf",sep="") )
-    area <- var.get.nc(nc,"area")
-    close.nc(nc)
+    nc <- open.ncdf( paste(dir,name.nolu,".cdf",sep=""), readunlim=FALSE )
+    area <- get.var.ncdf(nc, varid="area")
+    close.ncdf(nc)
     gc() # garbage collection
     
     ## Apply spatial mask (continents)
     if (!is.na(mask.id)) {
       print("reading continents file ...")
       nconts <- 8
-      nc <- open.nc( "/card/forcings/lpx/regionmasks/regmask_1x1deg.nc" )
+      nc <- open.ncdf( "/card/forcings/lpx/regionmasks/regmask_1x1deg.nc", readunlim=FALSE )
       ## MASK[k=1]:MASK[k=8] are in this order for:
       ## latin america, africa, south/southeast asia, china, europe,
       ## australia and oceania, north america, russia
-      mask <- var.get.nc(nc,"mask")
+      mask <- get.var.ncdf(nc, varid="mask")
+      close.ncdf(nc)
     }
 
     ## determine dimension lenghts
