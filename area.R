@@ -3,7 +3,6 @@
 ## MUST BE CONSISTENT WITH CALCULATION AND EARTH RADIUS AS DEFINED IN
 ## outannual.F, modelpara.inc !!!
 ## Beni Stocker, 25.03.2011.
-## test
 ## -------------------------------------------------------------------------
 
 ## dx and dy are in units of degrees

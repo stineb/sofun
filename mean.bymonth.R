@@ -2,7 +2,7 @@
 ## Returns a monthly climatology from monthly data covering multiple years
 ## Beni Stocker, 16.06.2013
 
-mean.bymonth <- function(vec) {
+mean.bymonth <- function( vec, na.rm=FALSE ) {
 
   ## Calculate mean annual cycle by months
   nmonths <- 12
@@ -16,7 +16,7 @@ mean.bymonth <- function(vec) {
     if (nadd!=0) {
       mask <- c(mask,mask[1:nadd])
     }
-    vecm[m] <- mean( vec[mask], na.rm=TRUE )
+    vecm[m] <- mean( vec[mask], na.rm=na.rm )
   }
   return(vecm)
   

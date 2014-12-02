@@ -48,6 +48,9 @@ This repository holds utility and general functionality scripts.
 ### mean.bymonth.R
 * R function to calculate monthly climatology from a multi-annual time series (analogue to 'get_mean_seasonal_cycle.jnl').
 
+### mycolorbar.R
+* R function to add a colorbar to a plot.
+
 ### ocr.py
 * This script converts JPG images to text files (e.g., those pesky journal articles online where each page is an image file).
 * Depends on [imagemagick](http://www.imagemagick.org/) (for image processing) and [tesseract](https://code.google.com/p/tesseract-ocr/) (for OCR) software packages.

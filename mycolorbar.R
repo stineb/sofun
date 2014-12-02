@@ -7,7 +7,9 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
                        minval=NA,      # minimum value, overrides lower margin 
                        mincol=NA,      # overrides color for lowest level
                        dolabels=TRUE,  # add labels for margins to colorbar
-                       doticks=TRUE    # add tick marks at margins to colorbar
+                       doticks=TRUE,   # add tick marks at margins to colorbar
+                       cex.axis=1.0,   # magnification of axis tickmarks
+                       cex.lab=1.0     # magnification of axis labels
                        ) {
   ## /////////////////////////////////////////////////////////////////////////
   ## Function 'mycolorbar' draws a colorbar based on the image function
@@ -27,25 +29,25 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
   if (explicit){
 
     ## Assume 'lev' declares explicit margins
-    print("assuming explicit margins provided")
+    print("MYCOLORBAR: assuming explicit margins provided")
 
     len <- length(lev)
-    print(paste("len=",len))
+    # print(paste("len=",len))
 
     # margins.eff is used for labels at color key and is returned as $margins
     margins.eff <- lev
-    print(paste("length of margins.eff",length(margins.eff)))
-    print(margins.eff)
+    # print(paste("length of margins.eff",length(margins.eff)))
+    # print(margins.eff)
 
     # margins defines where margins.eff are to be labelled
     margins <- seq( from=0, to=(len-1), by=1 )
-    print(paste("length of margins",length(margins)))
-    print(margins)
+    # print(paste("length of margins",length(margins)))
+    # print(margins)
 
     ## Define color key centers (mid-points between margins)
     centers <- seq( from=0.5, to=(len-1.5), by=1 )
-    print(paste("length of centers",length(centers)))
-    print(centers)
+    # print(paste("length of centers",length(centers)))
+    # print(centers)
 
     ## Define color range
     colors  <- colorRampPalette( col )( length(centers) )
@@ -109,26 +111,26 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
       if (explicit) {
         # xlim <- c(lev[1],lev[len])
         xlim <- c(margins[1],margins[length(margins)])
-        image( centers, 0.5, as.matrix(centers), xlim=xlim, col=colors, axes=FALSE, ylab="", xlab="" )
+        image( centers, 0.5, as.matrix(centers), xlim=xlim, col=colors, axes=FALSE, ylab="", xlab="", cex.axis=cex.axis, cex.lab=cex.lab )
         box()
       } else {
         xlim <- c(lev[1],lev[2])
-        image( centers, 0.5, as.matrix(centers), col=colors, axes=FALSE, xlim=xlim, ylab="", xlab="" )
+        image( centers, 0.5, as.matrix(centers), col=colors, axes=FALSE, xlim=xlim, ylab="", xlab="", cex.axis=cex.axis, cex.lab=cex.lab )
         box()
       }
       box()
     } else if (orient=="v") {
       if (explicit) {
         ylim <- c(margins[1],margins[length(margins)])
-        image( 0.5, centers, as.matrix(t(centers)), col=colors, axes=FALSE, ylim=ylim, xlab="",ylab="" )
+        image( 0.5, centers, as.matrix(t(centers)), col=colors, axes=FALSE, ylim=ylim, xlab="",ylab="", cex.axis=cex.axis, cex.lab=cex.lab )
         box()
         # Hack by substracting 1 in the following 2 lines (commented out original lines above)
         # ylim <- c(lev[1],lev[len])
-        # image( 0.5, centers-1, as.matrix(t(centers)), col=colors, axes=FALSE, ylim=ylim, xlab="",ylab="" )
+        # image( 0.5, centers-1, as.matrix(t(centers)), col=colors, axes=FALSE, ylim=ylim, xlab="",ylab="", cex.axis=cex.axis, cex.lab=cex.lab )
         # axis( 2, at=margins-1, labels=as.character(lev) )
         } else {
         ylim <- c(lev[1],lev[2])
-        image( 0.5, centers, as.matrix(t(centers)), col=colors, axes=FALSE, ylim=ylim, xlab="",ylab="" )
+        image( 0.5, centers, as.matrix(t(centers)), col=colors, axes=FALSE, ylim=ylim, xlab="",ylab="", cex.axis=cex.axis, cex.lab=cex.lab )
         box()
       }
       box()      
@@ -138,9 +140,9 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
 
     if (doticks) {
       if (orient=="h"){
-        axis( 1, at=margins, labels=labels )
+        axis( 1, at=margins, labels=labels, cex.axis=cex.axis, cex.lab=cex.lab )
       } else if (orient=="v") {
-        axis( 2, at=margins, labels=labels )
+        axis( 2, at=margins, labels=labels, cex.axis=cex.axis, cex.lab=cex.lab )
       }
     }
 
