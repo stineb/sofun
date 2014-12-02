@@ -48,8 +48,16 @@ cdf.write <- function(var,varnam,
       if (is.na(time)) {print("no time vector provided"); stop}
     }
   } else {
-    if (make.zdim && is.na(z_dim)) {print("no z_dim vector provided"); stop}
-    if (make.tdim && is.na(time)) {print("no time; vector provided"); stop}
+    if (make.zdim) {
+      if (length(z_dim)==1){
+        if (is.na(z_dim)) {print("no z_dim vector provided"); stop}
+      }
+    }
+    if (make.tdim) {
+      if (length(time)==1){
+        if (is.na(time)) {print("no time; vector provided"); stop}
+      }
+    }
   }
 
   if (length(vardims)==3 && is.na(z_dim) && is.na(time) ){

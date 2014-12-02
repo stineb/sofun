@@ -68,14 +68,17 @@ get.f.luc <- function( name.nolu, name.lu, dir,
     nep.lu <- get.var.ncdf(nc, varid="nep"
                          ,start=start.lu,count=count.lu
                          )
+    nep.lu[nep.lu==-9999] <- NA
     print("reading PRODUCT C FLUX ...")
     cflux.prod.lu <- get.var.ncdf(nc, varid="acflux_products"
                                 ,start=start.lu,count=count.lu
                                 )
+    cflux.prod.lu[nep.lu==-9999] <- NA
     print("reading LU_AREA ...")
     luarea.lu <- get.var.ncdf(nc, varid="lu_area"
                             ,start=start.lu,count=count.lu
                             )
+    luarea.lu[nep.lu==-9999] <- NA
     if (offset) {
       count.offset <- count.lu
       count.offset[length(count.offset)] <- 1
@@ -106,7 +109,8 @@ get.f.luc <- function( name.nolu, name.lu, dir,
     time <- get.var.ncdf(nc, varid="TIME")
     print("reading without-LU-variable (example) ...")
     nep.nolu <- get.var.ncdf(nc, varid="nep")
-
+    nep.nolu[nep.nolu==-9999] <- NA
+    
     print("dimensions of NEP in no-LU file:")
     print(dim(nep.nolu))
     
@@ -169,10 +173,14 @@ get.f.luc <- function( name.nolu, name.lu, dir,
     nep.nolu <- get.var.ncdf(nc, varid="nep"
                            ,start=start.nolu,count=count.nolu
                            )
+    nep.nolu[nep.nolu==-9999] <- NA
+
     print("reading LU_AREA ...")
     luarea.nolu <- get.var.ncdf(nc, varid="lu_area"
                               ,start=start.nolu,count=count.nolu
                               )
+    luarea.nolu[luarea.nolu==-9999] <- NA
+    
     if (offset) {
       print("reading C pool variables ...")
       littera.nolu <- get.var.ncdf(nc, varid="littercarbon_ag",start=start.nolu,count=count.offset)
@@ -190,6 +198,7 @@ get.f.luc <- function( name.nolu, name.lu, dir,
     ## get gridcell area
     nc <- open.ncdf( paste(dir,name.nolu,".cdf",sep=""), readunlim=FALSE )
     area <- get.var.ncdf(nc, varid="area")
+    area[area==-9999] <- NA
     close.ncdf(nc)
     gc() # garbage collection
     
