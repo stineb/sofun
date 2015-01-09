@@ -5,7 +5,7 @@
 #                                      |
 # write value behind this position:    |->
 
-# Standard site name
+# Standard site name (reading <sitename>.parameter)
 sitename                                AU-How
 
 # Model spinup setting
@@ -17,14 +17,20 @@ firstyeartrend                          1982
 nyeartrend                              31
 
 # Model parameter file (not PFT-specific)
-modparfil                               params_modl_mak.dat
+modparfil                               params_modl.dat
 
 # PFT parameter file
-pftparfil                               params_pft_mak.dat
+pftparfil                               params_pft.dat
 
 # input files
 input_dir                               /alphadata01/bstocker/sofun/trunk/input/
 co2_forcing_file                        cCO2_rcp85_const850-1765.dat
+
+
+# ------------------------OPTIONAL-----------------------------
+# N availability (only needed for mak* simulations, i.e. when _nuptake_makela is activated)
+navail_mak                              10
+
 
 #                                      |
 # write value behind this position:    |->

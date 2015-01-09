@@ -18,20 +18,20 @@ if (do.pine||do.spruce) {
     ## Parameters for Pinus sylvestris
     K_r       <- 2000
     K_f       <- 2500
-    T_f       <- 3.3
+    T_f       <- 3.0 # xxx was 3.3 before
     T_r       <- 1.25
-    T_w       <- 40
-    Y         <- 1.54
+    T_w       <- 33  # was 40 before
+    Y         <- 1.53846 # was 1.54 before
     r_m       <- 16
     sigma_fM0 <- 8.0
     n_r       <- 1
     n_w       <- 0.07
-    f         <- 0.3
+    f         <- 0.3  # xxx resorption fraction Harry's code different for wood: 0.0
     alpha_w   <- 0.8
     c_H       <- 2800
-    r_0       <- 0.009
-    r_ref     <- 0.002
-    
+    r_0       <- 0.009 # corresponds to N_o
+    r_ref     <- 0.002 # corresponds to N_ref
+
   } else if (do.spruce){
     ## Parameters for Picea abies
     K_r       <- 2000
@@ -69,6 +69,7 @@ if (do.pine||do.spruce) {
 
   ## Set range of N availability (=sigma_rM)
   n_sigma_rM <- 100
+  # xxx try without conversion, harry's code goes from 1 to 41
   sigma_rM0 <- 10/1000  # convert from kgN/t-DW to kgN/kg-DW
   sigma_rM1 <- 50/1000
   sigma_rM_range <- seq( from=sigma_rM0, to=sigma_rM1, by=(sigma_rM1-sigma_rM0)/n_sigma_rM )
@@ -109,6 +110,9 @@ if (do.pine||do.spruce) {
       ## get value of sigma_fM (function)
       val_sigma_fM <- sigma_fM( r_p( r_f, r_0 ), sigma_fM0, r_ref )
 
+      ## ----------------------------------------------
+      ## Get the optimal phi analytically as a function of foliage C:N
+      ## ----------------------------------------------
       ## define coefficients of cubic function (eq. S10)
       beta1 <- Y * val_sigma_fM * K_f / ( 1/T_r + r_m * r_f * n_r )
       beta2 <- (1/T_f + r_f * ( alpha_w * c_H / T_w + Y * r_m * (1 + n_w * alpha_w * c_H * r_f ))) / (1/T_r + Y * r_m * r_f * n_r )
@@ -116,7 +120,7 @@ if (do.pine||do.spruce) {
       beta4 <- (((1-f)/T_f)+((1-f) * n_w * alpha_w * c_H * r_f / T_w )) / ((1-f) * n_r / T_r)
 
       a1 <- ( beta1 - beta3 + K_r - K_f * (beta2+beta4)) / (- K_f)
-      a2 <- (beta1 * beta4 - beta2 * beta3 + K_r * (beta2+beta4) - K_f * beta2 * beta4) / (-K_f)
+      a2 <- ( beta1 * beta4 - beta2 * beta3 + K_r * (beta2+beta4) - K_f * beta2 * beta4) / (-K_f)
       a3 <- K_r * beta2 * beta4 / (-K_f)
 
       ## use R polynom library to solve, this yields three solutions for phi
@@ -260,7 +264,9 @@ if (do.pine||do.spruce) {
 }
 
 ## Visualisations
-par(las=1)
+pdf("makela_plots.pdf")
+
+par(las=1,mfrow=c(4,2), mar=c(4,4,2,2))
 
 ## Growth vs. leaf C:N, for a given N availability
 # plot( r_f_range, G_out[,50], type="l", xlab="foliar C:N [kg-DW/kgN]", ylab="grwoth [kg-DW/yr]" )
@@ -273,41 +279,42 @@ par(las=1)
 # lines( r_f_range, U_alt_out[,50], col="red" )
 
 ## Fig. 1a: biomass vs. N availability
-# plot( sigma_rM_range*1000, W_f_max/1000, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="biomass [t-DW/ha]", ylim=c(0,18) )
-# lines( sigma_rM_range*1000, W_r_max/1000, col="red" )
-# title("Fig.1a")
+plot( sigma_rM_range*1000, W_f_max/1000, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="biomass [t-DW/ha]", ylim=c(0,18) )
+lines( sigma_rM_range*1000, W_r_max/1000, col="red" )
+title("Fig.1a")
 
 ## Fig. 1b: foliage:fine roots vs. N availability
-# plot( sigma_rM_range*1000, 1/phi_max, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="Foliage:fine roots", ylim=c(0,16) )
-# title("Fig.1b")
+plot( sigma_rM_range*1000, 1/phi_max, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="Foliage:fine roots", ylim=c(0,16) )
+title("Fig.1b")
 
 ## Fig. 2a: foliar C:N vs. N availability
-# plot( sigma_rM_range*1000, r_f_max*100, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="Foliar [N] (%)", ylim=c(0.8,1.6) )
-# title("Fig.2a")
+plot( sigma_rM_range*1000, r_f_max*100, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="Foliar [N] (%)", ylim=c(0.8,1.6) )
+title("Fig.2a")
 
 ## Fig. 2b: N uptake vs. N availability
-# plot( sigma_rM_range*1000, U_max, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="Foliar [N] (%)", ylim=c(0,55) )
-# title("Fig.2b")
+plot( sigma_rM_range*1000, U_max, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="Foliar [N] (%)", ylim=c(0,55) )
+title("Fig.2b")
 
 ## Fig. 3a: GPP/NPP vs. N availability
-# plot( sigma_rM_range*1000, P_max/1000, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="Production (tC/ha/yr)", ylim=c(0,16) )
-# lines(sigma_rM_range*1000, G_max/1000, col="red" )
-# lines(sigma_rM_range*1000, G_alt_max/1000, col="red", lty=2 )
-# title("Fig.3a")
+plot( sigma_rM_range*1000, P_max/1000, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="Production (tC/ha/yr)", ylim=c(0,16) )
+lines(sigma_rM_range*1000, G_max/1000, col="red" )
+lines(sigma_rM_range*1000, G_alt_max/1000, col="red", lty=2 )
+title("Fig.3a")
 
 ## Fig. 3b: NPP:GPP ratio
-# plot( sigma_rM_range*1000, G_alt_max/P_max, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="NPP:GPP" )
-# title("Fig.3b")
-# # ylim=c(0.2,0.6)
+plot( sigma_rM_range*1000, G_alt_max/P_max, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="NPP:GPP" )
+title("Fig.3b")
+# ylim=c(0.2,0.6)
 
 ## Fig. 3c: Photosynthesis (leaf-specific)
 plot( sigma_rM_range*1000, val_sigma_fM_max, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="Photosynthesis (tC/tDW/yr)" )
 title("Fig.3c")
 
 ## Fig. 4a: C allocation vs. N availability
-# plot( sigma_rM_range*1000, W_w_max/(W_f_max+W_w_max+W_r_max)*100, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="C allocation (%)", ylim=c(0,100) )
-# lines( sigma_rM_range*1000, W_r_max/(W_f_max+W_w_max+W_r_max)*100, col="red" )
+plot( sigma_rM_range*1000, W_w_max/(W_f_max+W_w_max+W_r_max)*100, type="l", xlab="N availability [kg N / t fine root / yr]", ylab="C allocation (%)", ylim=c(0,100) )
+lines( sigma_rM_range*1000, W_r_max/(W_f_max+W_w_max+W_r_max)*100, col="red" )
+title("Fig.4a")
 
-
+dev.off()
 
 

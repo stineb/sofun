@@ -1,55 +1,62 @@
-c //////////////////////////////////////////////////////////////////////
-c SELECT MODULES FOR DIFFERENT PARAMETRISATIONS
-c ----------------------------------------------------------------------
+! //////////////////////////////////////////////////////////////////////
+! SELECT MODULES FOR DIFFERENT PARAMETRISATIONS
+! ----------------------------------------------------------------------
 
-c ----------------------------------------------------------------------
-c MAINTENANCE RESPIRATION
-c Default: like in LPX
-c Option:   After Mäkelä et al., 2008, New Phyt.
+! ----------------------------------------------------------------------
+! FIXED/DYNAMIC VEGETATION
+! Default: fixed, reading in FPC for each PFT from site parameter file)
+! Option:  dynamic, like in LPX
+#define _fix_veg 1
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+! MAINTENANCE RESPIRATION
+! Default: like in LPX
+! Option:   After Mäkelä et al., 2008, New Phyt.
 #define _resp_maint_makela 1
-c ----------------------------------------------------------------------
+! ----------------------------------------------------------------------
 
-c ----------------------------------------------------------------------
-c PHOTOSYNTHESIS
-c Default: xxx
-c Option:  After Mäkelä et al., 2008, New Phyt.
+! ----------------------------------------------------------------------
+! PHOTOSYNTHESIS
+! Default: xxx
+! Option:  After Mäkelä et al., 2008, New Phyt.
 #define _gpp_makela 1
-c ----------------------------------------------------------------------
+! ----------------------------------------------------------------------
 
-c ----------------------------------------------------------------------
-c N UPTAKE
-c Default: FUN type after Fisher et al., 2011
-c Option:  After Mäkelä et al., 2008, New Phyt.
+! ----------------------------------------------------------------------
+! N UPTAKE
+! Default: FUN type after Fisher et al., 2011
+! Option:  After Mäkelä et al., 2008, New Phyt.
 #define _nuptake_makela 1
-c ----------------------------------------------------------------------
+! ----------------------------------------------------------------------
 
-c ----------------------------------------------------------------------
-c ALLOCATION
-c Default: annually called, like in LPX for grass PFT
-c Option:  Pipe model as described in Mäkelä et al., 2008, New Phyt.
-c Note that _allocation_pipe does not account for the separation between
-c sapwood and heartwood. The pool 'psapw' is taken to represent 
-c 'live wood'. This affects how turnover is formulated (see turnover.F)
+! ----------------------------------------------------------------------
+! ALLOCATION
+! Default: annually called, like in LPX for grass PFT
+! Option:  Pipe model as described in Mäkelä et al., 2008, New Phyt.
+! Note that _allocation_pipe does not account for the separation between
+! sapwood and heartwood. The pool 'psapw' is taken to represent 
+! 'live wood'. This affects how turnover is formulated (see turnover.F)
 #define _allocation_makela 1
-c ----------------------------------------------------------------------
+! ----------------------------------------------------------------------
 
-c //////////////////////////////////////////////////////////////////////
-c SELECT MODEL INTEGRATION
-c defining which model parts are to be calculated online and which to 
-c be prescribed. Default is always to calculate it online (not prescr.)
-c In general, if selected, daily values for the course of the whole 
-c transient simulation are read in when initialising the model. This 
-c requires input files formatted like ''
-c This is only useful for site scale simulations. 
-c ----------------------------------------------------------------------
+! //////////////////////////////////////////////////////////////////////
+! SELECT MODEL INTEGRATION
+! defining which model parts are to be calculated online and which to 
+! be prescribed. Default is always to calculate it online (not prescr.)
+! In general, if selected, daily values for the course of the whole 
+! transient simulation are read in when initialising the model. This 
+! requires input files formatted like ''
+! This is only useful for site scale simulations. 
+! ----------------------------------------------------------------------
 
-c Prescribe GPP per day
+! Prescribe GPP per day
 #define _prescr_gpp_site 0
 
-c //////////////////////////////////////////////////////////////////////
-c SANITY
-c Compile additional code for online sanity checks. This is recommended
-c for simulations during development stage. De-activate later to reduce
-c computational costs.
-c ----------------------------------------------------------------------
+! //////////////////////////////////////////////////////////////////////
+! SANITY
+! Compile additional code for online sanity checks. This is recommended
+! for simulations during development stage. De-activate later to reduce
+! computational costs.
+! ----------------------------------------------------------------------
 #define _check_sanity 1

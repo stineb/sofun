@@ -49,7 +49,7 @@
       !----------------------------------------------------------------
       use pools
       use statevars
-      use params_modl, only: tree
+      use params_modl, only: tree, grass
 
       implicit none
       integer, intent(in) :: pft
@@ -65,10 +65,18 @@
       endif
 
       ! initialise other properties
-      fpc_grid(pft,jpngr)  = 0.0
-      nind(pft,jpngr)      = 0.0
-      lai_ind(pft,jpngr)   = 0.0
-      crownarea(pft,jpngr) = 0.0
+      if (tree(pft)) then
+            fpc_grid(pft,jpngr)  = 0.0
+            nind(pft,jpngr)      = 0.0
+            lai_ind(pft,jpngr)   = 0.0
+            crownarea(pft,jpngr) = 0.0
+      else
+            ! xxx what to do with lai_ind and fpc_grid ???
+            fpc_grid(pft,jpngr)  = 0.0
+            nind(pft,jpngr)      = 1.0
+            lai_ind(pft,jpngr)   = 0.0
+            crownarea(pft,jpngr) = 1.0
+      endif
 
       !if (.not.grass(pft)) then
       !sm_ind(pft,jpngr,1)=orgpool(carbon(0.),nitrogen(0.))

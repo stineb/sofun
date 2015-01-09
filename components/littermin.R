@@ -4,10 +4,15 @@
 do.mine <- TRUE
 do.xuri <- TRUE
 do.xuri2 <- TRUE
+do.manz <- TRUE
+do.manzexpl <- TRUE
+do.plot <- TRUE
+do.mine2 <- TRUE
 
 ## Model parameters
 rL <- 1/100           # litter N:C ratio
-rS <- 1/9.77         # soil N:C ratio
+# rS <- 1/9.77         # soil N:C ratio
+rS <- 1/10         # soil N:C ratio
 rB <- 0.1            # microbial N:C ratio
 rCR <- 0.45*rL^0.76  # critical N:C ratio, fit in Fig. 3 of Manzoni et al., 2008
 eff <- rCR/rB        # carbon use efficiency of microbial growth, Eq.10 in XP14, and in Manzoni 08
@@ -15,9 +20,15 @@ tauLit <- 20         # litter turnover time
 tauSom <- 20         # SOM turnover time
 nsteps <- 150       # temporal integration steps
 
+print("-------------------------")
+print(paste("litter N:C      :",rL))
+print(paste("critical N:C    :",rCR))
+print(paste("C use efficiency:",eff))
+print("-------------------------")
+
 ## Initial litter C pool size
 CLitInit <- 100
-NinorgInit <- 1
+NinorgInit <- 0
 
 ## ### litter bag-type setup: Add 
 ## inCLit <- array(0,c(nsteps))
@@ -134,7 +145,10 @@ if (do.mine) {
 		if (diff>1e-12) {print(paste('MINE ',i,'diff to initial Ntot ',diff))}
 
 		## Check SOM C:N ratio
-		#print( paste('  my soil C:N ',CSom/NSom) )
+		RS_calc <- CSom/NSom
+		if (abs(RS_calc-1/rS)>1e-9) {
+			print( paste('MINE: soil C:N ', RS_calc) )			
+		}
 
 		
 		## SOM decomposition
@@ -154,17 +168,14 @@ if (do.mine) {
 		NinorgOut[i] <- Ninorg
 		NfixOut[i] <- Nfix
 
-		## Check SOM C:N ratio
-		## print( paste('soil C:N ',CSom/NSom) )
-											
 	}
 
-## Define variables as in Manzoni et al., XXX
-smallc <- (CLitOut+CSomOut)/CLitInit[1]	
-smalln <- (NLitOut+NSomOut)/(CLitInit[1]*rL)
+	## Define variables as in Manzoni et al., XXX
+	smallc <- (CLitOut+CSomOut)/CLitInit	
+	smalln <- (NLitOut+NSomOut)/(CLitInit*rL)
 
-Ctot <- CLitOut + CSomOut
-Ntot <- NLitOut + NSomOut
+	CtotOut <- CLitOut + CSomOut
+	NtotOut <- NLitOut + NSomOut
 
 }
 
@@ -214,10 +225,11 @@ if (do.xuri) {
 		# nitrogen transfer from litter to SOM (Eq.4 in Xu-Ri)
 		NLit <- NLit - dNLit
 		NSom <- NSom + dCLit * eff * rCR
+		# NSom <- NSom + dNLit ## what I would correct
 
 		# add N fixation to SOM (Eq.8 in Xu-Ri)
 		Nfix <- dCLit * eff * ( rS - rCR )
-		# Nfix <- dCLit * eff * ( rS - rB )  ## corrected
+		# Nfix <- dCLit * eff * ( rS - rB )  ## what I would correct
 		NSom <- NSom + Nfix
 
 	  # net mineralisation = -1 * immobilisation (Eq.7 in Xu-Ri)
@@ -231,12 +243,11 @@ if (do.xuri) {
 		diff <- Ntot_while-CLitInit*rL-NinorgInit
 		if (diff>1e-12) {print(paste('XURI: ',i,'diff to initial Ntot ',diff))}
 
-		# if (abs(Ntot_before-Ntot_while)>1e-9) {
-		# 	print('Xu-Ri appr.: N budget violated, while')
-		# }
-
 		# Check SOM C:N ratio
-		# print( paste('xuri soil C:N ',CSom/NSom) )
+		RS_calc <- CSom/NSom
+		if (abs(RS_calc-1/rS)>1e-9) {
+			print( paste('XURI: soil C:N ', RS_calc) )			
+		}
 		
 		# SOM decomposition
 		dCSom <- 1/tauSom * CSom
@@ -258,11 +269,11 @@ if (do.xuri) {
 	}
 
 	# Define variables as in Manzoni et al., XXX
-	smallc_xuri <- (CLitOut_xuri+CSomOut_xuri)/CLitInit[1]	
-	smalln_xuri <- (NLitOut_xuri+NSomOut_xuri)/(CLitInit[1]*rL)
+	smallc_xuri <- (CLitOut_xuri+CSomOut_xuri)/CLitInit	
+	smalln_xuri <- (NLitOut_xuri+NSomOut_xuri)/(CLitInit*rL)
 
-	Ctot_xuri <- CLitOut_xuri + CSomOut_xuri
-	Ntot_xuri <- NLitOut_xuri + NSomOut_xuri
+	CtotOut_xuri <- CLitOut_xuri + CSomOut_xuri
+	NtotOut_xuri <- NLitOut_xuri + NSomOut_xuri
 
 }
 
@@ -338,13 +349,11 @@ if (do.xuri2) {
 		diff <- Ntot_while-CLitInit*rL-NinorgInit
 		if (diff>1e-12) {print(paste('XURI2: ',i,'diff to initial Ntot ',diff))}
 
-
-		## if (abs(Ntot_before-Ntot_while)>1e-9) {
-		## 	print('Xu-Ri appr.: N budget violated, while')
-		## }
-
-		# ## Check SOM C:N ratio
-		# print( paste('xuri2 soil C:N ',CSom/NSom) )
+		## Check SOM C:N ratio
+		RS_calc <- CSom/NSom
+		if (abs(RS_calc-1/rS)>1e-9) {
+			print( paste('XURI2: soil C:N ', RS_calc) )			
+		}
 		
 		## SOM decomposition
 		dCSom <- 1/tauSom * CSom
@@ -366,66 +375,245 @@ if (do.xuri2) {
 	}
 
 	## Define variables as in Manzoni et al., XXX
-	smallc_xuri2 <- (CLitOut_xuri2+CSomOut_xuri2)/CLitInit[1]	
-	smalln_xuri2 <- (NLitOut_xuri2+NSomOut_xuri2)/(CLitInit[1]*rL)
+	smallc_xuri2 <- (CLitOut_xuri2+CSomOut_xuri2)/CLitInit	
+	smalln_xuri2 <- (NLitOut_xuri2+NSomOut_xuri2)/(CLitInit*rL)
 
-	Ctot_xuri2 <- CLitOut_xuri2 + CSomOut_xuri2
-	Ntot_xuri2 <- NLitOut_xuri2 + NSomOut_xuri2
+	CtotOut_xuri2 <- CLitOut_xuri2 + CSomOut_xuri2
+	NtotOut_xuri2 <- NLitOut_xuri2 + NSomOut_xuri2
 
 }
 
-# /////////////////////////////////////////////////
+if (do.manz) {
+	## ////////////////////////////////////
+	## MANZONI FORWARD VERSION 
+	## based on (Eqs.S2 and S3) and without SOM
+	## -----------------------------------
+	## Initial inorganic N pool size
+	Ninorg <- NinorgInit
 
+	## Initialise litter pool with CLitInit and its prescribed C:N ratio (rL)
+	CLit <- CLitInit
+	NLit <- CLitInit*rL
+	CSom <- 0
+	NSom <- 0
+
+	## Initialise output variables with NA
+	CLitOut_manz <- array(NA,c(nsteps))
+	NLitOut_manz <- array(NA,c(nsteps))
+	NinorgOut_manz <- array(NA,c(nsteps))
+	NfixOut_manz <- array(0,c(nsteps))
+
+	## Write to output of first time step
+	CLitOut_manz[1] <- CLit
+	NLitOut_manz[1] <- NLit
+	NinorgOut_manz[1] <- Ninorg
+
+	## Record total N for budget check
+	Ntot_before <- NLit + Ninorg
+
+	## Integrate time steps
+	for (i in 2:nsteps) {
+		
+		## Litter-C and -N decay with turnover time 'tauLit'
+		Decomp <- 1/tauLit * CLit ## corresponds to 'D' in Manz.
+
+		## C loss, eq.S2
+		dCLit <- Decomp * (1-eff) 
+
+		## net mineralisation, eq.S3
+		dNLit <- Decomp * ( NLit/CLit - rCR )
+
+		## update litter
+		CLit <- CLit - dCLit
+		NLit <- NLit - dNLit
+		
+		## Mineralized SOM-N is added to inorganic N pool
+		Ninorg <- Ninorg + dNLit
+		
+		## Where does fixation come into play?
+		Nfix <- 0
+
+		# Write to output
+		CLitOut_manz[i] <- CLit
+		NLitOut_manz[i] <- NLit
+		NinorgOut_manz[i] <- Ninorg
+		NfixOut_manz[i] <- Nfix
+
+	}
+
+	## Define variables as in Manzoni et al., XXX
+	smallc_manz <- (CLitOut_manz)/CLitInit	
+	smalln_manz <- (NLitOut_manz)/(CLitInit*rL)
+
+	CtotOut_manz <- CLitOut_manz
+	NtotOut_manz <- NLitOut_manz
+
+}
+
+if (do.mine2) {
+	## ////////////////////////////////////
+	## MY INTERPRETATION OF MANZONI WITH A SOM POOL 
+	## based on (Eqs.S2 and S3) including a SOM pool
+	## -----------------------------------
+	## Initial inorganic N pool size
+	Ninorg <- NinorgInit
+
+	## Initialise litter pool with CLitInit and its prescribed C:N ratio (rL)
+	CLit <- CLitInit
+	NLit <- CLitInit*rL
+	CSom <- 0
+	NSom <- 0
+
+	## Initialise output variables with NA
+	CLitOut_mine2 <- array(NA,c(nsteps))
+	NLitOut_mine2 <- array(NA,c(nsteps))
+	CSomOut_mine2 <- array(NA,c(nsteps))
+	NSomOut_mine2 <- array(NA,c(nsteps))
+	NinorgOut_mine2 <- array(NA,c(nsteps))
+	NfixOut_mine2 <- array(0,c(nsteps))
+
+	## Write to output of first time step
+	CLitOut_mine2[1] <- CLit
+	NLitOut_mine2[1] <- NLit
+	CSomOut_mine2[1] <- CSom
+	NSomOut_mine2[1] <- NSom
+	NinorgOut_mine2[1] <- Ninorg
+
+	## Record total N for budget check
+	Ntot_before <- NLit + Ninorg
+
+	## Integrate time steps
+	for (i in 2:nsteps) {
+
+		## Litter-C and -N decay with turnover time 'tauLit'
+		dCLit <- 1/tauLit * CLit 
+		dNLit <- 1/tauLit * NLit
+
+		## update litter
+		CLit <- CLit - dCLit 
+		NLit <- NLit - dNLit 
+		
+		## amount C and N transferred to soil
+		dCSom <- eff * dCLit
+		dNSom <- eff * dCLit * rB
+
+		## update soil
+		CSom <- CSom + dCSom
+		NSom <- NSom + dNSom
+
+		## net litter N mineralisation is difference between N from litter turnover and N fixed into SOM
+		netmin <- dNLit - dNSom
+		
+		## Mineralized SOM-N is added to inorganic N pool
+		Ninorg <- Ninorg + netmin
+		
+		## Where does fixation come into play?
+		Nfix <- 0
+
+		## SOM decomposition
+		dCSom <- 1/tauSom * CSom
+		dNSom <- 1/tauSom * NSom
+		CSom <- CSom - dCSom
+		NSom <- NSom - dNSom
+		
+		## Mineralized SOM-N is added to inorganic N pool
+		Ninorg <- Ninorg + dNSom
+
+		# Write to output
+		CLitOut_mine2[i] <- CLit
+		NLitOut_mine2[i] <- NLit
+		CSomOut_mine2[i] <- CSom
+		NSomOut_mine2[i] <- NSom
+		NinorgOut_mine2[i] <- Ninorg
+		NfixOut_mine2[i] <- Nfix
+
+	}
+
+	## Define variables as in Manzoni et al., XXX
+	smallc_mine2 <- (CLitOut_mine2)/CLitInit	
+	smalln_mine2 <- (NLitOut_mine2)/(CLitInit*rL)
+
+	CtotOut_mine2 <- CLitOut_mine2 + CSomOut_mine2
+	NtotOut_mine2 <- NLitOut_mine2 + NSomOut_mine2
+
+}
+
+
+if (do.manzexpl) {
+	## ////////////////////////////////////
+	## MANZONI EXPLICIT VERSION 
+	## based on Eq.1 and without SOM
+	## -----------------------------------
+	rL0 <- rL
+	n_manz <- function( c_manz, rL ){
+		# rL <- 1/54           # litter N:C ratio
+		rB <- 0.1            # microbial N:C ratio
+		rCR <- 0.45*rL^0.76  # critical N:C ratio, fit in Fig. 3 of Manzoni et al., 2008
+		eff <- rCR/rB        # carbon use efficiency of microbial growth, Eq.10 in XP14, and in Manzoni 08
+		n_manz <- c_manz * rB/rL0 + ( 1 - rB/rL0 ) * c_manz^(1/(1-eff))
+	}
+
+	# ... and apply this function to a decaying litter C pool (c_manz)
+	c_manz <- seq( from=1, to=0, by=-0.001 )
+	n_manz_out <- lapply( c_manz, FUN=n_manz, rL=rL )
+	n_manz_out <- unlist( n_manz_out )	
+}
 # Alternatively, we can implement Eq.1 of Manzoni et al., 2008 directly as a function (n_manz) ...
-rL0 <- rL
-n_manz <- function( c_manz ){
-	rL <- 1/54           # litter N:C ratio
-	rB <- 0.1            # microbial N:C ratio
-	rCR <- 0.45*rL^0.76  # critical N:C ratio, fit in Fig. 3 of Manzoni et al., 2008
-	eff <- rCR/rB        # carbon use efficiency of microbial growth, Eq.10 in XP14, and in Manzoni 08
-	n_manz <- c_manz * rB/rL0 + ( 1 - rB/rL0 ) * c_manz^(1/(1-eff))
-}
-
-# ... and apply this function to a decaying litter C pool (c_manz)
-c_manz <- seq( from=1, to=0, by=-0.001 )
-n_manz_out <- lapply( c_manz, FUN=n_manz )
-n_manz_out <- unlist( n_manz_out )
 	
-# Plot the whole thing
-time <- seq(1,nsteps)
 
-par(mfrow=c(2,2), mar=c(4,4,2,2))
+if (do.plot) {
+	## ////////////////////////////////////
+	## Plot the whole thing
+	## -----------------------------------
+	time <- seq(1,nsteps)
 
-# plot( time, CLitOut, , type='l', col='blue' , xlim=c(0,nsteps), ylim=c(0,CLitInit))
-# par(new=TRUE)
-# plot( time, CSomOut, , type='l', col='red'  , xlim=c(0,nsteps), ylim=c(0,CLitInit))
-#plot( time, (CLitOut+CSomOut)/(NLitOut+NSomOut), , type='l', col='blue')#, xlim=c(0,nsteps), ylim=c(0,2000))
-#par(new=TRUE)
-#plot( time, CSomOut, , type='l', col='red', xlim=c(0,nsteps), ylim=c(0,2000))
-# , xlim=c(0,nsteps), ylim=c(0,CLitInit))
-#par(new=TRUE)
-#plot( time, NLitOut, , type='l', col='red'  , xlim=c(0,nsteps), ylim=c(0,CLitInit*rL))
-#plot( time, smalln, , type='l', col='red'  , xlim=c(0,nsteps), ylim=c(0,3))
-#par(new=TRUE)
+	# pdf("littermin_overview.pdf")
+	par(mfrow=c(2,2), mar=c(4,4,2,2))
 
-## This reproduces Figure 1 in Manzoni et al., 2008
-plot( 1-smallc, smalln, , type='l', xlab="1-c", ylab="n", xlim=c(0,1), ylim=c(0,2))
-if (do.xuri)  {lines( 1-smallc_xuri, smalln_xuri, col="blue", lty=2  )}
-if (do.xuri2) {lines( 1-smallc_xuri2, smalln_xuri2, col="green", lty=2 )}
-lines( 1-c_manz, n_manz_out, col="red" )
+	# plot( time, CLitOut, , type='l', col='blue' , xlim=c(0,nsteps), ylim=c(0,CLitInit))
+	# par(new=TRUE)
+	# plot( time, CSomOut, , type='l', col='red'  , xlim=c(0,nsteps), ylim=c(0,CLitInit))
+	#plot( time, (CLitOut+CSomOut)/(NLitOut+NSomOut), , type='l', col='blue')#, xlim=c(0,nsteps), ylim=c(0,2000))
+	#par(new=TRUE)
+	#plot( time, CSomOut, , type='l', col='red', xlim=c(0,nsteps), ylim=c(0,2000))
+	# , xlim=c(0,nsteps), ylim=c(0,CLitInit))
+	#par(new=TRUE)
+	#plot( time, NLitOut, , type='l', col='red'  , xlim=c(0,nsteps), ylim=c(0,CLitInit*rL))
+	#plot( time, smalln, , type='l', col='red'  , xlim=c(0,nsteps), ylim=c(0,3))
+	#par(new=TRUE)
 
-# Inorganic N pool over time
-plot( time, NinorgOut, type='l', xlim=c(0,nsteps), ylim=c(0,3.2))
-if (do.xuri)  {lines( time, NinorgOut_xuri, col='blue', lty=2 )}
-if (do.xuri2) {lines( time, NinorgOut_xuri2, col='green', lty=2 )}
+	## This reproduces Figure 1 in Manzoni et al., 2008
+	plot( 1-smallc, smalln, , type='l', xlab="1-c", ylab="n", xlim=c(0,1), ylim=c(0,2))
+	if (do.xuri)  {lines( 1-smallc_xuri, smalln_xuri, col="blue", lty=2  )}
+	if (do.xuri2) {lines( 1-smallc_xuri2, smalln_xuri2, col="green", lty=2 )}
+	if (do.manz) {lines( 1-smallc_manz, smalln_manz, col="magenta" )}
+	if (do.mine2) {lines( 1-smallc_manz, smalln_manz, col="orange" )}
+	if (do.manzexpl) {lines( 1-c_manz, n_manz_out, col="red" )}
+	legend( "topright", c("mine","xuri","xuri2","manzoni Eq 1", "manzoni Eqs S2,S3", "manzoni with SOM"), lwd=2, bty="n", col=c("black","blue","green","red","magenta","orange"), lty=c(1,1,2,1,1,1) )
 
-## N fixation over time
-plot( time, cumsum(NfixOut), type='l', xlim=c(0,nsteps), ylim=c(0,1.76))
-if (do.xuri)  {lines( time, cumsum(NfixOut_xuri), col='blue' )}
-if (do.xuri2) {lines( time, cumsum(NfixOut_xuri2), col='green', lty=2 )}
+	# Inorganic N pool over time
+	print(NinorgOut)
+	plot( time, NinorgOut, type='l', xlim=c(0,nsteps), ylim=c(0,3.2))
+	if (do.xuri)  {lines( time, NinorgOut_xuri, col='blue', lty=2 )}
+	if (do.xuri2) {lines( time, NinorgOut_xuri2, col='green', lty=2 )}
+	if (do.manz) {lines( time, NinorgOut_manz, col='magenta', lty=2 )}
+	if (do.mine2) {lines( time, NinorgOut_mine2, col='orange', lty=2 )}
 
-plot(1:10,1:10,type="n",axes=FALSE,xlab="",ylab="")
-legend("topright",c("mine","xuri","xuri2","manzoni"),lwd=2,bty="n",col=c("black","blue","green","red"),lty=c(1,1,2,1),cex=1.5)
+	## N fixation over time
+	plot( time, cumsum(NfixOut), type='l', xlim=c(0,nsteps), ylim=c(0,1.76))
+	if (do.xuri)  {lines( time, cumsum(NfixOut_xuri), col='blue' )}
+	if (do.xuri2) {lines( time, cumsum(NfixOut_xuri2), col='green', lty=2 )}
 
+	## Organic N pool over time
+	plot( time, NtotOut, type='l', xlim=c(0,nsteps) )
+	if (do.xuri)  {lines( time, NtotOut_xuri, col="blue", lty=2  )}
+	if (do.xuri2) {lines( time, NtotOut_xuri2, col="green", lty=2 )}
+	if (do.manz) {lines( time, NtotOut_manz, col="magenta" )}
+	if (do.mine2) {lines( time, NtotOut_mine2, col="orange" )}
+	# if (do.manzexpl) {lines( time, n_manz_out*CLitInit*rL, col="red" )}
+	
+	# dev.off()
 
-## ==> N fixation is much higher in the Xu-Ri Version but it seems not to be higher than necessary
+	## ==> N fixation is much higher in the Xu-Ri Version but it seems not to be higher than necessary
+
+}

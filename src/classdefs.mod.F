@@ -3,7 +3,6 @@
        !  Module contains Fortran 90 derived-type declarations to define
        !  objects
        !----------------------------------------------------------------
-
        implicit none
 
        ! Carbon, so far contains only c12 (to be extended for c13)
@@ -17,27 +16,27 @@
 
        ! Organic pools, contain carbon (c12) and nitrogen (n14)
        type orgpool
-         type (carbon)   :: c
-         type (nitrogen) :: n
+         type(carbon)   :: c
+         type(nitrogen) :: n
        end type orgpool
 
        !! Plants, contain leaves and roots
        !type plantclass
-         !type (orgpool) :: lm ! leafmass
-         !type (orgpool) :: rm ! rootmass
+         !type(orgpool) :: lm ! leafmass
+         !type(orgpool) :: rm ! rootmass
        !end type plantclass
 
        ! Soil, contains a pool with fast and slow turnover
        !type soilclass
-         !type (orgpool) :: fs ! fast
-         !type (orgpool) :: sl ! slow
+         !type(orgpool) :: fs ! fast
+         !type(orgpool) :: sl ! slow
        !end type soilclass
 
        ! Litter, contains ...
        !type litterclass
-         !type (orgpool) :: af ! above-ground fast
-         !type (orgpool) :: as ! above-ground slow
-         !type (orgpool) :: bg ! below-ground
+         !type(orgpool) :: af ! above-ground fast
+         !type(orgpool) :: as ! above-ground slow
+         !type(orgpool) :: bg ! below-ground
        !end type litterclass
 
        contains
@@ -53,8 +52,8 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (orgpool), intent(in) :: amount
-         type (orgpool), intent(inout) :: to
+         type(orgpool), intent(in) :: amount
+         type(orgpool), intent(inout) :: to
          real, optional, intent(in) :: d13C
 
          call ccp(amount%c,to%c)
@@ -78,8 +77,8 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (orgpool), intent(in) :: amount
-         type (orgpool), intent(inout) :: from
+         type(orgpool), intent(in) :: amount
+         type(orgpool), intent(inout) :: from
 
          call csub(amount%c,from%c)
          call nsub(amount%n,from%n)
@@ -96,9 +95,9 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (orgpool), intent(in) :: amount
-         type (orgpool), intent(inout) :: from
-         type (orgpool), intent(inout) :: to
+         type(orgpool), intent(in) :: amount
+         type(orgpool), intent(inout) :: from
+         type(orgpool), intent(inout) :: to
          real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
          if (present(scale)) then
@@ -118,7 +117,7 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (orgpool), intent(inout) :: pool
+         type(orgpool), intent(inout) :: pool
 
          call cinit(pool%c)
          call ninit(pool%n)
@@ -137,9 +136,9 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (carbon), intent(in) :: amount
-         type (carbon), intent(inout) :: from
-         type (carbon), intent(inout) :: to
+         type(carbon), intent(in) :: amount
+         type(carbon), intent(inout) :: from
+         type(carbon), intent(inout) :: to
          real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
          if (present(scale)) then
@@ -160,8 +159,8 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (carbon), intent(in) :: amount
-         type (carbon), intent(inout) :: to
+         type(carbon), intent(in) :: amount
+         type(carbon), intent(inout) :: to
          real, optional, intent(in) :: d13C
 
          to%c12 = amount%c12 + to%c12
@@ -184,8 +183,8 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (carbon), intent(in) :: amount
-         type (carbon), intent(inout) :: from
+         type(carbon), intent(in) :: amount
+         type(carbon), intent(inout) :: from
 
 #if _check_sanity
          if (amount%c12>from%c12) then
@@ -203,7 +202,7 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (carbon), intent(inout) :: pool
+         type(carbon), intent(inout) :: pool
 
          pool%c12 = 0.
 
@@ -221,9 +220,9 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (nitrogen), intent(in) :: amount
-         type (nitrogen), intent(inout) :: from
-         type (nitrogen), intent(inout) :: to
+         type(nitrogen), intent(in) :: amount
+         type(nitrogen), intent(inout) :: from
+         type(nitrogen), intent(inout) :: to
          real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
          if (present(scale)) then
@@ -244,8 +243,8 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (nitrogen), intent(in) :: amount
-         type (nitrogen), intent(inout) :: to
+         type(nitrogen), intent(in) :: amount
+         type(nitrogen), intent(inout) :: to
 
          to%n14 = amount%n14 + to%n14
 
@@ -259,8 +258,8 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (nitrogen), intent(in) :: amount
-         type (nitrogen), intent(inout) :: from
+         type(nitrogen), intent(in) :: amount
+         type(nitrogen), intent(inout) :: from
 
 #if _check_sanity
          if (amount%n14>from%n14) then
@@ -278,7 +277,7 @@
          !----------------------------------------------------------------
 
          implicit none
-         type (nitrogen), intent(inout) :: pool
+         type(nitrogen), intent(inout) :: pool
 
          pool%n14 = 0.
 
@@ -295,11 +294,11 @@
          implicit none
 
          ! arguments
-         real :: frac
-         type (orgpool), intent(in) :: from
+         real, intent(in)           :: frac
+         type(orgpool), intent(in) :: from
          
          ! function return variable
-         type (orgpool) :: orgfrac
+         type(orgpool) :: orgfrac
 
          orgfrac%c%c12 = frac * from%c%c12
          orgfrac%n%n14 = frac * from%n%n14
@@ -315,10 +314,10 @@
 
          ! arguments
          real :: frac
-         type (carbon), intent(in) :: from
+         type(carbon), intent(in) :: from
          
          ! function return variable
-         type (carbon) :: cfrac
+         type(carbon) :: cfrac
 
          cfrac%c12 = frac * from%c12
 
@@ -334,10 +333,10 @@
 
          ! arguments
          real :: frac
-         type (nitrogen), intent(in) :: from
+         type(nitrogen), intent(in) :: from
          
          ! function return variable
-         type (nitrogen) :: nfrac
+         type(nitrogen) :: nfrac
 
          nfrac%n14 = frac * from%n14
 
@@ -352,19 +351,19 @@
          implicit none
 
          ! arguments
-         type (orgpool), intent(in) :: pool1
-         type (orgpool), intent(in) :: pool2
-         type (orgpool), intent(in),optional :: pool3
-         type (orgpool), intent(in),optional :: pool4
-         type (orgpool), intent(in),optional :: pool5
-         type (orgpool), intent(in),optional :: pool6
-         type (orgpool), intent(in),optional :: pool7
-         type (orgpool), intent(in),optional :: pool8
-         type (orgpool), intent(in),optional :: pool9
-         type (orgpool), intent(in),optional :: pool10
+         type(orgpool), intent(in) :: pool1
+         type(orgpool), intent(in) :: pool2
+         type(orgpool), intent(in),optional :: pool3
+         type(orgpool), intent(in),optional :: pool4
+         type(orgpool), intent(in),optional :: pool5
+         type(orgpool), intent(in),optional :: pool6
+         type(orgpool), intent(in),optional :: pool7
+         type(orgpool), intent(in),optional :: pool8
+         type(orgpool), intent(in),optional :: pool9
+         type(orgpool), intent(in),optional :: pool10
          
          ! function return variable
-         type (orgpool) :: orgplus
+         type(orgpool) :: orgplus
 
          orgplus%c = cplus(pool1%c,pool2%c)
          orgplus%n = nplus(pool1%n,pool2%n)
@@ -414,19 +413,19 @@
          implicit none
 
          ! arguments
-         type (carbon), intent(in) :: pool1
-         type (carbon), intent(in) :: pool2
-         type (carbon), intent(in), optional :: pool3
-         type (carbon), intent(in), optional :: pool4
-         type (carbon), intent(in), optional :: pool5
-         type (carbon), intent(in), optional :: pool6
-         type (carbon), intent(in), optional :: pool7
-         type (carbon), intent(in), optional :: pool8
-         type (carbon), intent(in), optional :: pool9
-         type (carbon), intent(in), optional :: pool10
+         type(carbon), intent(in) :: pool1
+         type(carbon), intent(in) :: pool2
+         type(carbon), intent(in), optional :: pool3
+         type(carbon), intent(in), optional :: pool4
+         type(carbon), intent(in), optional :: pool5
+         type(carbon), intent(in), optional :: pool6
+         type(carbon), intent(in), optional :: pool7
+         type(carbon), intent(in), optional :: pool8
+         type(carbon), intent(in), optional :: pool9
+         type(carbon), intent(in), optional :: pool10
          
          ! function return variable
-         type (carbon) :: cplus
+         type(carbon) :: cplus
 
          cplus%c12 = pool1%c12 + pool2%c12
 
@@ -466,19 +465,19 @@
          implicit none
 
          ! arguments
-         type (nitrogen), intent(in) :: pool1
-         type (nitrogen), intent(in) :: pool2
-         type (nitrogen), intent(in), optional :: pool3
-         type (nitrogen), intent(in), optional :: pool4
-         type (nitrogen), intent(in), optional :: pool5
-         type (nitrogen), intent(in), optional :: pool6
-         type (nitrogen), intent(in), optional :: pool7
-         type (nitrogen), intent(in), optional :: pool8
-         type (nitrogen), intent(in), optional :: pool9
-         type (nitrogen), intent(in), optional :: pool10
+         type(nitrogen), intent(in) :: pool1
+         type(nitrogen), intent(in) :: pool2
+         type(nitrogen), intent(in), optional :: pool3
+         type(nitrogen), intent(in), optional :: pool4
+         type(nitrogen), intent(in), optional :: pool5
+         type(nitrogen), intent(in), optional :: pool6
+         type(nitrogen), intent(in), optional :: pool7
+         type(nitrogen), intent(in), optional :: pool8
+         type(nitrogen), intent(in), optional :: pool9
+         type(nitrogen), intent(in), optional :: pool10
          
          ! function return variable
-         type (nitrogen) :: nplus
+         type(nitrogen) :: nplus
 
          nplus%n14 = pool1%n14 + pool2%n14
 
@@ -510,6 +509,26 @@
        end function nplus
 
 
+       function orgminus( pool1, pool2 )
+         !////////////////////////////////////////////////////////////////
+         !  Generic function to return variable difference of two pools of 
+         !  type 'orgpool'. Sum is of type 'orgpool' as well.
+         !----------------------------------------------------------------
+         implicit none
+
+         ! arguments
+         type(orgpool), intent(in) :: pool1
+         type(orgpool), intent(in) :: pool2
+         
+         ! function return variable
+         type(orgpool) :: orgminus
+
+         orgminus%c = cminus( pool1%c, pool2%c )
+         orgminus%n = nminus( pool1%n, pool2%n )
+
+       end function orgminus
+
+
        function cminus( pool1, pool2 )
          !////////////////////////////////////////////////////////////////
          !  Generic function to return variable difference of two pools of 
@@ -518,11 +537,11 @@
          implicit none
 
          ! arguments
-         type (carbon), intent(in) :: pool1
-         type (carbon), intent(in) :: pool2
+         type(carbon), intent(in) :: pool1
+         type(carbon), intent(in) :: pool2
          
          ! function return variable
-         type (carbon) :: cminus
+         type(carbon) :: cminus
 
 
 #if _check_sanity
@@ -543,11 +562,11 @@
          implicit none
 
          ! arguments
-         type (nitrogen), intent(in) :: pool1
-         type (nitrogen), intent(in) :: pool2
+         type(nitrogen), intent(in) :: pool1
+         type(nitrogen), intent(in) :: pool2
          
          ! function return variable
-         type (nitrogen) :: nminus
+         type(nitrogen) :: nminus
 
 #if _check_sanity
          if (pool1%n14<pool2%n14) then
@@ -566,7 +585,7 @@
          implicit none
 
          ! arguments
-         type (orgpool), intent(in) :: pool
+         type(orgpool), intent(in) :: pool
          
          ! function return variable
          real :: cton
@@ -592,7 +611,7 @@
          implicit none
 
          ! arguments
-         type (orgpool), intent(in) :: pool
+         type(orgpool), intent(in) :: pool
          
          ! function return variable
          real :: ntoc

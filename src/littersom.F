@@ -12,7 +12,7 @@
       use rates
       use statevars, only: drsoil, drhet, dnfix_free, doc, netmin_litt, netmin_soil
       use params_modl
-      use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, nh4
+      use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, nh4, no3
 
       implicit none
 
@@ -61,8 +61,12 @@
       real :: nbal_before
       real :: nbal_after
 
-      cbal_before = plitt_af(1,1)%c%c12 + plitt_as(1,1)%c%c12 + plitt_bg(1,1)%c%c12 + psoil_fs(1,1)%c%c12 + psoil_sl(1,1)%c%c12 + drhet(1)%c12
-      nbal_before = plitt_af(1,1)%n%n14 + plitt_as(1,1)%n%n14 + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 + psoil_sl(1,1)%n%n14 + nh4(1,1)%n14
+      cbal_before = plitt_af(1,1)%c%c12 + plitt_as(1,1)%c%c12 &
+        + plitt_bg(1,1)%c%c12 + psoil_fs(1,1)%c%c12 &
+        + psoil_sl(1,1)%c%c12 + drhet(1)%c12
+      nbal_before = plitt_af(1,1)%n%n14 + plitt_as(1,1)%n%n14 &
+        + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 &
+        + psoil_sl(1,1)%n%n14 + nh4(1,1)%n14
 #endif
 
       do lu=1,nlu
@@ -101,10 +105,18 @@
             !-------------------------------------------------------------------------
              
             ! define decomposition rates for current soil temperature and moisture
-            klitt_af(lu) = klitt_af10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
-            klitt_as(lu) = klitt_as10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
-            klitt_bg(lu) = klitt_bg10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
-            kexu(lu)     = kexu10     * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley") ! alternative: "gerten"
+            klitt_af(lu) = klitt_af10 &
+              * ftemp(soiltemp,"lloyd_and_taylor") &
+              * fmoist(soilmoist,"foley") ! alternative: "gerten"
+            klitt_as(lu) = klitt_as10 &
+              * ftemp(soiltemp,"lloyd_and_taylor") &
+              * fmoist(soilmoist,"foley") ! alternative: "gerten"
+            klitt_bg(lu) = klitt_bg10 &
+              * ftemp(soiltemp,"lloyd_and_taylor") &
+              * fmoist(soilmoist,"foley") ! alternative: "gerten"
+            kexu(lu)     = kexu10     &
+              * ftemp(soiltemp,"lloyd_and_taylor") &
+              * fmoist(soilmoist,"foley") ! alternative: "gerten"
 
           end if
         end do
@@ -115,8 +127,12 @@
         ! Moisture: Foley, 1995; Fang and Moncrieff, 1999; Gerten et al., 2004;
         !           Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
         !-------------------------------------------------------------------------
-        ksoil_fs(lu) = ksoil_fs10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley")     ! alternative: "gerten"
-        ksoil_sl(lu) = ksoil_sl10 * ftemp(soiltemp,"lloyd_and_taylor") * fmoist(soilmoist,"foley")     ! alternative: "gerten"
+        ksoil_fs(lu) = ksoil_fs10 &
+          * ftemp(soiltemp,"lloyd_and_taylor") &
+          * fmoist(soilmoist,"foley")     ! alternative: "gerten"
+        ksoil_sl(lu) = ksoil_sl10 &
+          * ftemp(soiltemp,"lloyd_and_taylor") &
+          * fmoist(soilmoist,"foley")     ! alternative: "gerten"
 
         do pft=1,npft
           if (lu==lu_category(pft)) then
@@ -181,46 +197,64 @@
             ! move fraction '(1-eff)' of C to heterotrophic respiration
             call ccp( cfrac( (1.-eff), dlitt(pft)%c ), drhet(lu) )
 
-            ! NITROGEN LITTER -> SOIL TRANSFER
             !----------------------------------------------------------------    
-            ! requirement to maintain rB (N:C ratio)
-            Nreq_B =  dlitt(pft)%c%c12 * ntoc_crit 
-
+            ! N MINERALISATION
+            !----------------------------------------------------------------    
             ! N requirement to maintain rS (SOM N:C ratio)
             Nreq_S = dlitt(pft)%c%c12 * eff / cton_soil(pft)  ! 1/cton_soil = rS
-
-            ! Difference is acquired through N fixation ???
-            Nfix = max( 0., Nreq_S - Nreq_B )
 
             ! If N supply is sufficient, mineralisation occurrs: positive (dNLit-Nreq).
             ! otherwise, immobilisation occurrs: negative (dNLit-Nreq).
             ! Thus, the balance for total organic N is:
             ! dN/dt = -(dNLit - Nreq)
-            !       = -(dCLit*rL - dCLit*eff*rB)
-            !       = dCLit*(rCR - rL) , rCR=eff*rB ('critical' N:C ratio)
-            ! This corresponds to Eq. S3 in Manzoni et al., 2010
-            !netmin = dlitt(pft)%n%n14 - Nreq_B XXX COMMENTED THIS OUT BECAUSE IT DOES NOT HOLD SOIL C:N RATIO CONSTANT!!!
-            netmin_litt(pft) = dlitt(pft)%n%n14 - Nreq_B
+            !       = -(dCLit*rL - dCLit*eff*rS)
+            !       = dCLit*(rCR - rL) , rCR=eff*rS ('critical' N:C ratio)
+            ! This corresponds to Eq. S3 in Manzoni et al., 2010, but ...
+            ! rS takes the place of rB.
+            netmin_litt(pft) = dlitt(pft)%n%n14 - Nreq_S
 
             if (netmin_litt(pft)<0.0) then
-              ! Immobilisation of N
+              !----------------------------------------------------------------    
+              ! N IMMOBILISATION
+              !----------------------------------------------------------------    
               req = -1.0*netmin_litt(pft)
+              !----------------------------------------------------------------    
+              ! immobilisation using NH4
+              !----------------------------------------------------------------    
               avl = nh4(lu,jpngr)%n14
-
               if (avl>=req) then
-                ! enough mineral N for immobilisation
+                ! enough mineral NH4 for immobilisation
                 nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - req
+                req = 0.0
               else
-                ! not enough N for immobilisation => free-living N fixation
+                ! not enough NH4 for immobilisation
                 nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - avl
-                Nfix = Nfix + (req - avl)
+                req = req - avl
+                !----------------------------------------------------------------    
+                ! immobilisation using NO3
+                !----------------------------------------------------------------    
+                avl = no3(lu,jpngr)%n14 
+                if (avl>=req) then
+                  ! enough mineral NO3 for immobilisation
+                  no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - req
+                  req = 0.0
+                else
+                  ! not enough NO3 for immobilisation => free-living N fixation
+                  no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - avl
+                  req = req - avl
+                  !----------------------------------------------------------------    
+                  ! N fixation by free-living bacteria in litter to satisfy remainder
+                  !----------------------------------------------------------------    
+                  Nfix = req
+                endif
               endif
+
+
             endif
 
-            ! Rest remains in the system: 
-            rest = dlitt(pft)%n%n14 - netmin_litt(pft)
-            call ncp( nfrac( fastfrac     , nitrogen(rest) ), psoil_fs(lu,jpngr)%n )
-            call ncp( nfrac( (1.-fastfrac), nitrogen(rest) ), psoil_sl(lu,jpngr)%n )
+            ! Nreq_S (= dlitt - netmin) remains in the system: 
+            call ncp( nfrac( fastfrac     , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
+            call ncp( nfrac( (1.-fastfrac), nitrogen(Nreq_S) ), psoil_sl(lu,jpngr)%n )
 
             ! Add Nfix to SOM ==> should maintain soil C:N ratio
             call ncp( nfrac( fastfrac     , nitrogen(Nfix) ), psoil_fs(lu,jpngr)%n )
@@ -259,8 +293,12 @@
       enddo                   !lu
 
 #if _check_sanity
-      cbal_after = plitt_af(1,1)%c%c12 + plitt_as(1,1)%c%c12 + plitt_bg(1,1)%c%c12 + psoil_fs(1,1)%c%c12 + psoil_sl(1,1)%c%c12 + drhet(1)%c12
-      nbal_after = plitt_af(1,1)%n%n14 + plitt_as(1,1)%n%n14 + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 + psoil_sl(1,1)%n%n14 + nh4(1,1)%n14
+      cbal_after = plitt_af(1,1)%c%c12 + plitt_as(1,1)%c%c12 &
+        + plitt_bg(1,1)%c%c12 + psoil_fs(1,1)%c%c12 &
+        + psoil_sl(1,1)%c%c12 + drhet(1)%c12
+      nbal_after = plitt_af(1,1)%n%n14 + plitt_as(1,1)%n%n14 &
+        + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 &
+        + psoil_sl(1,1)%n%n14 + nh4(1,1)%n14
       nbal_after = Nbal_after - dnfix_free(1)
       if (abs(cbal_after-cbal_before)>1.d9) then
         print*,'cbal_before, cbal_after ', cbal_before, cbal_after

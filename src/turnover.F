@@ -4,7 +4,7 @@
       !  year.
       !----------------------------------------------------------------
       use classdefs
-      use params_modl, only: lu_category, long_leaf, long_root, long_sapw, npft, F_NRETAIN
+      use params_modl, only: lu_category, tree, long_leaf, long_root, long_sapw, npft, F_NRETAIN
       use pools, only: pleaf, proot, psapw, pwood, plitt_af, plitt_bg, plabl
       use statevars, only: nind, ispresent
 
@@ -37,31 +37,31 @@
           ! Calculate the biomass turnover in this year          
           lm_turn = orgfrac( dleaf, pleaf(pft,jpngr) )
           rm_turn = orgfrac( droot, proot(pft,jpngr) )
-          !if (tree(pft)) then
+          if (tree(pft)) then
             sm_turn = orgfrac( dsapw, psapw(pft,jpngr) )
-          !endif
+          endif
 
 #if _allocation_makela
           ! C: plant -> litter
           call cmv( lm_turn%c, pleaf(pft,jpngr)%c, plitt_af(pft,jpngr)%c, scale=nind(pft,jpngr) )
           call cmv( rm_turn%c, proot(pft,jpngr)%c, plitt_bg(pft,jpngr)%c, scale=nind(pft,jpngr) )
-          !if (tree(pft)) then
+          if (tree(pft)) then
             call cmv( sm_turn%c, psapw(pft,jpngr)%c, plitt_af(pft,jpngr)%c, scale=nind(pft,jpngr) )
-          !endif
+          endif
        
           ! N: plant -> storage pool
           call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plabl(pft,jpngr)%n, scale=F_NRETAIN )
           call nmv( rm_turn%n, proot(pft,jpngr)%n, plabl(pft,jpngr)%n, scale=F_NRETAIN )
-          !if (tree(pft)) then
+          if (tree(pft)) then
             call nmv( sm_turn%n, psapw(pft,jpngr)%n, plabl(pft,jpngr)%n, scale=F_NRETAIN )
-          !endif
+          endif
 
           ! N: plant -> litter
           call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr)*(1.-F_NRETAIN) )
           call nmv( rm_turn%n, proot(pft,jpngr)%n, plitt_bg(pft,jpngr)%n, scale=nind(pft,jpngr)*(1.-F_NRETAIN) )
-          !if (tree(pft)) then
+          if (tree(pft)) then
             call nmv( sm_turn%n, psapw(pft,jpngr)%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr)*(1.-F_NRETAIN) )
-          !endif
+          endif
 
 #else
           ! xxx try

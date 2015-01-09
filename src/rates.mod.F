@@ -37,19 +37,19 @@
        endif
 
        if (method=="lloyd_and_taylor") then
-       !----------------------------------------------------------------
-       ! LLOYD AND TAYLOR
-       ! Temperature response function is a modified Q10 relationship
-       ! (Lloyd & Taylor 1994)
-       !----------------------------------------------------------------
+         !----------------------------------------------------------------
+         ! LLOYD AND TAYLOR
+         ! Temperature response function is a modified Q10 relationship
+         ! (Lloyd & Taylor 1994)
+         !----------------------------------------------------------------
          if (temp.ge.-40.) then 
            ! avoid numerical errors
-           ftemp = exp(E0*((1./(ref_temp_local+Tzero-T0))
-     $       -(1./(temp+Tzero-T0))))
+           ftemp = exp(E0*((1./(ref_temp_local+Tzero-T0))&
+              -(1./(temp+Tzero-T0))))
          else
            ! set temperature response to a constant at value of -40°C
-           ftemp = exp(E0*((1./(ref_temp_local+Tzero-T0))
-     $       -(1./(-40.+Tzero-T0))))
+           ftemp = exp(E0*((1./(ref_temp_local+Tzero-T0))&
+              -(1./(-40.+Tzero-T0))))
          end if
 
        end if
@@ -72,11 +72,11 @@
        real :: fmoist
 
        if (method.eq."foley") then
-       !----------------------------------------------------------------
-       ! FOLEY
-       ! Calculates decomposition rate modifier for a given water fraction
-       ! according to Foley 1995
-       !----------------------------------------------------------------
+         !----------------------------------------------------------------
+         ! FOLEY
+         ! Calculates decomposition rate modifier for a given water fraction
+         ! according to Foley 1995
+         !----------------------------------------------------------------
          fmoist = (0.25+(0.75*moist))
 
        end if

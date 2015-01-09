@@ -779,202 +779,202 @@
 #endif
 
       
-c$$$      subroutine n_fixation_cryptogam( day, lu, jpngr, dnfix_cpc, dnfix_cgc )
-c$$$      !******************************************************************************
-c$$$      ! SUBROUTINE N_UPTAKE BY CRYPTOGAMIC COVERS
-c$$$      !-------------------------------------------------------------------------
-c$$$      ! Simulated to match pattern and global total fixed N after Elbert et al.
-c$$$      ! (2012), Nature Geoscience. Basic assumption: N uptake is driven by energy
-c$$$      ! available (solar radiation ~ photosynthetically active radiation) and not
-c$$$      ! absorbed by leafs or stems. N fixation by cryptogamic ground cover (CGC)
-c$$$      ! thus scales with (1-VPC), where VPC is analogous to FPC but takes into
-c$$$      ! account the shading by branches and stems. N fixation by cryptogamic
-c$$$      ! plant covers (CPC) scales with SPC. 
-c$$$      !-------------------------------------------------------------------------
-c$$$
-c$$$      implicit none
-c$$$
-c$$$      ! ARGUMENTS
-c$$$      INTEGER day, lu, jpngr
-c$$$      REAL*8 dnfix_cpc, dnfix_cgc
-c$$$      
-c$$$      ! LOCAL VARIABLES
-c$$$      INTEGER
-c$$$     $     pft,ppft
-c$$$      
-c$$$      REAL*8
-c$$$     $     fpc_ind,               ! phenology-modulated (!) fractional plant cover
-c$$$     $     local_fpc_grid,        ! FPC w.r.t. grid cell area (is not the same as the global variable fpc_grid)
-c$$$     $     vpc_ind,               ! fractional vegetation cover including stems and branches
-c$$$     $     vpc_grid,              ! VPC w.r.t. grid cell area
-c$$$     $     spc_grid,              ! fractional stem/branches cover
-c$$$     $     fpc_grid_total,        ! fpc_grid summed over all PFTs in the present LU
-c$$$     $     vpc_grid_total,        ! vpc_grid summed over all PFTs in the present LU
-c$$$     $     spc_grid_total,        ! spc_grid summed over all PFTs in the present LU
-c$$$     $     lm_tot(npft),
-c$$$     $     scale
-c$$$
-c$$$      ! Initialisations
-c$$$      vpc_grid_total = 0.
-c$$$      fpc_grid_total = 0.
-c$$$      spc_grid_total = 0.
-c$$$
-c$$$      !  ! Calculate ftemp
-c$$$      !  if (soiltemp.ge.-40.) then
-c$$$      !    tshift = 46.02d0
-c$$$      !    ftemp = exp(308.56d0*(1.0/(20.+tshift)-1.0/
-c$$$      ! $       (soiltemp+tshift)))                             ! Eq.8, XP08 (canexch.cpp:1018)
-c$$$      !  else
-c$$$      !    ftemp = 0.
-c$$$      !  endif
-c$$$      !  ftemp = min(ftemp, 1.)                              ! (canexch.cpp:1023)
-c$$$      !  ftemp = max(ftemp, 0.)                              ! (canexch.cpp:1024)      
-c$$$
-c$$$      do pft=1,npft
-c$$$        if ( present(pft,jpngr) .and. lu_category(pft) .eq. lu ) then
-c$$$
-c$$$        ! LM_TOT
-c$$$        !--------------------------------------------------------------------------
-c$$$        ! Non-linearity of Beer-Law causes very high FPC values when 2 Grasses are present.
-c$$$        ! (Beer Law does NOT make sense for grasses, anyway.)
-c$$$        ! Thus, use sum of all grass/moss-leaf masses and calculate FPC based on the sum.
-c$$$        ! Then compute each PFT's FPC as the product of total-grass FPC times each PFT's leaf mass.
-c$$$        !-------------------------------------------------------------------------
-c$$$          lm_tot(pft) = 0.
-c$$$          ! Grass: C3, C4 on natural, croplands, pasture, peatlands
-c$$$          if (grass(pft)) then
-c$$$            do ppft=1,npft
-c$$$              if (lu_category(ppft).eq.lu_category(pft)) then
-c$$$                if (grass(ppft)) lm_tot(pft) =
-c$$$     $               lm_tot(pft)+lm_ind(ppft,jpngr,1)
-c$$$              endif
-c$$$            enddo
-c$$$          ! Moss: moss on peatlands
-c$$$          elseif (moss(pft)) then
-c$$$            do ppft=1,npft
-c$$$              if (lu_category(ppft).eq.lu_category(pft)) then
-c$$$                if (moss(ppft)) lm_tot(pft) =
-c$$$     $               lm_tot(pft)+lm_ind(ppft,jpngr,1)
-c$$$              endif
-c$$$            enddo
-c$$$          ! Tree: tree on natural lands, peatlands
-c$$$          else
-c$$$            lm_tot(pft) = lm_ind(pft,jpngr,1)
-c$$$          endif
-c$$$          
-c$$$          ! LAI
-c$$$          !--------------------------------------------------------------------------
-c$$$          if (crownarea(pft,jpngr).gt.0.) then
-c$$$            lai_ind(pft,jpngr)=(lm_tot(pft)*sla(pft))/
-c$$$     $           crownarea(pft,jpngr)
-c$$$          else
-c$$$            lai_ind(pft,jpngr)=0.
-c$$$          endif
-c$$$          
-c$$$          ! FPC and VPC
-c$$$          !--------------------------------------------------------------------------
-c$$$          ! Note that this is not identical to how it's calculated in SR update_fpc,
-c$$$          ! where the phenology scaling factor is not included in the exponent.
-c$$$          ! Fractional plant cover accounts for the fraction of the grid cell covered
-c$$$          ! by the photosyntesic plant tissue. To be modulated by daily phenology!
-c$$$          !--------------------------------------------------------------------------
-c$$$          fpc_ind = 1.-dexp(
-c$$$     $                        -1.*kbeer*lai_ind(pft,jpngr)*dphen(day,pft)
-c$$$     $                        )
-c$$$          vpc_ind = 1.-dexp(
-c$$$     $                        -1.*kbeer*(
-c$$$     $                                      lai_ind(pft,jpngr)*dphen(day,pft)
-c$$$     $                                      + pftpar(pft,46)
-c$$$     $                                      )
-c$$$     $                        )
-c$$$          
-c$$$          local_fpc_grid = fpc_ind * crownarea(pft,jpngr) * nind(pft,jpngr)
-c$$$          vpc_grid       = vpc_ind * crownarea(pft,jpngr) * nind(pft,jpngr)
-c$$$          
-c$$$          if (lm_tot(pft).gt.0.) then
-c$$$            local_fpc_grid = local_fpc_grid*lm_ind(pft,jpngr,1)
-c$$$     $           /lm_tot(pft)
-c$$$            vpc_grid = vpc_grid*lm_ind(pft,jpngr,1)/lm_tot(pft)
-c$$$          else
-c$$$            local_fpc_grid = 0.
-c$$$            vpc_grid       = 0. 
-c$$$          endif
-c$$$
-c$$$          spc_grid = vpc_grid - local_fpc_grid
-c$$$
-c$$$          ! Sum over pfts
-c$$$          !--------------------------------------------------------------------------
-c$$$          fpc_grid_total = fpc_grid_total + local_fpc_grid
-c$$$          vpc_grid_total = vpc_grid_total + vpc_grid
-c$$$          spc_grid_total = spc_grid_total + spc_grid
-c$$$
-c$$$          ! print*,'spc_grid',spc_grid
-c$$$          
-c$$$          !!          call update_fpc(pft,jpngr)
-c$$$          !          
-c$$$          !      ! VAI is analogous to LAI but accounts for stems and branches in addition to
-c$$$          !      ! leafs.
-c$$$          !          vpc_ind = 1. - dexp(
-c$$$          !     $                          - 1.*kbeer*(
-c$$$          !     $                                         lai_ind(pft,jpngr)*dphen(day,pft)
-c$$$          !     $                                         + pftpar(pft,46)
-c$$$          !     $                                         )
-c$$$          !     $                          )
-c$$$          !          vpc_grid = vpc_ind * crownarea(pft,jpngr) * nind(pft,jpngr)
-c$$$          !          vpc_grid_total = vpc_grid_total + vpc_grid
-c$$$          !
-c$$$          !      ! Calculate local FCP treating dphen analogously as for the calulation of VAI:
-c$$$          !      ! FPC = 1-exp(-kbeer*LAI*dphen) instead of FPC = dphen*(1-exp(-kbeer*LAI))
-c$$$          !!           fpc_ind = 1. - dexp(
-c$$$          !!     $                           -1.*kbeer*(
-c$$$          !!     $                                         lai_ind(pft,jpngr)*dphen(day,pft)
-c$$$          !!     $                                         )
-c$$$          !!     $                           )
-c$$$          !          fpc_ind = (1. - dexp(
-c$$$          !     $                           -1.*kbeer*(
-c$$$          !     $                                         lai_ind(pft,jpngr)
-c$$$          !     $                                         )
-c$$$          !     $                           ))!*dphen(day,pft)
-c$$$          !          local_fpc_grid = fpc_ind * crownarea(pft,jpngr) * nind(pft,jpngr)
-c$$$          !          fpc_grid_total = fpc_grid_total + local_fpc_grid
-c$$$          !
-c$$$          !          print*,'pft',pft
-c$$$          !          print*,'local_fpc_grid     ',local_fpc_grid
-c$$$          !          print*,'fpc_grid(pft,jpngr)',fpc_grid(pft,jpngr)
-c$$$          !          
-c$$$          !      ! Calculate fractional stem/branch cover of grid cell as the difference
-c$$$          !          spc_grid = vpc_grid - local_fpc_grid
-c$$$          !          spc_grid_total = spc_grid_total + spc_grid
-c$$$         
-c$$$        endif
-c$$$      enddo
-c$$$
-c$$$      
-c$$$      if (vpc_grid_total.gt.1.) then
-c$$$        !        print*,'-----------------scaling-------------------'
-c$$$        !        print*,'fpc_grid_total',fpc_grid_total
-c$$$        !        print*,'vpc_grid_total',vpc_grid_total
-c$$$        scale = 1. / vpc_grid_total
-c$$$        fpc_grid_total = fpc_grid_total * scale
-c$$$        vpc_grid_total = vpc_grid_total * scale
-c$$$        spc_grid_total = spc_grid_total * scale
-c$$$        !        print*,'fpc_grid_total',fpc_grid_total
-c$$$        !        print*,'vpc_grid_total',vpc_grid_total
-c$$$      endif
-c$$$
-c$$$      if (fpc_grid_total.gt.1.) then
-c$$$        !        print*,'fpc_grid_total',fpc_grid_total
-c$$$        stop 
-c$$$      endif
-c$$$
-c$$$      ! Daily N fixed by cryptogamic ground and plant covers (communicated to calling SR)
-c$$$      !-------------------------------------------------------------------------
-c$$$      ! Fixation scales with daily photosynthetically active radiation and the
-c$$$      ! branch/stem surface for CPC and the bare ground surface for CGC.
-c$$$      
-c$$$      dnfix_cpc = par_day(day) * max( 0., spc_grid_total) / glob_CPC_scal
-c$$$      dnfix_cgc = par_day(day) * max( 0., (1.0 - vpc_grid_total) ) / glob_CGC_scal
-c$$$
-c$$$      end subroutine n_fixation_cryptogam
+!$$$      subroutine n_fixation_cryptogam( day, lu, jpngr, dnfix_cpc, dnfix_cgc )
+!$$$      !******************************************************************************
+!$$$      ! SUBROUTINE N_UPTAKE BY CRYPTOGAMIC COVERS
+!$$$      !-------------------------------------------------------------------------
+!$$$      ! Simulated to match pattern and global total fixed N after Elbert et al.
+!$$$      ! (2012), Nature Geoscience. Basic assumption: N uptake is driven by energy
+!$$$      ! available (solar radiation ~ photosynthetically active radiation) and not
+!$$$      ! absorbed by leafs or stems. N fixation by cryptogamic ground cover (CGC)
+!$$$      ! thus scales with (1-VPC), where VPC is analogous to FPC but takes into
+!$$$      ! account the shading by branches and stems. N fixation by cryptogamic
+!$$$      ! plant covers (CPC) scales with SPC. 
+!$$$      !-------------------------------------------------------------------------
+!$$$
+!$$$      implicit none
+!$$$
+!$$$      ! ARGUMENTS
+!$$$      INTEGER day, lu, jpngr
+!$$$      REAL*8 dnfix_cpc, dnfix_cgc
+!$$$      
+!$$$      ! LOCAL VARIABLES
+!$$$      INTEGER
+!$$$     $     pft,ppft
+!$$$      
+!$$$      REAL*8
+!$$$     $     fpc_ind,               ! phenology-modulated (!) fractional plant cover
+!$$$     $     local_fpc_grid,        ! FPC w.r.t. grid cell area (is not the same as the global variable fpc_grid)
+!$$$     $     vpc_ind,               ! fractional vegetation cover including stems and branches
+!$$$     $     vpc_grid,              ! VPC w.r.t. grid cell area
+!$$$     $     spc_grid,              ! fractional stem/branches cover
+!$$$     $     fpc_grid_total,        ! fpc_grid summed over all PFTs in the present LU
+!$$$     $     vpc_grid_total,        ! vpc_grid summed over all PFTs in the present LU
+!$$$     $     spc_grid_total,        ! spc_grid summed over all PFTs in the present LU
+!$$$     $     lm_tot(npft),
+!$$$     $     scale
+!$$$
+!$$$      ! Initialisations
+!$$$      vpc_grid_total = 0.
+!$$$      fpc_grid_total = 0.
+!$$$      spc_grid_total = 0.
+!$$$
+!$$$      !  ! Calculate ftemp
+!$$$      !  if (soiltemp.ge.-40.) then
+!$$$      !    tshift = 46.02d0
+!$$$      !    ftemp = exp(308.56d0*(1.0/(20.+tshift)-1.0/
+!$$$      ! $       (soiltemp+tshift)))                             ! Eq.8, XP08 (canexch.cpp:1018)
+!$$$      !  else
+!$$$      !    ftemp = 0.
+!$$$      !  endif
+!$$$      !  ftemp = min(ftemp, 1.)                              ! (canexch.cpp:1023)
+!$$$      !  ftemp = max(ftemp, 0.)                              ! (canexch.cpp:1024)      
+!$$$
+!$$$      do pft=1,npft
+!$$$        if ( present(pft,jpngr) .and. lu_category(pft) .eq. lu ) then
+!$$$
+!$$$        ! LM_TOT
+!$$$        !--------------------------------------------------------------------------
+!$$$        ! Non-linearity of Beer-Law causes very high FPC values when 2 Grasses are present.
+!$$$        ! (Beer Law does NOT make sense for grasses, anyway.)
+!$$$        ! Thus, use sum of all grass/moss-leaf masses and calculate FPC based on the sum.
+!$$$        ! Then compute each PFT's FPC as the product of total-grass FPC times each PFT's leaf mass.
+!$$$        !-------------------------------------------------------------------------
+!$$$          lm_tot(pft) = 0.
+!$$$          ! Grass: C3, C4 on natural, croplands, pasture, peatlands
+!$$$          if (grass(pft)) then
+!$$$            do ppft=1,npft
+!$$$              if (lu_category(ppft).eq.lu_category(pft)) then
+!$$$                if (grass(ppft)) lm_tot(pft) =
+!$$$     $               lm_tot(pft)+lm_ind(ppft,jpngr,1)
+!$$$              endif
+!$$$            enddo
+!$$$          ! Moss: moss on peatlands
+!$$$          elseif (moss(pft)) then
+!$$$            do ppft=1,npft
+!$$$              if (lu_category(ppft).eq.lu_category(pft)) then
+!$$$                if (moss(ppft)) lm_tot(pft) =
+!$$$     $               lm_tot(pft)+lm_ind(ppft,jpngr,1)
+!$$$              endif
+!$$$            enddo
+!$$$          ! Tree: tree on natural lands, peatlands
+!$$$          else
+!$$$            lm_tot(pft) = lm_ind(pft,jpngr,1)
+!$$$          endif
+!$$$          
+!$$$          ! LAI
+!$$$          !--------------------------------------------------------------------------
+!$$$          if (crownarea(pft,jpngr).gt.0.) then
+!$$$            lai_ind(pft,jpngr)=(lm_tot(pft)*sla(pft))/
+!$$$     $           crownarea(pft,jpngr)
+!$$$          else
+!$$$            lai_ind(pft,jpngr)=0.
+!$$$          endif
+!$$$          
+!$$$          ! FPC and VPC
+!$$$          !--------------------------------------------------------------------------
+!$$$          ! Note that this is not identical to how it's calculated in SR update_fpc,
+!$$$          ! where the phenology scaling factor is not included in the exponent.
+!$$$          ! Fractional plant cover accounts for the fraction of the grid cell covered
+!$$$          ! by the photosyntesic plant tissue. To be modulated by daily phenology!
+!$$$          !--------------------------------------------------------------------------
+!$$$          fpc_ind = 1.-dexp(
+!$$$     $                        -1.*kbeer*lai_ind(pft,jpngr)*dphen(day,pft)
+!$$$     $                        )
+!$$$          vpc_ind = 1.-dexp(
+!$$$     $                        -1.*kbeer*(
+!$$$     $                                      lai_ind(pft,jpngr)*dphen(day,pft)
+!$$$     $                                      + pftpar(pft,46)
+!$$$     $                                      )
+!$$$     $                        )
+!$$$          
+!$$$          local_fpc_grid = fpc_ind * crownarea(pft,jpngr) * nind(pft,jpngr)
+!$$$          vpc_grid       = vpc_ind * crownarea(pft,jpngr) * nind(pft,jpngr)
+!$$$          
+!$$$          if (lm_tot(pft).gt.0.) then
+!$$$            local_fpc_grid = local_fpc_grid*lm_ind(pft,jpngr,1)
+!$$$     $           /lm_tot(pft)
+!$$$            vpc_grid = vpc_grid*lm_ind(pft,jpngr,1)/lm_tot(pft)
+!$$$          else
+!$$$            local_fpc_grid = 0.
+!$$$            vpc_grid       = 0. 
+!$$$          endif
+!$$$
+!$$$          spc_grid = vpc_grid - local_fpc_grid
+!$$$
+!$$$          ! Sum over pfts
+!$$$          !--------------------------------------------------------------------------
+!$$$          fpc_grid_total = fpc_grid_total + local_fpc_grid
+!$$$          vpc_grid_total = vpc_grid_total + vpc_grid
+!$$$          spc_grid_total = spc_grid_total + spc_grid
+!$$$
+!$$$          ! print*,'spc_grid',spc_grid
+!$$$          
+!$$$          !!          call update_fpc(pft,jpngr)
+!$$$          !          
+!$$$          !      ! VAI is analogous to LAI but accounts for stems and branches in addition to
+!$$$          !      ! leafs.
+!$$$          !          vpc_ind = 1. - dexp(
+!$$$          !     $                          - 1.*kbeer*(
+!$$$          !     $                                         lai_ind(pft,jpngr)*dphen(day,pft)
+!$$$          !     $                                         + pftpar(pft,46)
+!$$$          !     $                                         )
+!$$$          !     $                          )
+!$$$          !          vpc_grid = vpc_ind * crownarea(pft,jpngr) * nind(pft,jpngr)
+!$$$          !          vpc_grid_total = vpc_grid_total + vpc_grid
+!$$$          !
+!$$$          !      ! Calculate local FCP treating dphen analogously as for the calulation of VAI:
+!$$$          !      ! FPC = 1-exp(-kbeer*LAI*dphen) instead of FPC = dphen*(1-exp(-kbeer*LAI))
+!$$$          !!           fpc_ind = 1. - dexp(
+!$$$          !!     $                           -1.*kbeer*(
+!$$$          !!     $                                         lai_ind(pft,jpngr)*dphen(day,pft)
+!$$$          !!     $                                         )
+!$$$          !!     $                           )
+!$$$          !          fpc_ind = (1. - dexp(
+!$$$          !     $                           -1.*kbeer*(
+!$$$          !     $                                         lai_ind(pft,jpngr)
+!$$$          !     $                                         )
+!$$$          !     $                           ))!*dphen(day,pft)
+!$$$          !          local_fpc_grid = fpc_ind * crownarea(pft,jpngr) * nind(pft,jpngr)
+!$$$          !          fpc_grid_total = fpc_grid_total + local_fpc_grid
+!$$$          !
+!$$$          !          print*,'pft',pft
+!$$$          !          print*,'local_fpc_grid     ',local_fpc_grid
+!$$$          !          print*,'fpc_grid(pft,jpngr)',fpc_grid(pft,jpngr)
+!$$$          !          
+!$$$          !      ! Calculate fractional stem/branch cover of grid cell as the difference
+!$$$          !          spc_grid = vpc_grid - local_fpc_grid
+!$$$          !          spc_grid_total = spc_grid_total + spc_grid
+!$$$         
+!$$$        endif
+!$$$      enddo
+!$$$
+!$$$      
+!$$$      if (vpc_grid_total.gt.1.) then
+!$$$        !        print*,'-----------------scaling-------------------'
+!$$$        !        print*,'fpc_grid_total',fpc_grid_total
+!$$$        !        print*,'vpc_grid_total',vpc_grid_total
+!$$$        scale = 1. / vpc_grid_total
+!$$$        fpc_grid_total = fpc_grid_total * scale
+!$$$        vpc_grid_total = vpc_grid_total * scale
+!$$$        spc_grid_total = spc_grid_total * scale
+!$$$        !        print*,'fpc_grid_total',fpc_grid_total
+!$$$        !        print*,'vpc_grid_total',vpc_grid_total
+!$$$      endif
+!$$$
+!$$$      if (fpc_grid_total.gt.1.) then
+!$$$        !        print*,'fpc_grid_total',fpc_grid_total
+!$$$        stop 
+!$$$      endif
+!$$$
+!$$$      ! Daily N fixed by cryptogamic ground and plant covers (communicated to calling SR)
+!$$$      !-------------------------------------------------------------------------
+!$$$      ! Fixation scales with daily photosynthetically active radiation and the
+!$$$      ! branch/stem surface for CPC and the bare ground surface for CGC.
+!$$$      
+!$$$      dnfix_cpc = par_day(day) * max( 0., spc_grid_total) / glob_CPC_scal
+!$$$      dnfix_cgc = par_day(day) * max( 0., (1.0 - vpc_grid_total) ) / glob_CGC_scal
+!$$$
+!$$$      end subroutine n_fixation_cryptogam
       
  

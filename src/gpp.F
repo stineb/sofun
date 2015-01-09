@@ -54,14 +54,17 @@
       ! parameter values for Pinus Sylvestris (their table 1)
       !----------------------------------------------------------------
       ! Actual photosynthetic N concentration in foliage, reduced by non-photosynthtic/structural N
-      n_photo = max( pleaf(pft,jpngr)%n%n14 * nind(pft,jpngr) - n_struct, 0.0 )
+      do pft=1,npft
+            n_photo = max( pleaf(pft,jpngr)%n%n14 * nind(pft,jpngr) - n_struct, 0.0 )
 
-      ! light-saturated specific rate of photosynthesis
-      sigma_fm = ( sigma_fm0 * n_photo ) / ( n_photo + n_ref )
+            ! light-saturated specific rate of photosynthesis
+            sigma_fm = ( sigma_fm0 * n_photo ) / ( n_photo + n_ref )
 
-      ! Eq.6 in Makela et al., 2008
-      dgpp(pft) = ( sigma_fm * pleaf(pft,jpngr)%c%c12 * nind(pft,jpngr) * K_f ) / ( pleaf(pft,jpngr)%c%c12 * nind(pft,jpngr) + K_f )
+            ! Eq.6 in Makela et al., 2008
+            dgpp(pft) = ( sigma_fm * pleaf(pft,jpngr)%c%c12 * nind(pft,jpngr) * K_f ) &
+                  / ( pleaf(pft,jpngr)%c%c12 * nind(pft,jpngr) + K_f )
 
+      enddo
 #else
       stop 'GPP: no GPP parametrisation selected. no default defined. abort.'
 

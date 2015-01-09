@@ -41,7 +41,9 @@
             do dm=1,ndaymonth(mo)
               day=day+1
               do pft=1,npft
-                  dgpp_data(yr,day,pft) = getvalreal_STANDARD( sitename//'_daily_gpp_med_STANDARD.txt', mo=mo, dm=dm )
+                  dgpp_data(yr,day,pft) = getvalreal_STANDARD( &
+                    sitename//'_daily_gpp_med_STANDARD.txt', mo=mo, dm=dm &
+                    )
               end do
             end do
           enddo

@@ -19,6 +19,17 @@ lpft7                                   .false.
 lpft8                                   .false.
 lpft9                                   .false.
 
+# prescribed fractional plant cover for each PFT (if lpft<i> == .true.)
+in_fpc_grid_1                           1.0
+in_fpc_grid_2                           1.0
+in_fpc_grid_3                           1.0
+in_fpc_grid_4                           1.0
+in_fpc_grid_5                           1.0
+in_fpc_grid_6                           1.0
+in_fpc_grid_7                           1.0
+in_fpc_grid_8                           1.0
+in_fpc_grid_9                           1.0
+
 #                                      |
-# write value behind this position:    |->
+# write value *behind* this position:  |->
 ## EOF 

@@ -18,9 +18,9 @@ ifeq ($(PROFILE),pgf)
 # Compiler and options
 FCOM=pgf95
 CPPFLAGS=-E
-COMPFLAGS=-Mextend
+COMPFLAGS=-Mextend -Mfreeform
 #COMPFLAGS       = -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
-DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp
+DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
 
 # System libraries
 #LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
@@ -33,8 +33,10 @@ ifeq ($(PROFILE),gfor)
 # Compiler and options
 FCOM=gfortran
 CPPFLAGS=-e
-COMPFLAGS=-ffixed-line-length-0 -fdefault-real-8
-DEBUGFLAGS=-ffixed-line-length-0 -fdefault-real-8 -g -fbounds-check -Wall -fbacktrace -finit-real=nan
+COMPFLAGS=-ffixed-line-length-0 -fdefault-real-8 -ffree-form
+
+DEBUGFLAGS=-ffixed-line-length-0 -fdefault-real-8 -g -fbounds-check -Wall -fbacktrace -finit-real=nan -ffree-form
+
 
 # System libraries
 # NETCDF_INC = /usr/local/include
