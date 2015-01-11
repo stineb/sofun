@@ -7,7 +7,7 @@
         use params_core
         use classdefs
         use pools, only: pleaf, proot, psapw, plitt_af, plitt_as, plabl
-        use statevars, only: ispresent, nind
+        use treegeometry, only: ispresent, nind
         use params_modl, only: lmtorm0, grass, rcton_LS, rcton_LR, cton_pro, c_H, alpha_w
 
         implicit none

@@ -32,9 +32,9 @@
        type(nitrogen), dimension(nlu,maxgrid)  :: no3      ! nitrate [gN/m2]
        type(nitrogen), dimension(nlu,maxgrid)  :: no2      ! NO2 [gN/m2]
 
-       real, dimension(nlu,maxgrid)             :: no_w,  no_d    ! NO in wet and dry microsites (split done in ntransform) [gN/m2]
-       real, dimension(nlu,maxgrid)             :: n2o_w, n2o_d   ! N2O in wet and dry microsites (split done in ntransform) [gN/m2]
-       real, dimension(nlu,maxgrid)             :: n2_w           ! N2 in wet microsites (split done in ntransform) [gN/m2]
+       real, dimension(nlu,maxgrid)            :: no_w,  no_d    ! NO in wet and dry microsites (split done in ntransform) [gN/m2]
+       real, dimension(nlu,maxgrid)            :: n2o_w, n2o_d   ! N2O in wet and dry microsites (split done in ntransform) [gN/m2]
+       real, dimension(nlu,maxgrid)            :: n2_w           ! N2 in wet microsites (split done in ntransform) [gN/m2]
 
        end module pools
 

@@ -44,8 +44,9 @@
 
 
       ! PFT-DEPENDENT PARAMETERS
-      real, dimension(npft) :: cton_soil           ! 1 C:N ratio of soil organic matter [1]
-      integer, dimension(npft) :: lu_category      ! 2 land use category associated with PFT
+      real, dimension(npft) :: cton_soil           ! C:N ratio of soil organic matter [1]
+      integer, dimension(npft) :: lu_category      ! land use category associated with PFT
+      logical, dimension(npft,nlu) :: islu         ! islu(ipft,ilu) is true if ipft belongs to ilu
       logical, dimension(npft) :: grass            ! boolean for growth form 'grass'
       logical, dimension(npft) :: tree             ! boolean for growth form 'tree'
       real, dimension(npft) :: lai0                ! sapling (or grass on initialisation) LAI (=lai_sapl)
@@ -235,10 +236,6 @@
         read (02,*) pft_params_array
         close (02)
 
-        ! initialise
-        grass(:) = .false.
-        tree(:)  = .false.
-
         do pft=1,npft 
 
           ! C:N ratio of soil organic matter [1]
@@ -249,13 +246,20 @@
 
           ! land use category associated with PFT (provisional)
           lu_category_prov(pft) = pft_params_array(2)
-          if (lu_category_prov(pft)==1.0) lu_category(pft) = lunat 
+          if (lu_category_prov(pft)==1.0) then
+            lu_category(pft) = lunat
+            islu(pft,lunat) = .true.
+          else
+            islu(pft,lunat) = .false.
+          end if
 
           ! leaf type: broadleaved (1), needleleaved (2), grass (3) or moss (4)
           if (pft_params_array(3)==3.0) then
             grass(pft) = .true.
+            tree(pft)  = .false.
           else
             tree(pft) = .true.
+            grass(pft) = .false.
           end if 
 
           ! sapling (or grass on initialisation) LAI
