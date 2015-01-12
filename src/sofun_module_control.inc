@@ -3,31 +3,24 @@
 ! ----------------------------------------------------------------------
 
 ! ----------------------------------------------------------------------
-! FIXED/DYNAMIC VEGETATION
-! Default: fixed, reading in FPC for each PFT from site parameter file)
-! Option:  dynamic, like in LPX
-#define _fix_veg 1
-! ----------------------------------------------------------------------
-
-! ----------------------------------------------------------------------
 ! MAINTENANCE RESPIRATION
 ! Default: like in LPX
 ! Option:   After Mäkelä et al., 2008, New Phyt.
-#define _resp_maint_makela 1
+#define _resp_maint_makela 0
 ! ----------------------------------------------------------------------
 
 ! ----------------------------------------------------------------------
 ! PHOTOSYNTHESIS
 ! Default: xxx
 ! Option:  After Mäkelä et al., 2008, New Phyt.
-#define _gpp_makela 1
+#define _gpp_makela 0
 ! ----------------------------------------------------------------------
 
 ! ----------------------------------------------------------------------
 ! N UPTAKE
 ! Default: FUN type after Fisher et al., 2011
 ! Option:  After Mäkelä et al., 2008, New Phyt.
-#define _nuptake_makela 1
+#define _nuptake_makela 0
 ! ----------------------------------------------------------------------
 
 ! ----------------------------------------------------------------------
@@ -37,7 +30,7 @@
 ! Note that _allocation_pipe does not account for the separation between
 ! sapwood and heartwood. The pool 'psapw' is taken to represent 
 ! 'live wood'. This affects how turnover is formulated (see turnover.F)
-#define _allocation_makela 1
+#define _allocation_makela 0
 ! ----------------------------------------------------------------------
 
 ! //////////////////////////////////////////////////////////////////////
@@ -51,7 +44,15 @@
 ! ----------------------------------------------------------------------
 
 ! Prescribe GPP per day
-#define _prescr_gpp_site 0
+#define _prescr_gpp_site 1
+
+! ----------------------------------------------------------------------
+! FIXED/DYNAMIC VEGETATION
+! Default: fixed, reading in FPC for each PFT from site parameter file)
+! Option:  dynamic, like in LPX
+#define _fix_veg 1
+! ----------------------------------------------------------------------
+
 
 ! //////////////////////////////////////////////////////////////////////
 ! SANITY

@@ -31,16 +31,17 @@
       real :: KDOC              ! 17 Michaelis-Menten coefficient [gC/m2]. Use this value if soil represents top 100 cm 
       real :: DOCMAX            ! 18 DOCMAX
       real :: DNITR2N2O         ! 19 Fraction of denitrification lost as N2O. Range of possible values: 0.002 - 0.047 (Xu-Ri and Prentice, 2008)
-      real :: kbeer             ! 21 canopy light extinction coefficient
-      real :: kresp             ! 22 additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
-      real :: MINIMUMCOSTFIX    ! 23 minimum cost of N fixation (at optimal temperature)
-      real :: FIXOPTIMUM        ! 24 optimum temperature for N fixation
-      real :: FIXWIDTH          ! 25 shape parameter for width of N fixation cost function
-      real :: KN_ACTIVE_NO3     ! 26 N-availability constant in cost function for active NO3 uptake
-      real :: KN_ACTIVE_NH4     ! 27 N-availability constant in cost function for active NH4 uptake
-      real :: KC_ACTIVE_NO3     ! 28 root exploration constant in cost function for active NO3 uptake
-      real :: KC_ACTIVE_NH4     ! 29 root exploration constant in cost function for active NH4 uptake
-      real :: F_NRETAIN         ! 30 fraction of N retained at leaf abscission 
+      real :: kbeer             ! 20 canopy light extinction coefficient
+      real :: kresp             ! 21 additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
+      real :: MINIMUMCOSTFIX    ! 22 minimum cost of N fixation (at optimal temperature)
+      real :: FIXOPTIMUM        ! 23 optimum temperature for N fixation
+      real :: FIXWIDTH          ! 24 shape parameter for width of N fixation cost function
+      real :: KN_ACTIVE_NO3     ! 25 N-availability constant in cost function for active NO3 uptake
+      real :: KN_ACTIVE_NH4     ! 26 N-availability constant in cost function for active NH4 uptake
+      real :: KC_ACTIVE_NO3     ! 27 root exploration constant in cost function for active NO3 uptake
+      real :: KC_ACTIVE_NH4     ! 28 root exploration constant in cost function for active NH4 uptake
+      real :: F_NRETAIN         ! 29 fraction of N retained at leaf abscission 
+      real :: fpc_tree_max      ! 30 maximum fractional plant coverage of trees
 
 
       ! PFT-DEPENDENT PARAMETERS
@@ -227,6 +228,8 @@
         ! fraction of N retained at leaf abscission 
         F_NRETAIN = params_array(29)        
 
+        ! maximum fractional plant coverage of trees (sum of all tree PFTs)
+        fpc_tree_max = params_array(30)
 
         !----------------------------------------------------------------
         ! PFT DEPENDENT PARAMETERS

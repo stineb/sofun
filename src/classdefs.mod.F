@@ -165,13 +165,13 @@
 
          to%c12 = amount%c12 + to%c12
 
-!         if (present(d13C)) then
-!           to%c%c12 = amount%c%c12 + to%c%c12
-!           to%n%n14 = amount%n%n14 + to%n%n14
-!         else
-!           to%c%c12 = amount%c%c12 + to%c%c12
-!           to%n%n14 = amount%n%n14 + to%n%n14
-!         end if
+         ! if (present(d13C)) then
+         !   to%c%c12 = amount%c%c12 + to%c%c12
+         !   to%n%n14 = amount%n%n14 + to%n%n14
+         ! else
+         !   to%c%c12 = amount%c%c12 + to%c%c12
+         !   to%n%n14 = amount%n%n14 + to%n%n14
+         ! end if
 
        end subroutine ccp
 
