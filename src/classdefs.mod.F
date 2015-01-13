@@ -3,7 +3,8 @@
        !  Module contains Fortran 90 derived-type declarations to define
        !  objects
        !----------------------------------------------------------------
-       implicit none
+#include "sofun_module_control.inc"
+      implicit none
 
        ! Carbon, so far contains only c12 (to be extended for c13)
        type carbon
@@ -534,6 +535,7 @@
          !  Generic function to return variable difference of two pools of 
          !  type 'carbon'. Sum is of type 'carbon' as well.
          !----------------------------------------------------------------
+       
          implicit none
 
          ! arguments
@@ -559,6 +561,7 @@
          !  Generic function to return variable difference of two pools of 
          !  type 'carbon'. Sum is of type 'carbon' as well.
          !----------------------------------------------------------------
+       
          implicit none
 
          ! arguments
@@ -578,18 +581,27 @@
        end function nminus
 
 
-       function cton( pool )
+       function cton( pool, default )
          !////////////////////////////////////////////////////////////////
          !  Generic function to return the C:N ratio of an organic pool.
          !----------------------------------------------------------------
+       
          implicit none
 
          ! arguments
          type(orgpool), intent(in) :: pool
+         real, intent(in), optional :: default
          
          ! function return variable
          real :: cton
 
+         if (present(default)) then
+           if (pool%n%n14==0.0) then
+             cton = default
+           else
+             cton = pool%c%c12 / pool%n%n14
+           end if
+         else
 #if _check_sanity
          if (pool%n%n14==0.) then
            stop 'in CTON: N is zero'
@@ -599,33 +611,45 @@
          endif
 #endif
          cton = pool%c%c12 / pool%n%n14
+       end if
 
        end function cton
 
 
-       function ntoc( pool )
+       function ntoc( pool, default )
          !////////////////////////////////////////////////////////////////
          !  Generic function to return the N:C ratio of an organic pool.
          !  This is equal to the inverse of the 'cton' function.
          !----------------------------------------------------------------
+
          implicit none
 
          ! arguments
          type(orgpool), intent(in) :: pool
+         real, intent(in), optional :: default
          
          ! function return variable
          real :: ntoc
 
+         if (present(default)) then
+           if (pool%c%c12==0.0) then
+             ntoc = default
+           else
+             ntoc = pool%n%n14 / pool%c%c12
+           end if
+         else
 #if _check_sanity
-         if (pool%c%c12==0.) then
-           stop 'in NTOC: C is zero'
-         endif
-         if (pool%n%n14<0.0 .or. pool%c%c12<0.0) then
-           stop 'in CTON: C and/or N is negative'
-         endif
+           if (pool%c%c12==0.) then
+             stop 'in NTOC: C is zero'
+           endif
+           if (pool%n%n14<0.0 .or. pool%c%c12<0.0) then
+             stop 'in NTOC: C and/or N is negative'
+           endif
 #endif
-         ntoc = pool%n%n14 / pool%c%c12 
+           ntoc = pool%n%n14 / pool%c%c12
+         end if
 
+         
        end function ntoc
 
 

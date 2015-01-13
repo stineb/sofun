@@ -98,10 +98,6 @@ subroutine npp( jpngr, dtemp, dtemp_soil )
 
       ! xxx do here: if drauto > dgpp then use plabl for respiration.
 
-      ! xxx debug
-      print*,'dgpp, drauto', dgpp(pft), drauto(pft)
-
-
       dnpp(pft)   = carbon( max(dgpp(pft) - drauto(pft), 0.) ) 
 
       !if (dnpp(pft)%c12<0.) then
@@ -130,9 +126,16 @@ subroutine npp( jpngr, dtemp, dtemp_soil )
       ! NPP available for growth first enters the labile pool ('plabl ').
       ! XXX Allocation is called here without "paying"  growth respir.?
       !-------------------------------------------------------------------------
-      print*,'dnpp, dcex, dnup ', dnpp(pft), dcex(pft), dnup(pft)
+      !print*,'dnpp, dcex, dnup ', dnpp(pft), dcex(pft), dnup(pft)
+      print*,'C adding to plabl', ( dnpp(pft)%c12  )
+      print*,'N adding to plabl', ( dnup(pft) )
+      if (dnup(pft)%n14>0.0) then
+        print*,'adding to plabl with C:N ratio ', ( dnpp(pft)%c12 - dcex(pft) ) /  dnup(pft)%n14
+      end if
+
       call orgcp( orgpool( cminus( dnpp(pft), carbon(dcex(pft)) ), dnup(pft) ), plabl(pft,jpngr) )
-      print*,'plabl ',plabl(pft,jpngr)%c%c12
+
+      !print*,'plabl ',plabl(pft,jpngr)%c%c12
 
     endif
   end do

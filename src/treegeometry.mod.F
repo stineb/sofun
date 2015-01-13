@@ -30,8 +30,8 @@ contains
     integer, intent(in) :: pft, jpngr
 
     ! LOCAL VARIABLES
-    logical :: distribute
-    real :: share
+    ! logical :: distribute
+    ! real :: share
     real :: cleaf_tot
 
     !-------------------------------------------------------------------------
@@ -40,37 +40,44 @@ contains
     ! Thus, use sum of all grass/moss-leaf masses and calculate FPC based on the sum.
     ! Then compute each PFT's FPC as the product of total-grass FPC times each PFT's leaf mass.
     !-------------------------------------------------------------------------
-    distribute = .false.
-    if (grass(pft)) then
-      cleaf_tot = sum( pleaf(:,jpngr)%c%c12, mask=(grass(:).and.islu(:,lu_category(pft))) )
-      distribute = .true.
-    else
-      cleaf_tot = pleaf(pft,jpngr)%c%c12
-    end if
-
-    lai_ind(pft,jpngr)  = get_lai_ind( cleaf_tot, crownarea(pft,jpngr), pft )
+    lai_ind(pft,jpngr)  = get_lai_ind( pleaf(pft,jpngr)%c%c12, crownarea(pft,jpngr), pft )
     fpc_ind(pft,jpngr)  = get_fpc_ind( lai_ind(pft,jpngr) )
-    fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fpc_ind(pft,jpngr) )   
+    fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fpc_ind(pft,jpngr) )    
 
-    if ( distribute ) then
-      if (cleaf_tot>0.0) then
-        share = pleaf(pft,jpngr)%c%c12 / cleaf_tot
-        lai_ind(pft,jpngr)  = lai_ind(pft,jpngr) * share
-        fpc_ind(pft,jpngr)  = fpc_ind(pft,jpngr) * share
-        fpc_grid(pft,jpngr) = fpc_grid(pft,jpngr) * share
-      else
-        lai_ind(pft,jpngr)  = 0.0
-        fpc_ind(pft,jpngr)  = 0.0
-        fpc_grid(pft,jpngr) = 0.0
-      end if
-    end if
+
+    !    distribute = .false.
+    !    if (grass(pft)) then
+    !      cleaf_tot = sum( pleaf(:,jpngr)%c%c12, mask=(grass(:).and.islu(:,lu_category(pft))) )
+    !      distribute = .true.
+    !    else
+    !      cleaf_tot = pleaf(pft,jpngr)%c%c12
+    !    end if    
+
+    !    xxx lai_ind calculation here : this does not work : pft is passed on from this pft, whereas sum of all pfts leaf mass is used xxx!    
+
+    !    lai_ind(pft,jpngr)  = get_lai_ind( cleaf_tot, crownarea(pft,jpngr), pft )
+    !    fpc_ind(pft,jpngr)  = get_fpc_ind( lai_ind(pft,jpngr) )
+    !    fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fpc_ind(pft,jpngr) )    
+
+    !    if ( distribute ) then
+    !      if (cleaf_tot>0.0) then
+    !        share = pleaf(pft,jpngr)%c%c12 / cleaf_tot
+    !        lai_ind(pft,jpngr)  = lai_ind(pft,jpngr) * share
+    !        fpc_ind(pft,jpngr)  = fpc_ind(pft,jpngr) * share
+    !        fpc_grid(pft,jpngr) = fpc_grid(pft,jpngr) * share
+    !      else
+    !        lai_ind(pft,jpngr)  = 0.0
+    !        fpc_ind(pft,jpngr)  = 0.0
+    !        fpc_grid(pft,jpngr) = 0.0
+    !      end if
+    !    end if
 
     return
 
   end subroutine update_fpc
 
 
-  function get_nind( fpc_grid, crownarea, fpc_ind )
+  function get_nind( tree, fpc_grid, crownarea, fpc_ind )
     !////////////////////////////////////////////////////////////////
     !----------------------------------------------------------------
     use pools, only: pleaf
@@ -78,6 +85,7 @@ contains
     implicit none
 
     ! ARGUMENTS
+    logical, intent(in) :: tree
     real,intent(in) :: fpc_grid
     real,intent(in) :: crownarea
     real,intent(in) :: fpc_ind
@@ -85,7 +93,11 @@ contains
     ! FUNCTION RETURN VARIABLE
     real, intent(out) :: get_nind
 
-    get_nind = fpc_grid / ( crownarea * fpc_ind ) 
+    if (tree) then
+      get_nind = fpc_grid / ( crownarea * fpc_ind )
+    else
+      get_nind = 1.0
+    end if
 
   end function get_nind
 
@@ -156,7 +168,7 @@ contains
   end function get_lai_ind
 
 
-  subroutine update_tree_geometry( pft, jpngr, psapw_temp, afntoc_sm )
+  subroutine update_tree_geometry( pft, jpngr, psapw_temp, ntoc_sm )
     !////////////////////////////////////////////////////////////////
     ! Subroutine updating tree geometry.
     ! Requires global variables:
@@ -178,7 +190,7 @@ contains
     ! arguments
     integer, intent(in)          :: pft, jpngr
     type(orgpool), intent(in)    :: psapw_temp
-    real, intent(in)             :: afntoc_sm
+    real, intent(in)             :: ntoc_sm
 
     ! local variables
     real    :: stemdiam
@@ -205,6 +217,7 @@ contains
       ! 4. Recalculate sapwood mass, transferring excess sapwood to heartwood
       ! compartment, if necessary to satisfy (I)
       psapw(pft,jpngr)%c%c12 = pleaf(pft,jpngr)%c%c12*height(pft,jpngr)*wooddens(pft)*sla(pft)/latosa(pft)
+      psapw(pft,jpngr)%n%n14 = psapw(pft,jpngr)%c%c12*ntoc_sm
       call orgcp( orgminus( psapw_temp, psapw(pft,jpngr)), pwood(pft,jpngr) )
 
     else

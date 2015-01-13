@@ -13,9 +13,9 @@ subroutine establishment( jpngr )
     in_fpc_grid_8, in_fpc_grid_9
   use treegeometry
   use pools
+  use params_modl, only: tree
 
 #ifndef _fix_veg
-  use params_modl
   use params_core, only: nlu
   use fluxes, only: aestab
   use gridvars, only: lu_area
@@ -109,9 +109,10 @@ subroutine establishment( jpngr )
   if (lpft9) fpc_grid(9,jpngr) = in_fpc_grid_9
 
   ! xxx debug
-  print*,'A fpc_grid  ',fpc_grid(:,1)
-  print*,'A crownarea ',crownarea(:,1)
-  print*,'A leaf mass ',pleaf(:,1)
+  !print*,'A fpc_grid  ',fpc_grid(:,1)
+  !print*,'A crownarea ',crownarea(:,1)
+  !print*,'A leaf mass ',pleaf(:,1)
+  !print*,'A labl      ',plabl(:,1)
 
   do pft=1,npft
 
@@ -119,7 +120,9 @@ subroutine establishment( jpngr )
     ! Re-calculate crownarea
     !-----------------------------------------------------------------------------
     psapw_temp = psapw(pft,jpngr)
-    call update_tree_geometry( pft, jpngr, psapw_temp, ntoc( psapw(pft,jpngr) ) )
+    call update_tree_geometry( &
+      pft, jpngr, psapw_temp, ntoc( psapw(pft,jpngr), default=0.0 ) &
+      )
 
     !-----------------------------------------------------------------------------
     ! Update fpc_grid, fpc_ind, and lai_ind
@@ -129,13 +132,13 @@ subroutine establishment( jpngr )
     !-----------------------------------------------------------------------------
     ! Re-calculate 'nind' based on new leaf mass and crownarea
     !-----------------------------------------------------------------------------
-    nind(pft,jpngr) = get_nind( fpc_grid(pft,jpngr), crownarea(pft,jpngr), fpc_ind(pft,jpngr) )
+    nind(pft,jpngr) = get_nind( tree(pft), fpc_grid(pft,jpngr), crownarea(pft,jpngr), fpc_ind(pft,jpngr) )
 
   end do
 
   ! xxx debug
-  print*,'B fpc_grid ',fpc_grid(:,1)
-  print*,'B crownarea ',crownarea(:,1)
+  !print*,'B fpc_grid ',fpc_grid(:,1)
+  !print*,'B crownarea ',crownarea(:,1)
 
 
   return

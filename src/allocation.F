@@ -41,7 +41,7 @@ subroutine allocation_annual( jpngr )
 
     end if
   end do
-
+  return
 
 #else
   !////////////////////////////////////////////////////////////////
@@ -75,16 +75,18 @@ subroutine allocation_annual( jpngr )
 
   cbal_before = plabl(1,1)%c%c12 + pleaf(1,1)%c%c12 + proot(1,1)%c%c12
   nbal_before = plabl(1,1)%n%n14 + pleaf(1,1)%n%n14 + proot(1,1)%n%n14
-  !print*,'ALLOCATION'
-  !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-  !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-  !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+  print*,'A: ALLOCATION'
+  print*,'pleaf(1,1)   ',pleaf(1,1)
+  print*,'proot(1,1)   ',proot(1,1) 
+  print*,'plabl(1,1)   ',plabl(1,1) 
+  print*,'C:N in plabl ',cton( plabl(1,1) )
 #endif
 
   ! PFT LOOP
   do pft=1,npft
 
-    if (tree(pft)) stop 'ALLOCATION: not implemented for tree PFTs. abort.'
+    if (tree(pft)) stop &
+      'ALLOCATION: not implemented for tree PFTs. abort.'
      
     if (ispresent(pft,jpngr)) then
       
@@ -128,7 +130,7 @@ subroutine allocation_annual( jpngr )
         ! negative increment in either compartment transferred to litter
         ! -------------------------------------------------------------------------
         ! allocation to leaves
-        lminc_ind = ( proot(pft,jpngr)%c%c12 + calloc_ind - pleaf(pft,jpngr)%c%c12/lmtorm ) / ( 1.0+1.0/lmtorm )
+        lminc_ind = ( proot(pft,jpngr)%c%c12 + calloc_ind - pleaf(pft,jpngr)%c%c12/lmtorm ) / ( 1.0 + 1.0/lmtorm )
 
         ! allocation to roots
         rminc_ind = calloc_ind - lminc_ind
@@ -220,7 +222,14 @@ subroutine allocation_annual( jpngr )
     print*,'nbal_before, nbal_after ', nbal_before, nbal_after
     stop 'N balance violated in ALLOCATION'
   endif
+  print*,'B: ALLOCATION'
+  print*,'pleaf(1,1)   ',pleaf(1,1)
+  print*,'proot(1,1)   ',proot(1,1) 
+  print*,'plabl(1,1)   ',plabl(1,1) 
+  print*,'C:N in plabl ',cton( plabl(1,1), default=0.0 )
 #endif
+
+  return
 
 #endif
 

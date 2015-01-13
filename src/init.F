@@ -30,9 +30,10 @@ subroutine initglobal
   psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! fast decomposing soil organic matter, organic pool [gC/m2 and gN/m2]
   psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! recalcitrant soil organic matter    , organic pool [gC/m2 and gN/m2]
 
-  nh4(:,:)      = nitrogen(0.0)
-  no3(:,:)      = nitrogen(0.0)
-  no2(:,:)      = nitrogen(0.0)
+  ! xxx debug: change back to 0.0
+  nh4(:,:)      = nitrogen(10.0)
+  no3(:,:)      = nitrogen(10.0)
+  no2(:,:)      = nitrogen(10.0)
 
   no_w(:,:)     = 0.0
   no_d(:,:)     = 0.0
