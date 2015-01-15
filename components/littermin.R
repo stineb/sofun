@@ -10,7 +10,7 @@ do.plot <- TRUE
 do.mine2 <- TRUE
 
 ## Model parameters
-rL <- 1/100           # litter N:C ratio
+rL <- 1/50           # litter N:C ratio
 # rS <- 1/9.77         # soil N:C ratio
 rS <- 1/10         # soil N:C ratio
 rB <- 0.1            # microbial N:C ratio
@@ -23,6 +23,8 @@ nsteps <- 150       # temporal integration steps
 print("-------------------------")
 print(paste("litter N:C      :",rL))
 print(paste("critical N:C    :",rCR))
+print(paste("litter C:N      :",1/rL))
+print(paste("critical C:N    :",1/rCR))
 print(paste("C use efficiency:",eff))
 print("-------------------------")
 

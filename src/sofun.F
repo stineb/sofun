@@ -106,12 +106,12 @@ program main
     !----------------------------------------------------------------
     call biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_uptake ) 
 
-    write(0,100) 'year AD, pco2',realyear,pco2
+    write(0,100) 'sim. year, year AD, pco2',year,realyear,pco2
 
   enddo
 
   write(0,*) '--------------END OF SIMULATION---------------'
 
-100     format(A,I6,F8.2,F8.2)
+100     format(A,I6,I6,F8.2)
 
 end program

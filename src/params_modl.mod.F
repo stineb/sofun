@@ -43,7 +43,6 @@ module params_modl
   real :: F_NRETAIN         ! 29 fraction of N retained at leaf abscission 
   real :: fpc_tree_max      ! 30 maximum fractional plant coverage of trees
 
-
   ! PFT-DEPENDENT PARAMETERS
   real, dimension(npft) :: cton_soil           ! C:N ratio of soil organic matter [1]
   integer, dimension(npft) :: lu_category      ! land use category associated with PFT
@@ -229,6 +228,12 @@ contains
 
     ! maximum fractional plant coverage of trees (sum of all tree PFTs)
     fpc_tree_max = params_array(30)
+
+    !----------------------------------------------------------------
+    ! MODULE-SPECIFIC PARAMETERS
+    !----------------------------------------------------------------
+    call getpar_modl_waterbal('params_waterbal_stash.dat')
+
 
     !----------------------------------------------------------------
     ! PFT DEPENDENT PARAMETERS

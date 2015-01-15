@@ -10,7 +10,7 @@ sitename                                AU-How
 
 # Model spinup setting
 spinup                                  .true.
-spinupyears                             10
+spinupyears                             1000
 
 # Start and length of simulation in years (AD)
 firstyeartrend                          1982

@@ -127,11 +127,11 @@ subroutine npp( jpngr, dtemp, dtemp_soil )
       ! XXX Allocation is called here without "paying"  growth respir.?
       !-------------------------------------------------------------------------
       !print*,'dnpp, dcex, dnup ', dnpp(pft), dcex(pft), dnup(pft)
-      print*,'C adding to plabl', ( dnpp(pft)%c12  )
-      print*,'N adding to plabl', ( dnup(pft) )
-      if (dnup(pft)%n14>0.0) then
-        print*,'adding to plabl with C:N ratio ', ( dnpp(pft)%c12 - dcex(pft) ) /  dnup(pft)%n14
-      end if
+      !print*,'C adding to plabl', ( dnpp(pft)%c12  )
+      !print*,'N adding to plabl', ( dnup(pft) )
+      !if (dnup(pft)%n14>0.0) then
+      !  print*,'adding to plabl with C:N ratio ', ( dnpp(pft)%c12 - dcex(pft) ) /  dnup(pft)%n14
+      !end if
 
       call orgcp( orgpool( cminus( dnpp(pft), carbon(dcex(pft)) ), dnup(pft) ), plabl(pft,jpngr) )
 

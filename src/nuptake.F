@@ -175,8 +175,8 @@ subroutine nuptake( jpngr, pft )
     n_demand = max( dnpp(pft)%c12/cton_pro(pft), 0. )  !in gN/m2/(timestep), timestetp=day or month 
 
     ! xxx debug
-    print*,'---------------------------------------'
-    print*,'NPP, N demand, Ninorg', dnpp(pft)%c12, n_demand, no3(lu,jpngr)%n14+nh4(lu,jpngr)%n14
+    !print*,'---------------------------------------'
+    !print*,'NPP, N demand, Ninorg', dnpp(pft)%c12, n_demand, no3(lu,jpngr)%n14+nh4(lu,jpngr)%n14
 
     !-------------------------------------------------------------------------
     ! Keep track of how much of the NPP-driven N-demand is not yet covered.
@@ -196,7 +196,7 @@ subroutine nuptake( jpngr, pft )
     !n_uptake_retrans = min( n_demand, plabl(pft,jpngr)%n%n14 )
     !n_demand_remaining = n_demand_remaining - n_uptake_retrans
 
-    print*,'N retranslocated, remaining N demand', n_uptake_retrans, n_demand_remaining
+    !print*,'N retranslocated, remaining N demand', n_uptake_retrans, n_demand_remaining
 
 
     !//////////////////////////////////////////////////////////////////////////
@@ -268,7 +268,7 @@ subroutine nuptake( jpngr, pft )
       n_demand_remaining = n_demand_remaining - n_uptake_pass
     end if
 
-    print*,'N by passive uptake, remaining N demand', n_uptake_pass, n_demand_remaining
+    !print*,'N by passive uptake, remaining N demand', n_uptake_pass, n_demand_remaining
 
      
     !--------------------------------------------------------------------------
@@ -561,7 +561,7 @@ subroutine nuptake( jpngr, pft )
       end do substeps
 
 
-      print*,'N by active uptake and fixation, remaining N demand', Nacq_active+Nacq_fix, n_demand_remaining
+      !print*,'N by active uptake and fixation, remaining N demand', Nacq_active+Nacq_fix, n_demand_remaining
 
        
       !  print*,'fraction of npp paid for N uptake',
@@ -583,15 +583,15 @@ subroutine nuptake( jpngr, pft )
   dnup_ret(pft) = n_uptake_retrans                 
 
 
-  ! XXX debug
-  print*,'NPP, EXU          ', dnpp(pft)%c12, dcex(pft)
-  print*,'N uptake          ', dnup(pft)%n14
-  print*,'N retranslocated  ', n_uptake_retrans
-  if ((dnup(pft)%n14+n_uptake_retrans)>0.0) then
-    print*,'C:N after N uptake', (dnpp(pft)%c12 - dcex(pft))/(dnup(pft)%n14+n_uptake_retrans)
-  else
-    print*,'dnup + n_uptake_retrans',(dnup(pft)%n14+n_uptake_retrans)
-  end if
+  !XXX debug
+  !print*,'NPP, EXU          ', dnpp(pft)%c12, dcex(pft)
+  !print*,'N uptake          ', dnup(pft)%n14
+  !print*,'N retranslocated  ', n_uptake_retrans
+  !if ((dnup(pft)%n14+n_uptake_retrans)>0.0) then
+  !  print*,'C:N after N uptake', (dnpp(pft)%c12 - dcex(pft))/(dnup(pft)%n14+n_uptake_retrans)
+  !else
+  !  print*,'dnup + n_uptake_retrans',(dnup(pft)%n14+n_uptake_retrans)
+  !end if
   !                 print*,'N uptake by BNF',Nacq_fix
   !                 print*,'N uptake by act',Nacq_active
   !print*,'actual CN ratio',(dnpp(pft)%c12 - dcex(pft))/(n_uptake_pass+Nacq_active+Nacq_fix+n_uptake_retrans)

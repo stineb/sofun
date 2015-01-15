@@ -10,6 +10,7 @@ subroutine biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_upta
   use params_siml
   use params_site
   use params_modl
+  use waterbal_stash
   
   ! xxx debug
   use fluxes
@@ -99,6 +100,9 @@ subroutine biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_upta
         !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12
         !print*,'nh4 ',nh4(1,1)%n14 
 
+        ! get soil moisture, and runoff
+        call waterbal( lon, lat, dprec, dtemp, (1.0-dccov), elv )
+
         ! get GPP from input
         call gpp( jpngr, pco2, year, realyear, mo, dm, day )
 
@@ -183,6 +187,9 @@ subroutine biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_upta
     !call mortality
     !call fire
 #endif
+
+    ! collect annually updated output variables
+    call getout_annual( jpngr )
 
     ! Write to output
     call writeout_ascii( year )

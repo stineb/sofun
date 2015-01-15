@@ -75,11 +75,11 @@ subroutine allocation_annual( jpngr )
 
   cbal_before = plabl(1,1)%c%c12 + pleaf(1,1)%c%c12 + proot(1,1)%c%c12
   nbal_before = plabl(1,1)%n%n14 + pleaf(1,1)%n%n14 + proot(1,1)%n%n14
-  print*,'A: ALLOCATION'
-  print*,'pleaf(1,1)   ',pleaf(1,1)
-  print*,'proot(1,1)   ',proot(1,1) 
-  print*,'plabl(1,1)   ',plabl(1,1) 
-  print*,'C:N in plabl ',cton( plabl(1,1) )
+  !print*,'A: ALLOCATION'
+  !print*,'pleaf(1,1)   ',pleaf(1,1)
+  !print*,'proot(1,1)   ',proot(1,1) 
+  !print*,'plabl(1,1)   ',plabl(1,1) 
+  !print*,'C:N in plabl ',cton( plabl(1,1) )
 #endif
 
   ! PFT LOOP
@@ -222,11 +222,11 @@ subroutine allocation_annual( jpngr )
     print*,'nbal_before, nbal_after ', nbal_before, nbal_after
     stop 'N balance violated in ALLOCATION'
   endif
-  print*,'B: ALLOCATION'
-  print*,'pleaf(1,1)   ',pleaf(1,1)
-  print*,'proot(1,1)   ',proot(1,1) 
-  print*,'plabl(1,1)   ',plabl(1,1) 
-  print*,'C:N in plabl ',cton( plabl(1,1), default=0.0 )
+  !print*,'B: ALLOCATION'
+  !print*,'pleaf(1,1)   ',pleaf(1,1)
+  !print*,'proot(1,1)   ',proot(1,1) 
+  !print*,'plabl(1,1)   ',plabl(1,1) 
+  !print*,'C:N in plabl ',cton( plabl(1,1), default=0.0 )
 #endif
 
   return

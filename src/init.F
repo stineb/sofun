@@ -30,6 +30,18 @@ subroutine initglobal
   psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! fast decomposing soil organic matter, organic pool [gC/m2 and gN/m2]
   psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! recalcitrant soil organic matter    , organic pool [gC/m2 and gN/m2]
 
+
+  !! xxx try
+  !! initialise pools with non-zero values
+  !! here example gridcell 9.5 E, 47.5 N
+   psoil_fs = orgpool( carbon(4000.), nitrogen(150.) )
+   psoil_sl = orgpool( carbon(10000.), nitrogen(550.) )
+
+   plitt_af = orgpool( carbon(500.), nitrogen(10.))
+   plitt_as = orgpool( carbon(1500.), nitrogen(30.))
+   plitt_bg = orgpool( carbon(400.), nitrogen(8.))
+
+
   ! xxx debug: change back to 0.0
   nh4(:,:)      = nitrogen(10.0)
   no3(:,:)      = nitrogen(10.0)
@@ -57,6 +69,8 @@ subroutine initglobal
       crownarea(pft,:) = 1.0
     end if
   end do
+
+  return
 
 end subroutine initglobal
 
@@ -108,6 +122,8 @@ subroutine initpft(pft,jpngr)
   !leafondays(pft,jpngr)=0.0d0
   !leafoffdays(pft,jpngr)=0.0d0
 
+  return
+
 end subroutine initpft
 
 
@@ -121,6 +137,8 @@ subroutine initannual
   implicit none
 
   aestab(:) = orgpool(carbon(0.0),nitrogen(0.0))
+
+  return
 
 end subroutine initannual
 
@@ -154,15 +172,21 @@ subroutine initdaily
   dnup_fix(:)    = 0.0
   dnup_ret(:)    = 0.0
 
-  ! xxx try
-  ! hold soil carbon and litter pools at a constant size
-  ! here example gridcell 9.5 E, 47.5 N
-  psoil_fs = orgpool( carbon(4000.), nitrogen(150.) )
-  psoil_sl = orgpool( carbon(10000.), nitrogen(550.) )
+  dwn(:)         = 0.0
+  dro(:)         = 0.0
+  rn_d(:)        = 0.0
 
-  plitt_af = orgpool( carbon(500.), nitrogen(10.))
-  plitt_as = orgpool( carbon(1500.), nitrogen(30.))
-  plitt_bg = orgpool( carbon(400.), nitrogen(8.))
+  !! xxx try
+  !! hold soil carbon and litter pools at a constant size
+  !! here example gridcell 9.5 E, 47.5 N
+  !psoil_fs = orgpool( carbon(4000.), nitrogen(150.) )
+  !psoil_sl = orgpool( carbon(10000.), nitrogen(550.) )
+
+  !plitt_af = orgpool( carbon(500.), nitrogen(10.))
+  !plitt_as = orgpool( carbon(1500.), nitrogen(30.))
+  !plitt_bg = orgpool( carbon(400.), nitrogen(8.))
+
+  return
 
 end subroutine initdaily
 
@@ -176,17 +200,25 @@ subroutine initoutput
   implicit none
 
   ! daily output variables
-  outdgpp(:,:,:)   = 0.0
-  outdnpp(:,:,:)   = 0.0
-  outdnup(:,:,:)   = 0.0
-  outdcleaf(:,:,:) = 0.0
-  outdcex(:,:,:)   = 0.0
-  outdnetmin(:,:,:)= 0.0
-  outdninorg(:,:,:)= 0.0
+  outdgpp(:,:,:)      = 0.0
+  outdnpp(:,:,:)      = 0.0
+  outdnup(:,:,:)      = 0.0
+  outdCleaf(:,:,:)    = 0.0
+  outdcex(:,:,:)      = 0.0
+  outdnetmin(:,:,:)   = 0.0
+  outdninorg(:,:,:)   = 0.0
+  outdnfixfree(:,:,:) = 0.0
 
   ! annual output variables
   outagpp(:,:)   = 0.0
   outanpp(:,:)   = 0.0
   outanup(:,:)   = 0.0
+  outaClitt(:,:)  = 0.0
+  outaCsoil(:,:)  = 0.0
+
+  ! initialise module-specific output variables
+  call initoutput_waterbal
+
+  return
 
 end subroutine initoutput

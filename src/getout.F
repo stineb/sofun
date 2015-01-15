@@ -1,60 +1,96 @@
-      subroutine getout_daily( jpngr, mo, day )
-        !////////////////////////////////////////////////////////////////
-        !  SR called daily to sum up output variables.
-        !  June 2014
-        !  b.stocker@imperial.ac.uk
-        !----------------------------------------------------------------
-        use params_modl, only: npft, lu_category
-        use fluxes
-        use outvars
-        use pools
+subroutine getout_daily( jpngr, moy, day )
+  !////////////////////////////////////////////////////////////////
+  !  SR called daily to sum up daily output variables.
+  !----------------------------------------------------------------
+  use params_modl, only: npft, lu_category
+  use fluxes
+  use outvars
+  use pools
 
-        ! ARGUMENTS
-        integer, intent(in) :: jpngr
-        integer, intent(in) :: mo
-        integer, intent(in) :: day
+  ! ARGUMENTS
+  integer, intent(in) :: jpngr
+  integer, intent(in) :: moy
+  integer, intent(in) :: day
 
-        ! LOCAL VARIABLES
-        integer :: pft
+  ! LOCAL VARIABLES
+  integer :: pft
 
-        !print*,'netmin_litt ',netmin_litt(1)
-        !print*,'netmin_soil ',netmin_soil(1)
+  !print*,'netmin_litt ',netmin_litt(1)
+  !print*,'netmin_soil ',netmin_soil(1)
 
-        !----------------------------------------------------------------
-        ! DAILY
-        ! Collect daily output variables
-        ! so far not implemented for isotopes
-        !----------------------------------------------------------------
-        do pft=1,npft
-          lu=lu_category(pft)
+  !----------------------------------------------------------------
+  ! DAILY
+  ! Collect daily output variables
+  ! so far not implemented for isotopes
+  !----------------------------------------------------------------
+  outdgpp(:,day,jpngr)   = dgpp(:)
+  outdnpp(:,day,jpngr)   = dnpp(:)%c12
+  outdnup(:,day,jpngr)   = dnup(:)%n14
+  outdCleaf(:,day,jpngr) = pleaf(:,jpngr)%c%c12
+  outdcex(:,day,jpngr)   = dcex(:)
 
-          outdgpp(pft,day,jpngr)   = dgpp(pft)
-          outdnpp(pft,day,jpngr)   = dnpp(pft)%c12
-          outdnup(pft,day,jpngr)   = dnup(pft)%n14
-          outdcleaf(pft,day,jpngr) = pleaf(pft,jpngr)%c%c12
-          outdcex(pft,day,jpngr)   = dcex(pft)
-          outdnetmin(lu,day,jpngr) = outdnetmin(lu,day,jpngr) + netmin_litt(pft)
-        
-        end do
+  do pft=1,npft
+    lu=lu_category(pft)
+    outdnetmin(lu,day,jpngr) = outdnetmin(lu,day,jpngr) + netmin_litt(pft)
+  end do
 
-        do lu=1,nlu
-        
-          outdnetmin(lu,day,jpngr) = outdnetmin(lu,day,jpngr) + netmin_soil(lu)
-          outdninorg(lu,day,jpngr) = nh4(lu,jpngr)%n14 + no3(lu,jpngr)%n14
+  outdnetmin(:,day,jpngr)   = outdnetmin(:,day,jpngr) + netmin_soil(:)
+  outdninorg(:,day,jpngr)   = nh4(:,jpngr)%n14 + no3(:,jpngr)%n14
+  outdnfixfree(:,day,jpngr) = dnfix_free(:) 
 
-        end do
+  !----------------------------------------------------------------
+  ! ANNUAL SUM OVER DAILY VALUES
+  ! Collect annual output variables as sum of daily values
+  !----------------------------------------------------------------
+  outagpp(:,jpngr) = outagpp(:,jpngr) + dgpp(:)
+  outanpp(:,jpngr) = outanpp(:,jpngr) + dnpp(:)%c12
+  outanup(:,jpngr) = outanup(:,jpngr) + dnup(:)%n14
 
-        !----------------------------------------------------------------
-        ! ANNUAL
-        ! Collect annual output variables
-        !----------------------------------------------------------------
-        do pft=1,npft
-
-          outagpp(pft,jpngr) = outagpp(pft,jpngr) + dgpp(pft)
-          outanpp(pft,jpngr) = outanpp(pft,jpngr) + dnpp(pft)%c12
-          outanup(pft,jpngr) = outanup(pft,jpngr) + dnup(pft)%n14
-
-        end do
+  !----------------------------------------------------------------
+  ! MODULE-SPECIFIC VARIABLES
+  !----------------------------------------------------------------
+  call getout_daily_waterbal( jpngr, moy, day )
 
 
-      end subroutine getout_daily
+end subroutine getout_daily
+
+
+subroutine getout_monthly( jpngr, moy )
+  !////////////////////////////////////////////////////////////////
+  !  SR called once a year to gather monthly output variables.
+  !----------------------------------------------------------------
+  implicit none
+
+  ! ARGUMENTS
+  integer, intent(in) :: jpngr
+  integer, intent(in) :: moy
+
+  !----------------------------------------------------------------
+  ! MODULE-SPECIFIC VARIABLES
+  !----------------------------------------------------------------
+  call getout_monthly_waterbal( jpngr, moy )
+
+  return
+
+end subroutine getout_monthly
+
+
+subroutine getout_annual( jpngr )
+  !////////////////////////////////////////////////////////////////
+  !  SR called once a year to gather annual output variables.
+  !----------------------------------------------------------------
+  use params_modl, only: npft, lu_category
+  use pools
+  use outvars
+
+  implicit none
+
+  ! ARGUMENTS
+  integer, intent(in) :: jpngr
+
+  outaClitt(:,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
+  outaCsoil(:,jpngr) = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
+
+
+end subroutine getout_annual
+

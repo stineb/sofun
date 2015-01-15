@@ -158,7 +158,7 @@ subroutine establishment( jpngr )
   ! minimum precipitation for establishment to bioclim? (100 mm/yr used in LPX)
 
   ! xxx debug
-  print*,'doing establishment for dynamic vegetation'
+  !print*,'doing establishment for dynamic vegetation'
 
   !-----------------------------------------------------------------------------
   ! DYNAMIC ESTABLISHMENT ON BARE GROUND

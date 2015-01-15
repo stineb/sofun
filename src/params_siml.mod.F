@@ -54,6 +54,12 @@
 
       if (spinup) then
         transyear = mod(year,recycle)
+        if (transyear==0) transyear = recycle
+        ! use this if data starts from a given year that is not equal to the required start 
+        ! year of the transient simulation. Here '1901' is start year in data set.
+        !first_cycleyear = mod(recycle-mod(spinupyears+1901-firstyeartrend,recycle)+1,recycle)
+        !cycleyear = modulo(first_cycleyear+year-1,recycle)
+        !if (cycleyear.eq.0) cycleyear=31
       else
         transyear = realyear-firstyeartrend+1
       endif

@@ -15,11 +15,18 @@
         real, dimension(npft,ndayyear,maxgrid) :: outdgpp
         real, dimension(npft,ndayyear,maxgrid) :: outdnpp
         real, dimension(npft,ndayyear,maxgrid) :: outdnup
-        real, dimension(npft,ndayyear,maxgrid) :: outdcleaf
+        real, dimension(npft,ndayyear,maxgrid) :: outdCleaf
         real, dimension(npft,ndayyear,maxgrid) :: outdcex
 
         real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin
         real, dimension(nlu,ndayyear,maxgrid)  :: outdninorg
+        real, dimension(nlu,ndayyear,maxgrid)  :: outdnfixfree
+        
+
+        !----------------------------------------------------------------
+        ! Monthly output variables
+        !----------------------------------------------------------------
+
 
         !----------------------------------------------------------------
         ! Annual output variables
@@ -27,5 +34,8 @@
         real, dimension(npft,maxgrid) :: outagpp
         real, dimension(npft,maxgrid) :: outanpp
         real, dimension(npft,maxgrid) :: outanup
+        real, dimension(npft,maxgrid) :: outaClitt
+
+        real, dimension(nlu,maxgrid)  :: outaCsoil
     
       end module outvars
