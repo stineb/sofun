@@ -174,7 +174,7 @@ subroutine initdaily
 
   dwn(:)         = 0.0
   dro(:)         = 0.0
-  rn_d(:)        = 0.0
+  rn_d           = 0.0
 
   !! xxx try
   !! hold soil carbon and litter pools at a constant size
@@ -196,7 +196,8 @@ subroutine initoutput
   !  Initialises all daily variables with zero.
   !----------------------------------------------------------------
   use outvars
-
+  use waterbal_stash, only: initoutput_waterbal
+  
   implicit none
 
   ! daily output variables

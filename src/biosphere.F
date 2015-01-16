@@ -1,4 +1,7 @@
-subroutine biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_uptake )
+subroutine biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
+  dprec_field, dfsun_field, dndep_field, lu_area, c_uptake, &
+  dgpp_data &
+  )
   !////////////////////////////////////////////////////////////////
   !  Subroutine BIOSPHERE calculates net ecosystem exchange (nee)
   !  in response to environmental boundary conditions (atmospheric 
@@ -22,12 +25,17 @@ subroutine biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_upta
   ! arguments
   integer, intent(in)                   :: year       ! simulation year
   integer, intent(in)                   :: realyear   ! year AD (=first simulation year )
-  real, intent(in), dimension(ndayyear) :: dtemp
-  real, intent(in), dimension(ndayyear) :: dprec
-  real, intent(in), dimension(ndayyear) :: dndep
+  real, intent(in), dimension(maxgrid)  :: lon        ! longitude vector/field (degrees E)              
+  real, intent(in), dimension(maxgrid)  :: lat        ! latitude vector/field (degrees N)             
+  real, intent(in), dimension(maxgrid)  :: elv        ! elevation (altitude) vector/field (m above sea level)                  
   real, intent(in)                      :: pco2
-  real, dimension(3)                    :: landuse    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
+  real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
+  real, intent(in), dimension(ndayyear,maxgrid) :: dprec_field
+  real, intent(in), dimension(ndayyear,maxgrid) :: dfsun_field
+  real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
+  real, dimension(3)                    :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
   real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
+  real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data   ! for runs with prescribed GPP
 
   ! local variables
   integer :: dm, mo, jpngr, day
@@ -101,13 +109,14 @@ subroutine biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_upta
         !print*,'nh4 ',nh4(1,1)%n14 
 
         ! get soil moisture, and runoff
-        call waterbal( lon, lat, dprec, dtemp, (1.0-dccov), elv )
+        call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
 
         ! get GPP from input
-        call gpp( jpngr, pco2, year, realyear, mo, dm, day )
-
-        ! calculate water balance
-        !call waterbalance
+        if (present(dgpp_data)) then
+          dgpp(:) = dgpp_data(day,:)
+        else
+          call gpp( jpngr, pco2, year, realyear, mo, dm, day )
+        endif
 
         ! use SR 'sitchtemp'
         !call soiltemp
@@ -115,7 +124,7 @@ subroutine biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_upta
         ! substract autotrophic respiration to get NPP, remainder is added to
         ! labile pool (plabl)
         ! xxx try: second argument is dtemp_soil
-        call npp( jpngr, dtemp(day), 1.0 )
+        call npp( jpngr, dtemp_field(day,jpngr), 1.0 )
 
         !print*,'F'
         !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
@@ -142,7 +151,7 @@ subroutine biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_upta
 
 
         ! inorganic soil N chemistry
-        call ntransform( dm, mo, jpngr, dprec )
+        call ntransform( dm, mo, jpngr, dprec_field(day,jpngr) )
 
         !print*,'G'
         !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 

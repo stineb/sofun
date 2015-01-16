@@ -66,13 +66,22 @@ for (mo in 1:nmonth){
   }
 }
 
-## write output with standard formatting: (mo, dm, gpp, gpp-err)
-formatted.out <- vector("character",sum(ndaymonth))
-for (i in 1:sum(ndaymonth)){
-  formatted.out[i] <- sprintf("%2i %2i %6f %6f",data.med[i,1],data.med[i,2],data.med[i,3],data.med[i,4])
-  print(formatted.out[i])
+# ## write output with standard formatting: (mo, dm, gpp, gpp-err)
+# formatted.out <- vector("character",sum(ndaymonth))
+# for (i in 1:sum(ndaymonth)){
+#   formatted.out[i] <- sprintf("%2i %2i %6f %6f",data.med[i,1],data.med[i,2],data.med[i,3],data.med[i,4])
+#   print(formatted.out[i])
+# }
+# writeLines(formatted.out,"/alphadata01/bstocker/sofun/trunk/input/AU-How_daily_gpp_med_STANDARD.txt")
+
+## write output with standard formatting: (year, mo, dm, gpp, gpp-err)
+formatted.out <- vector("character",ndayyear)
+for (day in 1:ndayyear){
+  formatted.out[day] <- sprintf("%6f",data.med[day,3])
+  print(formatted.out[day])
 }
 writeLines(formatted.out,"/alphadata01/bstocker/sofun/trunk/input/AU-How_daily_gpp_med_STANDARD.txt")
+
 
 ## plot median-seasonality GPP
 plot( 1:sum(ndaymonth), data.med[,3], type="l" )

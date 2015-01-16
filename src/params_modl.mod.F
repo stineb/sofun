@@ -108,10 +108,11 @@ module params_modl
 
 contains
 
-  subroutine getpar_modl()
+  subroutine getpar_modl
     !////////////////////////////////////////////////////////////////
     !  Subroutine reads model parameters from input file
     !----------------------------------------------------------------
+    use waterbal_stash, only: getpar_modl_waterbal
 
     implicit none
 

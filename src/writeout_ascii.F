@@ -8,13 +8,14 @@
         use fluxes
         use pools
         use outvars
+        use waterbal_stash, only: writeout_ascii_waterbal
 
         ! Arguments
         integer, intent(in) :: year       ! simulation year
 
         ! Local variables
         real :: itime
-        integer :: day, moy
+        integer :: day, moy, jpngr
 
 
         ! xxx implement this: sum over gridcells? single output per gridcell?
@@ -22,7 +23,7 @@
         jpngr = 1
 
 
-        !/////////////////////////////////////////////////////////////////////////
+        !-------------------------------------------------------------------------
         ! Collect variables to output variables
         !-------------------------------------------------------------------------
         !do lu=1,nlu
@@ -34,7 +35,7 @@
         if (nlu>1) stop 'Output only for one LU category implemented.'
 
 
-        !/////////////////////////////////////////////////////////////////////////
+        !-------------------------------------------------------------------------
         ! DAILY OUTPUT
         ! Write daily value, summed over all PFTs / LUs
         ! xxx implement taking sum over PFTs (and gridcells) in this land use category
@@ -59,7 +60,7 @@
         end if
 
 
-        !/////////////////////////////////////////////////////////////////////////
+        !-------------------------------------------------------------------------
         ! MONTHLY OUTPUT
         ! Write monthly value
         !-------------------------------------------------------------------------
@@ -70,7 +71,7 @@
         !        end do
 
 
-        !/////////////////////////////////////////////////////////////////////////
+        !-------------------------------------------------------------------------
         ! ANNUAL OUTPUT
         ! Write annual value, summed over all PFTs / LUs
         ! xxx implement taking sum over PFTs (and gridcells) in this land use category
@@ -81,7 +82,7 @@
         write(302,999) itime, sum(outaCsoil(:,jpngr))
 
 
-        !/////////////////////////////////////////////////////////////////////////
+        !-------------------------------------------------------------------------
         ! MODULE-SPECIFIC OUTPUT
         !-------------------------------------------------------------------------
         call writeout_ascii_waterbal( year, spinup )

@@ -9,9 +9,9 @@ program main
   use params_siml
   use params_site
   use params_modl
-  use forcing
+  use forcing_siterun
   use input_site
-  use gridvars
+  use gridvars_siterun
   use fluxes
 
   implicit none
@@ -19,12 +19,7 @@ program main
   integer :: year
   integer :: realyear
 
-  real, dimension(ndayyear) :: dtemp
-  real, dimension(ndayyear) :: dprec
-  real, dimension(ndayyear) :: dndep
-  real                      :: pco2
-  real, dimension(3)        :: landuse      ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'biosphere'
-  real                      :: c_uptake     ! annual net global C uptake by biosphere
+  real    :: c_uptake     ! annual net global C uptake by biosphere
 
 
   !----------------------------------------------------------------
@@ -50,23 +45,16 @@ program main
   call getpar_siml(trim(runname))
 
   !----------------------------------------------------------------
-  ! GET SITE PARAMETERS
+  ! GET SITE PARAMETERS AND INPUT DATA
   ! site location (lon,lat), soil type, vegetation type
   ! SR getpar_site is defined in params_site.mod.F. 
   ! 'sitename' is global variable
   !----------------------------------------------------------------
   call getpar_site
-
-
+  call getgrid
 
   ! Get soil parameters (if not defined in <sitename>.parameter)
   !call getsoilpar
-
-  !----------------------------------------------------------------
-  ! GET MODEL PARAMETERS
-  ! read model parameters that may varied for optimisation
-  !----------------------------------------------------------------
-  call getpar_modl
 
   ! Obtain land unit dependent parameters, define decomposition rates
   !call luparameters
@@ -77,6 +65,18 @@ program main
   ! This reads daily values for each day of the transient simulation
   !----------------------------------------------------------------
   call getinput_site
+
+  !----------------------------------------------------------------
+  ! Get external (environmental) forcing for all simulation years
+  ! xxx move this into annual loop
+  !----------------------------------------------------------------
+  call getclimate_fields( trim(runname) )
+
+  !----------------------------------------------------------------
+  ! GET MODEL PARAMETERS
+  ! read model parameters that may be varied for optimisation
+  !----------------------------------------------------------------
+  call getpar_modl
 
 
   ! LOOP THROUGH YEARS
@@ -95,16 +95,20 @@ program main
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
-    call getco2( trim(runname), realyear, pco2 )
-    call getclimate( trim(runname), realyear, dtemp, dprec )
-    call getndep( trim(runname), realyear, dprec, dndep )
-    call getlanduse( trim(runname), realyear, landuse )
+    call getco2( trim(runname), realyear )
+    call getndep( trim(runname), realyear )
+    call getlanduse( trim(runname), realyear )
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
     ! containing data for each day of this year.
     !----------------------------------------------------------------
-    call biosphere( year, realyear, pco2, dtemp, dprec, dndep, landuse, c_uptake ) 
+    call biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
+      dprec_field, dfsun_field, dndep_field, lu_area, c_uptake, &
+#if _prescr_gpp_site
+      dgpp_data(transyear,:,:) &  ! optional argument
+#endif
+      ) 
 
     write(0,100) 'sim. year, year AD, pco2',year,realyear,pco2
 

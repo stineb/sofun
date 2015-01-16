@@ -3,6 +3,7 @@ subroutine initio
   ! Opens input/output files.
   !----------------------------------------------------------------
   use params_siml, only: runname
+  use waterbal_stash, only: initio_waterbal
 
   implicit none
 

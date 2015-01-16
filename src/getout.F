@@ -6,6 +6,7 @@ subroutine getout_daily( jpngr, moy, day )
   use fluxes
   use outvars
   use pools
+  use waterbal_stash, only: getout_daily_waterbal
 
   ! ARGUMENTS
   integer, intent(in) :: jpngr
@@ -51,7 +52,6 @@ subroutine getout_daily( jpngr, moy, day )
   !----------------------------------------------------------------
   call getout_daily_waterbal( jpngr, moy, day )
 
-
 end subroutine getout_daily
 
 
@@ -59,6 +59,7 @@ subroutine getout_monthly( jpngr, moy )
   !////////////////////////////////////////////////////////////////
   !  SR called once a year to gather monthly output variables.
   !----------------------------------------------------------------
+  use waterbal_stash, only: getout_monthly_waterbal
   implicit none
 
   ! ARGUMENTS

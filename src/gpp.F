@@ -3,15 +3,11 @@ subroutine gpp( jpngr, co2, year, realyear, mo, dm, day )
   !  SR reads GPP from input file (for the time being)
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
-  use forcing
   use fluxes
   use params_siml
   use params_modl
   use pools, only: pleaf
   use treegeometry, only: nind
-#if _prescr_gpp_site
-  use input_site, only: dgpp_data
-#endif
   implicit none
 
   ! arguments
@@ -42,14 +38,7 @@ subroutine gpp( jpngr, co2, year, realyear, mo, dm, day )
 !         end function getvalreal
 !       end interface
 
-
-#if _prescr_gpp_site
-  ! Prescribe GPP for each day for site-scale simulation as stored in array 'gpp_data'
-  do pft=1,npft
-    dgpp(pft) = dgpp_data( transyear, day, pft )
-  enddo
-
-#elif _gpp_makela
+#if _gpp_makela
   !----------------------------------------------------------------
   ! Calculate GPP online
   ! parameter values for Pinus Sylvestris (their table 1)

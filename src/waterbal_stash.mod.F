@@ -18,7 +18,7 @@ module waterbal_stash
   !   - soil moisture ('dwn')
   !   - runoff ('dro')
   !----------------------------------------------------------------
-  use params_core, only: ndayyear, nmonth
+  use params_core, only: ndayyear, nmonth, nlu, maxgrid
 
   implicit none
 
@@ -59,28 +59,430 @@ module waterbal_stash
 
   ! DAILY OUTPUT VARIABLES
   ! xxx add jpngr dim
-  real, dimension(nlu,ndayyear,maxgrid) :: outdho             ! daily solar irradiation, J/m2
-  real, dimension(nlu,ndayyear,maxgrid) :: outdhn             ! daily net radiation, J/m2
-  real, dimension(nlu,ndayyear,maxgrid) :: outdqn             ! daily PPFD, mol/m2
-  real, dimension(nlu,ndayyear,maxgrid) :: outdcn             ! daily condensation water, mm
   real, dimension(nlu,ndayyear,maxgrid) :: outdwn             ! daily soil moisture, mm
-  real, dimension(nlu,ndayyear,maxgrid) :: outdpn             ! daily precipitation, mm
+  real, dimension(ndayyear,maxgrid)     :: outdho             ! daily solar irradiation, J/m2
+  real, dimension(ndayyear,maxgrid)     :: outdhn             ! daily net radiation, J/m2
+  real, dimension(ndayyear,maxgrid)     :: outdqn             ! daily PPFD, mol/m2
+  real, dimension(nlu,ndayyear,maxgrid) :: outdcn             ! daily condensation water, mm
   real, dimension(nlu,ndayyear,maxgrid) :: outdro             ! daily runoff, mm
-  real, dimension(nlu,ndayyear,maxgrid) :: outdeq_n           ! daily equilibrium ET, mm
-  real, dimension(nlu,ndayyear,maxgrid) :: outdep_n           ! daily potential ET, mm
+  real, dimension(ndayyear,maxgrid)     :: outdeq_n           ! daily equilibrium ET, mm
+  real, dimension(ndayyear,maxgrid)     :: outdep_n           ! daily potential ET, mm
   real, dimension(nlu,ndayyear,maxgrid) :: outdea_n           ! daily actual ET, mm
+
+
 
   ! MONTHLY OUTPUT VARIABLES
   ! xxx add jpngr dim
-  real, dimension(nlu,nmonth,maxgrid) :: outmeq_m
-  real, dimension(nlu,nmonth,maxgrid) :: outmep_m
+  real, dimension(nmonth,maxgrid) :: outmeq_m
+  real, dimension(nmonth,maxgrid) :: outmep_m
   real, dimension(nlu,nmonth,maxgrid) :: outmea_m
   real, dimension(nlu,nmonth,maxgrid) :: outmcpa
   real, dimension(nlu,nmonth,maxgrid) :: outmcwd
-  real, dimension(nlu,nmonth,maxgrid) :: outmqm
+  real, dimension(nmonth,maxgrid) :: outmqm
 
 
 contains
+
+  subroutine waterbal( doy, lon, lat, dprec, dtemp, dsun, elv )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Calculates daily and monthly quantities for one year
+    !-------------------------------------------------------------------------
+    use params_core, only: ndayyear, ndaymonth, nlu
+    use fluxes, only: dwn, dro
+
+    ! ARGUMENTS
+    integer, intent(in) :: doy                       ! day of year
+    real, intent(in) :: lon                          ! longitude (degrees)
+    real, intent(in) :: lat                          ! latitude (degrees)
+    real, intent(in) :: dprec       ! daily precip (mm) 
+    real, intent(in) :: dtemp        ! mean monthly temperature (deg C)
+    real, intent(in) :: dsun        ! mean monthly sunshine fraction (unitless)
+    !real, dimension(nmonth), intent(in) :: ppt       ! monthly precip (mm) 
+    !real, dimension(nmonth), intent(in) :: tc        ! mean monthly temperature (deg C)
+    !real, dimension(nmonth), intent(in) :: sf        ! mean monthly sunshine fraction (unitless)
+    real, intent(in) :: elv                          ! altitude (m)
+
+    ! LOCAL VARIABLES
+    integer :: lu                        ! land unit (gridcell tile)
+    integer :: moy                       ! month of year
+    integer :: idx                       ! day of year corresponding to yesterday
+    integer :: dm                        ! day of month
+
+    ! Reset monthly totals
+    !call initmonthly
+
+    do lu=1,nlu
+
+      ! Calculate evaporative supply rate, mm/h
+      sw(lu) = kCw * dwn(lu) / kWm
+
+      ! Calculate radiation and evaporation quantities
+      !print*,'calling evap for doy', doy, '...'
+      call evap( lu, lon, lat, doy, elv=elv, sf=dsun, tc=dtemp )
+      !print*,'... done'
+
+      ! Update soil moisture
+      dwn(lu) = dwn(lu) + dprec + wc(lu) - aet_d(lu)
+
+      ! Bucket model for runoff generation
+      if (dwn(lu)>kWm) then
+        ! Bucket is full 
+        ! * set soil moisture to capacity
+        ! * add remaining water to monthly runoff total
+        dro(lu) = dwn(lu)
+        dro(lu) = dro(lu) - kWm
+        dwn(lu) = kWm
+
+      elseif (dwn(lu)<0) then
+        ! Bucket is empty
+        ! * set soil moisture to zero
+        dwn(lu) = 0.0
+        dro(lu) = 0.0
+
+      else
+        ! No runoff occurrs
+        dro(lu) = 0.0
+
+      end if
+
+    end do
+
+    return
+
+  end subroutine waterbal
+
+
+  subroutine evap( lu, lon, lat, doy, elv, sf, tc )
+    !/////////////////////////////////////////////////////////////////////////
+    ! This subroutine calculates daily radiation and evapotranspiration
+    ! quantities
+    ! - daily PPFD (ppfd_d), mol/m^2
+    ! - daily EET (eet_d), mm
+    ! - daily PET (pet_d), mm
+    ! - daily AET (aet_d), mm
+    ! - daily condensation (wc), mm
+    !-------------------------------------------------------------------------  
+    use params_core, only: ndayyear, pi
+    use fluxes, only: rn_d
+
+    implicit none
+
+    ! ARGUMENTS
+    integer, intent(in) :: lu            ! land unit
+    real, intent(in) :: lon              ! longitude, degrees
+    real, intent(in) :: lat              ! latitude, degrees
+    integer, intent(in) :: doy           ! day of the year (formerly 'n')
+    real,    intent(in) :: elv ! elevation, metres
+    real,    intent(in) :: sf  ! fraction of sunshine hours 
+    real,    intent(in) :: tc  ! mean daily air temperature, C
+
+
+    ! LOCAL VARIABLES
+    real, dimension(2) :: out_berger     ! temporary var to store output of berger_tls
+    real :: my_nu                        ! heliocentric longitudes
+    real :: my_lambda                    ! heliocentric longitudes
+    real :: my_rho
+    real :: dr                           ! distance factor
+    real :: delta                        ! declination angle 
+    real :: ru                           ! variable substitute for u
+    real :: rv                           ! variable substitute for v
+    real :: hs                           ! sunset hour angle
+    real :: tau_o, tau                   ! transmittivity (unitless)
+    real :: rnl                          ! net longwave radiation (W/m^2)
+    real :: rnn_d                        ! nighttime net radiation (J/m^2)
+    real :: rw                           ! variable substitute (W/m^2)
+    real :: hn                           ! net radiation cross-over hour angle
+    real :: s                            ! slope of saturation vap press temp curve, Pa/K
+    real :: pw                           ! density of water, kg/m^3
+    real :: lv                           ! enthalpy of vaporization, J/kg
+    real :: g                            ! psychrometric constant, Pa/K
+    real :: econ                         ! Eq. 58, STASH 2.0 Documentation
+    real :: rx                           ! variable substitute (mm/hr)/(W/m^2)
+    real :: hi, cos_hi                   ! intersection hour angle, degrees
+
+
+    ! Set default values for optional arguments
+    ! xxx really keep them as optional inputs?
+
+    ! Error handle and assign required public variables:
+    if (lon>180.0 .or. lon<(-180.0)) then
+      print*,"Longitude outside range of validity (-180 to 180)!"
+      stop
+    end if
+
+    if (lat>90.0 .or. lat<(-90.0)) then
+      print*,"Latitude outside range of validity (-90 to 90)!"
+      stop
+    end if
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 1. Calculate number of days in year (kN), days
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! (is provided within SOFUN)
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Berger (1978)
+    out_berger = berger_tls( doy )
+    
+    ! xxx debug
+    !print*,'out_berger', out_berger
+
+    ! xxx my_nu is not perfectly identical to Python version
+    my_nu      = out_berger(1)
+    my_lambda  = out_berger(2)
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 3. Calculate distance factor (dr), unitless
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Berger et al. (1993)
+    my_rho = (1.0 - ke**2)/(1.0 + ke * dgcos( my_nu ))
+    dr = (1.0/my_rho)**2
+
+    ! xxx debug
+    !print*,'dr', dr
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 4. Calculate declination angle (delta), degrees
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Woolf (1968)
+    ! delta = dasin( dgsin( my_lambda ) * dgsin( keps ) )   ! xxx arcsin is asin in Fortran?
+    delta = asin( dgsin( my_lambda ) * dgsin( keps ) )   ! xxx use asin with single-precision compilation
+    delta = degrees( delta )
+
+    ! xxx debug
+    !print*,'delta', delta
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 5. Calculate variable substitutes (u and v), unitless
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ru = dgsin(delta) * dgsin(lat)
+    rv = dgcos(delta) * dgcos(lat)
+
+    ! xxx debug
+    !print*,'ru,rv',ru,rv
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 6. Calculate the sunset hour angle (hs), degrees
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Note: u/v == tan(delta)*tan(lat)
+    ! Eq. 3.22, Stine & Geyer (2001)
+    if ((ru/rv) >= 1.0) then
+      ! Polar day (no sunset)
+      hs = 180.0 
+    elseif ((ru/rv) <= -1.0) then
+      ! Polar night (no sunrise)
+      hs = 0.0
+    else
+      !hs = dacos(-1.0*ru/rv)
+      hs = acos(-1.0*ru/rv)  ! xxx use acos with single-precision compilation
+      hs = degrees(hs)
+    end if
+
+    ! xxx debug
+    !print*,'hs',hs
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 7. Calculate daily extraterrestrial solar radiation (ra_d), J/m^2
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 1.10.3, Duffy & Beckman (1993)
+    ra_d = (86400.0/pi)*kGsc*dr*(radians(ru)*hs + rv * dgsin(hs))
+
+    ! xxx debug
+    !print*,'ra_d', ra_d
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 8. Calculate transmittivity (tau), unitless
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 11, Linacre (1968)
+    tau_o = (kc + kd*sf)
+
+    ! Eq. 2, Allen (1996)
+    tau = tau_o*(1.0 + (2.67e-5)*elv)
+
+    ! xxx debug
+    !print*,'tau',tau
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 9. Calculate daily PPFD (ppfd_d), mol/m^2
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 57, STASH 2.0 Documentation
+    ppfd_d = (1.0e-6)*kfFEC*(1.0 - kalb_vis)*tau*ra_d
+
+    ! xxx debug
+    !print*,'ppfd_d',ppfd_d
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 10. Estimate net longwave radiation (rnl), W/m^2
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
+    rnl = (kb + (1.0 - kb)*sf)*(kA - tc)
+
+    ! xxx debug
+    !print*,'rnl',rnl
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 11. Calculate variable substitute (rw), W/m^2
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    rw = (1.0-kalb_sw)*tau*kGsc*dr
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 12. Calculate net radiation cross-over hour angle (hn), degrees
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if ((rnl - rw*ru)/(rw*rv) >= 1.0) then
+      ! Net radiation negative all day
+      hn = 0.0
+    else if ((rnl - rw*ru)/(rw*rv) <= -1.0) then
+      ! Net radiation positive all day
+      hn = 180.0
+    else
+      !hn = degrees( dacos((rnl - rw*ru)/(rw*rv)) )
+      hn = degrees( acos((rnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
+    end if
+
+    ! xxx debug
+    !print*,'hn',hn
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 13. Calculate daytime net radiation (rn_d), J/m^2
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 53, STASH 2.0 Documentation
+    rn_d = (86400.0/pi) * (hn*(pi/180.0)*(rw*ru - rnl) + rw*rv*dgsin(hn))
+
+    ! xxx debug: slight deviation from python code (-6.156683e-05 %)
+    !print*,'rn_d',rn_d
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 14. Calculate nighttime net radiation (rnn_d), J/m^2
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 56, STASH 2.0 Documentation
+    rnn_d = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + rnl*(pi - 2.0*radians(hs) + radians(hn)))
+
+    ! xxx debug
+    !print*,'rnn_d',rnn_d
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 15. Calculate water-to-energy conversion (econ), m^3/J
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Slope of saturation vap press temp curve, Pa/K
+    s = sat_slope(tc)
+    ! Enthalpy of vaporization, J/kg
+    lv = enthalpy_vap(tc)
+    ! Density of water, kg/m^3
+    pw = density_h2o(tc, elv2pres(elv))
+    ! Psychrometric constant, Pa/K
+    g = psychro(tc, elv2pres(elv))
+
+    ! Eq. 58, STASH 2.0 Documentation
+    econ = s/(lv*pw*(s + g))
+
+    ! xxx debug
+    !print*,'econ',econ
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 16. Calculate daily condensation (wc), mm
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 68, STASH 2.0 Documentation
+    wc(lu) = 1000.0 * econ * abs(rnn_d)
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 17. Estimate daily EET (eet_d), mm
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 70, STASH 2.0 Documentation
+    eet_d = 1000.0*econ*(rn_d)
+
+    ! xxx debug
+    !print*,'eet_d',eet_d
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 18. Estimate daily PET (pet_d), mm
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 72, STASH 2.0 Documentation
+    pet_d = (1.0+kw)*eet_d
+
+    ! xxx debug
+    !print*,'pet_d',pet_d
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    rx = 1000.0*3600.0*(1.0+kw)*econ
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 20. Calculate the intersection hour angle (hi), degrees
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    cos_hi = sw(lu)/(rw*rv*rx) + rnl/(rw*rv) - ru/rv
+    if (cos_hi >= 1.0) then
+      ! Supply exceeds demand:
+      hi = 0.0
+    elseif (cos_hi <= -1.0) then
+      ! Supply limits demand everywhere:
+      hi = 180.0
+    else
+      hi = degrees(acos(cos_hi))
+    end if
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 21. Estimate daily AET (aet_d), mm
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 81, STASH 2.0 Documentation
+    aet_d(lu) = (24.0/pi)*(radians(sw(lu)*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*rnl)*(hn - hi)))
+
+    ! xxx debug
+    !print*,'aet_d',aet_d
+
+    return
+
+    !-------------------------------------------------------------   
+    ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 
+    !         reference evapotranspiration estimation, Journal of Irrigation
+    !         and Drainage Engineering, vol. 122, pp. 97--106.
+    !       Allen, R.G., L.S. Pereira, D. Raes, M. Smith (1998), 
+    !         'Meteorological data,' Crop evapotranspiration - Guidelines for 
+    !         computing crop water requirements - FAO Irrigation and drainage 
+    !         paper 56, Food and Agriculture Organization of the United 
+    !         Nations, online: http://www.fao.org/docrep/x0490e/x0490e07.htm
+    !       Berger, A.L. (1978), Long-term variations of daily insolation and 
+    !         quarternary climatic changes, Journal of Atmospheric Sciences, 
+    !         vol. 35, pp. 2362--2367.
+    !       Berger, A.L., M.F. Loutre, and C. Tricot (1993), Insolation and 
+    !         Earth's orbital periods, J. Geophys. Res., 98, 10341--10362.
+    !       Duffie, J. A. and W. A. Beckman (1991). Solar engineering of 
+    !         thermal processes. 4th ed. New Jersey: John Wiley and Sons
+    !       Federer (1982), Transpirational supply and demand: plant, soil, 
+    !         and atmospheric effects evaluated by simulation, Water 
+    !         Resources Research, vol. 18, no. 2, pp. 355--362.
+    !       Ge, S., R.G. Smith, C.P. Jacovides, M.G. Kramer, R.I. Carruthers 
+    !         (2011), Dynamics of photosynthetic photon flux density (PPFD) 
+    !         and estimates in coastal northern California, Theoretical and 
+    !         Applied Climatology, vol. 105, pp. 107--118.
+    !       Henderson-Sellers, B. (1984), A new formula for latent heat of 
+    !         vaporization of water as a function of temperature, Quarterly 
+    !         Journal of the Royal Meteorological Society 110, pp. 1186–1190
+    !       Linacre (1968), Estimating the net-radiation flux, Agricultural 
+    !         Meteorology, vol. 5, pp. 49--63.
+    !       Prentice, I.C., M.T. Sykes, W. Cramer (1993), A simulation model 
+    !         for the transient effects of climate change on forest 
+    !         landscapes, Ecological Modelling, vol. 65, pp. 51--70.
+    !       Priestley, C.H.B. and R.J. Taylor (1972), On the assessment of 
+    !         surface heat flux and evaporation using large-scale parameters, 
+    !         Monthly Weather Review, vol. 100 (2), pp. 81--92.
+    !       Spencer, J. W. (1971), Fourier series representation of the 
+    !         position of the sun, Search, vol. 2, p. 172.
+    !       Stine, W. B. and M. Geyer (2001). “Power from the Sun”. 
+    !         online: http://www.powerfromthesun.net/Book/chapter03/chapter03
+    !       Wetherald, R.T., S. Manabe (1972), Response to joint ocean-
+    !         atmosphere model to the seasonal variation of the solar 
+    !         radiation, Monthly Weather Review, vol. 100 (1), pp. 42--59.
+    !       Woolf, H. M. (1968). On the computation of solar evaluation 
+    !         angles and the determination of sunrise and sunset times. 
+    !         Tech. rep. NASA-TM-X-164. National Aeronautics and Space 
+    !         Administration (NASA).
+    !-------------------------------------------------------------   
+
+  end subroutine evap
+
 
   subroutine getpar_modl_waterbal( paramfilnam )
     !////////////////////////////////////////////////////////////////
@@ -228,24 +630,23 @@ contains
     implicit none
 
     ! xxx remove their day-dimension
-    outdho(:,:,:) = 0.0
-    outdhn(:,:,:) = 0.0
-    outdqn(:,:,:) = 0.0
-    outdcn(:,:,:) = 0.0
     outdwn(:,:,:) = 0.0
-    outdpn(:,:,:) = 0.0
+    outdho(:,:) = 0.0
+    outdhn(:,:) = 0.0
+    outdqn(:,:) = 0.0
+    outdcn(:,:,:) = 0.0
     outdro(:,:,:) = 0.0
-    outdeq_n(:,:,:) = 0.0
-    outdep_n(:,:,:) = 0.0
+    outdeq_n(:,:) = 0.0
+    outdep_n(:,:) = 0.0
     outdea_n(:,:,:) = 0.0
 
     ! xxx remove their month-dimension
-    outmeq_m(:,:,:) = 0.0
-    outmep_m(:,:,:) = 0.0
+    outmeq_m(:,:) = 0.0
+    outmep_m(:,:) = 0.0
     outmea_m(:,:,:) = 0.0
     outmcpa(:,:,:) = 0.0
     outmcwd(:,:,:) = 0.0
-    outmqm(:,:,:) = 0.0
+    outmqm(:,:) = 0.0
 
     return
 
@@ -267,20 +668,20 @@ contains
 
     ! Save the daily totals:
     ! xxx add lu-dimension and jpngr-dimension
-    outdwn(:,doy,jpngr) = dwn(:)
-    outdho(:,doy,jpngr) = ra_d  xxx remove lu dimension again ?
-    outdhn(:,doy,jpngr) = rn_d
-    outdqn(:,doy,jpngr) = ppfd_d
-    outdcn(:,doy,jpngr) = wc(:)
-    outdeq_n(:,doy,jpngr) = eet_d
-    outdep_n(:,doy,jpngr) = pet_d
+    outdwn(:,doy,jpngr)   = dwn(:)
+    outdho(doy,jpngr)     = ra_d  
+    outdhn(doy,jpngr)     = rn_d
+    outdqn(doy,jpngr)     = ppfd_d
+    outdcn(:,doy,jpngr)   = wc(:)
+    outdeq_n(doy,jpngr)   = eet_d
+    outdep_n(doy,jpngr)   = pet_d
     outdea_n(:,doy,jpngr) = aet_d(:)
 
     ! Update monthly totals:
-    outmeq_m(:,moy,jpngr) = outmeq_m(:,moy,jpngr) + eet_d
-    outmep_m(:,moy,jpngr) = outmep_m(:,moy,jpngr) + pet_d
+    outmeq_m(moy,jpngr)   = outmeq_m(moy,jpngr) + eet_d
+    outmep_m(moy,jpngr)   = outmep_m(moy,jpngr) + pet_d
     outmea_m(:,moy,jpngr) = outmea_m(:,moy,jpngr) + aet_d(:)
-    outmqm(:,moy,jpngr)   =   outmqm(:,moy,jpngr) + ppfd_d
+    outmqm(moy,jpngr)     = outmqm(moy,jpngr) + ppfd_d
 
     return  
 
@@ -298,10 +699,10 @@ contains
     integer, intent(in) :: moy
 
     ! Calculate other monthly totals:
-    outmcpa(moy) = outmea_m(moy)
-    outmcpa(moy) = outmcpa(moy) / outmep_m(moy)
-    outmcwd(moy) = outmep_m(moy)
-    outmcwd(moy) = outmcwd(moy) - outmea_m(moy)
+    outmcpa(:,moy,jpngr) = outmea_m(:,moy,jpngr)
+    outmcpa(:,moy,jpngr) = outmcpa(:,moy,jpngr) / outmep_m(moy,jpngr)
+    outmcwd(:,moy,jpngr) = outmep_m(moy,jpngr)
+    outmcwd(:,moy,jpngr) = outmcwd(:,moy,jpngr) - outmea_m(:,moy,jpngr)
 
     return  
 
@@ -323,9 +724,16 @@ contains
 
     ! Local variables
     real :: itime
-    integer :: day, moy
+    integer :: day, moy, jpngr
+
+    ! xxx implement this: sum over gridcells? single output per gridcell?
+    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
+    jpngr = 1
 
 
+    !-------------------------------------------------------------------------
+    ! DAILY OUTPUT
+    !-------------------------------------------------------------------------
     if (.not.spinup) then
       ! Write daily output only during transient simulation
       do day=1,ndayyear
@@ -333,23 +741,24 @@ contains
         ! Define 'itime' as a decimal number corresponding to day in the year + year
         itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
 
-        ! xxx add jpngr dim
-        write(151,999) itime, outdho(day)
-        write(152,999) itime, outdhn(day)
-        write(153,999) itime, outdqn(day)
-        write(154,999) itime, outdcn(day)
-        write(155,999) itime, outdwn(day)
-        write(156,999) itime, outdpn(day)
-        write(157,999) itime, outdro(day)
-        write(158,999) itime, outdeq_n(day)
-        write(159,999) itime, outdep_n(day)
-        write(160,999) itime, outdea_n(day)
+        if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
+
+        ! xxx lu-area weighted sum if nlu>0
+        write(151,999) itime, outdho(day,jpngr)
+        write(152,999) itime, outdhn(day,jpngr)
+        write(153,999) itime, outdqn(day,jpngr)
+        write(154,999) itime, outdcn(1,day,jpngr)
+        write(155,999) itime, outdwn(1,day,jpngr)
+        write(157,999) itime, outdro(1,day,jpngr)
+        write(158,999) itime, outdeq_n(day,jpngr)
+        write(159,999) itime, outdep_n(day,jpngr)
+        write(160,999) itime, outdea_n(1,day,jpngr)
 
       end do
     end if
 
 
-    !/////////////////////////////////////////////////////////////////////////
+    !-------------------------------------------------------------------------
     ! MONTHLY OUTPUT
     ! Write monthly value
     !-------------------------------------------------------------------------
@@ -358,16 +767,12 @@ contains
       itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(moy-1)/real(nmonth)
 
       ! STASH variables
-      write(151,999) itime, outdho(moy)
-      write(152,999) itime, outdhn(moy)
-      write(153,999) itime, outdqn(moy)
-      write(154,999) itime, outdcn(moy)
-      write(155,999) itime, outdwn(moy)
-      write(156,999) itime, outdpn(moy)
-      write(157,999) itime, outdro(moy)
-      write(158,999) itime, outdeq_n(moy)
-      write(159,999) itime, outdep_n(moy)
-      write(160,999) itime, outdea_n(moy)
+      write(111,999) itime, outmeq_m(moy,jpngr)
+      write(112,999) itime, outmep_m(moy,jpngr)
+      write(113,999) itime, outmea_m(1,moy,jpngr)
+      write(114,999) itime, outmcpa(1,moy,jpngr)
+      write(115,999) itime, outmcwd(1,moy,jpngr)
+      write(116,999) itime, outmqm(moy,jpngr)
 
     end do
 
@@ -376,429 +781,6 @@ contains
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_waterbal
-
-
-  subroutine waterbal( doy, lon, lat, dprec, dtemp, dsun, elv )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Calculates daily and monthly quantities for one year
-    !-------------------------------------------------------------------------
-    use params_core, only: ndayyear, ndaymonth
-    use fluxes, only: dwn, dro
-
-    ! ARGUMENTS
-    integer, intent(in) :: doy                       ! day of year
-    real, intent(in) :: lon                          ! longitude (degrees)
-    real, intent(in) :: lat                          ! latitude (degrees)
-    real, intent(in) :: dprec       ! daily precip (mm) 
-    real, intent(in) :: dtemp        ! mean monthly temperature (deg C)
-    real, intent(in) :: dsun        ! mean monthly sunshine fraction (unitless)
-    !real, dimension(nmonth), intent(in) :: ppt       ! monthly precip (mm) 
-    !real, dimension(nmonth), intent(in) :: tc        ! mean monthly temperature (deg C)
-    !real, dimension(nmonth), intent(in) :: sf        ! mean monthly sunshine fraction (unitless)
-    real, intent(in) :: elv                          ! altitude (m)
-
-    ! LOCAL VARIABLES
-
-    integer :: moy                       ! month of year
-    integer :: idx                       ! day of year corresponding to yesterday
-    integer :: dm                        ! day of month
-
-    ! Reset monthly totals
-    !call initmonthly
-
-    do lu=1,nlu
-
-      ! Calculate evaporative supply rate, mm/h
-      sw(lu) = kCw * dwn(lu) / kWm
-
-      ! Calculate radiation and evaporation quantities
-      !print*,'calling evap for doy', doy, '...'
-      call evap( lu, lon, lat, doy, elv=elv, sf=dsun, tc=dtemp )
-      !print*,'... done'
-
-      ! Update soil moisture
-      dwn(lu) = dwn(lu) + dprec + wc(lu) - aet_d(lu)
-
-      ! Bucket model for runoff generation
-      if (dwn(lu)>kWm) then
-        ! Bucket is full 
-        ! * set soil moisture to capacity
-        ! * add remaining water to monthly runoff total
-        dro(lu) = dwn(lu)
-        dro(lu) = dro(lu) - kWm
-        dwn(lu) = kWm
-
-      elseif (dwn(lu)<0) then
-        ! Bucket is empty
-        ! * set soil moisture to zero
-        dwn(lu) = 0.0
-        dro(lu) = 0.0
-
-      else
-        ! No runoff occurrs
-        dro(lu) = 0.0
-
-      end if
-
-    end do
-
-    return
-
-  end subroutine waterbal
-
-
-  subroutine evap( lu, lon, lat, doy, elv, sf, tc )
-    !----------------------------------------------------------------   
-    ! This subroutine calculates daily radiation and evapotranspiration
-    ! quantities
-    ! - daily PPFD (ppfd_d), mol/m^2
-    ! - daily EET (eet_d), mm
-    ! - daily PET (pet_d), mm
-    ! - daily AET (aet_d), mm
-    ! - daily condensation (wc), mm
-    !-------------------------------------------------------------  
-    use params_core, only: ndayyear
-    use fluxes, only: rn_d
-
-    implicit none
-
-    ! ARGUMENTS
-
-    ! inputs
-    integer, intent(in) :: lu            ! land unit
-    real, intent(in) :: lon              ! longitude, degrees
-    real, intent(in) :: lat              ! latitude, degrees
-    integer, intent(in) :: doy           ! day of the year (formerly 'n')
-
-    ! optional inputs
-    real,    intent(in), optional :: elv ! elevation, metres
-    real,    intent(in), optional :: sf  ! fraction of sunshine hours 
-    real,    intent(in), optional :: tc  ! mean daily air temperature, C
-
-
-    ! LOCAL VARIABLES
-    real     :: my_elv                   ! elevation, metres; aux. var. for local use        
-    real     :: my_sf                    ! fraction of sunshine hours ; for local use
-    real     :: my_tc                    ! mean daily air temperature, C; for local use
-
-    real, dimension(2) :: out_berger     ! temporary var to store output of berger_tls
-    real :: my_nu                        ! heliocentric longitudes
-    real :: my_lambda                    ! heliocentric longitudes
-    real :: my_rho
-    real :: dr                           ! distance factor
-    real :: delta                        ! declination angle 
-    real :: ru                           ! variable substitute for u
-    real :: rv                           ! variable substitute for v
-    real :: hs                           ! sunset hour angle
-    real :: tau_o, tau                   ! transmittivity (unitless)
-    real :: rnl                          ! net longwave radiation (W/m^2)
-    real :: rnn_d                        ! nighttime net radiation (J/m^2)
-    real :: rw                           ! variable substitute (W/m^2)
-    real :: hn                           ! net radiation cross-over hour angle
-    real :: s                            ! slope of saturation vap press temp curve, Pa/K
-    real :: pw                           ! density of water, kg/m^3
-    real :: lv                           ! enthalpy of vaporization, J/kg
-    real :: g                            ! psychrometric constant, Pa/K
-    real :: econ                         ! Eq. 58, STASH 2.0 Documentation
-    real :: rx                           ! variable substitute (mm/hr)/(W/m^2)
-    real :: hi, cos_hi                   ! intersection hour angle, degrees
-
-
-    ! Set default values for optional arguments
-    ! xxx really keep them as optional inputs?
-    if (.not.present(elv)) then
-      my_elv = 0.0
-    else
-      my_elv = elv
-    end if
-
-    if (.not.present(sf)) then
-      my_sf = 1.0
-    else
-      my_sf = sf
-    end if
-
-    if (.not.present(tc)) then 
-      my_tc = 23.0
-    else
-      my_tc = tc
-    end if
-
-    ! Error handle and assign required public variables:
-    if (lon>180.0 .or. lon<(-180.0)) then
-      print*,"Longitude outside range of validity (-180 to 180)!"
-      stop
-    end if
-
-    if (lat>90.0 .or. lat<(-90.0)) then
-      print*,"Latitude outside range of validity (-90 to 90)!"
-      stop
-    end if
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 1. Calculate number of days in year (kN), days
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! (is provided within SOFUN)
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Berger (1978)
-    out_berger = berger_tls( doy )
-    
-    ! xxx debug
-    !print*,'out_berger', out_berger
-
-    ! xxx my_nu is not perfectly identical to Python version
-    my_nu      = out_berger(1)
-    my_lambda  = out_berger(2)
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 3. Calculate distance factor (dr), unitless
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Berger et al. (1993)
-    my_rho = (1.0 - ke**2)/(1.0 + ke * dgcos( my_nu ))
-    dr = (1.0/my_rho)**2
-
-    ! xxx debug
-    !print*,'dr', dr
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 4. Calculate declination angle (delta), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Woolf (1968)
-    delta = dasin( dgsin( my_lambda ) * dgsin( keps ) )   ! xxx arcsin is asin in Fortran?
-    delta = degrees( delta )
-
-    ! xxx debug
-    !print*,'delta', delta
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 5. Calculate variable substitutes (u and v), unitless
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ru = dgsin(delta) * dgsin(lat)
-    rv = dgcos(delta) * dgcos(lat)
-
-    ! xxx debug
-    !print*,'ru,rv',ru,rv
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 6. Calculate the sunset hour angle (hs), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Note: u/v == tan(delta)*tan(lat)
-    ! Eq. 3.22, Stine & Geyer (2001)
-    if ((ru/rv) >= 1.0) then
-      ! Polar day (no sunset)
-      hs = 180.0 
-    elseif ((ru/rv) <= -1.0) then
-      ! Polar night (no sunrise)
-      hs = 0.0
-    else
-      hs = dacos(-1.0*ru/rv)
-      hs = degrees(hs)
-    end if
-
-    ! xxx debug
-    !print*,'hs',hs
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 7. Calculate daily extraterrestrial solar radiation (ra_d), J/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 1.10.3, Duffy & Beckman (1993)
-    ra_d = (86400.0/pi)*kGsc*dr*(radians(ru)*hs + rv * dgsin(hs))
-
-    ! xxx debug
-    !print*,'ra_d', ra_d
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 8. Calculate transmittivity (tau), unitless
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 11, Linacre (1968)
-    tau_o = (kc + kd*my_sf)
-
-    ! Eq. 2, Allen (1996)
-    tau = tau_o*(1.0 + (2.67e-5)*my_elv)
-
-    ! xxx debug
-    !print*,'tau',tau
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 9. Calculate daily PPFD (ppfd_d), mol/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 57, STASH 2.0 Documentation
-    ppfd_d = (1.0e-6)*kfFEC*(1.0 - kalb_vis)*tau*ra_d
-
-    ! xxx debug
-    !print*,'ppfd_d',ppfd_d
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 10. Estimate net longwave radiation (rnl), W/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
-    rnl = (kb + (1.0 - kb)*my_sf)*(kA - my_tc)
-
-    ! xxx debug
-    !print*,'rnl',rnl
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 11. Calculate variable substitute (rw), W/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rw = (1.0-kalb_sw)*tau*kGsc*dr
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 12. Calculate net radiation cross-over hour angle (hn), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if ((rnl - rw*ru)/(rw*rv) >= 1.0) then
-      ! Net radiation negative all day
-      hn = 0.0
-    else if ((rnl - rw*ru)/(rw*rv) <= -1.0) then
-      ! Net radiation positive all day
-      hn = 180.0
-    else
-      hn = degrees( dacos((rnl - rw*ru)/(rw*rv)) )
-    end if
-
-    ! xxx debug
-    !print*,'hn',hn
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 13. Calculate daytime net radiation (rn_d), J/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 53, STASH 2.0 Documentation
-    rn_d = (86400.0/pi) * (hn*(pi/180.0)*(rw*ru - rnl) + rw*rv*dgsin(hn))
-
-    ! xxx debug: slight deviation from python code (-6.156683e-05 %)
-    !print*,'rn_d',rn_d
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 14. Calculate nighttime net radiation (rnn_d), J/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 56, STASH 2.0 Documentation
-    rnn_d = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + rnl*(pi - 2.0*radians(hs) + radians(hn)))
-
-    ! xxx debug
-    !print*,'rnn_d',rnn_d
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 15. Calculate water-to-energy conversion (econ), m^3/J
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Slope of saturation vap press temp curve, Pa/K
-    s = sat_slope(my_tc)
-    ! Enthalpy of vaporization, J/kg
-    lv = enthalpy_vap(my_tc)
-    ! Density of water, kg/m^3
-    pw = density_h2o(my_tc, elv2pres(my_elv))
-    ! Psychrometric constant, Pa/K
-    g = psychro(my_tc, elv2pres(my_elv))
-
-    ! Eq. 58, STASH 2.0 Documentation
-    econ = s/(lv*pw*(s + g))
-
-    ! xxx debug
-    !print*,'econ',econ
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 16. Calculate daily condensation (wc), mm
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 68, STASH 2.0 Documentation
-    wc(lu) = 1000.0 * econ * abs(rnn_d)
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 17. Estimate daily EET (eet_d), mm
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 70, STASH 2.0 Documentation
-    eet_d = 1000.0*econ*(rn_d)
-
-    ! xxx debug
-    !print*,'eet_d',eet_d
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 18. Estimate daily PET (pet_d), mm
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 72, STASH 2.0 Documentation
-    pet_d = (1.0+kw)*eet_d
-
-    ! xxx debug
-    !print*,'pet_d',pet_d
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rx = 1000.0*3600.0*(1.0+kw)*econ
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 20. Calculate the intersection hour angle (hi), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    cos_hi = sw(lu)/(rw*rv*rx) + rnl/(rw*rv) - ru/rv
-    if (cos_hi >= 1.0) then
-      ! Supply exceeds demand:
-      hi = 0.0
-    elseif (cos_hi <= -1.0) then
-      ! Supply limits demand everywhere:
-      hi = 180.0
-    else
-      hi = degrees(acos(cos_hi))
-    end if
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 21. Estimate daily AET (aet_d), mm
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 81, STASH 2.0 Documentation
-    aet_d(lu) = (24.0/pi)*(radians(sw(lu)*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*rnl)*(hn - hi)))
-
-    ! xxx debug
-    !print*,'aet_d',aet_d
-
-    return
-
-    !-------------------------------------------------------------   
-    ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 
-    !         reference evapotranspiration estimation, Journal of Irrigation
-    !         and Drainage Engineering, vol. 122, pp. 97--106.
-    !       Allen, R.G., L.S. Pereira, D. Raes, M. Smith (1998), 
-    !         'Meteorological data,' Crop evapotranspiration - Guidelines for 
-    !         computing crop water requirements - FAO Irrigation and drainage 
-    !         paper 56, Food and Agriculture Organization of the United 
-    !         Nations, online: http://www.fao.org/docrep/x0490e/x0490e07.htm
-    !       Berger, A.L. (1978), Long-term variations of daily insolation and 
-    !         quarternary climatic changes, Journal of Atmospheric Sciences, 
-    !         vol. 35, pp. 2362--2367.
-    !       Berger, A.L., M.F. Loutre, and C. Tricot (1993), Insolation and 
-    !         Earth's orbital periods, J. Geophys. Res., 98, 10341--10362.
-    !       Duffie, J. A. and W. A. Beckman (1991). Solar engineering of 
-    !         thermal processes. 4th ed. New Jersey: John Wiley and Sons
-    !       Federer (1982), Transpirational supply and demand: plant, soil, 
-    !         and atmospheric effects evaluated by simulation, Water 
-    !         Resources Research, vol. 18, no. 2, pp. 355--362.
-    !       Ge, S., R.G. Smith, C.P. Jacovides, M.G. Kramer, R.I. Carruthers 
-    !         (2011), Dynamics of photosynthetic photon flux density (PPFD) 
-    !         and estimates in coastal northern California, Theoretical and 
-    !         Applied Climatology, vol. 105, pp. 107--118.
-    !       Henderson-Sellers, B. (1984), A new formula for latent heat of 
-    !         vaporization of water as a function of temperature, Quarterly 
-    !         Journal of the Royal Meteorological Society 110, pp. 1186–1190
-    !       Linacre (1968), Estimating the net-radiation flux, Agricultural 
-    !         Meteorology, vol. 5, pp. 49--63.
-    !       Prentice, I.C., M.T. Sykes, W. Cramer (1993), A simulation model 
-    !         for the transient effects of climate change on forest 
-    !         landscapes, Ecological Modelling, vol. 65, pp. 51--70.
-    !       Priestley, C.H.B. and R.J. Taylor (1972), On the assessment of 
-    !         surface heat flux and evaporation using large-scale parameters, 
-    !         Monthly Weather Review, vol. 100 (2), pp. 81--92.
-    !       Spencer, J. W. (1971), Fourier series representation of the 
-    !         position of the sun, Search, vol. 2, p. 172.
-    !       Stine, W. B. and M. Geyer (2001). “Power from the Sun”. 
-    !         online: http://www.powerfromthesun.net/Book/chapter03/chapter03
-    !       Wetherald, R.T., S. Manabe (1972), Response to joint ocean-
-    !         atmosphere model to the seasonal variation of the solar 
-    !         radiation, Monthly Weather Review, vol. 100 (1), pp. 42--59.
-    !       Woolf, H. M. (1968). On the computation of solar evaluation 
-    !         angles and the determination of sunrise and sunset times. 
-    !         Tech. rep. NASA-TM-X-164. National Aeronautics and Space 
-    !         Administration (NASA).
-    !-------------------------------------------------------------   
-
-  end subroutine evap
 
 
   function dgcos( x )
@@ -815,7 +797,8 @@ contains
     ! function return value
     real, intent(out) :: dgcos ! cosine value of x when x is in degrees
 
-    dgcos = dcos(x*pi/180.0)
+    !dgcos = dcos(x*pi/180.0)
+    dgcos = cos(x*pi/180.0)  ! xxx use cos with single-precision compilation
 
   end function dgcos
 
@@ -834,7 +817,8 @@ contains
     ! function return value
     real, intent(out) :: dgsin ! sinus value of x when x is in degrees
 
-    dgsin = dsin(x*pi/180.0)
+    !dgsin = dsin(x*pi/180.0)
+    dgsin = sin(x*pi/180.0)   ! xxx use cos with single-precision compilation
 
   end function dgsin
 
@@ -902,7 +886,8 @@ contains
     ! Variable substitutes:
     xee = ke**2 
     xec = ke**3
-    xse = dsqrt(1.0 - xee)
+    !xse = dsqrt(1.0 - xee)
+    xse = sqrt(1.0 - xee)  ! xxx use sqrt with single-precision compilation
 
     ! Mean longitude for vernal equinox:
     tmp1 = (ke/2.0 + xec/8.0)*(1.0 + xse)*dgsin(komega)
@@ -922,7 +907,8 @@ contains
     ranm = radians(anm)
 
     ! True anomaly:
-    ranv = (ranm + (2.0*ke - xec/4.0)*dsin(ranm) + 5.0/4.0*xee*dsin(2.0*ranm) + 13.0/12.0*xec*dsin(3.0*ranm))
+    !ranv = (ranm + (2.0*ke - xec/4.0)*dsin(ranm) + 5.0/4.0*xee*dsin(2.0*ranm) + 13.0/12.0*xec*dsin(3.0*ranm))
+    ranv = (ranm + (2.0*ke - xec/4.0)*sin(ranm) + 5.0/4.0*xee*sin(2.0*ranm) + 13.0/12.0*xec*sin(3.0*ranm))  ! xxx use sin with single-precision compilation
     anv = degrees(ranv)
 
     ! True longitude:
