@@ -227,7 +227,7 @@ contains
     out_berger = berger_tls( doy )
     
     ! xxx debug
-    !print*,'out_berger', out_berger
+    !print*,'doy, out_berger', doy, out_berger
 
     ! xxx my_nu is not perfectly identical to Python version
     my_nu      = out_berger(1)
@@ -261,6 +261,8 @@ contains
     rv = dgcos(delta) * dgcos(lat)
 
     ! xxx debug
+    !print*,'dgsin(lat)',dgsin(lat)
+    !stop
     !print*,'ru,rv',ru,rv
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -290,7 +292,8 @@ contains
     ra_d = (86400.0/pi)*kGsc*dr*(radians(ru)*hs + rv * dgsin(hs))
 
     ! xxx debug
-    !print*,'ra_d', ra_d
+    !print*,'pi, kGsc, dr, radians(ru), hs, rv dgsin(hs)', pi, kGsc, dr, radians(ru), hs, rv, dgsin(hs)
+    !print*,'doy, ra_d', doy, ra_d
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 8. Calculate transmittivity (tau), unitless
@@ -548,43 +551,43 @@ contains
     !----------------------------------------------------------------
 
     ! HO: daily solar irradiation, J/m2
-    filnam=trim(prefix)//'d.ho.out'
+    filnam=trim(prefix)//'.d.ho.out'
     open(151,file=filnam,err=888,status='unknown')
 
     ! HN: daily net radiation, J/m2
-    filnam=trim(prefix)//'d.hn.out'
+    filnam=trim(prefix)//'.d.hn.out'
     open(152,file=filnam,err=888,status='unknown')
 
     ! QN: daily PPFD, mol/m2
-    filnam=trim(prefix)//'d.qn.out'
+    filnam=trim(prefix)//'.d.qn.out'
     open(153,file=filnam,err=888,status='unknown')
 
     ! CN: daily condensation water, mm
-    filnam=trim(prefix)//'d.cn.out'
+    filnam=trim(prefix)//'.d.cn.out'
     open(154,file=filnam,err=888,status='unknown')
 
     ! WN: daily soil moisture, mm
-    filnam=trim(prefix)//'d.wn.out'
+    filnam=trim(prefix)//'.d.wn.out'
     open(155,file=filnam,err=888,status='unknown')
 
     ! PN: daily precipitation, mm
-    filnam=trim(prefix)//'d.pn.out'
+    filnam=trim(prefix)//'.d.pn.out'
     open(156,file=filnam,err=888,status='unknown')
 
     ! RO: daily runoff, mm
-    filnam=trim(prefix)//'d.ro.out'
+    filnam=trim(prefix)//'.d.ro.out'
     open(157,file=filnam,err=888,status='unknown')
 
     ! EQ_N: daily equilibrium ET, mm
-    filnam=trim(prefix)//'d.eq_n.out'
+    filnam=trim(prefix)//'.d.eq_n.out'
     open(158,file=filnam,err=888,status='unknown')
 
     ! EP_N: daily potential ET, mm
-    filnam=trim(prefix)//'d.ep_n.out'
+    filnam=trim(prefix)//'.d.ep_n.out'
     open(159,file=filnam,err=888,status='unknown')
 
     ! EA_N: daily actual ET, mm
-    filnam=trim(prefix)//'d.ea_n.out'
+    filnam=trim(prefix)//'.d.ea_n.out'
     open(160,file=filnam,err=888,status='unknown')
 
 
@@ -593,27 +596,27 @@ contains
     !----------------------------------------------------------------
 
     ! eq_m
-    filnam=trim(prefix)//'m.eq_m.out'
+    filnam=trim(prefix)//'.m.eq_m.out'
     open(251,file=filnam,err=888,status='unknown')
 
     ! ep_m
-    filnam=trim(prefix)//'m.ep_m.out'
+    filnam=trim(prefix)//'.m.ep_m.out'
     open(252,file=filnam,err=888,status='unknown')
 
     ! ea_m
-    filnam=trim(prefix)//'m.ea_m.out'
+    filnam=trim(prefix)//'.m.ea_m.out'
     open(253,file=filnam,err=888,status='unknown')
 
     ! cpa
-    filnam=trim(prefix)//'m.cpa.out'
+    filnam=trim(prefix)//'.m.cpa.out'
     open(254,file=filnam,err=888,status='unknown')
 
     ! cwd
-    filnam=trim(prefix)//'m.cwd.out'
+    filnam=trim(prefix)//'.m.cwd.out'
     open(255,file=filnam,err=888,status='unknown')
 
     ! qm
-    filnam=trim(prefix)//'m.qm.out'
+    filnam=trim(prefix)//'.m.qm.out'
     open(256,file=filnam,err=888,status='unknown')
 
     return

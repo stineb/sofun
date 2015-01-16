@@ -23,27 +23,9 @@ Change 'RUNNAME' to any given simulation name. Parameter files containing 'RUNNA
 Model structure
 -------------------------
 
-sofun is designed to be a modular framework that can adopt different formulation of processes by replacing subroutines called in sofun.F. These subroutines are:
+sofun is designed to be a modular framework that can adopt different formulation of processes by selecting modules. Irrespective of the module choice, a set of state variables must be calculated and updated by the respective subroutines which are contained in the chosen modules. These required state variables are declared in modules 'fluxes' and 'pools'. Other module-specific variables are declared within the module. Module-specific output variables are also declared only in the respective module. These "feature-"modules may also contain other subroutines to read/write necessary inputp/output that is not required by the model outside the module.
 
-*called daily*: 
-gpp, 
-waterbalance, 
-soiltemp, 
-npp, 
-nuptake, 
-littersom, 
-ntransform
-
-*called annually*:
-turnover
-reproduction
-allocation
-light
-mortality
-fire
-establishment
-
-While vegetation dynamics processes are determined on a longer timescale (annual update is ok), other processes like fire, mortality, turnover are probably better suited to be updated daily to take into account the quick (primarily phenological) response to extreme events on a shorter time scale (at least ~weeks). 
+The separation between the main program 'sofun' and the subroutine 'biosphere' is somewhat arbitrary and I have not been able to follow a clear distinction between what is contained in modules and what is passed on as arguments.
 
 
 State variables

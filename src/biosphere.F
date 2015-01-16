@@ -35,6 +35,8 @@ subroutine biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
   real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
   real, dimension(3)                    :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
   real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
+
+  ! optional arguments
   real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data   ! for runs with prescribed GPP
 
   ! local variables
@@ -109,7 +111,9 @@ subroutine biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
         !print*,'nh4 ',nh4(1,1)%n14 
 
         ! get soil moisture, and runoff
-        call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
+        !call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
+        ! xxx try
+        call waterbal( day, -0.641, 51.4, dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), 74.0 )
 
         ! get GPP from input
         if (present(dgpp_data)) then

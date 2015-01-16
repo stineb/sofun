@@ -48,17 +48,39 @@ contains
     ! local variables
     integer :: day, mo, dm, yr
 
+    real, dimension(nmonth) :: insf
+    real, dimension(nmonth) :: intc
+    real, dimension(nmonth) :: inppt
+
+    insf  = (/0.21, 0.27, 0.30, 0.40, 0.39, 0.39, 0.40, 0.43, 0.36, 0.32, 0.23, 0.19/)
+    intc  = (/4.80, 4.85, 7.10, 9.10, 12.4, 15.3, 17.6, 17.3, 14.6, 11.2, 7.55, 5.05/)
+    inppt = (/61.0, 41.2, 44.5, 48.0, 46.4, 44.6, 46.0, 52.3, 50.3, 71.8, 66.3, 62.9/)
 
     ! PRESCRIBED DAILY CLIMATE (TEMP, PREC, FSUN) FOR ONE YEAR
     ! xxx deal with jpngr dimension only when using NetCDF
     write(0,*) 'prescribe daily climate (temp, prec, fsun) ...'
-    dtemp_field(:,:) = 0.0
-    dprec_field(:,:) = 0.0
-    dfsun_field(:,:) = 0.0
 
-    dtemp_field(:,1) = read1year_daily(sitename//'_dtemp_2000_STANDARD.txt')
-    dprec_field(:,1) = read1year_daily(sitename//'_dprec_2000_STANDARD.txt')
-    dfsun_field(:,1) = read1year_daily(sitename//'_dfsun_2000_STANDARD.txt')
+!    dtemp_field(:,:) = 0.0
+!    dprec_field(:,:) = 0.0
+!    dfsun_field(:,:) = 0.0
+
+!    dtemp_field(:,1) = read1year_daily(sitename//'_dtemp_2000_STANDARD.txt')
+!    dprec_field(:,1) = read1year_daily(sitename//'_dprec_2000_STANDARD.txt')
+!    dfsun_field(:,1) = read1year_daily(sitename//'_dfsun_2000_STANDARD.txt')
+
+    day=0
+    do mo=1,nmonth
+      do dm=1,ndaymonth(mo)
+        day=day+1
+
+        dtemp_field(day,1) = intc(mo)
+        dprec_field(day,1) = inppt(mo)/ndaymonth(mo)
+        dfsun_field(day,1) = insf(mo)
+
+      end do
+    enddo
+
+
 
     !day=0
     !do mo=1,nmonth
