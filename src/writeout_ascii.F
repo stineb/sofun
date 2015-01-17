@@ -77,9 +77,12 @@
         ! xxx implement taking sum over PFTs (and gridcells) in this land use category
         !-------------------------------------------------------------------------
         itime = real(year) + real(firstyeartrend) - real(spinupyears)
+        
+        print*,'outaCalloc',outaCalloc(:,jpngr)
 
         write(301,999) itime, sum(outaClitt(:,jpngr))
         write(302,999) itime, sum(outaCsoil(:,jpngr))
+        write(303,999) itime, sum(outaCalloc(:,jpngr))
 
 
         !-------------------------------------------------------------------------

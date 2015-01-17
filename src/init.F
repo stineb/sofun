@@ -216,6 +216,7 @@ subroutine initoutput
   outanup(:,:)   = 0.0
   outaClitt(:,:)  = 0.0
   outaCsoil(:,:)  = 0.0
+  outaCalloc(:,:) = 0.0
 
   ! initialise module-specific output variables
   call initoutput_waterbal

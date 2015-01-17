@@ -1,6 +1,7 @@
-subroutine biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
-  dprec_field, dfsun_field, dndep_field, lu_area, c_uptake, &
-  dgpp_data &
+subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
+  , dtemp_field, dprec_field, dfsun_field, dndep_field, c_uptake &
+  , dgpp_data &
+  , fpc_grid_data &
   )
   !////////////////////////////////////////////////////////////////
   !  Subroutine BIOSPHERE calculates net ecosystem exchange (nee)
@@ -8,12 +9,12 @@ subroutine biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
   !  CO2, temperature, Nitrogen deposition. This SR "replaces" 
   !  LPJ, also formulated as subroutine.
   !----------------------------------------------------------------
-#include "sofun_module_control.inc"
   use params_core
   use params_siml
   use params_site
   use params_modl
   use waterbal_stash
+  use fixveg
   
   ! xxx debug
   use fluxes
@@ -37,13 +38,32 @@ subroutine biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
   real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
 
   ! optional arguments
-  real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data   ! for runs with prescribed GPP
+  real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data       ! for runs with prescribed GPP
+  real, intent(in), dimension(nlu,maxgrid), optional   :: fpc_grid_data   ! for runs with prescribed GPP
 
   ! local variables
   integer :: dm, mo, jpngr, day
 
 
+  ! This is necessary because of keyword-specification of arguments to 'gpp'
+  interface
+    subroutine gpp( jpngr, pco2, dgpp_data )
+      
+      ! optional set of arguments if 'dgpp' is to be predicted
+      integer, intent(in), optional :: jpngr                  ! gridcell number
+      real, intent(in), optional    :: pco2                    ! atmospheric CO2 concentration [ppm]
+
+      ! optional set of arguments if 'dgpp' is to be prescribed
+      real, dimension(npft), intent(in), optional :: dgpp_data
+    
+    end subroutine gpp
+  end interface
+
+
   if (init) then
+
+    ! xxx check: if (present(fpc_grid_data)) .and. dynveg then abort
+
     ! First simulation year
     ! xxx debug
     !print*,'A'
@@ -90,6 +110,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
     !call conversion( lu_area )
 
     ! sapling addition on bare ground, tree geometry update
+    if (present(fpc_grid_data)) fpc_grid = fpc_grid_data
     call establishment( jpngr )
 
 
@@ -117,10 +138,10 @@ subroutine biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
 
         ! get GPP from input
         if (present(dgpp_data)) then
-          dgpp(:) = dgpp_data(day,:)
-        else
-          call gpp( jpngr, pco2, year, realyear, mo, dm, day )
-        endif
+          call gpp( dgpp_data=dgpp_data(day,:) )
+        else 
+          call gpp( jpngr=jpngr, pco2=pco2 )
+        end if   
 
         ! use SR 'sitchtemp'
         !call soiltemp
@@ -193,13 +214,11 @@ subroutine biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
     ! reduce part of NPP for reproduction
     !call reproduction
 
-#if _fix_veg == 0
     ! light competition by limiting to maximum FPC
     call light( jpngr )
     print*,'fpc_grid', fpc_grid(1,1)
     !call mortality
     !call fire
-#endif
 
     ! collect annually updated output variables
     call getout_annual( jpngr )

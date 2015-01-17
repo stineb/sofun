@@ -10,6 +10,7 @@ subroutine allocation_annual( jpngr )
   use treegeometry, only: ispresent, nind
   use params_modl, only: lmtorm0, tree, grass, rcton_LS, rcton_LR, &
     cton_pro 
+  use outvars, only: outaCalloc
 #if _allocation_makela
   use params_modl, only: c_H, alpha_w
 #endif
@@ -106,6 +107,11 @@ subroutine allocation_annual( jpngr )
       nalloc = min(req,avl)
       calloc = cton_pro(pft)*nalloc
 
+      ! Record for output
+      outaCalloc(pft,jpngr) =  calloc
+      print*,'calloc, plabl', calloc, plabl(pft,jpngr)%c%c12
+      print*,'outaCalloc',outaCalloc(pft,jpngr)
+
       ! unit conversion to per-individual
       calloc_ind = calloc / nind(pft,jpngr)
       nalloc_ind = nalloc / nind(pft,jpngr)
@@ -201,7 +207,8 @@ subroutine allocation_annual( jpngr )
       endif                 ! if grass
 
     endif                   !ispresent
-    
+
+
     ! xxx try
     !if (ispresent(pft,jpngr)) then        
       ! Update LAI and FPC

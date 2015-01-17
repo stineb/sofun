@@ -4,15 +4,17 @@ module input_site
   ! scribing certain variables instead of simulating them online.
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
-  use params_core
-  use params_siml, only: nyeartrend, sitename
-  use forcing_siterun, only: read1year_daily
+  use params_core, only: npft, maxgrid
 
   implicit none
 
-#if _prescr_gpp_site
+#ifdef _prescr_gpp_site
   !real, dimension(nyeartrend,ndayyear,npft) :: dgpp_data
   real, dimension(:,:,:), allocatable :: dgpp_data
+#endif
+
+#ifdef _fix_veg
+  real, dimension(npft,maxgrid) :: fpc_grid_data
 #endif
 
 contains
@@ -23,6 +25,12 @@ contains
     !  (per default) calculated online
     ! This is not appropriate here as its only for one year
     !----------------------------------------------------------------
+    use params_siml, only: nyeartrend, sitename
+    use forcing_siterun, only: read1year_daily  ! xxx put all reading functions/subroutines into a single module
+    use params_siml, only: getreal  ! xxx put all reading functions/subroutines into a single module
+    use params_core, only: ndayyear
+
+    implicit none
 
     ! local variables
     integer :: day, mo, dm, pft, yr
@@ -53,6 +61,21 @@ contains
     !  enddo
     !enddo
     !write(0,*) '... done'
+#endif
+
+#ifdef _fix_veg
+    ! Get prescribed PFT selection 
+    ! xxx try: make npft a definable variable depending on this selection 
+    ! Get prescribed fractional plant cover (FPC) for each PFT
+    call getreal(sitename//".parameter",'in_fpc_grid_1',fpc_grid_data(1,1))
+    call getreal(sitename//".parameter",'in_fpc_grid_2',fpc_grid_data(2,1))
+    call getreal(sitename//".parameter",'in_fpc_grid_3',fpc_grid_data(3,1))
+    call getreal(sitename//".parameter",'in_fpc_grid_4',fpc_grid_data(4,1))
+    call getreal(sitename//".parameter",'in_fpc_grid_5',fpc_grid_data(5,1))
+    call getreal(sitename//".parameter",'in_fpc_grid_6',fpc_grid_data(6,1))
+    call getreal(sitename//".parameter",'in_fpc_grid_7',fpc_grid_data(7,1))
+    call getreal(sitename//".parameter",'in_fpc_grid_8',fpc_grid_data(8,1))
+    call getreal(sitename//".parameter",'in_fpc_grid_9',fpc_grid_data(9,1))
 #endif
 
     return

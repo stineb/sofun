@@ -62,6 +62,11 @@ subroutine initio
   filnam=trim(prefix)//'.a.clitt.dat'
   open(302,file=filnam,err=999,status='unknown')
 
+  ! C ALLOCATED TO GROWTH 
+  filnam=trim(prefix)//'.a.calloc.dat'
+  open(303,file=filnam,err=999,status='unknown')
+
+
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC OUTPUT FILES
   !----------------------------------------------------------------

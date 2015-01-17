@@ -21,6 +21,30 @@ program main
 
   real    :: c_uptake     ! annual net global C uptake by biosphere
 
+  ! This is necessary because of keyword-specification of arguments to 'biosphere'
+  interface
+    subroutine biosphere(year, realyear, lon, lat, elv, lu_area, pco2 , dtemp_field, dprec_field, dfsun_field, dndep_field, c_uptake , dgpp_data , fpc_grid_data )
+
+      ! required arguments
+      integer, intent(in)                   :: year       ! simulation year
+      integer, intent(in)                   :: realyear   ! year AD (=first simulation year )
+      real, intent(in), dimension(maxgrid)  :: lon        ! longitude vector/field (degrees E)              
+      real, intent(in), dimension(maxgrid)  :: lat        ! latitude vector/field (degrees N)             
+      real, intent(in), dimension(maxgrid)  :: elv        ! elevation (altitude) vector/field (m above sea level)                  
+      real, intent(in)                      :: pco2
+      real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
+      real, intent(in), dimension(ndayyear,maxgrid) :: dprec_field
+      real, intent(in), dimension(ndayyear,maxgrid) :: dfsun_field
+      real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
+      real, dimension(3)                    :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
+      real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
+
+      ! optional arguments
+      real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data       ! for runs with prescribed GPP
+      real, intent(in), dimension(nlu,maxgrid), optional   :: fpc_grid_data   ! for runs with prescribed GPP
+
+    end subroutine biosphere
+  end interface
 
   !----------------------------------------------------------------
   ! READ RUNNAME FROM STANDARD INPUT
@@ -103,11 +127,12 @@ program main
     ! Call SR biosphere at an annual time step but with vectors 
     ! containing data for each day of this year.
     !----------------------------------------------------------------
-    call biosphere( year, realyear, lon, lat, elv, pco2, dtemp_field, &
-      dprec_field, dfsun_field, dndep_field, lu_area, c_uptake, &
+    call biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
+      , dtemp_field, dprec_field, dfsun_field, dndep_field, c_uptake &
 #if _prescr_gpp_site
-      dgpp_data(transyear,:,:) &  ! optional argument
+      , dgpp_data=dgpp_data(transyear,:,:) &  ! optional argument
 #endif
+      , fpc_grid_data=fpc_grid_data &
       ) 
 
     write(0,100) 'sim. year, year AD, pco2',year,realyear,pco2
