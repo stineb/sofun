@@ -59,6 +59,8 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     end subroutine gpp
   end interface
 
+  print*,'lon, lat, elv', lon, lat, elv
+
 
   if (init) then
 
@@ -134,7 +136,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! get soil moisture, and runoff
         !call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
         ! xxx try
-        call waterbal( day, -0.641, 51.4, dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), 74.0 )
+        call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
 
         ! get GPP from input
         if (present(dgpp_data)) then

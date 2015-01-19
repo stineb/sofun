@@ -1,4 +1,4 @@
-module waterbal_stash
+  module waterbal_stash
   !////////////////////////////////////////////////////////////////
   ! STASH WATERBALANCE MODULE
   ! Contains the "main" subroutine 'waterbal' and all necessary 
@@ -133,7 +133,7 @@ contains
         dro(lu) = dro(lu) - kWm
         dwn(lu) = kWm
 
-      elseif (dwn(lu)<0) then
+      elseif (dwn(lu)<0.0) then
         ! Bucket is empty
         ! * set soil moisture to zero
         dwn(lu) = 0.0

@@ -30,6 +30,7 @@ subroutine initglobal
   psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! fast decomposing soil organic matter, organic pool [gC/m2 and gN/m2]
   psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! recalcitrant soil organic matter    , organic pool [gC/m2 and gN/m2]
 
+  dwn(:)         = 0.0
 
   !! xxx try
   !! initialise pools with non-zero values
@@ -172,7 +173,6 @@ subroutine initdaily
   dnup_fix(:)    = 0.0
   dnup_ret(:)    = 0.0
 
-  dwn(:)         = 0.0
   dro(:)         = 0.0
   rn_d           = 0.0
 
