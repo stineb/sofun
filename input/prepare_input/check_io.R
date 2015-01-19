@@ -13,7 +13,7 @@ if (do.gpp){
 }
 
 if (do.stash){
-  varnam <- "wn"
+  varnam <- "ea_n"
 
   sofun_out <- read.table(paste("/alphadata01/bstocker/sofun/trunk/output/RUNNAME.d.",varnam,".out", sep=""), col.names=c("itime",varnam))
   sofun_out <- sofun_out[as.integer(sofun_out$itime)==2000,]

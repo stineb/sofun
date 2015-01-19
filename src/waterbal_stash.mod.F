@@ -660,7 +660,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use fluxes, only: rn_d, dwn
+    use fluxes, only: rn_d, dwn, dro
 
     implicit none
 
@@ -672,6 +672,7 @@ contains
     ! Save the daily totals:
     ! xxx add lu-dimension and jpngr-dimension
     outdwn(:,doy,jpngr)   = dwn(:)
+    outdro(:,doy,jpngr)   = dro(:)
     outdho(doy,jpngr)     = ra_d  
     outdhn(doy,jpngr)     = rn_d
     outdqn(doy,jpngr)     = ppfd_d

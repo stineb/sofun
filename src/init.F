@@ -173,7 +173,6 @@ subroutine initdaily
   dnup_fix(:)    = 0.0
   dnup_ret(:)    = 0.0
 
-  dro(:)         = 0.0
   rn_d           = 0.0
 
   !! xxx try
