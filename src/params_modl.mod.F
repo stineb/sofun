@@ -33,13 +33,6 @@ module params_modl
   real :: DNITR2N2O         ! 19 Fraction of denitrification lost as N2O. Range of possible values: 0.002 - 0.047 (Xu-Ri and Prentice, 2008)
   real :: kbeer             ! 20 canopy light extinction coefficient
   real :: kresp             ! 21 additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
-  real :: MINIMUMCOSTFIX    ! 22 minimum cost of N fixation (at optimal temperature)
-  real :: FIXOPTIMUM        ! 23 optimum temperature for N fixation
-  real :: FIXWIDTH          ! 24 shape parameter for width of N fixation cost function
-  real :: KN_ACTIVE_NO3     ! 25 N-availability constant in cost function for active NO3 uptake
-  real :: KN_ACTIVE_NH4     ! 26 N-availability constant in cost function for active NH4 uptake
-  real :: KC_ACTIVE_NO3     ! 27 root exploration constant in cost function for active NO3 uptake
-  real :: KC_ACTIVE_NH4     ! 28 root exploration constant in cost function for active NH4 uptake
   real :: F_NRETAIN         ! 29 fraction of N retained at leaf abscission 
   real :: fpc_tree_max      ! 30 maximum fractional plant coverage of trees
 
@@ -113,12 +106,13 @@ contains
     !  Subroutine reads model parameters from input file
     !----------------------------------------------------------------
     use waterbal_stash, only: getpar_modl_waterbal
+    use nuptake_fun, only: getpar_modl_nuptake
 
     implicit none
 
     ! local variables
     integer :: pft
-    integer, parameter :: npar = 29
+    integer, parameter :: npar = 23
     real, dimension(npar) :: params_array
 
     integer, parameter :: npar_pft = 21
@@ -198,42 +192,17 @@ contains
     ! additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
     kresp = params_array(21)
 
-    ! shape parameter of cost function of N fixation 
-    ! Below parameters (MINIMUMCOSTFIX, FIXOPTIMUM, FIXWIDTH ) are based on 
-    ! the assumption that the cost of symbiotic N fixation is the 
-    ! inverse of nitrogenase activity. 
-    ! After Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
-    ! (value from Gutschik 1981)
-    MINIMUMCOSTFIX = params_array(22)
-
-    ! shape parameter of cost function of N fixation 
-    FIXOPTIMUM = params_array(23)
-
-    ! shape parameter of cost function of N fixation 
-    FIXWIDTH = params_array(24)
-
-    ! N-availability constant in cost function for active NO3 uptake
-    KN_ACTIVE_NO3 = params_array(25)
-    
-    ! N-availability constant in cost function for active NH4 uptake
-    KN_ACTIVE_NH4 = params_array(26)
-
-    ! root exploration constant in cost function for active NO3 uptake
-    KC_ACTIVE_NO3 = params_array(27)
-    
-    ! root exploration constant in cost function for active NH4 uptake
-    KC_ACTIVE_NH4 = params_array(28)
-
     ! fraction of N retained at leaf abscission 
-    F_NRETAIN = params_array(29)        
+    F_NRETAIN = params_array(22)        
 
     ! maximum fractional plant coverage of trees (sum of all tree PFTs)
-    fpc_tree_max = params_array(30)
+    fpc_tree_max = params_array(23)
 
     !----------------------------------------------------------------
     ! MODULE-SPECIFIC PARAMETERS
     !----------------------------------------------------------------
     call getpar_modl_waterbal('params_waterbal_stash.dat')
+    call getpar_modl_nuptake('params_nuptake_fun.dat')
 
 
     !----------------------------------------------------------------

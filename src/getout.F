@@ -1,4 +1,4 @@
-subroutine getout_daily( jpngr, moy, day )
+subroutine getout_daily( jpngr, moy, doy )
   !////////////////////////////////////////////////////////////////
   !  SR called daily to sum up daily output variables.
   !----------------------------------------------------------------
@@ -7,11 +7,12 @@ subroutine getout_daily( jpngr, moy, day )
   use outvars
   use pools
   use waterbal_stash, only: getout_daily_waterbal
+  use nuptake_fun, only: getout_daily_nuptake
 
   ! ARGUMENTS
   integer, intent(in) :: jpngr
   integer, intent(in) :: moy
-  integer, intent(in) :: day
+  integer, intent(in) :: doy
 
   ! LOCAL VARIABLES
   integer :: pft
@@ -24,20 +25,20 @@ subroutine getout_daily( jpngr, moy, day )
   ! Collect daily output variables
   ! so far not implemented for isotopes
   !----------------------------------------------------------------
-  outdgpp(:,day,jpngr)   = dgpp(:)
-  outdnpp(:,day,jpngr)   = dnpp(:)%c12
-  outdnup(:,day,jpngr)   = dnup(:)%n14
-  outdCleaf(:,day,jpngr) = pleaf(:,jpngr)%c%c12
-  outdcex(:,day,jpngr)   = dcex(:)
+  outdgpp(:,doy,jpngr)   = dgpp(:)
+  outdnpp(:,doy,jpngr)   = dnpp(:)%c12
+  outdnup(:,doy,jpngr)   = dnup(:)%n14
+  outdCleaf(:,doy,jpngr) = pleaf(:,jpngr)%c%c12
+  outdcex(:,doy,jpngr)   = dcex(:)
 
   do pft=1,npft
     lu=lu_category(pft)
-    outdnetmin(lu,day,jpngr) = outdnetmin(lu,day,jpngr) + netmin_litt(pft)
+    outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + netmin_litt(pft)
   end do
 
-  outdnetmin(:,day,jpngr)   = outdnetmin(:,day,jpngr) + netmin_soil(:)
-  outdninorg(:,day,jpngr)   = nh4(:,jpngr)%n14 + no3(:,jpngr)%n14
-  outdnfixfree(:,day,jpngr) = dnfix_free(:) 
+  outdnetmin(:,doy,jpngr)   = outdnetmin(:,doy,jpngr) + netmin_soil(:)
+  outdninorg(:,doy,jpngr)   = nh4(:,jpngr)%n14 + no3(:,jpngr)%n14
+  outdnfixfree(:,doy,jpngr) = dnfix_free(:) 
 
   !----------------------------------------------------------------
   ! ANNUAL SUM OVER DAILY VALUES
@@ -50,7 +51,8 @@ subroutine getout_daily( jpngr, moy, day )
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC VARIABLES
   !----------------------------------------------------------------
-  call getout_daily_waterbal( jpngr, moy, day )
+  call getout_daily_waterbal( jpngr, moy, doy )
+  call getout_daily_nuptake( jpngr, moy, doy )
 
 end subroutine getout_daily
 

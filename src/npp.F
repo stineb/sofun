@@ -18,6 +18,7 @@ subroutine npp( jpngr, dtemp, dtemp_soil )
     drgrow, dcex, dnup
   use treegeometry, only: nind, ispresent
   use pools, only: pleaf, proot, psapw, pexud, plabl
+  use nuptake_fun, only: nuptake
 
   implicit none
 

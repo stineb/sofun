@@ -13,7 +13,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use params_siml
   use params_site
   use params_modl
-  use waterbal_stash
+  use waterbal_stash, only: waterbal
   use fixveg
   
   ! xxx debug

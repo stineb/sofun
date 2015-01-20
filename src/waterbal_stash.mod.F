@@ -1,4 +1,4 @@
-  module waterbal_stash
+module waterbal_stash
   !////////////////////////////////////////////////////////////////
   ! STASH WATERBALANCE MODULE
   ! Contains the "main" subroutine 'waterbal' and all necessary 
@@ -47,7 +47,7 @@
   real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
 
   ! MODULE-SPECIFIC VARIABLES
-  ! These are not required outside module STASH
+  ! These are not required outside module STASH, but are used in different SRs of this module
   ! adjust these and make global if required by GePiSaT
   real :: ra_d                   ! daily extraterrestrial solar radiation (J/m^2)
   real :: ppfd_d                 ! daily PPFD (mol/m^2)
@@ -730,10 +730,6 @@ contains
     real :: itime
     integer :: day, moy, jpngr
 
-    ! xxx implement this: sum over gridcells? single output per gridcell?
-    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
-    jpngr = 1
-
 
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
@@ -786,6 +782,8 @@ contains
 
   end subroutine writeout_ascii_waterbal
 
+
+  ! xxx put these functions into a 'contain' within calling SR?
 
   function dgcos( x )
     !----------------------------------------------------------------   

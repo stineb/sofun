@@ -4,6 +4,7 @@ subroutine initio
   !----------------------------------------------------------------
   use params_siml, only: runname
   use waterbal_stash, only: initio_waterbal
+  use nuptake_fun, only: initio_nuptake
 
   implicit none
 
@@ -71,6 +72,7 @@ subroutine initio
   ! MODULE-SPECIFIC OUTPUT FILES
   !----------------------------------------------------------------
   call initio_waterbal( prefix )
+  call initio_nuptake( prefix )
 
 
   return

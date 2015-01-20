@@ -196,6 +196,7 @@ subroutine initoutput
   !----------------------------------------------------------------
   use outvars
   use waterbal_stash, only: initoutput_waterbal
+  use nuptake_fun, only: initoutput_nuptake
   
   implicit none
 
@@ -219,6 +220,7 @@ subroutine initoutput
 
   ! initialise module-specific output variables
   call initoutput_waterbal
+  call initoutput_nuptake
 
   return
 
