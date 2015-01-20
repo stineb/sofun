@@ -94,7 +94,7 @@ subroutine littersom( jpngr )
     ! (4) delta_c = c0*(1.0-exp(-k))
     !-------------------------------------------------------------------------
     do pft=1,npft
-      if (lu==lu_category(pft)) then
+      if (islu(pft,lu)) then
           
         !-------------------------------------------------------------------------
         ! LITTER TEMPERATURE AND MOISTURE MODIFIER
@@ -134,7 +134,7 @@ subroutine littersom( jpngr )
       * fmoist(soilmoist,"foley")     ! alternative: "gerten"
 
     do pft=1,npft
-      if (lu==lu_category(pft)) then
+      if (islu(pft,lu)) then
                       
 
         !////////////////////////////////////////////////////////////////

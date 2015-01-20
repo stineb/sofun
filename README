@@ -67,3 +67,17 @@ Units
 
 All plant-related pools (pleaf, proot, psapw, pwood, plabl) are in units of gC/ind. and gN/ind. 'nind' is the number of individuals per m2, [nind]=ind./m2. Other pools (plitt, psoil, pexud, inorganic N pools) are in units of gC/m2 and/or gN/m2. Note that C and N transfers from plant to litter have to be multiplied by 'nind' (number of individuals). Fluxes (dgpp, dnpp, dexud, dnup, ...) are in units of gC/m2/day or gN/m2/day. 
 
+
+Output
+------
+One output file is written for each output variable. Output variables have an according time dimension (daily and monthly output), and a space dimension (jpngr) and are kept separate from model state variables. To add a (module-independent) variable to be written to the output, add statements in the following files:
+- init.F: SR initoutput: Initialise output array, called daily.
+- initio.F: Open file for output writing.
+- getout.F: Copy daily updated state variables to according position in output array.
+- writeout_ascii.F: Write output array into file opened by initio.F.
+For module-specific output variables, add according statements contained in SR (named as 'initio_<modulename>') contained within respective module.
+
+
+
+
+
