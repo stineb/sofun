@@ -150,6 +150,7 @@ subroutine initdaily
   !----------------------------------------------------------------
   use fluxes
   use pools
+  use nuptake_fun, only: initdaily_nuptake
 
   implicit none
 
@@ -168,12 +169,12 @@ subroutine initdaily
 
   dnup(:)        = nitrogen(0.0)
   dnfix_free(:)  = 0.0
-  dnup_pas(:)    = 0.0
-  dnup_act(:)    = 0.0
-  dnup_fix(:)    = 0.0
-  dnup_ret(:)    = 0.0
 
   rn_d           = 0.0
+
+
+  ! initialise module-specific output variables
+  call initdaily_nuptake
 
   !! xxx try
   !! hold soil carbon and litter pools at a constant size

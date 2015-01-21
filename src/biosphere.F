@@ -59,8 +59,6 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     end subroutine gpp
   end interface
 
-  print*,'lon, lat, elv', lon, lat, elv
-
 
   if (init) then
 

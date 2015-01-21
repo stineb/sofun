@@ -228,6 +228,101 @@ contains
     end if
 
   end subroutine update_tree_geometry
+  
+
+  function get_geometry_sapl( lai0, sla, latosa, reinickerp, allom1, &
+    allom2, allom3, wooddens, woodtosapw, lmtorm0 )
+    !////////////////////////////////////////////////////////////////////
+    ! Function to determine sapling tree geometry. Returns an array 
+    ! containing (lm_sapl, sm_sapl, hm_sapl), given geometry parameters.
+    !--------------------------------------------------------------------
+    use params_core, only: pi
+    implicit none
+
+    ! arguments
+    real, intent(in) :: lai0                        ! sapling (or grass on initialisation) LAI (=lai_sapl)
+    real, intent(in) :: sla                         ! specific leaf area [m2/gC]
+    real, intent(in) :: latosa                      ! ratio of leaf area to sapwood cross-sectional area (Shinozaki et al 1964a,b) (m2 * m-2)
+    real, intent(in) :: reinickerp                  ! Reinicker-p for geometry
+    real, intent(in) :: allom1, allom2, allom3  ! allometry parameters
+    real, intent(in) :: wooddens                    ! wood density (gC * m-3)
+    real, intent(in) :: woodtosapw                  ! sapling [(heartwood mass) + (sapwood mass)] / (sapwood mass)
+    real, intent(in) :: lmtorm0                     ! leaf to root ratio under non-water stressed conditionss
+
+    ! local variables
+    real :: x
+    real :: lm_sapl
+    real :: sm_sapl
+    real :: hm_sapl
+    real :: stemdiam
+    real :: height_sapl
+
+    ! function return variable
+    real, dimension(3) :: get_geometry_sapl
+
+    ! Calculate leafmass for a sapling individual
+    !  (1) lai = leafmass * sla / (crown area)
+    !  (2) (leaf area) = latosa * (sapwood xs area)
+    !         (Pipe Model, Shinozaki et al. 1964a,b; Waring et al 1982)
+    !  (3) (crown area) = allom1 * (stem diameter) ** reinickerp
+    !         (Reinickes theory)
+    ! From (1),
+    !  (4) leafmass = lai * (crown area) / sla
+    ! From (1) & (3),
+    !  (5) leafmass = lai * allom1 * (stem diameter)**reinickerp / sla
+    ! From (2),
+    !  (6) leafmass = latosa * (sapwood xs area) / sla
+    !  (7) (sapwood xs area) = pi * (sapwood diameter)**2 / 4
+    ! From (6) and (7),
+    !  (8) leafmass = latosa * pi * (sapwood diameter)**2 / 4 / sla
+    ! From (8),
+    !  (9) (sapwood diameter) = [ 4 * leafmass * sla / pi / latosa ]**0.5
+    ! (10) (stem diameter) = (sapwood diameter) + (heartwood diameter)
+    ! Define x,
+    ! (11) x = [ (sapwood diameter)+(heartwood diameter) ] / 
+    !          (sapwood diameter)
+    ! From (10) & (11),
+    ! (12) (stem diameter) = x * (sapwood diameter)
+    ! From (5), (9) & (12),
+    ! (13) leafmass = lai * allom1 * x**reinickerp * 
+    !               (4*leafmass*sla/pi/latosa)**(reinickerp*0.5) / sla
+    ! From (13),
+    ! (14) leafmass = [ lai * allom1 * x**reinickerp *
+    !      (4*sla/pi/latosa)**(reinickerp*0.5) / sla ]**(2/(2-reinickerp))
+    x = woodtosapw
+     
+    lm_sapl = (lai0*allom1*x**reinickerp*  &
+      (4.0*sla/pi/latosa)**(reinickerp*0.5) / &
+      sla)**(2.0/(2.0-reinickerp)) !eqn 14
+
+    ! Calculate sapling stem diameter
+    ! From (9) & (12),
+    ! (15) (stem diameter) = x * [ 4 * leafmass * sla / pi / latosa ]**0.5
+    stemdiam = x*(4.0*lm_sapl*sla/pi/latosa)**0.5 !Eqn 15
+  
+    !     Calculate sapling height
+    ! (16) height = allom2 * (stem diameter)**allom3 (source?)
+    height_sapl = allom2*stemdiam**allom3 !Eqn 16
+  
+    ! Calculate sapling sapwood mass
+    ! (17) (sapwood volume) = height * (sapwood xs area)
+    ! (18) (sapwood xs area) = leafmass * sla / latosa
+    ! From (17) & (18),
+    ! (19) (sapwood volume) = height * leafmass * sla / latosa
+    ! (20) (sapwood mass) = (wood density) * (sapwood volume)
+    ! From (19) & (20),
+    ! (21) (sapwood mass) = (wood density) * height * leafmass * sla /
+    ! latosa
+    sm_sapl = wooddens*height_sapl*lm_sapl*sla/latosa !Eqn 21
+
+    ! Calculate sapling heartwood mass
+    !     From (11),
+    ! (22) (heartwood mass) = (x-1) * (sapwood mass)
+    hm_sapl = (x-1.0)*sm_sapl !Eqn 22
+
+    get_geometry_sapl = (/lm_sapl, sm_sapl, hm_sapl/)
+
+  end function get_geometry_sapl
 
 end module treegeometry
 

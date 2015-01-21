@@ -19,35 +19,35 @@ subroutine initio
   prefix = "./output/"//trim(runname)
 
   ! GPP
-  filnam=trim(prefix)//'.d.gpp.dat'
+  filnam=trim(prefix)//'.d.gpp.out'
   open(101,file=filnam,err=999,status='unknown')
 
   ! NPP
-  filnam=trim(prefix)//'.d.npp.dat'
+  filnam=trim(prefix)//'.d.npp.out'
   open(102,file=filnam,err=999,status='unknown')
 
   ! LEAF C
-  filnam=trim(prefix)//'.d.cleaf.dat'
+  filnam=trim(prefix)//'.d.cleaf.out'
   open(103,file=filnam,err=999,status='unknown')
 
   ! N UPTAKE
-  filnam=trim(prefix)//'.d.nup.dat'
+  filnam=trim(prefix)//'.d.nup.out'
   open(104,file=filnam,err=999,status='unknown')
 
   ! C EXUDATION
-  filnam=trim(prefix)//'.d.cex.dat'
+  filnam=trim(prefix)//'.d.cex.out'
   open(105,file=filnam,err=999,status='unknown')
 
   ! NET N MINERALISATION
-  filnam=trim(prefix)//'.d.netmin.dat'
+  filnam=trim(prefix)//'.d.netmin.out'
   open(106,file=filnam,err=999,status='unknown')
 
   ! INORGANIC N (NO3+NH4)
-  filnam=trim(prefix)//'.d.ninorg.dat'
+  filnam=trim(prefix)//'.d.ninorg.out'
   open(107,file=filnam,err=999,status='unknown')
 
   ! BIOLOGICAL NITROGEN FIXATION OF FREE-LIVING  ORGANISMS
-  filnam=trim(prefix)//'.d.nfixfree.dat'
+  filnam=trim(prefix)//'.d.nfixfree.out'
   open(108,file=filnam,err=999,status='unknown')
 
 
@@ -56,15 +56,15 @@ subroutine initio
   !----------------------------------------------------------------
 
   ! SOIL C
-  filnam=trim(prefix)//'.a.csoil.dat'
+  filnam=trim(prefix)//'.a.csoil.out'
   open(301,file=filnam,err=999,status='unknown')
 
   ! LITTER C
-  filnam=trim(prefix)//'.a.clitt.dat'
+  filnam=trim(prefix)//'.a.clitt.out'
   open(302,file=filnam,err=999,status='unknown')
 
   ! C ALLOCATED TO GROWTH 
-  filnam=trim(prefix)//'.a.calloc.dat'
+  filnam=trim(prefix)//'.a.calloc.out'
   open(303,file=filnam,err=999,status='unknown')
 
 

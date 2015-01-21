@@ -1,6 +1,6 @@
   module fluxes
     !////////////////////////////////////////////////////////////////
-    ! Module contains all daily variables. These variables have no 
+    ! Module contains daily model state variables. These variables have no 
     ! spatial dimension. At the end of the daily loop, values may be 
     ! copied to spatial arrays.
     ! All these variables are required by the model and are independent
@@ -30,12 +30,9 @@
     real, dimension(nlu)   :: doc             ! daily soil turnover, used as surrogate for labile C (former 'doc') [gC/m2/d]
 
     type(nitrogen), dimension(npft) :: dnup   ! daily N uptake [gN/m2/d]
-    real, dimension(npft) :: dnup_pas         ! daily passive N uptake [gN/m2/d]
-    real, dimension(npft) :: dnup_act         ! daily active N uptake [gN/m2/d]  
-    real, dimension(npft) :: dnup_fix         ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
-    real, dimension(npft) :: dnup_ret         ! daily N uptake [gN/m2/d]
 
     real, dimension(nlu)  :: dnfix_free       ! N fixation by free-living organisms [gN/m2/d]
+    ! xxx add dnfix_symb
 
     real, dimension(nlu)  :: dn2o             ! soil N2O emissions [gN/m2/d]
     real, dimension(nlu)  :: dn2              ! soil N2 emissions [gN/m2/d]
@@ -46,11 +43,10 @@
     real, dimension(nlu)  :: dvol             ! N volatilisation[gN/m2/d]
     real, dimension(nlu)  :: dleach           ! N leaching [gN/m2/d]
 
-    real, dimension(npft) :: dtransp          ! daily transpiration [mm/d]
-
     ! xxx this module is to be renamed, 'fluxes' is not appropriate
-    real, dimension(nlu) :: dwn               ! soil moisture [mm]
+    real, dimension(nlu) :: dwn               ! ! soil water mass [mm = kg/m2]
     real, dimension(nlu) :: dro               ! daily runoff [mm]
+    real, dimension(nlu) :: aet_d             ! daily AET (mm)
     real :: rn_d                              ! daytime net radiation [J/m2]
 
 

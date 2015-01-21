@@ -81,6 +81,20 @@
          type(orgpool), intent(in) :: amount
          type(orgpool), intent(inout) :: from
 
+
+#if _check_sanity
+         if (amount%c%c12>from%c%c12) then
+           stop 'in ORGSUB: attempting to remove C amount > from-pool'
+         else if (amount%n%n14>from%n%n14) then
+           stop 'in ORGSUB: attempting to remove N amount > from-pool'
+         else if (from%c%c12<0.0) then
+           stop 'in ORGSUB: C in from-pool negative'
+         else if (from%n%n14<0.0) then
+           stop 'in ORGSUB: N in from-pool negative'
+         endif
+#endif
+
+
          call csub(amount%c,from%c)
          call nsub(amount%n,from%n)
 

@@ -53,7 +53,6 @@ module waterbal_stash
   real :: ppfd_d                 ! daily PPFD (mol/m^2)
   real :: eet_d                  ! daily EET (mm)
   real :: pet_d                  ! daily PET (mm)
-  real, dimension(nlu) :: aet_d  ! daily AET (mm)
   real, dimension(nlu) :: wc     ! daily condensation (mm)
   real, dimension(nlu) :: sw     ! evaporative supply rate (mm/h)
 
@@ -88,7 +87,7 @@ contains
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use params_core, only: ndayyear, ndaymonth, nlu
-    use fluxes, only: dwn, dro
+    use fluxes, only: dwn, dro, aet_d
 
     ! ARGUMENTS
     integer, intent(in) :: doy                       ! day of year
@@ -163,7 +162,7 @@ contains
     ! - daily condensation (wc), mm
     !-------------------------------------------------------------------------  
     use params_core, only: ndayyear, pi
-    use fluxes, only: rn_d
+    use fluxes, only: rn_d, aet_d
 
     implicit none
 
@@ -660,7 +659,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use fluxes, only: rn_d, dwn, dro
+    use fluxes, only: rn_d, dwn, dro, aet_d
 
     implicit none
 

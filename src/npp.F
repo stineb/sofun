@@ -33,7 +33,7 @@ subroutine npp( jpngr, dtemp, dtemp_soil )
   real :: ftemp_air
   real :: ftemp_soil
   real :: dresp_maint = 0.0    ! daily total maintenance respiration
-  
+
   !-------------------------------------------------------------------------
   ! PFT LOOP
   !-------------------------------------------------------------------------
@@ -133,13 +133,14 @@ subroutine npp( jpngr, dtemp, dtemp_soil )
       !if (dnup(pft)%n14>0.0) then
       !  print*,'adding to plabl with C:N ratio ', ( dnpp(pft)%c12 - dcex(pft) ) /  dnup(pft)%n14
       !end if
-
       call orgcp( orgpool( cminus( dnpp(pft), carbon(dcex(pft)) ), dnup(pft) ), plabl(pft,jpngr) )
 
       !print*,'plabl ',plabl(pft,jpngr)%c%c12
 
     endif
   end do
+
+  return
 
 contains
 

@@ -26,8 +26,6 @@ module pools
   type(orgpool), dimension(nlu,maxgrid)   :: psoil_sl ! soil organic matter, fast turnover [gC/m2]
   type(orgpool), dimension(nlu,maxgrid)   :: psoil_fs ! soil organic matter, slow turnover [gC/m2]
 
-  real, dimension(nlu,maxgrid)            :: wtot     ! soil water mass (=wtot_total) [mm = kg/m2]
-
   type(nitrogen), dimension(nlu,maxgrid)  :: nh4      ! ammonium [gN/m2]
   type(nitrogen), dimension(nlu,maxgrid)  :: no3      ! nitrate [gN/m2]
   type(nitrogen), dimension(nlu,maxgrid)  :: no2      ! NO2 [gN/m2]

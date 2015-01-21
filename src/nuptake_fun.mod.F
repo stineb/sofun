@@ -24,22 +24,44 @@ module nuptake_fun
   implicit none
 
   ! FUN PARAMETERS
-  real :: MINIMUMCOSTFIX    ! 22 minimum cost of N fixation (at optimal temperature)
-  real :: FIXOPTIMUM        ! 23 optimum temperature for N fixation
-  real :: FIXWIDTH          ! 24 shape parameter for width of N fixation cost function
-  real :: KN_ACTIVE_NO3     ! 25 N-availability constant in cost function for active NO3 uptake
-  real :: KN_ACTIVE_NH4     ! 26 N-availability constant in cost function for active NH4 uptake
-  real :: KC_ACTIVE_NO3     ! 27 root exploration constant in cost function for active NO3 uptake
-  real :: KC_ACTIVE_NH4     ! 28 root exploration constant in cost function for active NH4 uptake
+  real :: MINIMUMCOSTFIX    ! minimum cost of N fixation (at optimal temperature)
+  real :: FIXOPTIMUM        ! optimum temperature for N fixation
+  real :: FIXWIDTH          ! shape parameter for width of N fixation cost function
+  real :: KN_ACTIVE_NO3     ! N-availability constant in cost function for active NO3 uptake
+  real :: KN_ACTIVE_NH4     ! N-availability constant in cost function for active NH4 uptake
+  real :: KC_ACTIVE_NO3     ! root exploration constant in cost function for active NO3 uptake
+  real :: KC_ACTIVE_NH4     ! root exploration constant in cost function for active NH4 uptake
+  real :: EPSILON_WTOT      ! minimum soil water content above which N becomes available  
 
   ! MODULE-SPECIFIC VARIABLES
   ! These are not required outside module STASH, but are used in different SRs of this module
-  real, dimension(npft) :: dccost ! daily mean C cost of N uptake (gC/gN) 
+  real, dimension(npft) :: dccost           ! daily mean C cost of N uptake [gC/gN] 
+  real, dimension(npft) :: dnup_pas         ! daily passive N uptake [gN/m2/d]
+  real, dimension(npft) :: dnup_act         ! daily active N uptake [gN/m2/d]  
+  real, dimension(npft) :: dnup_fix         ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
+  real, dimension(npft) :: dnup_ret         ! daily N uptake [gN/m2/d]
+
 
   ! FUN OUTPUT VARIABLES
   real, dimension(npft,ndayyear,maxgrid) :: outdccost   ! daily mean C cost of N uptake (gC/gN) 
 
 contains
+
+  subroutine initdaily_nuptake
+    !////////////////////////////////////////////////////////////////
+    ! Initialise daily variables with zero
+    !----------------------------------------------------------------
+    implicit none
+
+    dnup_pas(:)    = 0.0
+    dnup_act(:)    = 0.0
+    dnup_fix(:)    = 0.0
+    dnup_ret(:)    = 0.0
+
+    return
+
+  end subroutine initdaily_nuptake
+
 
   subroutine initio_nuptake( prefix )
     !////////////////////////////////////////////////////////////////
@@ -82,7 +104,7 @@ contains
     character(len=*) paramfilnam
 
     ! LOCAL VARIABLES
-    integer, parameter :: npar = 7
+    integer, parameter :: npar = 8
     real, dimension(npar) :: params_array
 
 
@@ -115,6 +137,9 @@ contains
     
     ! root exploration constant in cost function for active NH4 uptake
     KC_ACTIVE_NH4 = params_array(7)
+
+    ! minimum soil water content above which N becomes available 
+    EPSILON_WTOT = params_array(8)
 
     return
 
@@ -161,7 +186,7 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use params_core, only: ndayyear, nmonth
+    use params_core, only: ndayyear, nmonth, npft
     use params_siml, only: firstyeartrend, spinupyears
 
     implicit none
@@ -189,7 +214,7 @@ contains
         if (npft>1) stop 'writeout_ascii_nuptake: think of something for ccost output'
 
         ! xxx lu-area weighted sum if nlu>0
-        write(170,999) itime, outdccost(day,jpngr)
+        write(170,999) itime, sum(outdccost(:,day,jpngr))/npft
 
       end do
     end if
@@ -202,7 +227,7 @@ contains
 
 
   subroutine nuptake( jpngr, pft )
-    !*****************************************************************
+    !/////////////////////////////////////////////////////////////////
     ! SUBROUTINE N_UPTAKE FOR FUN APPROACH
     !-----------------------------------------------------------------
     ! This model calculates first the passive uptake of N via the transpiration stream
@@ -216,16 +241,15 @@ contains
     use classdefs
     use params_core
     use params_modl, only: lu_category, cton_pro, nfixer
-    use fluxes, only: dnpp, dtransp, dnup, dnup_pas, dnup_act, dnup_fix, dnup_ret, dcex
-    use treegeometry, only: nind, ispresent
-    use pools, only: nh4, no3, pexud, plabl, proot, wtot ! xxx try: wtot included here
+    use fluxes, only: dnpp, dnup, dcex, dwn, aet_d
+    use treegeometry, only: nind, ispresent, fpc_grid
+    use pools, only: nh4, no3, pexud, plabl, proot 
 
     implicit none
     
     ! ARGUMENTS
     integer, intent(in) :: jpngr, pft
 
-    real :: soilmoist          ! is either dw1 or mw1, depending on temporal mode
     real :: soiltemp           ! is either dtemp_soil, or mtemp_soil, depending on temporal mode
     
     ! LOCAL VARIABLES
@@ -251,6 +275,7 @@ contains
     integer :: icost
     integer, parameter :: nstep = 100           ! chose this to be flexible again
 
+    real :: dtransp                             ! daily transpiration for this PFT (mm)
     real :: avail_nh4                           ! available NH4 in soil layer (gN/m2)
     real :: avail_no3                           ! available NO3 in soil layer (gN/m2)
     real :: nh4_conc                            ! NH4 concentration (gN/gH2O)
@@ -267,17 +292,14 @@ contains
     real :: n_demand
     real :: n_demand_remaining
     real :: n_uptake_retrans
-    real :: epsilon_wtot                         ! minimum water content [gH2O] for active uptake
     real :: cost(3)                              ! cost of N for each layer and source (-ID) [gC/gN]
     real :: cost_of_n                            ! cheapest cost of N for each layer [gC/gN]
     real :: Cacq                                 ! C spent for N acquisition
     real :: Nacq                                 ! N acquired by spending Cacq
           
+
     ! xxx try
-    soilmoist = 0.4
-    soiltemp = 18.0
-    wtot(:,:) = 12.
-    
+    soiltemp = 18.0    
 
     !-------------------------------------------------------------------------
     ! FUN treats different soil layers explicitly. In LPX N-pools represent a
@@ -290,16 +312,6 @@ contains
     !-------------------------------------------------------------------------
 
 
-    !//////////////////////////////////////////////////////////////////////////
-    ! INITIALIZATION
-    !-------------------------------------------------------------------------
-    !if ( nsl_eff /= 1 ) then
-    !  write(0,*) 'Think of something more clever wrt soil layering'
-    !  stop
-    !else
-    !  nh4_nsl(lu,:) = nh4(lu,jpngr)%n14
-    !  no3_nsl(lu,:) = no3(lu,jpngr)%n14
-    !endif
     
     ! Absolute water content corresponding to permanent wilting point [gH2O].
     !epsilon_wtot = Fpwp( nlayers-nsl+1, jpngr ) * sum( Dz_soil(:) ) * 1000.
@@ -311,14 +323,13 @@ contains
     ! xxx think about this: order in which PFTs get access to Ninorg matters!
     
     ! xxx try:
-    epsilon_wtot = 0.05
-    dtransp(pft) = wtot(1,1)*0.02
+    dtransp = aet_d(lu_category(pft))*fpc_grid(pft,jpngr)
 
     ! ! Change the order in which pfts get access to N stores daily.
     ! do ppft=1,npft
     !   pft = modulo(ppft+day-2,npft)+1
 
-    if (dnpp(pft)%c12 < 0.) then
+    if (dnpp(pft)%c12 < 0.0) then
       !-------------------------------------------------------------------------
       ! In case of negative daily NPP, no N uptake is necessary, no C is exuded
       ! npp has been calculated assuming no N limitation. On exit, npp has been reduced to account
@@ -355,7 +366,7 @@ contains
       ! Note, that N-fixers have higher CN-ratios of new production, implying a
       ! competitive disadvantage against non-fixers.
       !--------------------------------------------------------------------------
-      n_demand = max( dnpp(pft)%c12/cton_pro(pft), 0. )  !in gN/m2/(timestep), timestetp=day or month 
+      n_demand = max( dnpp(pft)%c12/cton_pro(pft), 0.0 )  !in gN/m2/(timestep), timestetp=day or month 
 
       ! xxx debug
       !print*,'---------------------------------------'
@@ -390,8 +401,8 @@ contains
       ! assuming concentration of N as being equal in liquid and ice and assuming
       ! only N in liquid is available. nh4_conc and no3_conc are in gN/gH2O.
       !-------------------------------------------------------------------------
-      call update_Ninorg( lu, nh4(lu,jpngr)%n14, epsilon_wtot, avail_nh4, nh4_conc )
-      call update_Ninorg( lu, no3(lu,jpngr)%n14, epsilon_wtot, avail_no3, no3_conc )
+      call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc )
+      call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc )
 
        
       !--------------------------------------------------------------------------
@@ -426,8 +437,8 @@ contains
       ! No active control on passive uptake - always occurrs even if the unmet N
       ! demand is zero.
       !--------------------------------------------------------------------------         
-      nh4_uptake = nh4_conc * dtransp(pft)
-      no3_uptake = no3_conc * dtransp(pft)
+      nh4_uptake = nh4_conc * dtransp
+      no3_uptake = no3_conc * dtransp
 
       ! *** Associate cost of passive NO3 uptake due to pH equilibration by plant (Gutschik, 1981)? ***
        
@@ -451,8 +462,6 @@ contains
         n_demand_remaining = n_demand_remaining - n_uptake_pass
       end if
 
-      !print*,'N by passive uptake, remaining N demand', n_uptake_pass, n_demand_remaining
-
        
       !--------------------------------------------------------------------------
       ! Update N taken up and available N in soil.
@@ -460,12 +469,11 @@ contains
       nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - nh4_uptake
       no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - no3_uptake
        
-      call update_Ninorg( lu, nh4(lu,jpngr)%n14, epsilon_wtot, avail_nh4, nh4_conc )
-      call update_Ninorg( lu, no3(lu,jpngr)%n14, epsilon_wtot, avail_no3, no3_conc )
+      call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc )
+      call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc )
 
 
       ! XXX May pools be emptied here?
-
 
       if (unmetDemand) then
         !--------------------------------------------------------------------------
@@ -520,14 +528,15 @@ contains
         
         !--------------------------------------------------------------------------
         ! Calculate NPP still to pay for after passive uptake and retranslocation
+        ! Minimum function is used here to protect from numerical imprecision making
+        ! 'npp_remaining' > 'dnpp' after division and multiplication with cton_pro.
         !--------------------------------------------------------------------------
-        npp_remaining = n_demand_remaining * cton_pro(pft)
-         
+        npp_remaining = min(n_demand_remaining * cton_pro(pft), dnpp(pft)%c12)
+
         !--------------------------------------------------------------------------
         ! Split NPP to pay for into steps
         !--------------------------------------------------------------------------
         npp_remaining_step = npp_remaining / real(nstep)
-
 
         !//////////////////////////////////////////////////////////////////////////
         ! SUB-TIMESTEP LOOP STARTS HERE
@@ -562,8 +571,7 @@ contains
           mloc(1:1) =  MINLOC( cost(:), mask=option(:) )
           iminCost  = mloc(1)
           cost_of_n = cost(iminCost)
-           
-                      
+                                 
           !--------------------------------------------------------------------------
           ! Spend C on extracting N
           !--------------------------------------------------------------------------
@@ -607,7 +615,7 @@ contains
 
               nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - Nacq
 
-              call update_Ninorg( lu, nh4(lu,jpngr)%n14, epsilon_wtot, avail_nh4, nh4_conc )
+              call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc )
 
               Nacq_active = Nacq_active + Nacq
               Cacq_active = Cacq_active + Cacq
@@ -628,7 +636,7 @@ contains
 
               no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - Nacq
 
-              call update_Ninorg( lu, no3(lu,jpngr)%n14, epsilon_wtot, avail_no3, no3_conc )
+              call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc )
 
               Nacq_active = Nacq_active + Nacq
               Cacq_active = Cacq_active + Cacq
@@ -755,15 +763,21 @@ contains
 
     endif                                              ! (npp(pft).lt.0.0)
 
+
     !--------------------------------------------------------------------------
     ! Update annual N-uptake of this PFT. N-retranslocation is not considered
     ! N-uptake.
     !--------------------------------------------------------------------------
-    dnup(pft)%n14 = n_uptake_pass  + Nacq_active + Nacq_fix  ! n_uptake_retrans is not considered uptake
+    dnup(pft)%n14 = n_uptake_pass + Nacq_active + Nacq_fix  ! n_uptake_retrans is not considered uptake
     dnup_pas(pft) = n_uptake_pass
     dnup_act(pft) = Nacq_active                   
     dnup_fix(pft) = Nacq_fix  
-    dnup_ret(pft) = n_uptake_retrans                 
+    dnup_ret(pft) = n_uptake_retrans
+    if (dnup(pft)%n14>0.0) then
+      dccost(pft) = dcex(pft) / dnup(pft)%n14          
+    else
+      dccost(pft) = -9999
+    endif
 
 
     !XXX debug
@@ -782,28 +796,26 @@ contains
     !                 if (Nacq_active.gt.0.0) print*,'daily cost of act', Cacq_active/Nacq_active
 
 
-
     return
 
   contains
 
-    subroutine update_Ninorg( lu, Ninorg, epsilon_wtot, avail_Ninorg, Ninorg_conc )
+    subroutine update_Ninorg( lu, Ninorg, avail_Ninorg, Ninorg_conc )
       !******************************************************************************
       ! Update N taken up and available N in soil.
       !--------------------------------------------------------------------------
-      use pools, only: wtot
+      use fluxes, only: dwn
       implicit none
 
       integer, intent(in) :: lu
       real, intent(in)  :: Ninorg
-      real, intent(in)  :: epsilon_wtot
       real, intent(out) :: avail_Ninorg
       real, intent(out) :: Ninorg_conc
                     
-      Ninorg_conc = Ninorg/wtot(lu,jpngr)
+      Ninorg_conc = Ninorg/dwn(lu)
       
-      if ( wtot(lu,jpngr) > epsilon_wtot ) then 
-        avail_Ninorg = Ninorg - epsilon_wtot*Ninorg_conc
+      if ( dwn(lu) > EPSILON_WTOT ) then 
+        avail_Ninorg = Ninorg - EPSILON_WTOT*Ninorg_conc
       else
         avail_Ninorg = 0.
         Ninorg_conc  = 0.

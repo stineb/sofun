@@ -209,39 +209,42 @@ subroutine littersom( jpngr )
           !----------------------------------------------------------------    
           req = -1.0*netmin_litt(pft)
 
-          !----------------------------------------------------------------    
-          ! immobilisation using NH4
-          !----------------------------------------------------------------    
-          avl = nh4(lu,jpngr)%n14
-          if (avl>=req) then
-            ! enough mineral NH4 for immobilisation
-            nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - req
-            req = 0.0
-          else
-            ! not enough NH4 for immobilisation
-            nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - avl
-            req = req - avl
 
-            !----------------------------------------------------------------    
-            ! immobilisation using NO3
-            !----------------------------------------------------------------    
-            avl = no3(lu,jpngr)%n14 
-            if (avl>=req) then
-              ! enough mineral NO3 for immobilisation
-              no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - req
-              req = 0.0
-            else
-              ! not enough NO3 for immobilisation => free-living N fixation
-              no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - avl
-              req = req - avl
+          Nfix = req
 
-              !----------------------------------------------------------------    
-              ! N fixation by free-living bacteria in litter to satisfy remainder
-              !----------------------------------------------------------------    
-              Nfix = req
+          !!----------------------------------------------------------------    
+          !! immobilisation using NH4
+          !!----------------------------------------------------------------    
+          !avl = nh4(lu,jpngr)%n14
+          !if (avl>=req) then
+          !  ! enough mineral NH4 for immobilisation
+          !  nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - req
+          !  req = 0.0
+          !else
+          !  ! not enough NH4 for immobilisation
+          !  nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - avl
+          !  req = req - avl
 
-            endif
-          endif
+        !  !  !----------------------------------------------------------------    
+          !  ! immobilisation using NO3
+          !  !----------------------------------------------------------------    
+          !  avl = no3(lu,jpngr)%n14 
+          !  if (avl>=req) then
+          !    ! enough mineral NO3 for immobilisation
+          !    no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - req
+          !    req = 0.0
+          !  else
+          !    ! not enough NO3 for immobilisation => free-living N fixation
+          !    no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - avl
+          !    req = req - avl
+
+        !  !    !----------------------------------------------------------------    
+          !    ! N fixation by free-living bacteria in litter to satisfy remainder
+          !    !----------------------------------------------------------------    
+          !    Nfix = req
+
+        !  !  endif
+          !endif
 
 
         endif

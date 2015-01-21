@@ -1,6 +1,6 @@
 runname <- "RUNNAME"
 outdir <- "/alphadata01/bstocker/sofun/trunk/output/"
-dvars <- c("cex","cleaf","gpp","netmin","ninorg","npp","nup","nfixfree")
+dvars <- c("cex","cleaf","gpp","netmin","ninorg","npp","nup","nfixfree","ccost")
 avars <- c("calloc")
 
 plotyear <- 2000
@@ -16,13 +16,16 @@ navars <- length(avars)
 ##--------------------------------------
 
 ## get time data
-tmp <- read.table( paste(outdir,runname,".d.",dvars[1],".dat",sep=""))
+filn <- paste(outdir,runname,".d.",dvars[1],".out",sep="")
+tmp <- read.table( filn )
 time <- tmp$V1
 nyears <- length(time)/ndayyear
 
 daily <- data.frame( time = time )
 for (ivar in seq(ndvars)) {
-  daily[[ dvars[ivar] ]] <- read.table( paste(outdir,runname,".d.",dvars[ivar],".dat",sep=""))[,2]
+  filn <- paste(outdir,runname,".d.",dvars[ivar],".out",sep="")
+  print(filn)
+  daily[[ dvars[ivar] ]] <- read.table( filn )[,2]
 }
 daily[[ "year" ]] <- as.integer(time)
 daily[[ "moy" ]]  <- rep(rep(seq(12),times=ndaymonth),nyears)
@@ -38,13 +41,13 @@ for (ivar in seq(ndvars)) {
 ## construct data frame for annual values
 ##--------------------------------------
 ## get time data
-tmp <- read.table( paste(outdir,runname,".a.",avars[1],".dat",sep=""))
+tmp <- read.table( paste(outdir,runname,".a.",avars[1],".out",sep=""))
 time <- tmp$V1
 nyears <- length(time)
 
 annual <- data.frame( time = time )
 for (ivar in seq(navars)) {
-  annual[[ avars[ivar] ]] <- read.table( paste(outdir,runname,".a.",avars[ivar],".dat",sep=""))[,2]
+  annual[[ avars[ivar] ]] <- read.table( paste(outdir,runname,".a.",avars[ivar],".out",sep=""))[,2]
 }
 annual[[ "year" ]] <- as.integer(time)
 
