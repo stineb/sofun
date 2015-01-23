@@ -14,7 +14,7 @@ subroutine initio
 
 
   !////////////////////////////////////////////////////////////////
-  ! OPEN ASCII OUTPUT FILES FOR DAILY OUTPUT
+  ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
   !----------------------------------------------------------------
   prefix = "./output/"//trim(runname)
 
@@ -52,7 +52,7 @@ subroutine initio
 
 
   !////////////////////////////////////////////////////////////////
-  ! OPEN ASCII OUTPUT FILES FOR ANNUAL OUTPUT
+  ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
   !----------------------------------------------------------------
 
   ! SOIL C
@@ -66,6 +66,27 @@ subroutine initio
   ! C ALLOCATED TO GROWTH 
   filnam=trim(prefix)//'.a.calloc.out'
   open(303,file=filnam,err=999,status='unknown')
+
+  ! N REQUIRED FOR LITTER -> SOIL TRANSFER
+  filnam=trim(prefix)//'.a.nreq.out'
+  open(304,file=filnam,err=999,status='unknown')
+
+  ! C LITTER -> SOIL TRANSFER
+  filnam=trim(prefix)//'.a.clit2soil.out'
+  open(305,file=filnam,err=999,status='unknown')
+
+  ! N LITTER -> SOIL TRANSFER
+  filnam=trim(prefix)//'.a.nlit2soil.out'
+  open(306,file=filnam,err=999,status='unknown')
+
+  ! C VEGETATION -> LITTER TRANSFER
+  filnam=trim(prefix)//'.a.cveg2lit.out'
+  open(307,file=filnam,err=999,status='unknown')
+
+  ! N VEGETATION -> LITTER TRANSFER
+  filnam=trim(prefix)//'.a.nveg2lit.out'
+  open(308,file=filnam,err=999,status='unknown')
+
 
 
   !----------------------------------------------------------------

@@ -551,43 +551,43 @@ contains
 
     ! HO: daily solar irradiation, J/m2
     filnam=trim(prefix)//'.d.ho.out'
-    open(151,file=filnam,err=888,status='unknown')
+    open(251,file=filnam,err=888,status='unknown')
 
     ! HN: daily net radiation, J/m2
     filnam=trim(prefix)//'.d.hn.out'
-    open(152,file=filnam,err=888,status='unknown')
+    open(252,file=filnam,err=888,status='unknown')
 
     ! QN: daily PPFD, mol/m2
     filnam=trim(prefix)//'.d.qn.out'
-    open(153,file=filnam,err=888,status='unknown')
+    open(253,file=filnam,err=888,status='unknown')
 
     ! CN: daily condensation water, mm
     filnam=trim(prefix)//'.d.cn.out'
-    open(154,file=filnam,err=888,status='unknown')
+    open(254,file=filnam,err=888,status='unknown')
 
     ! WN: daily soil moisture, mm
     filnam=trim(prefix)//'.d.wn.out'
-    open(155,file=filnam,err=888,status='unknown')
+    open(255,file=filnam,err=888,status='unknown')
 
     ! PN: daily precipitation, mm
     filnam=trim(prefix)//'.d.pn.out'
-    open(156,file=filnam,err=888,status='unknown')
+    open(256,file=filnam,err=888,status='unknown')
 
     ! RO: daily runoff, mm
     filnam=trim(prefix)//'.d.ro.out'
-    open(157,file=filnam,err=888,status='unknown')
+    open(257,file=filnam,err=888,status='unknown')
 
     ! EQ_N: daily equilibrium ET, mm
     filnam=trim(prefix)//'.d.eq_n.out'
-    open(158,file=filnam,err=888,status='unknown')
+    open(258,file=filnam,err=888,status='unknown')
 
     ! EP_N: daily potential ET, mm
     filnam=trim(prefix)//'.d.ep_n.out'
-    open(159,file=filnam,err=888,status='unknown')
+    open(259,file=filnam,err=888,status='unknown')
 
     ! EA_N: daily actual ET, mm
     filnam=trim(prefix)//'.d.ea_n.out'
-    open(160,file=filnam,err=888,status='unknown')
+    open(260,file=filnam,err=888,status='unknown')
 
 
     !----------------------------------------------------------------
@@ -596,27 +596,27 @@ contains
 
     ! eq_m
     filnam=trim(prefix)//'.m.eq_m.out'
-    open(251,file=filnam,err=888,status='unknown')
+    open(211,file=filnam,err=888,status='unknown')
 
     ! ep_m
     filnam=trim(prefix)//'.m.ep_m.out'
-    open(252,file=filnam,err=888,status='unknown')
+    open(212,file=filnam,err=888,status='unknown')
 
     ! ea_m
     filnam=trim(prefix)//'.m.ea_m.out'
-    open(253,file=filnam,err=888,status='unknown')
+    open(213,file=filnam,err=888,status='unknown')
 
     ! cpa
     filnam=trim(prefix)//'.m.cpa.out'
-    open(254,file=filnam,err=888,status='unknown')
+    open(214,file=filnam,err=888,status='unknown')
 
     ! cwd
     filnam=trim(prefix)//'.m.cwd.out'
-    open(255,file=filnam,err=888,status='unknown')
+    open(215,file=filnam,err=888,status='unknown')
 
     ! qm
     filnam=trim(prefix)//'.m.qm.out'
-    open(256,file=filnam,err=888,status='unknown')
+    open(216,file=filnam,err=888,status='unknown')
 
     return
 
@@ -728,6 +728,10 @@ contains
     ! Local variables
     real :: itime
     integer :: day, moy, jpngr
+    
+    ! xxx implement this: sum over gridcells? single output per gridcell?
+    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
+    jpngr = 1
 
 
     !-------------------------------------------------------------------------
@@ -743,15 +747,15 @@ contains
         if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
 
         ! xxx lu-area weighted sum if nlu>0
-        write(151,999) itime, outdho(day,jpngr)
-        write(152,999) itime, outdhn(day,jpngr)
-        write(153,999) itime, outdqn(day,jpngr)
-        write(154,999) itime, outdcn(1,day,jpngr)
-        write(155,999) itime, outdwn(1,day,jpngr)
-        write(157,999) itime, outdro(1,day,jpngr)
-        write(158,999) itime, outdeq_n(day,jpngr)
-        write(159,999) itime, outdep_n(day,jpngr)
-        write(160,999) itime, outdea_n(1,day,jpngr)
+        write(251,999) itime, outdho(day,jpngr)
+        write(252,999) itime, outdhn(day,jpngr)
+        write(253,999) itime, outdqn(day,jpngr)
+        write(254,999) itime, outdcn(1,day,jpngr)
+        write(255,999) itime, outdwn(1,day,jpngr)
+        write(257,999) itime, outdro(1,day,jpngr)
+        write(258,999) itime, outdeq_n(day,jpngr)
+        write(259,999) itime, outdep_n(day,jpngr)
+        write(260,999) itime, outdea_n(1,day,jpngr)
 
       end do
     end if
@@ -766,12 +770,12 @@ contains
       itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(moy-1)/real(nmonth)
 
       ! STASH variables
-      write(111,999) itime, outmeq_m(moy,jpngr)
-      write(112,999) itime, outmep_m(moy,jpngr)
-      write(113,999) itime, outmea_m(1,moy,jpngr)
-      write(114,999) itime, outmcpa(1,moy,jpngr)
-      write(115,999) itime, outmcwd(1,moy,jpngr)
-      write(116,999) itime, outmqm(moy,jpngr)
+      write(211,999) itime, outmeq_m(moy,jpngr)
+      write(212,999) itime, outmep_m(moy,jpngr)
+      write(213,999) itime, outmea_m(1,moy,jpngr)
+      write(214,999) itime, outmcpa(1,moy,jpngr)
+      write(215,999) itime, outmcwd(1,moy,jpngr)
+      write(216,999) itime, outmqm(moy,jpngr)
 
     end do
 

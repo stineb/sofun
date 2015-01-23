@@ -27,6 +27,8 @@ sofun is designed to be a modular framework that can adopt different formulation
 
 The separation between the main program 'sofun' and the subroutine 'biosphere' is somewhat arbitrary and I have not been able to follow a clear distinction between what is contained in modules and what is passed on as arguments.
 
+Non-module-specific subroutines are defined in .F files while all module-specific subroutines are specified in their respective modlue (.mod.F). 
+
 
 State variables
 --------------------
@@ -71,6 +73,7 @@ All plant-related pools (pleaf, proot, psapw, pwood, plabl) are in units of gC/i
 Output
 ------
 One output file is written for each output variable. Output variables have an according time dimension (daily and monthly output), and a space dimension (jpngr) and are kept separate from model state variables. To add a (module-independent) variable to be written to the output, add statements in the following files:
+- outvars.mod.F: Declare non-module specific output variables.
 - init.F: SR initoutput: Initialise output array, called daily.
 - initio.F: Open file for output writing.
 - getout.F: Copy daily updated state variables to according position in output array.

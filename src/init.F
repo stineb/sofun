@@ -164,12 +164,7 @@ subroutine initdaily
   drleaf(:)      = 0.0
   drroot(:)      = 0.0
   drgrow(:)      = 0.0
-  netmin_litt(:) = 0.0
-  netmin_soil(:) = 0.0
-
   dnup(:)        = nitrogen(0.0)
-  dnfix_free(:)  = 0.0
-
   rn_d           = 0.0
 
 
@@ -193,7 +188,8 @@ end subroutine initdaily
 
 subroutine initoutput
   !////////////////////////////////////////////////////////////////
-  !  Initialises all daily variables with zero.
+  ! Initialises all daily variables with zero.
+  ! Called at the beginning of each year by 'biosphere'.
   !----------------------------------------------------------------
   use outvars
   use waterbal_stash, only: initoutput_waterbal
@@ -218,6 +214,11 @@ subroutine initoutput
   outaClitt(:,:)  = 0.0
   outaCsoil(:,:)  = 0.0
   outaCalloc(:,:) = 0.0
+  outanreq(:,:)     = 0.0
+  outaClit2soil(:,:)= 0.0
+  outaNlit2soil(:,:)= 0.0
+  outaCveg2lit(:,:) = 0.0
+  outaNveg2lit(:,:) = 0.0
 
   ! initialise module-specific output variables
   call initoutput_waterbal

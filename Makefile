@@ -20,7 +20,7 @@ FCOM=pgf95
 CPPFLAGS=-E
 COMPFLAGS=-Mextend -Mfreeform
 #COMPFLAGS       = -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
-DEBUGFLAGS=-g -r8 -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
+DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
 
 # System libraries
 #LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff

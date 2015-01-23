@@ -199,6 +199,10 @@ contains
     real :: itime
     integer :: day, moy, jpngr
 
+    ! xxx implement this: sum over gridcells? single output per gridcell?
+    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
+    jpngr = 1
+
 
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT

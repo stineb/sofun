@@ -1,4 +1,4 @@
-subroutine littersom( jpngr )
+subroutine littersom( jpngr, doy )
   !////////////////////////////////////////////////////////////////
   !  Litter and SOM decomposition and nitrogen mineralisation.
   !  1st order decay of litter and SOM pools, governed by temperature
@@ -10,14 +10,16 @@ subroutine littersom( jpngr )
   use params_core
   use classdefs
   use rates
-  use fluxes, only: drsoil, drhet, dnfix_free, doc, netmin_litt, netmin_soil
+  use fluxes, only: drsoil, drhet, doc
   use params_modl
   use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, nh4, no3
+  use outvars, only: outdnetmin, outdnfixfree, outanreq, outaClit2soil, outaNlit2soil
 
   implicit none
 
   ! ARGUMENTS
   integer, intent(in) :: jpngr                    ! grid cell number
+  integer, intent(in) :: doy                      ! day of year
 
   ! LOCAL VARIABLES
   integer :: lu                                   ! counter variable for landuse class
@@ -32,14 +34,14 @@ subroutine littersom( jpngr )
   real, dimension(nlu)  :: ksoil_sl               ! decay rate, slow soil (= k_slow)
 
   ! temporary pools
-  type (carbon)  :: dexu                          ! exudates decomposed in time step (= exu_decom)
-  type (orgpool) :: dlitt_af                      ! above-ground fast litter decomposed per time step (= litterdag_fast)
-  type (orgpool) :: dlitt_as                      ! above-ground slow litter decomposed per time step (= litterdag_slow)
-  type (orgpool) :: dlitt_bg                      ! below-ground slow litter decomposed per time step (= litter_decom_bg)
-  type (orgpool), dimension(npft) :: dlitt        ! total litter decomposed per time step (= litter_decom_pft)
-  type (orgpool) :: dsoil_sl                      ! (= cflux_fast_atmos)
-  type (orgpool) :: dsoil_fs                      ! (= cflux_fast_atmos)
-
+  type(carbon)  :: dexu                           ! exudates decomposed in time step (= exu_decom)
+  type(orgpool) :: dlitt                          ! total litter decomposed per time step
+  type(orgpool) :: dlitt_af                       ! above-ground fast litter decomposed per time step (= litterdag_fast)
+  type(orgpool) :: dlitt_as                       ! above-ground slow litter decomposed per time step (= litterdag_slow)
+  type(orgpool) :: dlitt_bg                       ! below-ground slow litter decomposed per time step (= litter_decom_bg)
+  type(orgpool) :: dsoil_sl                       ! (= cflux_fast_atmos)
+  type(orgpool) :: dsoil_fs                       ! (= cflux_fast_atmos)
+ 
   ! temporary variables
   real :: eff                                     ! microbial growth efficiency 
   real :: ntoc_crit                               ! critical N:C ratio below which immobilisation occurrs  
@@ -48,7 +50,7 @@ subroutine littersom( jpngr )
   real :: rest                                    ! temporary variable
   real :: req                                     ! N required for litter decomposition 
   real :: avl                                     ! mineral N available as NH4
-  real :: grossmin                                ! gross mineralisation
+  real :: netmin_litt                             ! net N mineralisation from litter decomposition
  
   ! xxx try
   real :: soilmoist
@@ -68,14 +70,15 @@ subroutine littersom( jpngr )
     + psoil_sl(1,1)%n%n14 + nh4(1,1)%n14
 #endif
 
+
+  ! INITIALISATIONS
+  dlitt = orgpool( carbon(0.0), nitrogen(0.0) ) 
+
   do lu=1,nlu
 
     ! XXX try
     soiltemp = 10.    
     soilmoist = 0.8   
-
-    ! Initialise
-    dlitt = orgpool( carbon(0.0), nitrogen(0.0) ) 
 
     !/////////////////////////////////////////////////////////////////////////
     ! DECAY RATES
@@ -150,24 +153,23 @@ subroutine littersom( jpngr )
         !print*,'dlitt_bg',dlitt_bg
 
         ! Update the litter pools
-        call orginit( dlitt(pft) )
-        call orgmv( dlitt_af, plitt_af(pft,jpngr), dlitt(pft) )
-        call orgmv( dlitt_as, plitt_as(pft,jpngr), dlitt(pft) )
-        call orgmv( dlitt_bg, plitt_bg(pft,jpngr), dlitt(pft) )
-        
+        call orgmv( dlitt_af, plitt_af(pft,jpngr), dlitt )
+        call orgmv( dlitt_as, plitt_as(pft,jpngr), dlitt )
+        call orgmv( dlitt_bg, plitt_bg(pft,jpngr), dlitt )
+    
 
         !////////////////////////////////////////////////////////////////
         ! ATMOSPHERIC FRACTION ~ 1 - MICROBIAL GROWTH EFFICIENCY
         ! critical C:N ratio for net mineralisation is a function of C:N
         ! ratio of decomposing litter. Eq. 9 in Xu-Ri & Prentice, 2014
         !----------------------------------------------------------------
-        ntoc_crit = ntoc_crit1 * ntoc( dlitt(pft), default=0.0 ) ** ntoc_crit2  ! = rCR
+        ntoc_crit = ntoc_crit1 * ntoc( dlitt, default=0.0 ) ** ntoc_crit2  ! = rCR
         eff = ntoc_crit * cton_soil(pft)
         !print*,'ntoc_crit1', ntoc_crit1
         !print*,'ntoc_crit2', ntoc_crit2
-        !print*,'cton litt ', cton( dlitt(pft) )
+        !print*,'cton litt ', cton( dlitt )
         !print*,'cton_crit ', 1/ntoc_crit
-        !print*,'eff ',eff
+        print*,'eff ',eff
         !stop
 
         !////////////////////////////////////////////////////////////////
@@ -178,17 +180,22 @@ subroutine littersom( jpngr )
         ! CARBON LITTER -> SOIL TRANSFER
         !----------------------------------------------------------------    
         ! move fraction 'eff' of C from litter to soil
-        call ccp( cfrac( eff*fastfrac     , dlitt(pft)%c ), psoil_fs(lu,jpngr)%c )
-        call ccp( cfrac( eff*(1.-fastfrac), dlitt(pft)%c ), psoil_sl(lu,jpngr)%c )
+        call ccp( cfrac( eff*fastfrac     , dlitt%c ), psoil_fs(lu,jpngr)%c )
+        call ccp( cfrac( eff*(1.-fastfrac), dlitt%c ), psoil_sl(lu,jpngr)%c )
 
         ! move fraction '(1-eff)' of C to heterotrophic respiration
-        call ccp( cfrac( (1.-eff), dlitt(pft)%c ), drhet(lu) )
+        call ccp( cfrac( (1.-eff), dlitt%c ), drhet(lu) )
+
+        ! OUTPUT COLLECTION
+        outaClit2soil(pft,jpngr) = outaClit2soil(pft,jpngr) + dlitt%c%c12 * eff
+        outaNlit2soil(pft,jpngr) = outaNlit2soil(pft,jpngr) + dlitt%n%n14
+
 
         !----------------------------------------------------------------    
         ! N MINERALISATION
         !----------------------------------------------------------------    
         ! N requirement to maintain rS (SOM N:C ratio)
-        Nreq_S = dlitt(pft)%c%c12 * eff / cton_soil(pft)  ! 1/cton_soil = rS
+        Nreq_S = dlitt%c%c12 * eff / cton_soil(pft)  ! 1/cton_soil = rS
 
         ! If N supply is sufficient, mineralisation occurrs: positive (dNLit-Nreq).
         ! otherwise, immobilisation occurrs: negative (dNLit-Nreq).
@@ -198,18 +205,22 @@ subroutine littersom( jpngr )
         !       = dCLit*(rCR - rL) , rCR=eff*rS ('critical' N:C ratio)
         ! This corresponds to Eq. S3 in Manzoni et al., 2010, but ...
         ! rS takes the place of rB.
-        netmin_litt(pft) = dlitt(pft)%n%n14 - Nreq_S
+        netmin_litt = dlitt%n%n14 - Nreq_S
 
-        ! xxx debug
-        !print*,'netmin',netmin_litt(pft)
+        ! OUTPUT COLLECTION
+        outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + netmin_litt
 
-        if (netmin_litt(pft)<0.0) then
+
+        if (netmin_litt<0.0) then
           !----------------------------------------------------------------    
           ! N IMMOBILISATION
           !----------------------------------------------------------------    
-          req = -1.0*netmin_litt(pft)
+          req = -1.0*netmin_litt
 
+          ! OUTPUT COLLECTION
+          outanreq(lu,jpngr) = outanreq(lu,jpngr) + req
 
+          ! xxx debug
           Nfix = req
 
           !!----------------------------------------------------------------    
@@ -257,8 +268,8 @@ subroutine littersom( jpngr )
         !call ncp( nfrac( fastfrac     , nitrogen(Nfix) ), psoil_fs(lu,jpngr)%n )
         !call ncp( nfrac( (1.-fastfrac), nitrogen(Nfix) ), psoil_sl(lu,jpngr)%n )
 
-        ! record this for output (free-living N fixation)
-        dnfix_free(lu) = dnfix_free(lu) + Nfix
+        ! OUTPUT COLLECTION
+        outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
         
 
         !////////////////////////////////////////////////////////////////
@@ -291,7 +302,7 @@ subroutine littersom( jpngr )
     call cmv( dsoil_sl%c, psoil_sl(lu,jpngr)%c, drhet(lu) )
 
     !! Record N mineralisation for output
-    netmin_soil(lu) = netmin_soil(lu) + dsoil_fs%n%n14 + dsoil_sl%n%n14
+    outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
 
     !! Move N from soil pool to ammonium pool
     call nmv( dsoil_fs%n, psoil_fs(lu,jpngr)%n, nh4(lu,jpngr) )

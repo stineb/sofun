@@ -170,7 +170,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         call turnover( jpngr )
 
         ! litter and soil turnover
-        call littersom( jpngr )
+        call littersom( jpngr, day )
         !print*,'F'
         !print*,'nh4 ',nh4(1,1)%n14 
 
@@ -216,7 +216,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
 
     ! light competition by limiting to maximum FPC
     call light( jpngr )
-    print*,'fpc_grid', fpc_grid(1,1)
+    !print*,'fpc_grid', fpc_grid(1,1)
     !call mortality
     !call fire
 

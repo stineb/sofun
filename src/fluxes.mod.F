@@ -15,7 +15,7 @@
     type(carbon), dimension(nlu)  :: dnep     ! net ecosystem production [gC/m2/d]
     real, dimension(npft)         :: dgpp     ! gross primary production [gC/m2/d]
     type(carbon), dimension(npft) :: dnpp     ! net primary production [gC/m2/d]
-     
+    
     type(carbon), dimension(npft) :: drsoil   ! soil respiration (only from exudates decomp.) [gC/m2/d]
     type(carbon), dimension(nlu)  :: drhet    ! heterotrophic respiration [gC/m2/d]
     real, dimension(npft) :: drauto           ! autotrophic respiration (growth+maintenance resp. of all compartments), no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
@@ -24,14 +24,11 @@
     real, dimension(npft) :: drsapw           ! sapwood maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
     real, dimension(npft) :: drgrow           ! growth respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
     real, dimension(npft) :: dcex             ! labile C exudation for N uptake, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-    real, dimension(npft) :: netmin_litt      ! net N mineralisation in litter decomposition
-    real, dimension(nlu)  :: netmin_soil      ! net N mineralisation in soil decomposition
 
     real, dimension(nlu)   :: doc             ! daily soil turnover, used as surrogate for labile C (former 'doc') [gC/m2/d]
 
     type(nitrogen), dimension(npft) :: dnup   ! daily N uptake [gN/m2/d]
 
-    real, dimension(nlu)  :: dnfix_free       ! N fixation by free-living organisms [gN/m2/d]
     ! xxx add dnfix_symb
 
     real, dimension(nlu)  :: dn2o             ! soil N2O emissions [gN/m2/d]

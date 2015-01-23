@@ -1,6 +1,10 @@
 subroutine getout_daily( jpngr, moy, doy )
   !////////////////////////////////////////////////////////////////
-  !  SR called daily to sum up daily output variables.
+  ! SR called daily to sum up daily output variables.
+  ! Note that output variables are collected only for those variables
+  ! that are global anyway (e.g., outdcex). Others are not made 
+  ! global just for this, but are collected inside the subroutine 
+  ! where they are defined.
   !----------------------------------------------------------------
   use params_modl, only: npft, lu_category
   use fluxes
@@ -31,14 +35,7 @@ subroutine getout_daily( jpngr, moy, doy )
   outdCleaf(:,doy,jpngr) = pleaf(:,jpngr)%c%c12
   outdcex(:,doy,jpngr)   = dcex(:)
 
-  do pft=1,npft
-    lu=lu_category(pft)
-    outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + netmin_litt(pft)
-  end do
-
-  outdnetmin(:,doy,jpngr)   = outdnetmin(:,doy,jpngr) + netmin_soil(:)
   outdninorg(:,doy,jpngr)   = nh4(:,jpngr)%n14 + no3(:,jpngr)%n14
-  outdnfixfree(:,doy,jpngr) = dnfix_free(:) 
 
   !----------------------------------------------------------------
   ! ANNUAL SUM OVER DAILY VALUES

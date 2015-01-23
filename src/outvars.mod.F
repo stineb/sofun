@@ -18,11 +18,10 @@ module outvars
   real, dimension(npft,ndayyear,maxgrid) :: outdCleaf
   real, dimension(npft,ndayyear,maxgrid) :: outdcex
 
-  real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin
   real, dimension(nlu,ndayyear,maxgrid)  :: outdninorg
-  real, dimension(nlu,ndayyear,maxgrid)  :: outdnfixfree
+  real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin
+  real, dimension(nlu,ndayyear,maxgrid)  :: outdnfixfree  ! N fixation by free-living organisms [gN/m2/d]
   
-
   !----------------------------------------------------------------
   ! Monthly output variables
   !----------------------------------------------------------------
@@ -36,7 +35,11 @@ module outvars
   real, dimension(npft,maxgrid) :: outanup
   real, dimension(npft,maxgrid) :: outaClitt
   real, dimension(npft,maxgrid) :: outaCalloc
-
   real, dimension(nlu,maxgrid)  :: outaCsoil
+  real, dimension(nlu,maxgrid)  :: outanreq      ! N required from litter -> soil transfer [gN/m2/d]
+  real, dimension(npft,maxgrid) :: outaClit2soil
+  real, dimension(npft,maxgrid) :: outaNlit2soil
+  real, dimension(npft,maxgrid) :: outaCveg2lit
+  real, dimension(npft,maxgrid) :: outaNveg2lit
 
 end module outvars
