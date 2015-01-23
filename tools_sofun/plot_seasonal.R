@@ -1,6 +1,6 @@
 runname <- "RUNNAME"
 outdir <- "/alphadata01/bstocker/sofun/trunk/output/"
-dvars <- c("cex","cleaf","gpp","netmin","ninorg","npp","nup","nfixfree","ccost")
+dvars <- c("cex","cleaf","gpp","netmin","ninorg","npp","nup","nfixfree","ccost","nup_pas","nup_act","nup_fix","nup_ret")
 avars <- c("calloc","nalloc","clit2soil","nlit2soil","nreq","cveg2lit","nveg2lit")
 
 plotyear <- 2000
@@ -91,7 +91,7 @@ text( 0, 0.88, "NPP", adj=c(0,0));          text( 0.5, 0.88, as.character(format
 text( 0, 0.83, "CEX ", adj=c(0,0));         text( 0.5, 0.83, as.character(formatC(sum(daily_sub$cex),digits=1,format="f")) , adj=c(1,0)); text( 0.55, 0.83, paste( as.character(formatC(sum(daily_sub$cex)/sum(daily_sub$npp)*100,digits=1,format="f")),"% of NPP",sep=""), adj=c(0,0))
 text( 0, 0.78, "C -> veg ", adj=c(0,0));    text( 0.5, 0.78, as.character(formatC(annual_sub$calloc,digits=1,format="f")), adj=c(1,0))
 text( 0, 0.73, "C veg -> lit", adj=c(0,0)); text( 0.5, 0.73, as.character(formatC(annual_sub$cveg2lit,digits=1,format="f")), adj=c(1,0))
-text( 0, 0.68, "C lit -> soil", adj=c(0,0));text( 0.5, 0.68, as.character(formatC(annual_sub$clit2soil,digits=1,format="f")), adj=c(1,0)); text( 0.55, 0.68, paste(as.character(formatC(annual_sub$eff*100,digits=1,format="f")),"%",sep=""), adj=c(0,0))
+text( 0, 0.68, "C lit -> soil", adj=c(0,0));text( 0.5, 0.68, as.character(formatC(annual_sub$clit2soil,digits=1,format="f")), adj=c(1,0)); text( 0.55, 0.68, paste(as.character(formatC(annual_sub$eff*100,digits=1,format="f")),"% efficiency",sep=""), adj=c(0,0))
 
 dev.off()
 
@@ -114,7 +114,17 @@ par(mar=c(0,0,2,0))
 plot( c(0,1), c(0,1), type="n", axes=FALSE )
 text( 0, 0.98, "ANNUAL TOTALS", adj=c(0,0),font=2)
 text( 0, 0.93, "N uptake", adj=c(0,0));          text( 0.5, 0.93, as.character(formatC(sum(daily_sub$nup),digits=2,format="f")) , adj=c(1,0))
-text( 0, 0.88, "N -> veg", adj=c(0,0));          text( 0.5, 0.88, as.character(formatC(annual_sub$nalloc,digits=2,format="f")) , adj=c(1,0))
-text( 0, 0.83, "N veg -> lit", adj=c(0,0));      text( 0.5, 0.83, as.character(formatC(annual_sub$nveg2lit,digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.88, "N up. pas.", adj=c(0,0));        text( 0.5, 0.88, as.character(formatC(sum(daily_sub$nup_pas),digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.83, "N up. act.", adj=c(0,0));        text( 0.5, 0.83, as.character(formatC(sum(daily_sub$nup_act),digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.78, "N up. fix.", adj=c(0,0));        text( 0.5, 0.78, as.character(formatC(sum(daily_sub$nup_fix),digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.73, "N up. ret.", adj=c(0,0));        text( 0.5, 0.73, as.character(formatC(sum(daily_sub$nup_ret),digits=2,format="f")) , adj=c(1,0))
+
+
+text( 0, 0.68, "N -> veg", adj=c(0,0));          text( 0.5, 0.68, as.character(formatC(annual_sub$nalloc,digits=2,format="f")) , adj=c(1,0));     text( 0.55, 0.68, paste(as.character(formatC(annual_sub$calloc/annual_sub$nalloc,digits=2,format="f")),"C:N") , adj=c(0,0))
+text( 0, 0.63, "N veg -> lit", adj=c(0,0));      text( 0.5, 0.63, as.character(formatC(annual_sub$nveg2lit,digits=2,format="f")) , adj=c(1,0));   text( 0.55, 0.63, paste(as.character(formatC(annual_sub$cveg2lit/annual_sub$nveg2lit,digits=2,format="f")),"C:N") , adj=c(0,0))
+text( 0, 0.58, "N lit -> soil", adj=c(0,0));     text( 0.5, 0.58, as.character(formatC(annual_sub$nlit2soil,digits=2,format="f")) , adj=c(1,0));  text( 0.55, 0.58, paste(as.character(formatC(annual_sub$clit2soil/annual_sub$nlit2soil,digits=2,format="f")),"C:N") , adj=c(0,0))
+text( 0, 0.53, "N -> soil req.", adj=c(0,0));    text( 0.5, 0.53, as.character(formatC(annual_sub$nreq,digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.48, "N fBNF", adj=c(0,0));            text( 0.5, 0.48, as.character(formatC(sum(daily_sub$nfixfree),digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.43, "N net min.", adj=c(0,0));        text( 0.5, 0.43, as.character(formatC(sum(daily_sub$netmin),digits=2,format="f")) , adj=c(1,0))
 dev.off()
 

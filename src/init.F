@@ -37,7 +37,6 @@ subroutine initglobal
   !! here example gridcell 9.5 E, 47.5 N
    psoil_fs = orgpool( carbon(4000.), nitrogen(150.) )
    psoil_sl = orgpool( carbon(10000.), nitrogen(550.) )
-
    plitt_af = orgpool( carbon(500.), nitrogen(10.))
    plitt_as = orgpool( carbon(1500.), nitrogen(30.))
    plitt_bg = orgpool( carbon(400.), nitrogen(8.))
@@ -208,18 +207,18 @@ subroutine initoutput
   outdnfixfree(:,:,:) = 0.0
 
   ! annual output variables
-  outagpp(:,:)   = 0.0
-  outanpp(:,:)   = 0.0
-  outanup(:,:)   = 0.0
-  outaClitt(:,:)  = 0.0
-  outaCsoil(:,:)  = 0.0
-  outaCalloc(:,:) = 0.0
-  outaNalloc(:,:) = 0.0
-  outanreq(:,:)     = 0.0
-  outaClit2soil(:,:)= 0.0
-  outaNlit2soil(:,:)= 0.0
-  outaCveg2lit(:,:) = 0.0
-  outaNveg2lit(:,:) = 0.0
+  outagpp(:,:)        = 0.0
+  outanpp(:,:)        = 0.0
+  outanup(:,:)        = 0.0
+  outaClitt(:,:)      = 0.0
+  outaCsoil(:,:)      = 0.0
+  outaCalloc(:,:)     = 0.0
+  outaNalloc(:,:)     = 0.0
+  outanreq(:,:)       = 0.0
+  outaClit2soil(:,:)  = 0.0
+  outaNlit2soil(:,:)  = 0.0
+  outaCveg2lit(:,:)   = 0.0
+  outaNveg2lit(:,:)   = 0.0
 
   ! initialise module-specific output variables
   call initoutput_waterbal

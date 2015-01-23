@@ -44,6 +44,11 @@ module nuptake_fun
 
   ! FUN OUTPUT VARIABLES
   real, dimension(npft,ndayyear,maxgrid) :: outdccost   ! daily mean C cost of N uptake (gC/gN) 
+  real, dimension(npft,ndayyear,maxgrid) :: outdnup_pas
+  real, dimension(npft,ndayyear,maxgrid) :: outdnup_act
+  real, dimension(npft,ndayyear,maxgrid) :: outdnup_fix
+  real, dimension(npft,ndayyear,maxgrid) :: outdnup_ret
+
 
 contains
 
@@ -82,8 +87,23 @@ contains
 
     ! MEAN DAILY C COST OF N UPTAKE (gC/gN)
     filnam=trim(prefix)//'.d.ccost.out'
-    open(170,file=filnam,err=888,status='unknown')
+    open(400,file=filnam,err=888,status='unknown')
 
+    ! PASSIVE N UPTAKE (gN)
+    filnam=trim(prefix)//'.d.nup_pas.out'
+    open(401,file=filnam,err=888,status='unknown')
+
+    ! ACTIVE N UPTAKE (gN)
+    filnam=trim(prefix)//'.d.nup_act.out'
+    open(402,file=filnam,err=888,status='unknown')
+
+    ! SYMBIOTIC BNF (gN)
+    filnam=trim(prefix)//'.d.nup_fix.out'
+    open(403,file=filnam,err=888,status='unknown')
+
+    ! RETRANSLOCATED N FROM LABILE POOL TO SATISFY DEMAND (gN)
+    filnam=trim(prefix)//'.d.nup_ret.out'
+    open(404,file=filnam,err=888,status='unknown')
 
     return
 
@@ -176,6 +196,10 @@ contains
     ! Save the daily totals:
     ! xxx add lu-dimension and jpngr-dimension
     outdccost(:,doy,jpngr) = dccost(:)
+    outdnup_pas(:,doy,jpngr) = dnup_pas(:)
+    outdnup_act(:,doy,jpngr) = dnup_act(:)
+    outdnup_fix(:,doy,jpngr) = dnup_fix(:)
+    outdnup_ret(:,doy,jpngr) = dnup_ret(:)
 
     return  
 
@@ -218,7 +242,11 @@ contains
         if (npft>1) stop 'writeout_ascii_nuptake: think of something for ccost output'
 
         ! xxx lu-area weighted sum if nlu>0
-        write(170,999) itime, sum(outdccost(:,day,jpngr))/npft
+        write(400,999) itime, sum(outdccost(:,day,jpngr))/npft
+        write(401,999) itime, sum(outdnup_pas(:,day,jpngr))
+        write(402,999) itime, sum(outdnup_act(:,day,jpngr))
+        write(403,999) itime, sum(outdnup_fix(:,day,jpngr))
+        write(404,999) itime, sum(outdnup_ret(:,day,jpngr))
 
       end do
     end if

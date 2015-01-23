@@ -15,6 +15,9 @@ subroutine littersom( jpngr, doy )
   use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, nh4, no3
   use outvars, only: outdnetmin, outdnfixfree, outanreq, outaClit2soil, outaNlit2soil
 
+  ! xxx debug
+  use pools, only: pleaf, proot
+
   implicit none
 
   ! ARGUMENTS
@@ -156,6 +159,13 @@ subroutine littersom( jpngr, doy )
         call orgmv( dlitt_af, plitt_af(pft,jpngr), dlitt )
         call orgmv( dlitt_as, plitt_as(pft,jpngr), dlitt )
         call orgmv( dlitt_bg, plitt_bg(pft,jpngr), dlitt )
+
+        !print*,'slow litter pool, C:N', plitt_as(pft,jpngr), cton( plitt_as(pft,jpngr), default=0.0 )
+        !print*,'fast litter pool, C:N', plitt_af(pft,jpngr), cton( plitt_af(pft,jpngr), default=0.0 )
+        !print*,'bg   litter pool, C:N', plitt_bg(pft,jpngr), cton( plitt_bg(pft,jpngr), default=0.0 )
+
+        !print*,'pleaf, C:N           ', pleaf(pft,jpngr), cton( pleaf(pft,jpngr), default=0.0 )
+        !print*,'proot, C:N           ', proot(pft,jpngr), cton( proot(pft,jpngr), default=0.0 )
     
 
         !////////////////////////////////////////////////////////////////
@@ -197,6 +207,10 @@ subroutine littersom( jpngr, doy )
         ! N requirement to maintain rS (SOM N:C ratio)
         Nreq_S = dlitt%c%c12 * eff / cton_soil(pft)  ! 1/cton_soil = rS
 
+        ! OUTPUT COLLECTION
+        outanreq(lu,jpngr) = outanreq(lu,jpngr) + Nreq_S
+
+
         ! If N supply is sufficient, mineralisation occurrs: positive (dNLit-Nreq).
         ! otherwise, immobilisation occurrs: negative (dNLit-Nreq).
         ! Thus, the balance for total organic N is:
@@ -216,9 +230,6 @@ subroutine littersom( jpngr, doy )
           ! N IMMOBILISATION
           !----------------------------------------------------------------    
           req = -1.0*netmin_litt
-
-          ! OUTPUT COLLECTION
-          outanreq(lu,jpngr) = outanreq(lu,jpngr) + req
 
           ! xxx debug
           Nfix = req

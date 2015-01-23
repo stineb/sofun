@@ -84,11 +84,11 @@
          real, intent(inout) :: outn
          real, optional, intent(in) :: d13C
 
-         call ccp(amount%c,to%c)
-         call ncp(amount%n,to%n)
-
          outc = outc + amount%c%c12
          outn = outn + amount%n%n14
+
+         call ccp(amount%c,to%c)
+         call ncp(amount%n,to%n)
 
        end subroutine orgcpRec
 
@@ -164,15 +164,15 @@
          real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
          if (present(scale)) then
-           call orgcp(orgfrac(scale,amount),to) 
-           call orgsub(amount,from)
            outc = outc + amount%c%c12 * scale
            outn = outn + amount%n%n14 * scale
-        else
-           call orgcp(amount,to)
+           call orgcp(orgfrac(scale,amount),to) 
            call orgsub(amount,from)
+        else
            outc = outc + amount%c%c12
            outn = outn + amount%n%n14
+           call orgcp(amount,to)
+           call orgsub(amount,from)
          endif  
 
        end subroutine orgmvRec
@@ -234,14 +234,15 @@
          real, intent(inout) :: outc
          real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
+
          if (present(scale)) then
+           outc = outc + amount%c12 * scale
            call ccp(cfrac(scale,amount),to)
            call csub(amount,from)
-           outc = outc + amount%c12 * scale
          else
+           outc = outc + amount%c12
            call ccp(amount,to)
            call csub(amount,from)
-           outc = outc + amount%c12
          endif
 
        end subroutine cmvRec
@@ -271,6 +272,32 @@
        end subroutine ccp
 
 
+       subroutine ccpRec(amount,to,outc,d13C)
+         !////////////////////////////////////////////////////////////////
+         !  Generic SR to "copy" carbon to pool (e.g. for output).
+         !  Does NOT substract amount moved ('amount') from source
+         !----------------------------------------------------------------
+
+         implicit none
+         type(carbon), intent(in) :: amount
+         type(carbon), intent(inout) :: to
+         real, intent(inout) :: outc
+         real, optional, intent(in) :: d13C
+
+         to%c12 = amount%c12 + to%c12
+         outc = outc + amount%c12
+
+         ! if (present(d13C)) then
+         !   to%c%c12 = amount%c%c12 + to%c%c12
+         !   to%n%n14 = amount%n%n14 + to%n%n14
+         ! else
+         !   to%c%c12 = amount%c%c12 + to%c%c12
+         !   to%n%n14 = amount%n%n14 + to%n%n14
+         ! end if
+
+       end subroutine ccpRec
+
+
        subroutine csub(amount,from)
          !////////////////////////////////////////////////////////////////
          !  Generic SR to "substract" organic mass ('amount') from source 
@@ -282,8 +309,11 @@
          type(carbon), intent(inout) :: from
 
 #if _check_sanity
-         if (amount%c12>from%c12) then
-           stop 'in CSUB: attempting to remove amount > from-pool'
+         if (amount%c12 > from%c12) then
+           write(0,*) 'amount', amount%c12
+           write(0,*) 'from  ', from%c12
+           write(0,*) 'in CSUB: attempting to remove amount > from-pool'
+           stop
          endif
 #endif
          from%c12 = from%c12 - amount%c12
@@ -347,13 +377,13 @@
          real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
          if (present(scale)) then
+           outn = outn + amount%n14 * scale
            call ncp(nfrac(scale,amount),to)
            call nsub(amount,from)
-           outn = outn + amount%n14 * scale
          else
+           outn = outn + amount%n14
            call ncp(amount,to)
            call nsub(amount,from)
-           outn = outn + amount%n14
          endif
 
        end subroutine nmvRec
@@ -372,6 +402,23 @@
          to%n14 = amount%n14 + to%n14
 
        end subroutine ncp
+
+
+       subroutine ncpRec(amount,to,outn)
+         !////////////////////////////////////////////////////////////////
+         !  Generic SR to "copy" nitrogen to pool (e.g. for output).
+         !  Does NOT substract amount moved ('amount') from source
+         !----------------------------------------------------------------
+
+         implicit none
+         type(nitrogen), intent(in) :: amount
+         type(nitrogen), intent(inout) :: to
+         real, intent(inout) :: outn
+
+         to%n14 = amount%n14 + to%n14
+         outn = outn + amount%n14
+
+       end subroutine ncpRec
 
 
        subroutine nsub(amount,from)
@@ -417,7 +464,7 @@
          implicit none
 
          ! arguments
-         real, intent(in)           :: frac
+         real, intent(in)          :: frac
          type(orgpool), intent(in) :: from
          
          ! function return variable

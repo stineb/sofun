@@ -93,7 +93,7 @@ subroutine allocation_annual( jpngr )
     if (ispresent(pft,jpngr)) then
       
       ! sanity check`
-      if(nind(pft,jpngr)==0) stop
+      if (nind(pft,jpngr)==0) stop
 
       ! xxx debug
       !print*,'plabl',plabl
@@ -116,6 +116,11 @@ subroutine allocation_annual( jpngr )
       calloc_ind = calloc / nind(pft,jpngr)
       nalloc_ind = nalloc / nind(pft,jpngr)
 
+      !print*,'C:N of alloc     ',calloc / nalloc
+      !print*,'C:N of alloc_ind ',calloc_ind / nalloc_ind
+
+      !print*,'C:N of whole plant ',cton( orgplus(pleaf(pft,jpngr),proot(pft,jpngr)), default=0.0 )
+
       !print*,'anpp         ',anpp(pft)
       ! remove C and N to be allocated from labile pool
       call csub( carbon(calloc), plabl(pft,jpngr)%c )
@@ -125,7 +130,11 @@ subroutine allocation_annual( jpngr )
       ! water scalar and pft specific parameter
       ! xxx try
       !lmtorm = lmtorm0 * wscal(pft,jpngr)
-      lmtorm = lmtorm0(pft) * 1.0  
+      !lmtorm = lmtorm0(pft) * 1.0  
+
+      ! xxx debug
+      !lmtorm = 1.0
+      !print*,'ALLOCATION: lmtorm set to ',lmtorm 
 
       if (grass(pft)) then
         ! -------------------------------------------------------------------------
@@ -143,6 +152,7 @@ subroutine allocation_annual( jpngr )
          
         if (lminc_ind<0.0) then   
           ! Negative allocation to leaf mass
+          !print*,'Negative allocation to leaf mass'
           rminc_ind = calloc_ind
           lminc_ind = lmtorm * ( proot(pft,jpngr)%c%c12 + rminc_ind ) - pleaf(pft,jpngr)%c%c12
             
@@ -165,23 +175,37 @@ subroutine allocation_annual( jpngr )
         ! note that orgcp is used above and not orgmv.
         call ccp( carbon(lminc_ind), pleaf(pft,jpngr)%c )
         call ccp( carbon(rminc_ind), proot(pft,jpngr)%c )
+
+        !print*,'lminc_ind',lminc_ind
+        !print*,'rminc_ind',rminc_ind
         
         ! --------------------------------------------------------------------
         ! N ALLOCATION for Grasses
         ! Tab.3, Xu-Ri & Prentice (2008) (XP08)
         ! (growth.cpp:717 ff)
         ! --------------------------------------------------------------------
-        if (pleaf(pft,jpngr)%c%c12>0.0) then
+        if (pleaf(pft,jpngr)%c%c12>0.0 .and. nalloc_ind>0.0) then
 
           ! Update fraction of C mass in different compartments
-          plantC = pleaf(pft,jpngr)%c%c12+proot(pft,jpngr)%c%c12
-          f_cl   = pleaf(pft,jpngr)%c%c12/plantC
-          f_cr   = proot(pft,jpngr)%c%c12/plantC
+          !plantC = pleaf(pft,jpngr)%c%c12 + proot(pft,jpngr)%c%c12
+          !f_cl   = pleaf(pft,jpngr)%c%c12 / plantC
+          !f_cr   = proot(pft,jpngr)%c%c12 / plantC
            
           ! Calculate partitioning coefficients (fraction of total N allocated to different compartments)
           ! (Eq.2, Tab.3, XP08)
-          f_nl = 1.0 / ( 1.0 + ( rcton_LR * f_cr ) / f_cl )
-          f_nr = rcton_LR * f_nl * f_cr / f_cl
+          
+          ! xxx debug
+          !rcton_LR = 1.0
+          !print*,'ALLOCATION: rcton_LR set to ',rcton_LR
+
+          tmp = rcton_LR * proot(pft,jpngr)%c%c12 / pleaf(pft,jpngr)%c%c12
+          f_nl = (proot(pft,jpngr)%n%n14 + nalloc_ind - tmp * pleaf(pft,jpngr)%n%n14 ) / (nalloc_ind * (1.0+tmp) )
+          f_nr = (1.0 - f_nl)
+
+          !f_nl = 1.0 / ( 1.0 + ( rcton_LR * f_cr ) / f_cl )
+          !f_nr = rcton_LR * f_nl * f_cr / f_cl
+
+          !print*,'f_nl, f_nr',f_nl, f_nr
            
         else
            
@@ -190,11 +214,26 @@ subroutine allocation_annual( jpngr )
            
         endif
         
-        plantN = pleaf(pft,jpngr)%n%n14 + proot(pft,jpngr)%n%n14 + nalloc_ind                   !Eq.1, Tab.3, XP08 (growth.cpp:1181)
+        !plantN = pleaf(pft,jpngr)%n%n14 + proot(pft,jpngr)%n%n14 + nalloc_ind                   !Eq.1, Tab.3, XP08 (growth.cpp:1181)
+
+        !if (plantN>0.0) print*,'plantC/plantN',plantc/plantN
         
-        pleaf(pft,jpngr)%n = nitrogen(plantN*f_nl)
-        proot(pft,jpngr)%n = nitrogen(plantN*f_nr)            !Eq.3, Tab.3, XP08 (growth.cpp:1184)
+        !pleaf(pft,jpngr)%n = nitrogen(plantN*f_nl)
+        !proot(pft,jpngr)%n = nitrogen(plantN*f_nr)            !Eq.3, Tab.3, XP08 (growth.cpp:1184)
                     
+        call ncp( nitrogen(nalloc_ind*f_nl), pleaf(pft,jpngr)%n )
+        call ncp( nitrogen(nalloc_ind*f_nr), proot(pft,jpngr)%n )
+
+        !print*,'leaf-C  ',pleaf(pft,jpngr)%c%c12
+        !print*,'root-C  ',proot(pft,jpngr)%c%c12
+        !print*,'leaf-N  ',pleaf(pft,jpngr)%n%n14
+        !print*,'root-N  ',proot(pft,jpngr)%n%n14
+        !print*,'leaf-C:N',cton(pleaf(pft,jpngr))
+        !print*,'root-C:N',cton(proot(pft,jpngr))
+        !print*,'ALLCOATION: C:N of whole plant ',cton( orgplus(pleaf(pft,jpngr),proot(pft,jpngr)), default=0.0 )
+        !print*,'prescC:N',cton_pro(pft)
+        !print*,'CN: leaf:root',cton(pleaf(pft,jpngr))/cton(proot(pft,jpngr))
+        !print*,'rcton_LR',rcton_LR
 
         ! xxx try
         ! spahni 2010-02-10: check if compartments are still positive
