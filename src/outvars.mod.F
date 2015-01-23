@@ -35,6 +35,7 @@ module outvars
   real, dimension(npft,maxgrid) :: outanup
   real, dimension(npft,maxgrid) :: outaClitt
   real, dimension(npft,maxgrid) :: outaCalloc
+  real, dimension(npft,maxgrid) :: outaNalloc
   real, dimension(nlu,maxgrid)  :: outaCsoil
   real, dimension(nlu,maxgrid)  :: outanreq      ! N required from litter -> soil transfer [gN/m2/d]
   real, dimension(npft,maxgrid) :: outaClit2soil

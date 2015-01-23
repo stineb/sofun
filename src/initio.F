@@ -87,6 +87,9 @@ subroutine initio
   filnam=trim(prefix)//'.a.nveg2lit.out'
   open(308,file=filnam,err=999,status='unknown')
 
+  ! N ALLOCATED TO GROWTH 
+  filnam=trim(prefix)//'.a.nalloc.out'
+  open(309,file=filnam,err=999,status='unknown')
 
 
   !----------------------------------------------------------------

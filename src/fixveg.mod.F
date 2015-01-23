@@ -147,10 +147,10 @@ contains
    !             nind(pft,jpngr) = nind(pft,jpngr) - nind_kill
 
  !  !             ! Transfer lost biomass to litter
-   !             call orgcp( orgfrac( nind_kill, pleaf(pft,jpngr) ), plitt_af(pft,jpngr) )
-   !             call orgcp( orgfrac( nind_kill, psapw(pft,jpngr) ), plitt_af(pft,jpngr) )
-   !             call orgcp( orgfrac( nind_kill, pwood(pft,jpngr) ), plitt_as(pft,jpngr) )
-   !             call orgcp( orgfrac( nind_kill, proot(pft,jpngr) ), plitt_bg(pft,jpngr) )
+   !             call orgcpRec( orgfrac( nind_kill, pleaf(pft,jpngr) ), plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
+   !             call orgcpRec( orgfrac( nind_kill, psapw(pft,jpngr) ), plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
+   !             call orgcpRec( orgfrac( nind_kill, pwood(pft,jpngr) ), plitt_as(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
+   !             call orgcpRec( orgfrac( nind_kill, proot(pft,jpngr) ), plitt_bg(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
 
  !  !           end if               ! fpc_tree_total > fpc_tree_max
 
@@ -167,8 +167,8 @@ contains
    !             frac_kill = (pleaf(pft,jpngr)%c%c12 - cleaf_target) / pleaf(pft,jpngr)%c%c12
 
  !  !             ! Transfer lost biomass to litter
-   !             call orgmv( orgfrac( frac_kill, pleaf(pft,jpngr)), pleaf(pft,jpngr), plitt_af(pft,jpngr) )
-   !             call orgmv( orgfrac( frac_kill, proot(pft,jpngr)), proot(pft,jpngr), plitt_bg(pft,jpngr) )
+   !             call orgmvRec( orgfrac( frac_kill, pleaf(pft,jpngr)), pleaf(pft,jpngr), plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
+   !             call orgmvRec( orgfrac( frac_kill, proot(pft,jpngr)), proot(pft,jpngr), plitt_bg(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
 
  !  !           end if
    !         

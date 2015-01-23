@@ -70,14 +70,14 @@ do pft=1,npft
 
     ! Move turnover to litter
     ! All C from leaf turnover goes to litter
-    call cmv( lm_turn%c, pleaf(pft,jpngr)%c, plitt_af(pft,jpngr)%c, scale=nind(pft,jpngr) )
+    call cmvRec( lm_turn%c, pleaf(pft,jpngr)%c, plitt_af(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
     ! A fraction (F_NRETAIN) of leaf N turnover is retained and moved to temporary storage (plabl) ...
     call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plabl(pft,jpngr)%n,    scale=F_NRETAIN )
     ! ... rest goes to litter
-    call nmv( lm_turn%n, pleaf(pft,jpngr)%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr)*(1.0-F_NRETAIN) )
+    call nmvRec( lm_turn%n, pleaf(pft,jpngr)%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr)*(1.0-F_NRETAIN) )
 
     ! No root N is retained (xxx is this viable? xxx)
-    call orgmv( rm_turn, proot(pft,jpngr), plitt_bg(pft,jpngr), scale=nind(pft,jpngr) )
+    call orgmvRec( rm_turn, proot(pft,jpngr), plitt_bg(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
 
     if (tree(pft)) then
       ! Sapwood turns over into heartwood (non-living wood)
@@ -87,11 +87,6 @@ do pft=1,npft
     ! done here: Set isotopes to MISSING_VALUE if pools are empty
 #endif
 
-    ! OUTPUT COLLECTION
-    outaCveg2lit(pft,jpngr) = outaCveg2lit(pft,jpngr) &
-        + (lm_turn%c%c12 + rm_turn%c%c12) * nind(pft,jpngr)
-    outaNveg2lit(pft,jpngr) = outaNveg2lit(pft,jpngr) &
-        + lm_turn%n%n14 * nind(pft,jpngr) * (1.0-F_NRETAIN) + rm_turn%n%n14 * nind(pft,jpngr)
 
   endif                   !present
 enddo                     !pft

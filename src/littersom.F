@@ -169,7 +169,7 @@ subroutine littersom( jpngr, doy )
         !print*,'ntoc_crit2', ntoc_crit2
         !print*,'cton litt ', cton( dlitt )
         !print*,'cton_crit ', 1/ntoc_crit
-        print*,'eff ',eff
+        !print*,'eff ',eff
         !stop
 
         !////////////////////////////////////////////////////////////////

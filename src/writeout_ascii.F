@@ -90,6 +90,7 @@ subroutine writeout_ascii( year )
   write(306,999) itime, sum(outaNlit2soil(:,jpngr))
   write(307,999) itime, sum(outaCveg2lit(:,jpngr))
   write(308,999) itime, sum(outaNveg2lit(:,jpngr))
+  write(309,999) itime, sum(outaNalloc(:,jpngr))
 
 
   !-------------------------------------------------------------------------

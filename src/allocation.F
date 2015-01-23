@@ -10,7 +10,7 @@ subroutine allocation_annual( jpngr )
   use treegeometry, only: ispresent, nind
   use params_modl, only: lmtorm0, tree, grass, rcton_LS, rcton_LR, &
     cton_pro 
-  use outvars, only: outaCalloc
+  use outvars, only: outaCalloc, outaNalloc, outaCveg2lit, outaNveg2lit
 #if _allocation_makela
   use params_modl, only: c_H, alpha_w
 #endif
@@ -67,6 +67,7 @@ subroutine allocation_annual( jpngr )
   real    :: f_nl                       ! fraction of total plant N in leaves
   real    :: f_nr                       ! fraction of total plant N in roots
   real    :: tmp
+  type(orgpool) :: orgtmp
 
 #if _check_sanity  
   real    :: cbal_before
@@ -107,8 +108,9 @@ subroutine allocation_annual( jpngr )
       nalloc = min(req,avl)
       calloc = cton_pro(pft)*nalloc
 
-      ! Record for output
-      outaCalloc(pft,jpngr) =  calloc
+      ! OUTPUT COLLECTION
+      outaCalloc(pft,jpngr) = calloc
+      outaNalloc(pft,jpngr) = nalloc
 
       ! unit conversion to per-individual
       calloc_ind = calloc / nind(pft,jpngr)
@@ -147,7 +149,8 @@ subroutine allocation_annual( jpngr )
           ! Add killed leaves C and N to litter (lminc_ind is neg.!)
           ! 'tmp' is fraction of leaves killed
           tmp = (-1.0)*nind(pft,jpngr)*lminc_ind/pleaf(pft,jpngr)%c%c12
-          call orgmv( orgfrac( tmp, pleaf(pft,jpngr) ), pleaf(pft,jpngr), plitt_af(pft,jpngr) )
+          
+          call orgmvRec( orgfrac( tmp, pleaf(pft,jpngr) ), pleaf(pft,jpngr), plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
 
           ! not used : call ncp( (-lminc_ind)*ntoc(pleaf(pft,jpngr))*nind(pft,jpngr), plitt_af(pft,jpngr)%n ) 
 

@@ -1,7 +1,7 @@
 runname <- "RUNNAME"
 outdir <- "/alphadata01/bstocker/sofun/trunk/output/"
 dvars <- c("cex","cleaf","gpp","netmin","ninorg","npp","nup","nfixfree","ccost")
-avars <- c("calloc","clit2soil","nlit2soil","nreq","cveg2lit","nveg2lit")
+avars <- c("calloc","nalloc","clit2soil","nlit2soil","nreq","cveg2lit","nveg2lit")
 
 plotyear <- 2000
 
@@ -110,5 +110,11 @@ lines( daily_sub$doy, daily_sub$netmin, type="l", xlab="day of year", ylab="gC/m
 lines( daily_sub$doy, daily_sub$nfixfree, type="l", xlab="day of year", ylab="gC/m2/d", col="red" )
 legend( "bottomleft", c("Ninorg","Nup","net N min.","free-living BNF"), col=c("black","green","blue","red"), bty="n", lty=1 )
 
+par(mar=c(0,0,2,0))
+plot( c(0,1), c(0,1), type="n", axes=FALSE )
+text( 0, 0.98, "ANNUAL TOTALS", adj=c(0,0),font=2)
+text( 0, 0.93, "N uptake", adj=c(0,0));          text( 0.5, 0.93, as.character(formatC(sum(daily_sub$nup),digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.88, "N -> veg", adj=c(0,0));          text( 0.5, 0.88, as.character(formatC(annual_sub$nalloc,digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.83, "N veg -> lit", adj=c(0,0));      text( 0.5, 0.83, as.character(formatC(annual_sub$nveg2lit,digits=2,format="f")) , adj=c(1,0))
 dev.off()
 

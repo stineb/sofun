@@ -71,6 +71,28 @@
        end subroutine orgcp
 
 
+       subroutine orgcpRec(amount,to,outc,outn,d13C)
+         !////////////////////////////////////////////////////////////////
+         !  Generic SR to "copy" organic mass to pool (e.g. for output).
+         !  Does NOT substract amount moved ('amount') from source.
+         !  Additionally records amount copied (adding to outc and outn).
+         !----------------------------------------------------------------
+         implicit none
+         type(orgpool), intent(in) :: amount
+         type(orgpool), intent(inout) :: to
+         real, intent(inout) :: outc
+         real, intent(inout) :: outn
+         real, optional, intent(in) :: d13C
+
+         call ccp(amount%c,to%c)
+         call ncp(amount%n,to%n)
+
+         outc = outc + amount%c%c12
+         outn = outn + amount%n%n14
+
+       end subroutine orgcpRec
+
+
        subroutine orgsub(amount,from)
          !////////////////////////////////////////////////////////////////
          !  Generic SR to "substract" organic mass ('amount') from source 
@@ -126,6 +148,36 @@
        end subroutine orgmv
 
 
+       subroutine orgmvRec(amount,from,to,outc,outn,scale)
+         !////////////////////////////////////////////////////////////////
+         !  Generic SR to "move" organic mass ('amount') from source pool 
+         !  ('from') to destination pool ('to') and to additionally record
+         !  amount moved. Substracts amount moved ('amount') from source. 
+         ! 'orgmvRec' is the combination of 'orgcp' and 'orgsub'.
+         !----------------------------------------------------------------
+         implicit none
+         type(orgpool), intent(in) :: amount
+         type(orgpool), intent(inout) :: from
+         type(orgpool), intent(inout) :: to
+         real, intent(inout) :: outc
+         real, intent(inout) :: outn
+         real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
+
+         if (present(scale)) then
+           call orgcp(orgfrac(scale,amount),to) 
+           call orgsub(amount,from)
+           outc = outc + amount%c%c12 * scale
+           outn = outn + amount%n%n14 * scale
+        else
+           call orgcp(amount,to)
+           call orgsub(amount,from)
+           outc = outc + amount%c%c12
+           outn = outn + amount%n%n14
+         endif  
+
+       end subroutine orgmvRec
+
+
        subroutine orginit(pool)
          !////////////////////////////////////////////////////////////////
          !  Generic SR to initialise organic pool
@@ -165,6 +217,34 @@
          endif
 
        end subroutine cmv
+
+
+       subroutine cmvRec(amount,from,to,outc,scale)
+         !////////////////////////////////////////////////////////////////
+         !  Generic SR to "move" only C from organic mass ('amount') from 
+         !  source pool ('from') to destination pool ('to'). Substracts 
+         !  amount moved ('amount') from source. 'cmvRec' is the combination 
+         !  of 'ccp' and 'csub'. Additionally adds addition to outc/outn.
+         !----------------------------------------------------------------
+
+         implicit none
+         type(carbon), intent(in) :: amount
+         type(carbon), intent(inout) :: from
+         type(carbon), intent(inout) :: to
+         real, intent(inout) :: outc
+         real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
+
+         if (present(scale)) then
+           call ccp(cfrac(scale,amount),to)
+           call csub(amount,from)
+           outc = outc + amount%c12 * scale
+         else
+           call ccp(amount,to)
+           call csub(amount,from)
+           outc = outc + amount%c12
+         endif
+
+       end subroutine cmvRec
 
 
        subroutine ccp(amount,to,d13C)
@@ -249,6 +329,34 @@
          endif
 
        end subroutine nmv
+
+
+       subroutine nmvRec(amount,from,to,outn,scale)
+         !////////////////////////////////////////////////////////////////
+         !  Generic SR to "move" only C from organic mass ('amount') from 
+         !  source pool ('from') to destination pool ('to'). Substracts 
+         !  amount moved ('amount') from source. 'nmvRec' is the combination 
+         !  of 'ccp' and 'csub'. Additionally adds addition to outc/outn.
+         !----------------------------------------------------------------
+
+         implicit none
+         type(nitrogen), intent(in) :: amount
+         type(nitrogen), intent(inout) :: from
+         type(nitrogen), intent(inout) :: to
+         real, intent(inout) :: outn
+         real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
+
+         if (present(scale)) then
+           call ncp(nfrac(scale,amount),to)
+           call nsub(amount,from)
+           outn = outn + amount%n14 * scale
+         else
+           call ncp(amount,to)
+           call nsub(amount,from)
+           outn = outn + amount%n14
+         endif
+
+       end subroutine nmvRec
 
 
        subroutine ncp(amount,to)

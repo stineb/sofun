@@ -214,6 +214,7 @@ subroutine initoutput
   outaClitt(:,:)  = 0.0
   outaCsoil(:,:)  = 0.0
   outaCalloc(:,:) = 0.0
+  outaNalloc(:,:) = 0.0
   outanreq(:,:)     = 0.0
   outaClit2soil(:,:)= 0.0
   outaNlit2soil(:,:)= 0.0
