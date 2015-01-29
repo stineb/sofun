@@ -1,6 +1,6 @@
 runname <- "RUNNAME"
 outdir <- "/alphadata01/bstocker/sofun/trunk/output/"
-dvars <- c("cex","cleaf","gpp","netmin","ninorg","npp","nup","nfixfree","ccost","nup_pas","nup_act","nup_fix","nup_ret")
+dvars <- c("gpp","npp","cex","nup","nup_pas","nup_act","nup_fix","nup_ret","nfixfree","cleaf","netmin","ninorg","ccost")
 avars <- c("calloc","nalloc","clit2soil","nlit2soil","nreq","cveg2lit","nveg2lit")
 
 plotyear <- 2000

@@ -158,6 +158,7 @@ mtemp <- daily2monthly( dtemp )
 ## expand to daily from monthly
 dtemp_interpol <- monthly2daily( mtemp, "interpol" )
 dtemp_polynom <- monthly2daily( mtemp, "polynom" )
+dtemp_step <- monthly2daily( mtemp, "step" )
 
 ## polynom method returns daily values with which monthly means should be identical to original monthly values
 mtemp_polynom <- daily2monthly(dtemp_polynom)
@@ -165,6 +166,7 @@ mtemp_polynom <- daily2monthly(dtemp_polynom)
 
 plot( 1:length(dtemp), dtemp, type="l" )
 lines( middaymonth, mtemp, col="red" )
-# lines( 1:length(dtemp), dtemp_interpol, col="blue" )
-# lines( 1:length(dtemp), dtemp_polynom, col="green" )
+lines( 1:length(dtemp), dtemp_interpol, col="blue" )
+lines( 1:length(dtemp), dtemp_polynom, col="green" )
+lines( 1:length(dtemp), dtemp_step, col="cyan" )
 lines( middaymonth, mtemp_polynom, col="magenta")

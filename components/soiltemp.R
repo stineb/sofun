@@ -32,20 +32,6 @@ daily2monthly <- function( dvals ){
   return(mvals)
 }
 
-monthly2daily <- function( mvals ){
-
-  ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
-  ndayyear <- sum(ndaymonth)
-  nmonth <- length(ndaymonth)
-
-  ## can only treat even years, i.e. 365 days in a year
-  if (length(mvals)%%nmonth!=0) {stop}
-
-  
-
-}
-
-
 ## get soil moisture and temperature
 sofun.out <- read.table( '/alphadata01/bstocker/sofun/trunk/output/RUNNAME.d.wn.out', col.names=c("year","dwtot") )
 tmp <- read.table( '/alphadata01/bstocker/sofun/trunk/output/RUNNAME.d.ea_n.out')

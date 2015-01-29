@@ -40,13 +40,6 @@
     real, dimension(nlu)  :: dvol             ! N volatilisation[gN/m2/d]
     real, dimension(nlu)  :: dleach           ! N leaching [gN/m2/d]
 
-    ! xxx this module is to be renamed, 'fluxes' is not appropriate
-    real, dimension(nlu) :: dwn               ! ! soil water mass [mm = kg/m2]
-    real, dimension(nlu) :: dro               ! daily runoff [mm]
-    real, dimension(nlu) :: aet_d             ! daily AET (mm)
-    real :: rn_d                              ! daytime net radiation [J/m2]
-
-
     ! variables without spatial dimension: have NO memory from one to next year
     type(orgpool), dimension(nlu) :: aestab   ! annual C and N fixation due to establishment (=acflux_estab,an_uptake_estab)
 

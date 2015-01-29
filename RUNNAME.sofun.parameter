@@ -6,7 +6,7 @@
 # write value behind this position:    |->
 
 # Standard site name (reading <sitename>.parameter)
-sitename                                AU-How
+sitename                                CH-Oe1
 
 # Model spinup setting
 spinup                                  .true.

@@ -48,9 +48,7 @@ contains
     ! local variables
     integer :: day, mo, dm, yr
 
-    real, dimension(nmonth) :: insf
-    real, dimension(nmonth) :: intc
-    real, dimension(nmonth) :: inppt
+    real, dimension(nmonth) :: mtmp
 
 
     ! PRESCRIBED DAILY CLIMATE (TEMP, PREC, FSUN) FOR ONE YEAR
@@ -61,9 +59,22 @@ contains
     dprec_field(:,:) = 0.0
     dfsun_field(:,:) = 0.0
 
-    dtemp_field(:,1) = read1year_daily(sitename//'_dtemp_2000_STANDARD.txt')
-    dprec_field(:,1) = read1year_daily(sitename//'_dprec_2000_STANDARD.txt')
-    dfsun_field(:,1) = read1year_daily(sitename//'_dfsun_2000_STANDARD.txt')
+    dtemp_field(:,1) = read1year_daily('dtemp_'//sitename//'_2000.txt')
+    dprec_field(:,1) = read1year_daily('dprec_'//sitename//'_2000.txt')
+    mtmp(:) = read1year_monthly('mfsun_'//sitename//'_2000.txt')
+
+    ! use monthly value for each day in month for dfsun
+    day=0
+    do mo=1,nmonth
+      do dm=1,ndaymonth(mo)
+        day=day+1
+        dfsun_field(day,1) = mtmp(mo)
+      end do
+    end do
+
+    print*,'annual sum dprec_field'
+    print*,sum(dprec_field(:))
+
 
     !insf  = (/0.21, 0.27, 0.30, 0.40, 0.39, 0.39, 0.40, 0.43, 0.36, 0.32, 0.23, 0.19/)
     !intc  = (/4.80, 4.85, 7.10, 9.10, 12.4, 15.3, 17.6, 17.3, 14.6, 11.2, 7.55, 5.05/)
@@ -77,8 +88,6 @@ contains
     !    dfsun_field(day,1) = insf(mo)
     !  end do
     !enddo
-
-
 
     !day=0
     !do mo=1,nmonth
@@ -214,6 +223,37 @@ contains
     stop
 
   end function read1year_daily
+
+
+  function read1year_monthly( filename )
+    !////////////////////////////////////////////////////////////////
+    ! Function reads a file that contains 365 lines, each line for
+    ! a daily value. 
+    !----------------------------------------------------------------
+    use params_core, only: nmonth
+    implicit none
+
+    ! arguments
+    character(len=*), intent(in) :: filename
+
+    ! local variables
+    real, dimension(nmonth) :: dval
+
+    ! function return value
+    real, dimension(nmonth) :: read1year_monthly
+
+    open(20, file='./input/'//filename, status='old',  form='formatted', action='read', err=888)
+    read(20,*) dval
+    close(20)
+
+    read1year_monthly = dval
+
+    return
+    600 format (F9.7)
+    888 write(0,*) 'READ1YEAR: error opening file '//trim(filename)//'. Abort. '
+    stop
+
+  end function read1year_monthly
 
 
   function getvalreal( filename, realyear, day, dm, mo )

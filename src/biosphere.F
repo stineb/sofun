@@ -15,7 +15,9 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use params_modl
   use waterbal_stash, only: waterbal
   use fixveg
-  
+  use soiltemp_sitch, only: soiltemp
+  use waterbal_stash, only: outdcpa ! used for soiltemp xxx make this global?
+
   ! xxx debug
   use fluxes
   use treegeometry
@@ -134,7 +136,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! get soil moisture, and runoff
         !call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
         ! xxx try
-        call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
+        call waterbal( jpngr, day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
 
         ! get GPP from input
         if (present(dgpp_data)) then
@@ -144,7 +146,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         end if   
 
         ! use SR 'sitchtemp'
-        !call soiltemp
+        call soiltemp( jpngr, mo, day, dtemp_field(:,jpngr), outdcpa(:,:,jpngr) )
 
         ! substract autotrophic respiration to get NPP, remainder is added to
         ! labile pool (plabl)
@@ -224,12 +226,13 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     call getout_annual( jpngr )
 
     ! Write to output
-    call writeout_ascii( year )
+    call writeout_ascii( year, dtemp_field(:,jpngr) )
 
   end do
 
   ! try xxx
   c_uptake = 1.e15 ! in gC
+
 
   ! write output
   !call write_output

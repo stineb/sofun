@@ -50,6 +50,14 @@ subroutine initio
   filnam=trim(prefix)//'.d.nfixfree.out'
   open(108,file=filnam,err=999,status='unknown')
 
+  ! SOIL TEMPERATURE
+  filnam=trim(prefix)//'.d.soiltemp.out'
+  open(109,file=filnam,err=999,status='unknown')
+
+  ! AIR TEMPERATURE
+  filnam=trim(prefix)//'.d.temp.out'
+  open(110,file=filnam,err=999,status='unknown')
+
 
   !////////////////////////////////////////////////////////////////
   ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES

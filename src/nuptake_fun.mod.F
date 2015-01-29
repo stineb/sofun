@@ -273,9 +273,10 @@ contains
     use classdefs
     use params_core
     use params_modl, only: lu_category, cton_pro, nfixer
-    use fluxes, only: dnpp, dnup, dcex, dwn, aet_d
+    use fluxes, only: dnpp, dnup, dcex
+    use waterbal_stash, only: aet_d  ! xxx make 'aet_d' a required global variable?
     use treegeometry, only: nind, ispresent, fpc_grid
-    use pools, only: nh4, no3, pexud, plabl, proot 
+    use pools, only: nh4, no3, pexud, plabl, proot, dwtot 
 
     implicit none
     
@@ -433,8 +434,8 @@ contains
       ! assuming concentration of N as being equal in liquid and ice and assuming
       ! only N in liquid is available. nh4_conc and no3_conc are in gN/gH2O.
       !-------------------------------------------------------------------------
-      call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc )
-      call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc )
+      call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc, dwtot(lu,jpngr) )
+      call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc, dwtot(lu,jpngr))
 
        
       !--------------------------------------------------------------------------
@@ -501,8 +502,8 @@ contains
       nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - nh4_uptake
       no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - no3_uptake
        
-      call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc )
-      call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc )
+      call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc, dwtot(lu,jpngr) )
+      call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc, dwtot(lu,jpngr) )
 
 
       ! XXX May pools be emptied here?
@@ -647,7 +648,7 @@ contains
 
               nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - Nacq
 
-              call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc )
+              call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc, dwtot(lu,jpngr) )
 
               Nacq_active = Nacq_active + Nacq
               Cacq_active = Cacq_active + Cacq
@@ -668,7 +669,7 @@ contains
 
               no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - Nacq
 
-              call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc )
+              call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc, dwtot(lu,jpngr) )
 
               Nacq_active = Nacq_active + Nacq
               Cacq_active = Cacq_active + Cacq
@@ -832,21 +833,21 @@ contains
 
   contains
 
-    subroutine update_Ninorg( lu, Ninorg, avail_Ninorg, Ninorg_conc )
+    subroutine update_Ninorg( lu, Ninorg, avail_Ninorg, Ninorg_conc, wtot )
       !******************************************************************************
       ! Update N taken up and available N in soil.
       !--------------------------------------------------------------------------
-      use fluxes, only: dwn
       implicit none
 
       integer, intent(in) :: lu
       real, intent(in)  :: Ninorg
       real, intent(out) :: avail_Ninorg
       real, intent(out) :: Ninorg_conc
+      real, intent(in)  :: wtot           ! total soil water content (mm)
                     
-      Ninorg_conc = Ninorg/dwn(lu)
+      Ninorg_conc = Ninorg/wtot
       
-      if ( dwn(lu) > EPSILON_WTOT ) then 
+      if ( wtot > EPSILON_WTOT ) then 
         avail_Ninorg = Ninorg - EPSILON_WTOT*Ninorg_conc
       else
         avail_Ninorg = 0.

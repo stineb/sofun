@@ -21,6 +21,7 @@ module outvars
   real, dimension(nlu,ndayyear,maxgrid)  :: outdninorg
   real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin
   real, dimension(nlu,ndayyear,maxgrid)  :: outdnfixfree  ! N fixation by free-living organisms [gN/m2/d]
+  real, dimension(nlu,ndayyear,maxgrid)  :: outdtemp_soil
   
   !----------------------------------------------------------------
   ! Monthly output variables

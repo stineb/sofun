@@ -70,6 +70,11 @@ Units
 All plant-related pools (pleaf, proot, psapw, pwood, plabl) are in units of gC/ind. and gN/ind. 'nind' is the number of individuals per m2, [nind]=ind./m2. Other pools (plitt, psoil, pexud, inorganic N pools) are in units of gC/m2 and/or gN/m2. Note that C and N transfers from plant to litter have to be multiplied by 'nind' (number of individuals). Fluxes (dgpp, dnpp, dexud, dnup, ...) are in units of gC/m2/day or gN/m2/day. 
 
 
+Year-to-year memory
+-------------------
+
+In general, all pool variables carry on information from year to year, while all others don't. Exceptions are previous year's values to define "buffers", e.g., where moving average of previous N days is used to calculate stuff. This is the case for soil temperature (soiltemp_sitch), where the previous year's daily temperature field is used. This is defined within biosphere, using Fortran's 'SAVE' statement, and updated at the end of each year. For the first simulation year, the "previous" year's values are taken as the present year's values.
+
 Output
 ------
 One output file is written for each output variable. Output variables have an according time dimension (daily and monthly output), and a space dimension (jpngr) and are kept separate from model state variables. To add a (module-independent) variable to be written to the output, add statements in the following files:

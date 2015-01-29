@@ -18,6 +18,7 @@ contains
     implicit none
 
     ! arguments
+    ! xxx instead of dimension declaration with 'lenval', use size(presval)
     real, dimension(lenval), intent(in) :: presval            ! vector containing 'lenvals' values for each timestep in this year
     integer, intent(in) :: inow                               ! index corresponding to "now" (day of year or month of year)  
     integer, intent(in) :: lenval                             ! number of timesteps per year
@@ -29,22 +30,32 @@ contains
     real, dimension(lenval) :: valbuf
 
     ! function return variable
-    real, dimension(lenval), intent(out) :: running
+    real, intent(out) :: running
+
+    !print*,'day, lenper ',inow, lenper
 
     if (present(prevval)) then
+      !print*,'A filling up valbuf from ',(lenval-(inow-1)),'to',lenval
+      !print*,'A with values from        1 to     ',inow
       valbuf((lenval-(inow-1)):lenval) = presval(1:inow)
+      !print*,'B filling up valbuf from  1 to',(lenval-inow)
+      !print*,'B with values from       ',(inow+1),' to ',lenval
       valbuf(1:(lenval-inow)) = prevval((inow+1):lenval)
     else
+      !print*,'A filling up valbuf from  1 to',inow
+      !print*,'A with values from        1 to ',inow
       valbuf(1:inow) = presval(1:inow)
+      !print*,'B filling up valbuf from  ',(inow+1),'to',lenval
+      !print*,'B with values zero'
       valbuf((inow+1):lenval) = 0.0
     end if
 
     select case (method)
       case ("sum")
-        running = sum(valbuf)
+        running = sum(valbuf((lenval-lenper+1):lenval))
       case ("mean")
         if (present(prevval)) then
-          running = sum(valbuf((lenval-lenper+1):lenval))/lenval
+          running = sum(valbuf((lenval-lenper+1):lenval))/lenper
         else
           running = sum(valbuf((lenval-lenper+1):lenval))/inow
         end if
@@ -52,7 +63,9 @@ contains
         stop 'RUNNING: declare valid method.'
     end select
 
-  end function runningmean
+  end function running
+
+
 
 
   function daily2monthly( dval, method )
@@ -68,6 +81,9 @@ contains
 
     ! function return variable
     real, dimension(nmonth), intent(out) :: daily2monthly
+
+    ! local variables
+    integer :: moy
 
     do moy=1,nmonth
       select case (method)

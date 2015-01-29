@@ -1,11 +1,14 @@
 ## ////////////////////////////////////////////////////////////////////
+## FULL TIME SERIES
 ## Prepare GPP input from Tyler's fluxnet data for each day available 
 ## available in the original free-and-fair-use FLUXNET dataset.
 ## File created here is formatted like this:
 ## '2002  1  1 0.496632 0.054053', which represents 
 ## 'YYYY MM DM      GPP GPP err.'.
 ## --------------------------------------------------------------------
-data.in <- read.csv('/alphadata01/bstocker/data/gepisat/gpp_daily/AU-How_daily_gpp.txt',header=TRUE)
+sitename <- 'CH-Oe1'
+
+data.in <- read.csv(paste('/alphadata01/bstocker/data/gepisat/gpp_daily/',sitename,'_daily_gpp.txt',sep=""),header=TRUE)
 data.out <- array(NA,dim=c(dim(data.in)[1],5)) # five columns: year, month, day in month, gpp, gpp-error
 
 len <- dim(data.in)[1]
@@ -25,13 +28,14 @@ for (i in 1:len){
   formatted.out[i] <- sprintf("%4i %2i %2i %6f %6f",data.out[i,1],data.out[i,2],data.out[i,3],data.out[i,4],data.out[i,5])
   print(formatted.out[i])
 }
-writeLines(formatted.out,"/alphadata01/bstocker/sofun/trunk/input/AU-How_daily_gpp_STANDARD.txt")
+writeLines( formatted.out, paste("/alphadata01/bstocker/sofun/trunk/input/",sitename,"_daily_gpp_STANDARD.txt", sep="" ) )
 
 ## plot GPP for each day in the orignial time series
 plot( 1:len, data.in$GPP_mol_m2, type="l", ylim=c(0,1) )
 
 
 ## ////////////////////////////////////////////////////////////////////
+## MEDIAN SEASONAL COURSE
 ## Prepare GPP input from Tyler's fluxnet data containing the median
 ## seasonality GPP over all available years in the multi-year the 
 ## original free-and-fair-use FLUXNET dataset.
@@ -66,22 +70,13 @@ for (mo in 1:nmonth){
   }
 }
 
-# ## write output with standard formatting: (mo, dm, gpp, gpp-err)
-# formatted.out <- vector("character",sum(ndaymonth))
-# for (i in 1:sum(ndaymonth)){
-#   formatted.out[i] <- sprintf("%2i %2i %6f %6f",data.med[i,1],data.med[i,2],data.med[i,3],data.med[i,4])
-#   print(formatted.out[i])
-# }
-# writeLines(formatted.out,"/alphadata01/bstocker/sofun/trunk/input/AU-How_daily_gpp_med_STANDARD.txt")
-
 ## write output with standard formatting: (year, mo, dm, gpp, gpp-err)
 formatted.out <- vector("character",ndayyear)
 for (day in 1:ndayyear){
   formatted.out[day] <- sprintf("%6f",data.med[day,3])
   print(formatted.out[day])
 }
-writeLines(formatted.out,"/alphadata01/bstocker/sofun/trunk/input/AU-How_daily_gpp_med_STANDARD.txt")
-
+writeLines( formatted.out, paste("/alphadata01/bstocker/sofun/trunk/input/",sitename,"_daily_gpp_med_STANDARD.txt", sep="") )
 
 ## plot median-seasonality GPP
 plot( 1:sum(ndaymonth), data.med[,3], type="l" )

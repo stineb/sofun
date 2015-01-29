@@ -15,7 +15,7 @@ module waterbal_stash
   ! Required module-independent model state variables (necessarily 
   ! updated by 'waterbal') are:
   !   - daytime net radiation ('rn_d')
-  !   - soil moisture ('dwn')
+  !   - soil moisture ('dwtot')
   !   - runoff ('dro')
   !----------------------------------------------------------------
   use params_core, only: ndayyear, nmonth, nlu, maxgrid
@@ -49,10 +49,14 @@ module waterbal_stash
   ! MODULE-SPECIFIC VARIABLES
   ! These are not required outside module STASH, but are used in different SRs of this module
   ! adjust these and make global if required by GePiSaT
+  real :: rn_d                   ! daytime net radiation [J/m2]
   real :: ra_d                   ! daily extraterrestrial solar radiation (J/m^2)
   real :: ppfd_d                 ! daily PPFD (mol/m^2)
   real :: eet_d                  ! daily EET (mm)
   real :: pet_d                  ! daily PET (mm)
+  real, dimension(nlu) :: aet_d  ! daily AET (mm)
+  real, dimension(nlu) :: cpa_d  ! daily Cramer-Prentice-Alpha (AET/EET)
+  real, dimension(nlu) :: dro    ! daily runoff [mm]
   real, dimension(nlu) :: wc     ! daily condensation (mm)
   real, dimension(nlu) :: sw     ! evaporative supply rate (mm/h)
 
@@ -67,8 +71,7 @@ module waterbal_stash
   real, dimension(ndayyear,maxgrid)     :: outdeq_n           ! daily equilibrium ET, mm
   real, dimension(ndayyear,maxgrid)     :: outdep_n           ! daily potential ET, mm
   real, dimension(nlu,ndayyear,maxgrid) :: outdea_n           ! daily actual ET, mm
-
-
+  real, dimension(nlu,ndayyear,maxgrid) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
 
   ! MONTHLY OUTPUT VARIABLES
   ! xxx add jpngr dim
@@ -82,14 +85,15 @@ module waterbal_stash
 
 contains
 
-  subroutine waterbal( doy, lon, lat, dprec, dtemp, dsun, elv )
+  subroutine waterbal( jpngr, doy, lon, lat, dprec, dtemp, dsun, elv )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use params_core, only: ndayyear, ndaymonth, nlu
-    use fluxes, only: dwn, dro, aet_d
+    use pools, only: dwtot
 
     ! ARGUMENTS
+    integer, intent(in) :: jpngr
     integer, intent(in) :: doy                       ! day of year
     real, intent(in) :: lon                          ! longitude (degrees)
     real, intent(in) :: lat                          ! latitude (degrees)
@@ -113,7 +117,7 @@ contains
     do lu=1,nlu
 
       ! Calculate evaporative supply rate, mm/h
-      sw(lu) = kCw * dwn(lu) / kWm
+      sw(lu) = kCw * dwtot(lu,jpngr) / kWm
 
       ! Calculate radiation and evaporation quantities
       !print*,'calling evap for doy', doy, '...'
@@ -121,21 +125,21 @@ contains
       !print*,'... done'
 
       ! Update soil moisture
-      dwn(lu) = dwn(lu) + dprec + wc(lu) - aet_d(lu)
+      dwtot(lu,jpngr) = dwtot(lu,jpngr) + dprec + wc(lu) - aet_d(lu)
 
       ! Bucket model for runoff generation
-      if (dwn(lu)>kWm) then
+      if (dwtot(lu,jpngr)>kWm) then
         ! Bucket is full 
         ! * set soil moisture to capacity
         ! * add remaining water to monthly runoff total
-        dro(lu) = dwn(lu)
+        dro(lu) = dwtot(lu,jpngr)
         dro(lu) = dro(lu) - kWm
-        dwn(lu) = kWm
+        dwtot(lu,jpngr) = kWm
 
-      elseif (dwn(lu)<0.0) then
+      elseif (dwtot(lu,jpngr)<0.0) then
         ! Bucket is empty
         ! * set soil moisture to zero
-        dwn(lu) = 0.0
+        dwtot(lu,jpngr) = 0.0
         dro(lu) = 0.0
 
       else
@@ -162,7 +166,6 @@ contains
     ! - daily condensation (wc), mm
     !-------------------------------------------------------------------------  
     use params_core, only: ndayyear, pi
-    use fluxes, only: rn_d, aet_d
 
     implicit none
 
@@ -431,8 +434,11 @@ contains
     ! Eq. 81, STASH 2.0 Documentation
     aet_d(lu) = (24.0/pi)*(radians(sw(lu)*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*rnl)*(hn - hi)))
 
-    ! xxx debug
-    !print*,'aet_d',aet_d
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Ref? XXX
+    cpa_d(lu) = aet_d(lu) / eet_d
 
     return
 
@@ -659,7 +665,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use fluxes, only: rn_d, dwn, dro, aet_d
+    use pools, only: dwtot
 
     implicit none
 
@@ -670,7 +676,7 @@ contains
 
     ! Save the daily totals:
     ! xxx add lu-dimension and jpngr-dimension
-    outdwn(:,doy,jpngr)   = dwn(:)
+    outdwn(:,doy,jpngr)   = dwtot(:,jpngr)
     outdro(:,doy,jpngr)   = dro(:)
     outdho(doy,jpngr)     = ra_d  
     outdhn(doy,jpngr)     = rn_d
@@ -679,6 +685,7 @@ contains
     outdeq_n(doy,jpngr)   = eet_d
     outdep_n(doy,jpngr)   = pet_d
     outdea_n(:,doy,jpngr) = aet_d(:)
+    outdcpa(:,doy,jpngr)  = cpa_d(:)
 
     ! Update monthly totals:
     outmeq_m(moy,jpngr)   = outmeq_m(moy,jpngr) + eet_d

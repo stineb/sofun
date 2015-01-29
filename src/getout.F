@@ -36,6 +36,7 @@ subroutine getout_daily( jpngr, moy, doy )
   outdcex(:,doy,jpngr)   = dcex(:)
 
   outdninorg(:,doy,jpngr)   = nh4(:,jpngr)%n14 + no3(:,jpngr)%n14
+  outdtemp_soil(:,doy,jpngr)= dtemp_soil(:,jpngr)
 
   !----------------------------------------------------------------
   ! ANNUAL SUM OVER DAILY VALUES

@@ -30,7 +30,7 @@ subroutine initglobal
   psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! fast decomposing soil organic matter, organic pool [gC/m2 and gN/m2]
   psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! recalcitrant soil organic matter    , organic pool [gC/m2 and gN/m2]
 
-  dwn(:)         = 0.0
+  dwtot(:,:)    = 0.0  ! total soil water content (mm); corresponds to 'dwn' in STASH
 
   !! xxx try
   !! initialise pools with non-zero values
@@ -164,7 +164,6 @@ subroutine initdaily
   drroot(:)      = 0.0
   drgrow(:)      = 0.0
   dnup(:)        = nitrogen(0.0)
-  rn_d           = 0.0
 
 
   ! initialise module-specific output variables

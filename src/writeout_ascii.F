@@ -1,4 +1,4 @@
-subroutine writeout_ascii( year )
+subroutine writeout_ascii( year, dtemp )
   !/////////////////////////////////////////////////////////////////////////
   ! Write daily ASCII output
   !-------------------------------------------------------------------------
@@ -13,6 +13,7 @@ subroutine writeout_ascii( year )
 
   ! Arguments
   integer, intent(in) :: year       ! simulation year
+  real, dimension(ndayyear), intent(in) :: dtemp  ! xxx un-nice to have it passed as argument
 
   ! Local variables
   real :: itime
@@ -43,8 +44,6 @@ subroutine writeout_ascii( year )
   !-------------------------------------------------------------------------
   if (.not.spinup) then
 
-    print*,'year',year
-
     ! Write daily output only during transient simulation
     do day=1,ndayyear
 
@@ -59,7 +58,9 @@ subroutine writeout_ascii( year )
       write(106,999) itime, sum(outdnetmin(:,day,jpngr))
       write(107,999) itime, sum(outdninorg(:,day,jpngr))
       write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
-
+      write(109,999) itime, sum(outdtemp_soil(:,day,jpngr))
+      write(110,999) itime, dtemp(day)
+      
     end do
   end if
 
