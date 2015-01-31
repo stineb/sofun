@@ -44,8 +44,8 @@ contains
     real, dimension(ndayyear,maxgrid), save :: dtemp_pvy    ! daily temperature of previous year (deg C)
     real, dimension(nlu,ndayyear,maxgrid), save :: dcpa_pvy ! daily Cramer-Prentice-Alpha of previous year (unitless) 
 
-    real, dimension(nmonth) :: mtemp                     ! monthly temperature as a mean of daily values in resp. month
-    real, dimension(nmonth) :: mtemp_pvy                 ! monthly temperature as a mean of daily values in resp. month previous year
+    !real, dimension(nmonth) :: mtemp                     ! monthly temperature as a mean of daily values in resp. month
+    !real, dimension(nmonth) :: mtemp_pvy                 ! monthly temperature as a mean of daily values in resp. month previous year
 
     !real, dimension(ndayyear), save :: dtemp_buf        ! daily temperature vector containing values of the present day and the preceeding 364 days. Updated daily. (deg C)
     !real, dimension(ndayyear), save :: dwtot_buf        ! daily soil moisture content, containing values of the present day and the preceeding 364 days. Updated daily

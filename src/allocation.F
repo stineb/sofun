@@ -130,7 +130,7 @@ subroutine allocation_annual( jpngr )
       ! water scalar and pft specific parameter
       ! xxx try
       !lmtorm = lmtorm0 * wscal(pft,jpngr)
-      !lmtorm = lmtorm0(pft) * 1.0  
+      lmtorm = lmtorm0(pft) * 1.0  
 
       ! xxx debug
       !lmtorm = 1.0

@@ -9,6 +9,7 @@ subroutine getpar_modl
   use waterbal_stash, only: getpar_modl_waterbal
   use nuptake_fun, only: getpar_modl_nuptake
   use treegeometry, only: get_geometry_sapl
+  use phenology_lpx, only: getpar_pft_summerphenology
 
   implicit none
 
@@ -227,5 +228,11 @@ subroutine getpar_modl
     endif
 
   end do
+
+  !----------------------------------------------------------------
+  ! MODULE-SPECIFIC PARAMETERS
+  !----------------------------------------------------------------
+  call getpar_pft_summerphenology('params_pft_summerphenology.dat')
+
 
 end subroutine getpar_modl

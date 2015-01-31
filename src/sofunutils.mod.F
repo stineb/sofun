@@ -99,144 +99,188 @@ contains
   end function daily2monthly
 
 
-!  function monthly2daily( mval, method, monthistotal, mval_pvy, mval_nxy )
-!    !/////////////////////////////////////////////////////////////////////////
-!    ! Returns daily values based on monthly values, using a defined method.
-!    !-------------------------------------------------------------------------
-!    use params_core, only: middaymonth, ndayyear, ndaymonth!
+  function monthly2daily( mval, method, monthistotal, mval_pvy, mval_nxy )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Returns daily values based on monthly values, using a defined method.
+    !-------------------------------------------------------------------------
+    use params_core, only: middaymonth, ndayyear, ndaymonth, nmonth
+    
+    ! arguments
+    real, dimension(nmonth), intent(in) :: mval  ! vector containing 12 monthly values
+    character(len=*), intent(in) :: method
+    logical, intent(in) :: monthistotal ! true of monthly values represent total of daily values in resp. month
+    real, dimension(nmonth), intent(in), optional :: mval_pvy  ! vector containing 12 monthly values of the previous year
+    real, dimension(nmonth), intent(in), optional :: mval_nxy  ! vector containing 12 monthly values of the next year
+    
+    ! local variables
+    integer :: moy, doy, today
+    real :: dd, todaysval
 
-!    ! arguments
-!    real, dimension(nmonth), intent(in) :: mval  ! vector containing 12 monthly values
-!    character(len=*), intent(in) :: method
-!    logical, intent(in) :: monthistotal ! true of monthly values represent total of daily values in resp. month
-!    real, dimension(nmonth), intent(in), optional :: mval_pvy  ! vector containing 12 monthly values of the previous year
-!    real, dimension(nmonth), intent(in), optional :: mval_nxy  ! vector containing 12 monthly values of the next year!
+    real, dimension(0:(nmonth+1))    :: mval_ext
+    !integer, dimension(0:(nmonth+1)) :: middaymonth_ext
+    real :: startt, endt, starttemp, endtemp, dt, d2t, d3t, dtold, &
+      dtnew, lastmonthtemp, nextmonthtemp, deltatemp, polya, polyb, polyc
+    
+    ! function return variable
+    real, dimension(ndayyear) :: monthly2daily
+    
+    ! xxx implement select case also in 'rates' module
 
-!    ! local variables
-!    real :: startt, endt, starttemp, endtemp, dt, d2t, d3t, dtold, &
-!      dtnew, lastmonthtemp, nextmonthtemp, deltatemp, polya, polyb, polyc!
+    select case (method)
 
-!    ! function return variable
-!    real, dimension(ndayyear) :: monthly2daily !
+      case ("interpol")
+        !--------------------------------------------------------------------
+        ! LINEAR INTERPOLATION
+        ! of monthly to quasi-daily values.
+        ! If optional argument 'mval_pvy' is provided, take December-value
+        ! of previous year to interpolate to first 15 days of January,
+        ! otherwise, use the same year's December value to get first 15 days.
+        ! corresponds to subroutine 'daily' in LPX
+        !--------------------------------------------------------------------
 
-!    ! implement select case also in 'rates' module
-!    select case (method)!
+        ! define extended vector with monthly values for previous Dec and next Jan added
+        mval_ext(1:nmonth)  = mval(1:nmonth)
 
-!      case ("interpol")
-!        !--------------------------------------------------------------------
-!        ! LINEAR INTERPOLATION
-!        ! of monthly to quasi-daily values.
-!        ! If optional argument 'mval_pvy' is provided, take December-value
-!        ! of previous year to interpolate to first 15 days of January,
-!        ! otherwise, use the same year's December value to get first 15 days.
-!        ! corresponds to subroutine 'daily' in LPX
-!        !--------------------------------------------------------------------
-!        doy=1
-!        do moy=1,nmonth
-!          do dm=1,ndaymonth
-!            doy=doy+1
-!            if (doy>middaymonth(moy)) then
-!              monthly2daily(doy) = mval(moy) + (doy-middaymonth(moy))/ndaymonth(moy) * (mval(moy+1)-mval(moy))
-!            else if (doy<middaymonth(moy)) then
-!              if (moy==1) then
-!                if (present(mval_pvy)) then
-!                  monthly2daily(doy) = mval_pvy(nmonth) + (middaymonth(nmonth)+doy)/ndaymonth(nmonth) * (mval(moy)-mval_pvy(nmonth))
-!                else
-!                  monthly2daily(doy) = mval(nmonth) + (middaymonth(nmonth)+doy)/ndaymonth(nmonth) * (mval(moy)-mval(nmonth))
-!                end if
-!              else
-!                monthly2daily(doy) = mval(moy-1) + (doy-middaymonth(moy-1))/ndaymonth(moy-1) * (mval(moy)-mval(moy-1))
-!              end if
-!            else
-!              monthly2daily(doy) = mval(moy)
-!            end if
-!          end do
-!        end do!
+        !middaymonth_ext(1:nmonth) = middaymonth(1:nmonth)
+        !middaymonth_ext(0) = middaymonth(nmonth)
+        !middaymonth_ext(nmonth+1) = 381
 
-!        if (iftotals) then
-!          doy=0
-!          do moy=1,nmonth
-!            do doyofmonth=1,ndaymonth(moy)
-!              doy=doy+1
-!              monthly2daily(doy)=monthly2daily(doy)/dble(ndaymonth(moy))
-!            enddo
-!          enddo
-!        endif!
-!
+        if (present(mval_pvy)) then
+          mval_ext(0) = mval_pvy(nmonth)   ! Dec value of previous year
+        else
+          mval_ext(0) = mval(nmonth)       ! take Dec value of this year ==> leads to jump!
+        end if
 
-!      case ("polynom")
-!        !--------------------------------------------------------------------
-!        ! In addition to tempdaily daily values are calculated using a polynom of second
-!        ! order through the middpoints between months. Additionally, average of daily 
-!        ! values is identical to the monthly input data. That's crucial for modelling
-!        ! soil heat diffusion and freezing/thawing processes. 
-!        !--------------------------------------------------------------------!
+        if (present(mval_nxy)) then
+          mval_ext(nmonth+1) = mval_nxy(1) ! Jan value of next year
+        else
+          mval_ext(nmonth+1) = mval(1)     ! take Jan value of this year ==> leads to jump!
+        end if
 
-!        if (monthistotal) &
-!          stop 'MONTHLY2DAILY: no monthly totals allowed for polynom method'
-!        
-!        ! Starting conditons of december in previous year
-!        startt = -30.5               ! midpoint between Nov-Dec of previous year
-!        endt = 0.5                   ! midpoint between Dec-Jan of this year
-!        dt = real(ndaymonth(month))  ! number of Dec days
-!        if (present(mval_pvy)) then
-!          lastmonthtemp = mval_pvy[nmonth] ! Dec mean temperature
-!        else
-!          lastmonthtemp = mval[nmonth]     ! Dec mean temperature
-!        end if!
+        do moy = 1,nmonth
+          dd = (mval_ext(moy+1)-mval_ext(moy)) / real(middaymonth(moy+1) - middaymonth(moy))
+          todaysval = mval_ext(moy)
+          do doy = middaymonth(moy),middaymonth(moy+1)-1
+            if (doy<=ndayyear) then
+              today = doy
+            else
+              today = doy-ndayyear
+            endif
+            monthly2daily(today) = todaysval
+            todaysval = todaysval + dd
+          enddo
+        enddo
 
-!        doy = 0                      ! initialisation of this years days
-!        
-!        do month=1,nmonth
-!          dtold = dt
-!          startt = endt
-!          endt = endt + dt
-!          if (month<nmonth) then
-!            dtnew = real(ndaymonth(month+1))
-!            nextmonthtemp = mval(month+1)
-!          else
-!            dtnew = real(ndaymonth(1))
-!            if (present(mval_nxy)) then
-!              nextmonthtemp = mval_nxy(1)
-!            else
-!              nextmonthtemp = mval(1)
-!            end if
-!          endif!
+        if (monthistotal) then
+          day = 0
+          do moy=1,nmonth
+            do dayofmonth=1,ndaymonth(moy)
+              day = day+1
+              monthly2daily(day) = monthly2daily(day) / real(ndaymonth(moy))
+            enddo
+          enddo
+        endif
 
-!          starttemp = (mval(month)*dt+lastmonthtemp*dtold)/(dt+dtold)
-!          endtemp = (nextmonthtemp*dtnew+mval(month)*dt)/(dtnew+dt)
-!          deltatemp = endtemp-starttemp
-!          
-!          ! Calculate vars for a,b,c coefficients in polynom y = ax^2 +bx + c
-!          d2t = endt**2.0 - startt**2.0
-!          d3t = endt**3.0 - startt**3.0!
 
-!          ! Take a sheet of paper and try solve the polynom, well here is the outcome
-!          polya = (mval(month)*dt - deltatemp*d2t/dt/2.0 - starttemp*dt + deltatemp*startt) / (d3t/3.0 - d2t**2.0/dt/2.0 - dt*startt**2.0 + startt*d2t)
-!          polyb = deltatemp/dt - polya*(startt+endt)
-!          polyc = starttemp - polya*startt**2.0 - polyb*startt!
+        !doy=1
+        !do moy=1,nmonth
+        !  do dm=1,ndaymonth(moy)
+        !    doy=doy+1
+        !    if (doy>middaymonth(moy)) then
+        !      ! interpolate to next month
+        !      monthly2daily(doy) = mval_ext(moy) + (doy-middaymonth_ext(moy))/ndaymonth_ext(moy) * (mval_ext(moy+1)-mval_ext(moy))
+        !    else if (doy<middaymonth(moy)) then
+        !      ! interpolate to previous month
+        !      monthly2daily(doy) = mval_ext(moy-1) + (doy-middaymonth_ext(moy-1))/ndaymonth_ext(moy-1) * (mval_ext(moy)-mval_ext(moy-1))
+        !    else
+        !      ! take value directly
+        !      monthly2daily(doy) = mval_ext(moy)
+        !    end if
+        !  end do
+        !end do
 
-!          ! Calculate daily values with the polynom function
-!          do dm=1,ndaymonth(month)
-!            doy = doy + 1
-!            monthly2daily(doy) = polya * real(doy)**2.0 + polyb * real(doy) + polyc
-!          enddo
-!          lastmonthtemp = mval(month)
-!        enddo!
+      !  !if (iftotals) then
+        !  doy=0
+        !  do moy=1,nmonth
+        !    do doyofmonth=1,ndaymonth(moy)
+        !      doy=doy+1
+        !      monthly2daily(doy)=monthly2daily(doy)/dble(ndaymonth(moy))
+        !    enddo
+        !  enddo
+        !endif
 
-!      case default!
 
-!        stop 'MONTHLY2DAILY: select viable case.'!
+      case ("polynom")
+        !--------------------------------------------------------------------
+        ! In addition to tempdaily daily values are calculated using a polynom of second
+        ! order through the middpoints between months. Additionally, average of daily 
+        ! values is identical to the monthly input data. That's crucial for modelling
+        ! soil heat diffusion and freezing/thawing processes. 
+        !--------------------------------------------------------------------!
+        if (monthistotal) &
+          stop 'MONTHLY2DAILY: no monthly totals allowed for polynom method'
+        
+        ! Starting conditons of december in previous year
+        startt = -30.5               ! midpoint between Nov-Dec of previous year
+        endt = 0.5                   ! midpoint between Dec-Jan of this year
+        dt = real(ndaymonth(month))  ! number of Dec days
+        if (present(mval_pvy)) then
+          lastmonthtemp = mval_pvy(nmonth) ! Dec mean temperature
+        else
+          lastmonthtemp = mval(nmonth)     ! Dec mean temperature
+        end if
 
-!    end select!
+        doy = 0                      ! initialisation of this years days
+        
+        do month=1,nmonth
+          dtold = dt
+          startt = endt
+          endt = endt + dt
+          if (month<nmonth) then
+            dtnew = real(ndaymonth(month+1))
+            nextmonthtemp = mval(month+1)
+          else
+            dtnew = real(ndaymonth(1))
+            if (present(mval_nxy)) then
+              nextmonthtemp = mval_nxy(1)
+            else
+              nextmonthtemp = mval(1)
+            end if
+          endif
 
-!  end function monthly2daily!
-!
+          starttemp = (mval(month)*dt+lastmonthtemp*dtold)/(dt+dtold)
+          endtemp = (nextmonthtemp*dtnew+mval(month)*dt)/(dtnew+dt)
+          deltatemp = endtemp-starttemp
+          
+          ! Calculate vars for a,b,c coefficients in polynom y = ax^2 +bx + c
+          d2t = endt**2.0 - startt**2.0
+          d3t = endt**3.0 - startt**3.0
+
+          ! Take a sheet of paper and try solve the polynom, well here is the outcome
+          polya = (mval(month)*dt - deltatemp*d2t/dt/2.0 - starttemp*dt + deltatemp*startt) / (d3t/3.0 - d2t**2.0/dt/2.0 - dt*startt**2.0 + startt*d2t)
+          polyb = deltatemp/dt - polya*(startt+endt)
+          polyc = starttemp - polya*startt**2.0 - polyb*startt
+
+          ! Calculate daily values with the polynom function
+          do dm=1,ndaymonth(month)
+            doy = doy + 1
+            monthly2daily(doy) = polya * real(doy)**2.0 + polyb * real(doy) + polyc
+          enddo
+          lastmonthtemp = mval(month)
+        enddo
+
+      case default
+
+        stop 'MONTHLY2DAILY: select viable case.'
+
+    end select
+
+  end function monthly2daily
+
 
 !  function monthly2daily_precip( mval_prec, mval_wet )!
 
 !    use params_core, only: nmonth, ndayyear
-
 !    implicit none
 
 !    ! arguments
@@ -257,6 +301,7 @@ contains
 
 !    ! function return variable
 !    real, dimension(ndayyear), intent(out) :: dval_prec
+
 
 !    day=0
 !    prob=0.0
@@ -323,13 +368,11 @@ contains
 !    return!
 
 !  end function monthly2daily_precip!
-
 !      
 !  function random(k)!
 !  
 !    ! arguments
 !    integer, dimension(4), intent(in) :: k
-
 !    ! local variables
 !    integer :: i
 
@@ -348,9 +391,9 @@ contains
 !    k(4)=k(4)+i
 !    i=k(4)/100
 !    k(4)=k(4)-100*i
-!    random=(((dble(k(1))*0.001d0+dble(k(2)))*0.01d0+dble(k(3))) * 0.001d0+dble(k(4)))*0.01d0!
-
+!    random=(((dble(k(1))*0.001d0+dble(k(2)))*0.01d0+dble(k(3))) * 0.001d0+dble(k(4)))*0.01d0
+!    
 !  end function random          
-!      
+      
 
 end module sofunutils

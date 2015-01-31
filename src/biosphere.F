@@ -17,6 +17,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use fixveg
   use soiltemp_sitch, only: soiltemp
   use waterbal_stash, only: outdcpa ! used for soiltemp xxx make this global?
+  use phenology_lpx, only: summerphenology
 
   ! xxx debug
   use fluxes
@@ -106,7 +107,10 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     call initannual
 
     !call snow
-    !call summerphenology (drough-driven phenology is calculated after waterbalance)
+
+    ! get temperature-driven phenology (drought-driven phenology is calculated after waterbalance)
+    call summerphenology(jpngr, dtemp_field(:,jpngr))
+
     !call climate20
     !call bioclim -> SR contained in 'establishment'
     !call conversion( lu_area )

@@ -126,7 +126,7 @@ contains
     ! LOCAL VARIABLES
     integer, parameter :: npar = 8
     real, dimension(npar) :: params_array
-
+    
 
     open(unit=01,file=trim(paramfilnam),status='OLD')      
     read (01,*) params_array
