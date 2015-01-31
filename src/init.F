@@ -30,17 +30,17 @@ subroutine initglobal
   psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! fast decomposing soil organic matter, organic pool [gC/m2 and gN/m2]
   psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! recalcitrant soil organic matter    , organic pool [gC/m2 and gN/m2]
 
-  dwtot(:,:)    = 0.0  ! total soil water content (mm); corresponds to 'dwn' in STASH
+  ! xxx try
+  dwtot(:,:)    = 50.0  ! total soil water content (mm); corresponds to 'dwn' in STASH
 
   !! xxx try
   !! initialise pools with non-zero values
   !! here example gridcell 9.5 E, 47.5 N
-   psoil_fs = orgpool( carbon(4000.), nitrogen(150.) )
-   psoil_sl = orgpool( carbon(10000.), nitrogen(550.) )
-   plitt_af = orgpool( carbon(500.), nitrogen(10.))
-   plitt_as = orgpool( carbon(1500.), nitrogen(30.))
-   plitt_bg = orgpool( carbon(400.), nitrogen(8.))
-
+  psoil_fs = orgpool( carbon(4000.), nitrogen(150.) )
+  psoil_sl = orgpool( carbon(10000.), nitrogen(550.) )
+  plitt_af = orgpool( carbon(500.), nitrogen(10.))
+  plitt_as = orgpool( carbon(1500.), nitrogen(30.))
+  plitt_bg = orgpool( carbon(400.), nitrogen(8.))
 
   ! xxx debug: change back to 0.0
   nh4(:,:)      = nitrogen(10.0)

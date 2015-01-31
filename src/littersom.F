@@ -12,8 +12,10 @@ subroutine littersom( jpngr, doy )
   use rates
   use fluxes, only: drsoil, drhet, doc
   use params_modl
-  use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, nh4, no3
+  use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
+    psoil_sl, nh4, no3, dtemp_soil
   use outvars, only: outdnetmin, outdnfixfree, outanreq, outaClit2soil, outaNlit2soil
+  use waterbal_stash, only: cpa_d
 
   ! xxx debug
   use pools, only: pleaf, proot
@@ -55,10 +57,6 @@ subroutine littersom( jpngr, doy )
   real :: avl                                     ! mineral N available as NH4
   real :: netmin_litt                             ! net N mineralisation from litter decomposition
  
-  ! xxx try
-  real :: soilmoist
-  real :: soiltemp
-
 #if _check_sanity
   real :: cbal_before
   real :: cbal_after
@@ -78,11 +76,6 @@ subroutine littersom( jpngr, doy )
   dlitt = orgpool( carbon(0.0), nitrogen(0.0) ) 
 
   do lu=1,nlu
-
-    ! XXX try
-    soiltemp = 10.    
-    soilmoist = 0.8   
-
     !/////////////////////////////////////////////////////////////////////////
     ! DECAY RATES
     !-------------------------------------------------------------------------
@@ -111,17 +104,17 @@ subroutine littersom( jpngr, doy )
          
         ! define decomposition rates for current soil temperature and moisture
         klitt_af(lu) = klitt_af10 &
-          * ftemp(soiltemp,"lloyd_and_taylor") &
-          * fmoist(soilmoist,"foley") ! alternative: "gerten"
+          * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
+          * fmoist(cpa_d(lu),"foley") ! alternative: "gerten"
         klitt_as(lu) = klitt_as10 &
-          * ftemp(soiltemp,"lloyd_and_taylor") &
-          * fmoist(soilmoist,"foley") ! alternative: "gerten"
+          * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
+          * fmoist(cpa_d(lu),"foley") ! alternative: "gerten"
         klitt_bg(lu) = klitt_bg10 &
-          * ftemp(soiltemp,"lloyd_and_taylor") &
-          * fmoist(soilmoist,"foley") ! alternative: "gerten"
+          * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
+          * fmoist(cpa_d(lu),"foley") ! alternative: "gerten"
         kexu(lu)     = kexu10     &
-          * ftemp(soiltemp,"lloyd_and_taylor") &
-          * fmoist(soilmoist,"foley") ! alternative: "gerten"
+          * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
+          * fmoist(cpa_d(lu),"foley") ! alternative: "gerten"
 
       end if
     end do
@@ -133,11 +126,11 @@ subroutine littersom( jpngr, doy )
     !           Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
     !-------------------------------------------------------------------------
     ksoil_fs(lu) = ksoil_fs10 &
-      * ftemp(soiltemp,"lloyd_and_taylor") &
-      * fmoist(soilmoist,"foley")     ! alternative: "gerten"
+      * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
+      * fmoist(cpa_d(lu),"foley")     ! alternative: "gerten"
     ksoil_sl(lu) = ksoil_sl10 &
-      * ftemp(soiltemp,"lloyd_and_taylor") &
-      * fmoist(soilmoist,"foley")     ! alternative: "gerten"
+      * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
+      * fmoist(cpa_d(lu),"foley")     ! alternative: "gerten"
 
     do pft=1,npft
       if (islu(pft,lu)) then

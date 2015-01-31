@@ -276,14 +276,12 @@ contains
     use fluxes, only: dnpp, dnup, dcex
     use waterbal_stash, only: aet_d  ! xxx make 'aet_d' a required global variable?
     use treegeometry, only: nind, ispresent, fpc_grid
-    use pools, only: nh4, no3, pexud, plabl, proot, dwtot 
+    use pools, only: nh4, no3, pexud, plabl, proot, dwtot, dtemp_soil
 
     implicit none
     
     ! ARGUMENTS
     integer, intent(in) :: jpngr, pft
-
-    real :: soiltemp           ! is either dtemp_soil, or mtemp_soil, depending on temporal mode
     
     ! LOCAL VARIABLES
     integer, parameter :: nsl_eff = 1           ! effective number of soil layers for vertical distribution of N inorg
@@ -325,14 +323,11 @@ contains
     real :: n_demand
     real :: n_demand_remaining
     real :: n_uptake_retrans
-    real :: cost(3)                              ! cost of N for each layer and source (-ID) [gC/gN]
+    real :: cost(3)                              ! cost of N for each source (-ID) [gC/gN]
     real :: cost_of_n                            ! cheapest cost of N for each layer [gC/gN]
     real :: Cacq                                 ! C spent for N acquisition
     real :: Nacq                                 ! N acquired by spending Cacq
           
-
-    ! xxx try
-    soiltemp = 18.0    
 
     !-------------------------------------------------------------------------
     ! FUN treats different soil layers explicitly. In LPX N-pools represent a
@@ -344,8 +339,6 @@ contains
     ! uptake, N-inorg pools, root turnover, N mineralization would be nice to have.
     !-------------------------------------------------------------------------
 
-
-    
     ! Absolute water content corresponding to permanent wilting point [gH2O].
     !epsilon_wtot = Fpwp( nlayers-nsl+1, jpngr ) * sum( Dz_soil(:) ) * 1000.
     !-------------------------------------------------------------------------
@@ -437,6 +430,17 @@ contains
       call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc, dwtot(lu,jpngr) )
       call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc, dwtot(lu,jpngr))
 
+      ! xxx debug
+      !print*,'dwtot(lu,jpngr)  ',dwtot(lu,jpngr)
+
+      !print*,'nh4(lu,jpngr)%n14',nh4(lu,jpngr)%n14
+      !print*,'avail_nh4        ',avail_nh4
+      !print*,'nh4_conc         ',nh4_conc
+
+      !print*,'no3(lu,jpngr)%n14',no3(lu,jpngr)%n14
+      !print*,'avail_no3        ',avail_no3
+      !print*,'no3_conc         ',no3_conc
+
        
       !--------------------------------------------------------------------------
       ! Comment from FUN:
@@ -507,6 +511,8 @@ contains
 
 
       ! XXX May pools be emptied here?
+      !print*,'after passive uptake'
+      !print*,'NPP, N demand, Ninorg', dnpp(pft)%c12, n_demand_remaining, no3(lu,jpngr)%n14+nh4(lu,jpngr)%n14
 
       if (unmetDemand) then
         !--------------------------------------------------------------------------
@@ -522,11 +528,13 @@ contains
         ! varying soil temperatures.
         !--------------------------------------------------------------------------
         if ( nfixer(pft) ) then
-          cost(icostFix) = fun_cost_fix( soiltemp )
+          cost(icostFix) = fun_cost_fix( dtemp_soil(lu,jpngr) )
         else
           cost(icostFix) = BIG_COST
           option(icostFix) = .false.
         endif
+
+        !print*,'cost(icostFix)',cost(icostFix)
 
         !--------------------------------------------------------------------------
         ! Comment from FUN:
@@ -596,23 +604,36 @@ contains
           !--------------------------------------------------------------------------
           cost(icostActiveNH4) = fun_cost_active_nh4( avail_nh4, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
           cost(icostActiveNO3) = fun_cost_active_no3( avail_no3, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
-          ! cost(icostActiveOrg) = fun_cost_active_org(litterN)
-           
+          !cost(icostActiveOrg) = fun_cost_active_org(litterN)
+
+          !print*,'avail_nh4',avail_nh4
+          !print*,'avail_no3',avail_no3
+          !print*,'proot(pft,jpngr)%c%c12* nind(pft,jpngr)',proot(pft,jpngr)%c%c12* nind(pft,jpngr)
+          !print*,'cost(icostActiveNH4)',cost(icostActiveNH4)
+          !print*,'cost(icostActiveNO3)',cost(icostActiveNO3)
+          !print*,'cost(:)',cost(:)
+          !stop
+
           !--------------------------------------------------------------------------
           ! Find the lowest cost in each soil layer and each sub-timestep
           !--------------------------------------------------------------------------
           mloc(1:1) =  MINLOC( cost(:), mask=option(:) )
           iminCost  = mloc(1)
           cost_of_n = cost(iminCost)
-                                 
+
+          !print*,'cost(:)                ', cost(:)
+          !print*,'iminCost, Cacq, Nacq   ', iminCost, Cacq, Nacq
+
+          !print*,'cost_of_n, BIG_COST, SMALLVALUE', cost_of_n, BIG_COST, SMALLVALUE
+                                  
           !--------------------------------------------------------------------------
           ! Spend C on extracting N
           !--------------------------------------------------------------------------
-          if ( cost_of_n - BIG_COST > SMALLVALUE ) then
+          if ( cost_of_n > BIG_COST ) then
             ! If the cheapest N is very expensive, stores are empty
             ! xxx if cost exceeds maximum, don't take up N and put C to labl                 
             empty = .true.
-             
+
           else
             ! Identify the process involved with the cheapest N
             icost = iminCost
@@ -624,8 +645,8 @@ contains
             Cacq = npp_remaining_step/(cton_pro(pft)/cost(icost)+1.0)
             Nacq = Cacq/cost(icost)
              
-            ! print*,'pft, cost(iz,icost)', pft, cost(iz,icost)
-
+            !print*,'icost, cost(:), Cacq, Nacq', pft, icost, cost(:), Cacq, Nacq
+            
             !--------------------------------------------------------------------------
             ! Load values into process-specific variables and limit
             ! increments if store exhausted. Note that the fluxes and
@@ -782,6 +803,10 @@ contains
 
           endif                                      !empty
            
+          !print*,'after step ', istep
+          !print*,'NPP, N demand, Ninorg', dnpp(pft)%c12, npp_remaining/cton_pro(pft), no3(lu,jpngr)%n14+nh4(lu,jpngr)%n14
+
+
         end do substeps
 
 
@@ -834,7 +859,7 @@ contains
   contains
 
     subroutine update_Ninorg( lu, Ninorg, avail_Ninorg, Ninorg_conc, wtot )
-      !******************************************************************************
+      !**************************************************************************
       ! Update N taken up and available N in soil.
       !--------------------------------------------------------------------------
       implicit none
@@ -846,13 +871,15 @@ contains
       real, intent(in)  :: wtot           ! total soil water content (mm)
                     
       Ninorg_conc = Ninorg/wtot
-      
+
       if ( wtot > EPSILON_WTOT ) then 
         avail_Ninorg = Ninorg - EPSILON_WTOT*Ninorg_conc
       else
-        avail_Ninorg = 0.
-        Ninorg_conc  = 0.
+        avail_Ninorg = 0.0
+        Ninorg_conc  = 0.0
       endif
+
+      return
 
     end subroutine update_Ninorg
 
@@ -864,13 +891,17 @@ contains
       use params_modl
       implicit none
 
-      real :: fun_cost_active_nh4         ! gC/gN
+      ! arguments
       real, intent(in) :: avail_nh4
       real, intent(in) :: croot
 
+      ! function return variable
+      real :: fun_cost_active_nh4         ! gC/gN
+
       if ( croot > SMALLVALUE ) then
         if ( avail_nh4 > SMALLVALUE ) then
-          fun_cost_active_nh4 = KN_ACTIVE_NH4/avail_nh4 * KC_ACTIVE_NH4/croot
+          fun_cost_active_nh4 = KN_ACTIVE_NH4 / avail_nh4 * KC_ACTIVE_NH4 / croot 
+          ! fun_cost_active_nh4 = KN_ACTIVE_NH4 / avail_nh4 + KC_ACTIVE_NH4 / croot ! xxx in FUN 2.0 it's a sum
         else
           fun_cost_active_nh4 = BIG_COST
         endif
