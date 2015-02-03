@@ -1,4 +1,4 @@
-subroutine npp( jpngr, dtemp, dtemp_soil )
+subroutine npp( jpngr, dtemp )
   !/////////////////////////////////////////////////////////////////////////
   ! NET PRIMARY PRODUCTIVITY
   ! Calculate maintenance and growth respiration and substract this from GPP 
@@ -19,13 +19,13 @@ subroutine npp( jpngr, dtemp, dtemp_soil )
   use treegeometry, only: nind, ispresent
   use pools, only: pleaf, proot, psapw, pexud, plabl
   use nuptake_fun, only: nuptake
+  use statevars, only: dtemp_soil
 
   implicit none
 
   ! ARGUMENTS
   integer, intent(in)              :: jpngr
   real, intent(in)                 :: dtemp      ! air temperature at this day
-  real, dimension(nlu), intent(in) :: dtemp_soil ! soil temperature temperature at this day
 
   ! LOCAL VARIABLES
   integer :: pft
@@ -47,7 +47,7 @@ subroutine npp( jpngr, dtemp, dtemp_soil )
       
       ! reference temperature: 10°C
       ftemp_air  = ftemp( dtemp, "lloyd_and_taylor" )
-      ftemp_soil = ftemp( dtemp_soil(lu), "lloyd_and_taylor" )
+      ftemp_soil = ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" )
 
       
       !/////////////////////////////////////////////////////////////////////////
@@ -168,6 +168,7 @@ contains
     resp_maint = rresp_maint(pft) * nmass
 #else
     resp_maint = rresp_maint(pft) * kresp * nmass * ftemp ! xxx try: *dphen(day,pft)
+    ! xxx remove here
 #endif
 
     ! alternative method in LPX: directly from photosynthesis ('dresp' in LPX-Bern)

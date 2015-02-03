@@ -6,8 +6,8 @@
 #DEBUGFLAGS
 
 # List of source code files:  xxx where to put sofun (main) ??? xxx
-MODS=params_core.mod.F classdefs.mod.F sofunutils.mod.F params_siml.mod.F params_site.mod.F gridvars_siterun.mod.F forcing_siterun.mod.F params_modl.mod.F rates.mod.F pools.mod.F input_site.mod.F fluxes.mod.F waterbal_stash.mod.F treegeometry.mod.F nuptake_fun.mod.F fixveg.mod.F outvars.mod.F soiltemp_sitch.mod.F phenology_lpx.mod.F
-SOURCES=sofun.F biosphere.F getpar_modl.F init.F initio.F kill.F gpp.F npp.F littersom.F ntransform.F turnover.F allocation.F getout.F writeout_ascii.F
+MODS=params_core.mod.F classdefs.mod.F sofunutils.mod.F params_siml.mod.F params_site.mod.F gridvars_siterun.mod.F forcing_siterun.mod.F params_modl.mod.F rates.mod.F pools.mod.F input_site.mod.F fluxes.mod.F statevars.mod.F waterbal_stash.mod.F treegeometry.mod.F nuptake_fun.mod.F ntransform_xuri.mod.F fixveg.mod.F outvars.mod.F soiltemp_sitch.mod.F phenology_lpx.mod.F
+SOURCES=sofun.F biosphere.F getpar_modl.F init.F initio.F kill.F gpp.F npp.F littersom.F turnover.F allocation.F getout.F writeout_ascii.F
 
 # List of build dependencies (Makefile and include files):
 DEPEND=Makefile ../Makefile sofun_module_control.inc

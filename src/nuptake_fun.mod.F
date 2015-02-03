@@ -27,10 +27,8 @@ module nuptake_fun
   real :: MINIMUMCOSTFIX    ! minimum cost of N fixation (at optimal temperature)
   real :: FIXOPTIMUM        ! optimum temperature for N fixation
   real :: FIXWIDTH          ! shape parameter for width of N fixation cost function
-  real :: KN_ACTIVE_NO3     ! N-availability constant in cost function for active NO3 uptake
-  real :: KN_ACTIVE_NH4     ! N-availability constant in cost function for active NH4 uptake
-  real :: KC_ACTIVE_NO3     ! root exploration constant in cost function for active NO3 uptake
-  real :: KC_ACTIVE_NH4     ! root exploration constant in cost function for active NH4 uptake
+  real :: KN_ACTIVE_NINORG  ! N-availability constant in cost function for active NH4 uptake
+  real :: KC_ACTIVE_NINORG   ! root exploration constant in cost function for active NH4 uptake
   real :: EPSILON_WTOT      ! minimum soil water content above which N becomes available  
 
   ! MODULE-SPECIFIC VARIABLES
@@ -124,7 +122,7 @@ contains
     character(len=*) paramfilnam
 
     ! LOCAL VARIABLES
-    integer, parameter :: npar = 8
+    integer, parameter :: npar = 6
     real, dimension(npar) :: params_array
     
 
@@ -146,20 +144,14 @@ contains
     ! shape parameter of cost function of N fixation 
     FIXWIDTH = params_array(3)
 
-    ! N-availability constant in cost function for active NO3 uptake
-    KN_ACTIVE_NO3 = params_array(4)
+    ! N-availability constant in cost function for active inorganic N uptake
+    KN_ACTIVE_NINORG = params_array(4)
     
-    ! N-availability constant in cost function for active NH4 uptake
-    KN_ACTIVE_NH4 = params_array(5)
-
-    ! root exploration constant in cost function for active NO3 uptake
-    KC_ACTIVE_NO3 = params_array(6)
+    ! root exploration constant in cost function for active inorganic N uptake
+    KC_ACTIVE_NINORG = params_array(5)
     
-    ! root exploration constant in cost function for active NH4 uptake
-    KC_ACTIVE_NH4 = params_array(7)
-
     ! minimum soil water content above which N becomes available 
-    EPSILON_WTOT = params_array(8)
+    EPSILON_WTOT = params_array(6)
 
     return
 
@@ -276,7 +268,8 @@ contains
     use fluxes, only: dnpp, dnup, dcex
     use waterbal_stash, only: aet_d  ! xxx make 'aet_d' a required global variable?
     use treegeometry, only: nind, ispresent, fpc_grid
-    use pools, only: nh4, no3, pexud, plabl, proot, dwtot, dtemp_soil
+    use pools, only: pninorg, pexud, plabl, proot, dwtot
+    use statevars, only: dtemp_soil
 
     implicit none
     
@@ -285,9 +278,8 @@ contains
     
     ! LOCAL VARIABLES
     integer, parameter :: nsl_eff = 1           ! effective number of soil layers for vertical distribution of N inorg
-    integer, parameter :: icostActiveNH4 = 1    ! process number for active uptake of NH4
-    integer, parameter :: icostActiveNO3 = 2    ! process number for active uptake of NO3
-    integer, parameter :: icostFix = 3          ! process number for symbiotic N-fixation
+    integer, parameter :: icostActiveNinorg = 1 ! process number for active uptake of inorganic N
+    integer, parameter :: icostFix = 2          ! process number for symbiotic N-fixation
     integer, parameter :: MAXSTEP = 100         ! maximum number of sub-time steps in N uptake optimisation
     integer, parameter :: PARTS = 100           ! number of parts of split up of inorganic N for uptake
 
@@ -297,7 +289,7 @@ contains
     logical unmetDemand
     logical ranked         
     logical empty
-    logical option(3)                           ! whether N-fixation is an option
+    logical option(2)                           ! whether N-fixation is an option
 
     integer :: iz, istep, lu   ! counter variables
     integer :: iminCost                         ! info which source (-ID) is cheapest in each layer
@@ -307,12 +299,9 @@ contains
     integer, parameter :: nstep = 100           ! chose this to be flexible again
 
     real :: dtransp                             ! daily transpiration for this PFT (mm)
-    real :: avail_nh4                           ! available NH4 in soil layer (gN/m2)
-    real :: avail_no3                           ! available NO3 in soil layer (gN/m2)
-    real :: nh4_conc                            ! NH4 concentration (gN/gH2O)
-    real :: no3_conc         
-    real :: nh4_uptake                          ! (gN) 
-    real :: no3_uptake                          ! (gN)
+    real :: avail_ninorg                        ! available inorganic N in soil layer (gN/m2)
+    real :: ninorg_conc                         ! inorganic N concentration (gN/gH2O)
+    real :: ninorg_uptake                       ! (gN) 
     real :: n_uptake_pass                       ! (gN)
     real :: npp_remaining
     real :: npp_remaining_step
@@ -323,7 +312,7 @@ contains
     real :: n_demand
     real :: n_demand_remaining
     real :: n_uptake_retrans
-    real :: cost(3)                              ! cost of N for each source (-ID) [gC/gN]
+    real :: cost(2)                              ! cost of N for each source (-ID) [gC/gN]
     real :: cost_of_n                            ! cheapest cost of N for each layer [gC/gN]
     real :: Cacq                                 ! C spent for N acquisition
     real :: Nacq                                 ! N acquired by spending Cacq
@@ -375,11 +364,6 @@ contains
       Cacq_active    = 0.0
       Cacq_fix       = 0.0
        
-      no3_conc       = 9999.e27                     ! assign dummy value before variable is passed to SR
-      nh4_conc       = 9999.e27                     ! assign dummy value before variable is passed to SR
-      avail_no3      = 9999.e27                     ! assign dummy value before variable is passed to SR
-      avail_nh4      = 9999.e27                     ! assign dummy value before variable is passed to SR
-       
       option(:)      = .true. 
 
       !//////////////////////////////////////////////////////////////////////////
@@ -420,28 +404,18 @@ contains
 
 
       !//////////////////////////////////////////////////////////////////////////
-      ! NO3 AND NH4 CONCENTRATION IN SOIL WATER
+      ! INORGANIC N CONCENTRATION IN SOIL WATER
       !-------------------------------------------------------------------------
       ! N is assumed immobile and unavailable in dry soils. Using the total soil
       ! water and soil N to calculate concentration. Should be equivalent to
       ! assuming concentration of N as being equal in liquid and ice and assuming
       ! only N in liquid is available. nh4_conc and no3_conc are in gN/gH2O.
       !-------------------------------------------------------------------------
-      call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc, dwtot(lu,jpngr) )
-      call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc, dwtot(lu,jpngr))
+      call update_Ninorg( lu, pninorg(lu,jpngr)%n14, avail_ninorg, ninorg_conc, dwtot(lu,jpngr) )
 
       ! xxx debug
       !print*,'dwtot(lu,jpngr)  ',dwtot(lu,jpngr)
 
-      !print*,'nh4(lu,jpngr)%n14',nh4(lu,jpngr)%n14
-      !print*,'avail_nh4        ',avail_nh4
-      !print*,'nh4_conc         ',nh4_conc
-
-      !print*,'no3(lu,jpngr)%n14',no3(lu,jpngr)%n14
-      !print*,'avail_no3        ',avail_no3
-      !print*,'no3_conc         ',no3_conc
-
-       
       !--------------------------------------------------------------------------
       ! Comment from FUN:
       ! Soil N is assumed to be uniform across the gridbox (we have a gridbox mean
@@ -474,19 +448,16 @@ contains
       ! No active control on passive uptake - always occurrs even if the unmet N
       ! demand is zero.
       !--------------------------------------------------------------------------         
-      nh4_uptake = nh4_conc * dtransp
-      no3_uptake = no3_conc * dtransp
+      ninorg_uptake = ninorg_conc * dtransp
 
       ! *** Associate cost of passive NO3 uptake due to pH equilibration by plant (Gutschik, 1981)? ***
        
-      nh4_uptake = min( nh4_uptake, avail_nh4 )
-      no3_uptake = min( no3_uptake, avail_no3 )
+      ninorg_uptake = min( ninorg_uptake, avail_ninorg )
        
       ! xxx add more flexibility by allowing N uptake in excess of demand 
-      !n_uptake_pass = nh4_uptake + no3_uptake
 
       ! Do not take up any N in excess of demand
-      n_uptake_pass = min( (nh4_uptake + no3_uptake), n_demand_remaining )
+      n_uptake_pass = min( ninorg_uptake, n_demand_remaining )
 
       if ( n_demand_remaining <= n_uptake_pass ) then
         !--------------------------------------------------------------------------
@@ -503,11 +474,9 @@ contains
       !--------------------------------------------------------------------------
       ! Update N taken up and available N in soil.
       !--------------------------------------------------------------------------
-      nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - nh4_uptake
-      no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - no3_uptake
+      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - ninorg_uptake
        
-      call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc, dwtot(lu,jpngr) )
-      call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc, dwtot(lu,jpngr) )
+      call update_Ninorg( lu, pninorg(lu,jpngr)%n14, avail_ninorg, ninorg_conc, dwtot(lu,jpngr) )
 
 
       ! XXX May pools be emptied here?
@@ -563,9 +532,6 @@ contains
         !          Ninorg/PARTS = n_demand_remaining/nstep
         ! => solve for nstep...
         !--------------------------------------------------------------------------
-        !print*,'MAX(no3(lu,jpngr)%n14,nh4(lu,jpngr)%n14))',MAX(no3(lu,jpngr)%n14,nh4(lu,jpngr)%n14)
-        !nstep = MIN(INT(n_demand_remaining*real(PARTS)/MAX(no3(lu,jpngr)%n14,nh4(lu,jpngr)%n14)),MAXSTEP)
-        !nstep = 100
         
         !--------------------------------------------------------------------------
         ! Calculate NPP still to pay for after passive uptake and retranslocation
@@ -602,14 +568,13 @@ contains
           !--------------------------------------------------------------------------
           ! Cost of active uptake of NH4, NO3 and organic N
           !--------------------------------------------------------------------------
-          cost(icostActiveNH4) = fun_cost_active_nh4( avail_nh4, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
-          cost(icostActiveNO3) = fun_cost_active_no3( avail_no3, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
+          cost(icostActiveNinorg) = fun_cost_active_ninorg( avail_ninorg, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
           !cost(icostActiveOrg) = fun_cost_active_org(litterN)
 
           !print*,'avail_nh4',avail_nh4
           !print*,'avail_no3',avail_no3
           !print*,'proot(pft,jpngr)%c%c12* nind(pft,jpngr)',proot(pft,jpngr)%c%c12* nind(pft,jpngr)
-          !print*,'cost(icostActiveNH4)',cost(icostActiveNH4)
+          !print*,'cost(icostActiveNinorg)',cost(icostActiveNinorg)
           !print*,'cost(icostActiveNO3)',cost(icostActiveNO3)
           !print*,'cost(:)',cost(:)
           !stop
@@ -654,55 +619,27 @@ contains
             ! to be scaled to get effect on gridbox scale.
             !--------------------------------------------------------------------------
 
-            if (icost==icostActiveNH4) then
+            if (icost==icostActiveNinorg) then
               !//////////////////////////////////////////////////////////////////////////
-              ! ACTIVE NH4 UPTAKE
+              ! ACTIVE INORGANIC N UPTAKE
               !--------------------------------------------------------------------------
               ! Decrement available store and update concentration.
               ! If store insufficient, reduce uptake and NPP increment.
               !--------------------------------------------------------------------------
-              if ( Nacq > avail_nh4 ) then
+              if ( Nacq > avail_ninorg ) then
                 ! xxx better way to solve this?
-                Nacq = avail_nh4
+                Nacq = avail_ninorg
                 Cacq = Nacq*cost(icost)
               endif
 
-              nh4(lu,jpngr)%n14 = nh4(lu,jpngr)%n14 - Nacq
+              pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - Nacq
 
-              call update_Ninorg( lu, nh4(lu,jpngr)%n14, avail_nh4, nh4_conc, dwtot(lu,jpngr) )
-
-              Nacq_active = Nacq_active + Nacq
-              Cacq_active = Cacq_active + Cacq
-              nh4_uptake = nh4_uptake + Nacq
-               
-            elseif (icost==icostActiveNO3) then
-              !//////////////////////////////////////////////////////////////////////////
-              ! ACTIVE NO3 UPTAKE
-              !--------------------------------------------------------------------------
-              ! Decrement available store and update concentration.
-              ! If store insufficient, reduce uptake and NPP increment.
-              !--------------------------------------------------------------------------
-              if ( Nacq > avail_no3 ) then
-                ! xxx better way to solve this?
-                Nacq = avail_no3
-                Cacq = Nacq*cost(icost)
-              endif
-
-              no3(lu,jpngr)%n14 = no3(lu,jpngr)%n14 - Nacq
-
-              call update_Ninorg( lu, no3(lu,jpngr)%n14, avail_no3, no3_conc, dwtot(lu,jpngr) )
+              call update_Ninorg( lu, pninorg(lu,jpngr)%n14, avail_ninorg, ninorg_conc, dwtot(lu,jpngr) )
 
               Nacq_active = Nacq_active + Nacq
               Cacq_active = Cacq_active + Cacq
-              no3_uptake = no3_uptake + Nacq
+              ninorg_uptake = ninorg_uptake + Nacq
                
-              ! elseif ( icost == icostActiveOrg ) then
-              !//////////////////////////////////////////////////////////////////////////
-              ! ACTIVE UPTAKE OF ORGANIC N
-              !--------------------------------------------------------------------------
-              ! Does it deplete any explecit store?
-              ! XXX To be implemented XXX
-
             else
 
               ! xxx instead of fixing, put C to labile pool and don't take up any N
@@ -740,18 +677,9 @@ contains
             !--------------------------------------------------------------------------
             if (istep < nstep) then
                
-              if (icost==icostActiveNH4) then
+              if (icost==icostActiveNinorg) then
 
-                cost(icostActiveNH4) = fun_cost_active_nh4( avail_nh4, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
-
-              elseif (icost==icostActiveNO3) then
-
-                cost(icostActiveNO3) = fun_cost_active_no3( avail_no3, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
-                 
-                ! If N-org uptake depletes stores of N-org, update costs here
-                ! elseif (icost==icostActiveOrg) then
-
-                ! cost(icostActiveOrg) = fun_cost_active_org(litterN)
+                cost(icostActiveNinorg) = fun_cost_active_ninorg( avail_ninorg, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
 
               endif
 
@@ -884,58 +812,34 @@ contains
     end subroutine update_Ninorg
 
 
-    function fun_cost_active_nh4( avail_nh4, croot )
+    function fun_cost_active_ninorg( avail_ninorg, croot )
       !******************************************************************************
-      ! Cost of active NH4 uptake by exudation of labile C. From Fisher er al., 2010.
+      ! Cost of active inorganic N uptake by exudation of labile C. 
+      ! From Fisher er al., 2010.
       !--------------------------------------------------------------------------      
       use params_modl
       implicit none
 
       ! arguments
-      real, intent(in) :: avail_nh4
+      real, intent(in) :: avail_ninorg
       real, intent(in) :: croot
 
       ! function return variable
-      real :: fun_cost_active_nh4         ! gC/gN
+      real :: fun_cost_active_ninorg         ! gC/gN
 
       if ( croot > SMALLVALUE ) then
-        if ( avail_nh4 > SMALLVALUE ) then
-          fun_cost_active_nh4 = KN_ACTIVE_NH4 / avail_nh4 * KC_ACTIVE_NH4 / croot 
-          ! fun_cost_active_nh4 = KN_ACTIVE_NH4 / avail_nh4 + KC_ACTIVE_NH4 / croot ! xxx in FUN 2.0 it's a sum
+        if ( avail_ninorg > SMALLVALUE ) then
+          fun_cost_active_ninorg = KN_ACTIVE_NINORG / avail_ninorg * KC_ACTIVE_NINORG / croot 
+          ! fun_cost_active_ninorg = KN_ACTIVE_NH4 / avail_nh4 + KC_ACTIVE_NH4 / croot ! xxx in FUN 2.0 it's a sum
         else
-          fun_cost_active_nh4 = BIG_COST
+          fun_cost_active_ninorg = BIG_COST
         endif
 
       else
-        fun_cost_active_nh4 = BIG_COST
+        fun_cost_active_ninorg = BIG_COST
       endif
 
-    end function fun_cost_active_nh4
-
-
-    function fun_cost_active_no3( avail_no3, croot )
-      !******************************************************************************
-      ! Cost of active NO3 uptake by exudation of labile C. From Fisher er al., 2010.
-      !--------------------------------------------------------------------------      
-      use params_modl
-      implicit none
-
-      real :: fun_cost_active_no3         ! gC/gN
-      real, intent(in) :: avail_no3
-      real, intent(in) :: croot
-
-      if (croot > SMALLVALUE ) then
-        if ( avail_no3 > SMALLVALUE ) then
-          fun_cost_active_no3 = KN_ACTIVE_NO3/avail_no3 * KC_ACTIVE_NO3/croot ! XXX +x [gC/gN for pH equilibration]
-        else
-          fun_cost_active_no3 = BIG_COST
-        endif
-
-      else
-        fun_cost_active_no3 = BIG_COST
-      endif
-    
-    end function fun_cost_active_no3
+    end function fun_cost_active_ninorg
 
 
     !******************************************************************************

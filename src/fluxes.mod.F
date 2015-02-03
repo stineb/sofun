@@ -29,17 +29,6 @@
 
     type(nitrogen), dimension(npft) :: dnup   ! daily N uptake [gN/m2/d]
 
-    ! xxx add dnfix_symb
-
-    real, dimension(nlu)  :: dn2o             ! soil N2O emissions [gN/m2/d]
-    real, dimension(nlu)  :: dn2              ! soil N2 emissions [gN/m2/d]
-    real, dimension(nlu)  :: dno              ! soil NO emissions [gN/m2/d]
-    real, dimension(nlu)  :: dnloss           ! total N loss (gaseous+leaching) [gN/m2/d]
-    real, dimension(nlu)  :: ddenitr          ! gross denitrification [gN/m2/d]
-    real, dimension(nlu)  :: dnitr            ! gross nitrification [gN/m2/d]
-    real, dimension(nlu)  :: dvol             ! N volatilisation[gN/m2/d]
-    real, dimension(nlu)  :: dleach           ! N leaching [gN/m2/d]
-
     ! variables without spatial dimension: have NO memory from one to next year
     type(orgpool), dimension(nlu) :: aestab   ! annual C and N fixation due to establishment (=acflux_estab,an_uptake_estab)
 

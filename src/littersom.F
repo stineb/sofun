@@ -10,10 +10,11 @@ subroutine littersom( jpngr, doy )
   use params_core
   use classdefs
   use rates
-  use fluxes, only: drsoil, drhet, doc
+  use fluxes, only: drsoil, drhet
   use params_modl
   use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
-    psoil_sl, nh4, no3, dtemp_soil
+    psoil_sl, pninorg
+  use statevars, only: dtemp_soil, ddoc
   use outvars, only: outdnetmin, outdnfixfree, outanreq, outaClit2soil, outaNlit2soil
   use waterbal_stash, only: cpa_d
 
@@ -54,7 +55,7 @@ subroutine littersom( jpngr, doy )
   real :: Nfix                                    ! temporary variable, N fixation implied in litter decomposition,
   real :: rest                                    ! temporary variable
   real :: req                                     ! N required for litter decomposition 
-  real :: avl                                     ! mineral N available as NH4
+  real :: avl                                     ! mineral N available as inorganic N
   real :: netmin_litt                             ! net N mineralisation from litter decomposition
  
 #if _check_sanity
@@ -68,7 +69,7 @@ subroutine littersom( jpngr, doy )
     + psoil_sl(1,1)%c%c12 + drhet(1)%c12
   nbal_before = plitt_af(1,1)%n%n14 + plitt_as(1,1)%n%n14 &
     + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 &
-    + psoil_sl(1,1)%n%n14 + nh4(1,1)%n14
+    + psoil_sl(1,1)%n%n14 + pninorg(1,1)%n14
 #endif
 
 
@@ -309,12 +310,12 @@ subroutine littersom( jpngr, doy )
     outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
 
     !! Move N from soil pool to ammonium pool
-    call nmv( dsoil_fs%n, psoil_fs(lu,jpngr)%n, nh4(lu,jpngr) )
-    call nmv( dsoil_sl%n, psoil_sl(lu,jpngr)%n, nh4(lu,jpngr) )
+    call nmv( dsoil_fs%n, psoil_fs(lu,jpngr)%n, pninorg(lu,jpngr) )
+    call nmv( dsoil_sl%n, psoil_sl(lu,jpngr)%n, pninorg(lu,jpngr) )
 
     ! Record monthly (daily) soil turnover flux (labile carbon availability)
     !----------------------------------------------------------------
-    ! doc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
+    ddoc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
 
   enddo                   !lu
 
@@ -324,7 +325,7 @@ subroutine littersom( jpngr, doy )
     + psoil_sl(1,1)%c%c12 + drhet(1)%c12
   nbal_after = plitt_af(1,1)%n%n14 + plitt_as(1,1)%n%n14 &
     + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 &
-    + psoil_sl(1,1)%n%n14 + nh4(1,1)%n14
+    + psoil_sl(1,1)%n%n14 + pninorg(1,1)%n14
   nbal_after = Nbal_after - dnfix_free(1)
   if (abs(cbal_after-cbal_before)>1.d9) then
     print*,'cbal_before, cbal_after ', cbal_before, cbal_after

@@ -18,7 +18,7 @@ module soiltemp_sitch
   !   - soil moisture ('dwtot')
   !   - soil temperature ('dtemp_soil')
   !----------------------------------------------------------------
-  use pools, only: dtemp_soil
+  use statevars, only: dtemp_soil
 
 contains
 
@@ -29,7 +29,6 @@ contains
     use params_core, only: ndayyear, nlu, nmonth, maxgrid, ndaymonth, pi
     use params_siml, only: init
     use sofunutils, only: running, daily2monthly
-    use pools, only: dtemp_soil
 
     implicit none
 

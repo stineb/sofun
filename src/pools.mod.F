@@ -26,16 +26,9 @@ module pools
   type(orgpool), dimension(nlu,maxgrid)   :: psoil_sl ! soil organic matter, fast turnover [gC/m2]
   type(orgpool), dimension(nlu,maxgrid)   :: psoil_fs ! soil organic matter, slow turnover [gC/m2]
 
+  type(nitrogen), dimension(nlu,maxgrid)  :: pninorg  ! total inorganic N pool (sum of NO3 and NH4) [gC/m2]
+
   real, dimension(nlu,maxgrid) :: dwtot               ! soil water mass [mm = kg/m2]
-  real, dimension(nlu,maxgrid) :: dtemp_soil          ! soil temperature [deg C]
-
-  type(nitrogen), dimension(nlu,maxgrid)  :: nh4      ! ammonium [gN/m2]
-  type(nitrogen), dimension(nlu,maxgrid)  :: no3      ! nitrate [gN/m2]
-  type(nitrogen), dimension(nlu,maxgrid)  :: no2      ! NO2 [gN/m2]
-
-  real, dimension(nlu,maxgrid)            :: no_w,  no_d    ! NO in wet and dry microsites (split done in ntransform) [gN/m2]
-  real, dimension(nlu,maxgrid)            :: n2o_w, n2o_d   ! N2O in wet and dry microsites (split done in ntransform) [gN/m2]
-  real, dimension(nlu,maxgrid)            :: n2_w           ! N2 in wet microsites (split done in ntransform) [gN/m2]
 
 end module pools
 

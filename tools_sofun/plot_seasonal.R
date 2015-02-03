@@ -68,6 +68,10 @@ widths[2] <- 0.4*magn
 heights <- rep(aspect*magn,nrows)
 # heights[nrows] <- 0.3*magn
 
+
+##--------------------------------------
+## C FLUXES
+##--------------------------------------
 pdf(paste("Coverview_sofun_seasonal.pdf"),width=sum(widths),height=sum(heights))
 panel <- layout(
                 matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
@@ -85,7 +89,8 @@ legend( "bottomleft", c("GPP","NPP","EXU"), col=c("black","green","blue"), bty="
 
 par(mar=c(0,0,2,0))
 plot( c(0,1), c(0,1), type="n", axes=FALSE )
-text( 0, 0.98, "ANNUAL TOTALS", adj=c(0,0),font=2)
+lab <- expression(paste("(gC m"^-2," yr"^-1,")", sep=""))
+text( 0, 0.98, "ANNUAL TOTALS", adj=c(0,0),font=2); text( 0.5, 0.98, lab, adj=c(0,0),font=2, cex=0.7 )
 text( 0, 0.93, "GPP", adj=c(0,0));          text( 0.5, 0.93, as.character(formatC(sum(daily_sub$gpp),digits=1,format="f")) , adj=c(1,0))
 text( 0, 0.88, "NPP", adj=c(0,0));          text( 0.5, 0.88, as.character(formatC(sum(daily_sub$npp),digits=1,format="f")) , adj=c(1,0))
 text( 0, 0.83, "CEX ", adj=c(0,0));         text( 0.5, 0.83, as.character(formatC(sum(daily_sub$cex),digits=1,format="f")) , adj=c(1,0)); text( 0.55, 0.83, paste( as.character(formatC(sum(daily_sub$cex)/sum(daily_sub$npp)*100,digits=1,format="f")),"% of NPP",sep=""), adj=c(0,0))
@@ -96,6 +101,9 @@ text( 0, 0.68, "C lit -> soil", adj=c(0,0));text( 0.5, 0.68, as.character(format
 dev.off()
 
 
+##--------------------------------------
+## N FLUXES
+##--------------------------------------
 pdf(paste("Noverview_sofun_seasonal.pdf"),width=sum(widths),height=sum(heights))
 panel <- layout(
                 matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
@@ -104,15 +112,52 @@ panel <- layout(
                 TRUE
                 )
 par(mar=c(4,4,2,1), las=1 )
-plot( daily_sub$doy, daily_sub$ninorg, type="l", xlab="day of year", ylab="gN/m2/d", ylim=c(0,max(daily_sub$ninorg)) )
-lines( daily_sub$doy, daily_sub$nup, type="l", xlab="day of year", ylab="gC/m2/d", col="green" )
-lines( daily_sub$doy, daily_sub$netmin, type="l", xlab="day of year", ylab="gC/m2/d", col="blue" )
-lines( daily_sub$doy, daily_sub$nfixfree, type="l", xlab="day of year", ylab="gC/m2/d", col="red" )
+plot( daily_sub$doy, daily_sub$nup,    type="l", xlab="day of year", ylab="gC/m2/d", , ylim=c(0,max(daily_sub$nup)), col="green" )
+lines( daily_sub$doy, daily_sub$netmin, xlab="day of year", ylab="gC/m2/d", col="blue" )
+lines( daily_sub$doy, daily_sub$nfixfree, xlab="day of year", ylab="gC/m2/d", col="red" )
 legend( "bottomleft", c("Ninorg","Nup","net N min.","free-living BNF"), col=c("black","green","blue","red"), bty="n", lty=1 )
 
 par(mar=c(0,0,2,0))
 plot( c(0,1), c(0,1), type="n", axes=FALSE )
-text( 0, 0.98, "ANNUAL TOTALS", adj=c(0,0),font=2)
+lab <- expression(paste("(gN m"^-2," yr"^-1,")", sep=""))
+text( 0, 0.98, "ANNUAL TOTALS" , adj=c(0,0),font=2); text( 0.5, 0.98, lab , adj=c(0,0),font=2, cex=0.7)
+text( 0, 0.93, "N uptake", adj=c(0,0));          text( 0.5, 0.93, as.character(formatC(sum(daily_sub$nup),digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.88, "N up. pas.", adj=c(0,0));        text( 0.5, 0.88, as.character(formatC(sum(daily_sub$nup_pas),digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.83, "N up. act.", adj=c(0,0));        text( 0.5, 0.83, as.character(formatC(sum(daily_sub$nup_act),digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.78, "N up. fix.", adj=c(0,0));        text( 0.5, 0.78, as.character(formatC(sum(daily_sub$nup_fix),digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.73, "N up. ret.", adj=c(0,0));        text( 0.5, 0.73, as.character(formatC(sum(daily_sub$nup_ret),digits=2,format="f")) , adj=c(1,0))
+
+
+text( 0, 0.68, "N -> veg", adj=c(0,0));          text( 0.5, 0.68, as.character(formatC(annual_sub$nalloc,digits=2,format="f")) , adj=c(1,0));     text( 0.55, 0.68, paste(as.character(formatC(annual_sub$calloc/annual_sub$nalloc,digits=2,format="f")),"C:N") , adj=c(0,0))
+text( 0, 0.63, "N veg -> lit", adj=c(0,0));      text( 0.5, 0.63, as.character(formatC(annual_sub$nveg2lit,digits=2,format="f")) , adj=c(1,0));   text( 0.55, 0.63, paste(as.character(formatC(annual_sub$cveg2lit/annual_sub$nveg2lit,digits=2,format="f")),"C:N") , adj=c(0,0))
+text( 0, 0.58, "N lit -> soil", adj=c(0,0));     text( 0.5, 0.58, as.character(formatC(annual_sub$nlit2soil,digits=2,format="f")) , adj=c(1,0));  text( 0.55, 0.58, paste(as.character(formatC(annual_sub$clit2soil/annual_sub$nlit2soil,digits=2,format="f")),"C:N") , adj=c(0,0))
+text( 0, 0.53, "N -> soil req.", adj=c(0,0));    text( 0.5, 0.53, as.character(formatC(annual_sub$nreq,digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.48, "N fBNF", adj=c(0,0));            text( 0.5, 0.48, as.character(formatC(sum(daily_sub$nfixfree),digits=2,format="f")) , adj=c(1,0))
+text( 0, 0.43, "N net min.", adj=c(0,0));        text( 0.5, 0.43, as.character(formatC(sum(daily_sub$netmin),digits=2,format="f")) , adj=c(1,0))
+dev.off()
+
+
+##--------------------------------------
+## CUMULATIVE N FLUXES
+##--------------------------------------
+pdf(paste("Noverview_cumulative_sofun_seasonal.pdf"),width=sum(widths),height=sum(heights))
+panel <- layout(
+                matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
+                widths=widths,
+                heights=heights,
+                TRUE
+                )
+par(mar=c(4,4,2,1), las=1 )
+plot( daily_sub$doy,  daily_sub$ninorg, type="l", xlab="day of year", ylab="gN/m2/d", ylim=c(0,max(cumsum(daily_sub$netmin))) )
+lines( daily_sub$doy, cumsum(daily_sub$nup), type="l", xlab="day of year", ylab="gC/m2/d", col="green" )
+lines( daily_sub$doy, cumsum(daily_sub$netmin), type="l", xlab="day of year", ylab="gC/m2/d", col="blue" )
+lines( daily_sub$doy, cumsum(daily_sub$nfixfree), type="l", xlab="day of year", ylab="gC/m2/d", col="red" )
+legend( "bottomleft", c("Ninorg","Nup","net N min.","free-living BNF"), col=c("black","green","blue","red"), bty="n", lty=1 )
+
+par(mar=c(0,0,2,0))
+plot( c(0,1), c(0,1), type="n", axes=FALSE )
+lab <- expression(paste("(gN m"^-2," yr"^-1,")", sep=""))
+text( 0, 0.98, "ANNUAL TOTALS" , adj=c(0,0),font=2); text( 0.5, 0.98, lab , adj=c(0,0),font=2, cex=0.7)
 text( 0, 0.93, "N uptake", adj=c(0,0));          text( 0.5, 0.93, as.character(formatC(sum(daily_sub$nup),digits=2,format="f")) , adj=c(1,0))
 text( 0, 0.88, "N up. pas.", adj=c(0,0));        text( 0.5, 0.88, as.character(formatC(sum(daily_sub$nup_pas),digits=2,format="f")) , adj=c(1,0))
 text( 0, 0.83, "N up. act.", adj=c(0,0));        text( 0.5, 0.83, as.character(formatC(sum(daily_sub$nup_act),digits=2,format="f")) , adj=c(1,0))

@@ -18,6 +18,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use soiltemp_sitch, only: soiltemp
   use waterbal_stash, only: outdcpa ! used for soiltemp xxx make this global?
   use phenology_lpx, only: summerphenology
+  use ntransform_xuri, only: ntransform
 
   ! xxx debug
   use fluxes
@@ -116,8 +117,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !call conversion( lu_area )
 
     ! sapling addition on bare ground, tree geometry update
-    if (present(fpc_grid_data)) fpc_grid = fpc_grid_data
-    call establishment( jpngr )
+    call establishment( jpngr, fpc_grid_data(:,jpngr) )
 
 
     ! LOOP THROUGH MONTHS
@@ -155,7 +155,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! substract autotrophic respiration to get NPP, remainder is added to
         ! labile pool (plabl)
         ! xxx try: second argument is dtemp_soil
-        call npp( jpngr, dtemp_field(day,jpngr), 1.0 )
+        call npp( jpngr, dtemp_field(day,jpngr) )
 
         !print*,'F'
         !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
@@ -182,7 +182,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
 
 
         ! inorganic soil N chemistry
-        call ntransform( dm, mo, jpngr, dprec_field(day,jpngr) )
+        call ntransform( dm, mo, jpngr, sum(dprec_field(:,jpngr)) )
 
         !print*,'G'
         !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
@@ -221,7 +221,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !call reproduction
 
     ! light competition by limiting to maximum FPC
-    call light( jpngr )
+    ! call light( jpngr )
     !print*,'fpc_grid', fpc_grid(1,1)
     !call mortality
     !call fire

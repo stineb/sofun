@@ -69,6 +69,9 @@ subroutine allocation_annual( jpngr )
   real    :: tmp
   type(orgpool) :: orgtmp
 
+  integer, parameter :: nseg = 20
+  integer, parameter :: jmax = 40       ! max number of iterations in search for alloc soln
+
 #if _check_sanity  
   real    :: cbal_before
   real    :: cbal_after
@@ -137,13 +140,13 @@ subroutine allocation_annual( jpngr )
       !print*,'ALLOCATION: lmtorm set to ',lmtorm 
 
       if (grass(pft)) then
-        ! -------------------------------------------------------------------------
+        !-------------------------------------------------------------------------
         ! GRASS ALLOCATION
         ! Distribute this year's production among leaves and fine roots
         ! according to leaf to rootmass ratio [eqn (33)]
         ! Relocation of C from one compartment to the other not allowed:
         ! negative increment in either compartment transferred to litter
-        ! -------------------------------------------------------------------------
+        !-------------------------------------------------------------------------
         ! allocation to leaves
         lminc_ind = ( proot(pft,jpngr)%c%c12 + calloc_ind - pleaf(pft,jpngr)%c%c12/lmtorm ) / ( 1.0 + 1.0/lmtorm )
 
@@ -179,11 +182,11 @@ subroutine allocation_annual( jpngr )
         !print*,'lminc_ind',lminc_ind
         !print*,'rminc_ind',rminc_ind
         
-        ! --------------------------------------------------------------------
+        !--------------------------------------------------------------------
         ! N ALLOCATION for Grasses
         ! Tab.3, Xu-Ri & Prentice (2008) (XP08)
         ! (growth.cpp:717 ff)
-        ! --------------------------------------------------------------------
+        !--------------------------------------------------------------------
         if (pleaf(pft,jpngr)%c%c12>0.0 .and. nalloc_ind>0.0) then
 
           ! Update fraction of C mass in different compartments
@@ -243,6 +246,285 @@ subroutine allocation_annual( jpngr )
           ! xxx try: uncomment and define 'kill' SR
           !call kill(pft,jpngr) !move any carbon (and nitrogen) to litter
         !endif
+
+      ! else
+      !   !-------------------------------------------------------------------------
+      !   ! TREE ALLOCATION
+      !   ! Using the algorithm implemented in LPX.
+      !   !-------------------------------------------------------------------------            
+            
+      !   ! Work out minimum leaf production to maintain current sapmass
+            
+      !   lminc_ind_min = latosa(pft)*psapw(pft,jpngr)%c%c12/(wooddens(pft)*height(pft,jpngr)*sla(pft))-pleaf(pft,jpngr)%c%c12      !eqn (27)
+        
+      !   rminc_ind_min = latosa(pft)*psapw(pft,jpngr)%c%c12/(wooddens(pft)*height(pft,jpngr)*sla(pft)*lmtorm)-proot(pft,jpngr)%c%c12 !eqn (30)
+        
+      !   if (rminc_ind_min>0.0 .and. lminc_ind_min>0.0 .and. rminc_ind_min+lminc_ind_min<=calloc_ind) then !(see growth.cpp:535)
+      !     ! Normal allocation (positive increment to all living C compartments)
+      !     x1=0.0
+      !     x2=(calloc_ind-(pleaf(pft,jpngr)%c%c12/lmtorm-proot(pft,jpngr)%c%c12))/(1.0+1.0/lmtorm)
+      !     dx=(x2-x1)/real(nseg)
+
+      !     ! allocate constants in allom eq. for simplification and numerical stability
+      !     allom_fact = allom2(pft)**(2.0d0/allom3)           
+      !     allom_exp = dnint(1.0+2.0d0/allom3)         !must be a whole number
+      !     tree_fact = sla(pft)*wooddens(pft)/latosa(pft)
+
+      !     if (pleaf(pft,jpngr)%c%c12==0.0) x1=x1+dx    !to avoid division by zero
+          
+      !     ! evaluate f(x1)=LHS of eqn (22) at x1
+      !     fx1=allom_fact*((psapw(pft,jpngr)%c%c12+ &
+      !       calloc_ind-x1-((pleaf(pft,jpngr)%c%c12+x1)/ &
+      !       lmtorm)+proot(pft,jpngr)%c%c12+pwood(pft,jpngr)%c%c12) &
+      !       /wooddens(pft))/(pi/4.0d0)-((psapw(pft,jpngr)%c%c12+ &
+      !       calloc_ind-x1-((pleaf(pft,jpngr)%c%c12+x1)/lmtorm)+ &
+      !       proot(pft,jpngr)%c%c12)/((pleaf(pft,jpngr)%c%c12+x1)* &
+      !       tree_fact))**allom_exp
+          
+      !     ! Find approximate location of leftmost root on the interval
+      !     ! (x1,x2).  Subdivide (x1,x2) into nseg equal segments seeking
+      !     ! change in sign of f(xmid) relative to f(x1).
+      !     fmid=fx1
+      !     xmid=x1
+
+      !     do while (fmid*fx1>0.0.and.xmid<x2)
+            
+      !       xmid=xmid+dx
+      !       fmid=allom_fact*((psapw(pft,jpngr)%c%c12+ &
+      !         calloc_ind-xmid-((pleaf(pft,jpngr)%c%c12+xmid)/ &
+      !         lmtorm)+proot(pft,jpngr)%c%c12+ &
+      !         pwood(pft,jpngr)%c%c12)/wooddens(pft))/(pi/4.0d0)- &
+      !         ((psapw(pft,jpngr)%c%c12+calloc_ind-xmid- &
+      !         ((pleaf(pft,jpngr)%c%c12+xmid)/lmtorm)+ &
+      !         proot(pft,jpngr)%c%c12)/((pleaf(pft,jpngr)%c%c12 &
+      !         +xmid)*tree_fact))**allom_exp
+            
+      !     enddo
+          
+      !     x1=xmid-dx
+      !     x2=xmid
+          
+      !     ! Apply bisection method to find root on the new interval (x1,x2)
+      !     fx1=allom_fact*((psapw(pft,jpngr)%c%c12+ &
+      !       calloc_ind-x1-((pleaf(pft,jpngr)%c%c12+x1)/lmtorm)+ &
+      !       proot(pft,jpngr)%c%c12+pwood(pft,jpngr)%c%c12) &
+      !       /wooddens(pft))/(pi/4.0d0)-((psapw(pft,jpngr)%c%c12+ &
+      !       calloc_ind-x1-((pleaf(pft,jpngr)%c%c12+x1)/lmtorm)+ &
+      !       proot(pft,jpngr)%c%c12)/((pleaf(pft,jpngr)%c%c12+x1)* &
+      !       tree_fact))**allom_exp
+          
+      !     if (fx1>=0.0) then
+      !       fsign=-1.0
+      !     else
+      !       fsign=1.0
+      !     endif
+          
+      !     rtbis=x1
+      !     dx=x2-x1
+          
+      !     ! Bisection loop
+      !     ! Search iterates on value of xmid until xmid lies within
+      !     ! xacc of the root, i.e. until |xmid-x|<xacc where f(x)=0
+          
+      !     fmid=1.0                                    !dummy value to guarantee entry to loop
+      !     j=0.0                                       !number of iterations so far (maximum tries=jmax)
+          
+      !     do while (dx>=xacc.and.abs(fmid)>yacc)
+            
+      !       dx=dx*0.5d0
+      !       xmid=rtbis+dx
+            
+      !       ! calculate fmid=f(xmid) [eqn (22)]
+      !       fmid=allom_fact*((psapw(pft,jpngr)%c%c12+ &
+      !         calloc_ind-xmid-((pleaf(pft,jpngr)%c%c12+xmid)/ &
+      !         lmtorm)+proot(pft,jpngr)%c%c12+ &
+      !         pwood(pft,jpngr)%c%c12)/wooddens(pft))/(pi/4.0d0)- &
+      !         ((psapw(pft,jpngr)%c%c12+calloc_ind-xmid- &
+      !         ((pleaf(pft,jpngr)%c%c12+xmid)/lmtorm)+ &
+      !         proot(pft,jpngr)%c%c12)/((pleaf(pft,jpngr)%c%c12+ &
+      !         xmid)*tree_fact))**allom_exp
+            
+      !       if (fmid*fsign<=0.0) rtbis=xmid
+      !       j=j+1
+            
+      !     enddo
+          
+      !     ! Now rtbis contains numerical solution for lminc_ind given
+      !     ! eqn (22)
+      !     lminc_ind=rtbis                               ! (growth.cpp:608)
+          
+      !     ! Calculate increments in other compartments using allometry
+      !     ! relationships
+      !     rminc_ind=(pleaf(pft,jpngr)%c%c12+lminc_ind)/ &lmtorm-proot(pft,jpngr)%c%c12  !eqn (9)
+      !     sminc_ind=calloc_ind-lminc_ind-rminc_ind      !eqn (1)
+          
+      !   else                                            !normal
+          
+      !     lminc_ind=(calloc_ind-pleaf(pft,jpngr)%c%c12/lmtorm+proot(pft,jpngr)%c%c12)/(1.0+1.0/lmtorm)  !eqn (33)
+          
+
+      !     if (lminc_ind>=0.0) then
+            
+      !       ! Positive allocation to leafmass
+      !       rminc_ind=calloc_ind-lminc_ind              !eqn (31)
+            
+      !       ! Add killed roots (if any) to below-ground litter
+      !       if (rminc_ind<=0.0) then
+
+      !         lminc_ind=calloc_ind
+
+      !         ! rminc_ind is calculated so that ratio 'lmtorm' is satisfied, given lminc_inc
+      !         rminc_ind=((pleaf(pft,jpngr)%c%c12 + lminc_ind) / lmtorm)-proot(pft,jpngr)%c%c12
+              
+      !         ! from eqn (9)
+      !         ! rminc_ind < 0, => add "superfluous" rminc_ind to litter, N along with it                  
+      !         ntoc_tmp = ntoc(proot(pft,jpngr))
+      !         call orgcp( orgpool( carbon(-rminc_ind), nitrogen(-rminc_ind*ntoc_tmp) ), &
+      !                     plitt_bg(pft,jpngr), &
+      !                     nind(pft,jpngr) &
+      !                   )
+      !         proot(pft,jpngr)%n%n14 = proot(pft,jpngr)%n%n14 + rminc_ind*ntoc_tmp
+
+
+      !         specialcase_rm(pft) = .true.
+              
+      !         ! kuno note 2005-01-19: for rminc_ind to be negative in (31), lmtorm has
+      !         ! to increase from previous year ( lmtorm/lmtorm(alt) > [lminc_ind+lm_ind]/lm_ind ). 
+      !         ! This is sufficient for rminc_ind to always be negative in the above code.
+      !         ! Thus, here rm_ind can only die off, which is ok.
+              
+      !       endif
+            
+      !     else                                          !lminc_ind < 0
+            
+      !       ! Negative allocation to leaf mass
+      !       rminc_ind=calloc_ind
+      !       lminc_ind=(proot(pft,jpngr)%c%c12+rminc_ind)*lmtorm-pleaf(pft,jpngr)%c%c12
+    
+      !       ! from eqn (9)
+      !       ! lminc_ind < 0 => add "superfluous" lminc_ind to litter
+      !       ntoc_tmp = ntoc(pleaf(pft,jpngr))
+      !       call orgcp( orgpool( carbon(-lminc_ind), nitrogen(-lminc_ind*ntoc_tmp) ), &
+      !                   plitt_af(pft,jpngr), &
+      !                   nind(pft,jpngr) &
+      !                 )
+      !       pleaf(pft,jpngr)%n%n14 = pleaf(pft,jpngr)%n%n14 + lminc_ind*ntoc_tmp
+
+      !       specialcase_lm(pft) = .true.
+            
+      !     endif
+          
+      !     ! Calculate sminc_ind (must be negative)
+                
+      !     ! from (25),
+      !     ! (34) lm_ind + lminc_ind = latosa * (sm_ind + sminc_ind)
+      !     ! / (wooddens * height * sla)
+      !     ! from (34),
+      !     ! (35) sminc_ind = (lm_ind + lminc_ind) * wooddens * height * sla
+      !     ! / latosa - sm_ind
+          
+      !     sminc_ind=(pleaf(pft,jpngr)%c%c12+lminc_ind)*wooddens(pft)*height(pft,jpngr)*sla(pft)/latosa(pft)-psapw(pft,jpngr)%c%c12 !eqn (35)
+          
+      !     ! kuno note 2005-01-19: if the allometric relations were satisfied at this
+      !     ! point, we would have from (35)
+      !     ! sminc_ind=lminc_ind*sm_ind/lm_ind
+      !     ! but - they don't seem to be (??)
+      !     ! Thus, I don't see on what condition sminc_ind gets negative,
+      !     ! so the following is probably ok (avoids unsensical mass fluxes, but
+      !     ! violates the condition (A) (not enough sapwood to support leaves).
+                              
+      !     ! Convert killed sapwood to heartwood (sminc_ind .le. 0 in all cases)
+      !     ! Don'd do anything with N as it is re-distributed between plant pools later anyway
+      !     ! print*,'converted killed sapwood to heartwood.'
+      !     ccp( carbon(-sminc_ind), pwood(pft,jpngr) )
+
+      !   endif                                           !normal
+        
+      !   ! Increment C compartments
+      !   ccp( carbon(lminc_ind), pleaf(pft,jpngr) )
+      !   ccp( carbon(rminc_ind), proot(pft,jpngr) )
+      !   ccp( carbon(sminc_ind), psapw(pft,jpngr) )
+
+      !   ! For this PFT, bm_inc is now allocated.
+      !   bm_inc(pft,jpngr,1) = 0.0
+
+      !   ! This is not necessary when using the ks_hydrology flag. ==> Why does this happen?
+      !   if (pleaf(pft,jpngr)%c%c12<0.0.or.&
+      !       proot(pft,jpngr)%c%c12<0.0.or.&
+      !       psapw(pft,jpngr)%c%c12<0.0) then
+      !     print*,'REMOVING PFT DUE TO NEGATIVE PLANT POOL'
+      !     ispresent(pft,jpngr) = .false.
+      !     ! In this case (pft), N has not yet been allocated. I.o. to conserve
+      !     ! N balance, put N to be allocated back to Ninorg.
+      !     call kill(pft,jpngr)
+      !   endif
+
+      !   !--------------------------------------------------------------------
+      !   ! N ALLOCATION for trees
+      !   ! Tab.3, Xu-Ri & Prentice (2008) (XP08)
+      !   ! (growth.cpp:717 ff)
+      !   !--------------------------------------------------------------------
+      !   if (pleaf(pft,jpngr)%c%c12>0.0) then
+          
+      !   ! Calculate partitioning coefficients (fraction of total N allocated to different compartments)
+      !   ! (Eq.2, Tab.3, XP08). Hold the ratio of CN ratios of leaf vs. sapwood constant. Same for
+      !   ! leaf vs. root.
+      !     f_nl = 1/(1+(rcton_LS*psapw(pft,jpngr)%c%c12+rcton_LR*proot(pft,jpngr)%c%c12)/pleaf(pft,jpngr)%c%c12)
+      !     f_nr = rcton_LR*f_nl*proot(pft,jpngr)%c%c12/pleaf(pft,jpngr)%c%c12
+      !     f_ns = rcton_LS*f_nl*psapw(pft,jpngr)%c%c12/pleaf(pft,jpngr)%c%c12
+          
+      !   else
+          
+      !     f_nl=0.0
+      !     f_nr=0.0
+      !     f_ns=1.0
+          
+      !   endif
+
+      !   if (abs(f_nl+f_nr+f_ns-1.0)>1.d-7) then
+      !     print*,'sum of fractions to be allocated is not = 0 !'
+      !     stop
+      !   endif
+        
+      !   if (nind(pft,jpngr).gt.1.d-17) then
+      !     plantN = lm_ind(pft,jpngr,n_id)+sm_ind(pft,jpngr,n_id)+rm_ind(pft,jpngr,n_id)+bm_inc(pft,jpngr,n_id)/nind(pft,jpngr) 
+
+      !   ! Eq.1, Tab.3, XP08 (growth.cpp:1111). bm_ind is in units of kg/m2, whereas lm_ind, etc. are in units of kg/m2/ind. (tested without division and CN ratio of biomass change (before and after allocation SR) is not correct!)
+      !   elseif (bm_inc(pft,jpngr,n_id).gt.0.0) then
+      !     stop 'problem in allocation.F'
+      !   endif
+
+      !   lm_ind(pft,jpngr,n_id) = plantN*f_nl
+      !   rm_ind(pft,jpngr,n_id) = plantN*f_nr
+      !   sm_ind(pft,jpngr,n_id) = plantN*f_ns            !Eq.3, Tab.3, XP08
+
+      !   ! N is now allocated. Thus bm_inc can be set to 0.
+      !   bm_inc(pft,jpngr,n_id) = 0.0
+
+      !   call update_afntoc(pft,jpngr)
+        
+      !   ! spahni 2010-02-10: check if compartments are still positive
+      !   if (pleaf(pft,jpngr)%c%c12<1.0d-15 .or. &
+      !       proot(pft,jpngr)%c%c12<1.0d-15 .or. &
+      !       psapw(pft,jpngr)%c%c12<1.0d-15) then
+      !     present(pft,jpngr) = .false.                  !remove pft
+      !     call kill(pft,jpngr)                          !move any carbon (and N) to litter
+      !     print*,'REMOVING PFT DUE TO VERY SMALL PLANT POOL'
+      !   endif
+        
+        
+      !   ! Calculate new height, diameter and crown area
+      !   if (present(pft,jpngr)) then
+      !     sap_xsa = pleaf(pft,jpngr)%c%c12*sla(pft)/latosa(pft) !eqn (5)
+      !     height(pft,jpngr)=psapw(pft,jpngr)%c%c12/sap_xsa/wooddens(pft)
+      !     stemdiam=(height(pft,jpngr)/allom2(pft))**(1.0/allom3) !eqn (C)
+      !     crownarea(pft,jpngr)=min(allom1(pft)*stemdiam**reinickerp,crownarea_max) !eqn (D)
+      !   else
+      !     sap_xsa = 0.0
+      !     height(pft,jpngr) = 0.0
+      !     stemdiam = 0.0
+      !     crownarea(pft,jpngr) = 0.0
+      !   endif
 
       endif                 ! if grass
 

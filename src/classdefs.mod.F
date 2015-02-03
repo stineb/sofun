@@ -46,7 +46,7 @@
 
        !--------------------------ORGANIC---------------------------------
 
-       subroutine orgcp(amount,to,d13C)
+       subroutine orgcp(amount,to,scale)
          !////////////////////////////////////////////////////////////////
          !  Generic SR to "copy" organic mass to pool (e.g. for output).
          !  Does NOT substract amount moved ('amount') from source
@@ -55,10 +55,16 @@
          implicit none
          type(orgpool), intent(in) :: amount
          type(orgpool), intent(inout) :: to
-         real, optional, intent(in) :: d13C
+         real, optional, intent(in) :: scale
+         !real, optional, intent(in) :: d13C
 
-         call ccp(amount%c,to%c)
-         call ncp(amount%n,to%n)
+         if (present(scale)) then
+           call ccp(amount%c,to%c,scale)
+           call ncp(amount%n,to%n,scale)
+         else
+           call ccp(amount%c,to%c)
+           call ncp(amount%n,to%n)
+         end if
 
 !         if (present(d13C)) then
 !           to%c%c12 = amount%c%c12 + to%c%c12
@@ -248,7 +254,7 @@
        end subroutine cmvRec
 
 
-       subroutine ccp(amount,to,d13C)
+       subroutine ccp(amount,to,scale)
          !////////////////////////////////////////////////////////////////
          !  Generic SR to "copy" carbon to pool (e.g. for output).
          !  Does NOT substract amount moved ('amount') from source
@@ -257,9 +263,14 @@
          implicit none
          type(carbon), intent(in) :: amount
          type(carbon), intent(inout) :: to
-         real, optional, intent(in) :: d13C
+         real, optional, intent(in) :: scale
+         !real, optional, intent(in) :: d13C
 
-         to%c12 = amount%c12 + to%c12
+         if (present(scale)) then
+           to%c12 = to%c12 + amount%c12 * scale
+         else
+           to%c12 = to%c12 + amount%c12 
+         end if
 
          ! if (present(d13C)) then
          !   to%c%c12 = amount%c%c12 + to%c%c12
@@ -386,10 +397,12 @@
            call nsub(amount,from)
          endif
 
+         return
+
        end subroutine nmvRec
 
 
-       subroutine ncp(amount,to)
+       subroutine ncp(amount,to,scale)
          !////////////////////////////////////////////////////////////////
          !  Generic SR to "copy" nitrogen to pool (e.g. for output).
          !  Does NOT substract amount moved ('amount') from source
@@ -398,8 +411,15 @@
          implicit none
          type(nitrogen), intent(in) :: amount
          type(nitrogen), intent(inout) :: to
+         real, intent(in), optional :: scale
 
-         to%n14 = amount%n14 + to%n14
+         if (present(scale)) then
+           to%n14 = to%n14 + amount%n14 * scale
+         else
+           to%n14 = to%n14 + amount%n14 
+         end if
+
+         return
 
        end subroutine ncp
 
@@ -417,6 +437,8 @@
 
          to%n14 = amount%n14 + to%n14
          outn = outn + amount%n14
+
+         return
 
        end subroutine ncpRec
 
@@ -437,6 +459,8 @@
          endif
 #endif
          from%n14 = from%n14 - amount%n14
+
+         return
   
        end subroutine nsub
 
@@ -449,7 +473,9 @@
          implicit none
          type(nitrogen), intent(inout) :: pool
 
-         pool%n14 = 0.
+         pool%n14 = 0.0
+
+         return
 
        end subroutine ninit
 

@@ -10,6 +10,7 @@ subroutine initglobal
   use treegeometry
   use params_modl, only: tree
   use params_core, only: npft
+  use ntransform_xuri, only: init_global_ntransform
 
   ! LOCAL VARIABLES
   integer :: pft
@@ -36,22 +37,18 @@ subroutine initglobal
   !! xxx try
   !! initialise pools with non-zero values
   !! here example gridcell 9.5 E, 47.5 N
-  psoil_fs = orgpool( carbon(4000.), nitrogen(150.) )
-  psoil_sl = orgpool( carbon(10000.), nitrogen(550.) )
-  plitt_af = orgpool( carbon(500.), nitrogen(10.))
-  plitt_as = orgpool( carbon(1500.), nitrogen(30.))
-  plitt_bg = orgpool( carbon(400.), nitrogen(8.))
+  psoil_fs(:,:) = orgpool( carbon(4000.), nitrogen(150.) )
+  psoil_sl(:,:) = orgpool( carbon(10000.), nitrogen(550.) )
+  plitt_af(:,:) = orgpool( carbon(500.), nitrogen(10.))
+  plitt_as(:,:) = orgpool( carbon(1500.), nitrogen(30.))
+  plitt_bg(:,:) = orgpool( carbon(400.), nitrogen(8.))
 
   ! xxx debug: change back to 0.0
-  nh4(:,:)      = nitrogen(10.0)
-  no3(:,:)      = nitrogen(10.0)
-  no2(:,:)      = nitrogen(10.0)
+  pninorg(:,:)  = nitrogen(10.0)
 
-  no_w(:,:)     = 0.0
-  no_d(:,:)     = 0.0
-  n2o_w(:,:)    = 0.0
-  n2o_d(:,:)    = 0.0
-  n2_w(:,:)     = 0.0
+  ! Module specific initialisations
+  call init_global_ntransform
+
 
   ! initialise other properties
   ispresent(:,:) = .false.
@@ -149,6 +146,7 @@ subroutine initdaily
   !----------------------------------------------------------------
   use fluxes
   use pools
+  use statevars
   use nuptake_fun, only: initdaily_nuptake
 
   implicit none
@@ -164,6 +162,7 @@ subroutine initdaily
   drroot(:)      = 0.0
   drgrow(:)      = 0.0
   dnup(:)        = nitrogen(0.0)
+  ddoc(:)        = 0.0
 
 
   ! initialise module-specific output variables
@@ -192,6 +191,7 @@ subroutine initoutput
   use outvars
   use waterbal_stash, only: initoutput_waterbal
   use nuptake_fun, only: initoutput_nuptake
+  use ntransform_xuri, only: initoutput_ntransform
   
   implicit none
 
@@ -222,6 +222,7 @@ subroutine initoutput
   ! initialise module-specific output variables
   call initoutput_waterbal
   call initoutput_nuptake
+  call initoutput_ntransform  ! nothing yet
 
   return
 

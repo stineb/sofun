@@ -10,7 +10,6 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Temperature response function
     !----------------------------------------------------------------
-
     implicit none
 
     ! arguments
@@ -33,26 +32,34 @@ contains
     if (present(ref_temp)) then
      ref_temp_local = ref_temp
     else
-     ref_temp_local = 10.
+     ref_temp_local = 10.0
     endif
 
-    if (method=="lloyd_and_taylor") then
-     !----------------------------------------------------------------
-     ! LLOYD AND TAYLOR
-     ! Temperature response function is a modified Q10 relationship
-     ! (Lloyd & Taylor 1994)
-     !----------------------------------------------------------------
-     if (temp.ge.-40.) then 
-       ! avoid numerical errors
-       ftemp = exp(E0*((1./(ref_temp_local+Tzero-T0))&
-          -(1./(temp+Tzero-T0))))
-     else
-       ! set temperature response to a constant at value of -40°C
-       ftemp = exp(E0*((1./(ref_temp_local+Tzero-T0))&
-          -(1./(-40.+Tzero-T0))))
-     end if
+    select case (method)
 
-    end if
+      case ("lloyd_and_taylor")
+        !----------------------------------------------------------------
+        ! LLOYD AND TAYLOR
+        ! Temperature response function is a modified Q10 relationship
+        ! (Lloyd & Taylor 1994)
+        !----------------------------------------------------------------
+        if (temp.ge.-40.) then 
+          ! avoid numerical errors
+          ftemp = exp(E0*((1./(ref_temp_local+Tzero-T0))&
+            -(1./(temp+Tzero-T0))))
+        else
+          ! set temperature response to a constant at value of -40°C
+          ftemp = exp(E0*((1./(ref_temp_local+Tzero-T0))&
+            -(1./(-40.+Tzero-T0))))
+        end if
+
+      case default
+
+        stop 'FTEMP: select valid method'
+
+          ! ftemp_ninorg = max( min( (((70.0-dtemp_soil(lu,jpngr))/(70.0-38.0))**12.0) * exp(12.0*(dtemp_soil(lu,jpngr)-38.0)/(70.0-38.0)), 1.0), 0.0)
+
+    end select
 
     return
 
@@ -63,7 +70,6 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Temperature response function
     !----------------------------------------------------------------
-
     implicit none
 
     ! arguments
@@ -73,15 +79,21 @@ contains
     ! function return variable
     real :: fmoist
 
-    if (method.eq."foley") then
-     !----------------------------------------------------------------
-     ! FOLEY
-     ! Calculates decomposition rate modifier for a given water fraction
-     ! according to Foley 1995
-     !----------------------------------------------------------------
-     fmoist = (0.25+(0.75*moist))
+    select case (method)
 
-    end if
+      case ("foley")
+        !----------------------------------------------------------------
+        ! FOLEY
+        ! Calculates decomposition rate modifier for a given water fraction
+        ! according to Foley 1995
+        !----------------------------------------------------------------
+        fmoist = (0.25+(0.75*moist))
+
+      case default
+
+        stop 'FMOIST: select valid method'
+
+    end select
 
     return
 

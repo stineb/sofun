@@ -24,13 +24,6 @@ module params_modl
   real :: fastfrac          ! 10 fraction of litter input to fast soil pool [1]
   real :: rcton_LS          ! 11 constant ratio between leaf and sapwood C/N ratios (Friend et al.,2008 in XP08)
   real :: rcton_LR          ! 12 constant ratio between leaf and root C/N ratios (Friend et al., 2008 in XP08)
-  real :: MAXNITR           ! 13 maximum nitrification rate
-  real :: NON               ! 14 maximum NO from nitrification (day-1)
-  real :: N2ON              ! 15 maximum N2O from nitrification (day-1)
-  real :: KN                ! 16 Michaelis-Menten coefficient [gN/m2]. Use this value if soil represents top 100 cm 
-  real :: KDOC              ! 17 Michaelis-Menten coefficient [gC/m2]. Use this value if soil represents top 100 cm 
-  real :: DOCMAX            ! 18 DOCMAX
-  real :: DNITR2N2O         ! 19 Fraction of denitrification lost as N2O. Range of possible values: 0.002 - 0.047 (Xu-Ri and Prentice, 2008)
   real :: kbeer             ! 20 canopy light extinction coefficient
   real :: kresp             ! 21 additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
   real :: F_NRETAIN         ! 29 fraction of N retained at leaf abscission 
@@ -60,7 +53,7 @@ module params_modl
   real, dimension(npft) :: wooddens            ! wood density (gC * m-3)
   real, dimension(npft) :: allom1, allom2      ! allometry parameters
   real :: allom3                               ! allometry parameter
-  real :: crownarea_max                        ! maximum crown area
+  real, dimension(npft) :: crownarea_max       ! maximum crown area
   real, dimension(npft) :: latosa              ! ratio of leaf area to sapwood cross-sectional area (Shinozaki et al 1964a,b) (m2 * m-2)
   real, dimension(npft) :: woodtosapw          ! sapling [(heartwood mass) + (sapwood mass)] / (sapwood mass)
   real, dimension(npft) :: lmtorm0             ! leaf to root ratio under non-water stressed conditions

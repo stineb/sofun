@@ -10,19 +10,20 @@ subroutine getpar_modl
   use nuptake_fun, only: getpar_modl_nuptake
   use treegeometry, only: get_geometry_sapl
   use phenology_lpx, only: getpar_pft_summerphenology
+  use ntransform_xuri, only: getpar_modl_ntransform
 
   implicit none
 
   ! local variables
   integer :: pft
-  integer, parameter :: npar = 23
+  integer, parameter :: npar = 16
   real, dimension(npar) :: params_array
 
   integer, parameter :: npar_pft = 21
   real, dimension(npar_pft) :: pft_params_array
 
   real, dimension(npft) :: lu_category_prov    ! land use category associated with PFT (provisional)
-  real, dimension(3) :: out_get_geometry_sapl
+  type(orgpool), dimension(4) :: out_get_geometry_sapl
 
   !----------------------------------------------------------------
   ! NON-PFT DEPENDENT PARAMETERS
@@ -68,44 +69,24 @@ subroutine getpar_modl
   ! constant ratio between leaf and root C/N ratios (Friend et al., 2008 in XP08)
   rcton_LR = params_array(12)
 
-  ! maximum nitrification rate
-  MAXNITR = params_array(13)
-
-  ! maximum NO from nitrification (day-1)
-  NON = params_array(14)
-
-  ! maximum N2O from nitrification (day-1)
-  N2ON = params_array(15)
-
-  ! Michaelis-Menten coefficient [gN/m2]. Use this value if soil represents top 100 cm 
-  KN = params_array(16)
-
-  ! Michaelis-Menten coefficient [gC/m2]. Use this value if soil represents top 100 cm 
-  KDOC = params_array(17)
-
-  ! DOCMAX
-  DOCMAX = params_array(18)
-
-  ! Fraction of denitrification lost as N2O. Range of possible values: 0.002 - 0.047 (Xu-Ri and Prentice, 2008)
-  DNITR2N2O = params_array(19)
-
   ! canopy light extinction coefficient
-  kbeer = params_array(20)
+  kbeer = params_array(13)
 
   ! additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
-  kresp = params_array(21)
+  kresp = params_array(14)
 
   ! fraction of N retained at leaf abscission 
-  F_NRETAIN = params_array(22)        
+  F_NRETAIN = params_array(15)        
 
   ! maximum fractional plant coverage of trees (sum of all tree PFTs)
-  fpc_tree_max = params_array(23)
+  fpc_tree_max = params_array(16)
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC PARAMETERS
   !----------------------------------------------------------------
   call getpar_modl_waterbal('params_waterbal_stash.dat')
   call getpar_modl_nuptake('params_nuptake_fun.dat')
+  call getpar_modl_ntransform('params_ntransform_xuri.dat')
 
 
   !----------------------------------------------------------------
@@ -156,8 +137,9 @@ subroutine getpar_modl
     sla(pft) = 2.0e-4 * exp( 6.15 - 0.46 * log( long_leaf(pft) * 12.0 ) ) 
 
     ! PFT identification code (same as in LPX)
-    ! 3 = Temperate Needle Evergreen   TeNE
-    ! 8 = C3 grass                     TeH
+    ! 3 = Temperate Needle Evergreen        TeNE
+    ! 5 = Temperate Broadleaved Summergreen TeBS
+    ! 8 = C3 grass                          TeH
     pftcode(pft) = int(pft_params_array(7)) 
 
     ! sapwood turnover period [days], read in as [years]
@@ -176,10 +158,10 @@ subroutine getpar_modl
       nfixer(pft) = .true.
     endif 
 
-    ! growth respiration coefficient
+    ! growth respiration coefficient (not PFT-dependent in LPX)
     rresp_growth(pft) = pft_params_array(12) 
 
-    ! Reinicker-p for geometry
+    ! Reinicker-p for geometry (not PFT-dependent in LPX)
     reinickerp = pft_params_array(13) ! put into pft-loop to have all geometry parameters in one place 
 
     ! wood density (gC * m-3)
@@ -188,10 +170,10 @@ subroutine getpar_modl
     ! allometry parameters
     allom1(pft) = pft_params_array(15)
     allom2(pft) = pft_params_array(16)
-    allom3 = pft_params_array(17) ! put into pft-loop to have all geometry parameters in one place 
+    allom3 = pft_params_array(17)      ! put into pft-loop to have all geometry parameters in one place 
 
     ! maximum crown area
-    crownarea_max = pft_params_array(18) ! put into pft-loop to have all geometry parameters in one place 
+    crownarea_max(pft) = pft_params_array(18) ! put into pft-loop to have all geometry parameters in one place 
 
     ! ratio of leaf area to sapwood cross-sectional area (Shinozaki et al 1964a,b) (m2 * m-2)
     latosa(pft) = pft_params_array(19)
@@ -202,30 +184,15 @@ subroutine getpar_modl
     ! leaf to root ratio under non-water stressed conditionss
     lmtorm0(pft) = pft_params_array(21)
 
-    ! leaf (, sapwood, and heartwood) mass of sapling
-    if (grass(pft)) then
-      lm_sapl(pft)%c%c12 = lai0(pft) / sla(pft)
-    else
-      ! call function returning (lm_sapl, sm_sapl, hm_sapl)
-      out_get_geometry_sapl = get_geometry_sapl( &
-          lai0(pft), sla(pft), latosa(pft), reinickerp, allom1(pft) &
-        , allom2(pft), allom3, wooddens(pft), woodtosapw(pft), lmtorm0(pft) &
-        )            
-      lm_sapl(pft)%c%c12 = out_get_geometry_sapl(1)
-      sm_sapl(pft)%c%c12 = out_get_geometry_sapl(2)
-      hm_sapl(pft)%c%c12 = out_get_geometry_sapl(3)
-    end if
-    
-    ! root mass of sapling is a function of leaf mass            
-    rm_sapl(pft)%c%c12 = ( 1.0 / lmtorm0(pft) ) * lm_sapl(pft)%c%c12
-
-    ! N content of sapling
-    lm_sapl(pft)%n%n14 = lm_sapl(pft)%c%c12 / cton_pro(pft)
-    rm_sapl(pft)%n%n14 = rm_sapl(pft)%c%c12 / cton_pro(pft) 
-    if (tree(pft)) then
-      sm_sapl(pft)%n%n14 = sm_sapl(pft)%c%c12 / cton_pro(pft)
-      hm_sapl(pft)%n%n14 = hm_sapl(pft)%c%c12 / cton_pro(pft)
-    endif
+    ! sapling pool sizes
+    out_get_geometry_sapl = get_geometry_sapl( &
+        grass(pft), lai0(pft), sla(pft), latosa(pft), reinickerp, allom1(pft) &
+      , allom2(pft), allom3, wooddens(pft), woodtosapw(pft), lmtorm0(pft), cton_pro(pft)  &
+      )            
+    lm_sapl(pft) = out_get_geometry_sapl(1)
+    sm_sapl(pft) = out_get_geometry_sapl(2)
+    hm_sapl(pft) = out_get_geometry_sapl(3)
+    rm_sapl(pft) = out_get_geometry_sapl(4)
 
   end do
 

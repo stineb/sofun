@@ -19,6 +19,7 @@ module waterbal_stash
   !   - runoff ('dro')
   !----------------------------------------------------------------
   use params_core, only: ndayyear, nmonth, nlu, maxgrid
+  use statevars, only: aet_d, cpa_d, dro
 
   implicit none
 
@@ -54,9 +55,6 @@ module waterbal_stash
   real :: ppfd_d                 ! daily PPFD (mol/m^2)
   real :: eet_d                  ! daily EET (mm)
   real :: pet_d                  ! daily PET (mm)
-  real, dimension(nlu) :: aet_d  ! daily AET (mm)
-  real, dimension(nlu) :: cpa_d  ! daily Cramer-Prentice-Alpha (AET/EET)
-  real, dimension(nlu) :: dro    ! daily runoff [mm]
   real, dimension(nlu) :: wc     ! daily condensation (mm)
   real, dimension(nlu) :: sw     ! evaporative supply rate (mm/h)
 

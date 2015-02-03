@@ -10,6 +10,7 @@ subroutine getout_daily( jpngr, moy, doy )
   use fluxes
   use outvars
   use pools
+  use statevars
   use waterbal_stash, only: getout_daily_waterbal
   use nuptake_fun, only: getout_daily_nuptake
 
@@ -35,7 +36,7 @@ subroutine getout_daily( jpngr, moy, doy )
   outdCleaf(:,doy,jpngr) = pleaf(:,jpngr)%c%c12
   outdcex(:,doy,jpngr)   = dcex(:)
 
-  outdninorg(:,doy,jpngr)   = nh4(:,jpngr)%n14 + no3(:,jpngr)%n14
+  outdninorg(:,doy,jpngr)   = pninorg(:,jpngr)%n14
   outdtemp_soil(:,doy,jpngr)= dtemp_soil(:,jpngr)
 
   !----------------------------------------------------------------

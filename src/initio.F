@@ -5,6 +5,7 @@ subroutine initio
   use params_siml, only: runname
   use waterbal_stash, only: initio_waterbal
   use nuptake_fun, only: initio_nuptake
+  use ntransform_xuri, only: initio_ntransform
 
   implicit none
 
@@ -105,6 +106,7 @@ subroutine initio
   !----------------------------------------------------------------
   call initio_waterbal( prefix )
   call initio_nuptake( prefix )
+  call initio_ntransform( prefix ) ! nothing yet xxx
 
 
   return

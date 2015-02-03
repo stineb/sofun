@@ -16,16 +16,16 @@ module fixveg
 
 contains
 
-  subroutine establishment( jpngr )
+  subroutine establishment( jpngr, fpc_grid_data )
     !//////////////////////////////////////////////////////////////////////////////
-    ! GET FIXED PRESCRIBED VEGETATION COVER
-    ! Subroutine defines 'fpc_grid' and updates 'nind' following geo-
-    ! metry constraints.
+    ! GET NIND
+    ! With fixed veg. cover, establishment is executed only in the first year to 
+    ! get initial 'nind'.
     !-----------------------------------------------------------------------------
     use classdefs
-    use params_modl, only: tree
+    use params_modl, only: tree, hm_sapl, sm_sapl, rm_sapl, lm_sapl
     use params_core, only: npft
-    use pools, only: psapw, pleaf
+    use pools, only: psapw, pleaf, pwood, proot
 
     ! xxx debug
     use pools, only: plabl
@@ -33,163 +33,182 @@ contains
     implicit none
 
     ! ARGUMENTS
-    integer, intent(in)      :: jpngr
+    integer, intent(in)               :: jpngr
+    real, dimension(npft), intent(in) :: fpc_grid_data
 
     ! LOCAL VARIABLES
     integer                  :: pft
     logical, dimension(npft) :: estab
     type(orgpool)            :: psapw_temp
+    logical, save            :: firstcall = .true.
 
 
-    !-----------------------------------------------------------------------------
-    ! derive which PFTs are present from fpc_grid (which is prescribed)
-    !-----------------------------------------------------------------------------
-    do pft=1,npft
-      if (fpc_grid(pft,jpngr)>0.0) then
-        ispresent(pft,jpngr) = .true.
-      else
-        ispresent(pft,jpngr) = .false.
-      end if
-    end do
+    if (firstcall) then
 
-    ! xxx debug
-    !print*,'A fpc_grid  ',fpc_grid(:,1)
-    !print*,'A crownarea ',crownarea(:,1)
-    !print*,'A leaf mass ',pleaf(:,1)
-    !print*,'A labl      ',plabl(:,1)
+      do pft=1,npft
 
-    do pft=1,npft
+        !-----------------------------------------------------------------------------
+        ! Prescribe FPC grid from data
+        !-----------------------------------------------------------------------------
+        fpc_grid(:,jpngr) = fpc_grid_data(:)
 
-      ! xxx does this really also work for trees?
+        !-----------------------------------------------------------------------------
+        ! derive which PFTs are present from fpc_grid (which is prescribed)
+        !-----------------------------------------------------------------------------
+        if (fpc_grid(pft,jpngr)>0.0) then
+          ispresent(pft,jpngr) = .true.
+        else
+          ispresent(pft,jpngr) = .false.
+        end if
 
-      !-----------------------------------------------------------------------------
-      ! Re-calculate crownarea
-      !-----------------------------------------------------------------------------
-      psapw_temp = psapw(pft,jpngr)
-      call update_tree_geometry( &
-        pft, jpngr, psapw_temp, ntoc( psapw(pft,jpngr), default=0.0 ) &
-        )
+        !-----------------------------------------------------------------------------
+        ! Initialise pools with sapling pool size
+        !-----------------------------------------------------------------------------
+        pleaf(pft,jpngr) = lm_sapl(pft)
+        pwood(pft,jpngr) = hm_sapl(pft)
+        proot(pft,jpngr) = rm_sapl(pft)
+        psapw(pft,jpngr) = sm_sapl(pft)
 
-      !-----------------------------------------------------------------------------
-      ! Update fpc_grid, fpc_ind, and lai_ind
-      ! xxx shouldn't fpc_grid be prescribed?
-      !-----------------------------------------------------------------------------
-      lai_ind(pft,jpngr)  = get_lai_ind( pleaf(pft,jpngr)%c%c12, crownarea(pft,jpngr), pft )
 
-      !-----------------------------------------------------------------------------
-      ! Re-calculate 'nind' based on new leaf mass and crownarea
-      !-----------------------------------------------------------------------------
-      nind(pft,jpngr) = get_nind( tree(pft), fpc_grid(pft,jpngr), crownarea(pft,jpngr), fpc_ind(pft,jpngr) )
+        !-----------------------------------------------------------------------------
+        ! Calculate crownarea and height, re-calculate sapwood mass
+        !-----------------------------------------------------------------------------
+        psapw_temp = psapw(pft,jpngr)
+        call update_tree_geometry( pft, jpngr, psapw_temp, ntoc( psapw(pft,jpngr), default=0.0 ) )
 
-    end do
+        !-----------------------------------------------------------------------------
+        ! Update fpc_ind, and lai_ind
+        !-----------------------------------------------------------------------------
+        lai_ind(pft,jpngr)  = get_lai_ind( pleaf(pft,jpngr)%c%c12, crownarea(pft,jpngr), pft )
+        fpc_ind(pft,jpngr)  = get_fpc_ind( lai_ind(pft,jpngr) )
 
-    ! xxx debug
-    !print*,'B fpc_grid ',fpc_grid(:,1)
-    !print*,'B crownarea ',crownarea(:,1)
+        !-----------------------------------------------------------------------------
+        ! Re-calculate 'nind' based on new leaf mass and crownarea
+        !-----------------------------------------------------------------------------
+        print*,'tree(pft), fpc_grid, crownarea, fpc_ind',tree(pft), fpc_grid(pft,jpngr), crownarea(pft,jpngr), fpc_ind(pft,jpngr)
+        nind(pft,jpngr) = get_nind( tree(pft), fpc_grid(pft,jpngr), crownarea(pft,jpngr), fpc_ind(pft,jpngr) )
+        print*,'nind',nind(pft,jpngr)
+
+      end do
+
+      ! xxx debug
+      !print*,'B fpc_grid ',fpc_grid(:,1)
+      !print*,'B crownarea ',crownarea(:,1)
+
+      firstcall = .false.
+
+    end if
 
     return
 
   end subroutine establishment
 
 
-  subroutine light( jpngr )
-    !////////////////////////////////////////////////////////////////
-    ! LIGHT COMPETITION
-    ! reduce FPC of trees to 'fpc_tree_max', killing according number of
-    ! individuals (=reducing 'nind')
-    ! only effective with dynamic vegetation
-    ! b.stocker@imperial.ac.uk
-    !----------------------------------------------------------------
-    use classdefs
-    use params_core, only: nlu
-    use params_modl, only: sla, islu, tree, grass, fpc_tree_max, kbeer
-    use treegeometry, only: fpc_grid, ispresent, nind, update_fpc
-    use pools
-    implicit none
+  ! subroutine light( jpngr, fpc_grid_data )
+  !   !////////////////////////////////////////////////////////////////
+  !   ! LIGHT COMPETITION
+  !   ! reduce FPC of trees to 'fpc_tree_max', killing according number of
+  !   ! individuals (=reducing 'nind')
+  !   ! only effective with dynamic vegetation
+  !   ! b.stocker@imperial.ac.uk
+  !   !----------------------------------------------------------------
+  !   use classdefs
+  !   use params_core, only: nlu
+  !   use params_modl, only: sla, islu, tree, grass, fpc_tree_max, kbeer
+  !   use treegeometry, only: fpc_grid, ispresent, nind, update_fpc, update_tree_geometry
+  !   use pools
+  !   implicit none
 
-    ! ARGUMENTS
-    integer, intent(in) :: jpngr
+  !   ! ARGUMENTS
+  !   integer, intent(in) :: jpngr
+  !   real, dimension(npft), intent(in) :: fpc_grid_data
+
+  !   ! LOCAL VARIABLES
+  !   integer :: pft,lu
+
+  !   real :: fpc_tree_total  ! total grid FPC for tree PFTs
+  !   real :: fpc_grass_total ! total grid FPC for grass PFTs
+  !   real :: fpc_total       ! total grid FPC for all PFTs
+  !   real :: excess          ! tree FPC or grass cover to be reduced
+  !   real :: nind_kill       ! reduction in individual density to reduce tree FPC to permitted maximum (indiv/m2)
+  !   real :: cleaf_target    ! required grass leaf mass so that FPC constraints are satisfied
+  !   real :: frac_kill       ! fraction of grass PFT pools removed so that FPC constraints are satisfied
 
 
-    ! LOCAL VARIABLES
-    integer :: pft,lu
+  !   do lu=1,nlu
 
-    real :: fpc_tree_total  ! total grid FPC for tree PFTs
-    real :: fpc_grass_total ! total grid FPC for grass PFTs
-    real :: fpc_total       ! total grid FPC for all PFTs
-    real :: excess          ! tree FPC or grass cover to be reduced
-    real :: nind_kill       ! reduction in individual density to reduce tree FPC to permitted maximum (indiv/m2)
-    real :: cleaf_target    ! required grass leaf mass so that FPC constraints are satisfied
-    real :: frac_kill       ! fraction of grass PFT pools removed so that FPC constraints are satisfied
+  !     do pft=1,npft
+  !       if (islu(pft,lu)) then
+  !         if (ispresent(pft,jpngr)) then
 
+  !           if (tree(pft)) then
+  !             !-----------------------------------------------------------------------------
+  !             ! TREES
+  !             !-----------------------------------------------------------------------------
 
-    !do lu=1,nlu
+  !             !-----------------------------------------------------------------------------
+  !             ! Update crown area and height (xxx should be done in allocation)
+  !             !-----------------------------------------------------------------------------
+  !             psapw_temp = psapw(pft,jpngr)
+  !             call update_tree_geometry( pft, jpngr, psapw_temp, ntoc( psapw(pft,jpngr), default=0.0 ) )
 
- !  !   do pft=1,npft
-   !     if (islu(pft,lu)) then
-   !       if (ispresent(pft,jpngr)) then
-   !         if (tree(pft)) then
-   !           !-----------------------------------------------------------------------------
-   !           ! TREES
-   !           !-----------------------------------------------------------------------------
-   !           ! xxx find a solution for this
-   !           !if (fpc_tree_total> xxx prescribed fpc_grid of this pft xxx) then
-   !           if (fpc_tree_total>fpc_tree_max) then
-   !             ! test kuno 2005-01-7: split excess according to total FPC rather than inc
-   !             ! note that fpc_inc is already included in fpc_grid, fpc_tree_total, since
-   !             ! it is used to calculate the excess fpc (check origin of these vars).
-   !             ! kuno 2005-09-23:  mixed scheme is abolished, use only area-based scheme
-   !             excess = (fpc_tree_total-fpc_tree_max)*fpc_grid(pft,jpngr)/fpc_tree_total
-   !                             
-   !             ! Reduce individual density (and thereby gridcell-level biomass)
-   !             ! so that total tree FPC reduced to 'fpc_tree_max'
-   !             nind_kill = nind(pft,jpngr) * (excess/fpc_grid(pft,jpngr))
-   !             nind(pft,jpngr) = nind(pft,jpngr) - nind_kill
+  !             !-----------------------------------------------------------------------------
+  !             ! Update FPC 
+  !             !-----------------------------------------------------------------------------
+  !             call update_fpc(pft,jpngr)
 
- !  !             ! Transfer lost biomass to litter
-   !             call orgcpRec( orgfrac( nind_kill, pleaf(pft,jpngr) ), plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
-   !             call orgcpRec( orgfrac( nind_kill, psapw(pft,jpngr) ), plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
-   !             call orgcpRec( orgfrac( nind_kill, pwood(pft,jpngr) ), plitt_as(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
-   !             call orgcpRec( orgfrac( nind_kill, proot(pft,jpngr) ), plitt_bg(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
+  !             !-----------------------------------------------------------------------------
+  !             ! Reduce 'nind' to make sure fpc_grid is equal to fpc_grid_data
+  !             !-----------------------------------------------------------------------------
+  !             if (fpc_grid(pft,jpngr)>fpc_grid_data(pft)) then
 
- !  !           end if               ! fpc_tree_total > fpc_tree_max
+  !               nind_kill = nind(pft,jpngr) * (fpc_grid_data(pft)/fpc_grid(pft,jpngr) - 1.0)
+  !               nind(pft,jpngr) = nind(pft,jpngr) - nind_kill
 
- !  !         else
-   !           !-----------------------------------------------------------------------------
-   !           ! GRASSES
-   !           !-----------------------------------------------------------------------------
-   !           ! If grasses only, fpc_grass_total ~= 1; fpc_tree_total = 0
-   !           if ( fpc_grass_total > ( 1.0 - min( fpc_tree_max, fpc_tree_total ) ) ) then           
+  !               ! Transfer lost biomass to litter
+  !               call orgcpRec( orgfrac( nind_kill, pleaf(pft,jpngr) ), plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
+  !               call orgcpRec( orgfrac( nind_kill, psapw(pft,jpngr) ), plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
+  !               call orgcpRec( orgfrac( nind_kill, pwood(pft,jpngr) ), plitt_as(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
+  !               call orgcpRec( orgfrac( nind_kill, proot(pft,jpngr) ), plitt_bg(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
 
- !  !             excess = ( fpc_grass_total - 1.0 + min( fpc_tree_max, fpc_tree_total ) ) * ( fpc_grid(pft,jpngr) / fpc_grass_total ) + 1.0d-15 
+  !             end if               ! fpc_tree_total > fpc_tree_max
 
- !  !             cleaf_target = -1.0 / kbeer * dlog( 1.0d0 - ( fpc_grid(pft,jpngr) - excess ) ) / sla(pft)
-   !             frac_kill = (pleaf(pft,jpngr)%c%c12 - cleaf_target) / pleaf(pft,jpngr)%c%c12
+  !           else
+  !             !-----------------------------------------------------------------------------
+  !             ! GRASSES
+  !             !-----------------------------------------------------------------------------
+  !             ! If grasses only, fpc_grass_total ~= 1; fpc_tree_total = 0
+  !             if ( fpc_grass_total > ( 1.0 - min( fpc_tree_max, fpc_tree_total ) ) ) then           
 
- !  !             ! Transfer lost biomass to litter
-   !             call orgmvRec( orgfrac( frac_kill, pleaf(pft,jpngr)), pleaf(pft,jpngr), plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
-   !             call orgmvRec( orgfrac( frac_kill, proot(pft,jpngr)), proot(pft,jpngr), plitt_bg(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
+  !               excess = ( fpc_grass_total - 1.0 + min( fpc_tree_max, fpc_tree_total ) ) * ( fpc_grid(pft,jpngr) / fpc_grass_total ) + 1.0d-15 
 
- !  !           end if
-   !         
-   !         end if ! tree/grass
-   !    
-   !         !-----------------------------------------------------------------------------
-   !         ! Update fractional plant coverage. Should now comply with fpc_tree_max and 
-   !         ! not exceed 1.
-   !         !-----------------------------------------------------------------------------
-   !         call update_fpc(pft,jpngr)
+  !               cleaf_target = -1.0 / kbeer * dlog( 1.0d0 - ( fpc_grid(pft,jpngr) - excess ) ) / sla(pft)
+  !               frac_kill = (pleaf(pft,jpngr)%c%c12 - cleaf_target) / pleaf(pft,jpngr)%c%c12
 
- !  !       end if  ! ispresent
+  !               ! Transfer lost biomass to litter
+  !               call orgmvRec( orgfrac( frac_kill, pleaf(pft,jpngr)), pleaf(pft,jpngr), plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
+  !               call orgmvRec( orgfrac( frac_kill, proot(pft,jpngr)), proot(pft,jpngr), plitt_bg(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr) )
 
- !  !     end if  ! islu
+  !             end if
+            
+  !           end if ! tree/grass
+       
+  !           !-----------------------------------------------------------------------------
+  !           ! Update fractional plant coverage. Should now comply with fpc_tree_max and 
+  !           ! not exceed 1.
+  !           !-----------------------------------------------------------------------------
+  !           call update_fpc(pft,jpngr)
 
- !  !   end do  !pft
+  !         end if  ! ispresent
 
- !  ! end do
+  !       end if  ! islu
 
-    return
+  !     end do  !pft
 
-  end subroutine light
+  !   end do
+
+  !   return
+
+  ! end subroutine light
 
 end module fixveg
