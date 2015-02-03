@@ -16,7 +16,7 @@ subroutine littersom( jpngr, doy )
     psoil_sl, pninorg
   use statevars, only: dtemp_soil, ddoc
   use outvars, only: outdnetmin, outdnfixfree, outanreq, outaClit2soil, outaNlit2soil
-  use waterbal_stash, only: cpa_d
+  use waterbal_stash, only: ncpa_d
 
   ! xxx debug
   use pools, only: pleaf, proot
@@ -106,16 +106,16 @@ subroutine littersom( jpngr, doy )
         ! define decomposition rates for current soil temperature and moisture
         klitt_af(lu) = klitt_af10 &
           * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-          * fmoist(cpa_d(lu),"foley") ! alternative: "gerten"
+          * fmoist(ncpa_d(lu),"foley") ! alternative: "gerten"
         klitt_as(lu) = klitt_as10 &
           * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-          * fmoist(cpa_d(lu),"foley") ! alternative: "gerten"
+          * fmoist(ncpa_d(lu),"foley") ! alternative: "gerten"
         klitt_bg(lu) = klitt_bg10 &
           * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-          * fmoist(cpa_d(lu),"foley") ! alternative: "gerten"
+          * fmoist(ncpa_d(lu),"foley") ! alternative: "gerten"
         kexu(lu)     = kexu10     &
           * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-          * fmoist(cpa_d(lu),"foley") ! alternative: "gerten"
+          * fmoist(ncpa_d(lu),"foley") ! alternative: "gerten"
 
       end if
     end do
@@ -128,10 +128,10 @@ subroutine littersom( jpngr, doy )
     !-------------------------------------------------------------------------
     ksoil_fs(lu) = ksoil_fs10 &
       * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-      * fmoist(cpa_d(lu),"foley")     ! alternative: "gerten"
+      * fmoist(ncpa_d(lu),"foley")     ! alternative: "gerten"
     ksoil_sl(lu) = ksoil_sl10 &
       * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-      * fmoist(cpa_d(lu),"foley")     ! alternative: "gerten"
+      * fmoist(ncpa_d(lu),"foley")     ! alternative: "gerten"
 
     do pft=1,npft
       if (islu(pft,lu)) then

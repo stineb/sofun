@@ -6,6 +6,9 @@
 #include "sofun_module_control.inc"
       implicit none
 
+       ! Minimum precision
+       real, parameter :: epsilon = 1.0e-6 
+
        ! Carbon, so far contains only c12 (to be extended for c13)
        type carbon
          real :: c12
@@ -111,9 +114,9 @@
 
 
 #if _check_sanity
-         if (amount%c%c12>from%c%c12) then
+         if (amount%c%c12>from%c%c12+epsilon) then
            stop 'in ORGSUB: attempting to remove C amount > from-pool'
-         else if (amount%n%n14>from%n%n14) then
+         else if (amount%n%n14>from%n%n14+epsilon) then
            stop 'in ORGSUB: attempting to remove N amount > from-pool'
          else if (from%c%c12<0.0) then
            stop 'in ORGSUB: C in from-pool negative'
@@ -320,7 +323,7 @@
          type(carbon), intent(inout) :: from
 
 #if _check_sanity
-         if (amount%c12 > from%c12) then
+         if (amount%c12 > from%c12+epsilon) then
            write(0,*) 'amount', amount%c12
            write(0,*) 'from  ', from%c12
            write(0,*) 'in CSUB: attempting to remove amount > from-pool'
@@ -454,7 +457,7 @@
          type(nitrogen), intent(inout) :: from
 
 #if _check_sanity
-         if (amount%n14>from%n14) then
+         if (amount%n14>from%n14+epsilon) then
            stop 'in NSUB: attempting to remove amount > from-pool'
          endif
 #endif
@@ -742,7 +745,7 @@
 
 
 #if _check_sanity
-         if (pool1%c12<pool2%c12) then
+         if (pool1%c12+epsilon<pool2%c12) then
            stop 'in CMINUS: arg 1 < arg 2'
          endif
 #endif
@@ -767,7 +770,7 @@
          type(nitrogen) :: nminus
 
 #if _check_sanity
-         if (pool1%n14<pool2%n14) then
+         if (pool1%n14+epsilon<pool2%n14) then
            stop 'in NMINUS: arg 1 < arg 2'
          endif
 #endif
