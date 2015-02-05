@@ -28,7 +28,7 @@ module nuptake_fun
   real :: FIXOPTIMUM        ! optimum temperature for N fixation
   real :: FIXWIDTH          ! shape parameter for width of N fixation cost function
   real :: KN_ACTIVE_NINORG  ! N-availability constant in cost function for active NH4 uptake
-  real :: KC_ACTIVE_NINORG   ! root exploration constant in cost function for active NH4 uptake
+  real :: KC_ACTIVE_NINORG  ! root exploration constant in cost function for active NH4 uptake
   real :: EPSILON_WTOT      ! minimum soil water content above which N becomes available  
 
   ! MODULE-SPECIFIC VARIABLES
@@ -49,6 +49,737 @@ module nuptake_fun
 
 
 contains
+
+    subroutine nuptake( jpngr, pft )
+    !/////////////////////////////////////////////////////////////////
+    ! SUBROUTINE N_UPTAKE FOR FUN APPROACH
+    !-----------------------------------------------------------------
+    ! This model calculates first the passive uptake of N via the transpiration stream
+    ! then, if that uptake is insufficient to satisfy the demand from NPP, the remaining
+    ! NPP is used to pay for N uptake by one or more of fixation and active uptake. The N
+    ! extracted by this method must be the same as the N used
+    ! for growth (n_grow=n_uptake) hence we calculate the optimum amount of carbon
+    ! supplied to the roots/nodules to satisfy this constraint.
+    ! Adopted from Fischer et al., 2010 by Beni Stocker, July 2012
+    !-----------------------------------------------------------------
+    use classdefs
+    use params_core
+    use params_modl, only: lu_category, cton_pro, nfixer
+    use fluxes, only: dnpp, dnup, dcex
+    use waterbal_stash, only: aet_d  ! xxx make 'aet_d' a required global variable?
+    use treegeometry, only: nind, ispresent, fpc_grid
+    use pools, only: pninorg, pexud, plabl, proot, dwtot
+    use statevars, only: dtemp_soil
+
+    implicit none
+    
+    ! ARGUMENTS
+    integer, intent(in) :: jpngr, pft
+    
+    ! LOCAL VARIABLES
+    integer, parameter :: nsl_eff = 1           ! effective number of soil layers for vertical distribution of N inorg
+    integer, parameter :: icostActiveNinorg = 1 ! process number for active uptake of inorganic N
+    integer, parameter :: icostFix = 2          ! process number for symbiotic N-fixation
+    integer, parameter :: MAXSTEP = 100         ! maximum number of sub-time steps in N uptake optimisation
+    integer, parameter :: PARTS = 100           ! number of parts of split up of inorganic N for uptake
+
+    real, parameter :: SMALLVALUE = 1.e-9       ! to prevent numerical instability
+    real, parameter :: BIG_COST = 999999.       ! dummy value
+
+    logical unmetDemand
+    logical ranked         
+    logical empty
+    logical option(2)                           ! whether N-fixation is an option
+
+    integer :: iz, istep, lu   ! counter variables
+    integer :: iminCost                         ! info which source (-ID) is cheapest in each layer
+    integer :: mloc(1)                          ! used to hold result of minloc
+    integer :: cheapRank                        ! ranking of layers: e.g. cheapRank(1) contains layer number with cheapest N
+    integer :: icost
+    integer, parameter :: nstep = 1000           ! chose this to be flexible again
+    integer, save :: invocation = 0
+    logical :: continue_uptake = .true.
+    integer, parameter :: calib_year = 300*ndayyear
+    real, dimension(npft,maxgrid), save :: aNacq_active
+    real, dimension(npft,maxgrid), save :: aCacq_active
+    real, dimension(npft,maxgrid), save :: amean_cost_pvy
+    real :: dmean_cost
+    character(len=1) :: sub
+
+    real :: dtransp                             ! daily transpiration for this PFT (mm)
+    real :: avail_ninorg                        ! available inorganic N in soil layer (gN/m2)
+    real :: ninorg_conc                         ! inorganic N concentration (gN/gH2O)
+    real :: ninorg_uptake                       ! (gN) 
+    real :: n_uptake_pass                       ! (gN)
+    real :: npp_remaining
+    real :: npp_remaining_step
+    real :: dNacq_active
+    real :: dNacq_fix
+    real :: dCacq_active
+    real :: dCacq_fix
+    real :: n_demand
+    real :: n_demand_remaining
+    real :: n_uptake_retrans
+    real :: cost(2)                              ! cost of N for each source (-ID) [gC/gN]
+    real :: cost_of_n                            ! cheapest cost of N for each layer [gC/gN]
+    real :: Cacq                                 ! C spent for N acquisition
+    real :: Nacq                                 ! N acquired by spending Cacq
+          
+
+    !-------------------------------------------------------------------------
+    ! FUN treats different soil layers explicitly. In LPX N-pools represent a
+    ! single soil N pool (100 cm). The code below is adopted for a
+    ! formulation with different soil layers and soil N pools. To be consistent
+    ! with (current) LPX, nsl_eff (effective number of soil layers) is
+    ! set to 1. Thus, the model does not distinguish between N acquisition costs
+    ! in different layers. An implementation of layer-specific N
+    ! uptake, N-inorg pools, root turnover, N mineralization would be nice to have.
+    !-------------------------------------------------------------------------
+
+    ! Absolute water content corresponding to permanent wilting point [gH2O].
+    !epsilon_wtot = Fpwp( nlayers-nsl+1, jpngr ) * sum( Dz_soil(:) ) * 1000.
+    !-------------------------------------------------------------------------
+
+    invocation = invocation + 1
+
+    ! LU-PFT association
+    lu = lu_category(pft)
+
+    ! xxx think about this: order in which PFTs get access to Ninorg matters!
+    
+    ! xxx try:
+    dtransp = aet_d(lu_category(pft))*fpc_grid(pft,jpngr)
+
+    ! ! Change the order in which pfts get access to N stores daily.
+    ! do ppft=1,npft
+    !   pft = modulo(ppft+day-2,npft)+1
+
+    if (dnpp(pft)%c12 < 0.0) then
+      !-------------------------------------------------------------------------
+      ! In case of negative daily NPP, no N uptake is necessary, no C is exuded
+      ! npp has been calculated assuming no N limitation. On exit, npp has been reduced to account
+      ! for expenditure on N uptake.
+      !-------------------------------------------------------------------------
+      dcex(pft) = 0.0
+     
+    else
+
+      !//////////////////////////////////////////////////////////////////////////
+      ! INITIALIZATION
+      !-------------------------------------------------------------------------
+      unmetDemand    = .true.
+
+      dNacq_active    = 0.0                          ! active uptake, sum over sub-timesteps
+      dNacq_fix       = 0.0                          ! N fixation, sum over sub-timesteps
+      dCacq_active    = 0.0
+      dCacq_fix       = 0.0
+       
+      option(:)      = .true. 
+
+      !//////////////////////////////////////////////////////////////////////////
+      ! N DEMAND
+      !--------------------------------------------------------------------------
+      ! As opposed to FUN, where N-demand is assumed to maintain the current
+      ! CN-ratio of the whole plant, given NPP, here, N-demand is assumed is
+      ! driven by the fixed CN-ratio of PFT-specific new production, given NPP.
+      ! This is the same approach as in _DyN-LPJ (Xu-Ri & Prentice, 2008).
+      ! Note, that N-fixers have higher CN-ratios of new production, implying a
+      ! competitive disadvantage against non-fixers.
+      !--------------------------------------------------------------------------
+      n_demand = max( dnpp(pft)%c12/cton_pro(pft), 0.0 )  !in gN/m2/(timestep), timestetp=day or month 
+
+      ! xxx debug
+      !print*,'---------------------------------------'
+      !print*,'NPP, N demand, Ninorg', dnpp(pft)%c12, n_demand, no3(lu,jpngr)%n14+nh4(lu,jpngr)%n14
+
+      !-------------------------------------------------------------------------
+      ! Keep track of how much of the NPP-driven N-demand is not yet covered.
+      !--------------------------------------------------------------------------
+      n_demand_remaining = n_demand
+       
+      !//////////////////////////////////////////////////////////////////////////
+      ! USE STORED N (RETRANSLOCATION)
+      !--------------------------------------------------------------------------
+      ! As opposed to original FUN model, in which N is retranslocated at a
+      ! variable cost during leaf fall (turnover), a fraction of N is retained here
+      ! from turnover. It is stored at the end of the last year and available to
+      ! cover N demand during next year.
+      ! Just reduce the demand by amount retranslocated, not the labile N pool itself
+      !--------------------------------------------------------------------------
+      ! xxx debug
+      !n_uptake_retrans = min( n_demand, plabl(pft,jpngr)%n%n14 )
+      !n_demand_remaining = n_demand_remaining - n_uptake_retrans
+
+      !print*,'N retranslocated, remaining N demand', n_uptake_retrans, n_demand_remaining
+
+
+      !//////////////////////////////////////////////////////////////////////////
+      ! INORGANIC N CONCENTRATION IN SOIL WATER
+      !-------------------------------------------------------------------------
+      ! N is assumed immobile and unavailable in dry soils. Using the total soil
+      ! water and soil N to calculate concentration. Should be equivalent to
+      ! assuming concentration of N as being equal in liquid and ice and assuming
+      ! only N in liquid is available. nh4_conc and no3_conc are in gN/gH2O.
+      !-------------------------------------------------------------------------
+      call update_Ninorg( lu, pninorg(lu,jpngr)%n14, avail_ninorg, ninorg_conc, dwtot(lu,jpngr) )
+
+      ! xxx debug
+      !print*,'dwtot(lu,jpngr)  ',dwtot(lu,jpngr)
+
+      !--------------------------------------------------------------------------
+      ! Comment from FUN:
+      ! Soil N is assumed to be uniform across the gridbox (we have a gridbox mean
+      ! value), so all PFTs have access to the same resource. In theory this means
+      ! that any PFT can access and extract all the N, even although the fractional
+      ! cover of the PFT might be relatively small.
+      ! Done this way, the earlier PFTs get preferential access to N (which, once
+      ! extracted, will not be available to later PFTs). So as to avoid favouring
+      ! these PFTs, the order in which the PFTs are considered changes between
+      ! calls, using a counter of number of calls. (An alternative would be to use
+      ! random number generator.)
+      ! Note that if the sub-step loop was on the outside (and number of substeps>1),
+      ! the order of the PFTs would be less important...but then all costs need to
+      ! be in land_pts arrays, and generally takes more work to keep track of status
+      ! within step loop.
+      ! Calculations are carried out using fluxes for the fractional area in
+      ! question, then converted to effect on gridbox mean by multiplying by frac.
+      ! 
+      ! I think, as long the time steps are small and N-demand(PFT)<<N-availability
+      ! in any given time step, this should be not a problem. Giving a different
+      ! PFT "first crack" at Ninorg in every time step would have to be taken
+      ! care of in calling SR.
+      !--------------------------------------------------------------------------
+             
+      ! *** Why is passive uptake inside sub-loop in original FUN? ***
+
+             
+      !//////////////////////////////////////////////////////////////////////////
+      ! PASSIVE UPTAKE
+      ! No active control on passive uptake - always occurrs even if the unmet N
+      ! demand is zero.
+      !--------------------------------------------------------------------------         
+      ninorg_uptake = ninorg_conc * dtransp
+
+      ! *** Associate cost of passive NO3 uptake due to pH equilibration by plant (Gutschik, 1981)? ***
+       
+      ninorg_uptake = min( ninorg_uptake, avail_ninorg )
+       
+      ! xxx add more flexibility by allowing N uptake in excess of demand 
+
+      ! Do not take up any N in excess of demand
+      n_uptake_pass = min( ninorg_uptake, n_demand_remaining )
+
+      if ( n_demand_remaining <= n_uptake_pass ) then
+        !--------------------------------------------------------------------------
+        ! Passive uptake exceeds N-demand. Take up anyway.
+        !--------------------------------------------------------------------------
+        unmetDemand = .false.
+        n_demand_remaining = 0.0
+
+      else
+        n_demand_remaining = n_demand_remaining - n_uptake_pass
+      end if
+
+       
+      !--------------------------------------------------------------------------
+      ! Update N taken up and available N in soil.
+      !--------------------------------------------------------------------------
+      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - ninorg_uptake
+       
+      call update_Ninorg( lu, pninorg(lu,jpngr)%n14, avail_ninorg, ninorg_conc, dwtot(lu,jpngr) )
+
+
+      ! XXX May pools be emptied here?
+      !print*,'after passive uptake'
+      !print*,'NPP, N demand, Ninorg', dnpp(pft)%c12, n_demand_remaining, no3(lu,jpngr)%n14+nh4(lu,jpngr)%n14
+
+      if (unmetDemand) then
+        !--------------------------------------------------------------------------
+        ! If passive uptake is insufficient, consider fixation or active uptake
+        !--------------------------------------------------------------------------
+
+        !//////////////////////////////////////////////////////////////////////////
+        ! COST ON SYMBIOTIC N-FIXATION
+        !--------------------------------------------------------------------------
+        ! This cost is independent of N availability and will thus not change in the
+        ! course of the process of N uptake. Therefore, this cost is calculated out-
+        ! side the sub-timestep loop, but updated every day in order to account for
+        ! varying soil temperatures.
+        !--------------------------------------------------------------------------
+        if ( nfixer(pft) ) then
+          cost(icostFix) = fun_cost_fix( dtemp_soil(lu,jpngr) )
+        else
+          cost(icostFix) = BIG_COST
+          option(icostFix) = .false.
+        endif
+
+        !print*,'cost(icostFix)',cost(icostFix)
+
+        !--------------------------------------------------------------------------
+        ! Comment from FUN:
+        ! Start the sub-timestep integration loop. This loop was introduced
+        ! as a conceptually simple way in which to account for the fact that
+        ! the cost of N from a pool increases continuously as N is extracted
+        ! from the pool, which can result in another pool becoming cheaper
+        ! part way through the timestep. Each step in the loop attempts to
+        ! satisfy part of the demand by extracting from the cheapest store.
+        ! At the end of the step, the stores and costs are updated, for use
+        ! in the following step.
+        ! The number of sub-steps could be made a function of available store
+        ! since a small extraction from a large store occurs at relatively
+        ! constant cost, and it is probably unnecessary to use the sub-steps
+        ! to update the cost. e.g. if demand<10% of store, use a single step.
+        ! Also...if passive uptake is sufficient to meet demand, we could again
+        ! use a single step...but probably rarely occurs.
+        ! FOR ME NOT LOGICAL WHY PASSIVE UPTAKE IS INSIDE SUB-LOOP IN ORIGINAL
+        ! CODE.
+        !--------------------------------------------------------------------------
+
+        !--------------------------------------------------------------------------
+        ! Calculate the number of sub-steps so that the N demand to be covered per step
+        ! (n_demand_remaining/nstep) is equal to a fraction of 1/PARTS of the inorganic
+        ! N pool (taking the larger of NO3 or NH4):
+        !          Ninorg/PARTS = n_demand_remaining/nstep
+        ! => solve for nstep...
+        !--------------------------------------------------------------------------
+        
+        !--------------------------------------------------------------------------
+        ! Calculate NPP still to pay for after passive uptake and retranslocation
+        ! Minimum function is used here to protect from numerical imprecision making
+        ! 'npp_remaining' > 'dnpp' after division and multiplication with cton_pro.
+        !--------------------------------------------------------------------------
+        npp_remaining = min(n_demand_remaining * cton_pro(pft), dnpp(pft)%c12)
+
+        !--------------------------------------------------------------------------
+        ! Split NPP to pay for into steps
+        !--------------------------------------------------------------------------
+        npp_remaining_step = npp_remaining / real(nstep)
+
+        !//////////////////////////////////////////////////////////////////////////
+        ! SUB-TIMESTEP LOOP STARTS HERE
+        !--------------------------------------------------------------------------
+        empty = .false.
+        istep = 0
+        continue_uptake = .true.
+
+        do while (continue_uptake)
+
+          istep = istep + 1
+
+          cost(icostActiveNinorg) = fun_cost_active_ninorg( avail_ninorg, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
+
+          if (invocation>calib_year) then
+
+            dmean_cost = dCacq_active / dNacq_active
+
+            if (dmean_cost>amean_cost_pvy(pft,jpngr)) then
+              ! print*,'amean_cost_pvy',amean_cost_pvy(pft,jpngr)
+              ! print*,'dmean_cost    ',dmean_cost
+              continue_uptake = .false.
+              Cacq = 0.0
+            else
+              Cacq = npp_remaining_step
+            end if
+
+          else 
+
+            ! C:N ratio constraint 
+            Cacq = npp_remaining_step/(cton_pro(pft)/cost(icostActiveNinorg)+1.0)
+
+          end if
+
+
+          Nacq = Cacq/cost(icostActiveNinorg)
+          if ( Nacq > avail_ninorg ) then
+            Nacq = avail_ninorg
+            Cacq = Nacq*cost(icost)
+            empty = .true.
+          endif
+
+          dNacq_active = dNacq_active + Nacq
+          dCacq_active = dCacq_active + Cacq
+          ninorg_uptake = ninorg_uptake + Nacq
+ 
+          pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - Nacq
+          call update_Ninorg( lu, pninorg(lu,jpngr)%n14, avail_ninorg, ninorg_conc, dwtot(lu,jpngr) )
+
+          npp_remaining = npp_remaining - Cacq
+          if (invocation>calib_year.and.npp_remaining<=0.0) continue_uptake = .false.
+          dcex(pft) = dcex(pft) + Cacq
+
+          if (empty) continue_uptake = .false.
+          if (invocation<=calib_year .and. istep>=nstep) continue_uptake = .false.
+
+        end do
+
+        !   xxxxxxxx
+
+        !   !--------------------------------------------------------------------------
+        !   ! Initializations
+        !   !--------------------------------------------------------------------------
+        !   Nacq = 0.0
+        !   Cacq = 0.0
+        !   empty = .false.
+
+        !   !//////////////////////////////////////////////////////////////////////////
+        !   ! COST OPTIMIZATION
+        !   !--------------------------------------------------------------------------
+        !   ! Calculate the costs of the various possible sources and identify the
+        !   ! cheapest. The cost of nitrogen fixation does not vary within a timestep,
+        !   ! and has been calculated outside this loop.
+        !   !--------------------------------------------------------------------------
+             
+        !   !--------------------------------------------------------------------------
+        !   ! Cost of active uptake of NH4, NO3 and organic N
+        !   !--------------------------------------------------------------------------
+        !   cost(icostActiveNinorg) = fun_cost_active_ninorg( avail_ninorg, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
+        !   !cost(icostActiveOrg) = fun_cost_active_org(litterN)
+
+        !   !print*,'avail_nh4',avail_nh4
+        !   !print*,'avail_no3',avail_no3
+        !   !print*,'proot(pft,jpngr)%c%c12* nind(pft,jpngr)',proot(pft,jpngr)%c%c12* nind(pft,jpngr)
+        !   !print*,'cost(icostActiveNinorg)',cost(icostActiveNinorg)
+        !   !print*,'cost(icostActiveNO3)',cost(icostActiveNO3)
+        !   !print*,'cost(:)',cost(:)
+        !   !stop
+
+        !   !--------------------------------------------------------------------------
+        !   ! Find the lowest cost in each soil layer and each sub-timestep
+        !   !--------------------------------------------------------------------------
+        !   mloc(1:1) =  MINLOC( cost(:), mask=option(:) )
+        !   iminCost  = mloc(1)
+        !   cost_of_n = cost(iminCost)
+
+        !   !print*,'cost(:)                ', cost(:)
+        !   !print*,'iminCost, Cacq, Nacq   ', iminCost, Cacq, Nacq
+
+        !   !print*,'cost_of_n, BIG_COST, SMALLVALUE', cost_of_n, BIG_COST, SMALLVALUE
+                                  
+        !   !--------------------------------------------------------------------------
+        !   ! Spend C on extracting N
+        !   !--------------------------------------------------------------------------
+        !   if ( cost_of_n > BIG_COST ) then
+        !     ! If the cheapest N is very expensive, stores are empty
+        !     ! xxx if cost exceeds maximum, don't take up N and put C to labl                 
+        !     empty = .true.
+
+        !   else
+        !     ! Identify the process involved with the cheapest N
+        !     icost = iminCost
+             
+        !     !--------------------------------------------------------------------------
+        !     ! Calculate NPP decrement and N increment (for derivation, see bottom of this
+        !     ! file). Cacq: C spent for N acquisition. Nacq: N acquired
+        !     !--------------------------------------------------------------------------
+        !     Cacq = npp_remaining_step/(cton_pro(pft)/cost(icost)+1.0)
+        !     Nacq = Cacq/cost(icost)
+             
+        !     !print*,'icost, cost(:), Cacq, Nacq', pft, icost, cost(:), Cacq, Nacq
+            
+        !     !--------------------------------------------------------------------------
+        !     ! Load values into process-specific variables and limit
+        !     ! increments if store exhausted. Note that the fluxes and
+        !     ! increments calculated so far are for this fraction, and need
+        !     ! to be scaled to get effect on gridbox scale.
+        !     !--------------------------------------------------------------------------
+
+        !     if (icost==icostActiveNinorg) then
+        !       !//////////////////////////////////////////////////////////////////////////
+        !       ! ACTIVE INORGANIC N UPTAKE
+        !       !--------------------------------------------------------------------------
+        !       ! Decrement available store and update concentration.
+        !       ! If store insufficient, reduce uptake and NPP increment.
+        !       !--------------------------------------------------------------------------
+        !       if ( Nacq > avail_ninorg ) then
+        !         ! xxx better way to solve this?
+        !         Nacq = avail_ninorg
+        !         Cacq = Nacq*cost(icost)
+        !       endif
+
+        !       pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - Nacq
+
+        !       call update_Ninorg( lu, pninorg(lu,jpngr)%n14, avail_ninorg, ninorg_conc, dwtot(lu,jpngr) )
+
+        !       dNacq_active = dNacq_active + Nacq
+        !       dCacq_active = dCacq_active + Cacq
+        !       ninorg_uptake = ninorg_uptake + Nacq
+               
+        !     else
+
+        !       ! xxx instead of fixing, put C to labile pool and don't take up any N
+
+        !       !//////////////////////////////////////////////////////////////////////////
+        !       ! SYMBIOTIC N FIXATION
+        !       !--------------------------------------------------------------------------
+        !       if ( .not. nfixer(pft) ) then
+        !         write(0,*) 'cost:', cost(:)
+        !         write(0,*) 'Non-N-fixer tries to fix N! '//&
+        !           'BIG_COST too small?'
+        !         stop
+        !       endif
+               
+        !       dNacq_fix = dNacq_fix + Nacq
+        !       dCacq_fix = dCacq_fix + Cacq
+               
+        !       ! XXX Note that fixing will remain the cheapest store for all
+        !       ! subsequent steps (effectively it is accessing an infinite
+        !       ! store of gaseous N2), so explicit integration over each of
+        !       ! those individual steps could be avoided and NPP summed over
+        !       ! all remaining steps. But this has not been coded.
+
+        !     endif
+             
+        !     !--------------------------------------------------------------------------
+        !     ! Decrement unmet NPP over sub-timestep. This is necessary to know
+        !     ! how much is exuded (the remaing npp) when pools get empty (during
+        !     ! loop.)
+        !     !--------------------------------------------------------------------------
+        !     npp_remaining = npp_remaining - Cacq
+             
+        !     !--------------------------------------------------------------------------
+        !     ! Update costs in order to update ranking of soil layers w.r.t. cost 
+        !     !--------------------------------------------------------------------------
+        !     if (istep < nstep) then
+               
+        !       if (icost==icostActiveNinorg) then
+
+        !         cost(icostActiveNinorg) = fun_cost_active_ninorg( avail_ninorg, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
+
+        !       endif
+
+        !       !--------------------------------------------------------------------------
+        !       ! Decide which source of N is now cheapest in this layer. If cheapest layer
+        !       ! is now not the same as the cheapest layer before, re-rank layers.
+        !       !--------------------------------------------------------------------------
+        !       mloc(1:1) = MINLOC( cost(:) )
+        !       iminCost = mloc(1)
+        !       cost_of_n = cost(iminCost)
+                              
+        !     endif                                    !  istep<nstep
+             
+        !   endif                                      !  cost>big_cost (empty)
+           
+        !   !//////////////////////////////////////////////////////////////////////////
+        !   ! UPDATE FLUXES
+        !   !--------------------------------------------------------------------------
+        !   ! If pools got empty during integration loop, that is, before n_demand has
+        !   ! fully been covered, 'empty' is true. In this case, all remaining npp is
+        !   ! exuded. And the integration loop is exited.
+        !   ! xxx think of a better way to do this.
+        !   !--------------------------------------------------------------------------
+        !   if ( empty ) then
+             
+        !     ! Do not reduce "real" npp here, but substract exu in npp-SR
+        !     ! npp(pft,1) = npp(pft,1) - npp_remaining
+        !     dcex(pft) = dcex(pft) + npp_remaining
+
+        !     ! print*,'everything exuded'
+
+        !     ! Leave integration loop (steps)
+        !     exit substeps
+             
+        !   else                                       !not empty
+
+        !     !--------------------------------------------------------------------------
+        !     ! Decrement unmatched NPP over sub-timestep. This is necessary to know
+        !     ! how much is exuded (the remaing npp) when pools get empty (during
+        !     ! loop.) npp_remaining is the NPP still to pay for. Cacq is the cost of
+        !     ! N-acquisition in this integration step. 
+        !     !--------------------------------------------------------------------------
+        !     npp_remaining = npp_remaining - Cacq
+             
+        !     ! Do not reduce "real" npp here, but substract exu in npp-SR
+        !     ! npp(pft,1) = npp(pft,1)-Cacq
+
+        !     dcex(pft) = dcex(pft) + Cacq
+
+        !   endif                                      !empty
+           
+        !   !print*,'after step ', istep
+        !   !print*,'NPP, N demand, Ninorg', dnpp(pft)%c12, npp_remaining/cton_pro(pft), no3(lu,jpngr)%n14+nh4(lu,jpngr)%n14
+
+        ! end do substeps
+
+
+        !print*,'N by active uptake and fixation, remaining N demand', dNacq_active+dNacq_fix, n_demand_remaining
+
+         
+        !  print*,'fraction of npp paid for N uptake',
+        !  $             (dCacq_fix+dCacq_active)/tmp
+           
+      endif                                          !unmetDemand
+              
+
+    endif                                              ! (npp(pft).lt.0.0)
+
+
+    !--------------------------------------------------------------------------
+    ! Update N-uptake of this PFT. N-retranslocation is not considered
+    ! N-uptake.
+    !--------------------------------------------------------------------------
+    ! daily
+    dnup(pft)%n14 = n_uptake_pass + dNacq_active + dNacq_fix  ! n_uptake_retrans is not considered uptake
+    dnup_pas(pft) = n_uptake_pass
+    dnup_act(pft) = dNacq_active                   
+    dnup_fix(pft) = dNacq_fix  
+    dnup_ret(pft) = n_uptake_retrans
+    if (dnup(pft)%n14>0.0) then
+      dccost(pft) = dmean_cost       
+    else
+      dccost(pft) = -9999
+    endif
+
+    if (mod((invocation-1),ndayyear)==0) then
+      !f first day of the year
+      aNacq_active(pft,jpngr) = 0.0
+      aCacq_active(pft,jpngr) = 0.0
+
+    else if (mod(invocation,ndayyear)==0) then
+      ! last day of the year
+      amean_cost_pvy(pft,jpngr) = aCacq_active(pft,jpngr) / aNacq_active(pft,jpngr)
+      ! print*,'amean_cost_pvy(pft,jpngr)',amean_cost_pvy(pft,jpngr)
+
+      ! write( * , '( A )' )
+      ! write( * , '('' Press enter to continue '')' )
+      ! read ( * , '( A )' ) sub
+
+    end if
+    aNacq_active(pft,jpngr) = aNacq_active(pft,jpngr) + dNacq_active
+    aCacq_active(pft,jpngr) = aCacq_active(pft,jpngr) + dCacq_active
+
+
+
+    !XXX debug
+    ! print*,'NPP, EXU          ', dnpp(pft)%c12, dcex(pft)
+    ! print*,'N uptake          ', dnup(pft)%n14
+    ! print*,'N retranslocated  ', n_uptake_retrans
+    ! if ((dnup(pft)%n14+n_uptake_retrans)>0.0) then
+    !  print*,'C:N after N uptake', (dnpp(pft)%c12 - dcex(pft))/(dnup(pft)%n14+n_uptake_retrans)
+    ! end if
+    !                 print*,'N uptake by BNF',dNacq_fix
+    !                 print*,'N uptake by act',dNacq_active
+    !print*,'actual CN ratio',(dnpp(pft)%c12 - dcex(pft))/(n_uptake_pass+dNacq_active+dNacq_fix+n_uptake_retrans)
+    !                 if (dNacq_fix.gt.0.0) print*,'daily cost of BNF', dCacq_fix/dNacq_fix
+    !                 if (dNacq_active.gt.0.0) print*,'daily cost of act', dCacq_active/dNacq_active
+
+
+    return
+
+  contains
+
+    subroutine update_Ninorg( lu, Ninorg, avail_Ninorg, Ninorg_conc, wtot )
+      !**************************************************************************
+      ! Update N taken up and available N in soil.
+      !--------------------------------------------------------------------------
+      implicit none
+
+      integer, intent(in) :: lu
+      real, intent(in)  :: Ninorg
+      real, intent(out) :: avail_Ninorg
+      real, intent(out) :: Ninorg_conc
+      real, intent(in)  :: wtot           ! total soil water content (mm)
+                    
+      Ninorg_conc = Ninorg/wtot
+
+      if ( wtot > EPSILON_WTOT ) then 
+        avail_Ninorg = Ninorg - EPSILON_WTOT*Ninorg_conc
+      else
+        avail_Ninorg = 0.0
+        Ninorg_conc  = 0.0
+      endif
+
+      return
+
+    end subroutine update_Ninorg
+
+
+    function fun_cost_active_ninorg( avail_ninorg, croot )
+      !******************************************************************************
+      ! Cost of active inorganic N uptake by exudation of labile C. 
+      ! From Fisher er al., 2010.
+      !--------------------------------------------------------------------------      
+      use params_modl
+      implicit none
+
+      ! arguments
+      real, intent(in) :: avail_ninorg
+      real, intent(in) :: croot
+
+      ! function return variable
+      real :: fun_cost_active_ninorg         ! gC/gN
+
+      if ( croot > SMALLVALUE ) then
+        if ( avail_ninorg > SMALLVALUE ) then
+          fun_cost_active_ninorg = KN_ACTIVE_NINORG / avail_ninorg * KC_ACTIVE_NINORG / croot 
+          ! fun_cost_active_ninorg = KN_ACTIVE_NH4 / avail_nh4 + KC_ACTIVE_NH4 / croot ! xxx in FUN 2.0 it's a sum
+        else
+          fun_cost_active_ninorg = BIG_COST
+        endif
+
+      else
+        fun_cost_active_ninorg = BIG_COST
+      endif
+
+    end function fun_cost_active_ninorg
+
+
+    !******************************************************************************
+
+    !     function fun_cost_active_org(litterN)
+    !     implicit none
+    !     include XXX
+    !     real*8 litterN
+
+
+    !     return
+    !     end
+
+    function fun_cost_fix( soiltemp )
+      !******************************************************************************
+      ! Cost of symbiotic N fixation is the inverse of nitrogenase activity
+      ! after Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
+      ! (value from Gutschik 1981)
+      !--------------------------------------------------------------------------      
+      use params_modl
+      implicit none
+
+      real, intent(in) :: soiltemp
+      real :: fun_cost_fix                 ! function return variable
+
+
+      fun_cost_fix = MINIMUMCOSTFIX + exp((soiltemp-FIXOPTIMUM)**2/(2*FIXWIDTH**2))    ! inverse gauss function  (take WARMEST layer)
+
+    end function fun_cost_fix
+    
+
+    !******************************************************************************
+    ! Derivation of Cacq (C spent to cover cost of N-uptake) after
+    ! Fisher et al., 2010 (Equation numbers from paper)
+    ! 
+    !    C_growth = C_npp - C_acq                (eq.6b)
+    !    N_acq    = C_acq / Cost_acq             (eq.6c)
+    !    r_cton   = C_growth / (N_passive+N_acq) (eq.6d)  [equation presented in paper is incorrect!]
+
+    ! Using 6b and 6c, eq.6d becomes
+    !    r_cton   = (C_npp - C_acq) / (N_passive + C_acq/Cost_acq)
+
+    ! Solving for C_acq yields
+    !    C_acq    = (C_npp - r_cton * N_pass)/(r_cton/Cost_acq + 1)
+
+    ! Identify terms with variables in code:
+    ! (C_npp - r_cton * N_pass) <=> npp_remaining_step
+    ! C_acq <=> Cacq
+    ! N_acq <=> Nacq   [rest is obvious]
+    ! 
+    !******************************************************************************
+
+    ! REFERENCES
+    ! Fisher 
+    ! Gutschik
+    ! Houlton
+
+  end subroutine nuptake
+
 
   subroutine initdaily_nuptake
     !////////////////////////////////////////////////////////////////
@@ -248,656 +979,6 @@ contains
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_nuptake
-
-
-  subroutine nuptake( jpngr, pft )
-    !/////////////////////////////////////////////////////////////////
-    ! SUBROUTINE N_UPTAKE FOR FUN APPROACH
-    !-----------------------------------------------------------------
-    ! This model calculates first the passive uptake of N via the transpiration stream
-    ! then, if that uptake is insufficient to satisfy the demand from NPP, the remaining
-    ! NPP is used to pay for N uptake by one or more of fixation and active uptake. The N
-    ! extracted by this method must be the same as the N used
-    ! for growth (n_grow=n_uptake) hence we calculate the optimum amount of carbon
-    ! supplied to the roots/nodules to satisfy this constraint.
-    ! Adopted from Fischer et al., 2010 by Beni Stocker, July 2012
-    !-----------------------------------------------------------------
-    use classdefs
-    use params_core
-    use params_modl, only: lu_category, cton_pro, nfixer
-    use fluxes, only: dnpp, dnup, dcex
-    use waterbal_stash, only: aet_d  ! xxx make 'aet_d' a required global variable?
-    use treegeometry, only: nind, ispresent, fpc_grid
-    use pools, only: pninorg, pexud, plabl, proot, dwtot
-    use statevars, only: dtemp_soil
-
-    implicit none
-    
-    ! ARGUMENTS
-    integer, intent(in) :: jpngr, pft
-    
-    ! LOCAL VARIABLES
-    integer, parameter :: nsl_eff = 1           ! effective number of soil layers for vertical distribution of N inorg
-    integer, parameter :: icostActiveNinorg = 1 ! process number for active uptake of inorganic N
-    integer, parameter :: icostFix = 2          ! process number for symbiotic N-fixation
-    integer, parameter :: MAXSTEP = 100         ! maximum number of sub-time steps in N uptake optimisation
-    integer, parameter :: PARTS = 100           ! number of parts of split up of inorganic N for uptake
-
-    real, parameter :: SMALLVALUE = 1.e-9       ! to prevent numerical instability
-    real, parameter :: BIG_COST = 999999.       ! dummy value
-
-    logical unmetDemand
-    logical ranked         
-    logical empty
-    logical option(2)                           ! whether N-fixation is an option
-
-    integer :: iz, istep, lu   ! counter variables
-    integer :: iminCost                         ! info which source (-ID) is cheapest in each layer
-    integer :: mloc(1)                          ! used to hold result of minloc
-    integer :: cheapRank                        ! ranking of layers: e.g. cheapRank(1) contains layer number with cheapest N
-    integer :: icost
-    integer, parameter :: nstep = 100           ! chose this to be flexible again
-
-    real :: dtransp                             ! daily transpiration for this PFT (mm)
-    real :: avail_ninorg                        ! available inorganic N in soil layer (gN/m2)
-    real :: ninorg_conc                         ! inorganic N concentration (gN/gH2O)
-    real :: ninorg_uptake                       ! (gN) 
-    real :: n_uptake_pass                       ! (gN)
-    real :: npp_remaining
-    real :: npp_remaining_step
-    real :: Nacq_active
-    real :: Nacq_fix
-    real :: Cacq_active
-    real :: Cacq_fix
-    real :: n_demand
-    real :: n_demand_remaining
-    real :: n_uptake_retrans
-    real :: cost(2)                              ! cost of N for each source (-ID) [gC/gN]
-    real :: cost_of_n                            ! cheapest cost of N for each layer [gC/gN]
-    real :: Cacq                                 ! C spent for N acquisition
-    real :: Nacq                                 ! N acquired by spending Cacq
-          
-
-    !-------------------------------------------------------------------------
-    ! FUN treats different soil layers explicitly. In LPX N-pools represent a
-    ! single soil N pool (100 cm). The code below is adopted for a
-    ! formulation with different soil layers and soil N pools. To be consistent
-    ! with (current) LPX, nsl_eff (effective number of soil layers) is
-    ! set to 1. Thus, the model does not distinguish between N acquisition costs
-    ! in different layers. An implementation of layer-specific N
-    ! uptake, N-inorg pools, root turnover, N mineralization would be nice to have.
-    !-------------------------------------------------------------------------
-
-    ! Absolute water content corresponding to permanent wilting point [gH2O].
-    !epsilon_wtot = Fpwp( nlayers-nsl+1, jpngr ) * sum( Dz_soil(:) ) * 1000.
-    !-------------------------------------------------------------------------
-
-    ! LU-PFT association
-    lu = lu_category(pft)
-
-    ! xxx think about this: order in which PFTs get access to Ninorg matters!
-    
-    ! xxx try:
-    dtransp = aet_d(lu_category(pft))*fpc_grid(pft,jpngr)
-
-    ! ! Change the order in which pfts get access to N stores daily.
-    ! do ppft=1,npft
-    !   pft = modulo(ppft+day-2,npft)+1
-
-    if (dnpp(pft)%c12 < 0.0) then
-      !-------------------------------------------------------------------------
-      ! In case of negative daily NPP, no N uptake is necessary, no C is exuded
-      ! npp has been calculated assuming no N limitation. On exit, npp has been reduced to account
-      ! for expenditure on N uptake.
-      !-------------------------------------------------------------------------
-      dcex(pft) = 0.0
-     
-    else
-
-      !//////////////////////////////////////////////////////////////////////////
-      ! INITIALIZATION
-      !-------------------------------------------------------------------------
-      unmetDemand    = .true.
-
-      Nacq_active    = 0.0                          ! active uptake, sum over sub-timesteps
-      Nacq_fix       = 0.0                          ! N fixation, sum over sub-timesteps
-      Cacq_active    = 0.0
-      Cacq_fix       = 0.0
-       
-      option(:)      = .true. 
-
-      !//////////////////////////////////////////////////////////////////////////
-      ! N DEMAND
-      !--------------------------------------------------------------------------
-      ! As opposed to FUN, where N-demand is assumed to maintain the current
-      ! CN-ratio of the whole plant, given NPP, here, N-demand is assumed is
-      ! driven by the fixed CN-ratio of PFT-specific new production, given NPP.
-      ! This is the same approach as in _DyN-LPJ (Xu-Ri & Prentice, 2008).
-      ! Note, that N-fixers have higher CN-ratios of new production, implying a
-      ! competitive disadvantage against non-fixers.
-      !--------------------------------------------------------------------------
-      n_demand = max( dnpp(pft)%c12/cton_pro(pft), 0.0 )  !in gN/m2/(timestep), timestetp=day or month 
-
-      ! xxx debug
-      !print*,'---------------------------------------'
-      !print*,'NPP, N demand, Ninorg', dnpp(pft)%c12, n_demand, no3(lu,jpngr)%n14+nh4(lu,jpngr)%n14
-
-      !-------------------------------------------------------------------------
-      ! Keep track of how much of the NPP-driven N-demand is not yet covered.
-      !--------------------------------------------------------------------------
-      n_demand_remaining = n_demand
-       
-      !//////////////////////////////////////////////////////////////////////////
-      ! USE STORED N (RETRANSLOCATION)
-      !--------------------------------------------------------------------------
-      ! As opposed to original FUN model, in which N is retranslocated at a
-      ! variable cost during leaf fall (turnover), a fraction of N is retained here
-      ! from turnover. It is stored at the end of the last year and available to
-      ! cover N demand during next year.
-      ! Just reduce the demand by amount retranslocated, not the labile N pool itself
-      !--------------------------------------------------------------------------
-      ! xxx debug
-      !n_uptake_retrans = min( n_demand, plabl(pft,jpngr)%n%n14 )
-      !n_demand_remaining = n_demand_remaining - n_uptake_retrans
-
-      !print*,'N retranslocated, remaining N demand', n_uptake_retrans, n_demand_remaining
-
-
-      !//////////////////////////////////////////////////////////////////////////
-      ! INORGANIC N CONCENTRATION IN SOIL WATER
-      !-------------------------------------------------------------------------
-      ! N is assumed immobile and unavailable in dry soils. Using the total soil
-      ! water and soil N to calculate concentration. Should be equivalent to
-      ! assuming concentration of N as being equal in liquid and ice and assuming
-      ! only N in liquid is available. nh4_conc and no3_conc are in gN/gH2O.
-      !-------------------------------------------------------------------------
-      call update_Ninorg( lu, pninorg(lu,jpngr)%n14, avail_ninorg, ninorg_conc, dwtot(lu,jpngr) )
-
-      ! xxx debug
-      !print*,'dwtot(lu,jpngr)  ',dwtot(lu,jpngr)
-
-      !--------------------------------------------------------------------------
-      ! Comment from FUN:
-      ! Soil N is assumed to be uniform across the gridbox (we have a gridbox mean
-      ! value), so all PFTs have access to the same resource. In theory this means
-      ! that any PFT can access and extract all the N, even although the fractional
-      ! cover of the PFT might be relatively small.
-      ! Done this way, the earlier PFTs get preferential access to N (which, once
-      ! extracted, will not be available to later PFTs). So as to avoid favouring
-      ! these PFTs, the order in which the PFTs are considered changes between
-      ! calls, using a counter of number of calls. (An alternative would be to use
-      ! random number generator.)
-      ! Note that if the sub-step loop was on the outside (and number of substeps>1),
-      ! the order of the PFTs would be less important...but then all costs need to
-      ! be in land_pts arrays, and generally takes more work to keep track of status
-      ! within step loop.
-      ! Calculations are carried out using fluxes for the fractional area in
-      ! question, then converted to effect on gridbox mean by multiplying by frac.
-      ! 
-      ! I think, as long the time steps are small and N-demand(PFT)<<N-availability
-      ! in any given time step, this should be not a problem. Giving a different
-      ! PFT "first crack" at Ninorg in every time step would have to be taken
-      ! care of in calling SR.
-      !--------------------------------------------------------------------------
-             
-      ! *** Why is passive uptake inside sub-loop in original FUN? ***
-
-             
-      !//////////////////////////////////////////////////////////////////////////
-      ! PASSIVE UPTAKE
-      ! No active control on passive uptake - always occurrs even if the unmet N
-      ! demand is zero.
-      !--------------------------------------------------------------------------         
-      ninorg_uptake = ninorg_conc * dtransp
-
-      ! *** Associate cost of passive NO3 uptake due to pH equilibration by plant (Gutschik, 1981)? ***
-       
-      ninorg_uptake = min( ninorg_uptake, avail_ninorg )
-       
-      ! xxx add more flexibility by allowing N uptake in excess of demand 
-
-      ! Do not take up any N in excess of demand
-      n_uptake_pass = min( ninorg_uptake, n_demand_remaining )
-
-      if ( n_demand_remaining <= n_uptake_pass ) then
-        !--------------------------------------------------------------------------
-        ! Passive uptake exceeds N-demand. Take up anyway.
-        !--------------------------------------------------------------------------
-        unmetDemand = .false.
-        n_demand_remaining = 0.0
-
-      else
-        n_demand_remaining = n_demand_remaining - n_uptake_pass
-      end if
-
-       
-      !--------------------------------------------------------------------------
-      ! Update N taken up and available N in soil.
-      !--------------------------------------------------------------------------
-      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - ninorg_uptake
-       
-      call update_Ninorg( lu, pninorg(lu,jpngr)%n14, avail_ninorg, ninorg_conc, dwtot(lu,jpngr) )
-
-
-      ! XXX May pools be emptied here?
-      !print*,'after passive uptake'
-      !print*,'NPP, N demand, Ninorg', dnpp(pft)%c12, n_demand_remaining, no3(lu,jpngr)%n14+nh4(lu,jpngr)%n14
-
-      if (unmetDemand) then
-        !--------------------------------------------------------------------------
-        ! If passive uptake is insufficient, consider fixation or active uptake
-        !--------------------------------------------------------------------------
-
-        !//////////////////////////////////////////////////////////////////////////
-        ! COST ON SYMBIOTIC N-FIXATION
-        !--------------------------------------------------------------------------
-        ! This cost is independent of N availability and will thus not change in the
-        ! course of the process of N uptake. Therefore, this cost is calculated out-
-        ! side the sub-timestep loop, but updated every day in order to account for
-        ! varying soil temperatures.
-        !--------------------------------------------------------------------------
-        if ( nfixer(pft) ) then
-          cost(icostFix) = fun_cost_fix( dtemp_soil(lu,jpngr) )
-        else
-          cost(icostFix) = BIG_COST
-          option(icostFix) = .false.
-        endif
-
-        !print*,'cost(icostFix)',cost(icostFix)
-
-        !--------------------------------------------------------------------------
-        ! Comment from FUN:
-        ! Start the sub-timestep integration loop. This loop was introduced
-        ! as a conceptually simple way in which to account for the fact that
-        ! the cost of N from a pool increases continuously as N is extracted
-        ! from the pool, which can result in another pool becoming cheaper
-        ! part way through the timestep. Each step in the loop attempts to
-        ! satisfy part of the demand by extracting from the cheapest store.
-        ! At the end of the step, the stores and costs are updated, for use
-        ! in the following step.
-        ! The number of sub-steps could be made a function of available store
-        ! since a small extraction from a large store occurs at relatively
-        ! constant cost, and it is probably unnecessary to use the sub-steps
-        ! to update the cost. e.g. if demand<10% of store, use a single step.
-        ! Also...if passive uptake is sufficient to meet demand, we could again
-        ! use a single step...but probably rarely occurs.
-        ! FOR ME NOT LOGICAL WHY PASSIVE UPTAKE IS INSIDE SUB-LOOP IN ORIGINAL
-        ! CODE.
-        !--------------------------------------------------------------------------
-
-        !--------------------------------------------------------------------------
-        ! Calculate the number of sub-steps so that the N demand to be covered per step
-        ! (n_demand_remaining/nstep) is equal to a fraction of 1/PARTS of the inorganic
-        ! N pool (taking the larger of NO3 or NH4):
-        !          Ninorg/PARTS = n_demand_remaining/nstep
-        ! => solve for nstep...
-        !--------------------------------------------------------------------------
-        
-        !--------------------------------------------------------------------------
-        ! Calculate NPP still to pay for after passive uptake and retranslocation
-        ! Minimum function is used here to protect from numerical imprecision making
-        ! 'npp_remaining' > 'dnpp' after division and multiplication with cton_pro.
-        !--------------------------------------------------------------------------
-        npp_remaining = min(n_demand_remaining * cton_pro(pft), dnpp(pft)%c12)
-
-        !--------------------------------------------------------------------------
-        ! Split NPP to pay for into steps
-        !--------------------------------------------------------------------------
-        npp_remaining_step = npp_remaining / real(nstep)
-
-        !//////////////////////////////////////////////////////////////////////////
-        ! SUB-TIMESTEP LOOP STARTS HERE
-        !--------------------------------------------------------------------------
-        substeps: do istep=1,nstep
-
-          !--------------------------------------------------------------------------
-          ! Initializations
-          !--------------------------------------------------------------------------
-          Nacq = 0.0
-          Cacq = 0.0
-          empty = .false.
-
-          !//////////////////////////////////////////////////////////////////////////
-          ! COST OPTIMIZATION
-          !--------------------------------------------------------------------------
-          ! Calculate the costs of the various possible sources and identify the
-          ! cheapest. The cost of nitrogen fixation does not vary within a timestep,
-          ! and has been calculated outside this loop.
-          !--------------------------------------------------------------------------
-             
-          !--------------------------------------------------------------------------
-          ! Cost of active uptake of NH4, NO3 and organic N
-          !--------------------------------------------------------------------------
-          cost(icostActiveNinorg) = fun_cost_active_ninorg( avail_ninorg, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
-          !cost(icostActiveOrg) = fun_cost_active_org(litterN)
-
-          !print*,'avail_nh4',avail_nh4
-          !print*,'avail_no3',avail_no3
-          !print*,'proot(pft,jpngr)%c%c12* nind(pft,jpngr)',proot(pft,jpngr)%c%c12* nind(pft,jpngr)
-          !print*,'cost(icostActiveNinorg)',cost(icostActiveNinorg)
-          !print*,'cost(icostActiveNO3)',cost(icostActiveNO3)
-          !print*,'cost(:)',cost(:)
-          !stop
-
-          !--------------------------------------------------------------------------
-          ! Find the lowest cost in each soil layer and each sub-timestep
-          !--------------------------------------------------------------------------
-          mloc(1:1) =  MINLOC( cost(:), mask=option(:) )
-          iminCost  = mloc(1)
-          cost_of_n = cost(iminCost)
-
-          !print*,'cost(:)                ', cost(:)
-          !print*,'iminCost, Cacq, Nacq   ', iminCost, Cacq, Nacq
-
-          !print*,'cost_of_n, BIG_COST, SMALLVALUE', cost_of_n, BIG_COST, SMALLVALUE
-                                  
-          !--------------------------------------------------------------------------
-          ! Spend C on extracting N
-          !--------------------------------------------------------------------------
-          if ( cost_of_n > BIG_COST ) then
-            ! If the cheapest N is very expensive, stores are empty
-            ! xxx if cost exceeds maximum, don't take up N and put C to labl                 
-            empty = .true.
-
-          else
-            ! Identify the process involved with the cheapest N
-            icost = iminCost
-             
-            !--------------------------------------------------------------------------
-            ! Calculate NPP decrement and N increment (for derivation, see bottom of this
-            ! file). Cacq: C spent for N acquisition. Nacq: N acquired
-            !--------------------------------------------------------------------------
-            Cacq = npp_remaining_step/(cton_pro(pft)/cost(icost)+1.0)
-            Nacq = Cacq/cost(icost)
-             
-            !print*,'icost, cost(:), Cacq, Nacq', pft, icost, cost(:), Cacq, Nacq
-            
-            !--------------------------------------------------------------------------
-            ! Load values into process-specific variables and limit
-            ! increments if store exhausted. Note that the fluxes and
-            ! increments calculated so far are for this fraction, and need
-            ! to be scaled to get effect on gridbox scale.
-            !--------------------------------------------------------------------------
-
-            if (icost==icostActiveNinorg) then
-              !//////////////////////////////////////////////////////////////////////////
-              ! ACTIVE INORGANIC N UPTAKE
-              !--------------------------------------------------------------------------
-              ! Decrement available store and update concentration.
-              ! If store insufficient, reduce uptake and NPP increment.
-              !--------------------------------------------------------------------------
-              if ( Nacq > avail_ninorg ) then
-                ! xxx better way to solve this?
-                Nacq = avail_ninorg
-                Cacq = Nacq*cost(icost)
-              endif
-
-              pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - Nacq
-
-              call update_Ninorg( lu, pninorg(lu,jpngr)%n14, avail_ninorg, ninorg_conc, dwtot(lu,jpngr) )
-
-              Nacq_active = Nacq_active + Nacq
-              Cacq_active = Cacq_active + Cacq
-              ninorg_uptake = ninorg_uptake + Nacq
-               
-            else
-
-              ! xxx instead of fixing, put C to labile pool and don't take up any N
-
-              !//////////////////////////////////////////////////////////////////////////
-              ! SYMBIOTIC N FIXATION
-              !--------------------------------------------------------------------------
-              if ( .not. nfixer(pft) ) then
-                write(0,*) 'cost:', cost(:)
-                write(0,*) 'Non-N-fixer tries to fix N! '//&
-                  'BIG_COST too small?'
-                stop
-              endif
-               
-              Nacq_fix = Nacq_fix + Nacq
-              Cacq_fix = Cacq_fix + Cacq
-               
-              ! XXX Note that fixing will remain the cheapest store for all
-              ! subsequent steps (effectively it is accessing an infinite
-              ! store of gaseous N2), so explicit integration over each of
-              ! those individual steps could be avoided and NPP summed over
-              ! all remaining steps. But this has not been coded.
-
-            endif
-             
-            !--------------------------------------------------------------------------
-            ! Decrement unmet NPP over sub-timestep. This is necessary to know
-            ! how much is exuded (the remaing npp) when pools get empty (during
-            ! loop.)
-            !--------------------------------------------------------------------------
-            npp_remaining = npp_remaining - Cacq
-             
-            !--------------------------------------------------------------------------
-            ! Update costs in order to update ranking of soil layers w.r.t. cost 
-            !--------------------------------------------------------------------------
-            if (istep < nstep) then
-               
-              if (icost==icostActiveNinorg) then
-
-                cost(icostActiveNinorg) = fun_cost_active_ninorg( avail_ninorg, proot(pft,jpngr)%c%c12 * nind(pft,jpngr) )
-
-              endif
-
-              !--------------------------------------------------------------------------
-              ! Decide which source of N is now cheapest in this layer. If cheapest layer
-              ! is now not the same as the cheapest layer before, re-rank layers.
-              !--------------------------------------------------------------------------
-              mloc(1:1) = MINLOC( cost(:) )
-              iminCost = mloc(1)
-              cost_of_n = cost(iminCost)
-                              
-            endif                                    !  istep<nstep
-             
-          endif                                      !  cost>big_cost (empty)
-           
-          !//////////////////////////////////////////////////////////////////////////
-          ! UPDATE FLUXES
-          !--------------------------------------------------------------------------
-          ! If pools got empty during integration loop, that is, before n_demand has
-          ! fully been covered, 'empty' is true. In this case, all remaining npp is
-          ! exuded. And the integration loop is exited.
-          ! xxx think of a better way to do this.
-          !--------------------------------------------------------------------------
-          if ( empty ) then
-             
-            ! Do not reduce "real" npp here, but substract exu in npp-SR
-            ! npp(pft,1) = npp(pft,1) - npp_remaining
-            dcex(pft) = dcex(pft) + npp_remaining
-
-            ! print*,'everything exuded'
-
-            ! Leave integration loop (steps)
-            exit substeps
-             
-          else                                       !not empty
-
-            !--------------------------------------------------------------------------
-            ! Decrement unmatched NPP over sub-timestep. This is necessary to know
-            ! how much is exuded (the remaing npp) when pools get empty (during
-            ! loop.) npp_remaining is the NPP still to pay for. Cacq is the cost of
-            ! N-acquisition in this integration step. 
-            !--------------------------------------------------------------------------
-            npp_remaining = npp_remaining - Cacq
-             
-            ! Do not reduce "real" npp here, but substract exu in npp-SR
-            ! npp(pft,1) = npp(pft,1)-Cacq
-
-            dcex(pft) = dcex(pft) + Cacq
-
-          endif                                      !empty
-           
-          !print*,'after step ', istep
-          !print*,'NPP, N demand, Ninorg', dnpp(pft)%c12, npp_remaining/cton_pro(pft), no3(lu,jpngr)%n14+nh4(lu,jpngr)%n14
-
-
-        end do substeps
-
-
-        !print*,'N by active uptake and fixation, remaining N demand', Nacq_active+Nacq_fix, n_demand_remaining
-
-         
-        !  print*,'fraction of npp paid for N uptake',
-        !  $             (Cacq_fix+Cacq_active)/tmp
-           
-      endif                                          !unmetDemand
-              
-
-    endif                                              ! (npp(pft).lt.0.0)
-
-
-    !--------------------------------------------------------------------------
-    ! Update annual N-uptake of this PFT. N-retranslocation is not considered
-    ! N-uptake.
-    !--------------------------------------------------------------------------
-    dnup(pft)%n14 = n_uptake_pass + Nacq_active + Nacq_fix  ! n_uptake_retrans is not considered uptake
-    dnup_pas(pft) = n_uptake_pass
-    dnup_act(pft) = Nacq_active                   
-    dnup_fix(pft) = Nacq_fix  
-    dnup_ret(pft) = n_uptake_retrans
-    if (dnup(pft)%n14>0.0) then
-      dccost(pft) = dcex(pft) / dnup(pft)%n14          
-    else
-      dccost(pft) = -9999
-    endif
-
-
-    !XXX debug
-    !print*,'NPP, EXU          ', dnpp(pft)%c12, dcex(pft)
-    !print*,'N uptake          ', dnup(pft)%n14
-    !print*,'N retranslocated  ', n_uptake_retrans
-    !if ((dnup(pft)%n14+n_uptake_retrans)>0.0) then
-    !  print*,'C:N after N uptake', (dnpp(pft)%c12 - dcex(pft))/(dnup(pft)%n14+n_uptake_retrans)
-    !else
-    !  print*,'dnup + n_uptake_retrans',(dnup(pft)%n14+n_uptake_retrans)
-    !end if
-    !                 print*,'N uptake by BNF',Nacq_fix
-    !                 print*,'N uptake by act',Nacq_active
-    !print*,'actual CN ratio',(dnpp(pft)%c12 - dcex(pft))/(n_uptake_pass+Nacq_active+Nacq_fix+n_uptake_retrans)
-    !                 if (Nacq_fix.gt.0.0) print*,'daily cost of BNF', Cacq_fix/Nacq_fix
-    !                 if (Nacq_active.gt.0.0) print*,'daily cost of act', Cacq_active/Nacq_active
-
-
-    return
-
-  contains
-
-    subroutine update_Ninorg( lu, Ninorg, avail_Ninorg, Ninorg_conc, wtot )
-      !**************************************************************************
-      ! Update N taken up and available N in soil.
-      !--------------------------------------------------------------------------
-      implicit none
-
-      integer, intent(in) :: lu
-      real, intent(in)  :: Ninorg
-      real, intent(out) :: avail_Ninorg
-      real, intent(out) :: Ninorg_conc
-      real, intent(in)  :: wtot           ! total soil water content (mm)
-                    
-      Ninorg_conc = Ninorg/wtot
-
-      if ( wtot > EPSILON_WTOT ) then 
-        avail_Ninorg = Ninorg - EPSILON_WTOT*Ninorg_conc
-      else
-        avail_Ninorg = 0.0
-        Ninorg_conc  = 0.0
-      endif
-
-      return
-
-    end subroutine update_Ninorg
-
-
-    function fun_cost_active_ninorg( avail_ninorg, croot )
-      !******************************************************************************
-      ! Cost of active inorganic N uptake by exudation of labile C. 
-      ! From Fisher er al., 2010.
-      !--------------------------------------------------------------------------      
-      use params_modl
-      implicit none
-
-      ! arguments
-      real, intent(in) :: avail_ninorg
-      real, intent(in) :: croot
-
-      ! function return variable
-      real :: fun_cost_active_ninorg         ! gC/gN
-
-      if ( croot > SMALLVALUE ) then
-        if ( avail_ninorg > SMALLVALUE ) then
-          fun_cost_active_ninorg = KN_ACTIVE_NINORG / avail_ninorg * KC_ACTIVE_NINORG / croot 
-          ! fun_cost_active_ninorg = KN_ACTIVE_NH4 / avail_nh4 + KC_ACTIVE_NH4 / croot ! xxx in FUN 2.0 it's a sum
-        else
-          fun_cost_active_ninorg = BIG_COST
-        endif
-
-      else
-        fun_cost_active_ninorg = BIG_COST
-      endif
-
-    end function fun_cost_active_ninorg
-
-
-    !******************************************************************************
-
-    !     function fun_cost_active_org(litterN)
-    !     implicit none
-    !     include XXX
-    !     real*8 litterN
-
-
-    !     return
-    !     end
-
-    function fun_cost_fix( soiltemp )
-      !******************************************************************************
-      ! Cost of symbiotic N fixation is the inverse of nitrogenase activity
-      ! after Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
-      ! (value from Gutschik 1981)
-      !--------------------------------------------------------------------------      
-      use params_modl
-      implicit none
-
-      real, intent(in) :: soiltemp
-      real :: fun_cost_fix                 ! function return variable
-
-
-      fun_cost_fix = MINIMUMCOSTFIX + exp((soiltemp-FIXOPTIMUM)**2/(2*FIXWIDTH**2))    ! inverse gauss function  (take WARMEST layer)
-
-    end function fun_cost_fix
-    
-
-    !******************************************************************************
-    ! Derivation of Cacq (C spent to cover cost of N-uptake) after
-    ! Fisher et al., 2010 (Equation numbers from paper)
-    ! 
-    !    C_growth = C_npp - C_acq                (eq.6b)
-    !    N_acq    = C_acq / Cost_acq             (eq.6c)
-    !    r_cton   = C_growth / (N_passive+N_acq) (eq.6d)  [equation presented in paper is incorrect!]
-
-    ! Using 6b and 6c, eq.6d becomes
-    !    r_cton   = (C_npp - C_acq) / (N_passive + C_acq/Cost_acq)
-
-    ! Solving for C_acq yields
-    !    C_acq    = (C_npp - r_cton * N_pass)/(r_cton/Cost_acq + 1)
-
-    ! Identify terms with variables in code:
-    ! (C_npp - r_cton * N_pass) <=> npp_remaining_step
-    ! C_acq <=> Cacq
-    ! N_acq <=> Nacq   [rest is obvious]
-    ! 
-    !******************************************************************************
-
-    ! REFERENCES
-    ! Fisher 
-    ! Gutschik
-    ! Houlton
-
-  end subroutine nuptake
 
 
   !$$$      subroutine n_fixation_cryptogam( day, lu, jpngr, dnfix_cpc, dnfix_cgc )

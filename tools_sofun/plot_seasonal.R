@@ -31,6 +31,9 @@ daily[[ "year" ]] <- as.integer(time)
 daily[[ "moy" ]]  <- rep(rep(seq(12),times=ndaymonth),nyears)
 daily[[ "doy" ]]  <- rep(seq(ndayyear),nyears)
 
+## remove dummy value -9999 with NA
+daily[daily==-9999] <- NA
+
 ## take subset of one year and normalise all variables to [0,1]
 daily_sub <- daily[daily$year==plotyear,]
 for (ivar in seq(ndvars)) {
@@ -112,28 +115,49 @@ panel <- layout(
                 TRUE
                 )
 par(mar=c(4,4,2,1), las=1 )
-plot( daily_sub$doy, daily_sub$nup,    type="l", xlab="day of year", ylab="gC/m2/d", , ylim=c(0,max(daily_sub$nup)), col="green" )
-lines( daily_sub$doy, daily_sub$netmin, xlab="day of year", ylab="gC/m2/d", col="blue" )
-lines( daily_sub$doy, daily_sub$nfixfree, xlab="day of year", ylab="gC/m2/d", col="red" )
+plot( daily_sub$doy, daily_sub$nup,    type="l", xlab="day of year", ylab="gC/m2/d", ylim=c(0,max(daily_sub$nup)), col="green" )
+lines( daily_sub$doy, daily_sub$netmin, col="blue" )
+lines( daily_sub$doy, daily_sub$nfixfree, col="red" )
 legend( "bottomleft", c("Ninorg","Nup","net N min.","free-living BNF"), col=c("black","green","blue","red"), bty="n", lty=1 )
 
 par(mar=c(0,0,2,0))
 plot( c(0,1), c(0,1), type="n", axes=FALSE )
 lab <- expression(paste("(gN m"^-2," yr"^-1,")", sep=""))
-text( 0, 0.98, "ANNUAL TOTALS" , adj=c(0,0),font=2); text( 0.5, 0.98, lab , adj=c(0,0),font=2, cex=0.7)
-text( 0, 0.93, "N uptake", adj=c(0,0));          text( 0.5, 0.93, as.character(formatC(sum(daily_sub$nup),digits=2,format="f")) , adj=c(1,0))
-text( 0, 0.88, "N up. pas.", adj=c(0,0));        text( 0.5, 0.88, as.character(formatC(sum(daily_sub$nup_pas),digits=2,format="f")) , adj=c(1,0))
-text( 0, 0.83, "N up. act.", adj=c(0,0));        text( 0.5, 0.83, as.character(formatC(sum(daily_sub$nup_act),digits=2,format="f")) , adj=c(1,0))
-text( 0, 0.78, "N up. fix.", adj=c(0,0));        text( 0.5, 0.78, as.character(formatC(sum(daily_sub$nup_fix),digits=2,format="f")) , adj=c(1,0))
-text( 0, 0.73, "N up. ret.", adj=c(0,0));        text( 0.5, 0.73, as.character(formatC(sum(daily_sub$nup_ret),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.98, "ANNUAL TOTALS" , adj=c(0,0),font=2); text( 0.60, 0.98, lab , adj=c(0,0),font=2, cex=0.7)
+text( 0.10, 0.93, "N uptake", adj=c(0,0));              text( 0.60, 0.93, as.character(formatC(sum(daily_sub$nup),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.88, "N up. pas.", adj=c(0,0));            text( 0.60, 0.88, as.character(formatC(sum(daily_sub$nup_pas),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.83, "N up. act.", adj=c(0,0));            text( 0.60, 0.83, as.character(formatC(sum(daily_sub$nup_act),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.78, "N up. fix.", adj=c(0,0));            text( 0.60, 0.78, as.character(formatC(sum(daily_sub$nup_fix),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.73, "N up. ret.", adj=c(0,0));            text( 0.60, 0.73, as.character(formatC(sum(daily_sub$nup_ret),digits=2,format="f")) , adj=c(1,0))
 
 
-text( 0, 0.68, "N -> veg", adj=c(0,0));          text( 0.5, 0.68, as.character(formatC(annual_sub$nalloc,digits=2,format="f")) , adj=c(1,0));     text( 0.55, 0.68, paste(as.character(formatC(annual_sub$calloc/annual_sub$nalloc,digits=2,format="f")),"C:N") , adj=c(0,0))
-text( 0, 0.63, "N veg -> lit", adj=c(0,0));      text( 0.5, 0.63, as.character(formatC(annual_sub$nveg2lit,digits=2,format="f")) , adj=c(1,0));   text( 0.55, 0.63, paste(as.character(formatC(annual_sub$cveg2lit/annual_sub$nveg2lit,digits=2,format="f")),"C:N") , adj=c(0,0))
-text( 0, 0.58, "N lit -> soil", adj=c(0,0));     text( 0.5, 0.58, as.character(formatC(annual_sub$nlit2soil,digits=2,format="f")) , adj=c(1,0));  text( 0.55, 0.58, paste(as.character(formatC(annual_sub$clit2soil/annual_sub$nlit2soil,digits=2,format="f")),"C:N") , adj=c(0,0))
-text( 0, 0.53, "N -> soil req.", adj=c(0,0));    text( 0.5, 0.53, as.character(formatC(annual_sub$nreq,digits=2,format="f")) , adj=c(1,0))
-text( 0, 0.48, "N fBNF", adj=c(0,0));            text( 0.5, 0.48, as.character(formatC(sum(daily_sub$nfixfree),digits=2,format="f")) , adj=c(1,0))
-text( 0, 0.43, "N net min.", adj=c(0,0));        text( 0.5, 0.43, as.character(formatC(sum(daily_sub$netmin),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.68, "N -> veg", adj=c(0,0));              text( 0.60, 0.68, as.character(formatC(annual_sub$nalloc,digits=2,format="f")) , adj=c(1,0));     text( 0.65, 0.68, paste(as.character(formatC(annual_sub$calloc/annual_sub$nalloc,digits=2,format="f")),"C:N") , adj=c(0,0))
+text( 0.10, 0.63, "N veg -> lit", adj=c(0,0));          text( 0.60, 0.63, as.character(formatC(annual_sub$nveg2lit,digits=2,format="f")) , adj=c(1,0));   text( 0.65, 0.63, paste(as.character(formatC(annual_sub$cveg2lit/annual_sub$nveg2lit,digits=2,format="f")),"C:N") , adj=c(0,0))
+text( 0.10, 0.58, "N lit -> soil", adj=c(0,0));         text( 0.60, 0.58, as.character(formatC(annual_sub$nlit2soil,digits=2,format="f")) , adj=c(1,0));  text( 0.65, 0.58, paste(as.character(formatC(annual_sub$clit2soil/annual_sub$nlit2soil,digits=2,format="f")),"C:N") , adj=c(0,0))
+text( 0.10, 0.53, "N -> soil req.", adj=c(0,0));        text( 0.60, 0.53, as.character(formatC(annual_sub$nreq,digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.48, "N fBNF", adj=c(0,0));                text( 0.60, 0.48, as.character(formatC(sum(daily_sub$nfixfree),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.43, "N net min.", adj=c(0,0));            text( 0.60, 0.43, as.character(formatC(sum(daily_sub$netmin),digits=2,format="f")) , adj=c(1,0))
+dev.off()
+
+
+##--------------------------------------
+## N COST ANALYSIS
+##--------------------------------------
+pdf(paste("CostOverview_sofun_seasonal.pdf"),width=sum(widths),height=sum(heights))
+panel <- layout(
+                matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
+                widths=widths,
+                heights=heights,
+                TRUE
+                )
+par(mar=c(4,4,2,1), las=1 )
+plot( daily_sub$doy, daily_sub$ccost, xlab="", ylab="", type="l", col="magenta" )
+par(new=TRUE)
+plot( daily_sub$doy, daily_sub$nup/daily_sub$ninorg, axes=FALSE, type="l", col="green" )
+axis( 4, col="green" )
+legend( "bottomleft", c("C price of N", "fraction N taken up"), col=c("magenta","green"), bty="n", lty=1 )
+
+par(mar=c(0,0,2,0))
 dev.off()
 
 

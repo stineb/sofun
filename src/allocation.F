@@ -100,6 +100,7 @@ subroutine allocation_annual( jpngr )
 
       ! xxx debug
       !print*,'plabl',plabl
+      print*,'cton of plabl:', cton(plabl(pft,jpngr),default=0.0)
 
       ! determine how much of labile pool to allocate to growth this year
       req = plabl(pft,jpngr)%c%c12/cton_pro(pft)
