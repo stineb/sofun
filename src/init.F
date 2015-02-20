@@ -37,11 +37,14 @@ subroutine initglobal
   !! xxx try
   !! initialise pools with non-zero values
   !! here example gridcell 9.5 E, 47.5 N
-  psoil_fs(:,:) = orgpool( carbon(4000.), nitrogen(150.) )
-  psoil_sl(:,:) = orgpool( carbon(10000.), nitrogen(550.) )
-  plitt_af(:,:) = orgpool( carbon(500.), nitrogen(10.))
-  plitt_as(:,:) = orgpool( carbon(1500.), nitrogen(30.))
-  plitt_bg(:,:) = orgpool( carbon(400.), nitrogen(8.))
+  ! psoil_fs(:,:) = orgpool( carbon(4000.), nitrogen(150.) )
+  ! psoil_sl(:,:) = orgpool( carbon(10000.), nitrogen(550.) )
+  psoil_fs(:,:) = orgpool( carbon(0.0), nitrogen(0.0) )
+  psoil_sl(:,:) = orgpool( carbon(0.0), nitrogen(0.0) )
+
+  plitt_af(:,:) = orgpool( carbon(0.0), nitrogen(0.0))
+  plitt_as(:,:) = orgpool( carbon(0.0), nitrogen(0.0))
+  plitt_bg(:,:) = orgpool( carbon(0.0), nitrogen(0.0))
 
   ! xxx debug: change back to 0.0
   pninorg(:,:)  = nitrogen(10.0)
@@ -209,6 +212,7 @@ subroutine initoutput
   outagpp(:,:)        = 0.0
   outanpp(:,:)        = 0.0
   outanup(:,:)        = 0.0
+  outaCveg(:,:)       = 0.0
   outaClitt(:,:)      = 0.0
   outaCsoil(:,:)      = 0.0
   outaCalloc(:,:)     = 0.0

@@ -135,7 +135,7 @@ subroutine getpar_modl
     ! Equation based on Reich et al 1997, Fig 1f:
     ! This is a mathematically identical expression as in Sitch et al., 2003, Eq. 6
     sla(pft) = 2.0e-4 * exp( 6.15 - 0.46 * log( long_leaf(pft) * 12.0 ) ) 
-
+    
     ! PFT identification code (same as in LPX)
     ! 3 = Temperate Needle Evergreen        TeNE
     ! 5 = Temperate Broadleaved Summergreen TeBS

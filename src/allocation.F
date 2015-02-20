@@ -116,6 +116,9 @@ subroutine allocation_annual( jpngr )
       outaCalloc(pft,jpngr) = calloc
       outaNalloc(pft,jpngr) = nalloc
 
+      ! xxx debug
+      ! print*,'calloc', calloc
+
       ! unit conversion to per-individual
       calloc_ind = calloc / nind(pft,jpngr)
       nalloc_ind = nalloc / nind(pft,jpngr)

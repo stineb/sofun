@@ -8,6 +8,7 @@ subroutine littersom( jpngr, doy )
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use params_core
+  use params_siml, only: spinup
   use classdefs
   use rates
   use fluxes, only: drsoil, drhet
@@ -57,6 +58,9 @@ subroutine littersom( jpngr, doy )
   real :: req                                     ! N required for litter decomposition 
   real :: avl                                     ! mineral N available as inorganic N
   real :: netmin_litt                             ! net N mineralisation from litter decomposition
+
+  integer, save :: invocation = 0                 ! internally counted simulation year
+  real :: acc                                     ! soil equilibration acceleration factor
  
 #if _check_sanity
   real :: cbal_before
@@ -72,8 +76,29 @@ subroutine littersom( jpngr, doy )
     + psoil_sl(1,1)%n%n14 + pninorg(1,1)%n14
 #endif
 
+  !-------------------------------------------------------------------------
+  ! Count number of calls (one for each simulation year)
+  !-------------------------------------------------------------------------
+  if (doy==1) invocation = invocation + 1
 
+  !-------------------------------------------------------------------------
+  ! Set soil turnover accelerator for equilibration during spinup.
+  ! Evenly scale soil inputs and soil decomposition rates during
+  ! first 200 years with a scalar that linearly decreases from 200
+  ! to 1 over the first 200 years of the simulation.
+  ! Value 200 is chosen for quick equilibration without overshooting
+  ! for a temperate climate (Switzerland). May have to adjust this
+  ! for improving performance with a global simulation.
+  !-------------------------------------------------------------------------
+  if (spinup) then
+    acc = max( 1.0, 200.0 - real(invocation) ) 
+  else
+    acc = 1.0
+  end if
+
+  !-------------------------------------------------------------------------
   ! INITIALISATIONS
+  !-------------------------------------------------------------------------
   dlitt = orgpool( carbon(0.0), nitrogen(0.0) ) 
 
   do lu=1,nlu
@@ -91,7 +116,7 @@ subroutine littersom( jpngr, doy )
     ! from (2), decomposition in any month given by
     ! (3) delta_c = c0 - c0*exp(-k)
     ! from (4)
-    ! (4) delta_c = c0*(1.0-exp(-k))
+    ! (4) delta_c = c0*(1.00-exp(-k))
     !-------------------------------------------------------------------------
     do pft=1,npft
       if (islu(pft,lu)) then
@@ -141,9 +166,9 @@ subroutine littersom( jpngr, doy )
         ! LITTER DECAY
         ! All goes to daily updated litter decomposition pool
         !----------------------------------------------------------------
-        dlitt_af = orgfrac( 1.-exp(-klitt_af(lu)), plitt_af(pft,jpngr) )
-        dlitt_as = orgfrac( 1.-exp(-klitt_as(lu)), plitt_as(pft,jpngr) )
-        dlitt_bg = orgfrac( 1.-exp(-klitt_bg(lu)), plitt_bg(pft,jpngr) )
+        dlitt_af = orgfrac( 1.0-exp(-klitt_af(lu)), plitt_af(pft,jpngr) )
+        dlitt_as = orgfrac( 1.0-exp(-klitt_as(lu)), plitt_as(pft,jpngr) )
+        dlitt_bg = orgfrac( 1.0-exp(-klitt_bg(lu)), plitt_bg(pft,jpngr) )
 
         !print*,'dlitt_af',dlitt_af
         !print*,'dlitt_as',dlitt_as
@@ -153,6 +178,10 @@ subroutine littersom( jpngr, doy )
         call orgmv( dlitt_af, plitt_af(pft,jpngr), dlitt )
         call orgmv( dlitt_as, plitt_as(pft,jpngr), dlitt )
         call orgmv( dlitt_bg, plitt_bg(pft,jpngr), dlitt )
+
+        ! acceleration of soil equilibration 
+        ! (scale soil inputs and soil decomposition rates)
+        dlitt = orgfrac( acc, dlitt )
 
         !print*,'slow litter pool, C:N', plitt_as(pft,jpngr), cton( plitt_as(pft,jpngr), default=0.0 )
         !print*,'fast litter pool, C:N', plitt_af(pft,jpngr), cton( plitt_af(pft,jpngr), default=0.0 )
@@ -185,10 +214,14 @@ subroutine littersom( jpngr, doy )
         !----------------------------------------------------------------    
         ! move fraction 'eff' of C from litter to soil
         call ccp( cfrac( eff*fastfrac     , dlitt%c ), psoil_fs(lu,jpngr)%c )
-        call ccp( cfrac( eff*(1.-fastfrac), dlitt%c ), psoil_sl(lu,jpngr)%c )
+        call ccp( cfrac( eff*(1.0-fastfrac), dlitt%c ), psoil_sl(lu,jpngr)%c )
+
+        ! ! xxx debug
+        ! call ccp( carbon(1.0), psoil_fs(lu,jpngr)%c )
+        ! call ccp( carbon(0.0)  , psoil_sl(lu,jpngr)%c )
 
         ! move fraction '(1-eff)' of C to heterotrophic respiration
-        call ccp( cfrac( (1.-eff), dlitt%c ), drhet(lu) )
+        call ccp( cfrac( (1.0-eff), dlitt%c ), drhet(lu) )
 
         ! OUTPUT COLLECTION
         outaClit2soil(pft,jpngr) = outaClit2soil(pft,jpngr) + dlitt%c%c12 * eff
@@ -269,6 +302,10 @@ subroutine littersom( jpngr, doy )
         call ncp( nfrac( fastfrac     , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
         call ncp( nfrac( (1.-fastfrac), nitrogen(Nreq_S) ), psoil_sl(lu,jpngr)%n )
 
+        ! ! xxx debug
+        ! call ncp( nitrogen(1.0/cton_soil(pft)), psoil_fs(lu,jpngr)%n )
+        ! call ncp( nitrogen(0.0/cton_soil(pft)), psoil_sl(lu,jpngr)%n )
+
         ! Add Nfix to SOM ==> should maintain soil C:N ratio
         !call ncp( nfrac( fastfrac     , nitrogen(Nfix) ), psoil_fs(lu,jpngr)%n )
         !call ncp( nfrac( (1.-fastfrac), nitrogen(Nfix) ), psoil_sl(lu,jpngr)%n )
@@ -287,7 +324,7 @@ subroutine littersom( jpngr, doy )
         ! This is executed after litter mineralisation as N fixation by 
         ! free-living bacteria is driven by exudates availability.
         !----------------------------------------------------------------                
-        dexu = cfrac( 1.-exp(-kexu(lu)), pexud(pft,jpngr) )
+        dexu = cfrac( 1.0-exp(-kexu(lu)), pexud(pft,jpngr) )
         call cmv( dexu, pexud(pft,jpngr), drsoil(pft) )
 
       end if
@@ -297,10 +334,15 @@ subroutine littersom( jpngr, doy )
     !////////////////////////////////////////////////////////////////
     ! SOIL DECAY
     !----------------------------------------------------------------
-
     ! Calculate daily/monthly soil decomposition to the atmosphere
-    dsoil_fs = orgfrac( (1.-exp(-ksoil_fs(lu))), psoil_fs(lu,jpngr))
-    dsoil_sl = orgfrac( (1.-exp(-ksoil_sl(lu))), psoil_sl(lu,jpngr))
+
+    ! acceleration of soil equilibration 
+    ! (scale soil inputs and soil decomposition rates)
+    ksoil_fs(lu) = ksoil_fs(lu) * acc
+    ksoil_sl(lu) = ksoil_sl(lu) * acc
+
+    dsoil_fs = orgfrac( (1.0-exp(-ksoil_fs(lu))), psoil_fs(lu,jpngr))
+    dsoil_sl = orgfrac( (1.0-exp(-ksoil_sl(lu))), psoil_sl(lu,jpngr))
 
     !! Move C from soil pool to heterotrophic respiration
     call cmv( dsoil_fs%c, psoil_fs(lu,jpngr)%c, drhet(lu) )
@@ -327,11 +369,11 @@ subroutine littersom( jpngr, doy )
     + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 &
     + psoil_sl(1,1)%n%n14 + pninorg(1,1)%n14
   nbal_after = Nbal_after - dnfix_free(1)
-  if (abs(cbal_after-cbal_before)>1.d9) then
+  if (abs(cbal_after-cbal_before)>1.0d9) then
     print*,'cbal_before, cbal_after ', cbal_before, cbal_after
     stop 'C balance violated in LITTERSOM'
   endif
-  if (abs(nbal_after-nbal_before)>1.d9) then
+  if (abs(nbal_after-nbal_before)>1.0d9) then
     print*,'nbal_before, nbal_after ', nbal_before, nbal_after
     stop 'N balance violated in LITTERSOM'
   endif

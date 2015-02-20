@@ -92,7 +92,11 @@ subroutine getout_annual( jpngr )
 
   outaClitt(:,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
   outaCsoil(:,jpngr) = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
+  outaCveg(:,jpngr)  = pleaf(:,jpngr)%c%c12 + proot(:,jpngr)%c%c12 !+ psapw(:,jpngr)%c%c12 + pwood(:,jpngr)%c%c12
 
+  ! print*,'outaCsoil',outaCsoil(1,1)
+  ! print*,'outaNsoil',psoil_sl(:,jpngr)%n%n14 + psoil_fs(:,jpngr)%n%n14
+  ! stop
 
 end subroutine getout_annual
 

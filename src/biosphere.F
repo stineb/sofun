@@ -82,6 +82,8 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
     !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
     !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+    print*,'psoil_fs(1,1)%c%c12',psoil_fs(1,1)%c%c12
+    print*,'psoil_sl(1,1)%c%c12',psoil_sl(1,1)%c%c12
 
     ! Open input/output files
     call initio(runname)

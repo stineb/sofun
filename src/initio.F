@@ -64,12 +64,12 @@ subroutine initio
   ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
   !----------------------------------------------------------------
 
-  ! SOIL C
-  filnam=trim(prefix)//'.a.csoil.out'
-  open(301,file=filnam,err=999,status='unknown')
-
   ! LITTER C
   filnam=trim(prefix)//'.a.clitt.out'
+  open(301,file=filnam,err=999,status='unknown')
+
+  ! SOIL C
+  filnam=trim(prefix)//'.a.csoil.out'
   open(302,file=filnam,err=999,status='unknown')
 
   ! C ALLOCATED TO GROWTH 
@@ -99,6 +99,18 @@ subroutine initio
   ! N ALLOCATED TO GROWTH 
   filnam=trim(prefix)//'.a.nalloc.out'
   open(309,file=filnam,err=999,status='unknown')
+
+  ! GPP 
+  filnam=trim(prefix)//'.a.gpp.out'
+  open(310,file=filnam,err=999,status='unknown')
+
+  ! NPP 
+  filnam=trim(prefix)//'.a.npp.out'
+  open(311,file=filnam,err=999,status='unknown')
+
+  ! VEG C
+  filnam=trim(prefix)//'.a.cveg.out'
+  open(312,file=filnam,err=999,status='unknown')
 
 
   !----------------------------------------------------------------

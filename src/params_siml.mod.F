@@ -27,7 +27,7 @@
       subroutine getsteering( year, realyear)
       !////////////////////////////////////////////////////////////////
       !  SR defines variables used for steering simulation for each 
-      !  simulation year (setting booleans for opening files, doing 
+      !  simulation year (setting booleans for opening files, doing   
       !  spinup etc.)
       !----------------------------------------------------------------
 

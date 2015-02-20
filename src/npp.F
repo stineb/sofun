@@ -162,14 +162,18 @@ contains
     integer, intent(in) :: pft            ! PFT number
     real, intent(in), optional :: ftemp   ! temperature modifier
 
-#ifdef _resp_maint_makela
-    ! value for rresp_maint from Table 1, Makela et al., 2008, converted to gC/gN/day
-    ! read in as 0.04383562 = 16/365 gC/gN/yr
-    resp_maint = rresp_maint(pft) * nmass
-#else
-    resp_maint = rresp_maint(pft) * kresp * nmass * ftemp ! xxx try: *dphen(day,pft)
-    ! xxx remove here
-#endif
+! xxx try: make it independent of temperature
+! #ifdef _resp_maint_makela
+!     ! value for rresp_maint from Table 1, Makela et al., 2008, converted to gC/gN/day
+!     ! read in as 0.04383562 = 16/365 gC/gN/yr
+!     resp_maint = rresp_maint(pft) * nmass
+! #else
+!     resp_maint = rresp_maint(pft) * kresp * nmass * ftemp ! xxx try: *dphen(day,pft)
+!     ! xxx remove here
+! #endif
+
+    ! xxx try
+    resp_maint = 16.0 / 365.0 * nmass ! xxx try: *dphen(day,pft)
 
     ! alternative method in LPX: directly from photosynthesis ('dresp' in LPX-Bern)
   end function resp_maint
