@@ -101,6 +101,7 @@ subroutine getpar_modl
 
     ! C:N ratio of soil organic matter [1]
     cton_soil(pft) = pft_params_array(1) 
+    ! ntoc_soil(pft) = 1.0 / cton_soil(pft)
 
     ! C:N ratio of new production
     cton_pro(pft) = pft_params_array(6) 

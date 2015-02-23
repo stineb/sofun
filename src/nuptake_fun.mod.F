@@ -170,6 +170,7 @@ contains
     ! do ppft=1,npft
     !   pft = modulo(ppft+day-2,npft)+1
 
+
     if (dnpp(pft)%c12 < 0.0) then
       !-------------------------------------------------------------------------
       ! In case of negative daily NPP, no N uptake is necessary, no C is exuded
@@ -436,7 +437,6 @@ contains
 
       endif                                          !unmetDemand
 
-
     endif                                              ! (npp(pft).lt.0.0)
 
 
@@ -461,7 +461,7 @@ contains
       aNacq_active(pft,jpngr) = 0.0
       aCacq_active(pft,jpngr) = 0.0
 
-    else if (mod(invocation,ndayyear)==0) then
+    else if (mod(invocation,ndayyear)==0 .and. aNacq_active(pft,jpngr)>0.0) then
       ! last day of the year
       amean_cost_pvy(pft,jpngr) = aCacq_active(pft,jpngr) / aNacq_active(pft,jpngr)
       ! print*,'amean_cost_pvy(pft,jpngr)',amean_cost_pvy(pft,jpngr)
@@ -469,7 +469,6 @@ contains
     end if
     aNacq_active(pft,jpngr) = aNacq_active(pft,jpngr) + dNacq_active
     aCacq_active(pft,jpngr) = aCacq_active(pft,jpngr) + dCacq_active
-
 
 
     !XXX debug

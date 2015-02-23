@@ -31,6 +31,7 @@ module params_modl
 
   ! PFT-DEPENDENT PARAMETERS
   real, dimension(npft) :: cton_soil           ! C:N ratio of soil organic matter [1]
+  ! real, dimension(npft) :: ntoc_soil           ! N:C ratio of soil organic matter [1]
   integer, dimension(npft) :: lu_category      ! land use category associated with PFT
   logical, dimension(npft,nlu) :: islu         ! islu(ipft,ilu) is true if ipft belongs to ilu
   logical, dimension(npft) :: grass            ! boolean for growth form 'grass'

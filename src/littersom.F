@@ -281,12 +281,12 @@ subroutine littersom( jpngr, doy )
         ! this is how it should be done:
         netmin_litt = dlitt%n%n14 - Nreq_S
 
-        ! xxx try: this is so that it's like in LPX
-        if (spinup.and.invocation<=soil_equil_year - N_equil_time ) then
-          netmin_litt = dlitt%c%c12 * (1.0 - eff) / cton_soil(pft)
-        else
-          netmin_litt = dlitt%n%n14 * (1.0 - eff)
-        end if
+        ! ! xxx try: this is so that it's like in LPX
+        ! if (spinup.and.invocation<=soil_equil_year - N_equil_time ) then
+        !   netmin_litt = dlitt%c%c12 * (1.0 - eff) / cton_soil(pft) ! LPX-like
+        ! else
+        !   netmin_litt = dlitt%n%n14 * (1.0 - eff) ! LPX-like
+        ! end if
 
         ! OUTPUT COLLECTION
         outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + netmin_litt
@@ -386,8 +386,15 @@ subroutine littersom( jpngr, doy )
     outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
 
     !! Move N from soil pool to ammonium pool
-    call nmv( dsoil_fs%n, psoil_fs(lu,jpngr)%n, pninorg(lu,jpngr) )
-    call nmv( dsoil_sl%n, psoil_sl(lu,jpngr)%n, pninorg(lu,jpngr) )
+    if (spinup.and.invocation<=soil_equil_year - N_equil_time ) then
+      psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14 - dsoil_fs%n%n14
+      psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14 - dsoil_sl%n%n14
+      ! add projected mineralisation in soil C equilibrium 
+      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil(pft) 
+    else
+      call nmv( dsoil_fs%n, psoil_fs(lu,jpngr)%n, pninorg(lu,jpngr) )
+      call nmv( dsoil_sl%n, psoil_sl(lu,jpngr)%n, pninorg(lu,jpngr) )
+    end if
 
     ! Record monthly (daily) soil turnover flux (labile carbon availability)
     !----------------------------------------------------------------
