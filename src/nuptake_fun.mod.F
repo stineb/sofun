@@ -144,19 +144,18 @@ contains
 
     if (pft==npft) invocation = invocation + 1
 
-    if (spinup) then
-      acc = max( 0.0, 2.0 - real(invocation/ndayyear)/100 ) 
-    else
-      acc = 0.0
-    end if
-
     ! xxx try
+    ! if (spinup) then
+    !   acc = max( 0.0, 2.0 - real(invocation/ndayyear)/100 ) 
+    ! else
+    !   acc = 0.0
+    ! end if
     ! print*,'acc',acc
     ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + acc
     ! if (spinup.and.invocation/ndayyear<200) then
     !   pninorg(lu,jpngr)%n14 = 0.05
     ! end if
-    pninorg(lu,jpngr)%n14 = 0.05
+    ! pninorg(lu,jpngr)%n14 = 0.05
 
 
     ! LU-PFT association

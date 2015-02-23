@@ -7,7 +7,7 @@
       implicit none
 
        ! Minimum precision
-       real, parameter :: epsilon = 1.0e-6 
+       real, parameter :: epsilon = 1.0e-5 
 
        ! Carbon, so far contains only c12 (to be extended for c13)
        type carbon
