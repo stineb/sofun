@@ -16,11 +16,11 @@ Q <- 1
 
 ndayyear <- 365
 days <- seq(1,ndayyear,1)
-# ninorg <- sapply( days, FUN=sin_season )
 ninorg <- sapply( days, FUN=sin_season )
 guess  <- ninorg
 
-# tba_trgt <- 100
+## assume we put 100 units below ground - what amount of N do we get in return?
+tba_trgt <- 100
 scale_range <- seq( 1, 3, 0.001 )
 # scale_range <- 1.81
 tba <- rep(NA,length(scale_range))

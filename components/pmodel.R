@@ -662,58 +662,58 @@ nmonth <- 12
 
 ## GET MONTHLY CLIMATE
 ## temperature, convert from daily to monthly values
-if (file.exists("/alphadata01/bstocker/sofun/trunk/input/mtemp_CH-Oe1_2000.txt")){
+if (file.exists("/alphadata01/bstocker/sofun/trunk/components/mtemp_CH-Oe1_2002.txt")){
 
     ## read monthly file
-    df.mtemp <- read.csv( "/alphadata01/bstocker/sofun/trunk/input/mtemp_CH-Oe1_2000.txt" )
+    df.mtemp <- read.csv( "/alphadata01/bstocker/sofun/trunk/components/mtemp_CH-Oe1_2002.txt" )
     mtemp <- df.mtemp$temp
 
 } else {
 
-  ## read climate from year 2000 for station CH-Oe1
-  dtemp <- read.table( "/alphadata01/bstocker/sofun/trunk/input/dtemp_CH-Oe1_2000.txt" )
+  ## read climate from year 2002 for station CH-Oe1
+  dtemp <- read.table( "/alphadata01/bstocker/sofun/trunk/input/dtemp_CH-Oe1_2002.txt" )
 
   ## use function from our 'utilities' repository
-  mtemp <- daily2monthly( dtemp$V1, "mean", lapyear=TRUE )
+  mtemp <- daily2monthly( dtemp$V1, "mean" )
 
   ## write monthly data to file
   df.mtemp <- data.frame( month=1:nmonth, temp=mtemp )
-  write.csv( df.mtemp, file="/alphadata01/bstocker/sofun/trunk/input/mtemp_CH-Oe1_2000.txt", row.names=FALSE )
+  write.csv( df.mtemp, file="/alphadata01/bstocker/sofun/trunk/components/mtemp_CH-Oe1_2002.txt", row.names=FALSE )
 
 }
 
 ## precipitation, convert from daily to monthly values
-if (file.exists("/alphadata01/bstocker/sofun/trunk/input/mprec_CH-Oe1_2000.txt")){
+if (file.exists("/alphadata01/bstocker/sofun/trunk/components/mprec_CH-Oe1_2002.txt")){
 
     ## read monthly file
-    df.mprec <- read.csv( "/alphadata01/bstocker/sofun/trunk/input/mprec_CH-Oe1_2000.txt" )
+    df.mprec <- read.csv( "/alphadata01/bstocker/sofun/trunk/components/mprec_CH-Oe1_2002.txt" )
     mprec <- df.mprec$prec
 
 } else {
 
-  ## read climate from year 2000 for station CH-Oe1
-  dprec <- read.table( "/alphadata01/bstocker/sofun/trunk/input/dprec_CH-Oe1_2000.txt" )
+  ## read climate from year 2002 for station CH-Oe1
+  dprec <- read.table( "/alphadata01/bstocker/sofun/trunk/input/dprec_CH-Oe1_2002.txt" )
 
   ## use function from our 'utilities' repository
-  mprec <- daily2monthly( dprec$V1, "sum", lapyear=TRUE )
+  mprec <- daily2monthly( dprec$V1, "sum" )
 
   ## write monthly data to file
   df.mprec <- data.frame( month=1:nmonth, prec=mprec )
-  write.csv( df.mprec, file="/alphadata01/bstocker/sofun/trunk/input/mprec_CH-Oe1_2000.txt", row.names=FALSE )
+  write.csv( df.mprec, file="/alphadata01/bstocker/sofun/trunk/components/mprec_CH-Oe1_2002.txt", row.names=FALSE )
 
 }  
 
 ## sunshine fraction
-mfsun <- read.table("/alphadata01/bstocker/sofun/trunk/input/mfsun_CH-Oe1_2000.txt")$V1
-filnam <- "/alphadata01/bstocker/sofun/trunk/input/mfsun2_CH-Oe1_2000.txt"
+mfsun <- read.table("/alphadata01/bstocker/sofun/trunk/input/mfsun_CH-Oe1_2002.txt")$V1
+filnam <- "/alphadata01/bstocker/sofun/trunk/components/mfsun2_CH-Oe1_2002.txt"
 if (!file.exists(filnam)) {
   df.mfsun <- data.frame( month=1:nmonth, fsun=mfsun )
   write.csv( df.mfsun, file=filnam, row.names=FALSE )
 }
 
 ## vapour pressure (mvapr, hPa), vapour pressure deficit (mvpd, kPa)
-mvapr <- read.table("/alphadata01/bstocker/sofun/trunk/input/mvapr_CH-Oe1_2000.txt")$V1
-filnam <- "/alphadata01/bstocker/sofun/trunk/input/mvapr2_CH-Oe1_2000.txt"
+mvapr <- read.table("/alphadata01/bstocker/sofun/trunk/input/mvapr_CH-Oe1_2002.txt")$V1
+filnam <- "/alphadata01/bstocker/sofun/trunk/components/mvapr2_CH-Oe1_2002.txt"
 if (!file.exists(filnam)) {
   df.mvapr <- data.frame( month=1:nmonth, fsun=mvapr )
   write.csv( df.mvapr, file=filnam, row.names=FALSE )
@@ -735,11 +735,11 @@ indata$moy  <- as.POSIXlt( indata$Timestamp, format="%d/%m/%Y" )$mon+1
 
 ## take sub-set of this for station CH-Oe1
 indata <- indata[ indata$station == "CH-Oe1", ]
-
+indata <- indata[ indata$year == 2002, ]
 
 ## PPFD FROM SOFUN (STASH implementation)
 ## read PPFD calculated by STASH (sofun implementation, '*.m.qm.out')
-filnam <- "/alphadata01/bstocker/sofun/trunk/output/RUNNAME.m.qm.out"
+filnam <- "/alphadata01/bstocker/sofun/trunk/output/CH-Oe1_2002.m.qm.out"
 df.ppfd <- read.table( filnam, col.names=c("year","ppfd") )
 if (!file.exists(filnam)) {
   write.csv( df.ppfd, file=filnam, row.names=FALSE )
@@ -798,36 +798,46 @@ for (moy in 1:nmonth){
 # #   points( indata$moy[idx], indata$Tair_degC[idx] )
 # # }
 
-# ## VPD xxx not ok xxx: is WH's data really in kPa (not Pa)?
-# plot( 1:nmonth, mvpd, type="l", col="red" )
-# for (idx in 1:dim(indata)[1]){
-#   points( indata$moy[idx], indata$D_kPa[idx] )
-# }
+## VPD xxx not ok xxx: is WH's data really in kPa (not Pa)?
+pdf("vpd_comparison.pdf")
+plot( 1:nmonth, mvpd, type="l", col="red" )
+for (idx in 1:dim(indata)[1]){
+  points( indata$moy[idx], indata$D_kPa[idx] )
+}
+dev.off()
 
-# # ## K - Michaelis-Menten coefficient: ok
-# # plot( 1:nmonth, kmm, type="l", col="red" )
-# # for (idx in 1:dim(indata)[1]){
-# #   points( indata$moy[idx], indata$K_Pa[idx] )
-# # }
+## K - Michaelis-Menten coefficient: ok
+pdf("Kc_comparison.pdf")
+plot( 1:nmonth, kmm, type="l", col="red" )
+for (idx in 1:dim(indata)[1]){
+  points( indata$moy[idx], indata$K_Pa[idx] )
+}
+dev.off()
 
-# ## Viscosity: systematically lower values by my code, but tested to be identical with python implementation in gepisat
-# plot( 1:nmonth, visc*1000, type="l", col="red" )
-# for (idx in 1:dim(indata)[1]){
-#   points( indata$moy[idx], indata$ns[idx] )
-# }
+## Viscosity: systematically lower values by my code, but tested to be identical with python implementation in gepisat
+pdf("viscosity_comparison.pdf")
+plot( 1:nmonth, visc*1000, type="l", col="red" )
+for (idx in 1:dim(indata)[1]){
+  points( indata$moy[idx], indata$ns[idx] )
+}
+dev.off()
 
-# # ## Gamma-star: ok
-# # plot( 1:nmonth, gstar, type="l", col="red" )
-# # for (idx in 1:dim(indata)[1]){
-# #   points( indata$moy[idx], indata$Gs_Pa[idx] )
-# # }
+## Gamma-star: ok
+pdf("gammastar_comparison.pdf")
+plot( 1:nmonth, gstar, type="l", col="red" )
+for (idx in 1:dim(indata)[1]){
+  points( indata$moy[idx], indata$Gs_Pa[idx] )
+}
+dev.off()
 
 ## CHI - WH method
+pdf("chi_comparison.pdf")
 plot( 1:nmonth, chi_wh, type="l", col="red" )
 lines( 1:nmonth, chi_full, col="blue" )
 for (idx in 1:dim(indata)[1]){
   points( indata$moy[idx], indata$chi_wang_han[idx] )
   points( indata$moy[idx], indata$chi_vpd[idx], col="green" )
 }
+dev.off()
 
 

@@ -772,19 +772,21 @@ contains
     ! MONTHLY OUTPUT
     ! Write monthly value
     !-------------------------------------------------------------------------
-    do moy=1,nmonth
+    if (.not.spinup) then
+      do moy=1,nmonth
 
-      itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(moy-1)/real(nmonth)
+        itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(moy-1)/real(nmonth)
 
-      ! STASH variables
-      write(211,999) itime, outmeq_m(moy,jpngr)
-      write(212,999) itime, outmep_m(moy,jpngr)
-      write(213,999) itime, outmea_m(1,moy,jpngr)
-      write(214,999) itime, outmcpa(1,moy,jpngr)
-      write(215,999) itime, outmcwd(1,moy,jpngr)
-      write(216,999) itime, outmqm(moy,jpngr)
+        ! STASH variables
+        write(211,999) itime, outmeq_m(moy,jpngr)
+        write(212,999) itime, outmep_m(moy,jpngr)
+        write(213,999) itime, outmea_m(1,moy,jpngr)
+        write(214,999) itime, outmcpa(1,moy,jpngr)
+        write(215,999) itime, outmcwd(1,moy,jpngr)
+        write(216,999) itime, outmqm(moy,jpngr)
 
-    end do
+      end do
+    end if
 
     return
     

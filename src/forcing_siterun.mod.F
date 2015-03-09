@@ -59,9 +59,9 @@ contains
     dprec_field(:,:) = 0.0
     dfsun_field(:,:) = 0.0
 
-    dtemp_field(:,1) = read1year_daily('dtemp_'//sitename//'_2000.txt')
-    dprec_field(:,1) = read1year_daily('dprec_'//sitename//'_2000.txt')
-    mtmp(:) = read1year_monthly('mfsun_'//sitename//'_2000.txt')
+    dtemp_field(:,1) = read1year_daily('dtemp_'//sitename//'_2002.txt')
+    dprec_field(:,1) = read1year_daily('dprec_'//sitename//'_2002.txt')
+    mtmp(:) = read1year_monthly('mfsun_'//sitename//'_2002.txt')
 
     ! use monthly value for each day in month for dfsun
     day=0
@@ -102,6 +102,7 @@ contains
     !      )
     !  end do
     !enddo
+    
     write(0,*) '... done'
 
     return

@@ -395,7 +395,7 @@ subroutine littersom( jpngr, doy )
       call nmv( dsoil_fs%n, psoil_fs(lu,jpngr)%n, pninorg(lu,jpngr) )
       call nmv( dsoil_sl%n, psoil_sl(lu,jpngr)%n, pninorg(lu,jpngr) )
     end if
-
+    
     ! Record monthly (daily) soil turnover flux (labile carbon availability)
     !----------------------------------------------------------------
     ddoc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
