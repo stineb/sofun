@@ -7,6 +7,11 @@ kphio <- 0.093      # quantum efficiency (Long et al., 1993)
 kPo <- 101325.0     # standard atmosphere, Pa (Allen, 1973)
 kTo <- 25.0         # base temperature, deg C (Prentice, unpublished)
 
+sla <- 0.0014       # specific leaf area (m2/gC)
+
+ncw <- 0.0          # N:C ratio in cell walls, working hypothesis: leaf N is solely determined by Vcmax25
+nv  <- 1.0/40.96    # gN µmol-1 s-1. Value 40.96 is 'sv' in Table 2 in Kattge et al., 2009, GCB, C3 herbaceous
+
 #-----------------------------------------------------------------------
 # Email from Tyler (10.3.2015):
 # I was estimating values of β based on the Wang Han approximation equation 
@@ -37,164 +42,171 @@ params <- list( kc, kphio, kPo, kTo, beta )
 # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 #  Function Definitions
 # ////////////////////////////////////////////////////////////////////////
-calc_gpp <- function( fpar, ppfd, co2, tair, cpalpha, vap, elv, method="full" ){
+pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, params, method="full" ){
   #-----------------------------------------------------------------------
   # Input:    - fpar (unitless)    : monthly fraction of absorbed photosynthetically active radiation
   #           - ppfd (mol/m2)      : monthly photon flux density
   #           - co2 (ppm)          : atmospheric CO2 concentration
-  #           - tair (deg C)       : monthly air temperature
+  #           - tc (deg C)       : monthly air temperature
   #           - cpalpha (unitless, within [0,1.26]) : monthly Cramer-Prentice-alpha
-  #           - vap (hPa)          : mean monthly vapor pressure -- CRU data is in hPa
+  #           - vpd (Pa)           : mean monthly vapor pressure -- CRU data is in hPa
   #           - elv (m)            : elevation above sea-level
   # Output:   gpp (gC/m2/month)    : gross primary production
   #-----------------------------------------------------------------------
-  
-  ## absorbed photosynthetically active radiation (mol/m2)
-  iabs <- fpar * ppfd
 
-  ## atmospheric pressure as a function of elevation (Pa)
-  patm <- calc_patm( elv )
+  with( params, {
 
-  ## ambient CO2 partial pression (Pa)
-  ca   <- co2_to_ca( co2, patm )
+    ## absorbed photosynthetically active radiation (mol/m2)
+    iabs <- fpar * ppfd
 
-  ## photorespiratory compensation point - Gamma-star (Pa)
-  gs   <- calc_gstar_gepisat( tair )
+    ## atmospheric pressure as a function of elevation (Pa)
+    patm <- calc_patm( elv )
 
-  ## function of alpha to reduce GPP in strongly water-stressed months (unitless)
-  fa   <- calc_fa( cpalpha )
+    ## ambient CO2 partial pression (Pa)
+    ca   <- co2_to_ca( co2, patm )
 
-  ## vapour pressure deficit (Pa)
-  vpd  <- calc_vpd( tair, vap )
+    ## photorespiratory compensation point - Gamma-star (Pa)
+    gs   <- calc_gstar_gepisat( tc )
+
+    ## function of alpha to reduce GPP in strongly water-stressed months (unitless)
+    fa   <- calc_fa( cpalpha )
 
 
-  if (method=="approx"){
-    ## A. APPROXIMATIVE METHOD
+    if (method=="approx"){
+      ##-----------------------------------------------------------------------
+      ## A. APPROXIMATIVE METHOD
+      ##-----------------------------------------------------------------------
 
-    lue.out <- lue_approx( tair, vpd, elv, ca, gs )
+      lue.out <- lue_approx( tc, vpd, elv, ca, gs )
 
-  } else {
-    ## B. THEORETICAL METHOD
+    } else {
+      ##-----------------------------------------------------------------------
+      ## B. THEORETICAL METHOD
+      ##-----------------------------------------------------------------------
 
-    ## Michaelis-Menten coef. (Pa)
-    kmm  <- calc_k( tair, patm )
+      ## Michaelis-Menten coef. (Pa)
+      kmm  <- calc_k( tc, patm )
 
-    ## viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
-    ns      <- viscosity_h2o( tair, patm )  # mPa s ???
-    ns25    <- viscosity_h2o( kTo, kPo )
-    ns_star <- ns/ns25
+      ## viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
+      ns      <- viscosity_h2o( tc, patm )  # Pa s 
+      ns25    <- viscosity_h2o( kTo, kPo )  # Pa s 
+      ns_star <- ns/ns25  # (unitless)
 
-    if (method=="simpl") {
+      if (method=="simpl") {
 
-      ## B.1 SIMPLIFIED FORMULATION 
-      lue.out <- lue_vpd_simpl( kmm, gs, ns, ca, vpd, params  )
+        ## B.1 SIMPLIFIED FORMULATION 
+        ##-----------------------------------------------------------------------
+        lue.out <- lue_vpd_simpl( kmm, gs, ns, ca, vpd, params  )
 
-    } else if (method=="full"){
+      } else if (method=="full"){
 
-      ## B.2 FULL FORMULATION
-      lue.out <- lue_vpd_full( kmm, gs, ns_star, ca, vpd, params  )
+        ## B.2 FULL FORMULATION
+        ##-----------------------------------------------------------------------
+        lue.out <- lue_vpd_full( kmm, gs, ns_star, ca, vpd, params  )
+
+      }
 
     }
 
-  }
+    ## LUE-functions return m, n, and chi
+    m <- lue.out$m
+    n <- lue.out$n
 
-  ## LUE-functions return actual LUE (m), as well as chi
-  m <- lue.out$m
+    ##-----------------------------------------------------------------------
+    ## Calculate function return variables
+    ##-----------------------------------------------------------------------
 
-  ## GPP is the productof the intrinsic quantum efficiency, the absorbed PAR, and the light use efficiency
-  gpp <- iabs * kphio * fa * m 
-  return( gpp )
+    ## GPP per unit ground area is the product of the intrinsic quantum 
+    ## efficiency, the absorbed PAR, the function of alpha (drought-reduction),
+    ## and 'm'
+    gpp <- iabs * kphio * fa * m 
+
+    ## Vcmax per unit ground area is the product of the intrinsic quantum 
+    ## efficiency, the absorbed PAR, and 'n'
+    vcmax <- iabs * kphio * n
+
+    ## Dark respiration
+    rd <- 0.015 * vcmax
+
+    ## Vcmax25 (vcmax normalized to 25 deg C)
+    vcmax25 <- calc_vcmax25( vcmax, tc )
+
+    ## Narea (nitrogen content per unit leaf area, gN/m2-leaf)
+    narea <- ncw * 1.0/sla + nv * vcmax25
+
+
+    out <- list( gpp=gpp, vcmax=vcmax, rd=rd, narea=narea )
+    return( out )
+  })
 }
 
 
-calc_gpp_gepisat <- function( fpar, ppfd, vpd, alpha, tair, co2, patm, elv, nxtgn=FALSE ){
-  #-----------------------------------------------------------------------
-  # Input:    - float, monthly GPP, mol/m2 (gpp)
-  #           - float, associated GPP error, mol/m2 (gpp_err)
-  #           - float, monthly FAPAR (fpar)
-  #           - float, monthly PPFD, mol/m2 (ppfd)
-  #           - float, monthly VPD, Pa (vpd)
-  #           - float, monthly CPA (alpha)
-  #           - float, monthly air temp, degC (tmp)
-  #           - float, annual atm. CO2, ppm (co2)
-  #           - float, monthly atm. pressure, Pa (patm)
-  #           - float, elevation, m (elv)
-  # Output:   None.
-  # Features: Appends a set of monthly values to the value dictionary
-  # Depends:  - calc_gstar
-  #           - calc_k
-  #           - nxgn
-  #           - viscosity_h2o
-  #           - kPo
-  #-----------------------------------------------------------------------
+calc_leaf_N <- function( lai, narea ){
 
-  iabs <- fpar * ppfd                    # mol/m2, abs. PPFD
-  ca   <- co2_to_ca( co2, patm )         # Pa, atms. CO2
-  gs   <- calc_gstar_gepisat( tair )     # Pa, photores. comp. point
+  nleaf <- lai * narea
+  return(nleaf)
+}
 
-  if (nxtgn) {
 
-    ## Formulation based on theoretical model
-    k    <- calc_k( tair, patm )           # Pa, Michaelis-Menten coef.
-    ns   <- viscosity_h2o( tair, patm ) / n25 # Pa s, viscosity
-    fa   <- ( alpha / 1.26 )^(0.25)       # unitless, func. of alpha
+# calc_gpp_gepisat <- function( fpar, ppfd, vpd, alpha, tair, co2, patm, elv, nxtgn=FALSE ){
+#   #-----------------------------------------------------------------------
+#   # Input:    - float, monthly GPP, mol/m2 (gpp)
+#   #           - float, associated GPP error, mol/m2 (gpp_err)
+#   #           - float, monthly FAPAR (fpar)
+#   #           - float, monthly PPFD, mol/m2 (ppfd)
+#   #           - float, monthly VPD, Pa (vpd)
+#   #           - float, monthly CPA (alpha)
+#   #           - float, monthly air temp, degC (tmp)
+#   #           - float, annual atm. CO2, ppm (co2)
+#   #           - float, monthly atm. pressure, Pa (patm)
+#   #           - float, elevation, m (elv)
+#   # Output:   None.
+#   # Features: Appends a set of monthly values to the value dictionary
+#   # Depends:  - calc_gstar
+#   #           - calc_k
+#   #           - nxgn
+#   #           - viscosity_h2o
+#   #           - kPo
+#   #-----------------------------------------------------------------------
 
-    out.beta <- beta_estimate(ca, vpd, k, gs, ns, tair, elv)
-    beta1 <- out.beta[1]
-    beta2 <- out.beta[2]
+#   iabs <- fpar * ppfd                    # mol/m2, abs. PPFD
+#   ca   <- co2_to_ca( co2, patm )         # Pa, atms. CO2
+#   gs   <- calc_gstar_gepisat( tair )     # Pa, photores. comp. point
 
-    # m <- calc_m_nxtgn(ca, gs, vpd, k, ns, fa, beta1)
-    m <- calc_m_nxtgn(ca, gs, vpd, k, ns, fa, beta2)
+#   if (nxtgn) {
 
-  } else {
+#     ## Formulation based on theoretical model
+#     k    <- calc_k( tair, patm )           # Pa, Michaelis-Menten coef.
+#     ns   <- viscosity_h2o( tair, patm ) / n25 # Pa s, viscosity
+#     fa   <- ( alpha / 1.26 )^(0.25)       # unitless, func. of alpha
 
-    ## use approximation function for chi
-    atilde <- 0.8
+#     out.beta <- beta_estimate(ca, vpd, k, gs, ns, tair, elv)
+#     beta1 <- out.beta[1]
+#     beta2 <- out.beta[2]
 
-    ## get chi using the approximative function based on Wang Han's equation
-    chi <- lue_approx( tair, vpd, elv, ca, gs )$chi
+#     # m <- calc_m_nxtgn(ca, gs, vpd, k, ns, fa, beta1)
+#     m <- calc_m_nxtgn(ca, gs, vpd, k, ns, fa, beta2)
 
-    ## substitution
-    gamma <- gs / ca
-    m <- atilde * ( chi - gamma ) / ( chi + 2 * gamma )
+#   } else {
 
-  }
+#     ## use approximation function for chi
+#     atilde <- 0.8
 
-  ## GPP is the productof the intrinsic quantum efficiency, the absorbed PAR, and the light use efficiency
-  gpp <- iabs * kphio * m
-  return( gpp )
+#     ## get chi using the approximative function based on Wang Han's equation
+#     chi <- lue_approx( tair, vpd, elv, ca, gs )$chi
+
+#     ## substitution
+#     gamma <- gs / ca
+#     m <- atilde * ( chi - gamma ) / ( chi + 2.0 * gamma )
+
+#   }
+
+#   ## GPP is the productof the intrinsic quantum efficiency, the absorbed PAR, and the light use efficiency
+#   gpp <- iabs * kphio * m
+#   return( gpp )
   
-}
+# }
 
-calc_vcmax <- function( prod, chi, K, co2, patm ){
-  #-----------------------------------------------------------------------
-  # Input:    - float, monthly GPP, mol/m2 (gpp)
-  #           - float, associated GPP error, mol/m2 (gpp_err)
-  #           - float, monthly FAPAR (fpar)
-  #           - float, monthly PPFD, mol/m2 (ppfd)
-  #           - float, monthly CPA (alpha)
-  #           - float, monthly air temp, degC (tmp)
-  #           - float, annual atm. CO2, ppm (co2)
-  #           - float, monthly atm. pressure, Pa (patm)
-  #           - float, elevation, m (elv)
-  # Output:   None.
-  # Features: Appends a set of monthly values to the value dictionary
-  # Depends:  - calc_gstar
-  #           - calc_k
-  #           - nxgn
-  #           - viscosity_h2o
-  #           - kPo
-  #-----------------------------------------------------------------------
-  ca <- co2_to_ca( co2, patm )
-
-  K <- Kc *  (1.0-p0/K0)
-
-  kappa <- K / ca
-
-  vcmax <- prod * (chi + kappa) / (chi - gamma)
-  return(vcmax)
-
-}
 
 calc_m_nxtgn <- function(ca, gs, d, k, ns, beta){
   #-----------------------------------------------------------------------
@@ -263,13 +275,14 @@ lue_approx <- function( temp, vpd, elv, ca, gs ){
   ## leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
   chi <- whe / ( 1.0 + whe )
 
-  ## light use efficiency (m)
+  ##  m
   gamma <- gs / ca
   m <- (chi - gamma) / (chi + 2 * gamma)
 
-  out <- list( chi=chi, m=m )
+  out <- list( chi=chi, m=m, n=NA )
   return(out)
 }
+
 
 lue_vpd_simpl <- function( kmm, gs, ns_star, ca, vpd, params ){
   #-----------------------------------------------------------------------
@@ -293,7 +306,12 @@ lue_vpd_simpl <- function( kmm, gs, ns_star, ca, vpd, params ){
     ## consistent with this, directly return light-use-efficiency (m)
     m <- ( xi * (ca - gs) - gs * sqrt( vpd ) ) / ( xi * (ca + 2.0 * gs) + 2.0 * gs * sqrt( vpd ) )
 
-    out <- list( chi=chi, m=m )
+    ## n 
+    gamma <- gs / ca
+    kappa <- kmm / ca
+    n <- (chi + kappa) / (chi + 2 * gamma)
+
+    out <- list( chi=chi, m=m, n=n )
     return(out)
   })
 }
@@ -336,7 +354,13 @@ lue_vpd_full <- function( kmm, gs, ns_star, ca, vpd, params ){
       m <- vdcg / ( vacg + 3.0 * gs * vsr )
     }
 
-    out <- list( chi=chi, m=m )
+    ## n 
+    gamma <- gs / ca
+    kappa <- kmm / ca
+    n <- (chi + kappa) / (chi + 2 * gamma)
+
+
+    out <- list( chi=chi, m=m, n=n )
     return(out)
   })
 }
@@ -390,64 +414,7 @@ ca_to_co2 <- function( ca, patm ){
 }
 
 
-calc_gstar_gepisat <- function( temp ) {
-  #-----------------------------------------------------------------------
-  # Input:    float, air temperature, degrees C (tc)
-  # Output:   float, gamma-star, Pa (gs)
-  # Features: Returns the temperature-dependent photorespiratory 
-  #           compensation point, Gamma star (Pascals), based on constants 
-  #           derived from Bernacchi et al. (2001) study.
-  # Ref:      Bernacchi et al. (2001), Improved temperature response 
-  #           functions for models of Rubisco-limited photosynthesis, 
-  #           Plant, Cell and Environment, 24, 253--259.
-  #-----------------------------------------------------------------------
 
-  # Define constants
-  gs25 <- 4.220    # Pa, assuming 25 deg C & 98.716 kPa)
-  dha  <- 37830    # J/mol
-  kR   <- 8.3145   # J/mol/K
-
-  gs <- gs25 * exp( dha * ( temp - 25.0 ) / ( 298.15 * kR * ( temp + 273.15 ) ) )
-
-  return( gs )
-
-}
-
-
-calc_gstar_wh <- function( temp ){
-  #-----------------------------------------------------------------------
-  ## Returns the temperature-dependent photorespiratory compensation point, 
-  ## Gamma star (Pascals), based on constants derived from 
-  ## Bernacchi et al. (2001) study.
-  #-----------------------------------------------------------------------
-
-  ## wang han's values
-  gs25 <- 42.75  # corresponds to what Colin gave me
-  k    <- 0.0512
-
-  gs <- gs25 * exp( k * ( temp - 25 ) )
-
-  return( gs )
-
-}
-
-calc_gstar_colin <- function( temp ){
-  #-----------------------------------------------------------------------
-  ## Returns the temperature-dependent photorespiratory compensation point, 
-  ## Gamma star (Pascals), based on constants derived from 
-  ## Bernacchi et al. (2001) study.
-  #-----------------------------------------------------------------------
-
-  ## What Colin gave me
-  gs25 <- 42.75  # corresponds to what Colin gave me
-  kR   <- 8.3145   # J/mol/K
-  dha  <- 37830    # J/mol
-
-  gs <- gs25 * exp( ( dha / kR ) * (1/298 - 1/(temp-25)) )
-  
-  return( gs )
-
-}
 
 # temp_range <- seq( 0, 50, 1)
 # gstar_gepisat <- sapply( temp_range, FUN = calc_gstar_gepisat)
@@ -522,7 +489,7 @@ calc_vpd <- function( temp, vap, tmin=NA, tmax=NA ){
 }
 
 
-calc_k <- function(temp, patm) {
+calc_k <- function(tc, patm) {
   #-----------------------------------------------------------------------
   # Input:    - float, air temperature, deg C (temp)
   #           - float, atmospheric pressure, Pa (patm)
@@ -534,7 +501,6 @@ calc_k <- function(temp, patm) {
   #           Plant, Cell and Environment, 24, 253--259.
   #-----------------------------------------------------------------------
 
-  # Define constants
   kc25 <- 39.97      # Pa, assuming 25 deg C & 98.716 kPa
   ko25 <- 2.748e4    # Pa, assuming 25 deg C & 98.716 kPa
   dhac <- 79430      # J/mol
@@ -542,11 +508,140 @@ calc_k <- function(temp, patm) {
   kR   <- 8.3145     # J/mol/K
   kco  <- 2.09476e5  # ppm, US Standard Atmosphere
 
-  vc <- kc25*exp(dhac*(temp - 25.0)/(298.15*kR*(temp + 273.15)))
-  vo <- ko25*exp(dhao*(temp - 25.0)/(298.15*kR*(temp + 273.15)))
-  k  <- vc*(1 + kco*(1e-6)*patm/vo)
+  kc <- kc25 * exp( dhac * (tc - 25.0)/(298.15 * kR * (tc + 273.15)) ) 
+  ko <- ko25 * exp( dhao * (tc - 25.0)/(298.15 * kR * (tc + 273.15)) ) 
+
+  po <- kco * (1e-6) * patm # O2 partial pressure
+  k  <- kc * (1.0 + po/ko)
 
   return(k)
+}
+
+
+calc_k_colin <- function( tc ) {
+  #-----------------------------------------------------------------------
+  # Input:    - float, air temperature, deg C (tc)
+  # Output:   float, Pa (mmk)
+  # Features: Returns the temperature & pressure dependent Michaelis-Menten
+  #           coefficient, K (Pa).
+  # Ref:      Colin's documents
+  #-----------------------------------------------------------------------
+
+  ## conversion to temperature in Kelvin
+  tk <- tc + 273.15
+
+  kc25 <- 41.03      # Pa, assuming 25 deg C & 98.716 kPa
+  ko25 <- 28210      # Pa
+  dhac <- 79430      # J/mol
+  dhao <- 36380      # J/mol
+  kR   <- 8.3145     # J/mol/K
+  kco  <- 2.09476e5  # ppm, US Standard Atmosphere
+
+  kc <- kc25 * exp( dhac / kR * (1.0/298.15 - 1.0/tk) )
+  ko <- ko25 * exp( dhao / kR * (1.0/298.15 - 1.0/tk) )
+
+  po <- kco * (1e-6) * patm # O2 partial pressure
+  k  <- kc * (1.0 + po/ko )
+
+  return(k)
+}
+
+calc_gstar_gepisat <- function( tc ) {
+  #-----------------------------------------------------------------------
+  # Input:    float, air temperature, degrees C (tc)
+  # Output:   float, gamma-star, Pa (gs)
+  # Features: Returns the temperature-dependent photorespiratory 
+  #           compensation point, Gamma star (Pascals), based on constants 
+  #           derived from Bernacchi et al. (2001) study.
+  # Ref:      Bernacchi et al. (2001), Improved temperature response 
+  #           functions for models of Rubisco-limited photosynthesis, 
+  #           Plant, Cell and Environment, 24, 253--259.
+  #-----------------------------------------------------------------------
+
+  gs25 <- 4.220    # Pa, assuming 25 deg C & 98.716 kPa)
+  dha  <- 37830    # J/mol
+  kR   <- 8.3145   # J/mol/K
+
+  gs <- gs25 * exp( dha * ( tc - 25.0 ) / ( 298.15 * kR * ( tc + 273.15 ) ) )
+
+  return( gs )
+}
+
+
+calc_gstar_wh <- function( temp ){
+  #-----------------------------------------------------------------------
+  ## Returns the temperature-dependent photorespiratory compensation point, 
+  ## Gamma star (Pascals), based on constants derived from 
+  ## Bernacchi et al. (2001) study.
+  #-----------------------------------------------------------------------
+
+  ## wang han's values
+  gs25 <- 42.75  # corresponds to what Colin gave me
+  k    <- 0.0512
+
+  gs <- gs25 * exp( k * ( temp - 25 ) )
+
+  return( gs )
+
+}
+
+calc_gstar_colin <- function( tc ){
+  #-----------------------------------------------------------------------
+  # Input:    tc: air temperature (degrees C)
+  # Output:   gs: gamma-star (Pa)
+  # Features: Returns the temperature-dependent photorespiratory 
+  #           compensation point, Gamma star (Pascals), based on constants 
+  #           derived from Bernacchi et al. (2001) study.
+  # Ref:      Colin's document
+  #-----------------------------------------------------------------------
+
+  ## conversion to temperature in Kelvin
+  tk <- tc + 273.15
+
+  gs25 <- 4.275    # corresponds to what Colin gave me
+  kR   <- 8.3145   # J/mol/K
+  dha  <- 37830    # J/mol
+
+  gs <- gs25 * exp( ( dha / kR ) * ( 1/298.15 - 1.0/tk ) )
+  
+  return( gs )
+}
+
+
+calc_vcmax25 <- function( vcmax, tc ){
+  #-----------------------------------------------------------------------
+  # Input:    - gcmax  : Vcmax at a given temperature tc 
+  #           - tc     : air temperature (degrees C)
+  # Output:   vcmax25  : Vcmax at 25 deg C
+  # Features: Returns the temperature-corrected Vcmax at 25 deg C
+  # Ref:      Analogue function like 'calc_gstar_gepisat'
+  #-----------------------------------------------------------------------
+
+  dhav <- 65330    # J/mol
+  kR   <- 8.3145   # J/mol/K
+
+  vcmax25 <- vcmax * exp( -dhav * ( tc - 25.0 ) / ( 298.15 * kR * ( tc + 273.15 ) ) )
+  return( vcmax25 )
+}
+
+
+calc_vcmax25_colin <- function( vcmax, tc ){
+  #-----------------------------------------------------------------------
+  # Input:    - gcmax  : Vcmax at a given temperature tc 
+  #           - tc     : air temperature (degrees C)
+  # Output:   vcmax25  : Vcmax at 25 deg C
+  # Features: Returns the temperature-corrected Vcmax at 25 deg C
+  # Ref:      Colin's document
+  #-----------------------------------------------------------------------
+
+  ## conversion to temperature in Kelvin
+  tk <- tc + 273.15
+
+  dhav <- 65330    # J/mol
+  kR   <- 8.3145   # J/mol/K
+
+  vcmax25 <- vcmax * exp( -dhav/kR * (1/298.15 - 1/tk) )
+  return( vcmax25 )
 }
 
 
@@ -703,6 +798,29 @@ viscosity_h2o <- function( tc, p ) {
 }
 
 
+viscosity_h2o_vogel <- function( tc ) {
+  #-----------------------------------------------------------------------
+  # Input:    - float, ambient temperature (tc), degrees C
+  # Return:   float, viscosity of water (mu), Pa s
+  # Features: Calculates viscosity of water at a given temperature and 
+  #           pressure.
+  # Depends:  density_h2o
+  # Ref:      Vogel ...
+  #-----------------------------------------------------------------------
+
+  tk <- tc + 272.15
+
+  a <- -3.7188
+  b <- 578.919
+  c <- 137.546
+
+  visc <- 1e-3 * exp(a + b/(tk - c))
+
+  # visc <- 10^(-3) * exp( -3.719+580 / (-138 + tk) )
+
+  return( visc )
+}
+
 ## \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ##  Test: Calculate GPP for monthly input data for CH-Oe1
 ##  year: 2000, elv: 450, lon: 7.73, lat: 47.3
@@ -819,23 +937,28 @@ beta   <- 244
 visc25 <- viscosity_h2o( kTo, kPo )      # Pa s
 
 
-## GPP
-# gpp <- rep( NA, nmonth )
-# for ( moy in 1:nmonth ){
-#   gpp[moy] <- calc_gpp( fpar=1, ppfd=df.ppfd$ppfd[moy], vpd=mvpd[moy], alpha=1.26, tair=mtemp[moy], co2=376, patm=patm, elv, nxtgn=FALSE  )
-# }
+## CALCULATE GPP
+mgpp <- rep( NA, nmonth )
+for ( moy in 1:nmonth ){
+  mgpp[moy] <- pmodel( fpar=1.0, ppfd=df.ppfd$ppfd[moy], co2=co2, tc=mtemp[moy], cpalpha=1.0, vpd=mvpd[moy], elv=elv, params=params, method="full" )$gpp
+}
 
 ## CALCULATE K
 ## Michaelis-Menten coefficient (Pa)
-kmm <- sapply( mtemp, FUN = function(x) calc_k(x, patm) )
+kmm       <- sapply( mtemp, FUN = function(x) calc_k(x, patm) )
+kmm_colin <- sapply( mtemp, FUN = calc_k_colin )
 
 ## CALCULATE VISCOSITY
 visc25    <- viscosity_h2o( kTo, kPo )
 visc      <- mapply( viscosity_h2o, mtemp, patm )
 visc_star <- visc/visc25
+visc_vogel<- sapply( mtemp, FUN = viscosity_h2o_vogel )
+visc_out  <- visc * 1e3  # convert from Pa s to mPa s
+visc_vogel_out <- visc_vogel * 1e3  # convert from Pa s to mPa s
 
 ## CALCULATE GAMMA-STAR
-gstar <- sapply( mtemp, FUN = calc_gstar_gepisat )
+gstar       <- sapply( mtemp, FUN = calc_gstar_gepisat )
+gstar_colin <- sapply( mtemp, FUN = calc_gstar_colin )
 
 ## CALCULATE CHI 
 chi_wh     <- rep( NA, nmonth )
@@ -855,16 +978,16 @@ benioutput <- data.frame( year=rep(2002,nmonth), moy=1:nmonth, kpp_Pa=kmm
 save( benioutput, file="benioutput.Rdata" )
 write.csv( benioutput, file="benioutput.txt", row.names=FALSE )
 
-# ## COMPARE DATA
-# ## temperature: ok
-# # plot( 1:nmonth, mtemp, type="l", col="red" )
-# # for (idx in 1:dim(indata)[1]){
-# #   points( indata$moy[idx], indata$Tair_degC[idx] )
-# # }
+## COMPARE DATA
+## temperature: ok
+# plot( 1:nmonth, mtemp, type="l", col="red" )
+# for (idx in 1:dim(indata)[1]){
+#   points( indata$moy[idx], indata$Tair_degC[idx] )
+# }
 
 ## VPD xxx not ok xxx: is WH's data really in kPa (not Pa)?
 pdf("vpd_comparison.pdf")
-plot( 1:nmonth, mvpd, type="l", col="red" )
+plot( 1:nmonth, mvpd, type="l", col="red", xlab="MOY"  )
 for (idx in 1:dim(indata)[1]){
   points( indata$moy[idx], indata$D_kPa[idx] )
 }
@@ -872,36 +995,44 @@ dev.off()
 
 ## K - Michaelis-Menten coefficient: ok
 pdf("Kc_comparison.pdf")
-plot( 1:nmonth, kmm, type="l", col="red" )
+plot( 1:nmonth, kmm, type="l", col="red", xlab="MOY"  )
+lines(1:nmonth, kmm_colin, col="green" )
 for (idx in 1:dim(indata)[1]){
   points( indata$moy[idx], indata$K_Pa[idx] )
 }
+legend( "topleft", c("GePiSaT method", "Colin method"), lty=1, bty="n", col=c("red","green") )
 dev.off()
 
 ## Viscosity: systematically lower values by my code, but tested to be identical with python implementation in gepisat
 pdf("viscosity_comparison.pdf")
-plot( 1:nmonth, visc*1000, type="l", col="red" )
+plot( 1:nmonth, visc_out, type="l", col="red", xlab="MOY", ylab="viscosity [mPa s]" )
+lines(1:nmonth, visc_vogel_out, col="green" )
 for (idx in 1:dim(indata)[1]){
   points( indata$moy[idx], indata$ns[idx] )
 }
+legend( "bottomleft", c("Huber method", "Vogel method"), lty=1, bty="n", col=c("red","green") )
 dev.off()
 
 ## Gamma-star: ok
 pdf("gammastar_comparison.pdf")
-plot( 1:nmonth, gstar, type="l", col="red" )
+plot( 1:nmonth, gstar, type="l", col="red", xlab="MOY"  )
+lines(1:nmonth, gstar_colin, col="green" )
 for (idx in 1:dim(indata)[1]){
   points( indata$moy[idx], indata$Gs_Pa[idx] )
 }
+legend( "topleft", c("GePiSaT method", "Colin method"), lty=1, bty="n", col=c("red","green") )
 dev.off()
 
 ## CHI - WH method
 pdf("chi_comparison.pdf")
-plot( 1:nmonth, chi_wh, type="l", col="red" )
+plot( 1:nmonth, chi_wh, type="l", col="red", xlab="MOY"  )
 lines( 1:nmonth, chi_full, col="blue" )
 for (idx in 1:dim(indata)[1]){
   points( indata$moy[idx], indata$chi_wang_han[idx] )
   points( indata$moy[idx], indata$chi_vpd[idx], col="green" )
 }
+legend( "topleft", c("Wang-Han method", "theoretical full method"), lty=1, bty="n", col=c("red","blue") )
 dev.off()
 
-
+## GPP 
+plot( 1:nmonth, mgpp, type="l", col="red", xlab="MOY"  )
