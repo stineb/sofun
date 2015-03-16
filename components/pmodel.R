@@ -1,145 +1,174 @@
 # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-# Contains P model functions adopted from gepisat
+# Contains P model functions adopted from GePiSaT
 # ////////////////////////////////////////////////////////////////////////
-
-kphio <- 0.093      # quantum efficiency (Long et al., 1993)
-kPo <- 101325.0     # standard atmosphere, Pa (Allen, 1973)
-kTo <- 25.0         # base temperature, deg C (Prentice, unpublished)
-
-sla <- 0.0014       # specific leaf area (m2/gC)
-
-ncw <- 0.0          # N:C ratio in cell walls, working hypothesis: leaf N is solely determined by Vcmax25
-nv  <- 1.0/40.96    # gN µmol-1 s-1. Value 40.96 is 'sv' in Table 2 in Kattge et al., 2009, GCB, C3 herbaceous
-
-#-----------------------------------------------------------------------
-# Email from Tyler (10.3.2015):
-# I was estimating values of β based on the Wang Han approximation equation 
-# of χ using both the simplified and "more precise" expressions for χ and ξ 
-# (Prentice et al., 2014, Ecology Letters).  After examination, Colin and I 
-# noticed that the value of β is not significantly influenced by the 
-# expressions for χ and ξ. Since then, Colin has theorised the use of a 
-# "ground state" universal value of β, which is derived from the Wang Han 
-# equation at sea level (i.e., z = 0 m and Patm = 101325 Pa), standard temp-
-# erature (i.e., Tair = 25 deg C) and a non-influencial VPD (i.e., 
-# D = 1000 Pa). Based on these climatological values, the following were 
-# calculated:
-#   a. Γ* = 4.220 Pa
-#   b. K = 70.842 Pa
-#   c. η* = 1.0
-#   d. χ = 0.767
-#   e. β = 244.033
-# Results from modelled versus "observed" monthly GPP based on the universal 
-# value of β are promising. Colin and I are currently in the works on the next 
-# set of improvements, which, as I far as I know, will be based on this uni-
-# versal value of β.
-#-----------------------------------------------------------------------
-beta <- 244.033
-
-params <- list( kphio, kPo, kTo, beta )
-
-
+# pmodel.R 
+# __version__ 1.0
+#
+# written by Benjamin Stocker, adopted from Python code written by Tyler Davis
+# Imperial College London
+#
+# 2015-03-16 -- created
+# 2015-03-16 -- last updated
+#
+# ------------
+# description:
+# ------------
+# This collection of function implements the Global ecosystem
+# in Space and Time (GePiSaT) model of the terrestrial biosphere. 
+#
+# GePiSaT takes a simplistic approach to modelling terrestrial gross primary 
+# production (GPP) by making the use of the optimality principle of vegetation 
+# minimizing the summed costs associated with maintaining carbon fixation and 
+# water transport capabilities (Prentice et al., 2014).
+#
+# Currently this includes the following:
+#
+# ----------
+# changelog:
+# ----------
+# VERSION 1.0
+#  - file created [2015-03-16]
+#
+#
 # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 #  Function Definitions
 # ////////////////////////////////////////////////////////////////////////
-pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, params, method="full" ){
+pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method="full" ){
   #-----------------------------------------------------------------------
   # Input:    - fpar (unitless)    : monthly fraction of absorbed photosynthetically active radiation
   #           - ppfd (mol/m2)      : monthly photon flux density
   #           - co2 (ppm)          : atmospheric CO2 concentration
-  #           - tc (deg C)       : monthly air temperature
+  #           - tc (deg C)         : monthly air temperature
   #           - cpalpha (unitless, within [0,1.26]) : monthly Cramer-Prentice-alpha
   #           - vpd (Pa)           : mean monthly vapor pressure -- CRU data is in hPa
   #           - elv (m)            : elevation above sea-level
   # Output:   gpp (gC/m2/month)    : gross primary production
   #-----------------------------------------------------------------------
 
-  with( params, {
+  ## P-model parameters
+  kphio <- 0.093      # quantum efficiency (Long et al., 1993)
+  kPo   <- 101325.0   # standard atmosphere, Pa (Allen, 1973)
+  kTo   <- 25.0       # base temperature, deg C (Prentice, unpublished)
 
-    ## absorbed photosynthetically active radiation (mol/m2)
-    iabs <- fpar * ppfd
+  #-----------------------------------------------------------------------
+  # Email from Tyler (10.3.2015):
+  # I was estimating values of β based on the Wang Han approximation equation 
+  # of χ using both the simplified and "more precise" expressions for χ and ξ 
+  # (Prentice et al., 2014, Ecology Letters).  After examination, Colin and I 
+  # noticed that the value of β is not significantly influenced by the 
+  # expressions for χ and ξ. Since then, Colin has theorised the use of a 
+  # "ground state" universal value of β, which is derived from the Wang Han 
+  # equation at sea level (i.e., z = 0 m and Patm = 101325 Pa), standard temp-
+  # erature (i.e., Tair = 25 deg C) and a non-influencial VPD (i.e., 
+  # D = 1000 Pa). Based on these climatological values, the following were 
+  # calculated:
+  #   a. Γ* = 4.220 Pa
+  #   b. K = 70.842 Pa
+  #   c. η* = 1.0
+  #   d. χ = 0.767
+  #   e. β = 244.033
+  # Results from modelled versus "observed" monthly GPP based on the universal 
+  # value of β are promising. Colin and I are currently in the works on the next 
+  # set of improvements, which, as I far as I know, will be based on this uni-
+  # versal value of β.
+  #-----------------------------------------------------------------------
+  beta <- 244.033
 
-    ## atmospheric pressure as a function of elevation (Pa)
-    patm <- calc_patm( elv )
-
-    ## ambient CO2 partial pression (Pa)
-    ca   <- co2_to_ca( co2, patm )
-
-    ## photorespiratory compensation point - Gamma-star (Pa)
-    gs   <- calc_gstar_gepisat( tc )
-
-    ## function of alpha to reduce GPP in strongly water-stressed months (unitless)
-    fa   <- calc_fa( cpalpha )
+  ## parameters for Narea -- under construction
+  sla <- 0.0014       # specific leaf area (m2/gC)
+  ncw <- 0.0          # N:C ratio in cell walls, working hypothesis: leaf N is solely determined by Vcmax25
+  nv  <- 1.0/40.96    # gN µmol-1 s-1. Value 40.96 is 'sv' in Table 2 in Kattge et al., 2009, GCB, C3 herbaceous
+  ## -- under construction
 
 
-    if (method=="approx"){
+  ## absorbed photosynthetically active radiation (mol/m2)
+  iabs <- fpar * ppfd
+
+  ## atmospheric pressure as a function of elevation (Pa)
+  patm <- calc_patm( elv )
+
+  ## ambient CO2 partial pression (Pa)
+  ca   <- co2_to_ca( co2, patm )
+
+  ## photorespiratory compensation point - Gamma-star (Pa)
+  gs   <- calc_gstar_gepisat( tc )
+
+  ## function of alpha to reduce GPP in strongly water-stressed months (unitless)
+  fa   <- calc_fa( cpalpha )
+
+
+  if (method=="approx"){
+    ##-----------------------------------------------------------------------
+    ## A. APPROXIMATIVE METHOD
+    ##-----------------------------------------------------------------------
+
+    lue.out <- lue_approx( tc, vpd, elv, ca, gs )
+
+  } else {
+    ##-----------------------------------------------------------------------
+    ## B. THEORETICAL METHOD
+    ##-----------------------------------------------------------------------
+
+    ## Michaelis-Menten coef. (Pa)
+    kmm  <- calc_k( tc, patm )
+
+    ## viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
+    ns      <- viscosity_h2o( tc, patm )  # Pa s 
+    ns25    <- viscosity_h2o( kTo, kPo )  # Pa s 
+    ns_star <- ns / ns25  # (unitless)
+
+    if (method=="simpl") {
+
+      ## B.1 SIMPLIFIED FORMULATION 
       ##-----------------------------------------------------------------------
-      ## A. APPROXIMATIVE METHOD
+      lue.out <- lue_vpd_simpl( kmm, gs, ns, ca, vpd, beta  )
+
+    } else if (method=="full"){
+
+      ## B.2 FULL FORMULATION
       ##-----------------------------------------------------------------------
-
-      lue.out <- lue_approx( tc, vpd, elv, ca, gs )
-
-    } else {
-      ##-----------------------------------------------------------------------
-      ## B. THEORETICAL METHOD
-      ##-----------------------------------------------------------------------
-
-      ## Michaelis-Menten coef. (Pa)
-      kmm  <- calc_k( tc, patm )
-
-      ## viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
-      ns      <- viscosity_h2o( tc, patm )  # Pa s 
-      ns25    <- viscosity_h2o( kTo, kPo )  # Pa s 
-      ns_star <- ns/ns25  # (unitless)
-
-      if (method=="simpl") {
-
-        ## B.1 SIMPLIFIED FORMULATION 
-        ##-----------------------------------------------------------------------
-        lue.out <- lue_vpd_simpl( kmm, gs, ns, ca, vpd, params  )
-
-      } else if (method=="full"){
-
-        ## B.2 FULL FORMULATION
-        ##-----------------------------------------------------------------------
-        lue.out <- lue_vpd_full( kmm, gs, ns_star, ca, vpd, params  )
-
-      }
+      lue.out <- lue_vpd_full( kmm, gs, ns_star, ca, vpd, beta  )
 
     }
 
-    ## LUE-functions return m, n, and chi
-    m <- lue.out$m
-    n <- lue.out$n
+  }
 
-    ##-----------------------------------------------------------------------
-    ## Calculate function return variables
-    ##-----------------------------------------------------------------------
+  ## LUE-functions return m, n, and chi
+  m <- lue.out$m
+  n <- lue.out$n
 
-    ## GPP per unit ground area is the product of the intrinsic quantum 
-    ## efficiency, the absorbed PAR, the function of alpha (drought-reduction),
-    ## and 'm'
-    # print(m)
-    m <- calc_mprime( m )
-    # print(m)
-    gpp <- iabs * kphio * fa * m
-    
-    ## Vcmax per unit ground area is the product of the intrinsic quantum 
-    ## efficiency, the absorbed PAR, and 'n'
-    vcmax <- iabs * kphio * n
+  ##-----------------------------------------------------------------------
+  ## Calculate function return variables
+  ##-----------------------------------------------------------------------
 
-    ## Dark respiration  xxx where does 0.015 come from? xxx
-    rd <- 0.015 * vcmax
+  ## GPP per unit ground area is the product of the intrinsic quantum 
+  ## efficiency, the absorbed PAR, the function of alpha (drought-reduction),
+  ## and 'm'
+  m   <- calc_mprime( m )
+  gpp <- iabs * kphio * fa * m
 
-    ## Vcmax25 (vcmax normalized to 25 deg C)
-    vcmax25 <- calc_vcmax25( vcmax, tc )
+  ## Light use efficiency
+  lue <- kphio * fa * m 
 
-    ## Narea (nitrogen content per unit leaf area, gN/m2-leaf)
-    narea <- ncw * 1.0/sla + nv * vcmax25
+  ## Net light use efficiency (after dark respiration)
+  luenet <- kphio * ( fa * m - 0.015 * n ) 
+  
+  ## Vcmax per unit ground area is the product of the intrinsic quantum 
+  ## efficiency, the absorbed PAR, and 'n'
+  vcmax <- iabs * kphio * n
+
+  ## Dark respiration  xxx where does 0.015 come from? xxx
+  rd <- 0.015 * vcmax
+
+  ## Vcmax25 (vcmax normalized to 25 deg C)
+  vcmax25 <- calc_vcmax25( vcmax, tc )
+
+  ## Narea (nitrogen content per unit leaf area, gN/m2-leaf)
+  ncanopy <- ncw * 1.0/sla + nv * vcmax25
 
 
-    out <- list( gpp=gpp, vcmax=vcmax, rd=rd, narea=narea )
-    return( out )
-  })
+  out <- list( gpp=gpp, vcmax=vcmax, rd=rd, ncanopy=ncanopy, lue=lue, luenet=luenet )
+  return( out )
 }
 
 
@@ -183,7 +212,7 @@ lue_approx <- function( temp, vpd, elv, ca, gs ){
 }
 
 
-lue_vpd_simpl <- function( kmm, gs, ns_star, ca, vpd, params ){
+lue_vpd_simpl <- function( kmm, gs, ns_star, ca, vpd, beta ){
   #-----------------------------------------------------------------------
   # Input:    - float, 'kmm' : Pa, Michaelis-Menten coeff.
   #           - float, 'ns_star'  : (unitless) viscosity correction factor for water
@@ -195,28 +224,26 @@ lue_vpd_simpl <- function( kmm, gs, ns_star, ca, vpd, params ){
   #           - ns
   #           - vpd
   #-----------------------------------------------------------------------
-  with( params, {
 
-    ## leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
-    xi  <- sqrt( beta * kmm / (1.6 * ns_star))
-    chi <- xi / (xi + sqrt(vpd))
+  ## leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
+  xi  <- sqrt( beta * kmm / (1.6 * ns_star))
+  chi <- xi / (xi + sqrt(vpd))
 
-    ## light use efficiency (m)
-    ## consistent with this, directly return light-use-efficiency (m)
-    m <- ( xi * (ca - gs) - gs * sqrt( vpd ) ) / ( xi * (ca + 2.0 * gs) + 2.0 * gs * sqrt( vpd ) )
+  ## light use efficiency (m)
+  ## consistent with this, directly return light-use-efficiency (m)
+  m <- ( xi * (ca - gs) - gs * sqrt( vpd ) ) / ( xi * (ca + 2.0 * gs) + 2.0 * gs * sqrt( vpd ) )
 
-    ## n 
-    gamma <- gs / ca
-    kappa <- kmm / ca
-    n <- (chi + kappa) / (chi + 2 * gamma)
+  ## n 
+  gamma <- gs / ca
+  kappa <- kmm / ca
+  n <- (chi + kappa) / (chi + 2 * gamma)
 
-    out <- list( chi=chi, m=m, n=n )
-    return(out)
-  })
+  out <- list( chi=chi, m=m, n=n )
+  return(out)
 }
 
 
-lue_vpd_full <- function( kmm, gs, ns_star, ca, vpd, params ){
+lue_vpd_full <- function( kmm, gs, ns_star, ca, vpd, beta ){
   #-----------------------------------------------------------------------
   # Input:    - float, 'kmm' : Pa, Michaelis-Menten coeff.
   #           - float, 'ns_star'  : (unitless) viscosity correction factor for water
@@ -228,45 +255,46 @@ lue_vpd_full <- function( kmm, gs, ns_star, ca, vpd, params ){
   #           - ns
   #           - vpd
   #-----------------------------------------------------------------------
-  with( params, {
 
-    ## leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
-    xi  <- sqrt( (beta * ( kmm + gs ) ) / ( 1.6 * ns_star ) )
-    chi <- gs / ca + ( 1.0 - gs / ca ) * xi / ( xi + sqrt(vpd) )
+  ## leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
+  xi  <- sqrt( (beta * ( kmm + gs ) ) / ( 1.6 * ns_star ) )
+  chi <- gs / ca + ( 1.0 - gs / ca ) * xi / ( xi + sqrt(vpd) )
 
-    ## consistent with this, directly return light-use-efficiency (m)
-    ## see Eq. 13 in 'Simplifying_LUE.pdf'
+  ## consistent with this, directly return light-use-efficiency (m)
+  ## see Eq. 13 in 'Simplifying_LUE.pdf'
 
-    ## light use efficiency (m)
-    # m <- (ca - gs)/(ca + 2.0 * gs + 3.0 * gs * sqrt( (1.6 * vpd) / (beta * (K + gs) / ns_star ) ) )
+  ## light use efficiency (m)
+  # m <- (ca - gs)/(ca + 2.0 * gs + 3.0 * gs * sqrt( (1.6 * vpd) / (beta * (K + gs) / ns_star ) ) )
 
-    # Define variable substitutes:
-    vdcg <- ca - gs
-    vacg <- ca + 2.0 * gs
-    vbkg <- beta * (kmm + gs)
+  # Define variable substitutes:
+  vdcg <- ca - gs
+  vacg <- ca + 2.0 * gs
+  vbkg <- beta * (kmm + gs)
 
-    # Check for negatives:
-    if (vbkg > 0){
-      vsr <- sqrt( 1.6 * ns_star * vpd / vbkg )
+  # Check for negatives:
+  if (vbkg > 0){
+    vsr <- sqrt( 1.6 * ns_star * vpd / vbkg )
 
-      # Based on the m' formulation (see Regressing_LUE.pdf)
-      m <- vdcg / ( vacg + 3.0 * gs * vsr )
-    }
+    # Based on the m' formulation (see Regressing_LUE.pdf)
+    m <- vdcg / ( vacg + 3.0 * gs * vsr )
+  }
 
-    ## n 
-    gamma <- gs / ca
-    kappa <- kmm / ca
-    n <- (chi + kappa) / (chi + 2 * gamma)
+  ## n 
+  gamma <- gs / ca
+  kappa <- kmm / ca
+  n <- (chi + kappa) / (chi + 2 * gamma)
 
 
-    out <- list( chi=chi, m=m, n=n )
-    return(out)
-  })
+  out <- list( chi=chi, m=m, n=n )
+  return(out)
 }
 
 
 calc_mprime <- function( m ){
   #-----------------------------------------------------------------------
+  # Input:  m   (unitless): factor determining LUE
+  # Output: mpi (unitless): modiefied m accounting for the co-limitation
+  #                         hypothesis after Prentice et al. (2014)
   #-----------------------------------------------------------------------
   kc <- 0.41          # Jmax cost coefficient
 
@@ -620,9 +648,6 @@ viscosity_h2o <- function( tc, p ) {
   h_array[5,] <- c(-0.0325372, 0.0, 0.0, 0.0698452, 0.0, 0.0) # hj4
   h_array[6,] <- c(0.0, 0.0, 0.0, 0.0, 0.00872102, 0.0) # hj5
   h_array[7,] <- c(0.0, 0.0, 0.0, -0.00435673, 0.0, -0.000593264) # hj6
-  # print("h_array")
-  # print(dim(h_array))
-  # print(h_array)
 
   # Calculate mu1 (Eq. 12 & Table 3, Huber et al., 2009):
   mu1 <- 0.0
@@ -642,7 +667,7 @@ viscosity_h2o <- function( tc, p ) {
   # print(paste("mu1",mu1))
 
   # Calculate mu_bar (Eq. 2, Huber et al., 2009)
-  #   assumes mu2 <- 1
+  #   assumes mu2 = 1
   mu_bar <- mu0 * mu1
 
   # Calculate mu (Eq. 1, Huber et al., 2009)
@@ -669,8 +694,6 @@ viscosity_h2o_vogel <- function( tc ) {
   c <- 137.546
 
   visc <- 1e-3 * exp(a + b/(tk - c))
-
-  # visc <- 10^(-3) * exp( -3.719+580 / (-138 + tk) )
 
   return( visc )
 }
