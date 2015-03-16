@@ -5,6 +5,13 @@
 ## interpret this as finding the root of the function eval_cton
 ##----------------------------------------------------------------
 
+source('pmodel.R')
+
+## Set boundary conditions
+elv    <- 450.0
+co2    <- 376.0
+
+
 ## N availability over season
 sin_season <- function(day){
   sea <- 0.5 * ( sin( (2 * pi * day / 365 ) + 1.5 * pi ) + 1 )
@@ -44,11 +51,21 @@ params <- c(
 
 P0 <- 30 # photosynthesis rate
 
-calc_agpp <- function( alpha, P0, leaf_season, params ){
-  ## annual GPP
-  with( as.list(params), {
-    gpp <-  sum( P0 * ( 1 - exp( -kbeer * sla * alpha * leaf_season ) ) )
-    return( gpp )    
+## annual GPP
+
+calc_agpp <- function( alpha, leaf_season, ppfd, co2, tc, cpalpha, vpd, elv, method="full", params ){
+
+  with( params, {
+
+    fpar <- ( 1 - exp( -kbeer * sla * alpha * leaf_season ) )
+
+    for (moy in 1:12){
+      mgpp[moy] <- pmodel( fpar=fpar[moy], ppfd=ppfd[moy], co2=co2, tc=tc[moy], cpalpha=cpalpha, vpd=vpd[moy], elv=elv, params=params, method=method )$gpp      
+    }
+
+    agpp <- sum(mgpp)
+    return( agpp )    
+
   })
 }
 
@@ -147,10 +164,13 @@ eval_beta <- function( alpha, P0, leaf_season, root_season, params ){
   ## given alpha, we can calculate how much C is fixed,
   ## total above-ground allocation, total below-ground 
   ## allocation, from which we can derive beta
+  ## all on an annual basis.
   with( as.list(params), {
 
+    ## fraction of absorbed PAR = (1 - exp(-k*LAI))
+
     ## GPP as afunction of leaf mass (alpha)
-    gpp <- calc_agpp( alpha, P0, leaf_season, params )
+    gpp <- calc_agpp( alpha, ppfd=ppfd, co2=co2, tc=tc, cpalpha=cpalpha, vpd=vpd, elv=elv, params=params, method="full" )
 
     ## subtract dark respiration directly
     rd  <- calc_rd( gpp )
@@ -195,7 +215,7 @@ calc_npp <- function( alpha, beta, P0, leaf_season, root_season, params){
   with( as.list(params), {
     
     ## GPP as afunction of leaf mass (alpha)
-    gpp <- calc_agpp( alpha, P0, leaf_season, params )
+    gpp <- calc_agpp( alpha, ppfd=ppfd, co2=co2, tc=tc, cpalpha=cpalpha, vpd=vpd, elv=elv, params=params, method="full" )
 
     ## subtract dark respiration directly
     rd  <- calc_rd( gpp )
@@ -218,7 +238,7 @@ eval_imbalance <- function( alpha, P0, leaf_season, root_season, ninorg, params 
   with( as.list(params), {
 
     ## 1. GPP as afunction of leaf mass (alpha)
-    gpp <- calc_agpp( alpha, P0, leaf_season, params )
+    gpp <- calc_agpp( alpha, ppfd=ppfd, co2=co2, tc=tc, cpalpha=cpalpha, vpd=vpd, elv=elv, params=params, method="full" )
 
     ## 2. subtract dark respiration directly
     rd  <- calc_rd( gpp )
@@ -265,7 +285,7 @@ calc_r_root_impl <- function( beta, root_season, params ){
 alpha_range <- seq( 0, 500, 10 )
 cleaf_range <- sapply( alpha_range, FUN = function(x) calc_maxcleaf( x, leaf_season ) )
 imbal_range <- sapply( alpha_range, FUN = function(x) eval_imbalance( x, P0, leaf_season, root_season, ninorg, params ) )
-gpp_range   <- sapply( alpha_range, FUN = function(x) calc_agpp( x, P0, leaf_season, params ) )
+gpp_range   <- sapply( alpha_range, FUN = function(x) calc_agpp( alpha, ppfd, co2, tc, cpalpha, vpd, elv, params, method="full" ) )
 taa_range   <- sapply( alpha_range, FUN = function(x) calc_taa(x, leaf_season, params ) )
 
 beta_range  <- sapply( alpha_range, FUN = function(x) eval_beta( x, P0, leaf_season, root_season, params ) )

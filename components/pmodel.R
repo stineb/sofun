@@ -2,7 +2,6 @@
 # Contains P model functions adopted from gepisat
 # ////////////////////////////////////////////////////////////////////////
 
-kc <- 0.41          # Jmax cost coefficient
 kphio <- 0.093      # quantum efficiency (Long et al., 1993)
 kPo <- 101325.0     # standard atmosphere, Pa (Allen, 1973)
 kTo <- 25.0         # base temperature, deg C (Prentice, unpublished)
@@ -36,7 +35,7 @@ nv  <- 1.0/40.96    # gN µmol-1 s-1. Value 40.96 is 'sv' in Table 2 in Kattge e
 #-----------------------------------------------------------------------
 beta <- 244.033
 
-params <- list( kc, kphio, kPo, kTo, beta )
+params <- list( kphio, kPo, kTo, beta )
 
 
 # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -119,13 +118,16 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, params, method="full
     ## GPP per unit ground area is the product of the intrinsic quantum 
     ## efficiency, the absorbed PAR, the function of alpha (drought-reduction),
     ## and 'm'
-    gpp <- iabs * kphio * fa * m 
-
+    # print(m)
+    m <- calc_mprime( m )
+    # print(m)
+    gpp <- iabs * kphio * fa * m
+    
     ## Vcmax per unit ground area is the product of the intrinsic quantum 
     ## efficiency, the absorbed PAR, and 'n'
     vcmax <- iabs * kphio * n
 
-    ## Dark respiration
+    ## Dark respiration  xxx where does 0.015 come from? xxx
     rd <- 0.015 * vcmax
 
     ## Vcmax25 (vcmax normalized to 25 deg C)
@@ -141,115 +143,12 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, params, method="full
 }
 
 
-calc_leaf_N <- function( lai, narea ){
+# calc_leaf_N <- function( lai, narea ){
 
-  nleaf <- lai * narea
-  return(nleaf)
-}
-
-
-# calc_gpp_gepisat <- function( fpar, ppfd, vpd, alpha, tair, co2, patm, elv, nxtgn=FALSE ){
-#   #-----------------------------------------------------------------------
-#   # Input:    - float, monthly GPP, mol/m2 (gpp)
-#   #           - float, associated GPP error, mol/m2 (gpp_err)
-#   #           - float, monthly FAPAR (fpar)
-#   #           - float, monthly PPFD, mol/m2 (ppfd)
-#   #           - float, monthly VPD, Pa (vpd)
-#   #           - float, monthly CPA (alpha)
-#   #           - float, monthly air temp, degC (tmp)
-#   #           - float, annual atm. CO2, ppm (co2)
-#   #           - float, monthly atm. pressure, Pa (patm)
-#   #           - float, elevation, m (elv)
-#   # Output:   None.
-#   # Features: Appends a set of monthly values to the value dictionary
-#   # Depends:  - calc_gstar
-#   #           - calc_k
-#   #           - nxgn
-#   #           - viscosity_h2o
-#   #           - kPo
-#   #-----------------------------------------------------------------------
-
-#   iabs <- fpar * ppfd                    # mol/m2, abs. PPFD
-#   ca   <- co2_to_ca( co2, patm )         # Pa, atms. CO2
-#   gs   <- calc_gstar_gepisat( tair )     # Pa, photores. comp. point
-
-#   if (nxtgn) {
-
-#     ## Formulation based on theoretical model
-#     k    <- calc_k( tair, patm )           # Pa, Michaelis-Menten coef.
-#     ns   <- viscosity_h2o( tair, patm ) / n25 # Pa s, viscosity
-#     fa   <- ( alpha / 1.26 )^(0.25)       # unitless, func. of alpha
-
-#     out.beta <- beta_estimate(ca, vpd, k, gs, ns, tair, elv)
-#     beta1 <- out.beta[1]
-#     beta2 <- out.beta[2]
-
-#     # m <- calc_m_nxtgn(ca, gs, vpd, k, ns, fa, beta1)
-#     m <- calc_m_nxtgn(ca, gs, vpd, k, ns, fa, beta2)
-
-#   } else {
-
-#     ## use approximation function for chi
-#     atilde <- 0.8
-
-#     ## get chi using the approximative function based on Wang Han's equation
-#     chi <- lue_approx( tair, vpd, elv, ca, gs )$chi
-
-#     ## substitution
-#     gamma <- gs / ca
-#     m <- atilde * ( chi - gamma ) / ( chi + 2.0 * gamma )
-
-#   }
-
-#   ## GPP is the productof the intrinsic quantum efficiency, the absorbed PAR, and the light use efficiency
-#   gpp <- iabs * kphio * m
-#   return( gpp )
-  
+#   nleaf <- lai * narea
+#   return(nleaf)
 # }
 
-
-calc_m_nxtgn <- function(ca, gs, d, k, ns, beta){
-  #-----------------------------------------------------------------------
-  # Input:    - float, 'ca' : Pa, atmospheric CO2
-  #           - float, 'Gs' : Pa, photores. comp. point (Gamma-star)
-  #           - float, 'D'  : Pa, vapor pressure deficit
-  #           - float, 'K'  : Pa, Michaelis-Menten coeff.
-  #           - float, 'ns' : Pa s, viscosity of water
-  #           - float, beta parameter (beta)
-  # Output:   float, estimate of GPP (gpp)
-  # Features: Returns an estimate of GPP based on the next-generation light 
-  #           and water use efficiency model. This corresponds to Eq.6 in 
-  #           Simplifying_m.pdf with b/(a*vpd) = beta
-  # Depends:  - kc
-  #           - kphio
-  #-----------------------------------------------------------------------
-
-  # Define variable substitutes:
-  ns   <- ns * 1.0e3 # convert from Pa s to mPa s
-  vdcg <- ca - gs
-  vacg <- ca + 2.0 * gs
-  vbkg <- beta * (k + gs)
-
-  # Check for negatives:
-  if (vbkg > 0){
-    vsr <- sqrt(1.6*ns*d/(vbkg))
-
-    # Based on the m' formulation (see Regressing_LUE.pdf)
-    m <- vdcg/(vacg + 3.0*gs*vsr)
-
-    mpi <- m^2 - kc^(2.0/3.0)*(m^(4.0/3.0))
-
-    # Check for negatives:
-    if (mpi > 0){
-      mp <- sqrt(mpi)
-      # gpp <- kphio*iabs*fa*mp
-      # mp <- mp * fa
-    }
-  }
-
-  return( mp )
-
-}
 
 lue_approx <- function( temp, vpd, elv, ca, gs ){
   #-----------------------------------------------------------------------
@@ -366,16 +265,16 @@ lue_vpd_full <- function( kmm, gs, ns_star, ca, vpd, params ){
 }
 
 
-mprime <- function( m, params ){
-  with( params,{
-    #-----------------------------------------------------------------------
-    #-----------------------------------------------------------------------
-    mpi <- m^2 - kc^(2.0/3.0) * (m^(4.0/3.0))
+calc_mprime <- function( m ){
+  #-----------------------------------------------------------------------
+  #-----------------------------------------------------------------------
+  kc <- 0.41          # Jmax cost coefficient
 
-    # Check for negatives:
-    if (mpi > 0){ mp <- sqrt(mpi) }
-    return(mpi)    
-  })
+  mpi <- m^2 - kc^(2.0/3.0) * (m^(4.0/3.0))
+
+  # Check for negatives:
+  if (mpi > 0){ mpi <- sqrt(mpi) }
+  return(mpi)    
 }
 
 
@@ -411,51 +310,6 @@ ca_to_co2 <- function( ca, patm ){
   #-----------------------------------------------------------------------
   co2   <- ca * ( 1.e6 ) / patm
   return( co2 )
-}
-
-
-
-
-# temp_range <- seq( 0, 50, 1)
-# gstar_gepisat <- sapply( temp_range, FUN = calc_gstar_gepisat)
-# gstar_wh <- sapply( temp_range, FUN = calc_gstar_wh)
-# gstar_colin <- sapply( temp_range, FUN = calc_gstar_colin)
-
-# plot( temp_range, gstar_gepisat, type="l"  )
-# lines( temp_range, gstar_wh, col="red" )
-# lines( temp_range, gstar_colin, col="blue" )
-
-beta_estimate <- function(my_ca, my_d, my_k, my_gs, my_ns, my_t, my_z) {
-  #-----------------------------------------------------------------------
-  # Input:    - float, atmospheric CO2 concentration, Pa (my_ca)
-  #           - float, vapor pressure deficit, Pa (my_d)
-  #           - float, Michaelis-Menten coeff, Pa (my_k)
-  #           - float, photorespiratory comp point, Pa (my_gs)
-  #           - float, viscosity, unitless (my_ns)
-  #           - float, air temperature, deg C (my_t)
-  #           - float, elevation, m (my_z)
-  # Output:   tuple 
-  #           - float, predicted beta from simple expression (beta_p1)
-  #           - float, predicted beta from 
-  # Features: Returns an estimate for beta based on the Wang Han equation.
-  #           See also 'Estimation_of_beta.pdf'
-  #-----------------------------------------------------------------------
-
-  chi <- lue_approx( my_t, my_d, my_z, my_ca, my_gs )$chi
-
-  # beta following Estimation_of_beta.pdf, p.5 (Method 2, the simple expression)
-  beta_p1 <- 1.6*my_ns*my_d*(chi^2)
-  beta_p1 <- beta_p1 / (1.0 - chi)^2
-  beta_p1 <- beta_p1 / my_k
-
-  # beta following Estimation_of_beta.pdf, p.4
-  beta_p2 <- 1.6*my_ns*my_d
-  beta_p2 <- beta_p2 / (my_k + my_gs)
-  beta_p2 <- beta_p2 * (chi*my_ca - my_gs)^2
-  beta_p2 <- beta_p2 / (my_ca^2)
-  beta_p2 <- beta_p2 / (chi - 1.0)^2
-
-  return (beta_p1, beta_p2)
 }
 
 
@@ -625,24 +479,24 @@ calc_vcmax25 <- function( vcmax, tc ){
 }
 
 
-calc_vcmax25_colin <- function( vcmax, tc ){
-  #-----------------------------------------------------------------------
-  # Input:    - gcmax  : Vcmax at a given temperature tc 
-  #           - tc     : air temperature (degrees C)
-  # Output:   vcmax25  : Vcmax at 25 deg C
-  # Features: Returns the temperature-corrected Vcmax at 25 deg C
-  # Ref:      Colin's document
-  #-----------------------------------------------------------------------
+# calc_vcmax25_colin <- function( vcmax, tc ){
+#   #-----------------------------------------------------------------------
+#   # Input:    - gcmax  : Vcmax at a given temperature tc 
+#   #           - tc     : air temperature (degrees C)
+#   # Output:   vcmax25  : Vcmax at 25 deg C
+#   # Features: Returns the temperature-corrected Vcmax at 25 deg C
+#   # Ref:      Colin's document
+#   #-----------------------------------------------------------------------
 
-  ## conversion to temperature in Kelvin
-  tk <- tc + 273.15
+#   ## conversion to temperature in Kelvin
+#   tk <- tc + 273.15
 
-  dhav <- 65330    # J/mol
-  kR   <- 8.3145   # J/mol/K
+#   dhav <- 65330    # J/mol
+#   kR   <- 8.3145   # J/mol/K
 
-  vcmax25 <- vcmax * exp( -dhav/kR * (1/298.15 - 1/tk) )
-  return( vcmax25 )
-}
+#   vcmax25 <- vcmax * exp( -dhav/kR * (1/298.15 - 1/tk) )
+#   return( vcmax25 )
+# }
 
 
 calc_patm <- function( elv ){
@@ -821,218 +675,3 @@ viscosity_h2o_vogel <- function( tc ) {
   return( visc )
 }
 
-## \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-##  Test: Calculate GPP for monthly input data for CH-Oe1
-##  year: 2000, elv: 450, lon: 7.73, lat: 47.3
-## ////////////////////////////////////////////////////////////////////////
-source("/alphadata01/bstocker/utilities/daily2monthly.R")
-ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
-doy_vec <- 
-
-nmonth <- 12
-
-## GET MONTHLY CLIMATE
-## temperature, convert from daily to monthly values
-if (file.exists("/alphadata01/bstocker/sofun/trunk/components/mtemp_CH-Oe1_2002.txt")){
-
-    ## read monthly file
-    df.mtemp <- read.csv( "/alphadata01/bstocker/sofun/trunk/components/mtemp_CH-Oe1_2002.txt" )
-    mtemp <- df.mtemp$temp
-
-} else {
-
-  ## read climate from year 2002 for station CH-Oe1
-  dtemp <- read.table( "/alphadata01/bstocker/sofun/trunk/input/dtemp_CH-Oe1_2002.txt" )
-
-  ## use function from our 'utilities' repository
-  mtemp <- daily2monthly( dtemp$V1, "mean" )
-
-  ## write monthly data to file
-  df.mtemp <- data.frame( month=1:nmonth, temp=mtemp )
-  write.csv( df.mtemp, file="/alphadata01/bstocker/sofun/trunk/components/mtemp_CH-Oe1_2002.txt", row.names=FALSE )
-
-}
-
-## precipitation, convert from daily to monthly values
-if (file.exists("/alphadata01/bstocker/sofun/trunk/components/mprec_CH-Oe1_2002.txt")){
-
-    ## read monthly file
-    df.mprec <- read.csv( "/alphadata01/bstocker/sofun/trunk/components/mprec_CH-Oe1_2002.txt" )
-    mprec <- df.mprec$prec
-
-} else {
-
-  ## read climate from year 2002 for station CH-Oe1
-  dprec <- read.table( "/alphadata01/bstocker/sofun/trunk/input/dprec_CH-Oe1_2002.txt" )
-
-  ## use function from our 'utilities' repository
-  mprec <- daily2monthly( dprec$V1, "sum" )
-
-  ## write monthly data to file
-  df.mprec <- data.frame( month=1:nmonth, prec=mprec )
-  write.csv( df.mprec, file="/alphadata01/bstocker/sofun/trunk/components/mprec_CH-Oe1_2002.txt", row.names=FALSE )
-
-}  
-
-## sunshine fraction
-mfsun <- read.table("/alphadata01/bstocker/sofun/trunk/input/mfsun_CH-Oe1_2002.txt")$V1
-filnam <- "/alphadata01/bstocker/sofun/trunk/components/mfsun2_CH-Oe1_2002.txt"
-if (!file.exists(filnam)) {
-  df.mfsun <- data.frame( month=1:nmonth, fsun=mfsun )
-  write.csv( df.mfsun, file=filnam, row.names=FALSE )
-}
-
-## vapour pressure (mvapr, hPa), vapour pressure deficit (mvpd, kPa)
-mvapr <- read.table("/alphadata01/bstocker/sofun/trunk/input/mvapr_CH-Oe1_2002.txt")$V1
-filnam <- "/alphadata01/bstocker/sofun/trunk/components/mvapr2_CH-Oe1_2002.txt"
-if (!file.exists(filnam)) {
-  df.mvapr <- data.frame( month=1:nmonth, fsun=mvapr )
-  write.csv( df.mvapr, file=filnam, row.names=FALSE )
-}
-mvpd <- rep(NA,nmonth)
-for (moy in 1:nmonth){
-  mvpd[moy] <- calc_vpd( mtemp[moy], mvapr[moy] )
-}
-
-
-## WANG HAN'S STATION DATA
-## read input data for GPP calculation
-indata <- read.csv( "/alphadata01/bstocker/sofun/trunk/input_raw/Wang_Han_beta_estimates.csv", header=TRUE )
-
-## get day of year (doy) and year
-indata$doy  <- as.POSIXlt( indata$Timestamp, format="%d/%m/%Y" )$yday+1
-indata$year <- as.POSIXlt( indata$Timestamp, format="%d/%m/%Y" )$year+1900
-indata$moy  <- as.POSIXlt( indata$Timestamp, format="%d/%m/%Y" )$mon+1
-
-## take sub-set of this for station CH-Oe1
-indata <- indata[ indata$station == "CH-Oe1", ]
-indata <- indata[ indata$year == 2002, ]
-
-## PPFD FROM SOFUN (STASH implementation)
-## read PPFD calculated by STASH (sofun implementation, '*.m.qm.out')
-filnam <- "/alphadata01/bstocker/sofun/trunk/output/CH-Oe1_2002.m.qm.out"
-df.ppfd <- read.table( filnam, col.names=c("year","ppfd") )
-if (!file.exists(filnam)) {
-  write.csv( df.ppfd, file=filnam, row.names=FALSE )
-}
-
-## take subset of year 2000
-istart <- which.min( abs(df.ppfd$year-2000.0) )
-df.ppfd <- df.ppfd[ istart:(istart+nmonth-1), ]
-
-
-##------------------------------------------------------------
-## CALCULATE STUFF for each month with:
-##    - fapar = 1
-##    - ppfd from STASH (sofun implementation), see input file
-##    - alpha = 1.26
-##    - co2 = 376 ppm
-##    - elv = 450 m
-##------------------------------------------------------------
-elv    <- 450.0
-patm   <- calc_patm(elv)
-co2    <- 376.0
-ca     <- co2_to_ca( co2, patm )         # Pa, atms. CO2
-beta   <- 244
-visc25 <- viscosity_h2o( kTo, kPo )      # Pa s
-
-
-## CALCULATE GPP
-mgpp <- rep( NA, nmonth )
-for ( moy in 1:nmonth ){
-  mgpp[moy] <- pmodel( fpar=1.0, ppfd=df.ppfd$ppfd[moy], co2=co2, tc=mtemp[moy], cpalpha=1.0, vpd=mvpd[moy], elv=elv, params=params, method="full" )$gpp
-}
-
-## CALCULATE K
-## Michaelis-Menten coefficient (Pa)
-kmm       <- sapply( mtemp, FUN = function(x) calc_k(x, patm) )
-kmm_colin <- sapply( mtemp, FUN = calc_k_colin )
-
-## CALCULATE VISCOSITY
-visc25    <- viscosity_h2o( kTo, kPo )
-visc      <- mapply( viscosity_h2o, mtemp, patm )
-visc_star <- visc/visc25
-visc_vogel<- sapply( mtemp, FUN = viscosity_h2o_vogel )
-visc_out  <- visc * 1e3  # convert from Pa s to mPa s
-visc_vogel_out <- visc_vogel * 1e3  # convert from Pa s to mPa s
-
-## CALCULATE GAMMA-STAR
-gstar       <- sapply( mtemp, FUN = calc_gstar_gepisat )
-gstar_colin <- sapply( mtemp, FUN = calc_gstar_colin )
-
-## CALCULATE CHI 
-chi_wh     <- rep( NA, nmonth )
-chi_simpl  <- rep( NA, nmonth )
-chi_full   <- rep( NA, nmonth )
-for (moy in 1:nmonth){
-  chi_wh[moy]    <- lue_approx( mtemp[moy], mvpd[moy], elv, ca, gstar )$chi
-  chi_simpl[moy] <- lue_vpd_simpl( kmm[moy], gstar[moy], visc_star[moy], ca, mvpd[moy], params )$chi
-  chi_full[moy]  <- lue_vpd_full(  kmm[moy], gstar[moy], visc_star[moy], ca, mvpd[moy], params )$chi
-}
-
-
-## SAVE DATA FOR USE BY TYLER AND WANG-HAN
-benioutput <- data.frame( year=rep(2002,nmonth), moy=1:nmonth, kpp_Pa=kmm
-  , visc_Pa_s=visc, gstar_Pa=gstar, chi_WH_method=chi_wh, chi_simpl=chi_simpl, chi_full=chi_full 
-  )
-save( benioutput, file="benioutput.Rdata" )
-write.csv( benioutput, file="benioutput.txt", row.names=FALSE )
-
-## COMPARE DATA
-## temperature: ok
-# plot( 1:nmonth, mtemp, type="l", col="red" )
-# for (idx in 1:dim(indata)[1]){
-#   points( indata$moy[idx], indata$Tair_degC[idx] )
-# }
-
-## VPD xxx not ok xxx: is WH's data really in kPa (not Pa)?
-pdf("vpd_comparison.pdf")
-plot( 1:nmonth, mvpd, type="l", col="red", xlab="MOY"  )
-for (idx in 1:dim(indata)[1]){
-  points( indata$moy[idx], indata$D_kPa[idx] )
-}
-dev.off()
-
-## K - Michaelis-Menten coefficient: ok
-pdf("Kc_comparison.pdf")
-plot( 1:nmonth, kmm, type="l", col="red", xlab="MOY"  )
-lines(1:nmonth, kmm_colin, col="green" )
-for (idx in 1:dim(indata)[1]){
-  points( indata$moy[idx], indata$K_Pa[idx] )
-}
-legend( "topleft", c("GePiSaT method", "Colin method"), lty=1, bty="n", col=c("red","green") )
-dev.off()
-
-## Viscosity: systematically lower values by my code, but tested to be identical with python implementation in gepisat
-pdf("viscosity_comparison.pdf")
-plot( 1:nmonth, visc_out, type="l", col="red", xlab="MOY", ylab="viscosity [mPa s]" )
-lines(1:nmonth, visc_vogel_out, col="green" )
-for (idx in 1:dim(indata)[1]){
-  points( indata$moy[idx], indata$ns[idx] )
-}
-legend( "bottomleft", c("Huber method", "Vogel method"), lty=1, bty="n", col=c("red","green") )
-dev.off()
-
-## Gamma-star: ok
-pdf("gammastar_comparison.pdf")
-plot( 1:nmonth, gstar, type="l", col="red", xlab="MOY"  )
-lines(1:nmonth, gstar_colin, col="green" )
-for (idx in 1:dim(indata)[1]){
-  points( indata$moy[idx], indata$Gs_Pa[idx] )
-}
-legend( "topleft", c("GePiSaT method", "Colin method"), lty=1, bty="n", col=c("red","green") )
-dev.off()
-
-## CHI - WH method
-pdf("chi_comparison.pdf")
-plot( 1:nmonth, chi_wh, type="l", col="red", xlab="MOY"  )
-lines( 1:nmonth, chi_full, col="blue" )
-for (idx in 1:dim(indata)[1]){
-  points( indata$moy[idx], indata$chi_wang_han[idx] )
-  points( indata$moy[idx], indata$chi_vpd[idx], col="green" )
-}
-legend( "topleft", c("Wang-Han method", "theoretical full method"), lty=1, bty="n", col=c("red","blue") )
-dev.off()
-
-## GPP 
-plot( 1:nmonth, mgpp, type="l", col="red", xlab="MOY"  )
