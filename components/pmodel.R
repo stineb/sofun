@@ -26,9 +26,11 @@
 # ----------
 # changelog:
 # ----------
-# VERSION 1.0
+# VERSION 1.0.0
 #  - file created [2015-03-16]
 #
+# VERSION 1.0.1
+#  - 'lue_approx' function now based on SI units.
 #
 # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 #  Function Definitions
@@ -188,16 +190,17 @@ lue_approx <- function( temp, vpd, elv, ca, gs ){
   #           - float, 'gs'   : Pa, photores. comp. point (Gamma-star)
   # Output:   list: 'm' (unitless), 'chi' (unitless)
   # Features: Returns list containing light use efficiency (m) and ci/ci ratio (chi)
-  ##          based on the approximation of the theoretical relationships
-  ##          of chi with temp, vpd, and elevation
+  #           based on the approximation of the theoretical relationships
+  #           of chi with temp, vpd, and elevation.
+  #           Is now based on SI units as inputs.
   #-----------------------------------------------------------------------
 
   ## Wang-Han Equation
   whe <- exp( 
-    1.19 
+    4.644
     + 0.0545 * ( temp - 25.0 )
-    - 0.5 * log( 1e-3 * vpd )    # convert vpd from Pa to kPa 
-    - 0.0815 * ( 1e-3 * elv )    # convert elv from m to km
+    - 0.5 * log( vpd )    # convert vpd from Pa to kPa 
+    - 8.15e-5 * elv       # convert elv from m to km
     )
 
   ## leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
