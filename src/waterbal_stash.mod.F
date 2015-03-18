@@ -55,6 +55,7 @@ module waterbal_stash
   real :: ppfd_d                 ! daily PPFD (mol/m^2)
   real :: eet_d                  ! daily EET (mm)
   real :: pet_d                  ! daily PET (mm)
+  real :: ds                     ! day length (hours)
   real, dimension(nlu) :: cpa_d  ! daily Cramer-Prentice-Alpha (AET/EET)
   real, dimension(nlu) :: wc     ! daily condensation (mm)
   real, dimension(nlu) :: sw     ! evaporative supply rate (mm/h)
@@ -65,6 +66,7 @@ module waterbal_stash
   real, dimension(ndayyear,maxgrid)     :: outdho             ! daily solar irradiation, J/m2
   real, dimension(ndayyear,maxgrid)     :: outdhn             ! daily net radiation, J/m2
   real, dimension(ndayyear,maxgrid)     :: outdqn             ! daily PPFD, mol/m2
+  real, dimension(ndayyear,maxgrid)     :: outds              ! daily day length, h
   real, dimension(nlu,ndayyear,maxgrid) :: outdcn             ! daily condensation water, mm
   real, dimension(nlu,ndayyear,maxgrid) :: outdro             ! daily runoff, mm
   real, dimension(ndayyear,maxgrid)     :: outdeq_n           ! daily equilibrium ET, mm
@@ -285,6 +287,12 @@ contains
 
     ! xxx debug
     !print*,'hs',hs
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 6.a Calculate day length from sunset hour angle, h
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 31 in STASH doc 
+    ds = 24 * hs / 180.0  ! hs is in degrees (pi = 180 deg)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 7. Calculate daily extraterrestrial solar radiation (ra_d), J/m^2
@@ -595,6 +603,10 @@ contains
     filnam=trim(prefix)//'.d.ea_n.out'
     open(260,file=filnam,err=888,status='unknown')
 
+    ! DS: day length, h
+    filnam=trim(prefix)//'.d.ds.out'
+    open(261,file=filnam,err=888,status='unknown')
+
 
     !----------------------------------------------------------------
     ! MONTHLY OUTPUT
@@ -642,6 +654,7 @@ contains
     outdho(:,:) = 0.0
     outdhn(:,:) = 0.0
     outdqn(:,:) = 0.0
+    outds(:,:) = 0.0
     outdcn(:,:,:) = 0.0
     outdro(:,:,:) = 0.0
     outdeq_n(:,:) = 0.0
@@ -681,6 +694,7 @@ contains
     outdho(doy,jpngr)     = ra_d  
     outdhn(doy,jpngr)     = rn_d
     outdqn(doy,jpngr)     = ppfd_d
+    outds(doy,jpngr)      = ds
     outdcn(:,doy,jpngr)   = wc(:)
     outdeq_n(doy,jpngr)   = eet_d
     outdep_n(doy,jpngr)   = pet_d
@@ -763,6 +777,7 @@ contains
         write(258,999) itime, outdeq_n(day,jpngr)
         write(259,999) itime, outdep_n(day,jpngr)
         write(260,999) itime, outdea_n(1,day,jpngr)
+        write(261,999) itime, outds(day,jpngr)
 
       end do
     end if
