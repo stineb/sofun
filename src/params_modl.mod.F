@@ -12,16 +12,6 @@ module params_modl
   implicit none
 
   ! NON PFT-DEPENDENT PARAMETERS
-  real :: klitt_af10        !  1 above-ground fast (leaf) litter decay rate [1/d]
-  real :: klitt_as10        !  2 above-ground slow (woody) litter decay rate [1/d] 
-  real :: klitt_bg10        !  3 below-ground (root) litter decay rate [1/d] 
-  real :: kexu10            !  4 exudates decay rate [1/d]
-  real :: ksoil_fs10        !  5 fast soil pool decay rate [1/d]
-  real :: ksoil_sl10        !  6 slow soil pool decay rate [1/d]
-  real :: ntoc_crit1        !  7 factor for "Manzoni Equation" (XPXXX) [1]
-  real :: ntoc_crit2        !  8 exponent for "Manzoni Equation" (XPXXX) [1]
-  real :: cton_microb       !  9 C:N ratio of microbial biomass [1]
-  real :: fastfrac          ! 10 fraction of litter input to fast soil pool [1]
   real :: rcton_LS          ! 11 constant ratio between leaf and sapwood C/N ratios (Friend et al.,2008 in XP08)
   real :: rcton_LR          ! 12 constant ratio between leaf and root C/N ratios (Friend et al., 2008 in XP08)
   real :: kbeer             ! 20 canopy light extinction coefficient

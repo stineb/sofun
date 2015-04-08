@@ -82,12 +82,11 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method="full" ){
   #-----------------------------------------------------------------------
   mol_weight_rubisco <- 5.5e5    # molecular weight of Rubisco, (g R)(mol R)-1
   n_conc_rubisco     <- 1.14e-2  # N concentration in rubisco, (mol N)(g R)-1
-  mol_weight_n       <- 14.0067  # molecular weight of N, (g N)(mol N)-1
   cat_turnover_per_site <- 2.33  # catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1; use 2.33 instead of (3.5) as not all Rubisco is active (see Harrison et al., 2009)  
   cat_sites_per_mol_R   <- 8.0   # number of catalytic sites per mol R, (mol R sites)(mol R)-1
 
-  # Metabolic N ratio (g N s (mol CO2)-1 )
-  n_v <- mol_weight_rubisco * n_conc_rubisco * mol_weight_n / ( cat_turnover_per_site * cat_sites_per_mol_R )
+  # Metabolic N ratio (mol N s (mol CO2)-1 )
+  n_v <- mol_weight_rubisco * n_conc_rubisco / ( cat_turnover_per_site * cat_sites_per_mol_R )
 
   ## parameters for Narea -- under construction
   # sla <- 0.0014       # specific leaf area (m2/gC)
@@ -95,7 +94,7 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method="full" ){
   # N in cell walls: Slope of WN~LMA is 0.0002 mol N / g leaf mass (Hikosaka&Shigeno, 2009)
   # With 0.5 g C / g leaf mass and 14 g N / mol N: n_cw = 0.0056 g N / g C
 
-  ncw <- 0.0056          # N:C ratio in cell walls, working hypothesis: leaf N is solely determined by Vcmax25
+  # ncw <- 0.0056          # N:C ratio in cell walls, working hypothesis: leaf N is solely determined by Vcmax25
   # n_v  <- 1.0/40.96    # gN µmol-1 s-1. Value 40.96 is 'sv' in Table 2 in Kattge et al., 2009, GCB, C3 herbaceous
   ## -- under construction
 
@@ -183,16 +182,25 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method="full" ){
   factor25_vcmax <- calc_vcmax25( 1.0, tc )
   vcmax25        <- factor25_vcmax * vcmax
 
-  ## canopy N, gN/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
+  ## canopy N, mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
   n_rubisco  <- vcmax25 * n_v 
-  # calc_n_rubisco_area( vcmax25/2678400 ) # conversion from month to seconds
-  # n_cellwall <- ncw * 1.0/sla 
-  # n_canopy   <- n_rubisco + n_cellwall
 
-  ## N per unit APAR
+  ## N per unit APAR mol N s(mol CO2)-1
   n_apar <- kphio * n * factor25_vcmax * n_v
 
-  out <- list( gpp=gpp, vcmax=vcmax, rd=rd, n_rubisco=n_rubisco, lue=lue, luenet=luenet, n_apar=n_apar )
+  out <- list( 
+    gpp=gpp, 
+    vcmax=vcmax, 
+    vcmax25=vcmax25,
+    factor25_vcmax=factor25_vcmax,
+    rd=rd, 
+    n_rubisco=n_rubisco, 
+    lue=lue, 
+    luenet=luenet, 
+    n_apar=n_apar,
+    n=n,
+    m=m
+    )
   return( out )
 }
 

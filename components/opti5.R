@@ -5,280 +5,21 @@
 ## interpret this as finding the root of the function eval_cton
 ##----------------------------------------------------------------
 
-source('pmodel.R')
+source('/alphadata01/bstocker/sofun/trunk/components/pmodel.R')
+source('/alphadata01/bstocker/sofun/trunk/components/sofun.R')
 source('/alphadata01/bstocker/utilities/daily2monthly.R')
 
-##----------------------------------------------------------------
-## FUNCTION DEFINITIONS
-##----------------------------------------------------------------
 
-## Beer's Law
-calc_fapar <- function( lai, params ){
-  with( params,{
-    fapar <- ( 1 - exp( -kbeer * lai ) )
-    return(fapar)
-  })
-}
-
-
-
-## Returns above-ground N requirement as a function of leaf mass
-anreq <- function( c_leaf, mnapar, mppfd, params){
-  with( params,{
-
-    fapar <- calc_fapar( sla * c_leaf, params )
-
-    ## N in Rubisco scales with APAR because it scales with Vcmax (= Iabs * kphio * n)
-    nreq <- mppfd * fapar * mnapar
-
-    return( nreq )
-  })
-}
-
-
-aanreq <- function( alpha, leaf_season, mnapar, mppfd, params ) {
-  with( params,{
-
-    ## get monthly vector of fraction of absorbed PAR
-    mleaf_season <- daily2monthly( leaf_season, method="mean")
-
-    nreq <- anreq( alpha * mleaf_season, mnapar, mppfd, params )
-    nreq <- max(nreq)
-
-    # ## deciduous tree (no continuous turnover)
-    # nreq <- alpha + n_v * vcmax25
-
-    # ## evergreen tree (continuous turnover)
-    # nreq <- rntoc * ( sum(leaf_season) * alpha * k_leaf )
-
-    return( nreq )
-  })
-}
-
-
-# calc_maxcleaf <- function( alpha, leaf_season ){
-#   maxcleaf <- max( leaf_season * alpha )
-#   return( maxcleaf )
-# }
-
-## total above-ground allocation
-calc_taa <- function( alpha, par, params ) {
-  with( params, {
-
-    ## deciduous tree (no continuous turnover)
-    taa <- ( 1.0 + y ) * alpha
-
-    # ## continuous turnover/replacement
-    # taa <- sum(leaf_season) * alpha * ( (1+y) * k_leaf ) 
-
-    return( taa )    
-
-  })
-}
-
-
-## beta as a function of TBA
-beta_of_tba <- function( tba, root_season, params ){
-  # Assumes that
-  # TBA = sum( beta * root_sason(day) * ( (1+y) * k_root + r_root + exu ) )
-  with( params, {
-    beta <- tba / ( sum(root_season) * ( ( 1.0 + y ) * k_root + r_root + exu ) )
-    return( beta )
-  })
-}
-
-
-## daily C exudation as a function of N uptake for a given initial N
-calc_cexu <- function( nup, n0, params ){
-  with( params,{
-    cexu <- 1/psi * (log( n0 ) - log( n0 - nup ))
-    return(cexu)
-  })
-}
-
-
-## daily N uptake as a function of C exuded and initial N content
-calc_dnup <- function( cexu, n0, params ){
-  # This follows from FUN approach with
-  # dCexu/dNup = K / (N0 - Nup); K=1/psi
-  with( params,{
-    # print(paste("psi",psi))
-    # print(paste("cexu",cexu))
-    nup <- n0 * ( 1.0 - exp( - psi * cexu ) )
-    # print(paste("fraction N taken up:", nup/n0 ))`
-    return(nup)
-  })
-}
-
-
-## annual N uptake as a sum over daily N uptake
-anup <- function( beta, root_season, ninorg, params, method=NA ){
-  with( params,{
-
-    if (is.na(method)){
-      ## increasing cost as limited by available N (like FUN)
-      nup <- 0
-      for (doy in 1:ndayyear){
-        cexu <- beta * root_season[doy] * exu
-        nup <- nup + calc_dnup( cexu, ninorg[doy], params )
-        # print(paste("fraction N taken up:", nup/ninorg[doy] ))
-      }  
-
-    } else if (method=="approx") {
-      ## linear increase of N uptake with C exudation
-      nup <- beta * psi * exu * sum( root_season * ninorg )
-    }
-
-    return( nup )
-  })
-}
-
-# nup_range <- seq( 0, 0.99, 0.01 )
-# cex_range <- sapply( nup_range, FUN = function(x) calc_cexu(x, 1, params))
-# nup_range_result <- sapply( cex_range, FUN = function(x) calc_dnup(x, 1, params) )
-
-# # plot( nup_range, cex_range, type="l")
-# plot( cex_range, nup_range_result, type="l" )
-
-
-# abnreq <- function( beta, root_season, params ) {
-#   with( params,{
-#     nreq <- rntoc * ( sum(root_season) * beta * k_root )
-#     return( nreq )
-#   })
-# }
-
-# calc_rd <- function( gpp ){
-#   rd <- 0.1 * gpp
-#   return(rd)
-# }
-
-
-# calc_aresp <- function( alpha, leaf_season, params ){
-#   with( params, {
-#     aresp <- sum(leaf_season) * alpha * ( y * k_leaf ) 
-#     return(aresp)
-#   })
-# }
-
-# calc_bresp <- function( beta, root_season, params ){
-#   with( params, {
-#     bresp <- sum(root_season) * beta  * ( y * k_root + r_root )
-#     return(bresp)
-#   })
-# }
-
-# calc_exu <- function( beta, root_season, params ){
-#   with( params, {
-#     exu <- sum(root_season) * beta  * exu
-#     return(exu)
-#   })
-# }
-
-# calc_npp <- function( alpha, beta, P0, leaf_season, root_season, params){
-
-#   with( params, {
-    
-#     ## GPP as afunction of leaf mass (alpha)
-#     gpp <- calc_agpp( alpha, ppfd=ppfd, co2=co2, tc=tc, cpalpha=cpalpha, vpd=vpd, elv=elv, params=params, method="full" )
-
-#     ## subtract dark respiration directly
-#     rd  <- calc_rd( gpp )
-
-#     ## substract all respiration terms (except exudation)
-#     aresp <- calc_aresp( alpha, leaf_season, params )
-#     bresp <- calc_bresp( beta, root_season, params )
-#     npp   <- gpp - aresp - bresp
-#     return( npp )
-
-#   })
-# }
-
-# eval_beta <- function( alpha, leaf_season, root_season, mluenet, mppfd, params ){
-#   ## given alpha, we can calculate how much C is fixed,
-#   ## total above-ground allocation, total below-ground 
-#   ## allocation, from which we can derive beta
-#   ## all on an annual basis.
-#   with( params, {
-
-#     ## Annual net GPP (= GPP - Rd) as afunction of leaf mass (alpha)
-#     gpp <- calc_agpp_net( alpha, leaf_season, mluenet, mppfd, params )
-
-#     ## total above-ground allocation, TAA
-#     taa <- calc_taa( alpha, leaf_season, params )
-
-#     ## total below-ground allocation, TBA
-#     tba <- gpp - taa
-
-#     ## beta as a function of TBA
-#     beta <- beta_of_tba( tba, root_season, params )
-#     return(beta)
-    
-#   })
-# }
-
-
-## Returns annual "net" GPP (= GPP - Rd)
-calc_agpp_net <- function( alpha, leaf_season, mluenet, mppfd, params ){
-
-  with( params, {
-
-    ## get monthly vector of fraction of absorbed PAR
-    mleaf_season <- daily2monthly( leaf_season, method="mean")
-    mfapar <- calc_fapar( sla * alpha * mleaf_season, params )
-
-    ## calculate monthly gpp vector, convert from mol/m2/month to gC/m2/month
-    mgpp <- mppfd * mfapar * mluenet * 12.0107
-
-    ## annual GPP as sum of monthly GPP
-    agpp <- sum(mgpp)
-
-    return( agpp )    
-
-  })
-}
-
-
-eval_imbalance <- function( alpha, leaf_season, root_season, ninorg, mluenet, params ){
-  ## ///////////////////////////////////////////////
-  ## Evaluates the imbalance between N requirement 
-  ## and N uptake, given leaf mass scalar
-  ## -----------------------------------------------
-
-  with( params, {
-
-    ## 1. GPP minus dark respiration as afunction of leaf mass (alpha)
-    gpp_net <- calc_agpp_net( alpha, leaf_season, mluenet, mppfd, params )
-
-    ## 3. total above-ground allocation, TAA
-    taa <- calc_taa( alpha, leaf_season, params )
-
-    ## 4. total below-ground allocation, TBA
-    tba <- gpp_net - taa
-
-    ## 5. beta as a function of TBA
-    beta <- beta_of_tba( tba, root_season, params )
-
-    # ## derive beta from this alpha (function executes steps 1-4)
-    # ## Steps 1-4 may also be calculated on a sheet of paper!
-    # beta <- eval_beta( alpha, P0, leaf_season, root_season, params )
-
-    ## 6. N uptake, given root mass (beta)
-    nup <- anup( beta, root_season, ninorg, params )
-
-    ## 7. N requirement for growth
-    nreq <- aanreq( alpha, leaf_season, params ) + abnreq(  beta, root_season, params )
-
-    ## 8. Imbalance between N uptake and N requirement
-    eval <- nreq - nup
-    return(eval)
-
-  })
+## test
+calc_sla <- function(k_leaf){
+  long_leaf <- 1/(365*k_leaf)
+  sla <- 2.0 - 4.0 * exp( 6.150 - 0.460 * log(k_leaf) * 12.00 )
+  return(sla)  
 }
 
 
 ##----------------------------------------------------------------
-## PARAMETERS
+## ENVIRONMENTAL CONDITIONS
 ##----------------------------------------------------------------
 
 ## N availability over season
@@ -293,8 +34,9 @@ nmonth <- 12
 ## Input: inorganic N availability
 ## xxx as it stands now, it's extremely sensitive to inorganic N 
 ## availability. Linear N uptake function may not be appropriate.
-Nscale <- 0.09
+Nscale <- 0.1
 ninorg <- Nscale * sapply( days, FUN=sin_season )
+ntrans <- 10.0  # free N taken up by transpiration stream
 
 ## Assumption: root phenology is congruent with 
 ## seasonality of inorganic N availability
@@ -305,34 +47,7 @@ root_season <- sapply( days, FUN=sin_season )
 ##            => N in cell walls and N in Rubisco are uniform
 leaf_season <- rep( 1, ndayyear )
 # leaf_season <- sapply( days, FUN=sin_season )
-
-## Model parameters, from Li et al., 2014 (where given)
-params <- list( 
-              ndayyear = 365,
-              nmonth   = 12,
-              y        = 0.25,   # changed from 0.4
-              r_root   = 0.005,  # yields ~0.913 
-              r_leaf   = 0.0,    # Rd is directly substracted from GPP
-              exu      = 0.05,
-              k_root   = 1/(1.04*365),
-              k_leaf   = 1/365,  # xxx changed from 1/(4.0*365)
-              psi      = 0.1,
-              kbeer    = 0.5,
-              sla      = 0.0083,  # 0.0083: Vile et al., 2005 (Ann. Botany; Table 2, Trees)     xxx changed from 0.0014
-              rntoc    = 1/50 
-              )
-
-## test
-calc_sla <- function(k_leaf){
-  long_leaf <- 1/(365*k_leaf)
-  sla <- 2.0 - 4.0 * exp( 6.150 - 0.460 * log(k_leaf) * 12.00 )
-  return(sla)  
-}
-
-
-##----------------------------------------------------------------
-## ENVIRONMENTAL CONDITIONS
-##----------------------------------------------------------------
+if (max(leaf_season)>1.0) { break }
 
 ## Set fixed boundary conditions
 elv    <- 450.0
@@ -376,6 +91,7 @@ mtemp <- df.temp$temp
 #   })
 # }
 
+
 ##----------------------------------------------------------------
 ## "MAIN" PROGRAM
 ##----------------------------------------------------------------
@@ -383,104 +99,191 @@ mtemp <- df.temp$temp
 ## Run P-model for each month 
 
 mluenet <- rep( NA, nmonth )
+mlue    <- rep( NA, nmonth )
 mnapar  <- rep( NA, nmonth )
 for (moy in 1:nmonth){
 
   ## Execute P-model
   out <- pmodel( fpar=NA, ppfd=NA, co2, mtemp[moy], cpalpha[moy], mvpd[moy], elv )
 
+  ## Light use efficiency: (gpp - rd) per unit light absorbed
+  mlue[moy] <- out$lue
+
   ## Net light use efficiency: (gpp - rd) per unit light absorbed
   mluenet[moy] <- out$luenet
 
   ## conversion factor to get from APAR to Rubisco-N
   mnapar[moy]  <- out$n_apar
+
 }
 
 
-
 ## Calculate Rubisco-N
-daysecs   <- sum( df.dl$dayl_h ) * 60 * 60  # number of daylight seconds in a year
-ppfd_mean <- sum( mppfd ) / daysecs         # mol m-2 s-1
+daysecs   <- df.dl$dayl_h * 60 * 60  # number of daylight seconds in a year
+monsecs   <- daily2monthly( daysecs, method="sum" )
+meanmppfd <- mppfd / monsecs         # mol m-2 s-1
 
 
-# # out.alpha_root  <- uniroot( function(x) eval_imbalance( x, P0, leaf_season, root_season, ninorg, params), c(0.01,500) )
-# # alpha_root <- out.alpha_root$root
-# # beta_root  <- eval_beta( alpha_root, P0, leaf_season, root_season, params  )
-# # print( paste("leaf:root ratio", alpha_root * max(leaf_season) / beta_root * max(root_season) ) )
 
-alpha_range   <- seq( 1, 5000, 10 )
-lai_range     <- alpha_range * params$sla
-# cleaf_range   <- sapply( alpha_range, FUN = function(x) calc_maxcleaf( x, leaf_season ) )
-# imbal_range   <- sapply( alpha_range, FUN = function(x) eval_imbalance( x, P0, leaf_season, root_season, ninorg, params ) )
-gpp_range     <- sapply( alpha_range, FUN = function(x) calc_agpp_net( x, leaf_season, mluenet, mppfd, params ) )
-taa_range     <- sapply( alpha_range, FUN = function(x) calc_taa( x, leaf_season, params ) )
-tba_range     <- gpp_range - taa_range
-beta_range    <- sapply( tba_range, FUN = function(x) beta_of_tba( x, root_season, params ) )
-alpha_of_tba0 <- alpha_range[ which.min(abs(tba_range)) ]
-lai_of_tba0   <- params$sla * alpha_of_tba0
-      
-beta_range_pos  <- beta_range[ beta_range >= 0 ]
-alpha_range_pos <- alpha_range[ beta_range >= 0 ]
+## VARY LAI (alpha)
+alpha_range   <- seq( 0.01, 30, 0.1 )
 
-nup_range_pos         <- sapply( beta_range_pos,  FUN = function(x) anup( x, root_season, ninorg, params ) )
-nup_range_pos_approx  <- sapply( beta_range_pos,  FUN = function(x) anup( x, root_season, ninorg, params, method="approx" ) )
+gpp_net_range  <- sapply( alpha_range, FUN = function(x) calc_agpp( x, leaf_season, mluenet, mppfd, params ) )
+gpp_range      <- sapply( alpha_range, FUN = function(x) calc_agpp( x, leaf_season, mlue, mppfd, params ) )
+nr_canop_range <- sapply( alpha_range, FUN = function(x) calc_nr_canop( x, leaf_season, meanmppfd, mnapar, params ) )
+nr_leaf_range  <- sapply( alpha_range, FUN = function(x) calc_nr_leaf( x, leaf_season, meanmppfd, mnapar, params ) )
 
-aanreq_range  <- sapply( alpha_range, FUN = function(x) aanreq( x, leaf_season, mnapar, mppfd, params ) )
+ncw_canop_range <- sapply( alpha_range, FUN = function(x) calc_ncw_canop( x, leaf_season, meanmppfd, mnapar, params ) )
+ncw_canop_range_nomin <- sapply( alpha_range, FUN = function(x) calc_ncw_canop_nomin( x, leaf_season, meanmppfd, mnapar, params ) )
+ncw_leaf_range  <- sapply( alpha_range, FUN = function(x) calc_ncw_leaf( x, leaf_season, meanmppfd, mnapar, params ) )
 
-# nreq_range  <- sapply( alpha_range, FUN = function(x) aanreq( x, leaf_season, params ) ) + sapply( beta_range, FUN = function(x) abnreq( x, root_season, params ) )
-# aresp_range <- sapply( alpha_range, FUN = function(x) calc_aresp( x, leaf_season, params ) )
-# bresp_range <- sapply( beta_range,  FUN = function(x) calc_bresp( x, root_season, params ) )
-# npp_range   <- gpp_range - aresp_range - bresp_range
-# exu_range   <- sapply( beta_range,  FUN = function(x) calc_exu( x, root_season, params ) )
-# # r_root_impl_range <- sapply( beta_range, FUN = function(x) calc_r_root_impl( x, root_season, params ) )
+c_leaf_range   <- ncw_leaf_range  * mol_weight_n * params$r_cton_leaf # g C m-2
+c_canop_range  <- ncw_canop_range * mol_weight_n * params$r_cton_leaf # g C m-2
+# c_leaf_range   <- (ncw_leaf_range  + nr_leaf_range  ) * mol_weight_n * params$r_cton_leaf # g C m-2
+# c_canop_range  <- (ncw_canop_range + nr_canop_range ) * mol_weight_n * params$r_cton_leaf # g C m-2
+
+lma_range      <- 2.0 * c_leaf_range
+
+taa_range      <- sapply( c_canop_range, FUN = function(x) calc_taa( x, leaf_season, params ) )
+tba_range      <- gpp_net_range - taa_range
+beta_range     <- sapply( tba_range, FUN = function(x) beta_of_tba( x, root_season, params ) )
+
+aresp_range <- sapply( c_canop_range, FUN = function(x) calc_aresp( x, leaf_season, params ) )
+bresp_range <- sapply( beta_range,  FUN = function(x) calc_bresp( x, root_season, params ) )
+npp_range   <- gpp_net_range - aresp_range - bresp_range
+exu_range   <- sapply( beta_range,  FUN = function(x) calc_exu( x, root_season, params ) )
+
+root2shoot_range <- beta_range / c_leaf_range
+
+nup_range         <- sapply( beta_range,  FUN = function(x) anup( x, root_season, ninorg, params ) ) + ntrans
+nup_range_approx  <- sapply( beta_range,  FUN = function(x) anup( x, root_season, ninorg, params, method="approx" ) ) + ntrans
+
+## balance in g N m-2
+aanreq_range  <- (nr_canop_range + ncw_canop_range) * mol_weight_n
+aanreq_range_nomin <- (nr_canop_range + ncw_canop_range_nomin) * mol_weight_n
+abnreq_range  <- sapply( beta_range, FUN = function(x) abnreq( x, root_season, params ) )
+anreq_range   <- aanreq_range + abnreq_range
+anreq_range_nomin  <- aanreq_range_nomin + abnreq_range
+
+imbal_range   <- sapply( alpha_range, FUN = function(x) eval_imbalance( x, leaf_season, root_season, ninorg, ntrans, mluenet, mppfd, meanmppfd, mnapar, params ) )
+out.alpha_root  <- uniroot( function(x) eval_imbalance( x, leaf_season, root_season, ninorg, ntrans, mluenet, mppfd, meanmppfd, mnapar, params ), range(alpha_range) )
+alpha_root      <- out.alpha_root$root
+
 
 ##----------------------------------------------------------------
 ## PLOTS
 ##----------------------------------------------------------------
+data <- read.csv(file="/alphadata01/bstocker/data/hikosaka/TableS1_reformatted.csv",header = TRUE)
+
 par( las=1, mar=c(4,4,4,4) )
 
-# # plot( alpha_range, imbal_range, type="l" )
-# plot( alpha_range, cleaf_range, type="l" )
+## Primary productivity
+plot(  alpha_range, gpp_range, type="l", ylab="annual flux (gC/m2/yr)", xlab="LAI" )
+lines( alpha_range, gpp_net_range, col="magenta" )
+lines( alpha_range, npp_range, col="green")
+lines( alpha_range, exu_range, col="blue" )
+abline( h=0, col="grey70")
+abline( v=alpha_root, col="magenta ")
+legend( "bottomright", c("GPP","GPP - Rd", "NPP", "EXU"), lty=1, bty="n", col=c("black","magenta","green","blue") )
+
+## Exudation as a fraction of NPP
+plot( alpha_range, exu_range/npp_range, type="l")
+abline( v=alpha_root, col="magenta ")
 
 ## Above-ground balance
-plot( alpha_range, gpp_range, type="l", ylab="annual flux (gC/m2/yr)", xlab="leaf mass (gC/m2)" )
+plot(  alpha_range, gpp_range, type="l", lty=2, ylab="annual flux (gC/m2/yr)", xlab="LAI" )
+lines( alpha_range, gpp_net_range )
+lines( alpha_range, taa_range, col="red")
 lines( alpha_range, tba_range, col="blue" )
-lines( alpha_range, taa_range, lty=2, col="red")
 abline( h=0, col="grey70")
-abline( v=alpha_of_tba0, col="grey70")
-legend( "bottomright", c("Net GPP", "TBA", "TAA"), lty=c(1,1,2), bty="n", col=c("black","blue","red") )
-par(new=TRUE)
-plot( lai_range, gpp_range, type="n", xlab="", ylab="", axes=F )
-axis( 3, col="green")
-mtext( "LAI", 3, col="green", line=3 )
-# par(new=TRUE)
-# plot( alpha_range, beta_range, type="n", xlab="", ylab="", col="brown", axes=F, ylim=c(0,355))
-# axis( 4, col="blue" )
-# mtext( "root mass (gC/m2)", col="blue", side=4, line=3, las=1 )
+abline( v=alpha_root, col="magenta ")
+legend( "bottomright", c("GPP","GPP - Rd", "TBA", "TAA"), lty=c(2,1,1,1), bty="n", col=c("black","black","blue","red") )
 
 ## Below-ground balance (as a function of alpha)
-plot( alpha_range_pos, beta_range_pos, type="l", col="brown", xlab="leaf mass (gC/m2)", ylim=c(0,max(beta_range)), xlim=range(alpha_range) )
-axis( 2, col="brown" )
-abline( v=alpha_of_tba0, col="grey70")
+plot( alpha_range, beta_range, type="l", col="brown", xlab="leaf mass (gC/m2)", ylim=c(0,max(beta_range)), xlim=range(alpha_range) )
 par(new=TRUE)
-plot( alpha_range_pos, nup_range_pos, col="blue", type="l", xlab="", ylab="", axes=FALSE, ylim=c(0,max(nup_range_pos_approx)), xlim=range(alpha_range) )
-lines( alpha_range_pos, nup_range_pos_approx, col="blue", lty=2 )
+plot( alpha_range, nup_range, col="blue", type="l", xlab="", ylab="", axes=FALSE, ylim=c(0,max(nup_range_approx)), xlim=range(alpha_range) )
+lines( alpha_range, nup_range_approx, col="blue", lty=2 )
 axis( 4, col="blue" )
-legend( "bottomright", c("root mass", "annual N uptake"), lty=c(1,1,2), bty="n", col=c("brown","blue") )
+abline( v=alpha_root, col="magenta ")
+legend( "bottomright", c("root mass", "annual N uptake","annual N uptake, approx."), lty=c(1,1,2), bty="n", col=c("brown","blue","blue") )
 
-## Below-ground balance (as a function of beta)
-plot( beta_range_pos, nup_range_pos, type="l", col="blue" )
-lines( beta_range_pos, nup_range_pos_approx, lty=2, col="blue" )
+plot( alpha_range, root2shoot_range, type="l")
+abline( v=alpha_root, col="magenta ")
 
-## Canopy N as a function of leaf mass
-plot( alpha_range, aanreq_range, type="l" )
+# ## Below-ground balance (as a function of beta)
+# plot(  beta_range, nup_range, type="l", col="blue" )
+# lines( beta_range, nup_range_approx, lty=3, col="blue" )
+# legend( "bottomright", c("annual N uptake","annual N uptake, approx."), lty=c(1,2), bty="n", col=c("blue","blue") )
+
+## Below-ground balance (as a function of alpha)
+# plot(  alpha_range, nup_range_approx, type="l", lty=2, col="blue", ylab="annual N uptake (gN/m2/yr)", xlab="LAI", ylim=c(0,max(anreq_range))  )
+plot(  alpha_range, nup_range, type="l", col="blue", ylab="annual N uptake (gN/m2/yr)", xlab="LAI", ylim=c(0,max(anreq_range))  )
+lines( alpha_range, anreq_range, col="red" )
+# lines( alpha_range, imbal_range, col="magenta" )
+abline( v=alpha_root, col="magenta ")
+abline( h=0.0, col="grey70" )
+# lines( alpha_range, anreq_range_nomin, col="red", lty=2 )
+legend( "bottomright", c("annual N uptake","annual N uptake, approx.","N required, n_cw ~ Vcmax25 + LAI x const.","N required, n_cw ~ Vcmax25"), lty=c(1,2,1,2), bty="n", col=c("blue","blue","red","red") )
+
+# ## relationship between N per leaf area and Rubisco per leaf area (y-intersect is a measure for minimum content)
+# Rarea <- data$RNF * data$Narea
+# reg <- lm( data$Narea ~ Rarea )
+# plot(  data$Narea ~ Rarea, ylim=c(0,max(data$Narea, na.rm=TRUE)), xlim=c(0,max(Rarea, na.rm=TRUE)), xlab="rNarea (mol Rubisco N m-2)", ylab="Narea (mol N m-2)" )
+# lines( nr_leaf_range, nr_leaf_range + ncw_leaf_range, col="red" )
+# text( 0, 0.03, paste("y-intersect:", reg$coefficients[1] ), adj=c(0,0))
+# text( 0, 0.01, paste("slope:      ", reg$coefficients[2] ), adj=c(0,0))
+# abline( reg )
+
+
+## relationship between LMA and Rubisco per leaf area (y-intersect is a measure for minimum content)
+Rarea <- data$RNF * data$Narea
+reg <- lm( data$LMA ~ Rarea )
+plot(  data$LMA ~ Rarea, ylim=c(0,max(data$LMA, na.rm=TRUE)), xlim=c(0,max(Rarea, na.rm=TRUE)), xlab="rLMA (mol Rubisco N m-2)", ylab="LMA (g m-2)" )
+points( nr_leaf_range, lma_range, col="red" )
+text( 0, 0.03, paste("y-intersect:", reg$coefficients[1] ), adj=c(0,0))
+text( 0, 0.01, paste("slope:      ", reg$coefficients[2] ), adj=c(0,0))
+abline( reg )
+
+
+
+# ## Canopy N as a function of LAI
+# plot( alpha_range, nr_canop_range, type="l", xlab="LAI", ylab="Nr canopy (g N m-2)" )
+
+## Leaf Rubisco-N as a function of LAI, overlay data: RNF * Narea (Rubisco N fraction * Narea = Rubisco N m-2)
+plot( alpha_range, nr_leaf_range, type="l", xlab="LAI", ylab="Nr leaf (g N m-2)" )
+abline( h= (data$RNF * data$Narea ), col=rgb(0,0,0,0.3) )
+
+## Leaf cell wall-N as a function of LAI
+plot( alpha_range, ncw_leaf_range, type="l", xlab="LAI", ylab="Ncw leaf (g N m-2)" )
+# ## overlay data: WN (cell wall N per area, N m-2) xxx DOES NOT WORK PROPERLY: THERE MUST BE AN ADDITIONAL COMPONENT OF LEAF N XXX
+# abline( h= (data$WN ), col=rgb(0,0,0,0.3) )
+## overlay data: Narea - data$RNF * data$Narea (this is what n_cw really represents)
+abline( h = data$Narea - data$RNF * data$Narea, col=rgb(0,0,0,0.3) )
+
+## Leaf-N as a function of LAI, overlay data: WN (cell wall N per area, N m-2)
+plot( alpha_range, ncw_leaf_range+nr_leaf_range, type="l", xlab="LAI", ylab="Narea (g N m-2)", ylim=range(data$Narea,ncw_leaf_range+nr_leaf_range) )
+abline( h= (data$Narea ), col=rgb(0,0,0,0.3) )
+
+## LMA as a function of LAI, overlay data: LMA (g m-2)
+plot( alpha_range, lma_range, type="l", xlab="LAI", ylab="LMA (gC m-2)", ylim=c(range(data$LMA, lma_range)))
+abline( h= (data$LMA ), col=rgb(0,0,0,0.3) )
+
+
+# ## Canopy C as a function of LAI
+# plot( alpha_range, c_canop_range, type="l", xlab="LAI", ylab="canopy C (g C m-2)"  )
+
 
 # plot( alpha_range, taa_range, type="l" )
 # plot( alpha_range, tba_range, type="l" )
 # plot( alpha_range, beta_range, type="l" )
 # # plot( beta_range, nup_range, type="l" )
-# # plot( alpha_range, npp_range, type="l" )
-# # plot( alpha_range, exu_range/npp_range, type="l" )
+# plot( alpha_range, aresp_range, type="l" )
+# plot( alpha_range, bresp_range, type="l" )
+# plot( alpha_range, aresp_range + bresp_range, type="l" )
+
+# plot( alpha_range, npp_range, type="l" )
+# plot( alpha_range, exu_range/npp_range, type="l" )
 
 # # # pdf("bmodel_nreq_vs_nup.pdf")
 # # plot( alpha_range, nreq_range, type="l" )
@@ -493,4 +296,5 @@ plot( alpha_range, aanreq_range, type="l" )
 # # lines( beta_range, nup_range, col="red" )
 # # abline( v=beta_root, col='grey')
 # # legend( "topleft", c("N required", "N up"), lty=1, bty="n", col=c("black","red") )
+
 

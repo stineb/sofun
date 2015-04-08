@@ -69,7 +69,6 @@ contains
         proot(pft,jpngr) = rm_sapl(pft)
         psapw(pft,jpngr) = sm_sapl(pft)
 
-
         !-----------------------------------------------------------------------------
         ! Calculate crownarea and height, re-calculate sapwood mass
         !-----------------------------------------------------------------------------

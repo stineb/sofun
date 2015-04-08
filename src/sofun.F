@@ -23,7 +23,9 @@ program main
 
   ! This is necessary because of keyword-specification of arguments to 'biosphere'
   interface
-    subroutine biosphere(year, realyear, lon, lat, elv, lu_area, pco2 , dtemp_field, dprec_field, dfsun_field, dndep_field, c_uptake , dgpp_data , fpc_grid_data )
+    subroutine biosphere(year, realyear, lon, lat, elv, lu_area, pco2 , &
+      dtemp_field, dprec_field, dfsun_field, dvpd_field, dndep_field, &
+      c_uptake , dgpp_data , fpc_grid_data )
 
       ! required arguments
       integer, intent(in)                   :: year       ! simulation year
@@ -35,6 +37,7 @@ program main
       real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
       real, intent(in), dimension(ndayyear,maxgrid) :: dprec_field
       real, intent(in), dimension(ndayyear,maxgrid) :: dfsun_field
+      real, intent(in), dimension(ndayyear,maxgrid) :: dvpd_field
       real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
       real, dimension(3)                    :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
       real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
@@ -128,7 +131,8 @@ program main
     ! containing data for each day of this year.
     !----------------------------------------------------------------
     call biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
-      , dtemp_field, dprec_field, dfsun_field, dndep_field, c_uptake &
+      , dtemp_field, dprec_field, dfsun_field, dndep_field, dvpd_field &
+      , c_uptake &
 #if _prescr_gpp_site
       , dgpp_data=dgpp_data(transyear,:,:) &  ! optional argument
 #endif

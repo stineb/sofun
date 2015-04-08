@@ -1,10 +1,11 @@
 module sofunutils
-    !/////////////////////////////////////////////////////////////////////////
-    ! Contains utility functions to deal with arrays containing 365 daily 
-    ! values or 12 monthly values representing one year.
-    ! - running: calculates running mean
-    ! - daily2monthly: calculates monthly mean/sum of daily values for resp. mo.
-    !-------------------------------------------------------------------------
+  !/////////////////////////////////////////////////////////////////////////
+  ! Contains utility functions to deal with arrays containing 365 daily 
+  ! values or 12 monthly values representing one year.
+  ! - running: calculates running mean
+  ! - daily2monthly: calculates monthly mean/sum of daily values for resp. mo.
+  !-------------------------------------------------------------------------
+  implicit none
 
 contains
 
@@ -14,8 +15,6 @@ contains
     ! vided, sum/average is taken only over preceeding days/months of current
     ! year.
     !-------------------------------------------------------------------------
-
-    implicit none
 
     ! arguments
     ! xxx instead of dimension declaration with 'lenval', use size(presval)
@@ -66,37 +65,73 @@ contains
   end function running
 
 
-
-
   function daily2monthly( dval, method )
     !/////////////////////////////////////////////////////////////////////////
-    ! Returns monthly values as a mean over daily values in each month
+    ! Returns monthly values as a mean over daily values in each month.
+    ! Arguments:
+    ! - dval   : vector containing 365 (366 in case lapyear is TRUE) daily values
+    ! - method : true of monthly values represent total of daily values in resp. month
     !-------------------------------------------------------------------------
-    use params_core, only: ndayyear, ndaymonth, nmonth
-    implicit none
+    use params_core, only: ndaymonth, ndayyear, nmonth
 
     ! arguments
-    real, dimension(ndayyear), intent(in) :: dval  ! vector containing 365 daily values
-    character(len=*), intent(in) :: method ! true of monthly values represent total of daily values in resp. month
+    real, intent(in), dimension(ndayyear) :: dval
+    character(len=*), intent(in) :: method
 
     ! function return variable
     real, dimension(nmonth), intent(out) :: daily2monthly
 
     ! local variables
     integer :: moy
+    integer, dimension(nmonth) :: istart, iend
 
+    istart = icumsum(ndaymonth) - ndaymonth + 1
+    iend   = icumsum(ndaymonth)
+
+    ! loop over months and take sum/mean of days in that month
     do moy=1,nmonth
       select case (method)
         case ("sum")
-          daily2monthly(moy) = sum(dval(sum(ndaymonth(1:(moy-1)))+1:sum(ndaymonth(1:moy))))
+          daily2monthly(moy) = sum( dval( istart(moy) : iend(moy) ))
         case ("mean")
-          daily2monthly(moy) = sum(dval(sum(ndaymonth(1:(moy-1)))+1:sum(ndaymonth(1:moy))))/ndaymonth(moy)
+          daily2monthly(moy) = sum( dval( istart(moy) : iend(moy) )) / ndaymonth(moy)
         case default
-          stop 'DAILY2MONTHLY: select valid method' 
+          stop 'DAILY2MONTHLY: select valid method (sum, mean)' 
       end select
     end do
 
+    return
+
   end function daily2monthly
+
+
+  function icumsum( arr, seed )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Returns the running (cumulative) sum of a vector of integers. 
+    ! Adopted from: 
+    ! Numerical Recipes in Fortran 90: Volume 2, edited by William H. Press
+    !-------------------------------------------------------------------------
+    implicit none 
+
+    ! arguments
+    integer, dimension(:), intent(in)  :: arr
+    integer, intent(in), optional      :: seed
+    integer, dimension(:), intent(out) :: icumsum
+
+    ! local variables
+    integer :: n, j
+    integer :: sd
+
+    n = size(arr)
+    if (n==0) return
+    sd = 0
+    if ( present(seed) ) sd = seed
+    icumsum(1) = arr(1) + sd
+    do j=2,n
+      icumsum(j) = icumsum(j-1) + arr(j)
+    end do
+
+  end function icumsum
 
 
   function monthly2daily( mval, method, monthistotal, mval_pvy, mval_nxy )
@@ -113,7 +148,7 @@ contains
     real, dimension(nmonth), intent(in), optional :: mval_nxy  ! vector containing 12 monthly values of the next year
     
     ! local variables
-    integer :: moy, doy, today
+    integer :: moy, doy, today, dm
     real :: dd, todaysval
 
     real, dimension(0:(nmonth+1))    :: mval_ext
@@ -172,11 +207,11 @@ contains
         enddo
 
         if (monthistotal) then
-          day = 0
+          doy = 0
           do moy=1,nmonth
-            do dayofmonth=1,ndaymonth(moy)
-              day = day+1
-              monthly2daily(day) = monthly2daily(day) / real(ndaymonth(moy))
+            do dm=1,ndaymonth(moy)
+              doy = doy+1
+              monthly2daily(doy) = monthly2daily(doy) / real(ndaymonth(moy))
             enddo
           enddo
         endif
@@ -223,7 +258,7 @@ contains
         ! Starting conditons of december in previous year
         startt = -30.5               ! midpoint between Nov-Dec of previous year
         endt = 0.5                   ! midpoint between Dec-Jan of this year
-        dt = real(ndaymonth(month))  ! number of Dec days
+        dt = real(ndaymonth(nmonth)) ! number of Dec days
         if (present(mval_pvy)) then
           lastmonthtemp = mval_pvy(nmonth) ! Dec mean temperature
         else
@@ -232,13 +267,13 @@ contains
 
         doy = 0                      ! initialisation of this years days
         
-        do month=1,nmonth
+        do moy=1,nmonth
           dtold = dt
           startt = endt
           endt = endt + dt
-          if (month<nmonth) then
-            dtnew = real(ndaymonth(month+1))
-            nextmonthtemp = mval(month+1)
+          if (moy<nmonth) then
+            dtnew = real(ndaymonth(moy+1))
+            nextmonthtemp = mval(moy+1)
           else
             dtnew = real(ndaymonth(1))
             if (present(mval_nxy)) then
@@ -248,8 +283,8 @@ contains
             end if
           endif
 
-          starttemp = (mval(month)*dt+lastmonthtemp*dtold)/(dt+dtold)
-          endtemp = (nextmonthtemp*dtnew+mval(month)*dt)/(dtnew+dt)
+          starttemp = (mval(moy)*dt+lastmonthtemp*dtold)/(dt+dtold)
+          endtemp = (nextmonthtemp*dtnew+mval(moy)*dt)/(dtnew+dt)
           deltatemp = endtemp-starttemp
           
           ! Calculate vars for a,b,c coefficients in polynom y = ax^2 +bx + c
@@ -257,16 +292,16 @@ contains
           d3t = endt**3.0 - startt**3.0
 
           ! Take a sheet of paper and try solve the polynom, well here is the outcome
-          polya = (mval(month)*dt - deltatemp*d2t/dt/2.0 - starttemp*dt + deltatemp*startt) / (d3t/3.0 - d2t**2.0/dt/2.0 - dt*startt**2.0 + startt*d2t)
+          polya = (mval(moy)*dt - deltatemp*d2t/dt/2.0 - starttemp*dt + deltatemp*startt) / (d3t/3.0 - d2t**2.0/dt/2.0 - dt*startt**2.0 + startt*d2t)
           polyb = deltatemp/dt - polya*(startt+endt)
           polyc = starttemp - polya*startt**2.0 - polyb*startt
 
           ! Calculate daily values with the polynom function
-          do dm=1,ndaymonth(month)
+          do dm=1,ndaymonth(moy)
             doy = doy + 1
             monthly2daily(doy) = polya * real(doy)**2.0 + polyb * real(doy) + polyc
           enddo
-          lastmonthtemp = mval(month)
+          lastmonthtemp = mval(moy)
         enddo
 
       case default
@@ -281,14 +316,13 @@ contains
 !  function monthly2daily_precip( mval_prec, mval_wet )!
 
 !    use params_core, only: nmonth, ndayyear
-!    implicit none
 
 !    ! arguments
 !    real, dimension(nmonth), intent(in) :: mval_prec  ! monthly precipitation totals
 !    real, dimension(nmonth), intent(in) :: mval_wet   ! monthly number of wet days
 
 !    ! local variables
-!    integer :: dayofmonth,day,d,m
+!    integer :: dm,day,d,m
 !    integer :: daysum            !accumulated days at beginning of month
 !    
 !    real :: prob, vv, v1, random
@@ -317,7 +351,7 @@ contains
 !      prob_rain(m)=mval_wet(m)/real(ndaymonth(m))
 !      mprecave(m)=mval_prec(m)/mval_wet(m)
 !       
-!      do dayofmonth=1,ndaymonth(m)
+!      do dm=1,ndaymonth(m)
 !        day=day+1
 !   
 !        ! Transitional probabilities (Geng et al. 1986)
@@ -346,8 +380,8 @@ contains
 !      ! normalise generated precipitation by monthly values
 !      if(m>1) daysum=daysum+ndaymonth(m-1)
 !      if(mprecip(m)<1.0) mprecip(m)=1.0
-!      do dayofmonth=1,ndaymonth(m)
-!        day=daysum+dayofmonth
+!      do dm=1,ndaymonth(m)
+!        day=daysum+dm
 !        dval_prec(day)=dval_prec(day)*(mval_prec(m)/mprecip(m))
 !        if (dval_prec(day)<0.1d0) dval_prec(day)=0.0
 !      ! dval_prec(day)=mval_prec(m)/ndaymonth(m)  !no generator

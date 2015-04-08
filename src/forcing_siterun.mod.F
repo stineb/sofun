@@ -7,9 +7,11 @@ module forcing_siterun
   ! as arguments.
   !----------------------------------------------------------------
   use params_core
+  use sofunutils, only: daily2monthly
   implicit none
 
-  real, dimension(ndayyear,maxgrid) :: dtemp_field, dprec_field, dfsun_field
+  real, dimension(ndayyear,maxgrid) :: dtemp_field, dprec_field, &
+    dfsun_field, dvpd_field
   real, dimension(ndayyear,maxgrid) :: dndep_field
   real, dimension(nlu,maxgrid)      :: lu_area
   real                              :: pco2
@@ -47,8 +49,7 @@ contains
 
     ! local variables
     integer :: day, mo, dm, yr
-
-    real, dimension(nmonth) :: mtmp
+    real, dimension(nmonth) :: mtemp, mfsun, mvapr, mvpd
 
 
     ! PRESCRIBED DAILY CLIMATE (TEMP, PREC, FSUN) FOR ONE YEAR
@@ -61,14 +62,23 @@ contains
 
     dtemp_field(:,1) = read1year_daily('dtemp_'//sitename//'_2002.txt')
     dprec_field(:,1) = read1year_daily('dprec_'//sitename//'_2002.txt')
-    mtmp(:) = read1year_monthly('mfsun_'//sitename//'_2002.txt')
 
-    ! use monthly value for each day in month for dfsun
+    mfsun(:) = read1year_monthly('mfsun_'//sitename//'_2002.txt')
+    mvapr(:) = read1year_monthly('mvapr_'//sitename//'_2002.txt')
+
+    ! calculate monthly VPD based on monthly vapour pressure and temperature data
+    mtemp(:) = daily2monthly( dtemp_field(:,1), "mean")
+    do mo=1,nmonth
+      mvpd(mo) = calc_vpd( mtemp(mo), mvapr(mo) )
+    end do
+
+    ! use monthly value for each day in month for dfsun, and dvpd
     day=0
     do mo=1,nmonth
       do dm=1,ndaymonth(mo)
         day=day+1
-        dfsun_field(day,1) = mtmp(mo)
+        dfsun_field(day,1) = mfsun(mo)
+        dvpd_field(day,1)  = mvpd(mo)
       end do
     end do
 
@@ -190,6 +200,45 @@ contains
 
   end subroutine getlanduse
 
+
+  function calc_vpd( temp, vap, tmin, tmax )
+    !-----------------------------------------------------------------------
+    ! Output:   mean monthly vapor pressure deficit, Pa (vpd)
+    ! Features: Returns mean monthly vapor pressure deficit
+    ! Ref:      Eq. 5.1, Abtew and Meleese (2013), Ch. 5 Vapor Pressure 
+    !           Calculation Methods, in Evaporation and Evapotranspiration: 
+    !           Measurements and Estimations, Springer, London.
+    !             vpd = 0.611*exp[ (17.27 tc)/(tc + 237.3) ] - ea
+    !             where:
+    !                 temp = average daily air temperature, deg C
+    !                 vap  = actual vapor pressure, kPa
+    !-----------------------------------------------------------------------
+    implicit none
+
+    ! arguments
+    real, intent(in) :: temp            ! mean monthly temperature, deg C
+    real, intent(in) :: vap             ! mean monthly vapor pressure, hPa (because CRU data is in hPa)
+    real, intent(in), optional :: tmin  ! (optional) mean monthly min daily air temp, deg C 
+    real, intent(in), optional :: tmax  ! (optional) mean monthly max daily air temp, deg C 
+
+    ! function return variable
+    real, intent(out) :: calc_vpd       !  mean monthly vapor pressure deficit, Pa
+
+    if ( present(tmin) .and. present(tmax) ) then
+      temp = 0.5 * (tmin + tmax)
+    end if
+
+    !! calculate VPD in units of kPa
+    calc_vpd = ( 0.611 * exp( (17.27 * temp)/(temp + 237.3) ) - 0.10 * vap )    
+
+    !! convert to Pa
+    calc_vpd = calc_vpd * 1e3
+
+    return
+
+  end function calc_vpd
+
+
   !===========================LOW-LEVEL============================
 
   function read1year_daily( filename )
@@ -235,16 +284,16 @@ contains
     character(len=*), intent(in) :: filename
 
     ! local variables
-    real, dimension(nmonth) :: dval
+    real, dimension(nmonth) :: mval
 
     ! function return value
     real, dimension(nmonth) :: read1year_monthly
 
-    open(20, file='./input/'//filename, status='old',  form='formatted', action='read', err=888)
-    read(20,*) dval
+    open(20, file='./input/'//trim(filename), status='old',  form='formatted', action='read', err=888)
+    read(20,*) mval
     close(20)
 
-    read1year_monthly = dval
+    read1year_monthly = mval
 
     return
     600 format (F9.7)

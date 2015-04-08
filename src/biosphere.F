@@ -1,5 +1,6 @@
 subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
-  , dtemp_field, dprec_field, dfsun_field, dndep_field, c_uptake &
+  , dtemp_field, dprec_field, dfsun_field, dndep_field, dvpd_field, &
+  , c_uptake &
   , dgpp_data &
   , fpc_grid_data &
   )
@@ -19,6 +20,8 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use waterbal_stash, only: outdcpa ! used for soiltemp xxx make this global?
   use phenology_lpx, only: summerphenology
   use ntransform_xuri, only: ntransform
+  use littersom_lpj, only: littersom
+  use gpp_pmodel, only: gpp
 
   ! xxx debug
   use fluxes
@@ -37,6 +40,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
   real, intent(in), dimension(ndayyear,maxgrid) :: dprec_field
   real, intent(in), dimension(ndayyear,maxgrid) :: dfsun_field
+  real, intent(in), dimension(ndayyear,maxgrid) :: dvpd_field
   real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
   real, dimension(3)                    :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
   real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
@@ -51,11 +55,15 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
 
   ! This is necessary because of keyword-specification of arguments to 'gpp'
   interface
-    subroutine gpp( jpngr, pco2, dgpp_data )
-      
+    subroutine gpp( jpngr, ppfd, co2, tc, vpd, elv, dgpp_data )
+                    
       ! optional set of arguments if 'dgpp' is to be predicted
-      integer, intent(in), optional :: jpngr                  ! gridcell number
-      real, intent(in), optional    :: pco2                    ! atmospheric CO2 concentration [ppm]
+      integer, intent(in), optional :: jpngr    ! gridcell number
+      real, intent(in), optional    :: ppfd     ! photon flux density (xxx)
+      real, intent(in), optional    :: co2      ! atmospheric CO2 (ppm)
+      real, intent(in), optional    :: tc       ! air temperature (deg C)
+      real, intent(in), optional    :: vpd      ! vapour pressure deficit (Pa)
+      real, intent(in), optional    :: elv      ! elevation above sea level (m)
 
       ! optional set of arguments if 'dgpp' is to be prescribed
       real, dimension(npft), intent(in), optional :: dgpp_data
@@ -145,10 +153,10 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         call waterbal( jpngr, day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
 
         ! get GPP from input
-        if (present(dgpp_data)) then
+        if ( present(dgpp_data) ) then
           call gpp( dgpp_data=dgpp_data(day,:) )
         else 
-          call gpp( jpngr=jpngr, pco2=pco2 )
+          call gpp( jpngr, ppfd=ppfd_d, co2=co2, tc=mtemp, vpd=mvpd, elv=elv )
         end if   
 
         ! use SR 'sitchtemp'

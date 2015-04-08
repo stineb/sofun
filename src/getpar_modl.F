@@ -11,12 +11,13 @@ subroutine getpar_modl
   use treegeometry, only: get_geometry_sapl
   use phenology_lpx, only: getpar_pft_summerphenology
   use ntransform_xuri, only: getpar_modl_ntransform
+  use littersom_lpj, only: getpar_modl_littersom
 
   implicit none
 
   ! local variables
   integer :: pft
-  integer, parameter :: npar = 16
+  integer, parameter :: npar = 6
   real, dimension(npar) :: params_array
 
   integer, parameter :: npar_pft = 21
@@ -33,53 +34,23 @@ subroutine getpar_modl
   read (01,*) params_array
   close (01)
 
-  ! above-ground fast (leaf) litter decay rate [1/d]
-  klitt_af10 = params_array(1)/ndayyear
-
-  ! above-ground slow (woody) litter decay rate [1/d] 
-  klitt_as10 = params_array(2)/ndayyear
-
-  ! below-ground (root) litter decay rate [1/d] 
-  klitt_bg10 = params_array(3)/ndayyear
-
-  ! exudates decay rate [1/d]
-  kexu10 = params_array(4)/ndayyear
-
-  ! fast soil pool decay rate [1/d]
-  ksoil_fs10 = params_array(5)/ndayyear
-
-  ! slow soil pool decay rate [1/d]
-  ksoil_sl10 = params_array(6)/ndayyear
-
-  ! factor for "Manzoni Equation" (XPXXX) [1]
-  ntoc_crit1 = params_array(7)
-
-  ! exponent for "Manzoni Equation" (XPXXX) [1]
-  ntoc_crit2 = params_array(8)
-
-  ! C:N ratio of microbial biomass [1]
-  cton_microb = params_array(9)
-
-  ! fraction of litter input to fast soil pool [1]
-  fastfrac = params_array(10)
-
   ! constant ratio between leaf and sapwood C/N ratios (Friend et al.,2008 in XP08)
-  rcton_LS = params_array(11)
+  rcton_LS = params_array(1)
 
   ! constant ratio between leaf and root C/N ratios (Friend et al., 2008 in XP08)
-  rcton_LR = params_array(12)
+  rcton_LR = params_array(2)
 
   ! canopy light extinction coefficient
-  kbeer = params_array(13)
+  kbeer = params_array(3)
 
   ! additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
-  kresp = params_array(14)
+  kresp = params_array(4)
 
   ! fraction of N retained at leaf abscission 
-  F_NRETAIN = params_array(15)        
+  F_NRETAIN = params_array(5)        
 
   ! maximum fractional plant coverage of trees (sum of all tree PFTs)
-  fpc_tree_max = params_array(16)
+  fpc_tree_max = params_array(6)
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC PARAMETERS
@@ -87,6 +58,7 @@ subroutine getpar_modl
   call getpar_modl_waterbal('params_waterbal_stash.dat')
   call getpar_modl_nuptake('params_nuptake_fun.dat')
   call getpar_modl_ntransform('params_ntransform_xuri.dat')
+  call getpar_modl_littersom('params_littersom_lpj.dat')
 
 
   !----------------------------------------------------------------

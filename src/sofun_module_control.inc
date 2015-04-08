@@ -1,6 +1,9 @@
 ! //////////////////////////////////////////////////////////////////////
 ! SELECT MODULES FOR DIFFERENT PARAMETRISATIONS
 ! ----------------------------------------------------------------------
+! This is used only to define setup (prescribing/simulating model parts)
+! on the top level (program sofun). Within 'biosphere', select respective 
+! modules instead.
 
 ! ----------------------------------------------------------------------
 ! MAINTENANCE RESPIRATION
@@ -44,7 +47,7 @@
 ! ----------------------------------------------------------------------
 
 ! Prescribe GPP per day
-#define _prescr_gpp_site 1
+#define _prescr_gpp_site 0
 
 ! ----------------------------------------------------------------------
 ! FIXED/DYNAMIC VEGETATION
