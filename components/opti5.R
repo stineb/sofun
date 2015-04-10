@@ -36,7 +36,7 @@ nmonth <- 12
 ## availability. Linear N uptake function may not be appropriate.
 Nscale <- 0.1
 ninorg <- Nscale * sapply( days, FUN=sin_season )
-ntrans <- 10.0  # free N taken up by transpiration stream
+ntrans <- 5.0  # free N taken up by transpiration stream
 
 ## Assumption: root phenology is congruent with 
 ## seasonality of inorganic N availability
@@ -117,13 +117,22 @@ for (moy in 1:nmonth){
 
 }
 
-
 ## Calculate Rubisco-N
 daysecs   <- df.dl$dayl_h * 60 * 60  # number of daylight seconds in a year
 monsecs   <- daily2monthly( daysecs, method="sum" )
 meanmppfd <- mppfd / monsecs         # mol m-2 s-1
 
-
+# ## Test Vcmax25 ==> OK
+# ## alternative calculation
+# mol_weight_rubisco <- 5.5e5    # molecular weight of Rubisco, (g R)(mol R)-1
+# n_conc_rubisco     <- 1.14e-2  # N concentration in rubisco, (mol N)(g R)-1
+# cat_turnover_per_site <- 2.33  # catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1; use 2.33 instead of (3.5) as not all Rubisco is active (see Harrison et al., 2009)  
+# cat_sites_per_mol_R   <- 8.0   # number of catalytic sites per mol R, (mol R sites)(mol R)-1
+# n_v <- mol_weight_rubisco * n_conc_rubisco / ( cat_turnover_per_site * cat_sites_per_mol_R )
+# test1_vcmax25 <- pmodel( fpar=1.0, ppfd=meanmppfd[6] , co2, mtemp[6], cpalpha[6], mvpd[6], elv )$vcmax25
+# test2_vcmax25 <- pmodel( fpar=NA, ppfd=NA , co2, mtemp[6], cpalpha[6], mvpd[6], elv )$n_apar * 1.0 * meanmppfd[6] / n_v
+# print(paste("test1_vcmax25",test1_vcmax25))
+# print(paste("test2_vcmax25",test2_vcmax25))
 
 ## VARY LAI (alpha)
 alpha_range   <- seq( 0.01, 30, 0.1 )
@@ -178,62 +187,71 @@ data <- read.csv(file="/alphadata01/bstocker/data/hikosaka/TableS1_reformatted.c
 par( las=1, mar=c(4,4,4,4) )
 
 ## Primary productivity
+# pdf( "prod_vs_lai.pdf", width=6, height=5 )
 plot(  alpha_range, gpp_range, type="l", ylab="annual flux (gC/m2/yr)", xlab="LAI" )
 lines( alpha_range, gpp_net_range, col="magenta" )
 lines( alpha_range, npp_range, col="green")
 lines( alpha_range, exu_range, col="blue" )
 abline( h=0, col="grey70")
-abline( v=alpha_root, col="magenta ")
+abline( v=alpha_root, col="grey70")
 legend( "bottomright", c("GPP","GPP - Rd", "NPP", "EXU"), lty=1, bty="n", col=c("black","magenta","green","blue") )
+# dev.off()
 
 ## Exudation as a fraction of NPP
-plot( alpha_range, exu_range/npp_range, type="l")
-abline( v=alpha_root, col="magenta ")
+# pdf( "exufrac_vs_lai.pdf", width=6, height=5 )
+plot( alpha_range, 100*exu_range/npp_range, type="l", xlab="LAI", ylab="Exudation fraction of NPP (%)")
+abline( v=alpha_root, col="grey70")
+# dev.off()
 
 ## Above-ground balance
+# pdf("totalloc_vs_lai.pdf", width=6, height=5 )
 plot(  alpha_range, gpp_range, type="l", lty=2, ylab="annual flux (gC/m2/yr)", xlab="LAI" )
 lines( alpha_range, gpp_net_range )
 lines( alpha_range, taa_range, col="red")
 lines( alpha_range, tba_range, col="blue" )
 abline( h=0, col="grey70")
-abline( v=alpha_root, col="magenta ")
+abline( v=alpha_root, col="grey70")
 legend( "bottomright", c("GPP","GPP - Rd", "TBA", "TAA"), lty=c(2,1,1,1), bty="n", col=c("black","black","blue","red") )
+# dev.off()
+
+# ## Below-ground balance (as a function of alpha)
+# plot( alpha_range, beta_range, type="l", col="brown", xlab="leaf mass (gC/m2)", ylim=c(0,max(beta_range)), xlim=range(alpha_range) )
+# par(new=TRUE)
+# plot( alpha_range, nup_range, col="blue", type="l", xlab="", ylab="", axes=FALSE, ylim=c(0,max(nup_range_approx)), xlim=range(alpha_range) )
+# lines( alpha_range, nup_range_approx, col="blue", lty=2 )
+# axis( 4, col="blue" )
+# abline( v=alpha_root, col="magenta ")
+# legend( "bottomright", c("root mass", "annual N uptake","annual N uptake, approx."), lty=c(1,1,2), bty="n", col=c("brown","blue","blue") )
+
+# pdf( "root2shoot_vs_lai.pdf", width=6, height=5 )
+plot( alpha_range, root2shoot_range, type="l", xlab="LAI", ylab="root:shoot ratio (by mass)")
+abline( v=alpha_root, col="grey70 ")
+# dev.off()
+
+## Below-ground balance (as a function of beta)
+# pdf( "Nuptake.pdf", width=6, height=5 )
+plot(  beta_range, nup_range, type="l", col="blue", xlab="root mass (gC/m2)", ylab="N uptake (gN/m2/yr)" )
+lines( beta_range, nup_range_approx, lty=3, col="blue" )
+legend( "bottomright", c("annual N uptake","annual N uptake, approx."), lty=c(1,2), bty="n", col=c("blue","blue") )
+# dev.off()
 
 ## Below-ground balance (as a function of alpha)
-plot( alpha_range, beta_range, type="l", col="brown", xlab="leaf mass (gC/m2)", ylim=c(0,max(beta_range)), xlim=range(alpha_range) )
-par(new=TRUE)
-plot( alpha_range, nup_range, col="blue", type="l", xlab="", ylab="", axes=FALSE, ylim=c(0,max(nup_range_approx)), xlim=range(alpha_range) )
-lines( alpha_range, nup_range_approx, col="blue", lty=2 )
-axis( 4, col="blue" )
-abline( v=alpha_root, col="magenta ")
-legend( "bottomright", c("root mass", "annual N uptake","annual N uptake, approx."), lty=c(1,1,2), bty="n", col=c("brown","blue","blue") )
-
-plot( alpha_range, root2shoot_range, type="l")
-abline( v=alpha_root, col="magenta ")
-
-# ## Below-ground balance (as a function of beta)
-# plot(  beta_range, nup_range, type="l", col="blue" )
-# lines( beta_range, nup_range_approx, lty=3, col="blue" )
-# legend( "bottomright", c("annual N uptake","annual N uptake, approx."), lty=c(1,2), bty="n", col=c("blue","blue") )
-
-## Below-ground balance (as a function of alpha)
-# plot(  alpha_range, nup_range_approx, type="l", lty=2, col="blue", ylab="annual N uptake (gN/m2/yr)", xlab="LAI", ylim=c(0,max(anreq_range))  )
+# pdf( "Nbalance_vs_lai.pdf", width=6, height=5 )
 plot(  alpha_range, nup_range, type="l", col="blue", ylab="annual N uptake (gN/m2/yr)", xlab="LAI", ylim=c(0,max(anreq_range))  )
 lines( alpha_range, anreq_range, col="red" )
-# lines( alpha_range, imbal_range, col="magenta" )
-abline( v=alpha_root, col="magenta ")
+abline( v=alpha_root, col="grey70")
 abline( h=0.0, col="grey70" )
-# lines( alpha_range, anreq_range_nomin, col="red", lty=2 )
-legend( "bottomright", c("annual N uptake","annual N uptake, approx.","N required, n_cw ~ Vcmax25 + LAI x const.","N required, n_cw ~ Vcmax25"), lty=c(1,2,1,2), bty="n", col=c("blue","blue","red","red") )
+legend( "bottomright", c("annual N uptake","N required"), lty=c(1,1), bty="n", col=c("blue","red") )
+# dev.off()
 
-# ## relationship between N per leaf area and Rubisco per leaf area (y-intersect is a measure for minimum content)
-# Rarea <- data$RNF * data$Narea
-# reg <- lm( data$Narea ~ Rarea )
-# plot(  data$Narea ~ Rarea, ylim=c(0,max(data$Narea, na.rm=TRUE)), xlim=c(0,max(Rarea, na.rm=TRUE)), xlab="rNarea (mol Rubisco N m-2)", ylab="Narea (mol N m-2)" )
-# lines( nr_leaf_range, nr_leaf_range + ncw_leaf_range, col="red" )
-# text( 0, 0.03, paste("y-intersect:", reg$coefficients[1] ), adj=c(0,0))
-# text( 0, 0.01, paste("slope:      ", reg$coefficients[2] ), adj=c(0,0))
-# abline( reg )
+## relationship between N per leaf area and Rubisco per leaf area (y-intersect is a measure for minimum content)
+Rarea <- data$RNF * data$Narea
+reg <- lm( data$Narea ~ Rarea )
+plot(  data$Narea ~ Rarea, ylim=c(0,max(data$Narea, na.rm=TRUE)), xlim=c(0,max(Rarea, na.rm=TRUE)), xlab="rNarea (mol Rubisco N m-2)", ylab="Narea (mol N m-2)" )
+lines( nr_leaf_range, nr_leaf_range + ncw_leaf_range, col="red" )
+text( 0, 0.03, paste("y-intersect:", reg$coefficients[1] ), adj=c(0,0))
+text( 0, 0.01, paste("slope:      ", reg$coefficients[2] ), adj=c(0,0))
+abline( reg )
 
 
 ## relationship between LMA and Rubisco per leaf area (y-intersect is a measure for minimum content)
@@ -251,23 +269,31 @@ abline( reg )
 # plot( alpha_range, nr_canop_range, type="l", xlab="LAI", ylab="Nr canopy (g N m-2)" )
 
 ## Leaf Rubisco-N as a function of LAI, overlay data: RNF * Narea (Rubisco N fraction * Narea = Rubisco N m-2)
+# pdf( "nv_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, nr_leaf_range, type="l", xlab="LAI", ylab="Nr leaf (g N m-2)" )
 abline( h= (data$RNF * data$Narea ), col=rgb(0,0,0,0.3) )
+# dev.off()
 
 ## Leaf cell wall-N as a function of LAI
+# pdf( "ncw_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, ncw_leaf_range, type="l", xlab="LAI", ylab="Ncw leaf (g N m-2)" )
 # ## overlay data: WN (cell wall N per area, N m-2) xxx DOES NOT WORK PROPERLY: THERE MUST BE AN ADDITIONAL COMPONENT OF LEAF N XXX
 # abline( h= (data$WN ), col=rgb(0,0,0,0.3) )
 ## overlay data: Narea - data$RNF * data$Narea (this is what n_cw really represents)
 abline( h = data$Narea - data$RNF * data$Narea, col=rgb(0,0,0,0.3) )
+# dev.off()
 
 ## Leaf-N as a function of LAI, overlay data: WN (cell wall N per area, N m-2)
+# pdf( "narea_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, ncw_leaf_range+nr_leaf_range, type="l", xlab="LAI", ylab="Narea (g N m-2)", ylim=range(data$Narea,ncw_leaf_range+nr_leaf_range) )
 abline( h= (data$Narea ), col=rgb(0,0,0,0.3) )
+# dev.off()
 
 ## LMA as a function of LAI, overlay data: LMA (g m-2)
+# pdf( "lma_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, lma_range, type="l", xlab="LAI", ylab="LMA (gC m-2)", ylim=c(range(data$LMA, lma_range)))
 abline( h= (data$LMA ), col=rgb(0,0,0,0.3) )
+# dev.off()
 
 
 # ## Canopy C as a function of LAI
@@ -285,7 +311,7 @@ abline( h= (data$LMA ), col=rgb(0,0,0,0.3) )
 # plot( alpha_range, npp_range, type="l" )
 # plot( alpha_range, exu_range/npp_range, type="l" )
 
-# # # pdf("bmodel_nreq_vs_nup.pdf")
+# # pdf("bmodel_nreq_vs_nup.pdf")
 # # plot( alpha_range, nreq_range, type="l" )
 # # lines( alpha_range, nup_range, col="red" )
 # # abline( v=alpha_root, col='grey')

@@ -189,18 +189,18 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method="full" ){
   n_apar <- kphio * n * factor25_vcmax * n_v
 
   out <- list( 
-    gpp=gpp, 
-    vcmax=vcmax, 
-    vcmax25=vcmax25,
-    factor25_vcmax=factor25_vcmax,
-    rd=rd, 
-    n_rubisco=n_rubisco, 
-    lue=lue, 
-    luenet=luenet, 
-    n_apar=n_apar,
-    n=n,
-    m=m
-    )
+              gpp=gpp,                       # mol C m-2 s-1
+              vcmax=vcmax,                   # mol CO2 m-2 s-1 (given that ppfd is provided in units of s-1)
+              vcmax25=vcmax25,               # mol CO2 m-2 s-1 (given that ppfd is provided in units of s-1)
+              factor25_vcmax=factor25_vcmax, # unitless
+              rd=rd, 
+              n_rubisco=n_rubisco, 
+              lue=lue, 
+              luenet=luenet, 
+              n_apar=n_apar,
+              n=n,
+              m=m
+              )
   return( out )
 }
 

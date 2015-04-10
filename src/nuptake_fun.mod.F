@@ -679,9 +679,9 @@ contains
     real, dimension(npar) :: params_array
     
 
-    open(unit=01,file=trim(paramfilnam),status='OLD')      
-    read (01,*) params_array
-    close (01)
+    open(unit=04,file=trim(paramfilnam),status='OLD')      
+    read (04,*) params_array
+    close (04)
 
     ! shape parameter of cost function of N fixation 
     ! Below parameters (MINIMUMCOSTFIX, FIXOPTIMUM, FIXWIDTH ) are based on 

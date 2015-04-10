@@ -515,9 +515,9 @@ contains
     real, dimension(npar) :: params_array
 
 
-    open(unit=01,file=trim(paramfilnam),status='OLD')      
-    read (01,*) params_array
-    close (01)
+    open(unit=03,file=trim(paramfilnam),status='OLD')      
+    read (03,*) params_array
+    close (03)
 
     kA = params_array(1)         ! constant for Rnl (Monteith & Unsworth, 1990)
     kalb_sw = params_array(2)    ! shortwave albedo (Federer, 1968)

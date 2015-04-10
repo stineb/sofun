@@ -172,9 +172,9 @@ contains
     real, dimension(npar) :: params_array
     
 
-    open(unit=01,file=trim(paramfilnam),status='OLD')      
-    read (01,*) params_array
-    close (01)
+    open(unit=07,file=trim(paramfilnam),status='OLD')      
+    read(07,*) params_array
+    close(07)
 
     ! xxx implement array readin (for each pft, then loop over pfts)
     pft = 1

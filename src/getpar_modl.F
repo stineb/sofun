@@ -30,9 +30,15 @@ subroutine getpar_modl
   ! NON-PFT DEPENDENT PARAMETERS
   ! read parameter input file and store values in single array
   !----------------------------------------------------------------
+  print*,'a'
   open(unit=01,file='params_modl.dat',status='OLD')      
+  print*,'b'
   read (01,*) params_array
+  print*,'c'
   close (01)
+  print*,'d'  
+
+  print*,'params_array', params_array
 
   ! constant ratio between leaf and sapwood C/N ratios (Friend et al.,2008 in XP08)
   rcton_LS = params_array(1)
@@ -52,6 +58,8 @@ subroutine getpar_modl
   ! maximum fractional plant coverage of trees (sum of all tree PFTs)
   fpc_tree_max = params_array(6)
 
+  ! print*,'finished getting main model parameters'
+
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC PARAMETERS
   !----------------------------------------------------------------
@@ -60,14 +68,16 @@ subroutine getpar_modl
   call getpar_modl_ntransform('params_ntransform_xuri.dat')
   call getpar_modl_littersom('params_littersom_lpj.dat')
 
+  ! print*,'finished getting module-specific model parameters'
+
 
   !----------------------------------------------------------------
   ! PFT DEPENDENT PARAMETERS
   ! read parameter input file and store values in single array
   !----------------------------------------------------------------
   open(unit=02,file='params_pft.dat',status='OLD')      
-  read (02,*) pft_params_array
-  close (02)
+  read(02,*) pft_params_array
+  close(02)
 
   do pft=1,npft 
 
@@ -174,5 +184,6 @@ subroutine getpar_modl
   !----------------------------------------------------------------
   call getpar_pft_summerphenology('params_pft_summerphenology.dat')
 
+  print*,'AAAAAAA finished reading parameters'
 
 end subroutine getpar_modl

@@ -47,7 +47,7 @@
 ! ----------------------------------------------------------------------
 
 ! Prescribe GPP per day
-#define _prescr_gpp_site 0
+#define _prescr_gpp_site 1
 
 ! ----------------------------------------------------------------------
 ! FIXED/DYNAMIC VEGETATION

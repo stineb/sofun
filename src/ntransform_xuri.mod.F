@@ -143,7 +143,7 @@ contains
       ! use mw1 for monthly timestep and wpool for daily, because this is updated daily
       ! XXX nh3max is not considered in the equations presented in the paper! XXX
       dvol(lu) = ( nh3max*(ncpa_d(lu)*(1.0-ncpa_d(lu))) * ftemp_ninorg*ftemp_ninorg*exp(2.0*(ph_soil-10.0)) ) * nh4
-      nh4 = nh4- dvol(lu)
+      nh4 = nh4 - dvol(lu)
 
       
       !///////////////////////////////////////////////////////////////////////
@@ -353,9 +353,9 @@ contains
     real, dimension(npar) :: params_array
 
 
-    open(unit=01,file=trim(paramfilnam),status='OLD')      
-    read (01,*) params_array
-    close (01)
+    open(unit=05,file=trim(paramfilnam),status='OLD')      
+    read(05,*) params_array
+    close(05)
 
     ! maximum nitrification rate
     MAXNITR = params_array(1)
