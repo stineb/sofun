@@ -98,6 +98,9 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method="full" ){
   # n_v  <- 1.0/40.96    # gN µmol-1 s-1. Value 40.96 is 'sv' in Table 2 in Kattge et al., 2009, GCB, C3 herbaceous
   ## -- under construction
 
+  # Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
+  # (0.015 was before)
+  rd_to_vcmax <- 0.078
 
   ## absorbed photosynthetically active radiation (mol/m2)
   iabs <- fpar * ppfd
@@ -169,14 +172,14 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method="full" ){
   lue <- kphio * fa * m 
 
   ## Net light use efficiency (after dark respiration)
-  luenet <- kphio * ( fa * m - 0.015 * n ) 
+  luenet <- kphio * ( fa * m - rd_to_vcmax * n ) 
   
   ## Vcmax per unit ground area is the product of the intrinsic quantum 
   ## efficiency, the absorbed PAR, and 'n'
   vcmax <- iabs * kphio * n
 
   ## Dark respiration  xxx where does 0.015 come from? xxx
-  rd <- 0.015 * vcmax
+  rd <- rd_to_vcmax * vcmax
 
   ## Vcmax25 (vcmax normalized to 25 deg C)
   factor25_vcmax <- calc_vcmax25( 1.0, tc )
@@ -189,7 +192,7 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method="full" ){
   n_apar <- kphio * n * factor25_vcmax * n_v
 
   out <- list( 
-              gpp=gpp,                       # mol C m-2 s-1
+              gpp=gpp,                       # mol C   m-2 s-1 (given that ppfd is provided in units of s-1)
               vcmax=vcmax,                   # mol CO2 m-2 s-1 (given that ppfd is provided in units of s-1)
               vcmax25=vcmax25,               # mol CO2 m-2 s-1 (given that ppfd is provided in units of s-1)
               factor25_vcmax=factor25_vcmax, # unitless
