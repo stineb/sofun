@@ -101,6 +101,7 @@ program main
   ! xxx move this into annual loop
   !----------------------------------------------------------------
   call getclimate_fields( trim(runname) )
+  print*,'A'
 
   !----------------------------------------------------------------
   ! GET MODEL PARAMETERS
@@ -108,6 +109,7 @@ program main
   !----------------------------------------------------------------
   ! print*,'getting model parameters'
   call getpar_modl
+  print*,'B'
 
 
   ! LOOP THROUGH YEARS
