@@ -30,15 +30,10 @@ subroutine getpar_modl
   ! NON-PFT DEPENDENT PARAMETERS
   ! read parameter input file and store values in single array
   !----------------------------------------------------------------
-  print*,'params_array', params_array
-  
   open(20, file='params_modl.dat', status='old',  form='formatted', action='read', err=888)
   read(20,*) params_array
   close(20)
   
-  print*,'params_array', params_array
-  print*,'sucessful read of parameterfile'
-
   ! constant ratio between leaf and sapwood C/N ratios (Friend et al.,2008 in XP08)
   rcton_LS = params_array(1)
 
@@ -182,8 +177,6 @@ subroutine getpar_modl
   ! MODULE-SPECIFIC PARAMETERS
   !----------------------------------------------------------------
   call getpar_pft_summerphenology('params_pft_summerphenology.dat')
-
-  print*,'AAAAAAA finished reading parameters'
 
   return
   888 write(0,*) 'GETPAR_MODL: error opening file params_modl.dat. Abort. '

@@ -57,6 +57,7 @@ module littersom_lpj
   ! xxx add jpngr dim
   real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin
   real, dimension(nlu,ndayyear,maxgrid)  :: outdnfixfree  ! N fixation by free-living organisms [gN/m2/d]
+  ! real, dimension(nlu,ndayyear,maxgrid)  :: outdNimmo
   real, dimension(npft,ndayyear,maxgrid) :: outdcex
 
   real, dimension(npft,maxgrid) :: outaClitt
@@ -66,7 +67,7 @@ module littersom_lpj
   real, dimension(npft,maxgrid) :: outaNlit2soil
   real, dimension(nlu,maxgrid)  :: outaCdsoil
   real, dimension(nlu,maxgrid)  :: outaNdsoil
-
+  real, dimension(nlu,maxgrid)  :: outaNimmo
 
   ! MONTHLY OUTPUT VARIABLES
   ! xxx add jpngr dim
@@ -179,8 +180,8 @@ contains
 
     do lu=1,nlu
 
-      if ( abs( cton(psoil_fs(lu,jpngr)) - cton_soil(1) ) > 1e-5 ) stop 'A fs: C:N not ok'
-      if ( abs( cton(psoil_sl(lu,jpngr)) - cton_soil(1) ) > 1e-5 ) stop 'A sl: C:N not ok'
+      ! if ( abs( cton(psoil_fs(lu,jpngr)) - cton_soil(1) ) > 1e-5 ) stop 'A fs: C:N not ok'
+      ! if ( abs( cton(psoil_sl(lu,jpngr)) - cton_soil(1) ) > 1e-5 ) stop 'A sl: C:N not ok'
 
       !/////////////////////////////////////////////////////////////////////////
       ! DECAY RATES
@@ -337,7 +338,7 @@ contains
         ! OUTPUT COLLECTION
         outaClit2soil(pft,jpngr) = outaClit2soil(pft,jpngr) + dlitt%c%c12 * eff
         ! outaNlit2soil(pft,jpngr) = outaNlit2soil(pft,jpngr) + dlitt%n%n14
-        outaNlit2soil(lu,jpngr)    = outaNlit2soil(lu,jpngr)    + Nreq_S
+        outaNlit2soil(lu,jpngr)  = outaNlit2soil(lu,jpngr)  + Nreq_S
 
 
         !----------------------------------------------------------------    
@@ -359,23 +360,34 @@ contains
         ! This corresponds to Eq. S3 in Manzoni et al., 2010, but ...
         ! rS takes the place of rB.
         !----------------------------------------------------------------    
-        ! Trick for soil C quilibration: Add projected N mineralisation from 
-        ! soil decomposition during spinup phase I. Like in LPX.
-        if (spinup.and.invocation<=spinupyr_phaseinit_2 ) then
-          netmin_litt = dlitt%c%c12 / cton_soil_local - Nreq_S
-        else
-          netmin_litt = dlitt%n%n14 - Nreq_S
-        end if
 
+        ! xxx try:
+        ! >>>>>>>>>>>
+        ! ! Trick for soil C quilibration: Add projected N mineralisation from 
+        ! ! soil decomposition during spinup phase I. Like in LPX.
+        ! if (spinup.and.invocation<=spinupyr_phaseinit_2 ) then
+        !   netmin_litt = dlitt%c%c12 / cton_soil_local - Nreq_S
+        ! else
+        !   netmin_litt = dlitt%n%n14 - Nreq_S
+        ! end if
+        ! ===========
+        netmin_litt = dlitt%n%n14 - Nreq_S
+        ! <<<<<<<<<<<
+
+        ! write(0,*) 'netmin_litt',netmin_litt
 
         ! OUTPUT COLLECTION
         outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + netmin_litt
+        ! outdNimmo(lu,doy,jpngr)  = outdNimmo(lu,doy,jpngr)  - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
+        outaNimmo(lu,jpngr)      = outaNimmo(lu,jpngr)      - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
+
 
         if (netmin_litt>0.0) then
           !----------------------------------------------------------------    
           ! net N mineralisation
           !----------------------------------------------------------------    
           pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + netmin_litt
+          ! stop 'net N mineralisation from litter decomposition'
 
         else
 
@@ -494,8 +506,20 @@ contains
       psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 / cton_soil_local
       psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 / cton_soil_local
 
-      ! to inorganic N pool
-      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
+
+      ! xxx try:
+      ! >>>>>>>>>>>
+      ! ! to inorganic N pool
+      ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      ! ===========
+      if ( spinup .and. invocation <= spinupyr_phaseinit_2 ) then
+        pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
+      else  
+        ! print*,'eff * dlitt%c%c12  ',eff * dlitt%c%c12 
+        ! print*,'dsoil_fs + dsoil_sl',dsoil_fs%c%c12 + dsoil_sl%c%c12
+        pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      end if
+      ! <<<<<<<<<<<
 
       ! print*,'cton(dsoil_sl) ',cton(dsoil_sl)
       ! print*,'cton(dsoil_fs) ',cton(dsoil_fs)
@@ -528,10 +552,10 @@ contains
       outaCdsoil(lu,jpngr)     = outaCdsoil(lu,jpngr)     + dsoil_fs%c%c12 + dsoil_sl%c%c12
       outaNdsoil(lu,jpngr)     = outaNdsoil(lu,jpngr)     + dsoil_fs%n%n14 + dsoil_sl%n%n14
 
-      if (doy==ndayyear) then
-        print*,'outaNdsoil(lu,jpngr)                   ',outaNdsoil(lu,jpngr)
-        print*,'outaClit2soil(lu,jpngr)/cton_soil_local',outaClit2soil(lu,jpngr)/cton_soil_local
-      end if     
+      ! if (doy==ndayyear) then
+      !   print*,'outaNdsoil(lu,jpngr)                   ',outaNdsoil(lu,jpngr)
+      !   print*,'outaClit2soil(lu,jpngr)/cton_soil_local',outaClit2soil(lu,jpngr)/cton_soil_local
+      ! end if     
 
       ! print*,'eff * dlitt%c', eff * dlitt%c%c12
       ! print*,'dsoil%c      ', dsoil_fs%c%c12 + dsoil_sl%c%c12
@@ -677,6 +701,18 @@ contains
     filnam=trim(prefix)//'.a.nlit2soil.out'
     open(306,file=filnam,err=999,status='unknown')
 
+    ! C MINERALISATION FROM SOIL DECOMPOSITION
+    filnam=trim(prefix)//'.a.cdsoil.out'
+    open(313,file=filnam,err=999,status='unknown')
+
+    ! N MINERALISATION FROM SOIL DECOMPOSITION
+    filnam=trim(prefix)//'.a.ndsoil.out'
+    open(314,file=filnam,err=999,status='unknown')
+
+    ! N IMMOBILISATION FROM LITTER DECOMPOSITION
+    filnam=trim(prefix)//'.a.nimmo.out'
+    open(315,file=filnam,err=999,status='unknown')
+
     return
 
   888  stop 'INITIO_littersom: error opening output files'
@@ -696,10 +732,15 @@ contains
     outanreq(:,:)       = 0.0
     outaClit2soil(:,:)  = 0.0
     outaNlit2soil(:,:)  = 0.0
+    outaNdsoil(:,:)     = 0.0
+    outaCdsoil(:,:)     = 0.0
+    outaNimmo(:,:)      = 0.0
 
     outdcex(:,:,:)      = 0.0
     outdnetmin(:,:,:)   = 0.0
+    ! outdNimmo(:,:,:)    = 0.0
     outdnfixfree(:,:,:) = 0.0
+
 
   end subroutine initoutput_littersom
 
@@ -793,6 +834,7 @@ contains
         ! xxx lu-area weighted sum if nlu>0
         write(105,999) itime, sum(outdcex(:,day,jpngr))
         write(106,999) itime, sum(outdnetmin(:,day,jpngr))
+        ! write(109,999) itime, sum(outdNimmo(:,day,jpngr))
         write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
 
       end do
@@ -825,6 +867,7 @@ contains
     write(306,999) itime, sum(outaNlit2soil(:,jpngr))
     write(313,999) itime, sum(outaCdsoil(:,jpngr))
     write(314,999) itime, sum(outaNdsoil(:,jpngr))
+    write(315,999) itime, sum(outaNimmo(:,jpngr))
 
     return
     
