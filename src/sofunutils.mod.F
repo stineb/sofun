@@ -72,7 +72,7 @@ contains
     ! - dval   : vector containing 365 (366 in case lapyear is TRUE) daily values
     ! - method : true of monthly values represent total of daily values in resp. month
     !-------------------------------------------------------------------------
-    use params_core, only: ndaymonth, ndayyear, nmonth
+    use params_core, only: ndaymonth, cumdaymonth, ndayyear, nmonth
 
     ! arguments
     real, intent(in), dimension(ndayyear) :: dval
@@ -85,8 +85,8 @@ contains
     integer :: moy
     integer, dimension(nmonth) :: istart, iend
 
-    istart = icumsum(ndaymonth) - ndaymonth + 1
-    iend   = icumsum(ndaymonth)
+    istart = cumdaymonth - ndaymonth + 1
+    iend   = cumdaymonth
 
     ! loop over months and take sum/mean of days in that month
     do moy=1,nmonth
@@ -105,33 +105,33 @@ contains
   end function daily2monthly
 
 
-  function icumsum( arr, seed )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Returns the running (cumulative) sum of a vector of integers. 
-    ! Adopted from: 
-    ! Numerical Recipes in Fortran 90: Volume 2, edited by William H. Press
-    !-------------------------------------------------------------------------
-    implicit none 
+  ! function icumsum( arr, seed )
+  !   !/////////////////////////////////////////////////////////////////////////
+  !   ! Returns the running (cumulative) sum of a vector of integers. 
+  !   ! Adopted from: 
+  !   ! Numerical Recipes in Fortran 90: Volume 2, edited by William H. Press
+  !   !-------------------------------------------------------------------------
+  !   implicit none 
 
-    ! arguments
-    integer, dimension(:), intent(in)  :: arr
-    integer, intent(in), optional      :: seed
-    integer, dimension(:), intent(out) :: icumsum
+  !   ! arguments
+  !   integer, dimension(:), intent(in)  :: arr
+  !   integer, intent(in), optional      :: seed
+  !   integer, dimension(:), intent(out) :: icumsum
 
-    ! local variables
-    integer :: n, j
-    integer :: sd
+  !   ! local variables
+  !   integer :: n, j
+  !   integer :: sd
 
-    n = size(arr)
-    if (n==0) return
-    sd = 0
-    if ( present(seed) ) sd = seed
-    icumsum(1) = arr(1) + sd
-    do j=2,n
-      icumsum(j) = icumsum(j-1) + arr(j)
-    end do
+  !   n = size(arr)
+  !   if (n==0) return
+  !   sd = 0
+  !   if ( present(seed) ) sd = seed
+  !   icumsum(1) = arr(1) + sd
+  !   do j=2,n
+  !     icumsum(j) = icumsum(j-1) + arr(j)
+  !   end do
 
-  end function icumsum
+  ! end function icumsum
 
 
   function monthly2daily( mval, method, monthistotal, mval_pvy, mval_nxy )
