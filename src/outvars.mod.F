@@ -36,5 +36,6 @@ module outvars
   real, dimension(npft,maxgrid) :: outaNalloc
   real, dimension(npft,maxgrid) :: outaCveg2lit
   real, dimension(npft,maxgrid) :: outaNveg2lit
+  real, dimension(nlu, maxgrid) :: outaNinorg
 
 end module outvars

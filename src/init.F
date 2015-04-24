@@ -215,6 +215,7 @@ subroutine initoutput
   outaNalloc(:,:)     = 0.0
   outaCveg2lit(:,:)   = 0.0
   outaNveg2lit(:,:)   = 0.0
+  outaninorg(:,:)     = 0.0
 
   ! initialise module-specific output variables
   call initoutput_waterbal

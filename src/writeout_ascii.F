@@ -88,6 +88,7 @@ subroutine writeout_ascii( year, dtemp )
   write(310,999) itime, sum(outagpp(:,jpngr))
   write(311,999) itime, sum(outanpp(:,jpngr))
   write(312,999) itime, sum(outaCveg(:,jpngr))
+  write(316,999) itime, sum(outaninorg(:,jpngr))
 
   !-------------------------------------------------------------------------
   ! MODULE-SPECIFIC OUTPUT

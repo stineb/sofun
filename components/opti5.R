@@ -163,7 +163,7 @@ c_canop_range  <- ncw_canop_range * mol_weight_n * params$r_cton_leaf # g C m-2
 # c_leaf_range   <- (ncw_leaf_range  + nr_leaf_range  ) * mol_weight_n * params$r_cton_leaf # g C m-2
 # c_canop_range  <- (ncw_canop_range + nr_canop_range ) * mol_weight_n * params$r_cton_leaf # g C m-2
 
-lma_range      <- 2.0 * c_leaf_range
+lma_range      <- c_leaf_range / params$c_content_of_biomass
 
 taa_range      <- sapply( c_canop_range, FUN = function(x) calc_taa( x, leaf_season, params ) )
 tba_range      <- gpp_net_range - taa_range

@@ -125,7 +125,8 @@ contains
     integer, save :: invocation = 0                 ! internally counted simulation year
     integer, parameter :: spinupyr_soilequil_1 = 600   ! year of analytical soil equilibration, based on mean litter -> soil input flux
     integer, parameter :: spinupyr_soilequil_2 = 1200  ! year of analytical soil equilibration, based on mean litter -> soil input flux
-    integer, parameter :: spinupyr_phaseinit_2 = 300
+    integer, parameter :: spinupyr_phaseinit_2 = 900
+    integer, parameter :: spinupyr_phaseinit_3 = 300
 
     ! real :: acc                                     ! soil equilibration acceleration factor
     ! real :: scal, hi, lo
@@ -302,11 +303,11 @@ contains
         ntoc_crit = ntoc_crit1 * ntoc( dlitt, default=0.0 ) ** ntoc_crit2  ! = rCR
         eff = ntoc_crit * cton_soil_local
 
-        !print*,'ntoc_crit1', ntoc_crit1
-        !print*,'ntoc_crit2', ntoc_crit2
-        !print*,'cton litt ', cton( dlitt )
-        !print*,'cton_crit ', 1/ntoc_crit
-        !print*,'eff ',eff
+        ! write(0,*) 'ntoc_crit1', ntoc_crit1
+        ! write(0,*) 'ntoc_crit2', ntoc_crit2
+        ! write(0,*) 'cton litt ', cton( dlitt )
+        ! write(0,*) 'cton_crit ', 1/ntoc_crit
+        ! write(0,*) 'eff ',eff
         !stop
 
         !////////////////////////////////////////////////////////////////
@@ -347,6 +348,9 @@ contains
         ! N requirement to maintain rS (SOM N:C ratio)
         Nreq_S = dlitt%c%c12 * eff / cton_soil_local  ! 1/cton_soil = rS
 
+        ! write(0,*) 'cton_soil      ',cton_soil_local 
+        ! write(0,*) 'cton_crit      ',1.0/ntoc_crit
+
         ! OUTPUT COLLECTION
         outanreq(lu,jpngr) = outanreq(lu,jpngr) + Nreq_S
 
@@ -365,7 +369,7 @@ contains
         ! >>>>>>>>>>>
         ! ! Trick for soil C quilibration: Add projected N mineralisation from 
         ! ! soil decomposition during spinup phase I. Like in LPX.
-        ! if (spinup.and.invocation<=spinupyr_phaseinit_2 ) then
+        ! if (spinup.and.invocation<=spinupyr_phaseinit_3 ) then
         !   netmin_litt = dlitt%c%c12 / cton_soil_local - Nreq_S
         ! else
         !   netmin_litt = dlitt%n%n14 - Nreq_S
@@ -374,7 +378,8 @@ contains
         netmin_litt = dlitt%n%n14 - Nreq_S
         ! <<<<<<<<<<<
 
-        ! write(0,*) 'netmin_litt',netmin_litt
+        ! write(0,*) 'netmin_litt', netmin_litt
+        ! write(0,*) 'immo direct', dlitt%c%c12 * ( ntoc_crit - dlitt%n%n14 / dlitt%c%c12 )
 
         ! OUTPUT COLLECTION
         outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + netmin_litt
@@ -391,37 +396,46 @@ contains
 
         else
 
-          !----------------------------------------------------------------    
-          ! N fixation by free-living bacteria in litter to prevent immo-
-          ! bilisation.
-          !----------------------------------------------------------------    
-          req = -1.0 * netmin_litt
-          Nfix = req
-          req = 0.0
+          ! xxx try:
+          ! >>>>>>>>>>>
+          if ( spinup .and. invocation<=spinupyr_phaseinit_2 ) then
+            !----------------------------------------------------------------    
+            ! N fixation by free-living bacteria in litter to prevent immo-
+            ! bilisation.
+            !----------------------------------------------------------------    
+            req = -1.0 * netmin_litt
+            Nfix = req
+            req = 0.0
 
-          ! ! xxx THIS LEADS TO COMPLETE DIE-OFF: equilibration without immobilisation
-          ! !----------------------------------------------------------------    
-          ! ! immobilisation
-          ! !----------------------------------------------------------------    
-          ! req = -1.0 * netmin_litt
-          ! avl = pninorg(lu,jpngr)%n14
+          !   ! ===========
+          else
+            ! xxx THIS LEADS TO COMPLETE DIE-OFF: equilibration without immobilisation
+            !----------------------------------------------------------------    
+            ! immobilisation
+            !----------------------------------------------------------------    
+            req = -1.0 * netmin_litt
+            avl = pninorg(lu,jpngr)%n14
 
-          ! ! if (avl>=req) then
-          !   ! enough mineral N for immobilisation
-          !   pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - req
-          !   req = 0.0
-          ! else
-          !   ! not enough pninorg for immobilisation
-          !   pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - avl
-          !   req = req - avl
+            ! write(0,*) 'req, avl',req,avl
 
-          !   !----------------------------------------------------------------    
-          !   ! N fixation by free-living bacteria in litter to satisfy remainder
-          !   !----------------------------------------------------------------    
-          !   Nfix = req
-          !   req = 0.0
+            if (avl>=req) then
+              ! enough mineral N for immobilisation
+              pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - req
+              req = 0.0
+            else
+              ! not enough pninorg for immobilisation
+              pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - avl
+              req = req - avl
 
-          ! end if
+              !----------------------------------------------------------------    
+              ! N fixation by free-living bacteria in litter to satisfy remainder
+              !----------------------------------------------------------------    
+              Nfix = req
+              req = 0.0
+
+            end if
+            ! <<<<<<<<<<<
+          end if
 
         endif
 
@@ -512,19 +526,24 @@ contains
       ! ! to inorganic N pool
       ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
       ! ===========
-      if ( spinup .and. invocation <= spinupyr_phaseinit_2 ) then
+      if ( spinup .and. invocation <= spinupyr_phaseinit_3 ) then
         pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
+        ! write(0,*) 'fraction immobilised', (-1.0)*netmin_litt / ( eff * dlitt%c%c12 / cton_soil_local )
+        ! ! xxx try:
+        ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * (eff * dlitt%c%c12 / cton_soil_local)
       else  
-        ! print*,'eff * dlitt%c%c12  ',eff * dlitt%c%c12 
-        ! print*,'dsoil_fs + dsoil_sl',dsoil_fs%c%c12 + dsoil_sl%c%c12
         pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
+        ! write(0,*) 'fraction immobilised', (-1.0)*netmin_litt / ( dsoil_fs%n%n14 + dsoil_sl%n%n14 )
+        ! ! xxx try:
+        ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * ( dsoil_fs%n%n14 + dsoil_sl%n%n14 )
       end if
-      ! <<<<<<<<<<<
+      ! <<<<<<<<<<<      
+
+
 
       ! print*,'cton(dsoil_sl) ',cton(dsoil_sl)
       ! print*,'cton(dsoil_fs) ',cton(dsoil_fs)
       ! print*,'cton_soil_local',cton_soil_local
-
 
       ! get average litter -> soil flux for analytical soil C equilibration
       if ( spinup .and. invocation > ( spinupyr_soilequil_1 - recycle ) .and. invocation<spinupyr_soilequil_1 &

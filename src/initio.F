@@ -81,6 +81,10 @@ subroutine initio
   filnam=trim(prefix)//'.a.cveg.out'
   open(312,file=filnam,err=999,status='unknown')
 
+  ! INORGANIC N (mean over days)
+  filnam=trim(prefix)//'.a.ninorg.out'
+  open(316,file=filnam,err=999,status='unknown')
+
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC OUTPUT FILES

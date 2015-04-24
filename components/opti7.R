@@ -77,7 +77,7 @@ mtemp <- df.temp$temp
 params <- list( 
               ndayyear = 365,
               nmonth   = 12,
-              y        = 0.66,   # 1/0.6 - 1; 0.6: yield factor in Li et al., 2014
+              y        = 0.6,   # yield factor in Li et al., 2014
               # r_root   = 0.005,  # yields ~0.913 
               # r_root   = 0.05, nice intersect
               r_root   = 0.005,
@@ -93,9 +93,10 @@ params <- list(
               # lma      = 30,     # g C m-2; is mean of Table S1 LMA in Hikosaka& ... divided by 2 (conversion from biomass to C)
               # lma      = 60,     # g C m-2; SLA = 8.3 m2 kg-1, Vile et al., 2005 (Ann. Botany; Table 2, Trees), 0.5 g C / g biomss 
               sla      = 1/30,  # 0.0083: Vile et al., 2005 (Ann. Botany; Table 2, Trees)     xxx changed from 0.0014
-              rntoc_root    = 1/50,
               r_cton_leaf = 19,
               r_cton_root = 50,
+              r_ntoc_leaf = 1/19,
+              r_ntoc_root = 1/50,
               c_molmass= 12.0107,  # g C / mol C
               kphio    = 0.093,
               mol_weight_n = 14.0067,  # molecular weight of N, (g N)(mol N)-1
@@ -159,7 +160,7 @@ calc_dnup <- function( croot, n0, params ){
 # }
 
 
-eval_imbalance <- function( dcleaf, cleaf, nleaf, croot, nroot, dc0, dn0, r_ntoc_leaf, r_ntoc_root, mluenet, dppfd, ninorg, params ){
+eval_imbalance <- function( dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet, dppfd, ninorg, params ){
   ## /////////////////////////////////////////////////////////
   ## Evaluates C:N ratio of new assimilation after allocation 
   ## versus whole-plant C:N ratio after allocation. Optimal 
@@ -168,20 +169,34 @@ eval_imbalance <- function( dcleaf, cleaf, nleaf, croot, nroot, dc0, dn0, r_ntoc
 
   with( params, {
 
-    ## Given dcleaf, calculate implied allocation to roots
-    dnleaf <- r_ntoc_leaf * dcleaf
-    dcroot <- min( dc0 - dcleaf, 1.0/r_ntoc_root * ( dn0 - dnleaf) )
-    dnroot <- r_ntoc_root * dcroot
+    ## Allocate
+    dnleaf <- dcleaf * params$r_ntoc_leaf
+    clabl  <- clabl - 1.0 / params$y * dcleaf
+    nlabl  <- nlabl - dnleaf
+    cleaf  <- cleaf + dcleaf
+    nleaf  <- nleaf + dnleaf
+    
+    dcroot <- min( params$y * clabl, params$r_cton_root * nlabl )
+    dnroot <- dcroot * params$r_ntoc_root
+    clabl  <- clabl - 1.0 / params$y * dcroot
+    nlabl  <- nlabl - dnroot
+    croot  <- croot + dcroot
+    nroot  <- nroot + dnroot
 
-    ## Calculate next day's C and N return after allocation
-    dc <- calc_dgpp( cleaf + dcleaf, mluenet, dppfd, params )
-    dc <- dc - (croot + dcroot) * (r_root + exu)
-    dn <- calc_dnup( croot + dcroot, ninorg, params )
+    ## Allocation and decay
+    cleaf <- cleaf * (1.0 - k_leaf)
+    croot <- croot * (1.0 - k_root)
+    nleaf <- nleaf * (1.0 - k_leaf)
+    nroot <- nroot * (1.0 - k_root)
+
+    ## Calculate next day's C and N return after assumed allocation (tissue turnover happens before!)
+    dc <- calc_dgpp( cleaf, mluenet, dppfd, params ) - croot * (r_root + exu)
+    dn <- calc_dnup( croot, ninorg, params )
 
     ## Evaluation quantity is the difference between the 
     ## C:N ratio of new assimilates and the C:N ratio 
     ## of the whole plant after allocation.
-    eval <- dc / dn - ( cleaf + dcleaf + croot + dcroot ) / ( nleaf + dnleaf + nroot + dnroot )
+    eval <- (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
 
     return( eval )
 
@@ -236,12 +251,16 @@ clabl0 <- 0.0
 out_cton_labl <- rep( NA, ndayyear )
 out_cleaf     <- rep( NA, ndayyear )
 out_nleaf     <- rep( NA, ndayyear )
+out_clabl     <- rep( NA, ndayyear )
+out_nlabl     <- rep( NA, ndayyear )
 out_croot     <- rep( NA, ndayyear )
 out_nroot     <- rep( NA, ndayyear )
 out_dcleaf    <- rep( NA, ndayyear )
 out_dnleaf    <- rep( NA, ndayyear )
 out_dcroot    <- rep( NA, ndayyear )
 out_dnroot    <- rep( NA, ndayyear )
+out_lai       <- rep( NA, ndayyear )
+out_ncost     <- rep( NA, ndayyear )
 
 r_cton_leaf <- 19
 r_cton_root <- 50
@@ -259,6 +278,11 @@ doy <- 0
 for (moy in 1:nmonth){
   for (dm in 1:ndaymonth[moy]){
     doy <- doy + 1 
+    doy <- min( 365, doy )
+
+    ## Continuous root turnover
+    croot <- croot * ( 1.0 - params$k_root )
+    nroot <- nroot * ( 1.0 - params$k_root )
 
     ## Gross primary production minus leaf respiration
     gpp_net <- calc_dgpp( cleaf, mluenet[moy], dppfd[doy], params )
@@ -270,18 +294,22 @@ for (moy in 1:nmonth){
 
     ## Root exudation
     cexu <- croot * params$exu
-    # print(paste("cexu",cexu))
+    # print(paste("rm_root+cexu",rm_root+cexu))
 
     ## # Root growth respiration of root growth to maintain root mass
-    ## rg_root <- params$y * params$k_root * croot
+    ## rg_root <- params$y * params$k_root * croot 
     # print(paste("rg_root",rg_root))
 
     ## Add remainder C to labile pool
-    clabl <- clabl + gpp_net - cexu - rm_root #- rg_root 
+    clabl <- clabl + gpp_net - cexu - rm_root
+
+    if ((gpp_net - cexu - rm_root)<0.0) { mess <- "net C assimilation neg."; break }
 
     ## Nitrogen uptake
     nup <- calc_dnup( croot, ninorg[doy], params )
     # print(paste("Nup",nup))
+
+    out_ncost[doy] <- cexu / nup
 
     ## Nitrogen addition to labile pool
     nlabl <- nlabl + nup
@@ -290,96 +318,175 @@ for (moy in 1:nmonth){
     if (clabl<0) { mess <- "clabl neg."; break }
 
     print(paste("day of yr", doy))
-    print(paste("C labl.  ", clabl))
-    print(paste("N labl.  ", nlabl))
-    print(paste("C:N labl.", clabl/nlabl))
+    # print(paste("C labl. a", clabl))
+    # print(paste("N labl.  ", nlabl))
+    # print(paste("C:N labl.", clabl/nlabl))
 
     out_cton_labl[doy] <- clabl/nlabl
 
-    ## Maximum is the lower of all labile C and the C to be matched by all labile N
-    max_dcleaf <- min( clabl, nlabl * r_cton_leaf)
+    ## Maximum is the lower of all labile C and the C to be matched by all labile N,
+    ## discounted by the yield factor.
+    max_dcleaf_n_constraint <- nlabl * r_cton_leaf 
+    max_dcroot_n_constraint <- nlabl * r_cton_root
+    max_dcleaf <- min( params$y * clabl, max_dcleaf_n_constraint )
+    max_dcroot <- min( params$y * clabl, max_dcroot_n_constraint )
+
+    print(paste("C in labile pool      ", clabl ) )
+    print(paste("C avl. for growth     ", params$y * clabl ) )
+    print(paste("C for roots, avl. by N", nlabl * r_cton_root ) )
+    print(paste("C for leafs, avl. by N", nlabl * r_cton_leaf ) )
+    print(paste("max_dcleaf            ", max_dcleaf))
+
     # print(paste("clabl              ",clabl))
     # print(paste("nlabl * r_cton_leaf",nlabl * r_cton_leaf))
 
-    if ( clabl/nlabl > r_cton_root ){
-      ## Case: way too much C in relation to N => put all to roots
-      dcleaf <- 0.0
+    findroot <- TRUE
 
-    } else if ( clabl/nlabl < r_cton_leaf ) {
-      ## Case: way too much N in relation to C => put all to leaves
-      dcleaf <- max_dcleaf
+    ## Test I: Evaluate balance if all is put to roots.
+    ## If C:N ratio of return is still greater than whole-plant C:N ratio, then put all to roots.
+    eval_allroots  <- eval_imbalance( 0.0, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params )
+    if (eval_allroots > 0.0) { dcleaf <- 0.0; findroot <- FALSE }
 
-    } else {
+    ## Test II: Evaluate balance if all is put to leaves.
+    ## If C:N ratio of return is still lower than whole-plant C:N ratio, then put all to leaves.
+    eval_allleaves <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params )
+    if (eval_allleaves < 0.0) { dcleaf <- max_dcleaf; findroot <- FALSE}
 
-      if ( eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, 1/r_cton_leaf, 1/r_cton_root, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) < 0.0 ){
-        ## Still not enough C taken up (C:N ratio of assimilates < C:N ratio of plant after allocation)
-        dcleaf <- max_dcleaf
 
-      } else if ( eval_imbalance( 0.0, cleaf, nleaf, croot, nroot, clabl, nlabl, 1/r_cton_leaf, 1/r_cton_root, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) > 0.0 ){
-        ## Still not enough N taken up (C:N ratio of assimilates > C:N ratio of plant after allocation)
-        dcleaf <- 0.0
+    # if ( params$y * clabl / nlabl > r_cton_root ){
+    #   ## Case: way too much C in relation to N => put all to roots
+    #   dcleaf <- 0.0
+
+    # } else if ( params$y * clabl / nlabl < r_cton_leaf ) {
+    #   ## Case: way too much N in relation to C => put all to leaves
+    #   dcleaf <- max_dcleaf
+
+    # } else {
+
+    #   if ( eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, r_ntoc_root, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) < 0.0 ){
+    #     ## Still not enough C taken up (C:N ratio of assimilates < C:N ratio of plant after allocation)
+    #     dcleaf <- max_dcleaf
+
+    #   } else if ( eval_imbalance( 0.0, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, r_ntoc_root, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) > 0.0 ){
+    #     ## Still not enough N taken up (C:N ratio of assimilates > C:N ratio of plant after allocation)
+    #     dcleaf <- 0.0
   
-      } else {
-        dcleaf_range <- seq(0, max_dcleaf, max_dcleaf/100)
-        imbal_range   <- sapply( dcleaf_range, FUN = function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, 1/r_cton_leaf, 1/r_cton_root, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) )
+    #   } else {
 
-        ## test opposite sign condition
-        lo <- eval_imbalance( 0, cleaf, nleaf, croot, nroot, clabl, nlabl, 1/r_cton_leaf, 1/r_cton_root, mluenet[moy], dppfd[doy], ninorg[doy], params )
-        hi <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, 1/r_cton_leaf, 1/r_cton_root, mluenet[moy], dppfd[doy], ninorg[doy], params )
-        if (hi*lo>0.0) {"not of opposite sign"} 
+    if (findroot) {
+      dcleaf_range <- seq(0, max_dcleaf, max_dcleaf/100)
+      imbal_range   <- sapply( dcleaf_range, FUN = function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) )
 
-        ## Find root
-        print("finding root")
-        out.root <- NA
-        try ( 
-          out.root <- uniroot( function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, 1/r_cton_leaf, 1/r_cton_root, mluenet[moy], dppfd[doy], ninorg[doy], params ), interval=c(0,max_dcleaf) )
-          )        
-        if( is.na(out.root) ){
-          dcleaf <- 0.0
-        } else { 
-          dcleaf <- out.root$root
-        }
-        # print(paste("clabl,dcleaf",clabl,dcleaf))
+      ## test opposite sign condition
+      lo <- eval_imbalance( 0, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params )
+      hi <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params )
+      if (hi*lo>0.0) {"not of opposite sign"} 
 
+      ## Find root
+      print("finding root")
+      out.root <- NA
+      try ( 
+        out.root <- uniroot( function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params ), interval=c(0,max_dcleaf) )
+        )        
+      if( is.na(out.root) ){
+        dcleaf <- 0.0
+      } else { 
+        dcleaf <- out.root$root
       }
     }
+        
+    #   }
+    # }
+
+    print(paste("Allocation decision, dcleaf:",dcleaf))
 
     ## Allocate
-    cleaf <- cleaf + dcleaf
-    dnleaf <- dcleaf / r_cton_leaf
-    nleaf <- nleaf + dnleaf
+    dnleaf <- dcleaf * params$r_ntoc_leaf
+    clabl  <- clabl - 1.0 / params$y * dcleaf
+    nlabl  <- nlabl - dnleaf
+    cleaf  <- cleaf + dcleaf
+    nleaf  <- nleaf + dnleaf
+    
+    dcroot <- min( params$y * clabl, params$r_cton_root * nlabl )
+    print(paste("Allocation decision, dcroot:",dcroot))
+    dnroot <- dcroot * params$r_ntoc_root
+    clabl  <- clabl - 1.0 / params$y * dcroot
+    nlabl  <- nlabl - dnroot
+    croot  <- croot + dcroot
+    nroot  <- nroot + dnroot
 
-    dcroot <- min( clabl - dcleaf, r_cton_root * ( nlabl - dnleaf) )
+    if ( clabl < 0.0 ){
+      print("problem: neg. clabl")
+    }
+    if ( nlabl < 0.0 ){
+      print("problem: neg. nlabl")
+    }
 
-    print(paste("dcroot",dcroot))
-    print(paste("dcleaf",dcleaf))
-    print(paste("clabl",clabl))
+    # ## Given dcleaf, calculate implied N allocation and C, N allocation to roots
+    # dnleaf <- dcleaf / r_cton_leaf
+    # dcroot <- min( clabl - (1.0 / params$y * dcleaf), (1.0 / params$y * r_cton_root * ( nlabl - dnleaf)) )
+    # dnroot <- dcroot / r_cton_root
 
-    if (dcroot<0.0) {print(paste("dcroot",dcroot))}
-    croot <- croot + dcroot
-    dnroot <- dcroot / r_cton_root
-    nroot <- nroot + dnroot
+    # print(paste("Allocation decision, dcleaf:",dcleaf))
+    # print(paste("Allocation decision, dcroot:",dcroot))
 
-    clabl <- clabl - dcleaf - dcroot
-    nlabl <- nlabl - dnleaf - dnroot
+    # ## Allocate
+    # cleaf <- cleaf + dcleaf
+    # nleaf <- nleaf + dnleaf
 
+    # if (dcroot<0.0) { print(paste("dcroot",dcroot)) }
+    # croot <- croot + dcroot
+    # nroot <- nroot + dnroot
+
+    # ## Growth respiration
+    # rg <- ( ( 1.0 - params$y ) / params$y ) * ( dcleaf + dcroot )
+
+    # # # print(paste("dcroot",dcroot))
+    # # print(paste("clabl                        ", clabl))
+    # # print(paste("dcleaf+dcroot, frac. of clabl", dcleaf+dcroot, (dcleaf+dcroot)/clabl))
+    # # print(paste("growth resp. , frac. of clabl", rg , rg/clabl))
+    # # # print(paste("nleaf",nleaf))
+
+    # if ( ( 1.0 / params$y * (dcroot + dcleaf) - clabl ) > 1e-12 ){
+    #   print("problem of neg. clabl ahead")
+    # }
+
+
+    # clabl <- clabl - dcleaf - dcroot - rg
+    # nlabl <- nlabl - dnleaf - dnroot
+
+    ## Write to output
     out_cleaf[doy]  <- cleaf
+    out_nleaf[doy]  <- nleaf
     out_croot[doy]  <- croot
+    out_nroot[doy]  <- nroot
     out_dcleaf[doy] <- dcleaf
     out_dcroot[doy] <- dcroot
     out_dnleaf[doy] <- dnleaf
     out_dnroot[doy] <- dnroot
+    out_lai[doy]    <- cleaf * params$sla
+    out_clabl[doy]  <- clabl
+    out_nlabl[doy]  <- nlabl
 
   }
 }
 
 print(mess)
 
-# plot( 1:ndayyear, out_cton_labl, type="l", ylim=c(-80,80) )
-plot( 1:300, out_croot[1:300], type="l" )
-lines( 1:ndayyear, out_cleaf, col="red" )
+# plot( 1:doy, out_cton_labl, type="l", ylim=c(-80,80) )
+plot( 1:doy, out_croot[1:doy], type="l" )
+lines( 1:doy, out_cleaf[1:doy], type="l", col="red" )
+lines( 1:doy, out_clabl[1:doy], col="blue" )
 
-plot( 1:300, out_dcroot[1:300], type="l" )
-lines( 1:ndayyear, out_dcleaf, col="red" )
+plot( 1:doy, out_clabl[1:doy], type="l", ylim=range(c( out_clabl[1:doy], out_nlabl[1:doy]),na.rm=T) )
+lines( 1:doy, out_nlabl[1:doy], col="red" )
 
+plot( 1:doy, out_dcroot[1:doy], type="l" )
+lines( 1:doy, out_dcleaf[1:doy], col="red" )
 
+plot( 1:doy, out_cleaf[1:doy]/out_nleaf[1:doy], type="l" )
+plot( 1:doy, out_croot[1:doy]/out_nroot[1:doy], type="l"  )
+
+plot( 1:doy, out_lai[1:doy], type="l")
+
+plot( 1:doy, out_ncost[1:doy], type="l", ylim=c(0,200))

@@ -6,6 +6,7 @@ subroutine getout_daily( jpngr, moy, doy )
   ! global just for this, but are collected inside the subroutine 
   ! where they are defined.
   !----------------------------------------------------------------
+  use params_core, only: ndayyear
   use params_modl, only: npft, lu_category
   use fluxes
   use outvars
@@ -43,9 +44,10 @@ subroutine getout_daily( jpngr, moy, doy )
   ! ANNUAL SUM OVER DAILY VALUES
   ! Collect annual output variables as sum of daily values
   !----------------------------------------------------------------
-  outagpp(:,jpngr) = outagpp(:,jpngr) + dgpp(:)
-  outanpp(:,jpngr) = outanpp(:,jpngr) + dnpp(:)%c12
-  outanup(:,jpngr) = outanup(:,jpngr) + dnup(:)%n14
+  outagpp(:,jpngr)    = outagpp(:,jpngr) + dgpp(:)
+  outanpp(:,jpngr)    = outanpp(:,jpngr) + dnpp(:)%c12
+  outanup(:,jpngr)    = outanup(:,jpngr) + dnup(:)%n14
+  outaninorg(:,jpngr) = outaNinorg(:,jpngr) + pninorg(:,jpngr)%n14 / ndayyear
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC VARIABLES
