@@ -196,13 +196,24 @@ eval_imbalance <- function( dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, ml
     ## Evaluation quantity is the difference between the 
     ## C:N ratio of new assimilates and the C:N ratio 
     ## of the whole plant after allocation.
-    eval <- (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
+    # eval <- (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
+
+    ## or should it be: 
+    eval <- y * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
 
     return( eval )
 
   })
 }
 
+eval_const_cost <- function( croot, cost, n0, params){
+  with( params, {
+
+    eval <- cost * n0 * ( 1.0 - exp( - psi * exu * croot ) ) - exu * croot
+
+    return(eval)  
+  })
+}
 
 ##----------------------------------------------------------------
 ## "MAIN" PROGRAM
@@ -273,6 +284,7 @@ nlabl <- nlabl0
 clabl <- clabl0
 
 mess <- "all ok"
+seedprod <- FALSE
 
 doy <- 0
 for (moy in 1:nmonth){
@@ -280,9 +292,22 @@ for (moy in 1:nmonth){
     doy <- doy + 1 
     doy <- min( 365, doy )
 
-    ## Continuous root turnover
-    croot <- croot * ( 1.0 - params$k_root )
-    nroot <- nroot * ( 1.0 - params$k_root )
+    # if (doy>1) {
+    #   if (ninorg[doy]<ninorg[doy-1]) {
+    #     seedprod <- TRUE
+    #     out.root <- uniroot( function(x) eval_const_cost( x, out_ncost[doy-1], ninorg[doy], params ), interval=c(0,croot) )
+    #     croot_trgt <- out.root$root
+    # }
+
+    # ## Continuous root turnover
+    # if (seedprod){
+    #   rdc <- croot_trgt / croot
+    #   croot <- croot * rdc
+    #   nroot <- nroot * rdc
+    # } else {
+      croot <- croot * ( 1.0 - params$k_root )
+      nroot <- nroot * ( 1.0 - params$k_root )      
+    # }
 
     ## Gross primary production minus leaf respiration
     gpp_net <- calc_dgpp( cleaf, mluenet[moy], dppfd[doy], params )
@@ -374,13 +399,13 @@ for (moy in 1:nmonth){
     #   } else {
 
     if (findroot) {
-      dcleaf_range <- seq(0, max_dcleaf, max_dcleaf/100)
-      imbal_range   <- sapply( dcleaf_range, FUN = function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) )
+      # dcleaf_range <- seq(0, max_dcleaf, max_dcleaf/100)
+      # imbal_range   <- sapply( dcleaf_range, FUN = function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) )
 
-      ## test opposite sign condition
-      lo <- eval_imbalance( 0, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params )
-      hi <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params )
-      if (hi*lo>0.0) {"not of opposite sign"} 
+      # ## test opposite sign condition
+      # lo <- eval_imbalance( 0, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params )
+      # hi <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params )
+      # if (hi*lo>0.0) {"not of opposite sign"} 
 
       ## Find root
       print("finding root")
@@ -474,9 +499,12 @@ for (moy in 1:nmonth){
 print(mess)
 
 # plot( 1:doy, out_cton_labl, type="l", ylim=c(-80,80) )
-plot( 1:doy, out_croot[1:doy], type="l" )
+# pdf( "cmass_vs_doy.pdf", width=6, height=5 )
+plot( 1:doy, out_croot[1:doy], type="l", ylab="C mass (gC/m2)", xlab="DOY" )
 lines( 1:doy, out_cleaf[1:doy], type="l", col="red" )
 lines( 1:doy, out_clabl[1:doy], col="blue" )
+legend( "topleft", c("root C","leaf C", "labile C"), lty=1, bty="n", col=c("black","red","blue") )
+# dev.off()
 
 plot( 1:doy, out_clabl[1:doy], type="l", ylim=range(c( out_clabl[1:doy], out_nlabl[1:doy]),na.rm=T) )
 lines( 1:doy, out_nlabl[1:doy], col="red" )
@@ -487,6 +515,10 @@ lines( 1:doy, out_dcleaf[1:doy], col="red" )
 plot( 1:doy, out_cleaf[1:doy]/out_nleaf[1:doy], type="l" )
 plot( 1:doy, out_croot[1:doy]/out_nroot[1:doy], type="l"  )
 
-plot( 1:doy, out_lai[1:doy], type="l")
+# pdf( "lai_vs_doy.pdf", width=6, height=5 )
+plot( 1:doy, out_lai[1:doy], type="l", ylab="LAI", xlab="DOY")
+# dev.off()
 
-plot( 1:doy, out_ncost[1:doy], type="l", ylim=c(0,200))
+# pdf( "cost_of_n_vs_doy.pdf", width=6, height=5 )
+plot( 1:doy, out_ncost[1:doy], type="l", ylim=c(0,200), ylab="C cost per N uptake (gC/gN)", xlab="DOY")
+# dev.off()
