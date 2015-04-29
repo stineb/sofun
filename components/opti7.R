@@ -215,6 +215,13 @@ eval_const_cost <- function( croot, cost, n0, params){
   })
 }
 
+eval_cost <- function( croot, n0, params){
+  with( params, {
+    cost <- ( exu * croot ) / ( n0 * (1.0 - exp( - psi * exu * croot ) ) )
+    return(cost)  
+  })
+}
+
 ##----------------------------------------------------------------
 ## "MAIN" PROGRAM
 ##----------------------------------------------------------------
@@ -272,6 +279,9 @@ out_dcroot    <- rep( NA, ndayyear )
 out_dnroot    <- rep( NA, ndayyear )
 out_lai       <- rep( NA, ndayyear )
 out_ncost     <- rep( NA, ndayyear )
+out_nup       <- rep( NA, ndayyear )
+out_dclabl    <- rep( NA, ndayyear )
+out_gpp       <- rep( NA, ndayyear )
 
 r_cton_leaf <- 19
 r_cton_root <- 50
@@ -284,33 +294,30 @@ nlabl <- nlabl0
 clabl <- clabl0
 
 mess <- "all ok"
-seedprod <- FALSE
+const_cost <- FALSE
+deactivate <- FALSE
 
 doy <- 0
 for (moy in 1:nmonth){
   for (dm in 1:ndaymonth[moy]){
     doy <- doy + 1 
-    doy <- min( 365, doy )
+    doy <- min( 364, doy )
 
-    # if (doy>1) {
-    #   if (ninorg[doy]<ninorg[doy-1]) {
-    #     seedprod <- TRUE
-    #     out.root <- uniroot( function(x) eval_const_cost( x, out_ncost[doy-1], ninorg[doy], params ), interval=c(0,croot) )
-    #     croot_trgt <- out.root$root
+    # ## Two modes of optimisation: 
+    # ## 1. balanced C:N. During early season, maximises growth
+    # ## 2. constant C cost of N uptake. During late season
+    # if (doy>1 && ninorg[doy]<ninorg[doy-1]) {
+    #   ## Optimisation by constant C cost of N uptake
+    #   const_cost <- TRUE
     # }
 
-    # ## Continuous root turnover
-    # if (seedprod){
-    #   rdc <- croot_trgt / croot
-    #   croot <- croot * rdc
-    #   nroot <- nroot * rdc
-    # } else {
-      croot <- croot * ( 1.0 - params$k_root )
-      nroot <- nroot * ( 1.0 - params$k_root )      
-    # }
+    ## Continuous root turnover
+    croot <- croot * ( 1.0 - params$k_root )
+    nroot <- nroot * ( 1.0 - params$k_root )            
 
     ## Gross primary production minus leaf respiration
     gpp_net <- calc_dgpp( cleaf, mluenet[moy], dppfd[doy], params )
+    out_gpp[doy] <- gpp_net
     # print(paste("gpp",gpp_net))
 
     # Root maintenance respiration
@@ -326,7 +333,9 @@ for (moy in 1:nmonth){
     # print(paste("rg_root",rg_root))
 
     ## Add remainder C to labile pool
-    clabl <- clabl + gpp_net - cexu - rm_root
+    dclabl <- gpp_net - cexu - rm_root
+    clabl  <- clabl + dclabl
+    out_dclabl[doy] <- dclabl
 
     if ((gpp_net - cexu - rm_root)<0.0) { mess <- "net C assimilation neg."; break }
 
@@ -334,7 +343,23 @@ for (moy in 1:nmonth){
     nup <- calc_dnup( croot, ninorg[doy], params )
     # print(paste("Nup",nup))
 
+    out_nup[doy] <- nup
+
     out_ncost[doy] <- cexu / nup
+
+    print(paste("croot",croot))
+    print(paste("cexu",cexu))
+    print(paste("nup ",nup))
+    print(paste("cost",out_ncost[doy]))
+
+    ## Two modes of optimisation: 
+    ## 1. balanced C:N. During early season, maximises growth
+    ## 2. constant C cost of N uptake. During late season
+    if (doy>30 && out_ncost[doy] > 50 && !const_cost ) {
+      ## Optimisation by constant C cost of N uptake
+      const_cost <- TRUE
+    }
+
 
     ## Nitrogen addition to labile pool
     nlabl <- nlabl + nup
@@ -356,130 +381,149 @@ for (moy in 1:nmonth){
     max_dcleaf <- min( params$y * clabl, max_dcleaf_n_constraint )
     max_dcroot <- min( params$y * clabl, max_dcroot_n_constraint )
 
-    print(paste("C in labile pool      ", clabl ) )
-    print(paste("C avl. for growth     ", params$y * clabl ) )
-    print(paste("C for roots, avl. by N", nlabl * r_cton_root ) )
-    print(paste("C for leafs, avl. by N", nlabl * r_cton_leaf ) )
-    print(paste("max_dcleaf            ", max_dcleaf))
+    # print(paste("C in labile pool      ", clabl ) )
+    # print(paste("C avl. for growth     ", params$y * clabl ) )
+    # print(paste("C for roots, avl. by N", nlabl * r_cton_root ) )
+    # print(paste("C for leafs, avl. by N", nlabl * r_cton_leaf ) )
+    # print(paste("max_dcleaf            ", max_dcleaf))
 
     # print(paste("clabl              ",clabl))
     # print(paste("nlabl * r_cton_leaf",nlabl * r_cton_leaf))
 
-    findroot <- TRUE
+    if (const_cost) {
 
-    ## Test I: Evaluate balance if all is put to roots.
-    ## If C:N ratio of return is still greater than whole-plant C:N ratio, then put all to roots.
-    eval_allroots  <- eval_imbalance( 0.0, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params )
-    if (eval_allroots > 0.0) { dcleaf <- 0.0; findroot <- FALSE }
+      ## Optimisation by constant C cost of N uptake
+      # print(paste("croot",croot))
+      if (ninorg[doy+1]>0.0){
 
-    ## Test II: Evaluate balance if all is put to leaves.
-    ## If C:N ratio of return is still lower than whole-plant C:N ratio, then put all to leaves.
-    eval_allleaves <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params )
-    if (eval_allleaves < 0.0) { dcleaf <- max_dcleaf; findroot <- FALSE}
+        if ( croot==0.0 || eval_cost( 1e-12, ninorg[doy+1], params ) > out_ncost[doy] ) {
 
+          croot_tgt <- 0.0
 
-    # if ( params$y * clabl / nlabl > r_cton_root ){
-    #   ## Case: way too much C in relation to N => put all to roots
-    #   dcleaf <- 0.0
+        } else {
 
-    # } else if ( params$y * clabl / nlabl < r_cton_leaf ) {
-    #   ## Case: way too much N in relation to C => put all to leaves
-    #   dcleaf <- max_dcleaf
+          # ## test
+          # croot_range <- seq( 0.0, croot, by=croot/100)
+          # eval_range  <- sapply( croot_range, FUN = function(x) eval_cost( x, ninorg[doy+1], params ) )
 
-    # } else {
+          out.root  <- uniroot( function(x) eval_const_cost( x, out_ncost[doy], ninorg[doy+1], params ), interval=c(1e-12,croot) )        
+          croot_tgt <- out.root$root
 
-    #   if ( eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, r_ntoc_root, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) < 0.0 ){
-    #     ## Still not enough C taken up (C:N ratio of assimilates < C:N ratio of plant after allocation)
-    #     dcleaf <- max_dcleaf
+        }
 
-    #   } else if ( eval_imbalance( 0.0, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, r_ntoc_root, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) > 0.0 ){
-    #     ## Still not enough N taken up (C:N ratio of assimilates > C:N ratio of plant after allocation)
-    #     dcleaf <- 0.0
-  
-    #   } else {
+      } else {
 
-    if (findroot) {
-      # dcleaf_range <- seq(0, max_dcleaf, max_dcleaf/100)
-      # imbal_range   <- sapply( dcleaf_range, FUN = function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params ) )
+        croot_tgt <- 0.0
 
-      # ## test opposite sign condition
-      # lo <- eval_imbalance( 0, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params )
-      # hi <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params )
-      # if (hi*lo>0.0) {"not of opposite sign"} 
-
-      ## Find root
-      print("finding root")
-      out.root <- NA
-      try ( 
-        out.root <- uniroot( function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params ), interval=c(0,max_dcleaf) )
-        )        
-      if( is.na(out.root) ){
-        dcleaf <- 0.0
-      } else { 
-        dcleaf <- out.root$root
       }
-    }
+
+      print(paste("cost today:   ",out_ncost[doy]))
+      print(paste("cost tomorrow:",croot_tgt*params$exu/calc_dnup( croot_tgt, ninorg[doy+1],params)))
+      print(paste("croot_tgt",croot_tgt))
+
+      ## Find root C increment to satisfy targeted root mass after allocation and continuous decay
+      dcroot <- croot_tgt / (1.0 - params$k_root ) - croot
+      print(paste("dcroot",dcroot))
+
+      if ( dcroot <= 0.0 ){
+        kill_croot <- (-1.0) * dcroot
+        deactivate <- TRUE
+        dcroot <- 0.0
+        print("deactivate")
+      }
+
+      if (deactivate){
+
+        ## Deactivate root mass, use all assimilates for leaf growth
+        croot  <- croot - kill_croot 
+        nroot  <- croot * params$r_ntoc_root
+
+        ## Stop leaf growth
+
+        ## Use all assimilates for leaf growth
+        dcleaf <- max_dcleaf
+        dnleaf <- dcleaf * params$r_ntoc_leaf
+        clabl  <- clabl - 1.0 / params$y * dcleaf
+        nlabl  <- nlabl - dnleaf
+        cleaf  <- cleaf + dcleaf
+        nleaf  <- nleaf + dnleaf
+
+      } else {
+
+        ## Allocate based on 'dcroot' determined above
+        dnroot <- dcroot * params$r_ntoc_root
+        clabl  <- clabl - 1.0 / params$y * dcroot
+        nlabl  <- nlabl - dnroot
+        croot  <- croot + dcroot
+        nroot  <- nroot + dnroot
         
-    #   }
-    # }
+        dcleaf <- min( params$y * clabl, params$r_cton_leaf * nlabl )
 
-    print(paste("Allocation decision, dcleaf:",dcleaf))
+        dnleaf <- dcleaf * params$r_ntoc_leaf
+        clabl  <- clabl - 1.0 / params$y * dcleaf
+        nlabl  <- nlabl - dnleaf
+        cleaf  <- cleaf + dcleaf
+        nleaf  <- nleaf + dnleaf
 
-    ## Allocate
-    dnleaf <- dcleaf * params$r_ntoc_leaf
-    clabl  <- clabl - 1.0 / params$y * dcleaf
-    nlabl  <- nlabl - dnleaf
-    cleaf  <- cleaf + dcleaf
-    nleaf  <- nleaf + dnleaf
-    
-    dcroot <- min( params$y * clabl, params$r_cton_root * nlabl )
-    print(paste("Allocation decision, dcroot:",dcroot))
-    dnroot <- dcroot * params$r_ntoc_root
-    clabl  <- clabl - 1.0 / params$y * dcroot
-    nlabl  <- nlabl - dnroot
-    croot  <- croot + dcroot
-    nroot  <- nroot + dnroot
+      }
 
-    if ( clabl < 0.0 ){
-      print("problem: neg. clabl")
+    } else {
+
+      ## Optimisation by balanced growth
+      ## Test I: Evaluate balance if all is put to roots.
+      ## If C:N ratio of return is still greater than whole-plant C:N ratio, then put all to roots.
+      findroot <- TRUE
+      eval_allroots  <- eval_imbalance( 0.0, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params )
+      if (eval_allroots > 0.0) { dcleaf <- 0.0; findroot <- FALSE }
+
+      ## Test II: Evaluate balance if all is put to leaves.
+      ## If C:N ratio of return is still lower than whole-plant C:N ratio, then put all to leaves.
+      eval_allleaves <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params )
+      if (eval_allleaves < 0.0) { dcleaf <- max_dcleaf; findroot <- FALSE}
+
+      if (findroot) {
+
+        ## Find root
+        print("finding root")
+        out.root <- NA
+        try ( 
+          out.root <- uniroot( function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params ), interval=c(0,max_dcleaf) )
+          )        
+        if( is.na(out.root) ){
+          dcleaf <- 0.0
+        } else { 
+          dcleaf <- out.root$root
+        }
+      }
+
+      ## Allocate based on 'dcleaf' determined above
+      dnleaf <- dcleaf * params$r_ntoc_leaf
+      clabl  <- clabl - 1.0 / params$y * dcleaf
+      nlabl  <- nlabl - dnleaf
+      cleaf  <- cleaf + dcleaf
+      nleaf  <- nleaf + dnleaf
+      
+      dcroot <- min( params$y * clabl, params$r_cton_root * nlabl )
+
+      # print(paste("Allocation decision, dcroot:",dcroot))
+      dnroot <- dcroot * params$r_ntoc_root
+      clabl  <- clabl - 1.0 / params$y * dcroot
+      nlabl  <- nlabl - dnroot
+      croot  <- croot + dcroot
+      nroot  <- nroot + dnroot
+
     }
-    if ( nlabl < 0.0 ){
-      print("problem: neg. nlabl")
-    }
-
-    # ## Given dcleaf, calculate implied N allocation and C, N allocation to roots
-    # dnleaf <- dcleaf / r_cton_leaf
-    # dcroot <- min( clabl - (1.0 / params$y * dcleaf), (1.0 / params$y * r_cton_root * ( nlabl - dnleaf)) )
-    # dnroot <- dcroot / r_cton_root
 
     # print(paste("Allocation decision, dcleaf:",dcleaf))
-    # print(paste("Allocation decision, dcroot:",dcroot))
 
-    # ## Allocate
-    # cleaf <- cleaf + dcleaf
-    # nleaf <- nleaf + dnleaf
+    if ( clabl < -1e-12 ){
+      print(paste("problem: neg. clabl:",clabl))
+    }
+    if ( nlabl < -1e-12 ){
+      print(paste("problem: neg. nlabl",nlabl))
+    }
 
-    # if (dcroot<0.0) { print(paste("dcroot",dcroot)) }
-    # croot <- croot + dcroot
-    # nroot <- nroot + dnroot
-
-    # ## Growth respiration
-    # rg <- ( ( 1.0 - params$y ) / params$y ) * ( dcleaf + dcroot )
-
-    # # # print(paste("dcroot",dcroot))
-    # # print(paste("clabl                        ", clabl))
-    # # print(paste("dcleaf+dcroot, frac. of clabl", dcleaf+dcroot, (dcleaf+dcroot)/clabl))
-    # # print(paste("growth resp. , frac. of clabl", rg , rg/clabl))
-    # # # print(paste("nleaf",nleaf))
-
-    # if ( ( 1.0 / params$y * (dcroot + dcleaf) - clabl ) > 1e-12 ){
-    #   print("problem of neg. clabl ahead")
-    # }
-
-
-    # clabl <- clabl - dcleaf - dcroot - rg
-    # nlabl <- nlabl - dnleaf - dnroot
-
+    
     ## Write to output
     out_cleaf[doy]  <- cleaf
     out_nleaf[doy]  <- nleaf
@@ -499,6 +543,7 @@ for (moy in 1:nmonth){
 print(mess)
 
 # plot( 1:doy, out_cton_labl, type="l", ylim=c(-80,80) )
+
 # pdf( "cmass_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_croot[1:doy], type="l", ylab="C mass (gC/m2)", xlab="DOY" )
 lines( 1:doy, out_cleaf[1:doy], type="l", col="red" )
@@ -522,3 +567,10 @@ plot( 1:doy, out_lai[1:doy], type="l", ylab="LAI", xlab="DOY")
 # pdf( "cost_of_n_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_ncost[1:doy], type="l", ylim=c(0,200), ylab="C cost per N uptake (gC/gN)", xlab="DOY")
 # dev.off()
+
+# pdf( "nup_vs_doy.pdf", width=6, height=5 )
+plot( 1:doy, out_nup[1:doy], type="l", ylab="N uptake (gN/day)", xlab="DOY")
+# dev.off()
+
+plot( 1:doy, out_dclabl[1:doy], type="l", ylab="C balance (gC/m2/day)", xlab="DOY")
+plot( 1:doy, out_gpp[1:doy], type="l", ylab="GPP (gC/m2/day)", xlab="DOY")

@@ -98,10 +98,11 @@ mtemp <- df.temp$temp
 
 ## Run P-model for each month 
 
-mluenet <- rep( NA, nmonth )
-mlue    <- rep( NA, nmonth )
-mnapar  <- rep( NA, nmonth )
-factor25<- rep( NA, nmonth )
+mlue       <- rep( NA, nmonth )
+mvcmax_norm <- rep( NA, nmonth )
+mluenet    <- rep( NA, nmonth )
+mnapar     <- rep( NA, nmonth )
+factor25   <- rep( NA, nmonth )
 
 for (moy in 1:nmonth){
 
@@ -110,6 +111,9 @@ for (moy in 1:nmonth){
 
   ## Light use efficiency: (gpp - rd) per unit light absorbed
   mlue[moy] <- out$lue
+
+  ## Vcmax per unit fAPAR
+  mvcmax_norm[moy] <- out$vcmax_norm
 
   ## Net light use efficiency: (gpp - rd) per unit light absorbed
   mluenet[moy] <- out$luenet
@@ -145,18 +149,27 @@ alpha_range   <- seq( 0.01, 30, 0.1 )
 fapar_range   <- calc_fapar( alpha_range, params )
 
 gpp_range      <- sapply( alpha_range, FUN = function(x) calc_agpp( x, leaf_season, mlue, mppfd, params ) )
+vcmax25_range  <- sapply( alpha_range, FUN = function(x) calc_avcmax25( x, leaf_season, mvcmax_norm, meanmppfd, factor25, params ) )
+rd_range       <- sapply( vcmax25_range, FUN = function(x) calc_ard( x, factor25 ) )
 
-nr_canop_range <- sapply( alpha_range, FUN = function(x) calc_nr_canop( x, leaf_season, meanmppfd, mnapar, params ) )
-nr_leaf_range  <- sapply( alpha_range, FUN = function(x) calc_nr_leaf( x, leaf_season, meanmppfd, mnapar, params ) )
-vcmax25_range  <- fapar_range * max( mnapar * meanmppfd / n_v ) 
-rd_range       <- fapar_range * max( 0.015 * mnapar * meanmppfd / ( n_v * factor25 ) )
+nr_canop_range <- vcmax25_range * n_v
+nr_leaf_range  <- nr_canop_range / alpha_range
+ncw_canop_range<- nr_canop_range * params$r_n_cw_v + alpha_range * params$ncw_min
+ncw_leaf_range <- ncw_canop_range / alpha_range
 
-gpp_net_range  <- gpp_range - rd_range * 60 * 60 * 24 * ndayyear * c_molmass
+
+# nr_canop_range <- sapply( alpha_range, FUN = function(x) calc_nr_canop( x, leaf_season, meanmppfd, mnapar, params ) )
+# nr_leaf_range  <- sapply( alpha_range, FUN = function(x) calc_nr_leaf( x, leaf_season, meanmppfd, mnapar, params ) )
+# vcmax25_range  <- fapar_range * max( mnapar * meanmppfd / n_v ) 
+# rd_range       <- fapar_range * max( 0.015 * mnapar * meanmppfd / ( n_v * factor25 ) )
+# gpp_net_range  <- gpp_range - rd_range * 60 * 60 * 24 * ndayyear * c_molmass
+
+gpp_net_range  <- gpp_range - rd_range
 gpp_net_range2 <- sapply( alpha_range, FUN = function(x) calc_agpp( x, leaf_season, mluenet, mppfd, params ) )
 
-ncw_canop_range <- sapply( alpha_range, FUN = function(x) calc_ncw_canop( x, leaf_season, meanmppfd, mnapar, params ) )
-ncw_canop_range_nomin <- sapply( alpha_range, FUN = function(x) calc_ncw_canop_nomin( x, leaf_season, meanmppfd, mnapar, params ) )
-ncw_leaf_range  <- sapply( alpha_range, FUN = function(x) calc_ncw_leaf( x, leaf_season, meanmppfd, mnapar, params ) )
+# ncw_canop_range <- sapply( alpha_range, FUN = function(x) calc_ncw_canop( x, leaf_season, meanmppfd, mnapar, params ) )
+# ncw_canop_range_nomin <- sapply( alpha_range, FUN = function(x) calc_ncw_canop_nomin( x, leaf_season, meanmppfd, mnapar, params ) )
+# ncw_leaf_range  <- sapply( alpha_range, FUN = function(x) calc_ncw_leaf( x, leaf_season, meanmppfd, mnapar, params ) )
 
 c_leaf_range   <- ncw_leaf_range  * mol_weight_n * params$r_cton_leaf # g C m-2
 c_canop_range  <- ncw_canop_range * mol_weight_n * params$r_cton_leaf # g C m-2
@@ -181,10 +194,10 @@ nup_range_approx  <- sapply( beta_range,  FUN = function(x) anup( x, root_season
 
 ## balance in g N m-2
 aanreq_range  <- (nr_canop_range + ncw_canop_range) * mol_weight_n
-aanreq_range_nomin <- (nr_canop_range + ncw_canop_range_nomin) * mol_weight_n
+# aanreq_range_nomin <- (nr_canop_range + ncw_canop_range_nomin) * mol_weight_n
 abnreq_range  <- sapply( beta_range, FUN = function(x) abnreq( x, root_season, params ) )
 anreq_range   <- aanreq_range + abnreq_range
-anreq_range_nomin  <- aanreq_range_nomin + abnreq_range
+# anreq_range_nomin  <- aanreq_range_nomin + abnreq_range
 
 imbal_range   <- sapply( alpha_range, FUN = function(x) eval_imbalance( x, leaf_season, root_season, ninorg, ntrans, mlue, mppfd, meanmppfd, mnapar, factor25, params ) )
 out.alpha_root  <- uniroot( function(x) eval_imbalance( x, leaf_season, root_season, ninorg, ntrans, mlue, mppfd, meanmppfd, mnapar, factor25, params ), range(alpha_range) )
@@ -199,25 +212,25 @@ data <- read.csv(file="/alphadata01/bstocker/data/hikosaka/TableS1_reformatted.c
 par( las=1, mar=c(4,4,4,4) )
 
 ## Primary productivity
-pdf( "prod_vs_lai.pdf", width=6, height=5 )
+# pdf( "prod_vs_lai.pdf", width=6, height=5 )
 plot(  alpha_range, gpp_range, type="l", ylab="annual flux (gC/m2/yr)", xlab="LAI" )
 lines( alpha_range, gpp_net_range, col="magenta" )
-# lines( alpha_range, gpp_net_range2, col="magenta", lty=2 )
+lines( alpha_range, gpp_net_range2, col="magenta", lty=2 )
 lines( alpha_range, npp_range, col="green")
 lines( alpha_range, exu_range, col="blue" )
 abline( h=0, col="grey70")
 abline( v=alpha_root, col="grey70")
 legend( "bottomright", c("GPP","GPP - Rd", "NPP", "EXU"), lty=1, bty="n", col=c("black","magenta","green","blue") )
-dev.off()
+# dev.off()
 
 ## Exudation as a fraction of NPP
-pdf( "exufrac_vs_lai.pdf", width=6, height=5 )
+# pdf( "exufrac_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, 100*exu_range/npp_range, type="l", xlab="LAI", ylab="Exudation fraction of NPP (%)")
 abline( v=alpha_root, col="grey70")
-dev.off()
+# dev.off()
 
 ## Above-ground balance
-pdf("totalloc_vs_lai.pdf", width=6, height=5 )
+# pdf("totalloc_vs_lai.pdf", width=6, height=5 )
 plot(  alpha_range, gpp_range, type="l", lty=2, ylab="annual flux (gC/m2/yr)", xlab="LAI" )
 lines( alpha_range, gpp_net_range )
 lines( alpha_range, taa_range, col="red")
@@ -225,7 +238,7 @@ lines( alpha_range, tba_range, col="blue" )
 abline( h=0, col="grey70")
 abline( v=alpha_root, col="grey70")
 legend( "bottomright", c("GPP","GPP - Rd", "TBA", "TAA"), lty=c(2,1,1,1), bty="n", col=c("black","black","blue","red") )
-dev.off()
+# dev.off()
 
 # ## Below-ground balance (as a function of alpha)
 # plot( alpha_range, beta_range, type="l", col="brown", xlab="leaf mass (gC/m2)", ylim=c(0,max(beta_range)), xlim=range(alpha_range) )
@@ -236,26 +249,26 @@ dev.off()
 # abline( v=alpha_root, col="magenta ")
 # legend( "bottomright", c("root mass", "annual N uptake","annual N uptake, approx."), lty=c(1,1,2), bty="n", col=c("brown","blue","blue") )
 
-pdf( "root2shoot_vs_lai.pdf", width=6, height=5 )
+# pdf( "root2shoot_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, root2shoot_range, type="l", xlab="LAI", ylab="root:shoot ratio (by mass)")
 abline( v=alpha_root, col="grey70 ")
-dev.off()
+# dev.off()
 
 ## Below-ground balance (as a function of beta)
-pdf( "Nuptake.pdf", width=6, height=5 )
+# pdf( "Nuptake.pdf", width=6, height=5 )
 plot(  beta_range, nup_range, type="l", col="blue", xlab="root mass (gC/m2)", ylab="N uptake (gN/m2/yr)" )
 lines( beta_range, nup_range_approx, lty=3, col="blue" )
 legend( "bottomright", c("annual N uptake","annual N uptake, approx."), lty=c(1,2), bty="n", col=c("blue","blue") )
-dev.off()
+# dev.off()
 
 ## Below-ground balance (as a function of alpha)
-pdf( "Nbalance_vs_lai.pdf", width=6, height=5 )
+# pdf( "Nbalance_vs_lai.pdf", width=6, height=5 )
 plot(  alpha_range, nup_range, type="l", col="blue", ylab="annual N uptake (gN/m2/yr)", xlab="LAI", ylim=c(0,max(anreq_range))  )
 lines( alpha_range, anreq_range, col="red" )
 abline( v=alpha_root, col="grey70")
 abline( h=0.0, col="grey70" )
 legend( "bottomright", c("annual N uptake","N required"), lty=c(1,1), bty="n", col=c("blue","red") )
-dev.off()
+# dev.off()
 
 ## relationship between N per leaf area and Rubisco per leaf area (y-intersect is a measure for minimum content)
 Rarea <- data$RNF * data$Narea
@@ -282,54 +295,54 @@ abline( reg )
 # plot( alpha_range, nr_canop_range, type="l", xlab="LAI", ylab="Nr canopy (g N m-2)" )
 
 ## Leaf Rubisco-N as a function of LAI, overlay data: RNF * Narea (Rubisco N fraction * Narea = Rubisco N m-2)
-pdf( "nv_vs_lai.pdf", width=6, height=5 )
+# pdf( "nv_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, nr_leaf_range, type="l", xlab="LAI", ylab="leaf vNarea (mol N m-2)" )
 abline( h= (data$RNF * data$Narea ), col=rgb(0,0,0,0.3) )
-dev.off()
+# dev.off()
 
 ## Leaf cell wall-N as a function of LAI
-pdf( "ncw_vs_lai.pdf", width=6, height=5 )
+# pdf( "ncw_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, ncw_leaf_range, type="l", xlab="LAI", ylab="Ncw leaf (mol N m-2)" )
 # ## overlay data: WN (cell wall N per area, N m-2) xxx DOES NOT WORK PROPERLY: THERE MUST BE AN ADDITIONAL COMPONENT OF LEAF N XXX
 # abline( h= (data$WN ), col=rgb(0,0,0,0.3) )
 ## overlay data: Narea - data$RNF * data$Narea (this is what n_cw really represents)
 abline( h = data$Narea - data$RNF * data$Narea, col=rgb(0,0,0,0.3) )
-dev.off()
+# dev.off()
 
 ## Leaf-N as a function of LAI, overlay data: WN (cell wall N per area, N m-2)
-pdf( "narea_vs_lai.pdf", width=6, height=5 )
+# pdf( "narea_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, ncw_leaf_range+nr_leaf_range, type="l", xlab="LAI", ylab="leaf Narea (mol N m-2)", ylim=range(data$Narea,ncw_leaf_range+nr_leaf_range) )
 abline( h= (data$Narea ), col=rgb(0,0,0,0.3) )
-dev.off()
+# dev.off()
 
 ## LMA as a function of LAI, overlay data: LMA (g m-2)
-pdf( "lma_vs_lai.pdf", width=6, height=5 )
+# pdf( "lma_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, lma_range, type="l", xlab="LAI", ylab="LMA (g m-2)", ylim=c(range(data$LMA, lma_range)))
 abline( h= (data$LMA ), col=rgb(0,0,0,0.3) )
-dev.off()
+# dev.off()
 
 ## leaf-level Vcmax25 as a function of LAI
-pdf( "vcmax25leaf_vs_lai.pdf", width=6, height=5 )
+# pdf( "vcmax25leaf_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, vcmax25_range*1e3/alpha_range, type="l", xlab="LAI", ylab="Vcmax (mmol CO2 s-1 m-2)", ylim=range(vcmax25_range*1e3/alpha_range) )
 title("leaf-level Vcmax[25]")
-dev.off()
+# dev.off()
 
 ## canopy-level Vcmax25 as a function of LAI
-pdf( "vcmax25canop_vs_lai.pdf", width=6, height=5 )
+# pdf( "vcmax25canop_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, vcmax25_range*1e3, type="l", xlab="LAI", ylab="Vcmax (mmol CO2 s-1 m-2)", ylim=range(vcmax25_range*1e3) )
 title("canopy-level Vcmax[25]")
-dev.off()
+# dev.off()
 
-pdf( "vcmax25_vs_lai.pdf", width=6, height=5 )
+# pdf( "vcmax25_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, vcmax25_range*1e3, type="l", xlab="LAI", ylab="Vcmax (mmol CO2 s-1 m-2)", ylim=range(vcmax25_range*1e3) )
 lines( alpha_range, vcmax25_range*1e3/alpha_range, lty=2 )
 legend( "right", c("canopy-level Vcmax[25]","leaf-level Vcmax[25]"), lty=c(1,2), bty="n")
-dev.off()
+# dev.off()
 
 ## Rd as a function of LAI
-pdf( "rd_vs_lai.pdf", width=6, height=5 )
+# pdf( "rd_vs_lai.pdf", width=6, height=5 )
 plot( alpha_range, rd_range*1e6/alpha_range, type="l", xlab="LAI", ylab="Rd (micromol CO2 s-1 m-2)", ylim=range(rd_range*1e6/alpha_range) )
-dev.off()
+# dev.off()
 
 plot( alpha_range, 100 * mol_weight_n * ( ncw_leaf_range + nr_leaf_range ) / lma_range, type="l" )
 plot( alpha_range,  ncw_leaf_range  / ( ncw_leaf_range + nr_leaf_range ), type="l" )
@@ -351,12 +364,12 @@ plot( alpha_range, (ncw_leaf_range+nr_leaf_range)*mol_weight_n, type="l", xlab="
 # plot( alpha_range, npp_range, type="l" )
 # plot( alpha_range, exu_range/npp_range, type="l" )
 
-# pdf("bmodel_nreq_vs_nup.pdf")
+pdf("bmodel_nreq_vs_nup.pdf")
 # # plot( alpha_range, nreq_range, type="l" )
 # # lines( alpha_range, nup_range, col="red" )
 # # abline( v=alpha_root, col='grey')
 # # legend( "topleft", c("N required", "N up"), lty=1, bty="n", col=c("black","red") )
-# # dev.off()
+# dev.off()
 
 # # plot( beta_range, nreq_range, type="l" )
 # # lines( beta_range, nup_range, col="red" )

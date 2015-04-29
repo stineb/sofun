@@ -303,11 +303,11 @@ contains
         ntoc_crit = ntoc_crit1 * ntoc( dlitt, default=0.0 ) ** ntoc_crit2  ! = rCR
         eff = ntoc_crit * cton_soil_local
 
-        ! write(0,*) 'ntoc_crit1', ntoc_crit1
-        ! write(0,*) 'ntoc_crit2', ntoc_crit2
-        ! write(0,*) 'cton litt ', cton( dlitt )
-        ! write(0,*) 'cton_crit ', 1/ntoc_crit
-        ! write(0,*) 'eff ',eff
+        ! write(0,*)  'ntoc_crit1', ntoc_crit1
+        ! write(0,*)  'ntoc_crit2', ntoc_crit2
+        ! write(0,*)  'cton litt ', cton( dlitt )
+        ! write(0,*)  'cton_crit ', 1/ntoc_crit
+        ! write(0,*)  'eff ',eff
         !stop
 
         !////////////////////////////////////////////////////////////////
@@ -407,34 +407,34 @@ contains
             Nfix = req
             req = 0.0
 
-          !   ! ===========
-          else
-            ! xxx THIS LEADS TO COMPLETE DIE-OFF: equilibration without immobilisation
-            !----------------------------------------------------------------    
-            ! immobilisation
-            !----------------------------------------------------------------    
-            req = -1.0 * netmin_litt
-            avl = pninorg(lu,jpngr)%n14
+          ! !   ! ===========
+          ! else
+          !   ! xxx THIS LEADS TO COMPLETE DIE-OFF: equilibration without immobilisation
+          !   !----------------------------------------------------------------    
+          !   ! immobilisation
+          !   !----------------------------------------------------------------    
+          !   req = -1.0 * netmin_litt
+          !   avl = pninorg(lu,jpngr)%n14
 
-            ! write(0,*) 'req, avl',req,avl
+          !   ! write(0,*) 'req, avl',req,avl
 
-            if (avl>=req) then
-              ! enough mineral N for immobilisation
-              pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - req
-              req = 0.0
-            else
-              ! not enough pninorg for immobilisation
-              pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - avl
-              req = req - avl
+          !   if (avl>=req) then
+          !     ! enough mineral N for immobilisation
+          !     pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - req
+          !     req = 0.0
+          !   else
+          !     ! not enough pninorg for immobilisation
+          !     pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - avl
+          !     req = req - avl
 
-              !----------------------------------------------------------------    
-              ! N fixation by free-living bacteria in litter to satisfy remainder
-              !----------------------------------------------------------------    
-              Nfix = req
-              req = 0.0
+          !     !----------------------------------------------------------------    
+          !     ! N fixation by free-living bacteria in litter to satisfy remainder
+          !     !----------------------------------------------------------------    
+          !     Nfix = req
+          !     req = 0.0
 
-            end if
-            ! <<<<<<<<<<<
+          !   end if
+          !   ! <<<<<<<<<<<
           end if
 
         endif
