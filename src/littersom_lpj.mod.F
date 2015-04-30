@@ -396,45 +396,47 @@ contains
 
         else
 
-          ! xxx try:
-          ! >>>>>>>>>>>
-          if ( spinup .and. invocation<=spinupyr_phaseinit_2 ) then
-            !----------------------------------------------------------------    
-            ! N fixation by free-living bacteria in litter to prevent immo-
-            ! bilisation.
-            !----------------------------------------------------------------    
-            req = -1.0 * netmin_litt
-            Nfix = req
-            req = 0.0
-
-          ! !   ! ===========
-          ! else
-          !   ! xxx THIS LEADS TO COMPLETE DIE-OFF: equilibration without immobilisation
+          ! ! ! xxx try:
+          ! ! ! >>>>>>>>>>>
+          ! if ( spinup .and. invocation<=spinupyr_phaseinit_2 ) then
           !   !----------------------------------------------------------------    
-          !   ! immobilisation
+          !   ! N fixation by free-living bacteria in litter to prevent immo-
+          !   ! bilisation.
           !   !----------------------------------------------------------------    
           !   req = -1.0 * netmin_litt
-          !   avl = pninorg(lu,jpngr)%n14
+          !   Nfix = req
+          !   req = 0.0
 
-          !   ! write(0,*) 'req, avl',req,avl
+          !   ! ===========
+          ! else
+            ! xxx THIS LEADS TO COMPLETE DIE-OFF: equilibration without immobilisation
+            !----------------------------------------------------------------    
+            ! immobilisation
+            !----------------------------------------------------------------    
+            req = -1.0 * netmin_litt
+            avl = pninorg(lu,jpngr)%n14
 
-          !   if (avl>=req) then
-          !     ! enough mineral N for immobilisation
-          !     pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - req
-          !     req = 0.0
-          !   else
-          !     ! not enough pninorg for immobilisation
-          !     pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - avl
-          !     req = req - avl
+            ! write(0,*) 'req, avl',req,avl
 
-          !     !----------------------------------------------------------------    
-          !     ! N fixation by free-living bacteria in litter to satisfy remainder
-          !     !----------------------------------------------------------------    
-          !     Nfix = req
-          !     req = 0.0
+            if (avl>=req) then
+              ! enough mineral N for immobilisation
+              pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - req
+              req = 0.0
+            else
+              ! not enough pninorg for immobilisation
+              pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - avl
+              req = req - avl
 
-          !   end if
-          !   ! <<<<<<<<<<<
+              !----------------------------------------------------------------    
+              ! N fixation by free-living bacteria in litter to satisfy remainder
+              !----------------------------------------------------------------    
+              Nfix = req
+              req = 0.0
+              write(0,*) 'fixing remainder:',Nfix
+              ! stop 'fixing remainder'
+
+            ! end if
+            ! ! <<<<<<<<<<<
           end if
 
         endif
@@ -460,7 +462,6 @@ contains
           
         ! C:N ratio of soil influx
         if ( abs( dlitt%c%c12 * eff / Nreq_S - cton_soil(1) ) > 1e-5 ) stop 'imprecision'
-
 
         do pft=1,npft
           if (islu(pft,lu)) then
