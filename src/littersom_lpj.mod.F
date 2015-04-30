@@ -63,8 +63,8 @@ module littersom_lpj
   real, dimension(npft,maxgrid) :: outaClitt
   real, dimension(nlu,maxgrid)  :: outaCsoil
   real, dimension(nlu,maxgrid)  :: outanreq      ! N required from litter -> soil transfer [gN/m2/d]
-  real, dimension(npft,maxgrid) :: outaClit2soil
-  real, dimension(npft,maxgrid) :: outaNlit2soil
+  real, dimension(nlu,maxgrid)  :: outaClit2soil
+  real, dimension(nlu,maxgrid)  :: outaNlit2soil
   real, dimension(nlu,maxgrid)  :: outaCdsoil
   real, dimension(nlu,maxgrid)  :: outaNdsoil
   real, dimension(nlu,maxgrid)  :: outaNimmo
@@ -116,7 +116,7 @@ contains
     real :: eff                                     ! microbial growth efficiency 
     real :: ntoc_crit                               ! critical N:C ratio below which immobilisation occurrs  
     real :: Nreq_S                                  ! N required in litter decomposition to maintain SOM C:N
-    real :: Nfix                                    ! temporary variable, N fixation implied in litter decomposition,
+    real :: Nfix = 0.0                              ! temporary variable, N fixation implied in litter decomposition,
     real :: rest                                    ! temporary variable
     real :: req                                     ! N required for litter decomposition 
     real :: avl                                     ! mineral N available as inorganic N
@@ -337,7 +337,8 @@ contains
         end if
 
         ! OUTPUT COLLECTION
-        outaClit2soil(pft,jpngr) = outaClit2soil(pft,jpngr) + dlitt%c%c12 * eff
+        outaClit2soil(lu,jpngr) = outaClit2soil(lu,jpngr) + dlitt%c%c12 * eff
+        ! write(0,*) 'outaClit2soil(lu,jpngr)',outaClit2soil(lu,jpngr)
         ! outaNlit2soil(pft,jpngr) = outaNlit2soil(pft,jpngr) + dlitt%n%n14
         outaNlit2soil(lu,jpngr)  = outaNlit2soil(lu,jpngr)  + Nreq_S
 
@@ -432,7 +433,7 @@ contains
               !----------------------------------------------------------------    
               Nfix = req
               req = 0.0
-              write(0,*) 'fixing remainder:',Nfix
+              ! write(0,*) 'fixing remainder:',Nfix
               ! stop 'fixing remainder'
 
             ! end if
@@ -541,11 +542,6 @@ contains
       ! <<<<<<<<<<<      
 
 
-
-      ! print*,'cton(dsoil_sl) ',cton(dsoil_sl)
-      ! print*,'cton(dsoil_fs) ',cton(dsoil_fs)
-      ! print*,'cton_soil_local',cton_soil_local
-
       ! get average litter -> soil flux for analytical soil C equilibration
       if ( spinup .and. invocation > ( spinupyr_soilequil_1 - recycle ) .and. invocation<spinupyr_soilequil_1 &
         .or. spinup .and. invocation > ( spinupyr_soilequil_2 - recycle ) .and. invocation<spinupyr_soilequil_2 ) then
@@ -588,6 +584,12 @@ contains
       ! Record monthly (daily) soil turnover flux (labile carbon availability)
       !----------------------------------------------------------------
       ddoc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
+
+
+      !----------------------------------------------------------------
+      ! XXX debug: add constant N fixation 0.5 gN/m2/yr)
+      !----------------------------------------------------------------
+      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + 0.5/365.0
 
     enddo                   !lu
 
