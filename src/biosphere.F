@@ -92,38 +92,38 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
 
     ! First simulation year
     ! xxx debug
-    print*,'A'
-    !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-    !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-    !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+    ! print*,'A'
+    ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+    ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+    ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
     ! Initialise pool variables and/or read from restart file (not implemented)
     call initglobal
 
-    print*,'B'
-    !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-    !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-    !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
-    print*,'psoil_fs(1,1)%c%c12',psoil_fs(1,1)%c%c12
-    print*,'psoil_sl(1,1)%c%c12',psoil_sl(1,1)%c%c12
+    ! print*,'B'
+    ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+    ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+    ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+    ! print*,'psoil_fs(1,1)%c%c12',psoil_fs(1,1)%c%c12
+    ! print*,'psoil_sl(1,1)%c%c12',psoil_sl(1,1)%c%c12
 
     ! Open input/output files
     call initio(runname)
 
   endif 
 
-  print*,'C'
-  !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-  !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-  !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+  ! print*,'C'
+  ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+  ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+  ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
   ! Initialise output variables for this year
   call initoutput
 
-  !print*,'D'
-  !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-  !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-  !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+  ! print*,'D'
+  ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+  ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+  ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
   ! LOOP THROUGH GRIDCELLS
   do jpngr=1,maxgrid
@@ -155,11 +155,11 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! initialise daily updated variables 
         call initdaily
 
-        !print*,'E'
-        !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-        !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-        !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12
-        !print*,'nh4 ',nh4(1,1)%n14 
+        ! print*,'E'
+        ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+        ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+        ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12
+        ! print*,'nh4 ',nh4(1,1)%n14 
 
         ! get soil moisture, and runoff
         !call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
@@ -181,10 +181,10 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! xxx try: second argument is dtemp_soil
         call npp( jpngr, dtemp_field(day,jpngr) )
 
-        !print*,'F'
-        !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-        !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-        !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+        ! print*,'F'
+        ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+        ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+        ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
 
         !#if _allocation_pipe
@@ -201,52 +201,52 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
 
         ! litter and soil turnover
         call littersom( jpngr, day )
-        !print*,'F'
-        !print*,'nh4 ',nh4(1,1)%n14 
+        ! print*,'F'
+        ! print*,'nh4 ',nh4(1,1)%n14 
 
 
         ! inorganic soil N chemistry
         call ntransform( dm, mo, jpngr, sum(dprec_field(:,jpngr)) )
 
-        !print*,'G'
-        !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-        !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-        !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
-        !print*,'nh4 ',nh4(1,1)%n14 
+        ! print*,'G'
+        ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+        ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+        ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+        ! print*,'nh4 ',nh4(1,1)%n14 
 
         ! collect from daily updated state variables for annual variables
         call getout_daily( jpngr, mo, day )
 
-        !print*,'H'
-        !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-        !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-        !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+        ! print*,'H'
+        ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+        ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+        ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
       end do
 
     end do
 
-    !print*,'I'
-    !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-    !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-    !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+    ! print*,'I'
+    ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+    ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+    ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
 
     ! allocate biomass increment
     ! precompiler flag used here because option requires allocation to be called daily
     call allocation_annual( jpngr )
 
-    !print*,'K'
-    !print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-    !print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-    !print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+    ! print*,'K'
+    ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
+    ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
+    ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
     ! reduce part of NPP for reproduction
     !call reproduction
 
     ! light competition by limiting to maximum FPC
     ! call light( jpngr )
-    !print*,'fpc_grid', fpc_grid(1,1)
+    ! print*,'fpc_grid', fpc_grid(1,1)
     !call mortality
     !call fire
 
