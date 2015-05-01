@@ -95,6 +95,9 @@ module gpp_pmodel
   ! Metabolic N ratio (mol N s (mol CO2)-1 )
   real, parameter :: n_v = mol_weight_rubisco * n_conc_rubisco / ( cat_turnover_per_site * cat_sites_per_mol_R )
 
+  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
+  real, parameter :: rd_to_vcmax = 0.015
+  
   ! parameters for Narea -- under construction
   ! sla = 0.0014       ! specific leaf area (m2/gC)
 
@@ -119,12 +122,25 @@ module gpp_pmodel
 
   ! Function return variables as derived types
   type outtype_pmodel
-    real :: gpp, vcmax, vcmax25, factor25_vcmax, vcmax_norm, rd, n_rubisco, &
-      lue, luenet, n_apar, n, m
+    real :: gpp
+    real :: vcmax
+    real :: vcmax25
+    real :: vcmax_unitfapar
+    real :: vcmax_unitiabs
+    real :: factor25_vcmax
+    real :: rd
+    real :: rd_unitfapar 
+    real :: rd_unitiabs 
+    real :: actnv 
+    real :: actnv_unitfapar 
+    real :: actnv_unitiabs 
+    real :: lue
   end type outtype_pmodel
 
   type outtype_lue
-    real :: chi, m, n
+    real :: chi
+    real :: m
+    real :: n
   end type outtype_lue
 
 contains
@@ -205,16 +221,23 @@ contains
     real :: ns25                     ! viscosity of H2O at 25 deg C (Pa s)
     real :: ns_star                  ! viscosity correction factor (unitless)
     real :: m, n
+
     real :: gpp                      ! assimilation (mol m-2 s-1)
     real :: lue                      ! Light use efficiency
-    real :: luenet                   ! Net light use efficiency (after dark respiration)
     real :: vcmax                    ! Vcmax per unit ground area (mol m-2 s-1)
-    real :: vcmax_norm               ! Vcmax normalised per unit iabs
-    real :: rd                       ! Dark respiration (mol m-2 s-1)
-    real :: factor25_vcmax           ! correction factor to normalise Vcmax to 25 deg C
+    real :: vcmax_unitfapar
+    real :: vcmax_unitiabs
     real :: vcmax25                  ! Vcmax25 (vcmax normalized to 25 deg C)
-    real :: n_rubisco                ! N in Rubisco (gN/m2-ground)
-    real :: n_apar                   ! N per unit APAR
+    real :: vcmax25_unitfapar
+    real :: vcmax25_unitiabs
+    real :: rd                       ! Dark respiration (mol m-2 s-1)
+    real :: rd_unitfapar 
+    real :: rd_unitiabs 
+    real :: factor25_vcmax           ! correction factor to normalise Vcmax to 25 deg C
+    real :: actnv 
+    real :: actnv_unitfapar 
+    real :: actnv_unitiabs 
+
 
     ! function return value
     type(outtype_pmodel) :: out_pmodel
@@ -238,14 +261,11 @@ contains
     ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
     fa   = calc_fa( cpalpha )
 
-
     ! Michaelis-Menten coef. (Pa)
     kmm  = calc_k( tc, patm )
-    ! print*,'kmm', kmm -- OK
 
     ! viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
     ns      = calc_viscosity_h2o( tc, patm )  ! Pa s 
-    ! print*,'ns',ns -- OK
     ns25    = calc_viscosity_h2o( kTo, kPo )  ! Pa s 
     ns_star = ns / ns25                       ! (unitless)
 
@@ -292,44 +312,51 @@ contains
     ! Light use efficiency
     lue = kphio * fa * m 
 
-    ! Net light use efficiency (after dark respiration)
-    luenet = kphio * ( fa * m - 0.015 * n ) 
-    
     ! Vcmax per unit ground area is the product of the intrinsic quantum 
     ! efficiency, the absorbed PAR, and 'n'
     vcmax = iabs * kphio * n
 
-    ! Vcmax normalised per unit iabs
-    vcmax_norm = kphio * n 
+    ! Vcmax normalised per unit fAPAR (assuming fAPAR=1)
+    vcmax_unitfapar = ppfd * kphio * n 
 
-    ! Dark respiration  xxx where does 0.015 come from? xxx
-    rd = 0.015 * vcmax
+    ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1)
+    vcmax_unitiabs = kphio * n 
 
     ! Vcmax25 (vcmax normalized to 25 deg C)
-    factor25_vcmax = calc_vcmax25( 1.0, tc )
-    vcmax25        = factor25_vcmax * vcmax
+    factor25_vcmax    = calc_vcmax25( 1.0, tc )
+    vcmax25           = factor25_vcmax * vcmax
+    vcmax25_unitfapar = factor25_vcmax * vcmax_unitfapar
+    vcmax25_unitiabs  = factor25_vcmax * vcmax_unitiabs
 
-    ! canopy N, gN/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
-    n_rubisco  = vcmax25 * n_v 
-    ! calc_n_rubisco_area( vcmax25/2678400 ) ! conversion from month to seconds
-    ! n_cellwall = ncw * 1.0/sla 
-    ! n_canopy   = n_rubisco + n_cellwall
+    ! Dark respiration
+    rd = rd_to_vcmax * vcmax
 
-    ! N per unit APAR
-    n_apar = kphio * n * factor25_vcmax * n_v
+    ! Dark respiration per unit fAPAR (assuming fAPAR=1)
+    rd_unitfapar = rd_to_vcmax * vcmax_unitfapar
 
-    out_pmodel%gpp = gpp
-    out_pmodel%vcmax=vcmax
-    out_pmodel%vcmax25=vcmax25
-    out_pmodel%vcmax_norm=vcmax_norm
-    out_pmodel%factor25_vcmax=factor25_vcmax
-    out_pmodel%rd=rd
-    out_pmodel%n_rubisco=n_rubisco
-    out_pmodel%lue=lue
-    out_pmodel%luenet=luenet
-    out_pmodel%n_apar=n_apar
-    out_pmodel%n=n
-    out_pmodel%m=m
+    ! Dark respiration per unit absorbed PPFD (assuming iabs=1)
+    rd_unitiabs = rd_to_vcmax * vcmax_unitiabs
+
+    ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
+    actnv = vcmax25 * n_v
+    actnv_unitfapar = vcmax25_unitfapar * n_v
+    actnv_unitiabs  = vcmax25_unitiabs  * n_v
+
+
+    ! Construct derived type for output
+    out_pmodel%gpp             = gpp
+    out_pmodel%vcmax           = vcmax
+    out_pmodel%vcmax25         = vcmax25
+    out_pmodel%vcmax_unitfapar = vcmax_unitfapar
+    out_pmodel%vcmax_unitiabs  = vcmax_unitiabs
+    out_pmodel%factor25_vcmax  = factor25_vcmax
+    out_pmodel%rd              = rd
+    out_pmodel%rd_unitfapar    = rd_unitfapar 
+    out_pmodel%rd_unitiabs     = rd_unitiabs 
+    out_pmodel%actnv           = actnv 
+    out_pmodel%actnv_unitfapar = actnv_unitfapar 
+    out_pmodel%actnv_unitiabs  = actnv_unitiabs 
+    out_pmodel%lue             = lue
   
   end function pmodel
 
