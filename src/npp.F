@@ -24,15 +24,15 @@ subroutine npp( jpngr, dtemp )
   implicit none
 
   ! ARGUMENTS
-  integer, intent(in)              :: jpngr
-  real, intent(in)                 :: dtemp      ! air temperature at this day
+  integer, intent(in) :: jpngr
+  real, intent(in)    :: dtemp      ! air temperature at this day
 
   ! LOCAL VARIABLES
   integer :: pft
   integer :: lu
-  real :: ftemp_air
-  real :: ftemp_soil
-  real :: dresp_maint = 0.0    ! daily total maintenance respiration
+  real    :: ftemp_air
+  real    :: ftemp_soil
+  real    :: dresp_maint = 0.0    ! daily total maintenance respiration
 
   !-------------------------------------------------------------------------
   ! PFT LOOP

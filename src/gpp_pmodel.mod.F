@@ -236,7 +236,6 @@ contains
     real :: actnv_unitfapar 
     real :: actnv_unitiabs 
 
-
     ! function return value
     type(outtype_pmodel) :: out_pmodel
 

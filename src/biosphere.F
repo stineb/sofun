@@ -31,19 +31,19 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   implicit none
 
   ! arguments
-  integer, intent(in)                   :: year       ! simulation year
-  integer, intent(in)                   :: realyear   ! year AD (=first simulation year )
-  real, intent(in), dimension(maxgrid)  :: lon        ! longitude vector/field (degrees E)              
-  real, intent(in), dimension(maxgrid)  :: lat        ! latitude vector/field (degrees N)             
-  real, intent(in), dimension(maxgrid)  :: elv        ! elevation (altitude) vector/field (m above sea level)                  
-  real, dimension(3)                    :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
-  real, intent(in)                      :: pco2
-  real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
-  real, intent(in), dimension(ndayyear,maxgrid) :: dprec_field
-  real, intent(in), dimension(ndayyear,maxgrid) :: dfsun_field
-  real, intent(in), dimension(ndayyear,maxgrid) :: dvpd_field
-  real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
-  real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
+  integer, intent(in)                                  :: year       ! simulation year
+  integer, intent(in)                                  :: realyear   ! year AD (=first simulation year )
+  real, intent(in), dimension(maxgrid)                 :: lon        ! longitude vector/field (degrees E)              
+  real, intent(in), dimension(maxgrid)                 :: lat        ! latitude vector/field (degrees N)             
+  real, intent(in), dimension(maxgrid)                 :: elv        ! elevation (altitude) vector/field (m above sea level)                  
+  real, dimension(3)                                   :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
+  real, intent(in)                                     :: pco2
+  real, intent(in), dimension(ndayyear,maxgrid)        :: dtemp_field
+  real, intent(in), dimension(ndayyear,maxgrid)        :: dprec_field
+  real, intent(in), dimension(ndayyear,maxgrid)        :: dfsun_field
+  real, intent(in), dimension(ndayyear,maxgrid)        :: dvpd_field
+  real, intent(in), dimension(ndayyear,maxgrid)        :: dndep_field
+  real, intent(out)                                    :: c_uptake   ! annual net global C uptake by biosphere
 
   ! optional arguments
   real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data       ! for runs with prescribed GPP
