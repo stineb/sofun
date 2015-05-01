@@ -97,12 +97,11 @@ mtemp <- df.temp$temp
 ##----------------------------------------------------------------
 
 ## Run P-model for each month 
-
-mlue       <- rep( NA, nmonth )
-mvcmax_norm <- rep( NA, nmonth )
-mluenet    <- rep( NA, nmonth )
-mnapar     <- rep( NA, nmonth )
-factor25   <- rep( NA, nmonth )
+mlue            <- rep( NA, nmonth )
+mvcmax_unitiabs <- rep( NA, nmonth )
+mactnv_unitiabs <- rep( NA, nmonth )
+mrd_unitiabs    <- rep( NA, nmonth )
+factor25        <- rep( NA, nmonth )
 
 for (moy in 1:nmonth){
 
@@ -113,20 +112,20 @@ for (moy in 1:nmonth){
   mlue[moy] <- out$lue
 
   ## Vcmax per unit fAPAR
-  mvcmax_norm[moy] <- out$vcmax_norm
-
-  ## Net light use efficiency: (gpp - rd) per unit light absorbed
-  mluenet[moy] <- out$luenet
+  mvcmax_unitiabs[moy] <- out$vcmax_unitiabs
 
   ## conversion factor to get from APAR to Rubisco-N
-  mnapar[moy]  <- out$n_apar
+  mactnv_unitiabs[moy]  <- out$actnv_unitiabs
 
   ## factor to convert from 25 deg-normalised to ambient T
   factor25[moy] <- out$factor25_vcmax
 
+  ## dark respiration per unit fAPAR (assuming fAPAR=1)
+  mrd_unitiabs[moy] <- out$rd_unitiabs
+
 }
 
-## Calculate Rubisco-N
+## Monthly mean incoming solar radiation per second, averaged over daylight seconds
 daysecs   <- df.dl$dayl_h * 60 * 60  # number of daylight seconds in a year
 monsecs   <- daily2monthly( daysecs, method="sum" )
 meanmppfd <- mppfd / monsecs         # mol m-2 s-1
@@ -149,14 +148,14 @@ alpha_range   <- seq( 0.01, 30, 0.1 )
 fapar_range   <- calc_fapar( alpha_range, params )
 
 gpp_range      <- sapply( alpha_range, FUN = function(x) calc_agpp( x, leaf_season, mlue, mppfd, params ) )
-vcmax25_range  <- sapply( alpha_range, FUN = function(x) calc_avcmax25( x, leaf_season, mvcmax_norm, meanmppfd, factor25, params ) )
-rd_range       <- sapply( vcmax25_range, FUN = function(x) calc_ard( x, factor25 ) )
-
-nr_canop_range <- vcmax25_range * n_v
+nr_canop_range <- sapply( alpha_range, FUN = function(x) calc_nr_canop( x, leaf_season, mactnv_unitiabs, meanmppfd, params ) )
 nr_leaf_range  <- nr_canop_range / alpha_range
+
+# vcmax25_range  <- sapply( alpha_range, FUN = function(x) calc_avcmax25( x, leaf_season, mvcmax_unit, meanmppfd, factor25, params ) )
+rd_range       <- sapply( alpha_range, FUN = function(x) calc_ard( x, mrd_unitiabs, meanmppfd, params ) )
+
 ncw_canop_range<- nr_canop_range * params$r_n_cw_v + alpha_range * params$ncw_min
 ncw_leaf_range <- ncw_canop_range / alpha_range
-
 
 # nr_canop_range <- sapply( alpha_range, FUN = function(x) calc_nr_canop( x, leaf_season, meanmppfd, mnapar, params ) )
 # nr_leaf_range  <- sapply( alpha_range, FUN = function(x) calc_nr_leaf( x, leaf_season, meanmppfd, mnapar, params ) )
@@ -165,7 +164,7 @@ ncw_leaf_range <- ncw_canop_range / alpha_range
 # gpp_net_range  <- gpp_range - rd_range * 60 * 60 * 24 * ndayyear * c_molmass
 
 gpp_net_range  <- gpp_range - rd_range
-gpp_net_range2 <- sapply( alpha_range, FUN = function(x) calc_agpp( x, leaf_season, mluenet, mppfd, params ) )
+# gpp_net_range2 <- sapply( alpha_range, FUN = function(x) calc_agpp( x, leaf_season, mluenet, mppfd, params ) )
 
 # ncw_canop_range <- sapply( alpha_range, FUN = function(x) calc_ncw_canop( x, leaf_season, meanmppfd, mnapar, params ) )
 # ncw_canop_range_nomin <- sapply( alpha_range, FUN = function(x) calc_ncw_canop_nomin( x, leaf_season, meanmppfd, mnapar, params ) )
@@ -199,8 +198,9 @@ abnreq_range  <- sapply( beta_range, FUN = function(x) abnreq( x, root_season, p
 anreq_range   <- aanreq_range + abnreq_range
 # anreq_range_nomin  <- aanreq_range_nomin + abnreq_range
 
-imbal_range   <- sapply( alpha_range, FUN = function(x) eval_imbalance( x, leaf_season, root_season, ninorg, ntrans, mlue, mppfd, meanmppfd, mnapar, factor25, params ) )
-out.alpha_root  <- uniroot( function(x) eval_imbalance( x, leaf_season, root_season, ninorg, ntrans, mlue, mppfd, meanmppfd, mnapar, factor25, params ), range(alpha_range) )
+imbal_range   <- sapply( alpha_range, FUN = function(x) eval_imbalance( x, leaf_season, root_season, ninorg, ntrans, mlue, mppfd, meanmppfd, mrd_unitiabs, mactnv_unitiabs, factor25, params ) )
+
+out.alpha_root  <- uniroot( function(x) eval_imbalance( x, leaf_season, root_season, ninorg, ntrans, mlue, mppfd, meanmppfd, mrd_unitiabs, mactnv_unitiabs, factor25, params ), range(alpha_range) )
 alpha_root      <- out.alpha_root$root
 
 
@@ -215,7 +215,7 @@ par( las=1, mar=c(4,4,4,4) )
 # pdf( "prod_vs_lai.pdf", width=6, height=5 )
 plot(  alpha_range, gpp_range, type="l", ylab="annual flux (gC/m2/yr)", xlab="LAI" )
 lines( alpha_range, gpp_net_range, col="magenta" )
-lines( alpha_range, gpp_net_range2, col="magenta", lty=2 )
+# lines( alpha_range, gpp_net_range2, col="magenta", lty=2 )
 lines( alpha_range, npp_range, col="green")
 lines( alpha_range, exu_range, col="blue" )
 abline( h=0, col="grey70")
