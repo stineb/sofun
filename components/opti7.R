@@ -99,7 +99,7 @@ params <- list(
               # lma      = 30,     # g C m-2; is mean of Table S1 LMA in Hikosaka& ... divided by 2 (conversion from biomass to C)
               # lma      = 60,     # g C m-2; SLA = 8.3 m2 kg-1, Vile et al., 2005 (Ann. Botany; Table 2, Trees), 0.5 g C / g biomss 
               # sla      = 1/30,  # 0.0083: Vile et al., 2005 (Ann. Botany; Table 2, Trees)     xxx changed from 0.0014
-              r_ctostructn_leaf = 19,
+              r_ctostructn_leaf = 20,
               r_cton_root = 50,
               r_ntoc_root = 1/50,
               c_molmass= 12.0107,  # g C / mol C
@@ -320,6 +320,8 @@ out_ncost     <- rep( NA, ndayyear )
 out_nup       <- rep( NA, ndayyear )
 out_dclabl    <- rep( NA, ndayyear )
 out_gpp       <- rep( NA, ndayyear )
+out_gpp_net   <- rep( NA, ndayyear )
+out_rd        <- rep( NA, ndayyear )
 
 ##----------------------------------------------------------------
 ## determine foliage C:N ratio beforehand, making assumption for LAI
@@ -377,9 +379,11 @@ for (moy in 1:nmonth){
 
     ## Dark respiration
     rd <- calc_drd( lai, mrd_unitiabs[moy], meanmppfd[moy], params )
+    out_rd[doy] <- rd
 
     ## "net GPP" (=GPP-Rd)
     gpp_net <- gpp - rd
+    out_gpp_net[doy] <- gpp_net
 
     # Root maintenance respiration
     rm_root <- croot * params$r_root
@@ -598,6 +602,11 @@ for (moy in 1:nmonth){
     out_clabl[doy]  <- clabl
     out_nlabl[doy]  <- nlabl
 
+
+    ## assimilation at the bottom of the canopy
+    gpp_bottom <- dppfd[doy] * exp( - params$kbeer * lai ) * mlue[moy]
+
+
   }
 }
 
@@ -605,12 +614,12 @@ print(mess)
 
 # plot( 1:doy, out_cton_labl, type="l", ylim=c(-80,80) )
 
-# pdf( "cmass_vs_doy.pdf", width=6, height=5 )
+pdf( "cmass_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_croot[1:doy], type="l", ylab="C mass (gC/m2)", xlab="DOY" )
 lines( 1:doy, out_cleaf[1:doy], type="l", col="red" )
 lines( 1:doy, out_clabl[1:doy], col="blue" )
 legend( "topleft", c("root C","leaf C", "labile C"), lty=1, bty="n", col=c("black","red","blue") )
-# dev.off()
+dev.off()
 
 plot( 1:doy, out_clabl[1:doy], type="l", ylim=range(c( out_clabl[1:doy], out_nlabl[1:doy]),na.rm=T) )
 lines( 1:doy, out_nlabl[1:doy], col="red" )
@@ -621,19 +630,20 @@ lines( 1:doy, out_dcleaf[1:doy], col="red" )
 plot( 1:doy, out_cleaf[1:doy]/out_nleaf[1:doy], type="l" )
 plot( 1:doy, out_croot[1:doy]/out_nroot[1:doy], type="l"  )
 
-# pdf( "lai_vs_doy.pdf", width=6, height=5 )
+pdf( "lai_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_lai[1:doy], type="l", ylab="LAI", xlab="DOY")
-# dev.off()
+dev.off()
 
-# pdf( "cost_of_n_vs_doy.pdf", width=6, height=5 )
+pdf( "cost_of_n_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_ncost[1:doy], type="l", ylim=c(0,200), ylab="C cost per N uptake (gC/gN)", xlab="DOY")
-# dev.off()
+dev.off()
 
-# pdf( "nup_vs_doy.pdf", width=6, height=5 )
+pdf( "nup_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_nup[1:doy], type="l", ylab="N uptake (gN/day)", xlab="DOY")
-# dev.off()
+dev.off()
 
 plot( 1:doy, out_dclabl[1:doy], type="l", ylab="C balance (gC/m2/day)", xlab="DOY")
 plot( 1:doy, out_gpp[1:doy], type="l", ylab="GPP (gC/m2/day)", xlab="DOY")
+plot( 1:doy, out_gpp_net[1:doy], type="l", ylab="GPP-Rd (gC/m2/day)", xlab="DOY")
 
 
