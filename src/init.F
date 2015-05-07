@@ -151,6 +151,7 @@ subroutine initdaily
   use pools
   use statevars
   use nuptake_fun, only: initdaily_nuptake
+  use waterbal_stash, only: initdaily_waterbal
 
   implicit none
 
@@ -170,6 +171,7 @@ subroutine initdaily
 
   ! initialise module-specific output variables
   call initdaily_nuptake
+  call initdaily_waterbal
 
   !! xxx try
   !! hold soil carbon and litter pools at a constant size

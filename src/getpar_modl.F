@@ -17,7 +17,7 @@ subroutine getpar_modl
 
   ! local variables
   integer :: pft
-  integer, parameter :: npar = 6
+  integer, parameter :: npar = 7
   real, dimension(npar) :: params_array
 
   integer, parameter :: npar_pft = 21
@@ -35,22 +35,25 @@ subroutine getpar_modl
   close(20)
   
   ! constant ratio between leaf and sapwood C/N ratios (Friend et al.,2008 in XP08)
-  rcton_LS = params_array(1)
-
+  rcton_LS     = params_array(1)
+  
   ! constant ratio between leaf and root C/N ratios (Friend et al., 2008 in XP08)
-  rcton_LR = params_array(2)
-
+  rcton_LR     = params_array(2)
+  
   ! canopy light extinction coefficient
-  kbeer = params_array(3)
-
+  kbeer        = params_array(3)
+  
   ! additional respiration coefficient, unknown origin ("proposed by Annet Wolf 2008")
-  kresp = params_array(4)
-
+  kresp        = params_array(4)
+  
   ! fraction of N retained at leaf abscission 
-  F_NRETAIN = params_array(5)        
-
+  F_NRETAIN    = params_array(5)        
+  
   ! maximum fractional plant coverage of trees (sum of all tree PFTs)
   fpc_tree_max = params_array(6)
+  
+  ! light extinction coefficient for Beer's Law
+  kbeer        = params_array(7)
 
   ! print*,'finished getting main model parameters'
 

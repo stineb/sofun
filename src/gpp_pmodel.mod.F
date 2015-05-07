@@ -49,15 +49,18 @@ module gpp_pmodel
   ! updated by 'pmodel') are:
   !   - xxx
   !----------------------------------------------------------------
+  use params_core, only: nmonth
+
   implicit none
   ! private
   ! public gpp, outtype_pmodel
 
   ! pmodel PARAMETERS
   ! hard-wired here because well known (xxx some are not well known => read these from file xxx)
-  real, parameter :: kphio = 0.093      ! quantum efficiency (Long et al., 1993)
-  real, parameter :: kPo   = 101325.0   ! standard atmosphere, Pa (Allen, 1973)
-  real, parameter :: kTo   = 25.0       ! base temperature, deg C (Prentice, unpublished)
+  real, parameter :: kphio     = 0.093    ! quantum efficiency (Long et al., 1993)
+  real, parameter :: kPo       = 101325.0 ! standard atmosphere, Pa (Allen, 1973)
+  real, parameter :: kTo       = 25.0     ! base temperature, deg C (Prentice, unpublished)
+  real, parameter :: c_molmass = 12.0107  ! g C / mol C
 
   !-----------------------------------------------------------------------
   ! Email from Tyler (10.3.2015):
@@ -111,7 +114,11 @@ module gpp_pmodel
 
   ! MODULE-SPECIFIC VARIABLES
   ! These are not required outside module 'pmodel', but are used in different SRs of this module
-  ! real :: xxx                    ! xxx
+  real, dimension(nmonth) :: mlue            ! Light use efficiency: (gpp - rd) per unit light absorbed
+  real, dimension(nmonth) :: mvcmax_unitiabs ! Vcmax per unit fAPAR
+  real, dimension(nmonth) :: mactnv_unitiabs ! conversion factor to get from APAR to Rubisco-N
+  real, dimension(nmonth) :: factor25        ! factor to convert from 25 deg-normalised to ambient T
+  real, dimension(nmonth) :: mrd_unitiabs    ! dark respiration per unit fAPAR (assuming fAPAR=1)
 
   ! DAILY OUTPUT VARIABLES
   ! xxx add jpngr dim
@@ -145,33 +152,128 @@ module gpp_pmodel
 
 contains
 
-  subroutine gpp( jpngr, fpar, ppfd, co2, tc, vpd, elv, method )
+  subroutine getlue( jpngr, co2, dtemp, dvpd, elv )
     !//////////////////////////////////////////////////////////////////
-    ! Output:   gpp (gC/m2/d)   : gross primary production (xxx month -> day)
+    ! Calculates the monthly acclimated photosynthetic parameters for 
+    ! assimilation, Vcmax, and dark respiration per unit light absorbed.
+    ! This SR is called before the daily loop. This implies that all 
+    ! input variables need to be known beforehand => no daily coupling
+    ! possible.
     !------------------------------------------------------------------
-    use fluxes, only: dgpp
+    use params_core, only: ndayyear
+    use sofunutils, only: daily2monthly
 
     ! arguments
-    integer, intent(in) :: jpngr    ! gridcell number
-    real, intent(in)    :: fpar     ! monthly fraction of absorbed photosynthetically active radiation (unitless) 
-    real, intent(in)    :: ppfd     ! photon flux density (xxx)
-    real, intent(in)    :: co2      ! atmospheric CO2 (ppm)
-    real, intent(in)    :: tc       ! air temperature (deg C)
-    real, intent(in)    :: vpd      ! vapour pressure deficit (Pa)
-    real, intent(in)    :: elv      ! elevation above sea level (m)
-    character(len=*), intent(in), optional :: method
+    integer, intent(in)                   :: jpngr    ! gridcell number
+    real, intent(in)                      :: co2      ! atmospheric CO2 (ppm)
+    real, dimension(ndayyear), intent(in) :: dtemp    ! daily air temperature (deg C)
+    real, dimension(ndayyear), intent(in) :: dvpd     ! daily vapour pressure deficit (Pa)
+    real, intent(in)                      :: elv      ! elevation above sea level (m)
 
     ! local variables
+    type(outtype_pmodel)    :: out_pmodel ! derived type for P-model output variable list
+    real, dimension(nmonth) :: mtemp      ! monthly air temperature (deg C)
+    real, dimension(nmonth) :: mvpd       ! monthly vapour pressure deficit (Pa)
+    integer :: moy
+
+    integer :: moy
     type(outtype_pmodel) :: out_pmodel
-    character(len=10) :: mymethod
 
-    if (present(method)) then
-      mymethod = method
-    else  
-      mymethod = "full"
-    end if
+    real, dimension(nmonth) :: out_gpp, out_rd
 
-    if (trim(mymethod)=="prescr") then
+
+    ! Get monthly averages
+    mtemp(:) = daily2monthly( dtemp(:), "mean" )
+    mvpd(:)  = daily2monthly( dvpd(:), "mean" )
+
+    ! xxx debug
+    write(0,*) 'mtemp', mtemp
+    write(0,*) 'mvpd', mvpd
+    stop
+
+    ! ! xxx try out: -- THIS WORKS PERFECTLY -- 
+    ! co2    = 376.0
+    ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
+    ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
+    ! ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
+
+
+    ! Run P-model for monthly averages and store monthly variables 
+    ! per unit absorbed light (not corrected for soil moisture)
+    do moy=1,nmonth
+
+      ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
+      out_pmodel           = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
+
+      ! Light use efficiency: (gpp - rd) per unit light absorbed
+      mlue(moy)            = out_pmodel%lue
+      
+      ! Vcmax per unit fAPAR
+      mvcmax_unitiabs(moy) = out_pmodel%vcmax_unitiabs
+      
+      ! conversion factor to get from APAR to Rubisco-N
+      mactnv_unitiabs(moy) = out_pmodel%actnv_unitiabs
+      
+      ! factor to convert from 25 deg-normalised to ambient T
+      factor25(moy)        = out_pmodel%factor25_vcmax
+      
+      ! dark respiration per unit fAPAR (assuming fAPAR=1)
+      mrd_unitiabs(moy)    = out_pmodel%rd_unitiabs
+
+    end do
+
+
+    ! ! xxx debug
+    ! write(0,*) 'mtemp', mtemp
+    ! write(0,*) 'mvpd', mvpd
+    ! write(0,*) 'co2', co2
+    ! write(0,*) 'elv', elv
+    ! write(0,*) 'mlue', mlue
+    ! write(0,*) 'mvcmax_unitiabs', mvcmax_unitiabs
+    ! write(0,*) 'mactnv_unitiabs', mactnv_unitiabs
+    ! write(0,*) 'factor25', factor25
+    ! write(0,*) 'mrd_unitiabs', mrd_unitiabs
+    ! stop
+
+
+  end subroutine getlue
+
+
+  subroutine gpp( jpngr, doy, moy, dgpp_data )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
+    ! etic parameters (P-model output) and actual daily PPFD and soil
+    ! moisture stress (Cramer-Prentice Alpha).
+    ! Alternatively ready from data (prescribed GPP array).
+    !
+    ! Output:   
+    ! - gpp (gC/m2/d)   : gross primary production
+    !
+    ! Requires from outside this module:
+    ! - lai_ind
+    ! - dpppfd
+    !------------------------------------------------------------------
+    use params_core, only: npft
+    use fluxes, only: dgpp, drd
+    use params_modl, only: kbeer
+    use treegeometry, only: lai_ind, get_fpc_ind
+    use waterbal_stash, only: dppfd, meanmppfd
+
+    ! arguments
+    ! integer, intent(in), optional               :: jpngr     ! gridcell number
+    ! integer, intent(in), optional               :: doy       ! day of year and month of year
+    ! integer, intent(in), optional               :: moy       ! month of year and month of year
+    ! real, dimension(npft), intent(in), optional :: dgpp_data ! prescribed daily GPP for this gridcell
+    integer, intent(in)                         :: jpngr     ! gridcell number
+    integer, intent(in)                         :: doy       ! day of year and month of year
+    integer, intent(in)                         :: moy       ! month of year and month of year
+    real, dimension(npft), intent(in), optional :: dgpp_data ! prescribed daily GPP for this gridcell
+
+    ! local variables
+    integer :: pft
+    real    :: fapar
+
+    if (present(dgpp_data)) then
       !----------------------------------------------------------------
       ! PRESCRIBED GPP
       !----------------------------------------------------------------
@@ -179,18 +281,71 @@ contains
 
     else
       !----------------------------------------------------------------
-      ! PREDICTED GPP FROM CO2, FAPAR
+      ! CALCULATE PREDICTED GPP FROM P-model
+      ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
       !----------------------------------------------------------------
-      out_pmodel   = pmodel( fpar, ppfd, co2, tc, cpalpha, vpd, elv, trim(mymethod) )
+      do pft=1,npft
+  
+        ! Fraction of absorbed photosynthetically active radiation (fAPAR)
+        ! follows Beer's Law.
+        fapar = get_fpc_ind( lai_ind(pft,jpngr) )
+        ! write(0,*) 'fapar', fapar
+        ! write(0,*) 'lai_ind', lai_ind(pft,jpngr)
 
+        ! xxx try
+        fapar = 1.0
 
-      out_pmodel   = pmodel( fpar, mppfd(moy), co2, mtemp(moy), cpalpha, mvpd(moy), elv, "full" )
-      out_gpp(moy) = out_pmodel%gpp
-      out_rd(moy)  = out_pmodel%rd
+        ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
+        dgpp(pft) = calc_dgpp( fapar, dppfd(doy), mlue(moy) )
+
+        ! Dark respiration
+        drd(pft) = calc_drd( fapar, meanmppfd(moy), mrd_unitiabs(moy) )
+
+      end do
 
     end if
 
+    ! write(0,*) 'dgpp', dgpp
+    ! write(0,*) 'sum(dppfd)',sum(dppfd)
+    ! stop
+
   end subroutine gpp
+
+
+  function calc_dgpp( fapar, dppfd, mlue ) result( dgpp )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates daily GPP
+    !------------------------------------------------------------------
+    ! arguments
+    real :: fapar
+    real :: dppfd
+    real :: mlue
+
+    ! function return variable
+    real :: dgpp
+
+    ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
+    dgpp = fapar * dppfd * mlue * c_molmass
+
+  end function calc_dgpp
+
+
+  function calc_drd( fapar, meanmppfd, mrd_unitiabs ) result( drd )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates daily dark respiration (Rd)
+    !------------------------------------------------------------------
+    ! arguments
+    real :: fapar           ! fraction of absorbed PAR (unitless)
+    real :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
+    real :: mrd_unitiabs
+
+    ! function return variable
+    real :: drd
+
+    ! Dark respiration takes place during night and day (24 hours)
+    drd = fapar * meanmppfd * mrd_unitiabs * 60.0 * 60.0 * 24.0 * c_molmass
+
+  end function calc_drd
 
 
   function pmodel( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method ) result( out_pmodel )
@@ -236,6 +391,7 @@ contains
     real :: actnv_unitfapar 
     real :: actnv_unitiabs 
 
+
     ! function return value
     type(outtype_pmodel) :: out_pmodel
 
@@ -257,7 +413,6 @@ contains
 
     ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
     fa   = calc_fa( cpalpha )
-
 
     ! Michaelis-Menten coef. (Pa)
     kmm  = calc_k( tc, patm )
@@ -359,33 +514,33 @@ contains
   end function pmodel
 
 
-  function calc_n_rubisco_area( vcmax25 ) result( n_rubisco_area )
-    !-----------------------------------------------------------------------
-    ! Returns Rubisco N content per unit leaf area for a given Vcmax.
-    ! Reference: Harrison et al., 2009, Plant, Cell and Environment; Eq. 3
-    !-----------------------------------------------------------------------
+  ! function calc_n_rubisco_area( vcmax25 ) result( n_rubisco_area )
+  !   !-----------------------------------------------------------------------
+  !   ! Returns Rubisco N content per unit leaf area for a given Vcmax.
+  !   ! Reference: Harrison et al., 2009, Plant, Cell and Environment; Eq. 3
+  !   !-----------------------------------------------------------------------
 
-    ! argument
-    real, intent(in) :: vcmax25                      ! leaf level Vcmax  at 25 deg C, (mol CO2) m-2 s-1
+  !   ! argument
+  !   real, intent(in) :: vcmax25                      ! leaf level Vcmax  at 25 deg C, (mol CO2) m-2 s-1
 
-    ! function retrurn value
-    real, intent(out) :: n_rubisco_area              ! Rubisco N content per unit leaf area, (g N)(m-2 leaf)
+  !   ! function retrurn value
+  !   real, intent(out) :: n_rubisco_area              ! Rubisco N content per unit leaf area, (g N)(m-2 leaf)
 
-    ! local variables
-    real :: n_v                                      ! Rubisco N per unit Vcmax (xxx units xxx)
+  !   ! local variables
+  !   real :: n_v                                      ! Rubisco N per unit Vcmax (xxx units xxx)
 
-    real, parameter :: mol_weight_rubisco = 5.5e5    ! molecular weight of Rubisco, (g R)(mol R)-1
-    real, parameter :: n_conc_rubisco     = 1.14e-2  ! N concentration in rubisco, (mol N)(g R)-1
-    real, parameter :: mol_weight_n       = 14.0067  ! molecular weight of N, (g N)(mol N)-1
-    real, parameter :: cat_turnover_per_site = 3.5   ! catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1
-    real, parameter :: cat_sites_per_mol_R   = 8.0   ! number of catalytic sites per mol R, (mol R sites)(mol R)-1
+  !   real, parameter :: mol_weight_rubisco = 5.5e5    ! molecular weight of Rubisco, (g R)(mol R)-1
+  !   real, parameter :: n_conc_rubisco     = 1.14e-2  ! N concentration in rubisco, (mol N)(g R)-1
+  !   real, parameter :: mol_weight_n       = 14.0067  ! molecular weight of N, (g N)(mol N)-1
+  !   real, parameter :: cat_turnover_per_site = 3.5   ! catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1
+  !   real, parameter :: cat_sites_per_mol_R   = 8.0   ! number of catalytic sites per mol R, (mol R sites)(mol R)-1
 
-    ! Metabolic N ratio
-    n_v = mol_weight_rubisco * n_conc_rubisco * mol_weight_n / ( cat_turnover_per_site * cat_sites_per_mol_R )
+  !   ! Metabolic N ratio
+  !   n_v = mol_weight_rubisco * n_conc_rubisco * mol_weight_n / ( cat_turnover_per_site * cat_sites_per_mol_R )
 
-    n_rubisco_area = vcmax25 * n_v
+  !   n_rubisco_area = vcmax25 * n_v
 
-  end function calc_n_rubisco_area
+  ! end function calc_n_rubisco_area
 
 
   function lue_approx( temp, vpd, elv, ca, gs ) result( out_lue )

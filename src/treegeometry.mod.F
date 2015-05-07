@@ -77,7 +77,7 @@ contains
   end subroutine update_fpc
 
 
-  function get_nind( tree, fpc_grid, crownarea, fpc_ind )
+  function get_nind( tree, fpc_grid, crownarea, fpc_ind ) result( nind )
     !////////////////////////////////////////////////////////////////
     !----------------------------------------------------------------
     use pools, only: pleaf
@@ -91,18 +91,18 @@ contains
     real,intent(in) :: fpc_ind
 
     ! FUNCTION RETURN VARIABLE
-    real, intent(out) :: get_nind
+    real, intent(out) :: nind
 
     if (tree) then
-      get_nind = fpc_grid / ( crownarea * fpc_ind )
+      nind = fpc_grid / ( crownarea * fpc_ind )
     else
-      get_nind = 1.0
+      nind = 1.0
     end if
 
   end function get_nind
 
 
-  function get_fpc_grid( crownarea, nind, fpc_ind )
+  function get_fpc_grid( crownarea, nind, fpc_ind ) result( fpc_grid )
     !////////////////////////////////////////////////////////////////
     ! Function returns total fractional plant cover of a PFT
     ! Eq. 8 in Sitch et al., 2003
@@ -114,14 +114,14 @@ contains
     real, intent(in) :: fpc_ind
 
     ! function return variable
-    real, intent(out) :: get_fpc_grid
+    real, intent(out) :: fpc_grid
 
-    get_fpc_grid = crownarea * nind * fpc_ind
+    fpc_grid = crownarea * nind * fpc_ind
 
   end function get_fpc_grid
 
 
-  function get_fpc_ind( lai_ind )
+  function get_fpc_ind( lai_ind ) result( fpc_ind )
     !////////////////////////////////////////////////////////////////
     ! Function returns fractional plant cover an individual
     ! Eq. 7 in Sitch et al., 2003
@@ -132,14 +132,14 @@ contains
     real, intent(in) :: lai_ind
 
     ! function return variable
-    real, intent(out) :: get_fpc_ind
+    real, intent(out) :: fpc_ind
 
-    get_fpc_ind = ( 1.0 - exp( -1.0 * kbeer * lai_ind) )
+    fpc_ind = ( 1.0 - exp( -1.0 * kbeer * lai_ind) )
 
   end function get_fpc_ind
 
 
-  function get_lai_ind( pleaf, crownarea, pft )
+  function get_lai_ind( pleaf, crownarea, pft ) result( lai_ind )
     !////////////////////////////////////////////////////////////////
     ! Function returns leaf area index of an individual
     ! Eq. 5 in Sitch et al., 2003
@@ -153,16 +153,16 @@ contains
     integer, intent(in) :: pft
 
     ! function return variable
-    real :: get_lai_ind
+    real :: lai_ind
 
 #if _check_sanity
     if (crownarea<0.0) stop 'GET_LAI_IND: crownarea < 0'
 #endif
 
     if (crownarea==0.0) then
-      get_lai_ind = 0.0
+      lai_ind = 0.0
     else
-      get_lai_ind = pleaf * sla(pft) / crownarea
+      lai_ind = pleaf * sla(pft) / crownarea
     endif
 
   end function get_lai_ind

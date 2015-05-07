@@ -646,4 +646,3 @@ plot( 1:doy, out_dclabl[1:doy], type="l", ylab="C balance (gC/m2/day)", xlab="DO
 plot( 1:doy, out_gpp[1:doy], type="l", ylab="GPP (gC/m2/day)", xlab="DOY")
 plot( 1:doy, out_gpp_net[1:doy], type="l", ylab="GPP-Rd (gC/m2/day)", xlab="DOY")
 
-

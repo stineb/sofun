@@ -14,6 +14,7 @@
 
     type(carbon), dimension(nlu)  :: dnep     ! net ecosystem production [gC/m2/d]
     real, dimension(npft)         :: dgpp     ! gross primary production [gC/m2/d]
+    real, dimension(npft)         :: drd      ! dark respiration [gC/m2/d]
     type(carbon), dimension(npft) :: dnpp     ! net primary production [gC/m2/d]
     
     type(carbon), dimension(npft) :: drsoil   ! soil respiration (only from exudates decomp.) [gC/m2/d]
