@@ -101,8 +101,8 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method="full" ){
   # Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
   # (0.015 was before)
   # rd_to_vcmax <- 0.078
-  # rd_to_vcmax <- 0.015
-  rd_to_vcmax <- 0.04
+  rd_to_vcmax <- 0.015
+  # rd_to_vcmax <- 0.04
 
   ## absorbed photosynthetically active radiation (mol/m2)
   iabs <- fpar * ppfd
@@ -173,42 +173,50 @@ pmodel <- function( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method="full" ){
   ## Light use efficiency (gpp per unit iabs)
   lue <- kphio * fa * m
 
-  ## Net light use efficiency (after dark respiration)
-  luenet <- kphio * ( fa * m - rd_to_vcmax * n ) 
-  
   ## Vcmax per unit ground area is the product of the intrinsic quantum 
   ## efficiency, the absorbed PAR, and 'n'
   vcmax <- iabs * kphio * n
 
-  ## Vcmax normalised per unit iabs
-  vcmax_norm <- kphio * n 
+  ## Vcmax normalised per unit fAPAR (assuming fAPAR=1)
+  vcmax_unitfapar <- ppfd * kphio * n 
 
-  ## Dark respiration  xxx where does 0.015 come from? xxx
-  rd <- rd_to_vcmax * vcmax
+  ## Vcmax normalised per unit absorbed PPFD (assuming iabs=1)
+  vcmax_unitiabs <- kphio * n 
 
   ## Vcmax25 (vcmax normalized to 25 deg C)
-  factor25_vcmax <- calc_vcmax25( 1.0, tc )
-  vcmax25        <- factor25_vcmax * vcmax
+  factor25_vcmax    <- calc_vcmax25( 1.0, tc )
+  vcmax25           <- factor25_vcmax * vcmax
+  vcmax25_unitfapar <- factor25_vcmax * vcmax_unitfapar
+  vcmax25_unitiabs  <- factor25_vcmax * vcmax_unitiabs
 
-  ## canopy N, mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
-  n_rubisco  <- vcmax25 * n_v 
+  ## Dark respiration
+  rd <- rd_to_vcmax * vcmax
 
-  ## N per unit APAR mol N s(mol CO2)-1
-  n_apar <- kphio * n * factor25_vcmax * n_v
+  ## Dark respiration per unit fAPAR (assuming fAPAR=1)
+  rd_unitfapar <- rd_to_vcmax * vcmax_unitfapar
+
+  ## Dark respiration per unit absorbed PPFD (assuming iabs=1)
+  rd_unitiabs <- rd_to_vcmax * vcmax_unitiabs
+
+  ## active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
+  actnv <- vcmax25 * n_v
+  actnv_unitfapar <- vcmax25_unitfapar * n_v
+  actnv_unitiabs  <- vcmax25_unitiabs  * n_v
 
   out <- list( 
               gpp=gpp,                       # mol C   m-2 s-1 (given that ppfd is provided in units of s-1)
               vcmax=vcmax,                   # mol CO2 m-2 s-1 (given that ppfd is provided in units of s-1)
               vcmax25=vcmax25,               # mol CO2 m-2 s-1 (given that ppfd is provided in units of s-1)
-              vcmax_norm=vcmax_norm,
+              vcmax_unitfapar=vcmax_unitfapar,
+              vcmax_unitiabs=vcmax_unitiabs,
               factor25_vcmax=factor25_vcmax, # unitless
               rd=rd, 
-              n_rubisco=n_rubisco, 
-              lue=lue, 
-              luenet=luenet, 
-              n_apar=n_apar,
-              n=n,
-              m=m
+              rd_unitfapar=rd_unitfapar, 
+              rd_unitiabs=rd_unitiabs, 
+              actnv=actnv, 
+              actnv_unitfapar=actnv_unitfapar, 
+              actnv_unitiabs=actnv_unitiabs, 
+              lue=lue
               )
   return( out )
 }

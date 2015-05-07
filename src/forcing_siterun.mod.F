@@ -72,6 +72,7 @@ contains
     do mo=1,nmonth
       mvpd(mo) = calc_vpd( mtemp(mo), mvapr(mo) )
     end do
+    write(0,*) 'mvpd', mvpd(:)
 
     ! use monthly value for each day in month for dfsun, and dvpd
     day=0
@@ -201,7 +202,7 @@ contains
   end subroutine getlanduse
 
 
-  function calc_vpd( tc, vap, tmin, tmax )
+  function calc_vpd( tc, vap, tmin, tmax ) result( vpd )
     !-----------------------------------------------------------------------
     ! Output:   mean monthly vapor pressure deficit, Pa (vpd)
     ! Features: Returns mean monthly vapor pressure deficit
@@ -213,28 +214,29 @@ contains
     !                 tc = average daily air temperature, deg C
     !                 vap  = actual vapor pressure, kPa
     !-----------------------------------------------------------------------
-    implicit none
-
     ! arguments
     real, intent(in) :: tc            ! mean monthly temperature, deg C
     real, intent(in) :: vap             ! mean monthly vapor pressure, hPa (because CRU data is in hPa)
     real, intent(in), optional :: tmin  ! (optional) mean monthly min daily air temp, deg C 
     real, intent(in), optional :: tmax  ! (optional) mean monthly max daily air temp, deg C 
 
+    ! local variables
+    real :: my_tc
+
     ! function return variable
-    real, intent(out) :: calc_vpd       !  mean monthly vapor pressure deficit, Pa
+    real, intent(out) :: vpd       !  mean monthly vapor pressure deficit, Pa
 
     if ( present(tmin) .and. present(tmax) ) then
-      tc = 0.5 * (tmin + tmax)
+      my_tc = 0.5 * (tmin + tmax)
+    else
+      my_tc = tc
     end if
 
     !! calculate VPD in units of kPa
-    calc_vpd = ( 0.611 * exp( (17.27 * tc)/(tc + 237.3) ) - 0.10 * vap )    
+    vpd = ( 0.611 * exp( (17.27 * my_tc)/(my_tc + 237.3) ) - 0.10 * vap )    
 
     !! convert to Pa
-    calc_vpd = calc_vpd * 1e3
-
-    return
+    vpd = vpd * 1.0e3
 
   end function calc_vpd
 

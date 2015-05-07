@@ -14,14 +14,13 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use params_siml
   use params_site
   use params_modl
-  use waterbal_stash, only: waterbal
+  use waterbal_stash, only: waterbal, getrad, outdcpa
   use fixveg
   use soiltemp_sitch, only: soiltemp
-  use waterbal_stash, only: outdcpa ! used for soiltemp xxx make this global?
   use phenology_lpx, only: summerphenology
   use ntransform_xuri, only: ntransform
   use littersom_lpj, only: littersom
-  ! use gpp_pmodel, only: gpp
+  use gpp_pmodel, only: gpp, getlue
 
   ! xxx debug
   use fluxes
@@ -31,19 +30,19 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   implicit none
 
   ! arguments
-  integer, intent(in)                   :: year       ! simulation year
-  integer, intent(in)                   :: realyear   ! year AD (=first simulation year )
-  real, intent(in), dimension(maxgrid)  :: lon        ! longitude vector/field (degrees E)              
-  real, intent(in), dimension(maxgrid)  :: lat        ! latitude vector/field (degrees N)             
-  real, intent(in), dimension(maxgrid)  :: elv        ! elevation (altitude) vector/field (m above sea level)                  
-  real, dimension(3)                    :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
-  real, intent(in)                      :: pco2
+  integer, intent(in)                           :: year       ! simulation year
+  integer, intent(in)                           :: realyear   ! year AD (=first simulation year )
+  real, intent(in), dimension(maxgrid)          :: lon        ! longitude vector/field (degrees E)              
+  real, intent(in), dimension(maxgrid)          :: lat        ! latitude vector/field (degrees N)             
+  real, intent(in), dimension(maxgrid)          :: elv        ! elevation (altitude) vector/field (m above sea level)                  
+  real, dimension(3)                            :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
+  real, intent(in)                              :: pco2
   real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
   real, intent(in), dimension(ndayyear,maxgrid) :: dprec_field
   real, intent(in), dimension(ndayyear,maxgrid) :: dfsun_field
   real, intent(in), dimension(ndayyear,maxgrid) :: dvpd_field
   real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
-  real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
+  real, intent(out)                             :: c_uptake   ! annual net global C uptake by biosphere
 
   ! optional arguments
   real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data       ! for runs with prescribed GPP
@@ -72,20 +71,22 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   !   end subroutine gpp
   ! end interface
 
-  interface
-    subroutine gpp( jpngr, pco2, dgpp_data )
-      
-      ! optional set of arguments if 'dgpp' is to be predicted
-      integer, intent(in), optional :: jpngr                  ! gridcell number
-      real, intent(in), optional    :: pco2                    ! atmospheric CO2 concentration [ppm]
 
-      ! optional set of arguments if 'dgpp' is to be prescribed
-      real, dimension(npft), intent(in), optional :: dgpp_data
-    
-    end subroutine gpp
-  end interface
+  ! !----------------------------------------------------------------
+  ! ! Declare interface here for subroutines with optional arguments
+  ! !----------------------------------------------------------------
+  ! interface
+  !   subroutine gpp( jpngr, doy, moy, dgpp_data )
+  !     integer, intent(in), optional               :: jpngr     ! gridcell number
+  !     integer, intent(in), optional               :: doy       ! day of year and month of year
+  !     integer, intent(in), optional               :: moy       ! month of year and month of year
+  !     real, dimension(npft), intent(in), optional :: dgpp_data ! prescribed daily GPP for this gridcell
+  !   end subroutine gpp
+  ! end interface
 
-
+  !----------------------------------------------------------------
+  ! INITIALISATIONS
+  !----------------------------------------------------------------
   if (init) then
 
     ! xxx check: if (present(fpc_grid_data)) .and. dynveg then abort
@@ -97,7 +98,9 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
     ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
+    !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
+    !----------------------------------------------------------------
     call initglobal
 
     ! print*,'B'
@@ -107,7 +110,9 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     ! print*,'psoil_fs(1,1)%c%c12',psoil_fs(1,1)%c%c12
     ! print*,'psoil_sl(1,1)%c%c12',psoil_sl(1,1)%c%c12
 
+    !----------------------------------------------------------------
     ! Open input/output files
+    !----------------------------------------------------------------
     call initio(runname)
 
   endif 
@@ -117,7 +122,9 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
   ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
+  !----------------------------------------------------------------
   ! Initialise output variables for this year
+  !----------------------------------------------------------------
   call initoutput
 
   ! print*,'D'
@@ -125,34 +132,65 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
   ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
+  !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
+  !----------------------------------------------------------------
   do jpngr=1,maxgrid
 
+    !----------------------------------------------------------------
     ! initialise annually updated variables
+    !----------------------------------------------------------------
     call initannual
 
     !call snow
 
+    !----------------------------------------------------------------
     ! get temperature-driven phenology (drought-driven phenology is calculated after waterbalance)
+    !----------------------------------------------------------------
     call summerphenology(jpngr, dtemp_field(:,jpngr))
 
     !call climate20
     !call bioclim -> SR contained in 'establishment'
     !call conversion( lu_area )
 
+    !----------------------------------------------------------------
     ! sapling addition on bare ground, tree geometry update
+    !----------------------------------------------------------------
     call establishment( jpngr, fpc_grid_data(:,jpngr) )
 
 
+    !----------------------------------------------------------------
+    ! Get monthly light use efficiency, and Rd per unit of light absorbed
+    ! Photosynthetic parameters acclimate at monthly time scale
+    ! This is not compatible with a daily biosphere-climate coupling. I.e., 
+    ! there is a monthly loop within 'getlue'!
+    !----------------------------------------------------------------
+    call getlue( jpngr, pco2, dtemp_field(:,jpngr), dvpd_field(:,jpngr), elv(jpngr) )
+
+    !----------------------------------------------------------------
+    ! Get radiation, evaporation, and soil moisture based on daily precipitation,
+    ! temperature, sunshine fraction, and elevation (previously known!)
+    ! This is not compatible with a daily biosphere-climate coupling. I.e., 
+    ! there is a daily loop within 'getrad'!
+    !----------------------------------------------------------------
+    call getrad( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
+
+
+    !----------------------------------------------------------------
     ! LOOP THROUGH MONTHS
+    !----------------------------------------------------------------
     day=0
     do mo=1,nmonth
 
+      !----------------------------------------------------------------
       ! LOOP THROUGH DAYS
+      !----------------------------------------------------------------
       do dm=1,ndaymonth(mo)
         day=day+1
 
+        !----------------------------------------------------------------
         ! initialise daily updated variables 
+        !----------------------------------------------------------------
         call initdaily
 
         ! print*,'E'
@@ -161,24 +199,32 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12
         ! print*,'nh4 ',nh4(1,1)%n14 
 
+        !----------------------------------------------------------------
         ! get soil moisture, and runoff
         !call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
         ! xxx try
-        call waterbal( jpngr, day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
+        !----------------------------------------------------------------
+        call waterbal( jpngr, day, lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
 
+        !----------------------------------------------------------------
         ! get GPP from input
+        !----------------------------------------------------------------
         if ( present(dgpp_data) ) then
-          call gpp( dgpp_data=dgpp_data(day,:) )
-        ! else 
-        !   call gpp( jpngr, ppfd=ppfd_d, co2=co2, tc=mtemp, vpd=mvpd, elv=elv )
+          call gpp( jpngr, day, mo, dgpp_data(day,:) )
+        else 
+          call gpp( jpngr, day, mo )
         end if   
 
+        !----------------------------------------------------------------
         ! use SR 'sitchtemp'
+        !----------------------------------------------------------------
         call soiltemp( jpngr, mo, day, dtemp_field(:,jpngr), outdcpa(:,:,jpngr) )
 
+        !----------------------------------------------------------------
         ! substract autotrophic respiration to get NPP, remainder is added to
         ! labile pool (plabl)
         ! xxx try: second argument is dtemp_soil
+        !----------------------------------------------------------------
         call npp( jpngr, dtemp_field(day,jpngr) )
 
         ! print*,'F'
@@ -196,16 +242,22 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! amount of NPP added to reproduction (xxx ignore at this point)
         !call reproduction( jpngr )
 
+        !----------------------------------------------------------------
         ! leaf, sapwood, and fine-root turnover
+        !----------------------------------------------------------------
         call turnover( jpngr )
 
+        !----------------------------------------------------------------
         ! litter and soil turnover
+        !----------------------------------------------------------------
         call littersom( jpngr, day )
         ! print*,'F'
         ! print*,'nh4 ',nh4(1,1)%n14 
 
 
+        !----------------------------------------------------------------
         ! inorganic soil N chemistry
+        !----------------------------------------------------------------
         call ntransform( dm, mo, jpngr, sum(dprec_field(:,jpngr)) )
 
         ! print*,'G'
@@ -214,7 +266,9 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
         ! print*,'nh4 ',nh4(1,1)%n14 
 
+        !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
+        !----------------------------------------------------------------
         call getout_daily( jpngr, mo, day )
 
         ! print*,'H'
@@ -232,8 +286,10 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
 
+    !----------------------------------------------------------------
     ! allocate biomass increment
     ! precompiler flag used here because option requires allocation to be called daily
+    !----------------------------------------------------------------
     call allocation_annual( jpngr )
 
     ! print*,'K'
@@ -250,10 +306,14 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !call mortality
     !call fire
 
+    !----------------------------------------------------------------
     ! collect annually updated output variables
+    !----------------------------------------------------------------
     call getout_annual( jpngr )
 
+    !----------------------------------------------------------------
     ! Write to output
+    !----------------------------------------------------------------
     call writeout_ascii( year, dtemp_field(:,jpngr) )
 
   end do

@@ -61,6 +61,12 @@ istart <- which.min( abs(df.dl$year-2002.0) )
 df.dl <- df.dl[ istart:(istart+ndayyear-1), ]
 ddl  <- df.dl$dayl_h
 
+## Monthly mean incoming solar radiation per second, averaged over daylight seconds
+daysecs   <- df.dl$dayl_h * 60 * 60  # number of daylight seconds in a year
+monsecs   <- daily2monthly( daysecs, method="sum" )
+meanmppfd <- mppfd / monsecs         # mol m-2 s-1
+# meandppfd <- dppfd / daysecs
+
 ## VPD
 filnam <- "/alphadata01/bstocker/sofun/trunk/components/mvpd_CH-Oe1_2002.txt"
 df.vpd <- read.csv(filnam)
@@ -92,10 +98,9 @@ params <- list(
               c_content_of_biomass = 0.46, # McMurtrie & Dewar, 2011
               # lma      = 30,     # g C m-2; is mean of Table S1 LMA in Hikosaka& ... divided by 2 (conversion from biomass to C)
               # lma      = 60,     # g C m-2; SLA = 8.3 m2 kg-1, Vile et al., 2005 (Ann. Botany; Table 2, Trees), 0.5 g C / g biomss 
-              sla      = 1/30,  # 0.0083: Vile et al., 2005 (Ann. Botany; Table 2, Trees)     xxx changed from 0.0014
-              r_cton_leaf = 19,
+              # sla      = 1/30,  # 0.0083: Vile et al., 2005 (Ann. Botany; Table 2, Trees)     xxx changed from 0.0014
+              r_ctostructn_leaf = 20,
               r_cton_root = 50,
-              r_ntoc_leaf = 1/19,
               r_ntoc_root = 1/50,
               c_molmass= 12.0107,  # g C / mol C
               kphio    = 0.093,
@@ -121,20 +126,29 @@ calc_fapar <- function( lai, params ){
   })
 }
 
-calc_dgpp <- function( cleaf, mluenet, dppfd, params ){
+calc_dgpp <- function( lai, mlue, dppfd, params ){
+  ## Returns daily GPP leaf C as a function of LAI
 
-  ## Returns annual "net" GPP (= GPP - Rd) as a function of LAI (alpha)
   with( params, {
 
-    lai    <- cleaf * sla
     fapar  <- calc_fapar( lai, params )
 
     ## calculate monthly gpp vector, convert from mol/m2/month to gC/m2/month
-    dgpp_net <- sum( dppfd * fapar * mluenet ) * c_molmass 
+    dgpp <- sum( dppfd * fapar * mlue ) * c_molmass 
 
-    return(dgpp_net)  
+    return(dgpp)  
   })
 }
+
+
+calc_drd <- function( lai, mrd_unitiabs, meanmppfd, params ){
+  with( params,{
+    fapar <- calc_fapar( lai, params )
+    drd   <- fapar * meanmppfd * mrd_unitiabs * 60 * 60 * 24 * c_molmass
+    return(drd)
+  })
+}
+
 
 calc_dnup <- function( croot, n0, params ){
   # This follows from FUN approach with
@@ -149,7 +163,29 @@ calc_dnup <- function( croot, n0, params ){
   })
 }
 
+calc_nr_leaf <- function( lai, mactnv_unitiabs, meanmppfd, params ){
+  with( params,{
 
+    fapar  <- calc_fapar( lai, params )
+
+    ## Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
+    nr_leaf <- max( fapar * meanmppfd  * mactnv_unitiabs ) / lai
+
+    return(nr_leaf)
+  })
+}
+
+calc_ncw_leaf <- function( lai, mactnv_unitiabs, meanmppfd, params ){
+  with( params,{
+
+    fapar  <- calc_fapar( lai, params )
+
+    ## Calculate leaf-scale Rubisco-N as a function of LAI and current LUE
+    ncw_leaf <- max( fapar * meanmppfd * mactnv_unitiabs ) * r_n_cw_v / lai + ncw_min
+
+    return(ncw_leaf)
+  })
+}
 
 # calc_ra <- function( cleaf, croot, params ){
 #   with( params, {
@@ -160,7 +196,7 @@ calc_dnup <- function( croot, n0, params ){
 # }
 
 
-eval_imbalance <- function( dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet, dppfd, ninorg, params ){
+eval_imbalance <- function( dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue, dppfd, mrd_unitiabs, meanmppfd, ninorg, params ){
   ## /////////////////////////////////////////////////////////
   ## Evaluates C:N ratio of new assimilation after allocation 
   ## versus whole-plant C:N ratio after allocation. Optimal 
@@ -170,15 +206,15 @@ eval_imbalance <- function( dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, ml
   with( params, {
 
     ## Allocate
-    dnleaf <- dcleaf * params$r_ntoc_leaf
-    clabl  <- clabl - 1.0 / params$y * dcleaf
+    dnleaf <- dcleaf * r_ntoc_leaf
+    clabl  <- clabl - 1.0 / y * dcleaf
     nlabl  <- nlabl - dnleaf
     cleaf  <- cleaf + dcleaf
     nleaf  <- nleaf + dnleaf
     
-    dcroot <- min( params$y * clabl, params$r_cton_root * nlabl )
-    dnroot <- dcroot * params$r_ntoc_root
-    clabl  <- clabl - 1.0 / params$y * dcroot
+    dcroot <- min( y * clabl, r_cton_root * nlabl )
+    dnroot <- dcroot * r_ntoc_root
+    clabl  <- clabl - 1.0 / y * dcroot
     nlabl  <- nlabl - dnroot
     croot  <- croot + dcroot
     nroot  <- nroot + dnroot
@@ -190,8 +226,12 @@ eval_imbalance <- function( dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, ml
     nroot <- nroot * (1.0 - k_root)
 
     ## Calculate next day's C and N return after assumed allocation (tissue turnover happens before!)
-    dc <- calc_dgpp( cleaf, mluenet, dppfd, params ) - croot * (r_root + exu)
-    dn <- calc_dnup( croot, ninorg, params )
+    lai <- cleaf * sla
+    gpp <- calc_dgpp( lai, mlue, dppfd, params )
+    rd  <- calc_drd( lai, mrd_unitiabs, meanmppfd, params )
+
+    dc  <- calc_dgpp( lai, mlue, dppfd, params ) - croot * (r_root + exu)
+    dn  <- calc_dnup( croot, ninorg, params )
 
     ## Evaluation quantity is the difference between the 
     ## C:N ratio of new assimilates and the C:N ratio 
@@ -227,11 +267,11 @@ eval_cost <- function( croot, n0, params){
 ##----------------------------------------------------------------
 
 ## Run P-model for each month 
-
-mluenet <- rep( NA, nmonth )
-mlue    <- rep( NA, nmonth )
-mnapar  <- rep( NA, nmonth )
-factor25<- rep( NA, nmonth )
+mlue            <- rep( NA, nmonth )
+mvcmax_unitiabs <- rep( NA, nmonth )
+mactnv_unitiabs <- rep( NA, nmonth )
+mrd_unitiabs    <- rep( NA, nmonth )
+factor25        <- rep( NA, nmonth )
 
 for (moy in 1:nmonth){
 
@@ -241,21 +281,19 @@ for (moy in 1:nmonth){
   ## Light use efficiency: (gpp - rd) per unit light absorbed
   mlue[moy] <- out$lue
 
-  ## Net light use efficiency: (gpp - rd) per unit light absorbed
-  mluenet[moy] <- out$luenet
+  ## Vcmax per unit fAPAR
+  mvcmax_unitiabs[moy] <- out$vcmax_unitiabs
 
   ## conversion factor to get from APAR to Rubisco-N
-  mnapar[moy]  <- out$n_apar
+  mactnv_unitiabs[moy]  <- out$actnv_unitiabs
 
   ## factor to convert from 25 deg-normalised to ambient T
   factor25[moy] <- out$factor25_vcmax
 
-}
+  ## dark respiration per unit fAPAR (assuming fAPAR=1)
+  mrd_unitiabs[moy] <- out$rd_unitiabs
 
-## Calculate Rubisco-N
-daysecs   <- df.dl$dayl_h * 60 * 60  # number of daylight seconds in a year
-monsecs   <- daily2monthly( daysecs, method="sum" )
-meanmppfd <- mppfd / monsecs         # mol m-2 s-1
+}
 
 
 ##----------------------------------------------------------------
@@ -282,14 +320,31 @@ out_ncost     <- rep( NA, ndayyear )
 out_nup       <- rep( NA, ndayyear )
 out_dclabl    <- rep( NA, ndayyear )
 out_gpp       <- rep( NA, ndayyear )
+out_gpp_net   <- rep( NA, ndayyear )
+out_rd        <- rep( NA, ndayyear )
 
-r_cton_leaf <- 19
-r_cton_root <- 50
+##----------------------------------------------------------------
+## determine foliage C:N ratio beforehand, making assumption for LAI
+##----------------------------------------------------------------
+max_lai <- 1.0  # seasonal maximum LAI to determine leaf N 
 
+nr_leaf  <- calc_nr_leaf(  max_lai, mactnv_unitiabs, meanmppfd, params )
+ncw_leaf <- calc_ncw_leaf( max_lai, mactnv_unitiabs, meanmppfd, params )
+cleaf    <- ncw_leaf * mol_weight_n * params$r_ctostructn_leaf
+
+r_cton_leaf <- cleaf / ( (nr_leaf+ncw_leaf) * mol_weight_n )
+r_ntoc_leaf <- 1.0 / r_cton_leaf
+
+lma <- cleaf / params$c_content_of_biomass
+sla <- 1.0 / lma
+
+##----------------------------------------------------------------
+## initialisation
+##----------------------------------------------------------------
 cleaf <- cleaf0
-nleaf <- cleaf / r_cton_leaf
+nleaf <- cleaf * r_ntoc_leaf
 croot <- croot0
-nroot <- croot / r_cton_root
+nroot <- croot * r_ntoc_leaf
 nlabl <- nlabl0
 clabl <- clabl0
 
@@ -313,12 +368,22 @@ for (moy in 1:nmonth){
 
     ## Continuous root turnover
     croot <- croot * ( 1.0 - params$k_root )
-    nroot <- nroot * ( 1.0 - params$k_root )            
+    nroot <- nroot * ( 1.0 - params$k_root )         
+
+    ## Get LAI based on current leaf-C
+    lai   <- cleaf * sla
 
     ## Gross primary production minus leaf respiration
-    gpp_net <- calc_dgpp( cleaf, mluenet[moy], dppfd[doy], params )
-    out_gpp[doy] <- gpp_net
-    # print(paste("gpp",gpp_net))
+    gpp <- calc_dgpp( lai, mlue[moy], dppfd[doy], params )
+    out_gpp[doy] <- gpp
+
+    ## Dark respiration
+    rd <- calc_drd( lai, mrd_unitiabs[moy], meanmppfd[moy], params )
+    out_rd[doy] <- rd
+
+    ## "net GPP" (=GPP-Rd)
+    gpp_net <- gpp - rd
+    out_gpp_net[doy] <- gpp_net
 
     # Root maintenance respiration
     rm_root <- croot * params$r_root
@@ -377,13 +442,13 @@ for (moy in 1:nmonth){
     ## Maximum is the lower of all labile C and the C to be matched by all labile N,
     ## discounted by the yield factor.
     max_dcleaf_n_constraint <- nlabl * r_cton_leaf 
-    max_dcroot_n_constraint <- nlabl * r_cton_root
+    max_dcroot_n_constraint <- nlabl * params$r_cton_root
     max_dcleaf <- min( params$y * clabl, max_dcleaf_n_constraint )
     max_dcroot <- min( params$y * clabl, max_dcroot_n_constraint )
 
     # print(paste("C in labile pool      ", clabl ) )
     # print(paste("C avl. for growth     ", params$y * clabl ) )
-    # print(paste("C for roots, avl. by N", nlabl * r_cton_root ) )
+    # print(paste("C for roots, avl. by N", nlabl * params$r_cton_root ) )
     # print(paste("C for leafs, avl. by N", nlabl * r_cton_leaf ) )
     # print(paste("max_dcleaf            ", max_dcleaf))
 
@@ -442,7 +507,7 @@ for (moy in 1:nmonth){
 
         ## Use all assimilates for leaf growth
         dcleaf <- max_dcleaf
-        dnleaf <- dcleaf * params$r_ntoc_leaf
+        dnleaf <- dcleaf * r_ntoc_leaf
         clabl  <- clabl - 1.0 / params$y * dcleaf
         nlabl  <- nlabl - dnleaf
         cleaf  <- cleaf + dcleaf
@@ -457,9 +522,9 @@ for (moy in 1:nmonth){
         croot  <- croot + dcroot
         nroot  <- nroot + dnroot
         
-        dcleaf <- min( params$y * clabl, params$r_cton_leaf * nlabl )
+        dcleaf <- min( params$y * clabl, r_cton_leaf * nlabl )
 
-        dnleaf <- dcleaf * params$r_ntoc_leaf
+        dnleaf <- dcleaf * r_ntoc_leaf
         clabl  <- clabl - 1.0 / params$y * dcleaf
         nlabl  <- nlabl - dnleaf
         cleaf  <- cleaf + dcleaf
@@ -473,12 +538,12 @@ for (moy in 1:nmonth){
       ## Test I: Evaluate balance if all is put to roots.
       ## If C:N ratio of return is still greater than whole-plant C:N ratio, then put all to roots.
       findroot <- TRUE
-      eval_allroots  <- eval_imbalance( 0.0, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params )
+      eval_allroots  <- eval_imbalance( 0.0, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params )
       if (eval_allroots > 0.0) { dcleaf <- 0.0; findroot <- FALSE }
 
       ## Test II: Evaluate balance if all is put to leaves.
       ## If C:N ratio of return is still lower than whole-plant C:N ratio, then put all to leaves.
-      eval_allleaves <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy+1], ninorg[doy+1], params )
+      eval_allleaves <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params )
       if (eval_allleaves < 0.0) { dcleaf <- max_dcleaf; findroot <- FALSE}
 
       if (findroot) {
@@ -487,7 +552,7 @@ for (moy in 1:nmonth){
         print("finding root")
         out.root <- NA
         try ( 
-          out.root <- uniroot( function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, mluenet[moy], dppfd[doy], ninorg[doy], params ), interval=c(0,max_dcleaf) )
+          out.root <- uniroot( function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params ), interval=c(0,max_dcleaf) )                                                  
           )        
         if( is.na(out.root) ){
           dcleaf <- 0.0
@@ -497,7 +562,7 @@ for (moy in 1:nmonth){
       }
 
       ## Allocate based on 'dcleaf' determined above
-      dnleaf <- dcleaf * params$r_ntoc_leaf
+      dnleaf <- dcleaf * r_ntoc_leaf
       clabl  <- clabl - 1.0 / params$y * dcleaf
       nlabl  <- nlabl - dnleaf
       cleaf  <- cleaf + dcleaf
@@ -533,9 +598,14 @@ for (moy in 1:nmonth){
     out_dcroot[doy] <- dcroot
     out_dnleaf[doy] <- dnleaf
     out_dnroot[doy] <- dnroot
-    out_lai[doy]    <- cleaf * params$sla
+    out_lai[doy]    <- cleaf * sla
     out_clabl[doy]  <- clabl
     out_nlabl[doy]  <- nlabl
+
+
+    ## assimilation at the bottom of the canopy
+    gpp_bottom <- dppfd[doy] * exp( - params$kbeer * lai ) * mlue[moy]
+
 
   }
 }
@@ -544,12 +614,12 @@ print(mess)
 
 # plot( 1:doy, out_cton_labl, type="l", ylim=c(-80,80) )
 
-# pdf( "cmass_vs_doy.pdf", width=6, height=5 )
+pdf( "cmass_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_croot[1:doy], type="l", ylab="C mass (gC/m2)", xlab="DOY" )
 lines( 1:doy, out_cleaf[1:doy], type="l", col="red" )
 lines( 1:doy, out_clabl[1:doy], col="blue" )
 legend( "topleft", c("root C","leaf C", "labile C"), lty=1, bty="n", col=c("black","red","blue") )
-# dev.off()
+dev.off()
 
 plot( 1:doy, out_clabl[1:doy], type="l", ylim=range(c( out_clabl[1:doy], out_nlabl[1:doy]),na.rm=T) )
 lines( 1:doy, out_nlabl[1:doy], col="red" )
@@ -560,17 +630,32 @@ lines( 1:doy, out_dcleaf[1:doy], col="red" )
 plot( 1:doy, out_cleaf[1:doy]/out_nleaf[1:doy], type="l" )
 plot( 1:doy, out_croot[1:doy]/out_nroot[1:doy], type="l"  )
 
-# pdf( "lai_vs_doy.pdf", width=6, height=5 )
+pdf( "lai_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_lai[1:doy], type="l", ylab="LAI", xlab="DOY")
-# dev.off()
+dev.off()
 
-# pdf( "cost_of_n_vs_doy.pdf", width=6, height=5 )
+pdf( "cost_of_n_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_ncost[1:doy], type="l", ylim=c(0,200), ylab="C cost per N uptake (gC/gN)", xlab="DOY")
-# dev.off()
+dev.off()
 
-# pdf( "nup_vs_doy.pdf", width=6, height=5 )
+pdf( "nup_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_nup[1:doy], type="l", ylab="N uptake (gN/day)", xlab="DOY")
-# dev.off()
+dev.off()
 
 plot( 1:doy, out_dclabl[1:doy], type="l", ylab="C balance (gC/m2/day)", xlab="DOY")
 plot( 1:doy, out_gpp[1:doy], type="l", ylab="GPP (gC/m2/day)", xlab="DOY")
+plot( 1:doy, out_gpp_net[1:doy], type="l", ylab="GPP-Rd (gC/m2/day)", xlab="DOY")
+
+## test
+ndayyear <- 365
+dgpp <- rep(NA,ndayyear)
+doy <- 0
+fapar <- 1.0
+for (moy in 1:12){
+  for (dom in 1:ndaymonth[moy]){
+    doy <- doy + 1
+    dgpp[doy] <- fapar * dppfd[doy] * mlue[moy] * params$c_molmass
+  }
+}
+
+
