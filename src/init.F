@@ -1,21 +1,21 @@
 subroutine initglobal
   !////////////////////////////////////////////////////////////////
-  !  Initialisation of all pools on all gridcells at the beginning
+  !  Initialisation of all _pools on all gridcells at the beginning
   !  of the simulation.
   !  June 2014
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use pools
-  use fluxes
-  use treegeometry
-  use params_modl, only: tree
-  use params_core, only: npft
-  use ntransform_xuri, only: init_global_ntransform
+  use _pools
+  use _fluxes
+  use _vegdynamics
+  use _params_modl, only: tree
+  use _params_core, only: npft
+  use _ntransform, only: init_global_ntransform
 
   ! LOCAL VARIABLES
   integer :: pft
 
-  ! initialise all pools with zero
+  ! initialise all _pools with zero
   pleaf(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! leaves   , organic pool [gC/m2/ind. and gN/m2/ind.]
   proot(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! roots    , organic pool [gC/m2/ind. and gN/m2/ind.]
   psapw(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! sapwood  , organic pool [gC/m2/ind. and gN/m2/ind.]
@@ -35,10 +35,10 @@ subroutine initglobal
   dwtot(:,:)    = 50.0  ! total soil water content (mm); corresponds to 'dwn' in STASH
 
   !! xxx try
-  !! initialise pools with non-zero values
+  !! initialise _pools with non-zero values
   !! here example gridcell 9.5 E, 47.5 N
-  ! psoil_fs(:,:) = orgpool( carbon(4000.), nitrogen(150.) )
-  ! psoil_sl(:,:) = orgpool( carbon(10000.), nitrogen(550.) )
+  ! psoil_fs(:,:) = orgpool( carbon(4000.0), nitrogen(150.0) )
+  ! psoil_sl(:,:) = orgpool( carbon(10000.0), nitrogen(550.0) )
   psoil_fs(:,:) = orgpool( carbon(0.0), nitrogen(0.0) )
   psoil_sl(:,:) = orgpool( carbon(0.0), nitrogen(0.0) )
 
@@ -70,32 +70,33 @@ subroutine initglobal
     end if
   end do
 
-  return
+  lma(:,:) = 0.0
+  sla(:,:) = 0.0
 
 end subroutine initglobal
 
 
-subroutine initpft(pft,jpngr)
+subroutine initpft( pft, jpngr )
   !////////////////////////////////////////////////////////////////
   !  Initialisation of specified PFT on specified gridcell
   !  June 2014
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use pools
-  use params_modl, only: tree, grass
-  use treegeometry
+  use _pools
+  use _params_modl, only: tree, grass
+  use _vegdynamics
 
   implicit none
   integer, intent(in) :: pft
   integer, intent(in) :: jpngr
 
-  ! initialise all pools with zero
-  pleaf(pft,jpngr) = orgpool(carbon(0.),nitrogen(0.))
-  proot(pft,jpngr) = orgpool(carbon(0.),nitrogen(0.))
-  plabl(pft,jpngr) = orgpool(carbon(0.),nitrogen(0.))
+  ! initialise all _pools with zero
+  pleaf(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+  proot(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+  plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
   if (tree(pft)) then
-    psapw(pft,jpngr) = orgpool(carbon(0.),nitrogen(0.))
-    pwood(pft,jpngr) = orgpool(carbon(0.),nitrogen(0.))
+    psapw(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+    pwood(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
   endif
 
   ! initialise other properties
@@ -112,8 +113,8 @@ subroutine initpft(pft,jpngr)
   endif
 
   !if (.not.grass(pft)) then
-  !sm_ind(pft,jpngr,1)=orgpool(carbon(0.),nitrogen(0.))
-  !hm_ind(pft,jpngr,1)=orgpool(carbon(0.),nitrogen(0.))
+  !sm_ind(pft,jpngr,1)=orgpool(carbon(0.0),nitrogen(0.0))
+  !hm_ind(pft,jpngr,1)=orgpool(carbon(0.0),nitrogen(0.0))
   ! end if
 
   ! xxx put this somewhere else
@@ -122,7 +123,9 @@ subroutine initpft(pft,jpngr)
   !leafondays(pft,jpngr)=0.0d0
   !leafoffdays(pft,jpngr)=0.0d0
 
-  return
+  lma(pft,jpngr) = 0.0
+  sla(pft,jpngr) = 0.0
+
 
 end subroutine initpft
 
@@ -131,14 +134,12 @@ subroutine initannual
   !////////////////////////////////////////////////////////////////
   !  Initialises all annually updated variables with zero.
   !----------------------------------------------------------------
-  use classdefs
-  use fluxes, only: aestab
+  use _classdefs
+  use _fluxes, only: aestab
 
   implicit none
 
   aestab(:) = orgpool(carbon(0.0),nitrogen(0.0))
-
-  return
 
 end subroutine initannual
 
@@ -147,11 +148,11 @@ subroutine initdaily
   !////////////////////////////////////////////////////////////////
   !  Initialises all daily variables with zero.
   !----------------------------------------------------------------
-  use fluxes
-  use pools
-  use statevars
-  use nuptake_fun, only: initdaily_nuptake
-  use waterbal_stash, only: initdaily_waterbal
+  use _fluxes
+  use _pools
+  use _statevars
+  use _nuptake, only: initdaily_nuptake
+  use _waterbal, only: initdaily_waterbal
 
   implicit none
 
@@ -168,22 +169,19 @@ subroutine initdaily
   dnup(:)        = nitrogen(0.0)
   ddoc(:)        = 0.0
 
-
   ! initialise module-specific output variables
   call initdaily_nuptake
   call initdaily_waterbal
 
   !! xxx try
-  !! hold soil carbon and litter pools at a constant size
+  !! hold soil carbon and litter _pools at a constant size
   !! here example gridcell 9.5 E, 47.5 N
-  !psoil_fs = orgpool( carbon(4000.), nitrogen(150.) )
-  !psoil_sl = orgpool( carbon(10000.), nitrogen(550.) )
+  !psoil_fs = orgpool( carbon(4000.0), nitrogen(150.0) )
+  !psoil_sl = orgpool( carbon(10000.0), nitrogen(550.0) )
 
-  !plitt_af = orgpool( carbon(500.), nitrogen(10.))
-  !plitt_as = orgpool( carbon(1500.), nitrogen(30.))
-  !plitt_bg = orgpool( carbon(400.), nitrogen(8.))
-
-  return
+  !plitt_af = orgpool( carbon(500.0), nitrogen(10.0))
+  !plitt_as = orgpool( carbon(1500.0), nitrogen(30.0))
+  !plitt_bg = orgpool( carbon(400.0), nitrogen(8.))
 
 end subroutine initdaily
 
@@ -193,11 +191,11 @@ subroutine initoutput
   ! Initialises all daily variables with zero.
   ! Called at the beginning of each year by 'biosphere'.
   !----------------------------------------------------------------
-  use outvars
-  use waterbal_stash, only: initoutput_waterbal
-  use nuptake_fun, only: initoutput_nuptake
-  use ntransform_xuri, only: initoutput_ntransform
-  use littersom_lpj, only: initoutput_littersom
+  use _outvars
+  use _waterbal, only: initoutput_waterbal
+  use _nuptake, only: initoutput_nuptake
+  use _ntransform, only: initoutput_ntransform
+  use _littersom, only: initoutput_littersom
   
   implicit none
 
@@ -224,7 +222,5 @@ subroutine initoutput
   call initoutput_nuptake
   call initoutput_ntransform  ! nothing yet
   call initoutput_littersom
-
-  return
 
 end subroutine initoutput

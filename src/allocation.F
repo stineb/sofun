@@ -4,15 +4,15 @@ subroutine allocation_annual( jpngr )
   ! _allocation_pipe == 0 or adpted from Makela et al., 2008 else.
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
-  use params_core
-  use classdefs
-  use pools, only: pleaf, proot, psapw, plitt_af, plitt_as, plabl
-  use treegeometry, only: ispresent, nind
-  use params_modl, only: lmtorm0, tree, grass, rcton_LS, rcton_LR, &
+  use _params_core
+  use _classdefs
+  use _pools, only: pleaf, proot, psapw, plitt_af, plitt_as, plabl
+  use _vegdynamics, only: ispresent, nind
+  use _params_modl, only: lmtorm0, tree, grass, rcton_LS, rcton_LR, &
     cton_pro 
-  use outvars, only: outaCalloc, outaNalloc, outaCveg2lit, outaNveg2lit
+  use _outvars, only: outaCalloc, outaNalloc, outaCveg2lit, outaNveg2lit
 #if _allocation_makela
-  use params_modl, only: c_H, alpha_w
+  use _params_modl, only: c_H, alpha_w
 #endif
 
   implicit none
@@ -327,7 +327,7 @@ subroutine allocation_annual( jpngr )
       !     dx=x2-x1
           
       !     ! Bisection loop
-      !     ! Search iterates on value of xmid until xmid lies within
+      !     ! Search ite_rates on value of xmid until xmid lies within
       !     ! xacc of the root, i.e. until |xmid-x|<xacc where f(x)=0
           
       !     fmid=1.0                                    !dummy value to guarantee entry to loop
@@ -434,11 +434,11 @@ subroutine allocation_annual( jpngr )
       !     ! sminc_ind=lminc_ind*sm_ind/lm_ind
       !     ! but - they don't seem to be (??)
       !     ! Thus, I don't see on what condition sminc_ind gets negative,
-      !     ! so the following is probably ok (avoids unsensical mass fluxes, but
+      !     ! so the following is probably ok (avoids unsensical mass _fluxes, but
       !     ! violates the condition (A) (not enough sapwood to support leaves).
                               
       !     ! Convert killed sapwood to heartwood (sminc_ind .le. 0 in all cases)
-      !     ! Don'd do anything with N as it is re-distributed between plant pools later anyway
+      !     ! Don'd do anything with N as it is re-distributed between plant _pools later anyway
       !     ! print*,'converted killed sapwood to heartwood.'
       !     ccp( carbon(-sminc_ind), pwood(pft,jpngr) )
 

@@ -1,4 +1,4 @@
-module dynveg
+module _dynveg
 
 
 contains
@@ -10,17 +10,17 @@ contains
     ! sofun_module_control.inc
     ! b.stocker@imperial.ac.uk
     !-----------------------------------------------------------------------------
-    use classdefs
-    use params_site, only: lpft1, lpft2, lpft3, lpft4, lpft5, lpft6,&
+    use _classdefs
+    use _params_site, only: lpft1, lpft2, lpft3, lpft4, lpft5, lpft6,&
       lpft7, lpft8, lpft9, in_fpc_grid_1, in_fpc_grid_2, in_fpc_grid_3, &
       in_fpc_grid_4, in_fpc_grid_5, in_fpc_grid_6, in_fpc_grid_7, &
       in_fpc_grid_8, in_fpc_grid_9
-    use treegeometry
-    use pools
-    use params_modl, only: tree
+    use _vegdynamics
+    use _pools
+    use _params_modl, only: tree
 
-    use params_core, only: nlu
-    use fluxes, only: aestab
+    use _params_core, only: nlu
+    use _land, only: ndlu,aestab
     use gridvars, only: lu_area
 
     implicit none
@@ -108,7 +108,7 @@ contains
       do pft=1,npft
         if (.not.ispresent(pft,jpngr).and.estab(pft)) then !note aprec condition is included in estab
           ispresent(pft,jpngr) = .true.
-          ! initialise pools with 0. initialisation with sapling pool size is done below.
+          ! initialise _pools with 0. initialisation with sapling pool size is done below.
           call initpft(pft,jpngr)
         end if
       end do
@@ -286,11 +286,11 @@ contains
     ! only effective with dynamic vegetation
     ! b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use classdefs
-    use params_core, only: nlu, pft
-    use params_modl, only: sla, islu, tree, grass, fpc_tree_max, kbeer
-    use treegeometry, only: fpc_grid, ispresent, nind, update_fpc
-    use pools
+    use _classdefs
+    use _params_core, only: nlu, pft
+    use _params_modl, only: sla, islu, tree, grass, fpc_tree_max, kbeer
+    use _vegdynamics, only: fpc_grid, ispresent, nind, update_fpc
+    use _pools
     implicit none
 
     ! ARGUMENTS
@@ -306,7 +306,7 @@ contains
     real :: excess          ! tree FPC or grass cover to be reduced
     real :: nind_kill       ! reduction in individual density to reduce tree FPC to permitted maximum (indiv/m2)
     real :: cleaf_target    ! required grass leaf mass so that FPC constraints are satisfied
-    real :: frac_kill       ! fraction of grass PFT pools removed so that FPC constraints are satisfied
+    real :: frac_kill       ! fraction of grass PFT _pools removed so that FPC constraints are satisfied
 
 
     do lu=1,nlu
@@ -383,4 +383,4 @@ contains
 
   end subroutine light
 
-end module dynveg
+end module _dynveg

@@ -10,22 +10,25 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   !  CO2, temperature, Nitrogen deposition. This SR "replaces" 
   !  LPJ, also formulated as subroutine.
   !----------------------------------------------------------------
-  use params_core
-  use params_siml
-  use params_site
-  use params_modl
-  use waterbal_stash, only: waterbal, getrad, outdcpa
-  use fixveg
-  use soiltemp_sitch, only: soiltemp
-  use phenology_lpx, only: summerphenology
-  use ntransform_xuri, only: ntransform
-  use littersom_lpj, only: littersom
-  use gpp_pmodel, only: gpp, getlue
+  use _params_core
+  use _params_siml
+  use _params_site
+  use _params_modl
+  use _waterbal, only: waterbal, getrad, outdcpa
+  use _soiltemp, only: soiltemp
+  use _phenology, only: summerphenology
+  use _ntransform, only: ntransform
+  use _littersom, only: littersom
+  use _vegdynamics, only: estab_daily
+  use _gpp, only: gpp, getlue, gettraits
+  use _npp, only: npp
+  use _allocation, only: allocation_daily
+  use _turnover, only: turnover
 
   ! xxx debug
-  use fluxes
-  use treegeometry
-  use pools
+  use _fluxes
+  use _vegdynamics
+  use _pools
 
   implicit none
 
@@ -89,26 +92,12 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   !----------------------------------------------------------------
   if (init) then
 
-    ! xxx check: if (present(fpc_grid_data)) .and. dynveg then abort
-
-    ! First simulation year
-    ! xxx debug
-    ! print*,'A'
-    ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-    ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-    ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+    ! xxx check: if (present(fpc_grid_data)) .and. _dynveg then abort
 
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
     call initglobal
-
-    ! print*,'B'
-    ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-    ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-    ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
-    ! print*,'psoil_fs(1,1)%c%c12',psoil_fs(1,1)%c%c12
-    ! print*,'psoil_sl(1,1)%c%c12',psoil_sl(1,1)%c%c12
 
     !----------------------------------------------------------------
     ! Open input/output files
@@ -117,20 +106,11 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
 
   endif 
 
-  ! print*,'C'
-  ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-  ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-  ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
   !----------------------------------------------------------------
   ! Initialise output variables for this year
   !----------------------------------------------------------------
   call initoutput
-
-  ! print*,'D'
-  ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-  ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-  ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
@@ -154,12 +134,6 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !call conversion( lu_area )
 
     !----------------------------------------------------------------
-    ! sapling addition on bare ground, tree geometry update
-    !----------------------------------------------------------------
-    call establishment( jpngr, fpc_grid_data(:,jpngr) )
-
-
-    !----------------------------------------------------------------
     ! Get monthly light use efficiency, and Rd per unit of light absorbed
     ! Photosynthetic parameters acclimate at monthly time scale
     ! This is not compatible with a daily biosphere-climate coupling. I.e., 
@@ -175,6 +149,15 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !----------------------------------------------------------------
     call getrad( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
 
+    !----------------------------------------------------------------
+    ! Get leaf traits based on photosynthetic parameters (Vcmax25)
+    !----------------------------------------------------------------
+    call gettraits( jpngr )
+
+    ! !----------------------------------------------------------------
+    ! ! sapling addition on bare ground, tree geometry update
+    ! !----------------------------------------------------------------
+    ! call establishment( jpngr, fpc_grid_data(:,jpngr) )
 
     !----------------------------------------------------------------
     ! LOOP THROUGH MONTHS
@@ -193,18 +176,17 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         !----------------------------------------------------------------
         call initdaily
 
-        ! print*,'E'
-        ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-        ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-        ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12
-        ! print*,'nh4 ',nh4(1,1)%n14 
-
         !----------------------------------------------------------------
         ! get soil moisture, and runoff
         !call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
         ! xxx try
         !----------------------------------------------------------------
         call waterbal( jpngr, day, lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
+
+        !----------------------------------------------------------------
+        ! daily establishment / sprouting
+        !----------------------------------------------------------------
+        call estab_daily( jpngr, day, fpc_grid_data(:,jpngr) )
 
         !----------------------------------------------------------------
         ! get GPP from input
@@ -227,17 +209,11 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         !----------------------------------------------------------------
         call npp( jpngr, dtemp_field(day,jpngr) )
 
-        ! print*,'F'
-        ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-        ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-        ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+        !----------------------------------------------------------------
+        ! Allocation of labile pools to biomass
+        !----------------------------------------------------------------
+        call allocation_daily( jpngr, day )
 
-
-        !#if _allocation_pipe
-        ! allocate biomass increment
-        ! precompiler flag used here because option requires allocation to be called daily
-        !call allocation_daily( jpngr )
-        !#endif
 
         ! amount of NPP added to reproduction (xxx ignore at this point)
         !call reproduction( jpngr )
@@ -251,51 +227,26 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! litter and soil turnover
         !----------------------------------------------------------------
         call littersom( jpngr, day )
-        ! print*,'F'
-        ! print*,'nh4 ',nh4(1,1)%n14 
-
 
         !----------------------------------------------------------------
         ! inorganic soil N chemistry
         !----------------------------------------------------------------
         call ntransform( dm, mo, jpngr, sum(dprec_field(:,jpngr)) )
 
-        ! print*,'G'
-        ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-        ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-        ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
-        ! print*,'nh4 ',nh4(1,1)%n14 
-
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
         call getout_daily( jpngr, mo, day )
 
-        ! print*,'H'
-        ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-        ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-        ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
-
       end do
 
     end do
 
-    ! print*,'I'
-    ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-    ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-    ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
-
-
-    !----------------------------------------------------------------
-    ! allocate biomass increment
-    ! precompiler flag used here because option requires allocation to be called daily
-    !----------------------------------------------------------------
-    call allocation_annual( jpngr )
-
-    ! print*,'K'
-    ! print*,'plabl(1,1)%c%c12 ',plabl(1,1)%c%c12 
-    ! print*,'pleaf(1,1)%c%c12 ',pleaf(1,1)%c%c12
-    ! print*,'proot(1,1)%c%c12 ',proot(1,1)%c%c12 
+    ! !----------------------------------------------------------------
+    ! ! allocate biomass increment
+    ! ! precompiler flag used here because option requires allocation to be called daily
+    ! !----------------------------------------------------------------
+    ! call allocation_annual( jpngr )
 
     ! reduce part of NPP for reproduction
     !call reproduction

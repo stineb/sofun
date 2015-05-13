@@ -1,4 +1,4 @@
-module ntransform_xuri
+module _ntransform
   !////////////////////////////////////////////////////////////////
   ! INORGANIC NITROGEN DYNAMICS MODULE AFTER XURI & PRENTICE 2008
   ! Contains the "main" subroutine 'ntransform' and all necessary 
@@ -16,7 +16,7 @@ module ntransform_xuri
   ! updated by 'ntransform') are:
   !   - inorganic N pool, sum of NO3 and NH4 ('pninorg')
   !----------------------------------------------------------------
-  use params_core, only: nlu, maxgrid
+  use _params_core, only: nlu, maxgrid
 
   implicit none
 
@@ -56,15 +56,15 @@ contains
   subroutine ntransform( dm, mo, jpngr, aprec )
     !////////////////////////////////////////////////////////////////
     !  Litter and SOM decomposition and nitrogen mineralisation.
-    !  1st order decay of litter and SOM pools, governed by temperature
+    !  1st order decay of litter and SOM _pools, governed by temperature
     !  and soil moisture following LPJ (Sitch et al., 2003) and 
     !  Xu-Ri & Prentice (XXX).
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use rates
-    use pools, only: pninorg, dwtot
-    use statevars, only: dtemp_soil, dro, ncpa_d, ddoc
+    use _rates
+    use _pools, only: pninorg, dwtot
+    use _statevars, only: dtemp_soil, dro, ncpa_d, ddoc
 
     ! XXX beni: this is wrong: dw1 is only plant available water. 
     ! should be water-filled pore space = ( (porosity - ice) - (total fluid water volume) ) / dz
@@ -92,11 +92,11 @@ contains
     real :: nh4      ! ammonium [gN/m2]
     real :: no3      ! nitrate [gN/m2]
 
-    real :: nh4_w, no3_w, no2_w                            ! anaerobic pools
-    real :: nh4_d, no3_d, no2_d                            ! aerobic pools
-    real :: doc_w, no, n2o, n2                             ! anaerobic pools
+    real :: nh4_w, no3_w, no2_w                            ! anaerobic _pools
+    real :: nh4_d, no3_d, no2_d                            ! aerobic _pools
+    real :: doc_w, no, n2o, n2                             ! anaerobic _pools
 
-    real :: doc_d                                          ! aerobic pools
+    real :: doc_d                                          ! aerobic _pools
 
     
     if ( dm==1 .and. mo==1 ) then
@@ -266,13 +266,13 @@ contains
       !///////////////////////////////////////////////////////////////////////
       ! UPDATE POOLS (ntransform.cpp:389)
       !------------------------------------------------------------------
-      ! nh4, no3 and no2 (sum of sub-pools in wet and dry microsites) are
-      ! defined as global variables. They are split into sub-pools at the
+      ! nh4, no3 and no2 (sum of sub-_pools in wet and dry microsites) are
+      ! defined as global variables. They are split into sub-_pools at the
       ! beginning of ntransform (see "substrate partitioning"), processed
       ! through "denitrification" and "nitrification" and added up again
       ! here. In contrast, each sub-pool for wet and dry conditions of no,
       ! n2o and n2 is defined as a global (common) variable, while the sum
-      ! of the sup-pools (no, n2o and n2) is defined locally and only used
+      ! of the sup-_pools (no, n2o and n2) is defined locally and only used
       ! for the diffusion/emission (see below).
       !------------------------------------------------------------------
       nh4 = nh4_w + nh4_d
@@ -297,7 +297,7 @@ contains
       ! reference temperature: 25°C
       ftemp_ninorg = min( 1.0, ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=25.0 ))
 
-      ! Nitrification fluxes
+      ! Nitrification _fluxes
       !------------------------------------------------------------------
       tmp = ftemp_ninorg*(1.0-ncpa_d(lu))*no_d(lu,jpngr)
       no_d(lu,jpngr) = no_d(lu,jpngr)-tmp
@@ -306,7 +306,7 @@ contains
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr)-tmp
 
       
-      ! Denitrification fluxes
+      ! Denitrification _fluxes
       !------------------------------------------------------------------
       tmp = ftemp_ninorg*(1.0-ncpa_d(lu))*no_w(lu,jpngr)
       no_w(lu,jpngr) = no_w(lu,jpngr)-tmp
@@ -315,8 +315,8 @@ contains
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr)-tmp
                  
 
-      ! Total fluxes (XXX should be equal to sum of nitrification and
-      ! denitrification fluxes. XXX)
+      ! Total _fluxes (XXX should be equal to sum of nitrification and
+      ! denitrification _fluxes. XXX)
       !------------------------------------------------------------------
       dno(lu) = ftemp_ninorg*(1.0-ncpa_d(lu))*no
       dn2o(lu)= ftemp_ninorg*(1.0-ncpa_d(lu))*n2o
@@ -338,20 +338,18 @@ contains
   end subroutine ntransform
 
   
-  subroutine getpar_modl_ntransform( paramfilnam )
+  subroutine getpar_modl_ntransform()
     !////////////////////////////////////////////////////////////////
     ! Subroutine reads waterbalance module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    implicit none
-
-    ! ARGUMENTS
-    character(len=*) paramfilnam
 
     ! LOCAL VARIABLES
     integer, parameter :: npar = 7
     real, dimension(npar) :: params_array
+    character(len=50) paramfilnam
 
+    paramfilnam = 'params_ntransform_xuri.dat'
 
     open(unit=05,file=trim(paramfilnam),status='OLD')      
     read(05,*) params_array
@@ -461,8 +459,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use params_core, only: ndayyear, nmonth
-    use params_siml, only: firstyeartrend, spinupyears
+    use _params_core, only: ndayyear, nmonth
+    use _params_siml, only: firstyeartrend, spinupyears
 
     implicit none
 
@@ -478,4 +476,4 @@ contains
   end subroutine writeout_ascii_ntransform
 
 
-end module ntransform_xuri
+end module _ntransform

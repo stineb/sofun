@@ -2,11 +2,11 @@ subroutine initio
   !////////////////////////////////////////////////////////////////
   ! Opens input/output files.
   !----------------------------------------------------------------
-  use params_siml, only: runname
-  use waterbal_stash, only: initio_waterbal
-  use nuptake_fun, only: initio_nuptake
-  use ntransform_xuri, only: initio_ntransform
-  use littersom_lpj, only: initio_littersom
+  use _params_siml, only: runname
+  use _waterbal, only: initio_waterbal
+  use _nuptake, only: initio_nuptake
+  use _ntransform, only: initio_ntransform
+  use _littersom, only: initio_littersom
 
   implicit none
 

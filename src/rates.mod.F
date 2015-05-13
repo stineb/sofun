@@ -1,4 +1,4 @@
-module rates
+module _rates
   !////////////////////////////////////////////////////////////////
   !  Module containing temperature and moisture response functions.
   !----------------------------------------------------------------
@@ -99,5 +99,5 @@ contains
   end function fmoist
 
 
-end module rates
+end module _rates
 

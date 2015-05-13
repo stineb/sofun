@@ -1,4 +1,4 @@
-module littersom_lpj
+module _littersom
   !////////////////////////////////////////////////////////////////
   ! LPJ LITTERSOM MODULE
   ! Contains the "main" subroutine 'littersom' and all necessary 
@@ -16,16 +16,16 @@ module littersom_lpj
   ! updated by 'littersom') are:
   !   - xxx
   !----------------------------------------------------------------
-  use params_core, only: npft, maxgrid, nmonth, nlu, recycle, ndayyear, &
+  use _params_core, only: npft, maxgrid, nmonth, nlu, recycle, ndayyear, &
     pft_start, pft_end
-  use params_modl, only: islu, cton_soil
-  use params_siml, only: spinup
-  use classdefs
-  use rates
-  use statevars, only: ncpa_d
-  use fluxes, only: drsoil, drhet, dcex
-  use statevars, only: dtemp_soil, ddoc
-  use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
+  use _params_modl, only: islu, cton_soil
+  use _params_siml, only: spinup
+  use _classdefs
+  use _rates
+  use _statevars, only: ncpa_d
+  use _fluxes, only: drsoil, drhet, dcex
+  use _statevars, only: dtemp_soil, ddoc
+  use _pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
     psoil_sl, pninorg
 
   implicit none
@@ -79,7 +79,7 @@ contains
   subroutine littersom( jpngr, doy )
     !////////////////////////////////////////////////////////////////
     !  Litter and SOM decomposition and nitrogen mineralisation.
-    !  1st order decay of litter and SOM pools, governed by temperature
+    !  1st order decay of litter and SOM _pools, governed by temperature
     !  and soil moisture following LPJ (Sitch et al., 2003) and 
     !  Xu-Ri & Prentice (XXX).
     !  June 2014
@@ -102,7 +102,7 @@ contains
     real, dimension(nlu)  :: ksoil_fs               ! decay rate, fast soil (= k_fast)
     real, dimension(nlu)  :: ksoil_sl               ! decay rate, slow soil (= k_slow)
 
-    ! temporary pools
+    ! temporary _pools
     type(carbon)  :: dexu                           ! exudates decomposed in time step (= exu_decom)
     type(orgpool) :: dlitt                          ! total litter decomposed per time step
     type(orgpool), dimension(npft) :: dlitt_af      ! above-ground fast litter decomposed per time step (= litterdag_fast)
@@ -165,7 +165,7 @@ contains
 
     !-------------------------------------------------------------------------
     ! Set soil turnover accelerator for equilibration during spinup.
-    ! Evenly scale soil inputs and soil decomposition rates during
+    ! Evenly scale soil inputs and soil decomposition _rates during
     ! first 200 years with a scalar that linearly decreases from 200
     ! to 1 over the first 200 years of the simulation.
     ! Value 200 is chosen for quick equilibration without overshooting
@@ -187,7 +187,7 @@ contains
       !/////////////////////////////////////////////////////////////////////////
       ! DECAY RATES
       !-------------------------------------------------------------------------
-      ! Calculate daily (monthly) decomposition rates as a function of
+      ! Calculate daily (monthly) decomposition _rates as a function of
       ! temperature and moisture
                  
       ! k = k_10 * respir_modifier
@@ -210,7 +210,7 @@ contains
           ! Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
           !-------------------------------------------------------------------------
            
-          ! define decomposition rates for current soil temperature and moisture
+          ! define decomposition _rates for current soil temperature and moisture
           klitt_af(lu) = klitt_af10 &
             * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
             * fmoist(ncpa_d(lu),"foley") ! alternative: "gerten"
@@ -257,13 +257,13 @@ contains
           dlitt_as = orgfrac( 1.0-exp(-klitt_as(lu)), plitt_as(pft,jpngr) )
           dlitt_bg = orgfrac( 1.0-exp(-klitt_bg(lu)), plitt_bg(pft,jpngr) )
 
-          ! Update the litter pools
+          ! Update the litter _pools
           call orgmv( dlitt_af(pft), plitt_af(pft,jpngr), dlitt )
           call orgmv( dlitt_as(pft), plitt_as(pft,jpngr), dlitt )
           call orgmv( dlitt_bg(pft), plitt_bg(pft,jpngr), dlitt )
 
           ! acceleration of soil equilibration 
-          ! (scale soil inputs and soil decomposition rates)
+          ! (scale soil inputs and soil decomposition _rates)
           ! dlitt = orgfrac( acc, dlitt )
 
           ! ! tried this and it doesn't work either
@@ -614,18 +614,18 @@ contains
   end subroutine littersom
 
 
-  subroutine getpar_modl_littersom( paramfilnam )
+  subroutine getpar_modl_littersom()
     !////////////////////////////////////////////////////////////////
     ! Subroutine reads littersom module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
 
-    ! ARGUMENTS
-    character(len=*) paramfilnam
-
     ! LOCAL VARIABLES
     integer, parameter :: npar = 10
     real, dimension(npar) :: params_array
+    character(len=50) paramfilnam
+
+    paramfilnam = 'params_littersom_lpj.dat'
 
     open(unit=06,file=trim(paramfilnam),status='OLD')      
     read (06,*) params_array
@@ -771,7 +771,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use pools, only: dwtot
+    use _pools, only: dwtot
 
     implicit none
 
@@ -809,8 +809,8 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use params_modl, only: npft, lu_category
-    use pools
+    use _params_modl, only: npft, lu_category
+    use _pools
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
@@ -825,8 +825,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE littersom-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use params_core, only: ndayyear, nmonth
-    use params_siml, only: firstyeartrend, spinupyears
+    use _params_core, only: ndayyear, nmonth
+    use _params_siml, only: firstyeartrend, spinupyears
 
     ! Arguments
     integer, intent(in) :: year       ! simulation year
@@ -897,4 +897,4 @@ contains
 
   end subroutine writeout_ascii_littersom
 
-end module littersom_lpj
+end module _littersom

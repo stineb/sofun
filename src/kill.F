@@ -5,10 +5,10 @@
         !  gC/m2!
         !  b.stocker@imperial.ac.uk
         !----------------------------------------------------------------
-        use pools
-        use params_modl, only: tree
-        use treegeometry, only: nind
-        use outvars, only: outaCveg2lit, outaNveg2lit
+        use _pools
+        use _params_modl, only: tree
+        use _vegdynamics, only: nind
+        use _outvars, only: outaCveg2lit, outaNveg2lit
 
         implicit none
 

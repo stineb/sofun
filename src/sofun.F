@@ -5,14 +5,14 @@ program main
   !  Nitrogen)
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
-  use params_core
-  use params_siml
-  use params_site
-  use params_modl
-  use forcing_siterun
+  use _params_core
+  use _params_siml
+  use _params_site
+  use _params_modl
+  use _forcing_siterun
   use input_site
   use gridvars_siterun
-  use fluxes
+  use _fluxes
 
   implicit none
 
@@ -70,14 +70,14 @@ program main
 
   !----------------------------------------------------------------
   ! GET SIMULATION PARAMETERS FROM FILE <runname>.sofun.parameter
-  ! SR getpar_siml is defined in params_siml.mod.F
+  ! SR getpar_siml is defined in _params_siml.mod.F
   !----------------------------------------------------------------
   call getpar_siml(trim(runname))
 
   !----------------------------------------------------------------
   ! GET SITE PARAMETERS AND INPUT DATA
   ! site location (lon,lat), soil type, vegetation type
-  ! SR getpar_site is defined in params_site.mod.F. 
+  ! SR getpar_site is defined in _params_site.mod.F. 
   ! 'sitename' is global variable
   !----------------------------------------------------------------
   call getpar_site
@@ -86,7 +86,7 @@ program main
   ! Get soil parameters (if not defined in <sitename>.parameter)
   !call getsoilpar
 
-  ! Obtain land unit dependent parameters, define decomposition rates
+  ! Obtain land unit dependent parameters, define decomposition _rates
   !call luparameters
 
   !----------------------------------------------------------------
@@ -101,7 +101,6 @@ program main
   ! xxx move this into annual loop
   !----------------------------------------------------------------
   call getclimate_fields( trim(runname) )
-  print*,'A'
 
   !----------------------------------------------------------------
   ! GET MODEL PARAMETERS
@@ -109,7 +108,6 @@ program main
   !----------------------------------------------------------------
   ! print*,'getting model parameters'
   call getpar_modl
-  print*,'B'
 
 
   ! LOOP THROUGH YEARS

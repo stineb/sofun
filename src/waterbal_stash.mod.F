@@ -1,4 +1,4 @@
-module waterbal_stash
+module _waterbal
   !////////////////////////////////////////////////////////////////
   ! STASH WATERBALANCE MODULE
   ! Contains the "main" subroutine 'waterbal' and all necessary 
@@ -18,8 +18,8 @@ module waterbal_stash
   !   - soil moisture ('dwtot')
   !   - runoff ('dro')
   !----------------------------------------------------------------
-  use params_core, only: ndayyear, nmonth, nlu, maxgrid
-  use statevars, only: aet_d, ncpa_d, dro
+  use _params_core, only: ndayyear, nmonth, nlu, maxgrid
+  use _statevars, only: aet_d, ncpa_d, dro
 
   implicit none
 
@@ -103,8 +103,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
-    use params_core, only: ndayyear, ndaymonth, nlu
-    use pools, only: dwtot
+    use _params_core, only: ndayyear, ndaymonth, nlu
+    use _pools, only: dwtot
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
@@ -173,8 +173,8 @@ contains
     ! - daily extraterrestrial solar radiation (dra), J/m^2
     ! - daily PPFD (dppfd), mol/m^2
     !-------------------------------------------------------------------------  
-    use params_core, only: ndayyear, pi
-    use sofunutils, only: daily2monthly
+    use _params_core, only: ndayyear, pi
+    use _sofunutils, only: daily2monthly
 
     implicit none
 
@@ -339,8 +339,8 @@ contains
     ! - daily AET (aet_d), mm
     ! - daily condensation (wc), mm
     !-------------------------------------------------------------------------  
-    use params_core, only: ndayyear, pi
-    use pools, only: dwtot
+    use _params_core, only: ndayyear, pi
+    use _pools, only: dwtot
 
     implicit none
 
@@ -727,20 +727,19 @@ contains
   end function calc_tau
 
 
-  subroutine getpar_modl_waterbal( paramfilnam )
+  subroutine getpar_modl_waterbal()
     !////////////////////////////////////////////////////////////////
     ! Subroutine reads waterbalance module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
     implicit none
 
-    ! ARGUMENTS
-    character(len=*) paramfilnam
-
     ! LOCAL VARIABLES
     integer, parameter :: npar = 21
     real, dimension(npar) :: params_array
+    character(len=50) paramfilnam
 
+    paramfilnam = 'params_waterbal_stash.dat'
 
     open(unit=03,file=trim(paramfilnam),status='OLD')      
     read (03,*) params_array
@@ -919,7 +918,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use pools, only: dwtot
+    use _pools, only: dwtot
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
@@ -976,8 +975,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use params_core, only: ndayyear, nmonth
-    use params_siml, only: firstyeartrend, spinupyears
+    use _params_core, only: ndayyear, nmonth
+    use _params_siml, only: firstyeartrend, spinupyears
 
     implicit none
 
@@ -1056,7 +1055,7 @@ contains
     ! Calculates the cosine of an angle given in degrees. Equal to 
     ! 'dsin' in Python version.
     !----------------------------------------------------------------   
-    use params_core, only: pi
+    use _params_core, only: pi
     implicit none
 
     ! arguments
@@ -1076,7 +1075,7 @@ contains
     ! Calculates the sinus of an angle given in degrees. Equal to 
     ! 'dsin' in Python version.
     !----------------------------------------------------------------   
-    use params_core, only: pi
+    use _params_core, only: pi
     implicit none
 
     ! arguments
@@ -1095,7 +1094,7 @@ contains
     !----------------------------------------------------------------   
     ! Returns corresponding degrees if x is given in radians
     !----------------------------------------------------------------   
-    use params_core, only: pi
+    use _params_core, only: pi
     implicit none
 
     ! arguments
@@ -1113,7 +1112,7 @@ contains
     !----------------------------------------------------------------   
     ! Returns corresponding radians if x is given in degrees
     !----------------------------------------------------------------   
-    use params_core, only: pi
+    use _params_core, only: pi
     implicit none
 
     ! arguments
@@ -1360,4 +1359,4 @@ contains
   end function psychro
 
 
-end module waterbal_stash
+end module _waterbal

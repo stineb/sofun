@@ -6,15 +6,15 @@ subroutine getout_daily( jpngr, moy, doy )
   ! global just for this, but are collected inside the subroutine 
   ! where they are defined.
   !----------------------------------------------------------------
-  use params_core, only: ndayyear
-  use params_modl, only: npft, lu_category
-  use fluxes
-  use outvars
-  use pools
-  use statevars
-  use waterbal_stash, only: getout_daily_waterbal
-  use nuptake_fun, only: getout_daily_nuptake
-  use littersom_lpj, only: getout_daily_littersom
+  use _params_core, only: ndayyear
+  use _params_modl, only: npft, lu_category
+  use _fluxes
+  use _outvars
+  use _pools
+  use _statevars
+  use _waterbal, only: getout_daily_waterbal
+  use _nuptake, only: getout_daily_nuptake
+  use _littersom, only: getout_daily_littersom
 
   ! ARGUMENTS
   integer, intent(in) :: jpngr
@@ -63,7 +63,7 @@ subroutine getout_monthly( jpngr, moy )
   !////////////////////////////////////////////////////////////////
   !  SR called once a year to gather monthly output variables.
   !----------------------------------------------------------------
-  use waterbal_stash, only: getout_monthly_waterbal
+  use _waterbal, only: getout_monthly_waterbal
   implicit none
 
   ! ARGUMENTS
@@ -84,10 +84,10 @@ subroutine getout_annual( jpngr )
   !////////////////////////////////////////////////////////////////
   !  SR called once a year to gather annual output variables.
   !----------------------------------------------------------------
-  use params_modl, only: npft, lu_category
-  use pools
-  use outvars
-  use littersom_lpj, only: getout_annual_littersom
+  use _params_modl, only: npft, lu_category
+  use _pools
+  use _outvars
+  use _littersom, only: getout_annual_littersom
 
   implicit none
 

@@ -1,8 +1,8 @@
-      module params_siml
+      module _params_siml
       !////////////////////////////////////////////////////////////////
       !  Module contains simulation parameters read in by getpar_siml
       !----------------------------------------------------------------
-      use params_core, only: recycle
+      use _params_core, only: recycle
 
       implicit none
       integer :: runyears                    ! number of years of entire simulation (spinup+transient)
@@ -466,5 +466,5 @@
 !$$$
 !$$$          end
 
-       end module params_siml
+       end module _params_siml
 

@@ -1,9 +1,9 @@
        module soilvars
        !////////////////////////////////////////////////////////////////
-       !  Module contains soil state variables (C, N, water pools, temp.)
+       !  Module contains soil state variables (C, N, water _pools, temp.)
        !  These have a dummy spatial dimension for later code extension.
        !----------------------------------------------------------------
-       use classdefs
+       use _classdefs
 
        implicit none
 

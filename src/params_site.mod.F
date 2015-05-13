@@ -1,8 +1,8 @@
-module params_site
+module _params_site
   !////////////////////////////////////////////////////////////////
   !  Module contains site-specific parameters read by getpar_site
   !----------------------------------------------------------------
-  use params_siml
+  use _params_siml
   implicit none
   real :: lon_site, lat_site, elv_site
 
@@ -21,4 +21,4 @@ contains
 
   end subroutine getpar_site
 
-end module params_site
+end module _params_site

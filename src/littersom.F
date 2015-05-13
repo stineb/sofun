@@ -1,26 +1,26 @@
 subroutine littersom( jpngr, doy )
   !////////////////////////////////////////////////////////////////
   !  Litter and SOM decomposition and nitrogen mineralisation.
-  !  1st order decay of litter and SOM pools, governed by temperature
+  !  1st order decay of litter and SOM _pools, governed by temperature
   !  and soil moisture following LPJ (Sitch et al., 2003) and 
   !  Xu-Ri & Prentice (XXX).
   !  June 2014
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use params_core
-  use params_siml, only: spinup
-  use classdefs
-  use rates
-  use fluxes, only: drsoil, drhet
-  use params_modl
-  use pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
+  use _params_core
+  use _params_siml, only: spinup
+  use _classdefs
+  use _rates
+  use _fluxes, only: drsoil, drhet
+  use _params_modl
+  use _pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
     psoil_sl, pninorg
-  use statevars, only: dtemp_soil, ddoc
-  use outvars, only: outdnetmin, outdnfixfree, outanreq, outaClit2soil, outaNlit2soil
-  use waterbal_stash, only: ncpa_d
+  use _statevars, only: dtemp_soil, ddoc
+  use _outvars, only: outdnetmin, outdnfixfree, outanreq, outaClit2soil, outaNlit2soil
+  use _waterbal, only: ncpa_d
 
   ! xxx debug
-  use pools, only: pleaf, proot
+  use _pools, only: pleaf, proot
 
   implicit none
 
@@ -40,7 +40,7 @@ subroutine littersom( jpngr, doy )
   real, dimension(nlu)  :: ksoil_fs               ! decay rate, fast soil (= k_fast)
   real, dimension(nlu)  :: ksoil_sl               ! decay rate, slow soil (= k_slow)
 
-  ! temporary pools
+  ! temporary _pools
   type(carbon)  :: dexu                           ! exudates decomposed in time step (= exu_decom)
   type(orgpool) :: dlitt                          ! total litter decomposed per time step
   type(orgpool) :: dlitt_af                       ! above-ground fast litter decomposed per time step (= litterdag_fast)
@@ -101,7 +101,7 @@ subroutine littersom( jpngr, doy )
 
   !-------------------------------------------------------------------------
   ! Set soil turnover accelerator for equilibration during spinup.
-  ! Evenly scale soil inputs and soil decomposition rates during
+  ! Evenly scale soil inputs and soil decomposition _rates during
   ! first 200 years with a scalar that linearly decreases from 200
   ! to 1 over the first 200 years of the simulation.
   ! Value 200 is chosen for quick equilibration without overshooting
@@ -124,7 +124,7 @@ subroutine littersom( jpngr, doy )
     !/////////////////////////////////////////////////////////////////////////
     ! DECAY RATES
     !-------------------------------------------------------------------------
-    ! Calculate daily (monthly) decomposition rates as a function of
+    ! Calculate daily (monthly) decomposition _rates as a function of
     ! temperature and moisture
                
     ! k = k_10 * respir_modifier
@@ -147,7 +147,7 @@ subroutine littersom( jpngr, doy )
         ! Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
         !-------------------------------------------------------------------------
          
-        ! define decomposition rates for current soil temperature and moisture
+        ! define decomposition _rates for current soil temperature and moisture
         klitt_af(lu) = klitt_af10 &
           * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
           * fmoist(ncpa_d(lu),"foley") ! alternative: "gerten"
@@ -193,13 +193,13 @@ subroutine littersom( jpngr, doy )
         !print*,'dlitt_as',dlitt_as
         !print*,'dlitt_bg',dlitt_bg
 
-        ! Update the litter pools
+        ! Update the litter _pools
         call orgmv( dlitt_af, plitt_af(pft,jpngr), dlitt )
         call orgmv( dlitt_as, plitt_as(pft,jpngr), dlitt )
         call orgmv( dlitt_bg, plitt_bg(pft,jpngr), dlitt )
 
         ! acceleration of soil equilibration 
-        ! (scale soil inputs and soil decomposition rates)
+        ! (scale soil inputs and soil decomposition _rates)
         dlitt = orgfrac( acc, dlitt )
 
         ! ! tried this and it doesn't work either
@@ -354,7 +354,7 @@ subroutine littersom( jpngr, doy )
     ! Calculate daily/monthly soil decomposition to the atmosphere
 
     ! acceleration of soil equilibration 
-    ! (scale soil inputs and soil decomposition rates)
+    ! (scale soil inputs and soil decomposition _rates)
     ksoil_fs(lu) = ksoil_fs(lu) * acc
     ksoil_sl(lu) = ksoil_sl(lu) * acc
 

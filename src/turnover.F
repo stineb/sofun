@@ -3,11 +3,11 @@ subroutine turnover( jpngr )
 !  Annual vegetation biomass turnover, called at the end of the
 !  year.
 !----------------------------------------------------------------
-use classdefs
-use params_modl, only: lu_category, tree, long_leaf, long_root, long_sapw, npft, F_NRETAIN
-use pools, only: pleaf, proot, psapw, pwood, plitt_af, plitt_bg, plabl
-use treegeometry , only: nind, ispresent
-use outvars, only: outaCveg2lit, outaNveg2lit
+use _classdefs
+use _params_modl, only: lu_category, tree, long_leaf, long_root, long_sapw, npft, F_NRETAIN
+use _pools, only: pleaf, proot, psapw, pwood, plitt_af, plitt_bg, plabl
+use _vegdynamics , only: nind, ispresent
+use _outvars, only: outaCveg2lit, outaNveg2lit
 
 implicit none
 
@@ -30,7 +30,7 @@ do pft=1,npft
 
     lu=lu_category(pft)
 
-    ! Turnover rates are reciprocals of tissue longevity
+    ! Turnover _rates are reciprocals of tissue longevity
     dleaf=1.0/long_leaf(pft)
     dsapw=1.0/long_sapw(pft)
     droot=1.0/long_root(pft)
@@ -100,7 +100,7 @@ do pft=1,npft
       call orgmv( sm_turn, psapw(pft,jpngr), pwood(pft,jpngr) )
     endif
     
-    ! done here: Set isotopes to MISSING_VALUE if pools are empty
+    ! done here: Set isotopes to MISSING_VALUE if _pools are empty
 #endif
 
     !print*,'TURNOVER B: C:N of whole plant ',cton( orgplus(pleaf(pft,jpngr),proot(pft,jpngr)), default=0.0 )

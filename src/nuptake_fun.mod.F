@@ -1,9 +1,9 @@
-module nuptake_fun
+module _nuptake
   !////////////////////////////////////////////////////////////////
   ! FUN NITROGEN UPTAKE MODULE
   ! Contains the "main" subroutine 'nuptake' and all necessary 
   ! subroutines for handling input/output. 
-  ! Every module that implements 'waterbal' must contain this list 
+  ! Every module that implements 'nuptake' must contain this list 
   ! of subroutines (names that way).
   !   - nuptake
   !   - getpar_modl_nuptake
@@ -13,13 +13,13 @@ module nuptake_fun
   !   - getout_monthly_nuptake
   !   - writeout_ascii_nuptake
   ! Required module-independent model state variables (necessarily 
-  ! updated by 'waterbal') are:
+  ! updated by 'nuptake') are:
   !   - daily NPP ('dnpp')
   !   - soil temperature ('xxx')
-  !   - inorganic N pools ('no3', 'nh4')
+  !   - inorganic N _pools ('no3', 'nh4')
   !   - xxx 
   !----------------------------------------------------------------
-  use params_core, only: ndayyear, nmonth, nlu, npft, maxgrid
+  use _params_core, only: ndayyear, nmonth, nlu, npft, maxgrid
 
   implicit none
 
@@ -62,17 +62,15 @@ contains
     ! supplied to the roots/nodules to satisfy this constraint.
     ! Adopted from Fischer et al., 2010 by Beni Stocker, July 2012
     !-----------------------------------------------------------------
-    use classdefs
-    use params_core
-    use params_siml, only: spinup
-    use params_modl, only: lu_category, cton_pro, nfixer
-    use fluxes, only: dnpp, dnup, dcex
-    use waterbal_stash, only: aet_d  ! xxx make 'aet_d' a required global variable?
-    use treegeometry, only: nind, ispresent, fpc_grid
-    use pools, only: pninorg, pexud, plabl, proot, dwtot
-    use statevars, only: dtemp_soil
-
-    implicit none
+    use _classdefs
+    use _params_core
+    use _params_siml, only: spinup
+    use _params_modl, only: lu_category, cton_pro, nfixer
+    use _fluxes, only: dnpp, dnup, dcex
+    use _waterbal, only: aet_d  ! xxx make 'aet_d' a required global variable?
+    use _vegdynamics, only: nind, ispresent, fpc_grid
+    use _pools, only: pninorg, plabl, proot, dwtot
+    use _statevars, only: dtemp_soil
     
     ! ARGUMENTS
     integer, intent(in) :: jpngr, pft
@@ -129,13 +127,13 @@ contains
           
 
     !-------------------------------------------------------------------------
-    ! FUN treats different soil layers explicitly. In LPX N-pools represent a
+    ! FUN treats different soil layers explicitly. In LPX N-_pools represent a
     ! single soil N pool (100 cm). The code below is adopted for a
-    ! formulation with different soil layers and soil N pools. To be consistent
+    ! formulation with different soil layers and soil N _pools. To be consistent
     ! with (current) LPX, nsl_eff (effective number of soil layers) is
     ! set to 1. Thus, the model does not distinguish between N acquisition costs
     ! in different layers. An implementation of layer-specific N
-    ! uptake, N-inorg pools, root turnover, N mineralization would be nice to have.
+    ! uptake, N-inorg _pools, root turnover, N mineralization would be nice to have.
     !-------------------------------------------------------------------------
 
     ! Absolute water content corresponding to permanent wilting point [gH2O].
@@ -258,7 +256,7 @@ contains
       ! the order of the PFTs would be less important...but then all costs need to
       ! be in land_pts arrays, and generally takes more work to keep track of status
       ! within step loop.
-      ! Calculations are carried out using fluxes for the fractional area in
+      ! Calculations are carried out using _fluxes for the fractional area in
       ! question, then converted to effect on gridbox mean by multiplying by frac.
       ! 
       ! I think, as long the time steps are small and N-demand(PFT)<<N-availability
@@ -493,7 +491,6 @@ contains
       !**************************************************************************
       ! Update N taken up and available N in soil.
       !--------------------------------------------------------------------------
-      implicit none
 
       integer, intent(in) :: lu
       real, intent(in)  :: Ninorg
@@ -520,8 +517,7 @@ contains
       ! Cost of active inorganic N uptake by exudation of labile C. 
       ! From Fisher er al., 2010.
       !--------------------------------------------------------------------------      
-      use params_modl
-      implicit none
+      use _params_modl
 
       ! arguments
       real, intent(in) :: avail_ninorg
@@ -545,25 +541,13 @@ contains
     end function fun_cost_active_ninorg
 
 
-    !******************************************************************************
-
-    !     function fun_cost_active_org(litterN)
-    !     implicit none
-    !     include XXX
-    !     real*8 litterN
-
-
-    !     return
-    !     end
-
     function fun_cost_fix( soiltemp )
       !******************************************************************************
       ! Cost of symbiotic N fixation is the inverse of nitrogenase activity
       ! after Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
       ! (value from Gutschik 1981)
       !--------------------------------------------------------------------------      
-      use params_modl
-      implicit none
+      use _params_modl
 
       real, intent(in) :: soiltemp
       real :: fun_cost_fix                 ! function return variable
@@ -607,14 +591,11 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Initialise daily variables with zero
     !----------------------------------------------------------------
-    implicit none
 
     dnup_pas(:)    = 0.0
     dnup_act(:)    = 0.0
     dnup_fix(:)    = 0.0
     dnup_ret(:)    = 0.0
-
-    return
 
   end subroutine initdaily_nuptake
 
@@ -623,7 +604,6 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    implicit none
 
     ! ARGUMENTS
     character(len=*) :: prefix
@@ -664,20 +644,18 @@ contains
 
 
 
-  subroutine getpar_modl_nuptake( paramfilnam )
+  subroutine getpar_modl_nuptake()
     !////////////////////////////////////////////////////////////////
     ! Subroutine reads nuptake module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    implicit none
-
-    ! ARGUMENTS
-    character(len=*) paramfilnam
 
     ! LOCAL VARIABLES
-    integer, parameter :: npar = 6
+    integer, parameter    :: npar = 6
     real, dimension(npar) :: params_array
+    character(len=50)     ::paramfilnam
     
+    paramfilnam = 'params_nuptake_fun.dat'
 
     open(unit=04,file=trim(paramfilnam),status='OLD')      
     read (04,*) params_array
@@ -716,7 +694,6 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises nuptake-specific output variables
     !----------------------------------------------------------------
-    implicit none
 
     ! xxx remove their day-dimension
     outdccost(:,:,:) = 0.0
@@ -755,10 +732,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use params_core, only: ndayyear, nmonth, npft
-    use params_siml, only: firstyeartrend, spinupyears
-
-    implicit none
+    use _params_core, only: ndayyear, nmonth, npft
+    use _params_siml, only: firstyeartrend, spinupyears
 
     ! Arguments
     integer, intent(in) :: year       ! simulation year
@@ -1003,4 +978,4 @@ contains
 
 
 
-end module nuptake_fun
+end module _nuptake

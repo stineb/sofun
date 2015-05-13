@@ -7,7 +7,7 @@ module gridvars_siterun
   ! ... and define the following variables that are global within
   ! 'sofun' (but passed on to 'biosphere' as arguments).
   !----------------------------------------------------------------
-  use params_core
+  use _params_core
 
   implicit none
 
@@ -21,7 +21,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Defines grid variables
     !----------------------------------------------------------------
-    use params_site, only: lon_site, lat_site, elv_site
+    use _params_site, only: lon_site, lat_site, elv_site
 
     implicit none
 

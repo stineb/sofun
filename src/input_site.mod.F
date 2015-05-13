@@ -4,7 +4,7 @@ module input_site
   ! scribing certain variables instead of simulating them online.
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
-  use params_core, only: npft, maxgrid
+  use _params_core, only: npft, maxgrid
 
   implicit none
 
@@ -25,10 +25,10 @@ contains
     !  (per default) calculated online
     ! This is not appropriate here as its only for one year
     !----------------------------------------------------------------
-    use params_siml, only: nyeartrend, sitename
-    use forcing_siterun, only: read1year_daily  ! xxx put all reading functions/subroutines into a single module
-    use params_siml, only: getreal  ! xxx put all reading functions/subroutines into a single module
-    use params_core, only: ndayyear
+    use _params_siml, only: nyeartrend, sitename
+    use _forcing_siterun, only: read1year_daily  ! xxx put all reading functions/subroutines into a single module
+    use _params_siml, only: getreal  ! xxx put all reading functions/subroutines into a single module
+    use _params_core, only: ndayyear
 
     implicit none
 

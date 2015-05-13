@@ -2,15 +2,15 @@ subroutine writeout_ascii( year, dtemp )
   !/////////////////////////////////////////////////////////////////////////
   ! Write daily ASCII output
   !-------------------------------------------------------------------------
-  use params_siml, only: firstyeartrend, spinupyears, spinup
-  use params_core, only: ndayyear
-  use params_modl, only: lu_category
-  use fluxes
-  use pools
-  use outvars
-  use waterbal_stash, only: writeout_ascii_waterbal
-  use nuptake_fun, only: writeout_ascii_nuptake
-  use littersom_lpj, only: writeout_ascii_littersom
+  use _params_siml, only: firstyeartrend, spinupyears, spinup
+  use _params_core, only: ndayyear
+  use _params_modl, only: lu_category
+  use _fluxes
+  use _pools
+  use _outvars
+  use _waterbal, only: writeout_ascii_waterbal
+  use _nuptake, only: writeout_ascii_nuptake
+  use _littersom, only: writeout_ascii_littersom
 
   ! Arguments
   integer, intent(in) :: year       ! simulation year

@@ -1,4 +1,4 @@
-module fixveg
+module _fixveg
   !//////////////////////////////////////////////////////////////////////////////
   ! MODULE FIXVEG
   ! Contains all subroutines and functions to calculate vegetation cover with 
@@ -6,13 +6,13 @@ module fixveg
   ! - establishment
   ! - light
   ! - mortality
-  ! Variables and functions contained in module 'treegeometry' are not inter-
+  ! Variables and functions contained in module '_vegdynamics' are not inter-
   ! changeable. This module contains subroutines that update/calculate variables
-  ! contained in 'treegeometry'.
+  ! contained in '_vegdynamics'.
   ! This module requires optional argument 'fpc_grid_data' to be passed on to 
   ! 'biosphere'. 
   !-----------------------------------------------------------------------------
-  use treegeometry
+  use _vegdynamics
 
 contains
 
@@ -22,13 +22,13 @@ contains
     ! With fixed veg. cover, establishment is executed only in the first year to 
     ! get initial 'nind'.
     !-----------------------------------------------------------------------------
-    use classdefs
-    use params_modl, only: tree, hm_sapl, sm_sapl, rm_sapl, lm_sapl
-    use params_core, only: npft
-    use pools, only: psapw, pleaf, pwood, proot
+    use _classdefs
+    use _params_modl, only: tree, hm_sapl, sm_sapl, rm_sapl, lm_sapl
+    use _params_core, only: npft
+    use _pools, only: psapw, pleaf, pwood, proot
 
     ! xxx debug
-    use pools, only: plabl
+    use _pools, only: plabl
 
     implicit none
 
@@ -62,7 +62,7 @@ contains
         end if
 
         !-----------------------------------------------------------------------------
-        ! Initialise pools with sapling pool size
+        ! Initialise _pools with sapling pool size
         !-----------------------------------------------------------------------------
         pleaf(pft,jpngr) = lm_sapl(pft)
         pwood(pft,jpngr) = hm_sapl(pft)
@@ -98,8 +98,6 @@ contains
 
     end if
 
-    return
-
   end subroutine establishment
 
 
@@ -111,11 +109,11 @@ contains
   !   ! only effective with dynamic vegetation
   !   ! b.stocker@imperial.ac.uk
   !   !----------------------------------------------------------------
-  !   use classdefs
-  !   use params_core, only: nlu
-  !   use params_modl, only: sla, islu, tree, grass, fpc_tree_max, kbeer
-  !   use treegeometry, only: fpc_grid, ispresent, nind, update_fpc, update_tree_geometry
-  !   use pools
+  !   use _classdefs
+  !   use _params_core, only: nlu
+  !   use _params_modl, only: sla, islu, tree, grass, fpc_tree_max, kbeer
+  !   use _vegdynamics, only: fpc_grid, ispresent, nind, update_fpc, update_tree_geometry
+  !   use _pools
   !   implicit none
 
   !   ! ARGUMENTS
@@ -131,7 +129,7 @@ contains
   !   real :: excess          ! tree FPC or grass cover to be reduced
   !   real :: nind_kill       ! reduction in individual density to reduce tree FPC to permitted maximum (indiv/m2)
   !   real :: cleaf_target    ! required grass leaf mass so that FPC constraints are satisfied
-  !   real :: frac_kill       ! fraction of grass PFT pools removed so that FPC constraints are satisfied
+  !   real :: frac_kill       ! fraction of grass PFT _pools removed so that FPC constraints are satisfied
 
 
   !   do lu=1,nlu
@@ -210,4 +208,4 @@ contains
 
   ! end subroutine light
 
-end module fixveg
+end module _fixveg

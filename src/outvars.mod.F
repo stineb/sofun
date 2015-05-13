@@ -1,11 +1,11 @@
-module outvars
+module _outvars
 !////////////////////////////////////////////////////////////////
 !  Module contains all daily variables. These variables have no 
 !  spatial dimension. At the end of the daily loop, values may be 
 !  copied to spatial arrays.
 !----------------------------------------------------------------
-  use params_core
-  use classdefs
+  use _params_core
+  use _classdefs
 
   implicit none
 
@@ -38,4 +38,4 @@ module outvars
   real, dimension(npft,maxgrid) :: outaNveg2lit
   real, dimension(nlu, maxgrid) :: outaNinorg
 
-end module outvars
+end module _outvars

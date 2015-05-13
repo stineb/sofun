@@ -1,9 +1,9 @@
-module statevars
+module _statevars
   !////////////////////////////////////////////////////////////////
   ! Module contains required state variables apart from those 
-  ! contained in 'pools' and 'fluxes'. 
+  ! contained in '_pools' and '_fluxes'. 
   !----------------------------------------------------------------
-  use params_core, only: nlu, maxgrid
+  use _params_core, only: nlu, maxgrid
 
   implicit none
 
@@ -15,5 +15,5 @@ module statevars
   real, dimension(nlu) :: ddoc                         ! surrogate for dissolved organic carbon
 
 
-end module statevars
+end module _statevars
 

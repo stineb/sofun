@@ -1,4 +1,4 @@
-module sofunutils
+module _sofunutils
   !/////////////////////////////////////////////////////////////////////////
   ! Contains utility functions to deal with arrays containing 365 daily 
   ! values or 12 monthly values representing one year.
@@ -72,7 +72,7 @@ contains
     ! - dval   : vector containing 365 (366 in case lapyear is TRUE) daily values
     ! - method : true of monthly values represent total of daily values in resp. month
     !-------------------------------------------------------------------------
-    use params_core, only: ndaymonth, cumdaymonth, ndayyear, nmonth
+    use _params_core, only: ndaymonth, cumdaymonth, ndayyear, nmonth
 
     ! arguments
     real, intent(in), dimension(ndayyear) :: dval
@@ -138,7 +138,7 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! Returns daily values based on monthly values, using a defined method.
     !-------------------------------------------------------------------------
-    use params_core, only: middaymonth, ndayyear, ndaymonth, nmonth
+    use _params_core, only: middaymonth, ndayyear, ndaymonth, nmonth
     
     ! arguments
     real, dimension(nmonth), intent(in) :: mval  ! vector containing 12 monthly values
@@ -159,7 +159,7 @@ contains
     ! function return variable
     real, dimension(ndayyear) :: monthly2daily
     
-    ! xxx implement select case also in 'rates' module
+    ! xxx implement select case also in '_rates' module
 
     select case (method)
 
@@ -318,7 +318,7 @@ contains
     ! Function reads a file that contains 365 lines, each line for
     ! a daily value. 
     !----------------------------------------------------------------
-    use params_core, only: ndayyear
+    use _params_core, only: ndayyear
     implicit none
 
     ! arguments
@@ -349,7 +349,7 @@ contains
     ! Function reads a file that contains 365 lines, each line for
     ! a daily value. 
     !----------------------------------------------------------------
-    use params_core, only: nmonth
+    use _params_core, only: nmonth
     implicit none
 
     ! arguments
@@ -380,7 +380,7 @@ contains
     !  Function reads one (annual) value corresponding to the given 
     !  year from a time series ascii file. 
     !----------------------------------------------------------------
-    use params_core, only: ndayyear
+    use _params_core, only: ndayyear
 
     implicit none
     ! arguments
@@ -575,7 +575,7 @@ contains
 
 !  function monthly2daily_precip( mval_prec, mval_wet )!
 
-!    use params_core, only: nmonth, ndayyear
+!    use _params_core, only: nmonth, ndayyear
 
 !    ! arguments
 !    real, dimension(nmonth), intent(in) :: mval_prec  ! monthly precipitation totals
@@ -690,4 +690,4 @@ contains
 !  end function random          
       
 
-end module sofunutils
+end module _sofunutils

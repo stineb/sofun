@@ -1,4 +1,4 @@
-module phenology_lpx
+module _phenology
   !////////////////////////////////////////////////////////////////
   ! TEMPERATURE-DRIVEN PHENOLOGY 
   ! Adopted from LPX-Bern
@@ -17,7 +17,7 @@ module phenology_lpx
   ! updated by 'waterbal') are:
   !   - (none)
   !----------------------------------------------------------------
-  use params_core, only: npft, ndayyear
+  use _params_core, only: npft, ndayyear
   
   implicit none
 
@@ -37,11 +37,9 @@ contains
     !//////////////////////////////////////////////////////////
     ! Defines dtphen, the temperature-driven phenology
     !----------------------------------------------------------
-    use params_core, only: ndayyear, maxgrid, nmonth, middaymonth
-    use params_modl, only: tree
-    use sofunutils, only: daily2monthly, monthly2daily
-
-    implicit none
+    use _params_core, only: ndayyear, maxgrid, nmonth, middaymonth
+    use _params_modl, only: tree
+    use _sofunutils, only: daily2monthly, monthly2daily
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -98,7 +96,7 @@ contains
         if (firstday==midsummer) then 
           dtphen(:,pft)=1.0     ! no leaf abscission
         else
-          gdd=0.0           ! accumulated growing degree days
+          gdd=0.0               ! accumulated growing degree days
           day=firstday+1
           if (day>ndayyear) day=1
           do while (day/=firstday)
@@ -112,6 +110,7 @@ contains
             endif
             day=day+1
             if (day>ndayyear) day=1
+            write(0,*) 'SUMMERPHENOLOGY: day, dtphen', day, dtphen(day,pft)
           enddo
         endif
         
@@ -139,6 +138,7 @@ contains
             enddo
           endif
         endif
+
       else
         !----------------------------------------------------------
         ! NON-SUMMERGREEN TAXA
@@ -156,21 +156,18 @@ contains
   end subroutine summerphenology
 
 
-  subroutine getpar_pft_summerphenology( paramfilnam )
+  subroutine getpar_pft_summerphenology( )
     !////////////////////////////////////////////////////////////////
     ! Subroutine reads nuptake module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    implicit none
-
-    ! ARGUMENTS
-    character(len=*), intent(in) :: paramfilnam
-
-    ! LOCAL VARIABLES
-    integer, parameter :: npar = 2
-    integer :: pft
+    ! local variables
+    integer, parameter    :: npar = 2
+    integer               :: pft
     real, dimension(npar) :: params_array
+    character(len=50)     :: paramfilnam
     
+    paramfilnam = 'params_pft_summerphenology.dat'
 
     open(unit=07,file=trim(paramfilnam),status='OLD')      
     read(07,*) params_array
@@ -182,7 +179,7 @@ contains
     ! growing degree days base (usually 5 deg C)
     GDDBASE(pft) = params_array(1)
 
-    ! ramp slope for phenology
+    ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
     RAMP(pft)    = params_array(2)
     
     ! phenology type
@@ -197,7 +194,7 @@ contains
 
   end subroutine getpar_pft_summerphenology
 
-end module phenology_lpx
+end module _phenology
 
 
 

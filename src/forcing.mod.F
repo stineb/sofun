@@ -1,4 +1,4 @@
-module forcing_siterun
+module _forcing_siterun
   !////////////////////////////////////////////////////////////////
   ! Module contains forcing variables (climate, co2, ...), and
   ! subroutines used to read forcing input files.
@@ -6,7 +6,7 @@ module forcing_siterun
   ! within 'biosphere', as these variables are passed on to 'biosphere'
   ! as arguments.
   !----------------------------------------------------------------
-  use params_core
+  use _params_core
   implicit none
 
   real, dimension(ndayyear,maxgrid) :: dtemp_field, dprec_field, dfsun_field
@@ -20,8 +20,8 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
-    use params_core
-    use params_siml
+    use _params_core
+    use _params_siml
 
     implicit none
     character(len=*), intent(in) :: runname
@@ -38,8 +38,8 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR reads this year's daily temperature and precipitation.
     !----------------------------------------------------------------
-    use params_core, only: nmonth, ndaymonth
-    use params_siml, only: sitename
+    use _params_core, only: nmonth, ndaymonth
+    use _params_siml, only: sitename
     implicit none
 
     ! arguments
@@ -87,7 +87,7 @@ contains
   !  !////////////////////////////////////////////////////////////////
   !  !  SR reads this year's daily temperature and precipitation.
   !  !----------------------------------------------------------------
-  !  use params_core
+  !  use _params_core
   !  implicit none
 
 !  ! ! arguments
@@ -120,7 +120,7 @@ contains
     !  SR reads this year's annual ndeposition and distributes it
     !  over days according to daily precipitation.
     !----------------------------------------------------------------
-    use params_core
+    use _params_core
     implicit none
 
     ! arguments
@@ -150,7 +150,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR reads this year's annual landuse state
     !----------------------------------------------------------------
-    use params_core, only: lunat
+    use _params_core, only: lunat
     implicit none
 
     ! arguments
@@ -170,7 +170,7 @@ contains
     ! Function reads a file that contains 365 lines, each line for
     ! a daily value. 
     !----------------------------------------------------------------
-    use params_core, only: ndayyear
+    use _params_core, only: ndayyear
     implicit none
 
     ! arguments
@@ -391,5 +391,5 @@ contains
 
   end function getvalreal_STANDARD
 
-end module forcing_siterunm
+end module _forcing_siterunm
 

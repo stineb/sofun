@@ -1,13 +1,13 @@
-module treegeometry
+module _vegdynamics
   !////////////////////////////////////////////////////////////////
   ! Module contains tree geometry variables and functions.
   ! Variables have 'jpngr' dimension, thus have "memory" from one
   ! year to the next like pool variables.
   !----------------------------------------------------------------
-  use params_core, only: npft, maxgrid
+  use _params_core, only: npft, maxgrid
   implicit none
 
-  logical, dimension(npft,maxgrid) :: ispresent      ! boolean whether PFT is present
+  logical, dimension(npft,maxgrid) :: ispresent   ! boolean whether PFT is present
   real, dimension(npft,maxgrid)    :: height      ! tree height (m)
   real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
   real, dimension(npft,maxgrid)    :: nind        ! number of individuals [1/m2]
@@ -21,8 +21,8 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Updates fpc_grid, fpc_ind, and lai_ind
     !----------------------------------------------------------------
-    use pools, only: pleaf
-    use params_modl, only: tree, islu, lu_category, grass
+    use _pools, only: pleaf
+    use _params_modl, only: tree, islu, lu_category, grass
     
     implicit none
 
@@ -80,7 +80,7 @@ contains
   function get_nind( tree, fpc_grid, crownarea, fpc_ind ) result( nind )
     !////////////////////////////////////////////////////////////////
     !----------------------------------------------------------------
-    use pools, only: pleaf
+    use _pools, only: pleaf
 
     implicit none
 
@@ -126,7 +126,7 @@ contains
     ! Function returns fractional plant cover an individual
     ! Eq. 7 in Sitch et al., 2003
     !----------------------------------------------------------------
-    use params_modl, only: kbeer
+    use _params_modl, only: kbeer
 
     ! arguments
     real, intent(in) :: lai_ind
@@ -144,7 +144,7 @@ contains
     ! Function returns leaf area index of an individual
     ! Eq. 5 in Sitch et al., 2003
     !----------------------------------------------------------------
-    use params_modl, only: sla
+    use _params_modl, only: sla
     implicit none
 
     ! arguments
@@ -182,9 +182,9 @@ contains
     ! Allometry is independent of sapwood/heartwood ratio,
     ! only sum of the two is used (VI)
     !----------------------------------------------------------------
-    use classdefs
-    use pools, only: pleaf, psapw, pwood
-    use params_modl, only: wooddens, allom1, allom2, allom3, &
+    use _classdefs
+    use _pools, only: pleaf, psapw, pwood
+    use _params_modl, only: wooddens, allom1, allom2, allom3, &
       crownarea_max, reinickerp, latosa, sla, pi, tree
 
     ! arguments
@@ -236,8 +236,8 @@ contains
     ! Function to determine sapling tree geometry. Returns an array 
     ! containing (lm_sapl, sm_sapl, hm_sapl), given geometry parameters.
     !--------------------------------------------------------------------
-    use classdefs, only: orgpool
-    use params_core, only: pi
+    use _classdefs, only: orgpool
+    use _params_core, only: pi
     implicit none
 
     ! arguments
@@ -269,7 +269,6 @@ contains
       !///////////////////////////////////////////////////////
       ! GRASS "SAPLING" GEOMETRY
       !------------------------------------------------------- 
-
       lm_sapl%c%c12 = lai0 / sla
       sm_sapl%c%c12 = 0.0
       hm_sapl%c%c12 = 0.0
@@ -354,5 +353,5 @@ contains
 
   end function get_geometry_sapl
 
-end module treegeometry
+end module _vegdynamics
 

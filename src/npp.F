@@ -10,16 +10,16 @@ subroutine npp( jpngr, dtemp )
   ! ('rsoil'). This implies that growth respiration is "paid" also on exu-
   ! dates. 
   !-------------------------------------------------------------------------
-  use classdefs
-  use params_core, only: npft, nlu
-  use params_modl, only: rresp_growth, lu_category, tree
-  use rates
-  use fluxes, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, drhet, &
+  use _classdefs
+  use _params_core, only: npft, nlu
+  use _params_modl, only: rresp_growth, lu_category, tree
+  use _rates
+  use _fluxes, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, drhet, &
     drgrow, dcex, dnup
-  use treegeometry, only: nind, ispresent
-  use pools, only: pleaf, proot, psapw, pexud, plabl
+  use _vegdynamics, only: nind, ispresent
+  use _pools, only: pleaf, proot, psapw, pexud, plabl
   use nuptake_fun, only: nuptake
-  use statevars, only: dtemp_soil
+  use _statevars, only: dtemp_soil
 
   implicit none
 
@@ -92,7 +92,7 @@ subroutine npp( jpngr, dtemp )
       ! This is where isotopic signatures are introduced because only 'dbminc'
       ! is diverted to a pool and re-emission to atmosphere gets delayed. Auto-
       ! trophic respiration is immediate, it makes thus no sense to calculate 
-      ! full isotopic effects of gross exchange fluxes.
+      ! full isotopic effects of gross exchange _fluxes.
       ! XXX NPP may get negative here!
       !-------------------------------------------------------------------------
       drauto(pft) = dresp_maint + drgrow(pft)
@@ -152,8 +152,8 @@ contains
     ! (spahni 2009-12-11: set leaf_resp_rs==0 for old respiration method)
     !-------------------------------------------------------------------------
 #include "sofun_module_control.inc"
-    use params_core, only: ndayyear
-    use params_modl, only: rresp_maint, kresp
+    use _params_core, only: ndayyear
+    use _params_modl, only: rresp_maint, kresp
 
     implicit none
 

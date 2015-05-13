@@ -1,4 +1,4 @@
-module soiltemp_sitch
+module _soiltemp
   !////////////////////////////////////////////////////////////////
   ! SITCH SOILTEMP MODULE
   ! Contains the "main" subroutine 'soiltemp' and all necessary 
@@ -18,7 +18,7 @@ module soiltemp_sitch
   !   - soil moisture ('dwtot')
   !   - soil temperature ('dtemp_soil')
   !----------------------------------------------------------------
-  use statevars, only: dtemp_soil
+  use _statevars, only: dtemp_soil
 
 contains
 
@@ -26,9 +26,9 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates soil temperature based on.
     !-------------------------------------------------------------------------
-    use params_core, only: ndayyear, nlu, nmonth, maxgrid, ndaymonth, pi
-    use params_siml, only: init
-    use sofunutils, only: running, daily2monthly
+    use _params_core, only: ndayyear, nlu, nmonth, maxgrid, ndaymonth, pi
+    use _params_siml, only: init
+    use _sofunutils, only: running, daily2monthly
 
     implicit none
 
@@ -146,5 +146,4 @@ contains
 
   end subroutine soiltemp
 
-
-end module soiltemp_sitch
+end module _soiltemp

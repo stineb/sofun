@@ -229,8 +229,9 @@ eval_imbalance <- function( dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, r_
     lai <- cleaf * sla
     gpp <- calc_dgpp( lai, mlue, dppfd, params )
     rd  <- calc_drd( lai, mrd_unitiabs, meanmppfd, params )
+    rroot <- croot * (r_root + exu)
 
-    dc  <- calc_dgpp( lai, mlue, dppfd, params ) - croot * (r_root + exu)
+    dc  <- gpp - rd - rroot
     dn  <- calc_dnup( croot, ninorg, params )
 
     ## Evaluation quantity is the difference between the 
@@ -420,7 +421,7 @@ for (moy in 1:nmonth){
     ## Two modes of optimisation: 
     ## 1. balanced C:N. During early season, maximises growth
     ## 2. constant C cost of N uptake. During late season
-    if (doy>30 && out_ncost[doy] > 50 && !const_cost ) {
+    if (doy>30 && out_ncost[doy] > 999999 && !const_cost ) {
       ## Optimisation by constant C cost of N uptake
       const_cost <- TRUE
     }
@@ -552,8 +553,7 @@ for (moy in 1:nmonth){
         print("finding root")
         out.root <- NA
         try ( 
-          out.root <- uniroot( function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params ), interval=c(0,max_dcleaf) )                                                  
-          )        
+          out.root <- uniroot( function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params ), interval=c(0,max_dcleaf) )                                                            )        
         if( is.na(out.root) ){
           dcleaf <- 0.0
         } else { 
@@ -614,12 +614,12 @@ print(mess)
 
 # plot( 1:doy, out_cton_labl, type="l", ylim=c(-80,80) )
 
-pdf( "cmass_vs_doy.pdf", width=6, height=5 )
+# pdf( "cmass_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_croot[1:doy], type="l", ylab="C mass (gC/m2)", xlab="DOY" )
 lines( 1:doy, out_cleaf[1:doy], type="l", col="red" )
 lines( 1:doy, out_clabl[1:doy], col="blue" )
 legend( "topleft", c("root C","leaf C", "labile C"), lty=1, bty="n", col=c("black","red","blue") )
-dev.off()
+# dev.off()
 
 plot( 1:doy, out_clabl[1:doy], type="l", ylim=range(c( out_clabl[1:doy], out_nlabl[1:doy]),na.rm=T) )
 lines( 1:doy, out_nlabl[1:doy], col="red" )
@@ -630,17 +630,17 @@ lines( 1:doy, out_dcleaf[1:doy], col="red" )
 plot( 1:doy, out_cleaf[1:doy]/out_nleaf[1:doy], type="l" )
 plot( 1:doy, out_croot[1:doy]/out_nroot[1:doy], type="l"  )
 
-pdf( "lai_vs_doy.pdf", width=6, height=5 )
+# pdf( "lai_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_lai[1:doy], type="l", ylab="LAI", xlab="DOY")
-dev.off()
+# dev.off()
 
-pdf( "cost_of_n_vs_doy.pdf", width=6, height=5 )
+# pdf( "cost_of_n_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_ncost[1:doy], type="l", ylim=c(0,200), ylab="C cost per N uptake (gC/gN)", xlab="DOY")
-dev.off()
+# dev.off()
 
-pdf( "nup_vs_doy.pdf", width=6, height=5 )
+# pdf( "nup_vs_doy.pdf", width=6, height=5 )
 plot( 1:doy, out_nup[1:doy], type="l", ylab="N uptake (gN/day)", xlab="DOY")
-dev.off()
+# dev.off()
 
 plot( 1:doy, out_dclabl[1:doy], type="l", ylab="C balance (gC/m2/day)", xlab="DOY")
 plot( 1:doy, out_gpp[1:doy], type="l", ylab="GPP (gC/m2/day)", xlab="DOY")

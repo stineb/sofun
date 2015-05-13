@@ -1,10 +1,10 @@
-module gpp_pmodel
+module _gpp
   !////////////////////////////////////////////////////////////////
   ! P-MODEL GPP MODULE
   ! Contains P model functions adopted from GePiSaT
   !----------------------------------------------------------------
   !
-  ! gpp_pmodel
+  ! _gpp
   ! __version__ 1.0
   !
   ! written by Benjamin Stocker, adopted from Python code written by Tyler Davis
@@ -49,7 +49,8 @@ module gpp_pmodel
   ! updated by 'pmodel') are:
   !   - xxx
   !----------------------------------------------------------------
-  use params_core, only: nmonth
+  use _params_core, only: nmonth, npft, c_molmass
+
 
   implicit none
   ! private
@@ -60,7 +61,6 @@ module gpp_pmodel
   real, parameter :: kphio     = 0.093    ! quantum efficiency (Long et al., 1993)
   real, parameter :: kPo       = 101325.0 ! standard atmosphere, Pa (Allen, 1973)
   real, parameter :: kTo       = 25.0     ! base temperature, deg C (Prentice, unpublished)
-  real, parameter :: c_molmass = 12.0107  ! g C / mol C
 
   !-----------------------------------------------------------------------
   ! Email from Tyler (10.3.2015):
@@ -100,6 +100,12 @@ module gpp_pmodel
 
   ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
   real, parameter :: rd_to_vcmax = 0.015
+
+  ! From regressing Narea to metabolic Narea in Hikosaka data
+  real, parameter :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
+  real, parameter :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
+
+  real, parameter :: r_ctostructn_leaf = 20        ! constant ratio of C to structural N
   
   ! parameters for Narea -- under construction
   ! sla = 0.0014       ! specific leaf area (m2/gC)
@@ -111,6 +117,14 @@ module gpp_pmodel
   ! n_v  = 1.0/40.96    ! gN µmol-1 s-1. Value 40.96 is 'sv' in Table 2 in Kattge et al., 2009, GCB, C3 herbaceous
   ! -- under construction
 
+  ! DAILY OUTPUT VARIABLES
+  ! xxx add jpngr dim
+
+  ! MONTHLY OUTPUT VARIABLES
+  ! xxx add jpngr dim
+
+  ! PUBLIC VARIABLES
+  real, dimension(npft) :: drd      ! dark respiration [gC/m2/d]
 
   ! MODULE-SPECIFIC VARIABLES
   ! These are not required outside module 'pmodel', but are used in different SRs of this module
@@ -119,13 +133,6 @@ module gpp_pmodel
   real, dimension(nmonth) :: mactnv_unitiabs ! conversion factor to get from APAR to Rubisco-N
   real, dimension(nmonth) :: factor25        ! factor to convert from 25 deg-normalised to ambient T
   real, dimension(nmonth) :: mrd_unitiabs    ! dark respiration per unit fAPAR (assuming fAPAR=1)
-
-  ! DAILY OUTPUT VARIABLES
-  ! xxx add jpngr dim
-
-
-  ! MONTHLY OUTPUT VARIABLES
-  ! xxx add jpngr dim
 
   ! Function return variables as derived types
   type outtype_pmodel
@@ -150,7 +157,9 @@ module gpp_pmodel
     real :: n
   end type outtype_lue
 
+
 contains
+
 
   subroutine getlue( jpngr, co2, dtemp, dvpd, elv )
     !//////////////////////////////////////////////////////////////////
@@ -160,8 +169,8 @@ contains
     ! input variables need to be known beforehand => no daily coupling
     ! possible.
     !------------------------------------------------------------------
-    use params_core, only: ndayyear
-    use sofunutils, only: daily2monthly
+    use _params_core, only: ndayyear
+    use _sofunutils, only: daily2monthly
 
     ! arguments
     integer, intent(in)                   :: jpngr    ! gridcell number
@@ -174,22 +183,16 @@ contains
     type(outtype_pmodel)    :: out_pmodel ! derived type for P-model output variable list
     real, dimension(nmonth) :: mtemp      ! monthly air temperature (deg C)
     real, dimension(nmonth) :: mvpd       ! monthly vapour pressure deficit (Pa)
-    integer :: moy
-
-    integer :: moy
-    type(outtype_pmodel) :: out_pmodel
-
-    real, dimension(nmonth) :: out_gpp, out_rd
-
+    integer                 :: moy
 
     ! Get monthly averages
     mtemp(:) = daily2monthly( dtemp(:), "mean" )
     mvpd(:)  = daily2monthly( dvpd(:), "mean" )
 
-    ! xxx debug
-    write(0,*) 'mtemp', mtemp
-    write(0,*) 'mvpd', mvpd
-    stop
+    ! ! xxx debug
+    ! write(0,*) 'mtemp', mtemp
+    ! write(0,*) 'mvpd', mvpd
+    ! stop
 
     ! ! xxx try out: -- THIS WORKS PERFECTLY -- 
     ! co2    = 376.0
@@ -239,6 +242,91 @@ contains
   end subroutine getlue
 
 
+  subroutine gettraits( jpngr )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates leaf traits based on Vcmax25, assuming a constant 
+    ! ratio of leaf-C to leaf-structural N:
+    ! - metabolic Narea
+    ! - structural Narea
+    ! - leaf C:N 
+    ! - LMA, SLA
+    !------------------------------------------------------------------
+    use _params_modl, only: n_molmass, c_molmass, c_content_of_biomass
+    use _pools, only: sla, lma, r_cton_leaf, r_ntoc_leaf
+    use _waterbal, only: meanmppfd
+
+    ! arguments
+    integer :: jpngr 
+
+    ! local variables
+    integer :: pft
+    real    :: max_lai
+    real    :: nr_leaf
+    real    :: ncw_leaf
+    real    :: cleaf
+
+    do pft=1,npft
+
+      ! xxx try: assumue seasonal maximum LAI to determine leaf N beforehand
+      max_lai = 1.0
+
+      nr_leaf  = calc_nr_leaf(  max_lai, mactnv_unitiabs(:), meanmppfd(:) )
+      ncw_leaf = calc_ncw_leaf( nr_leaf )
+      cleaf    = ncw_leaf * n_molmass * r_ctostructn_leaf
+
+      r_cton_leaf(pft,jpngr) = cleaf / ( (nr_leaf+ncw_leaf) * n_molmass )
+      r_ntoc_leaf(pft,jpngr) = 1.0 / r_cton_leaf(pft,jpngr)
+
+      lma(pft,jpngr) = cleaf / c_content_of_biomass
+      sla(pft,jpngr) = 1.0 / lma(pft,jpngr)
+
+    end do
+
+  end subroutine gettraits
+
+
+  function calc_nr_leaf( lai, mactnv_unitiabs, meanmppfd ) result( nr_leaf )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates leaf-level metabolic N content per unit leaf area as a
+    ! function of Vcmax25.
+    !------------------------------------------------------------------
+    use _vegdynamics, only: get_fapar
+
+    ! arguments
+    real, intent(in)                    :: lai
+    real, dimension(nmonth), intent(in) :: mactnv_unitiabs
+    real, dimension(nmonth), intent(in) :: meanmppfd
+
+    ! function return variable
+    real, intent(out) :: nr_leaf
+
+    ! local variables
+    real :: fapar
+
+    fapar = get_fapar( lai )
+
+    ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
+    nr_leaf = maxval( fapar * meanmppfd(:) * mactnv_unitiabs(:) ) / lai
+
+  end function calc_nr_leaf
+
+
+  function calc_ncw_leaf( nr_leaf ) result( ncw_leaf )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates leaf-level structural N content per unit leaf area as a
+    ! function of metabolic Narea.
+    !------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: nr_leaf
+
+    ! function return variable
+    real, intent(out) :: ncw_leaf
+
+    ncw_leaf = nr_leaf * r_n_cw_v + ncw_min
+
+  end function calc_ncw_leaf
+
+
   subroutine gpp( jpngr, doy, moy, dgpp_data )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
@@ -253,11 +341,10 @@ contains
     ! - lai_ind
     ! - dpppfd
     !------------------------------------------------------------------
-    use params_core, only: npft
-    use fluxes, only: dgpp, drd
-    use params_modl, only: kbeer
-    use treegeometry, only: lai_ind, get_fpc_ind
-    use waterbal_stash, only: dppfd, meanmppfd
+    use _fluxes, only: dgpp
+    use _params_modl, only: kbeer
+    use _pools, only: fpc_ind
+    use _waterbal, only: dppfd, meanmppfd
 
     ! arguments
     ! integer, intent(in), optional               :: jpngr     ! gridcell number
@@ -286,20 +373,14 @@ contains
       !----------------------------------------------------------------
       do pft=1,npft
   
-        ! Fraction of absorbed photosynthetically active radiation (fAPAR)
-        ! follows Beer's Law.
-        fapar = get_fpc_ind( lai_ind(pft,jpngr) )
-        ! write(0,*) 'fapar', fapar
-        ! write(0,*) 'lai_ind', lai_ind(pft,jpngr)
-
-        ! xxx try
-        fapar = 1.0
+        ! ! xxx try
+        ! fapar = 1.0
 
         ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-        dgpp(pft) = calc_dgpp( fapar, dppfd(doy), mlue(moy) )
+        dgpp(pft) = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
 
         ! Dark respiration
-        drd(pft) = calc_drd( fapar, meanmppfd(moy), mrd_unitiabs(moy) )
+        drd(pft) = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
 
       end do
 
@@ -531,12 +612,12 @@ contains
 
   !   real, parameter :: mol_weight_rubisco = 5.5e5    ! molecular weight of Rubisco, (g R)(mol R)-1
   !   real, parameter :: n_conc_rubisco     = 1.14e-2  ! N concentration in rubisco, (mol N)(g R)-1
-  !   real, parameter :: mol_weight_n       = 14.0067  ! molecular weight of N, (g N)(mol N)-1
+  !   real, parameter :: n_molmass       = 14.0067  ! molecular weight of N, (g N)(mol N)-1
   !   real, parameter :: cat_turnover_per_site = 3.5   ! catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1
   !   real, parameter :: cat_sites_per_mol_R   = 8.0   ! number of catalytic sites per mol R, (mol R sites)(mol R)-1
 
   !   ! Metabolic N ratio
-  !   n_v = mol_weight_rubisco * n_conc_rubisco * mol_weight_n / ( cat_turnover_per_site * cat_sites_per_mol_R )
+  !   n_v = mol_weight_rubisco * n_conc_rubisco * n_molmass / ( cat_turnover_per_site * cat_sites_per_mol_R )
 
   !   n_rubisco_area = vcmax25 * n_v
 
@@ -1026,4 +1107,4 @@ contains
 
   end function calc_viscosity_h2o
 
-end module gpp_pmodel
+end module _gpp

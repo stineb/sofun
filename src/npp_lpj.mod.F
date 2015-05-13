@@ -1,4 +1,4 @@
-module npp_lpj
+module _npp
   !////////////////////////////////////////////////////////////////
   ! NPP_LPJ MODULE
   ! Contains the "main" subroutine 'npp' and all necessary 
@@ -16,15 +16,14 @@ module npp_lpj
   ! updated by 'waterbal') are:
   !   - daily NPP ('dnpp')
   !   - soil temperature ('xxx')
-  !   - inorganic N pools ('no3', 'nh4')
+  !   - inorganic N _pools ('no3', 'nh4')
   !   - xxx 
   !----------------------------------------------------------------
-  use
-
   implicit none
 
-
-
+  ! MODULE SPECIFIC PARAMETERS
+  real :: r_root
+  real :: r_sapw
 
 contains
 
@@ -40,29 +39,35 @@ contains
     ! ('rsoil'). This implies that growth respiration is "paid" also on exu-
     ! dates. 
     !-------------------------------------------------------------------------
-    use classdefs
-    use params_core, only: npft, nlu
-    use params_modl, only: rresp_growth, lu_category, tree
-    use rates
-    use fluxes, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, drhet, &
-      drgrow, dcex, dnup
-    use treegeometry, only: nind, ispresent
-    use pools, only: pleaf, proot, psapw, pexud, plabl
-    use nuptake_fun, only: nuptake
-    use statevars, only: dtemp_soil
+    use _classdefs
+    use _params_core, only: npft, ndayyear
+    use _params_modl, only: lu_category, tree
+    use _rates
+    use _fluxes, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, dcex, dnup
+    use _vegdynamics, only: nind, ispresent
+    use _pools, only: proot, psapw, pexud, plabl
+    use _nuptake, only: nuptake
+    use _statevars, only: dtemp_soil
+    use _gpp, only: drd
 
-    implicit none
-
-    ! ARGUMENTS
+    ! arguments
     integer, intent(in) :: jpngr
     real, intent(in)    :: dtemp      ! air temperature at this day
 
-    ! LOCAL VARIABLES
+    ! local variables
     integer :: pft
     integer :: lu
     real    :: ftemp_air
     real    :: ftemp_soil
     real    :: dresp_maint = 0.0    ! daily total maintenance respiration
+
+
+    ! RA: MAINTENANCE RESPIRATION
+    ! NPP = GPP - RA
+    ! NUP: N-UPTAKE
+    ! CEX: C EXUDATION
+    ! ADD (NPP - CEX) AND NUP TO LABILE POOL
+
 
     !-------------------------------------------------------------------------
     ! PFT LOOP
@@ -84,36 +89,18 @@ contains
         ! MAINTENANCE RESPIRATION
         ! use function 'resp_main'
         !-------------------------------------------------------------------------
-        ! argument 'ftemp' not used when _resp_maint_makela activated
         ! fine roots should have a higher repsiration coefficient than other tissues (Franklin et al., 2007).
-        !drleaf(pft) = carbon( resp_maint( pleaf(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_air ) )
-        !drroot(pft) = carbon( resp_maint( proot(pft,jpngr)%n%n14*nind(pft,jpngr), pft, ftemp=ftemp_soil ) )
-        drleaf(pft) = resp_maint( pleaf(pft,jpngr)%n%n14 * nind(pft,jpngr), pft, ftemp=ftemp_air )
-        drroot(pft) = resp_maint( proot(pft,jpngr)%n%n14 * nind(pft,jpngr), pft, ftemp=ftemp_soil )
+        drleaf(pft) = drd(pft)  ! leaf respiration is given by dark respiration as calculated in P-model.       
+        drroot(pft) = calc_resp_maint( proot(pft,jpngr)%c%c12 * nind(pft,jpngr), r_root )
         if (tree(pft)) then
-          drsapw(pft) = resp_maint( psapw(pft,jpngr)%n%n14 * nind(pft,jpngr), pft, ftemp=ftemp_air )
+          drsapw(pft) = calc_resp_maint( psapw(pft,jpngr)%c%c12 * nind(pft,jpngr), r_sapw )
         endif
         
         ! daily total maintenance repsiration
-        !dresp_maint = cplus( drleaf(pft), drroot(pft) )
         dresp_maint = drleaf(pft) + drroot(pft)
         if (tree(pft)) then
           dresp_maint = dresp_maint + drsapw(pft)
         endif
-
-
-        !/////////////////////////////////////////////////////////////////////////
-        ! GROWTH RESPIRATION
-        ! XXX address this: here growth respiration is calculated before exudation
-        ! is substracted from (GPP-Rmaint). This does not make sense as not all of
-        ! (GPP-Rmaint) will later be available for growth. This raises the question
-        ! whether N-uptake should be calculated here (after maintentance resp.).
-        ! Further, this raises the question whether allocation should be calculated
-        ! daily in order to calculate growth respiration on only the part that is 
-        ! allocated to actual growth and not on the part that is diverted to 'plabl'.
-        !-------------------------------------------------------------------------
-        !drgrow(pft) = cfrac( rresp_growth(pft), cminus( dgpp(pft), dresp_maint ) )
-        drgrow(pft) = rresp_growth(pft) * ( dgpp(pft) - dresp_maint )
 
 
         !/////////////////////////////////////////////////////////////////////////
@@ -122,21 +109,19 @@ contains
         ! This is where isotopic signatures are introduced because only 'dbminc'
         ! is diverted to a pool and re-emission to atmosphere gets delayed. Auto-
         ! trophic respiration is immediate, it makes thus no sense to calculate 
-        ! full isotopic effects of gross exchange fluxes.
-        ! XXX NPP may get negative here!
+        ! full isotopic effects of gross exchange _fluxes.
         !-------------------------------------------------------------------------
-        drauto(pft) = dresp_maint + drgrow(pft)
+        drauto(pft) = dresp_maint
+        dnpp(pft)   = carbon( dgpp(pft) - drauto(pft) )
 
-        ! xxx do here: if drauto > dgpp then use plabl for respiration.
+        if ( dnpp(pft)%c12 < 0.0 ) then
+          write(0,*) 'pft ',pft
+          write(0,*) 'drd ',drd(pft)
+          write(0,*) 'drroot',drroot(pft)
+          write(0,*) 'dgpp ',dgpp(pft)
+          write(0,*) 'NPP: dnpp negative'
+        end if
 
-        dnpp(pft)   = carbon( max(dgpp(pft) - drauto(pft), 0.) ) 
-
-        !if (dnpp(pft)%c12<0.) then
-          !print*,'gpp, ra ',dgpp(pft), drauto(pft)
-          !print*,'negative NPP'
-        !else
-          !print*,'positive NPP'
-        !endif 
 
         !/////////////////////////////////////////////////////////////////////////
         ! EXUDATION FOR N UPTAKE
@@ -165,46 +150,63 @@ contains
         !end if
         call orgcp( orgpool( cminus( dnpp(pft), carbon(dcex(pft)) ), dnup(pft) ), plabl(pft,jpngr) )
 
-        !print*,'plabl ',plabl(pft,jpngr)%c%c12
-
       endif
     end do
 
   end subroutine npp
 
 
-  function resp_maint( nmass, pft, ftemp )
-    !*************************************************************************
-    ! MAINTENANCE RESPIRATION
-    ! Calculate tissue maintenance respiration values today [Eqn (7)]
-    ! incorporating daily phenology. This is using the new leaf respiration method
-    ! (spahni 2009-12-11: set leaf_resp_rs==0 for old respiration method)
-    !-------------------------------------------------------------------------
-#include "sofun_module_control.inc"
-    use params_core, only: ndayyear
-    use params_modl, only: rresp_maint, kresp
-
-    implicit none
-
-    real :: resp_maint                    ! return value: maintenance respiration [gC/m2]
-    real, intent(in) :: nmass             ! N mass per unit area [gN/m2]
-    integer, intent(in) :: pft            ! PFT number
+  function calc_resp_maint( cmass, rresp, ftemp ) result( resp_maint )
+    !////////////////////////////////////////////////////////////////
+    ! Returns maintenance respiration
+    !----------------------------------------------------------------
+    ! arguments
+    real, intent(in)           :: cmass   ! N mass per unit area [gN/m2]
+    real, intent(in)           :: rresp   ! respiration coefficient [gC gC-1 d-1]
     real, intent(in), optional :: ftemp   ! temperature modifier
 
-! xxx try: make it independent of temperature
-! #ifdef _resp_maint_makela
-!     ! value for rresp_maint from Table 1, Makela et al., 2008, converted to gC/gN/day
-!     ! read in as 0.04383562 = 16/365 gC/gN/yr
-!     resp_maint = rresp_maint(pft) * nmass
-! #else
-!     resp_maint = rresp_maint(pft) * kresp * nmass * ftemp ! xxx try: *dphen(day,pft)
-!     ! xxx remove here
-! #endif
+    ! function return variable
+    real :: resp_maint                    ! return value: maintenance respiration [gC/m2]
 
-    ! xxx try
-    resp_maint = 16.0 / 365.0 * nmass ! xxx try: *dphen(day,pft)
+    if (present(ftemp)) then
+      resp_maint = cmass * rresp * ftemp
+    else
+      resp_maint = cmass * rresp
+    end if
 
-    ! alternative method in LPX: directly from photosynthesis ('dresp' in LPX-Bern)
-  end function resp_maint
+  end function calc_resp_maint
 
-end module npp_lpj
+
+  subroutine getpar_modl_npp()
+    !////////////////////////////////////////////////////////////////
+    ! Subroutine reads nuptake module-specific parameters 
+    ! from input file
+    !----------------------------------------------------------------
+    use _params_core, only: ndayyear
+
+    ! local variables
+    integer, parameter    :: npar = 2
+    real, dimension(npar) :: params_array
+    character(len=50)     ::paramfilnam
+    
+    paramfilnam = 'params_npp_lpj.dat'
+
+    open(unit=04,file=trim(paramfilnam),status='OLD')      
+    read (04,*) params_array
+    close (04)
+
+    ! Fine-root specific respiration rate (gC gC-1 year-1)
+    ! Central value: 0.913 year-1 (Yan and Zhao (2007); see Li et al., 2014)
+    r_root = params_array(1)
+    r_root = r_root / ndayyear  ! conversion to rate per day
+
+    ! Fine-root specific respiration rate (gC gC-1 year-1)
+    ! Central value: 0.044 year-1 (Yan and Zhao (2007); see Li et al., 2014)
+    ! (= 0.044 nmol mol-1 s-1; range: 0.5–10, 20 nmol mol-1 s-1 (Landsberg and Sands (2010))
+    r_sapw = params_array(2)
+    r_sapw = r_sapw / ndayyear  ! conversion to rate per day
+
+
+  end subroutine getpar_modl_npp
+
+end module _npp
