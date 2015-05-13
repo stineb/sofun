@@ -105,35 +105,6 @@ contains
   end function daily2monthly
 
 
-  ! function icumsum( arr, seed )
-  !   !/////////////////////////////////////////////////////////////////////////
-  !   ! Returns the running (cumulative) sum of a vector of integers. 
-  !   ! Adopted from: 
-  !   ! Numerical Recipes in Fortran 90: Volume 2, edited by William H. Press
-  !   !-------------------------------------------------------------------------
-  !   implicit none 
-
-  !   ! arguments
-  !   integer, dimension(:), intent(in)  :: arr
-  !   integer, intent(in), optional      :: seed
-  !   integer, dimension(:), intent(out) :: icumsum
-
-  !   ! local variables
-  !   integer :: n, j
-  !   integer :: sd
-
-  !   n = size(arr)
-  !   if (n==0) return
-  !   sd = 0
-  !   if ( present(seed) ) sd = seed
-  !   icumsum(1) = arr(1) + sd
-  !   do j=2,n
-  !     icumsum(j) = icumsum(j-1) + arr(j)
-  !   end do
-
-  ! end function icumsum
-
-
   function monthly2daily( mval, method, monthistotal, mval_pvy, mval_nxy )
     !/////////////////////////////////////////////////////////////////////////
     ! Returns daily values based on monthly values, using a defined method.
@@ -571,123 +542,500 @@ contains
   end function getvalreal_STANDARD
 
 
+  subroutine getreal( filename, paraname, paravalue )
+    !////////////////////////////////////////////////////////////////
+    !  "Low-level" SR for reading parameter values from text file
+    !----------------------------------------------------------------
+    ! arguments
+    character(len=*), intent(in) :: filename, paraname
+    real,intent(out) :: paravalue
+
+    ! local vraibles
+    integer :: filehandle
+    character(len=40) :: readname, readvalue
+
+    filehandle = 111
+    open(filehandle,status='old',err=19,file=filename)
+    9    read(filehandle,12,end=10)readname,readvalue
+    if (trim(readname).eq.paraname) then
+      read(readvalue,*) paravalue
+      goto 11
+    else
+      goto 9
+    endif
+    10   continue
+    write(0,*) 'GETREAL: '//paraname//' of type real not found'
+    stop
+
+    11   continue
+    12   format(2a40)
+
+    close(filehandle)
+
+    return
+
+    19   write(0,*) 'GETREAL: '//filename//' not found!'
+    stop
+
+  end subroutine getreal
+  
+
+  subroutine getint( filename, paraname, paravalue )
+    !////////////////////////////////////////////////////////////////
+    ! "Low-level" SR for reading parameter values from text file
+    !----------------------------------------------------------------
+    ! arguments
+    character(len=*), intent(in) :: filename, paraname      
+    integer, intent(out) :: paravalue
+
+    ! local variables
+    integer :: filehandle
+    character(len=40) :: readname, readvalue
+
+    filehandle = 111
+    open(filehandle,status='old',err=19,file=filename)
+    9    read(filehandle,12,end=10)readname,readvalue
+    if (trim(readname).eq.paraname) then
+      read(readvalue,*) paravalue
+      goto 11
+    else
+      goto 9
+    endif
+    10   continue
+    write(0,*) 'GETINT: in file '//filename//':'
+    write(0,*) 'GETINT: '//paraname//' of type integer not found'
+    stop
+
+    11   continue
+    12   format(2a40)
+
+    close(filehandle)
+
+    return
+
+    19   write(0,*) 'GETINT: file '//filename//' not found:'
+    write(0,*) filename
+    stop
+
+  end subroutine getint
 
 
-!  function monthly2daily_precip( mval_prec, mval_wet )!
+  subroutine getlogical( filename, paraname, paravalue )
+    !////////////////////////////////////////////////////////////////
+    ! "Low-level" SR for reading parameter values from text file
+    !----------------------------------------------------------------
+    ! arguments
+    character(len=*), intent(in) :: filename, paraname
+    logical, intent(out) :: paravalue
 
-!    use _params_core, only: nmonth, ndayyear
+    ! local variables
+    integer :: filehandle
+    character(len=40) :: readname, readvalue
 
-!    ! arguments
-!    real, dimension(nmonth), intent(in) :: mval_prec  ! monthly precipitation totals
-!    real, dimension(nmonth), intent(in) :: mval_wet   ! monthly number of wet days
+    filehandle = 111
+    open(filehandle,status='old',err=19,file=filename)
+    9    read(filehandle,12,end=10)readname,readvalue
+    if (trim(readname).eq.paraname) then
+      read(readvalue,*) paravalue
+      goto 11
+    else
+      goto 9
+    endif
+    10   continue
+    write(0,*) 'GETLOGICAL: '//paraname//' of type logical not found'
+    stop
 
-!    ! local variables
-!    integer :: dm,day,d,m
-!    integer :: daysum            !accumulated days at beginning of month
-!    
-!    real :: prob, vv, v1, random
-!    real, parameter :: c1 = 1.0
-!    real, parameter :: c2 = 1.2
-!    real, dimension(nmonth) :: prob_rain
-!    real, dimension(nmonth) :: mprecave     !average precipitation on wet days
-!    real, dimension(nmonth) :: mprecip      !acc. monthly generated precipitation
-!    real, dimension(ndayyear) :: dval_prec_save
+    11   continue
+    12   format(2a40)
 
-!    ! function return variable
-!    real, dimension(ndayyear), intent(out) :: dval_prec
+    close(filehandle)
+
+    return
+
+    19   write(0,*) 'GETLOGICAL: '//filename//' not found!'
+    stop
+
+  end subroutine getlogical
 
 
-!    day=0
-!    prob=0.0
-!    do m=1,nmonth
-!      prob_rain(m)=0.0
-!      mprecave(m)=0.0
-!      mprecip(m)=0.0
-!    enddo
-!    daysum=0
-!   
-!    do m=1,nmonth
-!      if(mval_wet(m)<=1.0) mval_wet(m)=1.0
-!      prob_rain(m)=mval_wet(m)/real(ndaymonth(m))
-!      mprecave(m)=mval_prec(m)/mval_wet(m)
-!       
-!      do dm=1,ndaymonth(m)
-!        day=day+1
-!   
-!        ! Transitional probabilities (Geng et al. 1986)
-!        if (day>1) then
-!          if (dval_prec(day-1)<0.1) then
-!            prob=0.75*prob_rain(m)
-!          else 
-!            prob=0.25+(0.75*prob_rain(m))
-!          endif
-!        endif
-!        
-!        ! Determine wet days randomly and use Krysanova/Cramer estimates of 
-!        ! parameter values (c1,c2) for an exponential distribution
-!        vv=real(prdaily_random(jpngr,day,1))
-!        if(vv>prob) then
-!          dval_prec(day)=0.0
-!        else
-!          v1=real(prdaily_random(jpngr,day,2))
-!          dval_prec(day)=((-log(v1))**c2)*mprecave(m)*c1 
-!          if(dval_prec(day)<0.1) dval_prec(day)=0.0
-!        endif
-!        mprecip(m)=mprecip(m)+dval_prec(day)
-!        dval_prec_save(day)=dval_prec(day) !
-!      enddo
-!      
-!      ! normalise generated precipitation by monthly values
-!      if(m>1) daysum=daysum+ndaymonth(m-1)
-!      if(mprecip(m)<1.0) mprecip(m)=1.0
-!      do dm=1,ndaymonth(m)
-!        day=daysum+dm
-!        dval_prec(day)=dval_prec(day)*(mval_prec(m)/mprecip(m))
-!        if (dval_prec(day)<0.1d0) dval_prec(day)=0.0
-!      ! dval_prec(day)=mval_prec(m)/ndaymonth(m)  !no generator
-!      enddo
-!      
-!    enddo                     !month 
-!    
-!    ! calculate monthly means after interpolation - not absolutely identical to input
-!    day=0
-!    do m=1,nmonth
-!      mprecint(m)=0.0
-!      do d=1,ndaymonth(m)
-!        day = day + 1
-!        mprecint(m)=mprecint(m)+dval_prec(day)!/dble(ndaymonth(m))
-!      enddo
-!    enddo
-!          
-!    return!
+  subroutine getstring( filename, paraname, paravalue )
+    !////////////////////////////////////////////////////////////////
+    ! "Low-level" SR for reading parameter values from text file
+    !----------------------------------------------------------------
+    character(len=*), intent(in) :: filename, paraname
+    character(len=*), intent(out) :: paravalue
 
-!  end function monthly2daily_precip!
-!      
-!  function random(k)!
-!  
-!    ! arguments
-!    integer, dimension(4), intent(in) :: k
-!    ! local variables
-!    integer :: i
+    integer :: filehandle,i
+    character(len=40) :: readname
+    character(len=1024) :: readvalue
 
-!    k(4)=3*k(4)+k(2)
-!    k(3)=3*k(3)+k(1)
-!    k(2)=3*k(2)
-!    k(1)=3*k(1)
-!    i=k(1)/1000
-!    k(1)=k(1)-i*1000
-!    k(2)=k(2)+i
-!    i=k(2)/100
-!    k(2)=k(2)-100*i
-!    k(3)=k(3)+i
-!    i=k(3)/1000
-!    k(3)=k(3)-i*1000
-!    k(4)=k(4)+i
-!    i=k(4)/100
-!    k(4)=k(4)-100*i
-!    random=(((dble(k(1))*0.001d0+dble(k(2)))*0.01d0+dble(k(3))) * 0.001d0+dble(k(4)))*0.01d0
-!    
-!  end function random          
+    filehandle = 111
+    open(filehandle,status='old',err=19,file=filename)
+    9    read(filehandle,12,end=10)readname,readvalue
+    if (trim(readname).eq.paraname) then
+      ! Strip leading and trailing whitespace from readvalue
+      i=1
+      do while (readvalue(i:i).eq.' ' .and. i.lt.len(readvalue))
+        i=i+1
+      enddo
+      paravalue = trim(readvalue(i:))
+      goto 11
+    else
+      goto 9
+    endif
+    10   continue
+    write(0,*) 'GETSTRING: '//paraname//' of type string not found'
+    stop
+
+    11   continue
+    12   format(a40,a)
+
+    close(filehandle)
+
+    return
+
+    19   write(0,*) 'GETSTRING: '//filename//' not found!'
+    stop
+
+  end subroutine getstring
+
+
+  subroutine getchar( filename, paraname, paravalue )
+    !////////////////////////////////////////////////////////////////
+    ! "Low-level" SR for reading parameter values from text file
+    !----------------------------------------------------------------
+    character(len=*), intent(in) :: filename, paraname
+    character(len=1), intent(out) :: paravalue
+
+    integer :: filehandle
+    character(len=40) :: readname, readvalue
+
+    filehandle = 111
+    open(filehandle,status='old',err=19,file=filename)
+    9    read(filehandle,12,end=10)readname,readvalue
+    if (trim(readname).eq.paraname) then
+      read(readvalue,*) paravalue
+      goto 11
+    else
+      goto 9
+    endif
+    10   continue
+    write(0,*) 'GETCHAR: '//paraname//' of type char not found'
+    stop
+
+    11   continue
+    12   format(2a40)
+
+    close(filehandle)
+
+    return
+
+    19   write(0,*) 'GETCHAR: '//filename//' not found!'
+    stop
+
+  end subroutine getchar
+
+ !  subroutine setreal(filename,paraname,default,paravalue)
+ !          !////////////////////////////////////////////////////////////////
+ !          ! "Low-level" SR for reading/defining parameter values from text file
+ !          !----------------------------------------------------------------
+
+ !          implicit none
+
+ !          integer filehandle
+ !          character(len=40) :: readname, readvalue
+ !          character(len=*), intent(in) :: filename, paraname
+
+ !          real,intent(out) :: paravalue
+ !          real,intent(in)  :: default
+
+ !          filehandle = 111
+ !          open(filehandle,status='old',err=19,file=filename)
+ ! 9        read(filehandle,12,end=10)readname,readvalue
+ !          if (trim(readname).eq.paraname) then
+ !             read(readvalue,*) paravalue
+ !             goto 11
+ !          else
+ !             goto 9
+ !          endif
+ ! 10       continue
+ !          paravalue = default
+
+ ! 11       continue
+ ! 12       format(2a40)
+
+ !          close(filehandle)
+
+ !          return
+
+ ! 19       stop 'GETPAR: '//filename//' not found!'
+
+ !          end
+
+ !          subroutine setint(filename,paraname,default,paravalue)
+ !          !////////////////////////////////////////////////////////////////
+ !          ! "Low-level" SR for reading/defining parameter values from text file
+ !          !----------------------------------------------------------------
+
+ !          implicit none
+
+ !          integer filehandle
+ !          character(len=40) :: readname, readvalue
+ !          character(len=*), intent(in) :: filename, paraname
+
+ !          integer, intent(out) :: paravalue
+ !          integer :: default
+
+ !          filehandle = 111
+ !          open(filehandle,status='old',err=19,file=filename)
+ ! 9        read(filehandle,12,end=10)readname,readvalue
+ !          if (trim(readname).eq.paraname) then
+ !             read(readvalue,*) paravalue
+ !             goto 11
+ !          else
+ !             goto 9
+ !          endif
+ ! 10       continue
+ !          paravalue = default
+
+ ! 11       continue
+ ! 12       format(2a40)
+
+ !          close(filehandle)
+
+ !          return
+
+ ! 19       stop 'GETPAR: '//filename//' not found!'
+
+ !          end
+
+ !          subroutine setlogical(filename,paraname,default,paravalue)
+ !          !////////////////////////////////////////////////////////////////
+ !          ! "Low-level" SR for reading/defining parameter values from text file
+ !          !----------------------------------------------------------------
+
+ !          implicit none
+
+ !          character(len=*), intent(in) :: filename, paraname
+ !          logical, intent(out) :: paravalue
+
+ !          integer filehandle
+ !          character(len=40) :: readname, readvalue
+ !          logical :: default
+
+ !          filehandle = 111
+ !          open(filehandle,status='old',err=19,file=filename)
+ ! 9        read(filehandle,12,end=10)readname,readvalue
+ !          if (trim(readname).eq.paraname) then
+ !             read(readvalue,*) paravalue
+ !             goto 11
+ !          else
+ !             goto 9
+ !          endif
+ ! 10       continue
+ !          paravalue = default
+
+ ! 11       continue
+ ! 12       format(2a40)
+
+ !          close(filehandle)
+
+ !          return
+
+ ! 19       stop 'GETPAR: '//filename//' not found!'
+
+ !          end
+
+
+ !          subroutine setstring(filename,paraname,default,paravalue)
+ !          !////////////////////////////////////////////////////////////////
+ !          ! "Low-level" SR for reading/defining parameter values from text file
+ !          !----------------------------------------------------------------
+
+ !          implicit none
+
+ !          ! Arguments
+ !          character(len=*), intent(in) :: filename, paraname
+ !          character(len=*), intent(out) :: paravalue, default
+
+ !          ! Local variables
+ !          integer filehandle,i
+ !          character readname*40,readvalue*1024
+
+ !          filehandle = 111
+ !          open(filehandle,status='old',err=19,file=filename)
+ ! 9        read(filehandle,12,end=10)readname,readvalue
+ !          if (trim(readname).eq.paraname) then
+ !             ! Strip leading and trailing whitespace from readvalue
+ !             i=1
+ !             do while (readvalue(i:i).eq.' ' .and. i.lt.len(readvalue))
+ !                i=i+1
+ !             enddo
+ !             paravalue = trim(readvalue(i:))
+ !             goto 11
+ !          else
+ !             goto 9
+ !          endif
+ ! 10       continue
+ !          paravalue = default
+
+ ! 11       continue
+
+ ! 12       format(a40,a)
+
+ !          close(filehandle)
+
+ !          return
+
+ ! 19       stop 'GETPAR: '//filename//' not found!'
+
+ !          end
+
+
+  !  function monthly2daily_precip( mval_prec, mval_wet )!
+
+  !    use _params_core, only: nmonth, ndayyear
+
+  !    ! arguments
+  !    real, dimension(nmonth), intent(in) :: mval_prec  ! monthly precipitation totals
+  !    real, dimension(nmonth), intent(in) :: mval_wet   ! monthly number of wet days
+
+  !    ! local variables
+  !    integer :: dm,day,d,m
+  !    integer :: daysum            !accumulated days at beginning of month
+  !    
+  !    real :: prob, vv, v1, random
+  !    real, parameter :: c1 = 1.0
+  !    real, parameter :: c2 = 1.2
+  !    real, dimension(nmonth) :: prob_rain
+  !    real, dimension(nmonth) :: mprecave     !average precipitation on wet days
+  !    real, dimension(nmonth) :: mprecip      !acc. monthly generated precipitation
+  !    real, dimension(ndayyear) :: dval_prec_save
+
+  !    ! function return variable
+  !    real, dimension(ndayyear), intent(out) :: dval_prec
+
+
+  !    day=0
+  !    prob=0.0
+  !    do m=1,nmonth
+  !      prob_rain(m)=0.0
+  !      mprecave(m)=0.0
+  !      mprecip(m)=0.0
+  !    enddo
+  !    daysum=0
+  !   
+  !    do m=1,nmonth
+  !      if(mval_wet(m)<=1.0) mval_wet(m)=1.0
+  !      prob_rain(m)=mval_wet(m)/real(ndaymonth(m))
+  !      mprecave(m)=mval_prec(m)/mval_wet(m)
+  !       
+  !      do dm=1,ndaymonth(m)
+  !        day=day+1
+  !   
+  !        ! Transitional probabilities (Geng et al. 1986)
+  !        if (day>1) then
+  !          if (dval_prec(day-1)<0.1) then
+  !            prob=0.75*prob_rain(m)
+  !          else 
+  !            prob=0.25+(0.75*prob_rain(m))
+  !          endif
+  !        endif
+  !        
+  !        ! Determine wet days randomly and use Krysanova/Cramer estimates of 
+  !        ! parameter values (c1,c2) for an exponential distribution
+  !        vv=real(prdaily_random(jpngr,day,1))
+  !        if(vv>prob) then
+  !          dval_prec(day)=0.0
+  !        else
+  !          v1=real(prdaily_random(jpngr,day,2))
+  !          dval_prec(day)=((-log(v1))**c2)*mprecave(m)*c1 
+  !          if(dval_prec(day)<0.1) dval_prec(day)=0.0
+  !        endif
+  !        mprecip(m)=mprecip(m)+dval_prec(day)
+  !        dval_prec_save(day)=dval_prec(day) !
+  !      enddo
+  !      
+  !      ! normalise generated precipitation by monthly values
+  !      if(m>1) daysum=daysum+ndaymonth(m-1)
+  !      if(mprecip(m)<1.0) mprecip(m)=1.0
+  !      do dm=1,ndaymonth(m)
+  !        day=daysum+dm
+  !        dval_prec(day)=dval_prec(day)*(mval_prec(m)/mprecip(m))
+  !        if (dval_prec(day)<0.1d0) dval_prec(day)=0.0
+  !      ! dval_prec(day)=mval_prec(m)/ndaymonth(m)  !no generator
+  !      enddo
+  !      
+  !    enddo                     !month 
+  !    
+  !    ! calculate monthly means after interpolation - not absolutely identical to input
+  !    day=0
+  !    do m=1,nmonth
+  !      mprecint(m)=0.0
+  !      do d=1,ndaymonth(m)
+  !        day = day + 1
+  !        mprecint(m)=mprecint(m)+dval_prec(day)!/dble(ndaymonth(m))
+  !      enddo
+  !    enddo
+  !          
+  !    return!
+
+  !  end function monthly2daily_precip!
+  !      
+  !  function random(k)!
+  !  
+  !    ! arguments
+  !    integer, dimension(4), intent(in) :: k
+  !    ! local variables
+  !    integer :: i
+
+  !    k(4)=3*k(4)+k(2)
+  !    k(3)=3*k(3)+k(1)
+  !    k(2)=3*k(2)
+  !    k(1)=3*k(1)
+  !    i=k(1)/1000
+  !    k(1)=k(1)-i*1000
+  !    k(2)=k(2)+i
+  !    i=k(2)/100
+  !    k(2)=k(2)-100*i
+  !    k(3)=k(3)+i
+  !    i=k(3)/1000
+  !    k(3)=k(3)-i*1000
+  !    k(4)=k(4)+i
+  !    i=k(4)/100
+  !    k(4)=k(4)-100*i
+  !    random=(((dble(k(1))*0.001d0+dble(k(2)))*0.01d0+dble(k(3))) * 0.001d0+dble(k(4)))*0.01d0
+  !    
+  !  end function random          
       
+
+  ! function icumsum( arr, seed )
+  !   !/////////////////////////////////////////////////////////////////////////
+  !   ! Returns the running (cumulative) sum of a vector of integers. 
+  !   ! Adopted from: 
+  !   ! Numerical Recipes in Fortran 90: Volume 2, edited by William H. Press
+  !   !-------------------------------------------------------------------------
+  !   implicit none 
+
+  !   ! arguments
+  !   integer, dimension(:), intent(in)  :: arr
+  !   integer, intent(in), optional      :: seed
+  !   integer, dimension(:), intent(out) :: icumsum
+
+  !   ! local variables
+  !   integer :: n, j
+  !   integer :: sd
+
+  !   n = size(arr)
+  !   if (n==0) return
+  !   sd = 0
+  !   if ( present(seed) ) sd = seed
+  !   icumsum(1) = arr(1) + sd
+  !   do j=2,n
+  !     icumsum(j) = icumsum(j-1) + arr(j)
+  !   end do
+
+  ! end function icumsum
+
 
 end module _sofunutils

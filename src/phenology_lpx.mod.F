@@ -89,6 +89,8 @@ contains
         if (firstday>ndayyear) firstday=1
       enddo
       
+      write(0,*) 'summergreen', summergreen
+
       if (summergreen(pft)) then
         !----------------------------------------------------------
         ! SUMMERGREEN TAXA
@@ -111,6 +113,7 @@ contains
             day=day+1
             if (day>ndayyear) day=1
             write(0,*) 'SUMMERPHENOLOGY: day, dtphen', day, dtphen(day,pft)
+            stop 'in summerphenology'
           enddo
         endif
         

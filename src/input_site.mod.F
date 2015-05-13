@@ -27,7 +27,7 @@ contains
     !----------------------------------------------------------------
     use _params_siml, only: nyeartrend, sitename
     use _forcing_siterun, only: read1year_daily  ! xxx put all reading functions/subroutines into a single module
-    use _params_siml, only: getreal  ! xxx put all reading functions/subroutines into a single module
+    use _sofunutils, only: getreal  ! xxx put all reading functions/subroutines into a single module
     use _params_core, only: ndayyear
 
     implicit none
