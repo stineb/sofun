@@ -256,7 +256,7 @@ contains
     use _waterbal, only: meanmppfd
 
     ! arguments
-    integer :: jpngr 
+    integer, intent(in) :: jpngr 
 
     ! local variables
     integer :: pft
@@ -279,6 +279,8 @@ contains
 
       lma(pft,jpngr) = cleaf / c_content_of_biomass
       sla(pft,jpngr) = 1.0 / lma(pft,jpngr)
+
+      ! write(0,*) 'sla(pft,jpngr) ',sla(pft,jpngr)
 
     end do
 
@@ -360,6 +362,7 @@ contains
     integer :: pft
     real    :: fapar
 
+
     if (present(dgpp_data)) then
       !----------------------------------------------------------------
       ! PRESCRIBED GPP
@@ -373,18 +376,31 @@ contains
       !----------------------------------------------------------------
       do pft=1,npft
   
-        ! ! xxx try
-        ! fapar = 1.0
+        if (fpc_ind(pft,jpngr)>0.0) then
+          ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
+          dgpp(pft) = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
 
-        ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-        dgpp(pft) = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
+          ! Dark respiration
+          drd(pft) = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
 
-        ! Dark respiration
-        drd(pft) = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
+        else  
+          dgpp(pft) = 0.0
+          drd(pft)  = 0.0
+
+        end if 
 
       end do
 
     end if
+
+    write(0,*) '---in gpp: '
+    ! write(0,*) 'fpc_ind(pft,jpngr) ',fpc_ind
+    ! write(0,*) 'dppfd(doy) ',dppfd(doy)
+    ! write(0,*) 'mlue(moy) ',mlue(moy)
+    ! write(0,*) 'meanmppfd(moy) ',meanmppfd(moy)
+    ! write(0,*) 'mrd_unitiabs(moy) ',mrd_unitiabs(moy)
+    write(0,*) 'dgpp(pft) ',dgpp
+    write(0,*) 'drd(pft)  ',drd
 
     ! write(0,*) 'dgpp', dgpp
     ! write(0,*) 'sum(dppfd)',sum(dppfd)
@@ -398,12 +414,12 @@ contains
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
-    real :: fapar
-    real :: dppfd
-    real :: mlue
+    real, intent(in) :: fapar
+    real, intent(in) :: dppfd
+    real, intent(in) :: mlue
 
     ! function return variable
-    real :: dgpp
+    real, intent(out) :: dgpp
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
     dgpp = fapar * dppfd * mlue * c_molmass
@@ -416,17 +432,26 @@ contains
     ! Calculates daily dark respiration (Rd)
     !------------------------------------------------------------------
     ! arguments
-    real :: fapar           ! fraction of absorbed PAR (unitless)
-    real :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
-    real :: mrd_unitiabs
+    real, intent(in) :: fapar           ! fraction of absorbed PAR (unitless)
+    real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
+    real, intent(in) :: mrd_unitiabs
 
     ! function return variable
-    real :: drd
+    real, intent(out) :: drd
 
     ! Dark respiration takes place during night and day (24 hours)
     drd = fapar * meanmppfd * mrd_unitiabs * 60.0 * 60.0 * 24.0 * c_molmass
 
   end function calc_drd
+
+
+  subroutine initdaily_gpp()
+    !////////////////////////////////////////////////////////////////
+    ! Initialise daily variables with zero
+    !----------------------------------------------------------------
+    drd(:)    = 0.0
+
+  end subroutine initdaily_gpp
 
 
   function pmodel( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method ) result( out_pmodel )
@@ -443,6 +468,9 @@ contains
     real, intent(in) :: vpd          ! mean monthly vapor pressure (Pa) -- CRU data is in hPa
     real, intent(in) :: elv          ! elevation above sea-level (m)
     character(len=*), intent(in) :: method
+
+    ! function return value
+    type(outtype_pmodel), intent(out) :: out_pmodel
 
     ! local variables
     real :: iabs                     ! absorbed photosynthetically active radiation (mol/m2)
@@ -472,11 +500,6 @@ contains
     real :: actnv_unitfapar 
     real :: actnv_unitiabs 
 
-
-    ! function return value
-    type(outtype_pmodel) :: out_pmodel
-
-    ! local variables
     type(outtype_lue) :: out_lue
 
 

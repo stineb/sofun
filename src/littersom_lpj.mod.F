@@ -113,6 +113,7 @@ contains
    
     ! temporary variables
     real :: cton_soil_local
+    real :: ntoc_soil_local
     real :: eff                                     ! microbial growth efficiency 
     real :: ntoc_crit                               ! critical N:C ratio below which immobilisation occurrs  
     real :: Nreq_S                                  ! N required in litter decomposition to maintain SOM C:N
@@ -248,6 +249,8 @@ contains
 
       !////////////////////////////////////////////////////////////////
       ! LITTER DECAY
+      ! Collect PFT-specific litter decomposition into LU-specific 
+      ! pool 'dlitt'.
       ! All goes to daily updated litter decomposition pool
       !----------------------------------------------------------------
       do pft=1,npft
@@ -261,39 +264,30 @@ contains
           call orgmv( dlitt_af(pft), plitt_af(pft,jpngr), dlitt )
           call orgmv( dlitt_as(pft), plitt_as(pft,jpngr), dlitt )
           call orgmv( dlitt_bg(pft), plitt_bg(pft,jpngr), dlitt )
-
-          ! acceleration of soil equilibration 
-          ! (scale soil inputs and soil decomposition _rates)
-          ! dlitt = orgfrac( acc, dlitt )
-
-          ! ! tried this and it doesn't work either
-          ! scal = max( 0.0, 1.0 - real(invocation)/300.0 )
-          ! if (spinup.and.invocation<300) then
-          !   hi = dlitt%c%c12 / cton_soil(pft)
-          !   lo = dlitt%n%n14
-          !   dlitt%n%n14 = scal * hi + (1.0-scal) * lo
-          ! end if
-
-
-          !print*,'slow litter pool, C:N', plitt_as(pft,jpngr), cton( plitt_as(pft,jpngr), default=0.0 )
-          !print*,'fast litter pool, C:N', plitt_af(pft,jpngr), cton( plitt_af(pft,jpngr), default=0.0 )
-          !print*,'bg   litter pool, C:N', plitt_bg(pft,jpngr), cton( plitt_bg(pft,jpngr), default=0.0 )
-
-          !print*,'pleaf, C:N           ', pleaf(pft,jpngr), cton( pleaf(pft,jpngr), default=0.0 )
-          !print*,'proot, C:N           ', proot(pft,jpngr), cton( proot(pft,jpngr), default=0.0 )
       
-          end if
-        end do
+        end if
+      end do
 
-        !----------------------------------------------------------------
-        ! Soil C:N ratio is the average PFT-specific prescribed C:N ratio
-        ! weighted by the PFT-specific decomposition.
-        !----------------------------------------------------------------
+      !----------------------------------------------------------------
+      ! Soil C:N ratio is the average PFT-specific prescribed C:N ratio
+      ! weighted by the PFT-specific decomposition.
+      !----------------------------------------------------------------
+      if ( dlitt%c%c12 > 0.0 ) then
+
         cton_soil_local = sum( cton_soil(pft_start(lu):pft_end(lu)) &
           * ( dlitt_af(pft_start(lu):pft_end(lu))%c%c12  &
             + dlitt_as(pft_start(lu):pft_end(lu))%c%c12  &
             + dlitt_bg(pft_start(lu):pft_end(lu))%c%c12 ) ) / dlitt%c%c12
+        ntoc_soil_local = 1.0 / cton_soil_local
 
+        ! write(0,*) 'a eff',eff
+        ! write(0,*) 'a cton_soil',cton_soil
+        ! write(0,*) 'a dlitt%c%c12',dlitt%c%c12
+        ! write(0,*) 'a dlitt_af(pft_start(lu):pft_end(lu))%c%c12',dlitt_af(pft_start(lu):pft_end(lu))%c%c12
+        ! write(0,*) 'a dlitt_as(pft_start(lu):pft_end(lu))%c%c12',dlitt_as(pft_start(lu):pft_end(lu))%c%c12
+        ! write(0,*) 'a dlitt_bg(pft_start(lu):pft_end(lu))%c%c12',dlitt_bg(pft_start(lu):pft_end(lu))%c%c12
+        ! write(0,*) 'a cton_soil_local',cton_soil_local
+        ! stop
 
         !////////////////////////////////////////////////////////////////
         ! ATMOSPHERIC FRACTION ~ 1 - MICROBIAL GROWTH EFFICIENCY
@@ -302,13 +296,6 @@ contains
         !----------------------------------------------------------------
         ntoc_crit = ntoc_crit1 * ntoc( dlitt, default=0.0 ) ** ntoc_crit2  ! = rCR
         eff = ntoc_crit * cton_soil_local
-
-        ! write(0,*)  'ntoc_crit1', ntoc_crit1
-        ! write(0,*)  'ntoc_crit2', ntoc_crit2
-        ! write(0,*)  'cton litt ', cton( dlitt )
-        ! write(0,*)  'cton_crit ', 1/ntoc_crit
-        ! write(0,*)  'eff ',eff
-        !stop
 
         !////////////////////////////////////////////////////////////////
         ! LITTER -> SOIL FLUX AND NET MINERALISATION/IMMOBILISATION
@@ -347,7 +334,10 @@ contains
         ! N MINERALISATION
         !----------------------------------------------------------------    
         ! N requirement to maintain rS (SOM N:C ratio)
-        Nreq_S = dlitt%c%c12 * eff / cton_soil_local  ! 1/cton_soil = rS
+        ! write(0,*) 'a dlitt%c%c12',dlitt%c%c12
+        ! write(0,*) 'a eff',eff
+        ! write(0,*) 'a cton_soil_local',cton_soil_local
+        Nreq_S = dlitt%c%c12 * eff * ntoc_soil_local  ! 1/cton_soil = rS
 
         ! write(0,*) 'cton_soil      ',cton_soil_local 
         ! write(0,*) 'cton_crit      ',1.0/ntoc_crit
@@ -388,12 +378,17 @@ contains
         outaNimmo(lu,jpngr)      = outaNimmo(lu,jpngr)      - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
 
 
+        ! write(0,*) 'a pninorg(lu,jpngr)%n14',pninorg
+        ! write(0,*) 'a netmin_litt',netmin_litt
+        ! write(0,*) 'a dlitt%n%n14',dlitt%n%n14
+        ! write(0,*) 'a Nreq_S',Nreq_S
         if (netmin_litt>0.0) then
           !----------------------------------------------------------------    
           ! net N mineralisation
           !----------------------------------------------------------------    
           pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + netmin_litt
           ! stop 'net N mineralisation from litter decomposition'
+          ! write(0,*) 'b pninorg(lu,jpngr)%n14',pninorg
 
         else
 
@@ -440,7 +435,8 @@ contains
             ! ! <<<<<<<<<<<
           end if
 
-        endif
+        end if
+        ! write(0,*) 'c pninorg(lu,jpngr)%n14',pninorg
 
         ! Nreq_S (= dlitt - netmin) remains in the system: 
         call ncp( nfrac( fastfrac      , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
@@ -464,25 +460,29 @@ contains
         ! C:N ratio of soil influx
         if ( abs( dlitt%c%c12 * eff / Nreq_S - cton_soil(1) ) > 1e-5 ) stop 'imprecision'
 
-        do pft=1,npft
-          if (islu(pft,lu)) then
+      end if
 
-          !////////////////////////////////////////////////////////////////
-          ! EXUDATES DECAY
-          ! Calculate the exudates respiration before litter respiration.
-          ! Exudates are mostly short organic compounds (poly- and mono-
-          ! saccharides, amino acids, organic acids, phenolic compounds and
-          ! enzymes) and are quickly respired and released as CO2.
-          ! Exudates decay goes to soil respiration 'drsoil'.
-          ! This is executed after litter mineralisation as N fixation by 
-          ! free-living bacteria is driven by exudates availability.
-          !----------------------------------------------------------------                
+      !////////////////////////////////////////////////////////////////
+      ! EXUDATES DECAY
+      ! Calculate the exudates respiration before litter respiration.
+      ! Exudates are mostly short organic compounds (poly- and mono-
+      ! saccharides, amino acids, organic acids, phenolic compounds and
+      ! enzymes) and are quickly respired and released as CO2.
+      ! Exudates decay goes to soil respiration 'drsoil'.
+      ! This is executed after litter mineralisation as N fixation by 
+      ! free-living bacteria is driven by exudates availability.
+      !----------------------------------------------------------------                
+      do pft=1,npft
+        if (islu(pft,lu)) then
+
           dexu = cfrac( 1.0-exp(-kexu(lu)), pexud(pft,jpngr) )
           call cmv( dexu, pexud(pft,jpngr), drsoil(pft) )
 
         end if
-      end do ! pft loop
 
+      end do
+
+      ! write(0,*) 'c2 pninorg(lu,jpngr)%n14',pninorg
 
       !////////////////////////////////////////////////////////////////
       ! SOIL DECAY
@@ -493,34 +493,34 @@ contains
       ntoc_save_fs = ntoc( psoil_fs(lu,jpngr), default=0.0 )
       ntoc_save_sl = ntoc( psoil_sl(lu,jpngr), default=0.0 )
 
-      ! xxx debug
       dsoil_fs%c%c12 = (1.0-exp(-ksoil_fs(lu))) * psoil_fs(lu,jpngr)%c%c12
       dsoil_sl%c%c12 = (1.0-exp(-ksoil_sl(lu))) * psoil_sl(lu,jpngr)%c%c12
 
-      dsoil_fs%n%n14 = dsoil_fs%c%c12 / cton_soil_local
-      dsoil_sl%n%n14 = dsoil_sl%c%c12 / cton_soil_local
+      if ( dlitt%c%c12 > 0.0 ) then
+        dsoil_fs%n%n14 = dsoil_fs%c%c12 * ntoc_soil_local
+        dsoil_sl%n%n14 = dsoil_sl%c%c12 * ntoc_soil_local
+        if ( abs( cton(dsoil_fs, default=0.0) - cton_soil_local ) > 1e-5 ) stop 'dsoil imprecision fs'
+        if ( abs( cton(dsoil_sl, default=0.0) - cton_soil_local ) > 1e-5 ) stop 'dsoil imprecision sl'
+      end if
 
-      if ( abs( cton(dsoil_fs) - cton_soil_local ) > 1e-5 ) stop 'dsoil imprecision fs'
-      if ( abs( cton(dsoil_sl) - cton_soil_local ) > 1e-5 ) stop 'dsoil imprecision sl'
-
-      ! carbon
+      ! soil C decay
       psoil_fs(lu,jpngr)%c%c12 = psoil_fs(lu,jpngr)%c%c12 - dsoil_fs%c%c12
       psoil_sl(lu,jpngr)%c%c12 = psoil_sl(lu,jpngr)%c%c12 - dsoil_sl%c%c12
       
       ! to heterotrophic respiration
       drhet(lu)%c12 = drhet(lu)%c12 + dsoil_fs%c%c12 + dsoil_sl%c%c12
 
-      ! nitrogen
+      ! soil N decay
       psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14 - dsoil_fs%n%n14
       psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14 - dsoil_sl%n%n14
 
-      if ( abs( cton( psoil_fs(lu,jpngr)) - cton_soil_local ) > 1e-5 ) stop 'C fs: C:N not ok'
-      if ( abs( cton( psoil_sl(lu,jpngr)) - cton_soil_local ) > 1e-5 ) stop 'C sl: C:N not ok'
+      if ( abs( cton( psoil_fs(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-5 ) stop 'C fs: C:N not ok'
+      if ( abs( cton( psoil_sl(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-5 ) stop 'C sl: C:N not ok'
 
       ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
       ! Warning: this does not strictly conserve mass!
-      psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 / cton_soil_local
-      psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 / cton_soil_local
+      psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_soil_local
+      psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_soil_local
 
 
       ! xxx try:
@@ -529,7 +529,7 @@ contains
       ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
       ! ===========
       if ( spinup .and. invocation <= spinupyr_phaseinit_3 ) then
-        pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
+        if ( dlitt%c%c12 > 0.0 ) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
         ! write(0,*) 'fraction immobilised', (-1.0)*netmin_litt / ( eff * dlitt%c%c12 / cton_soil_local )
         ! ! xxx try:
         ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * (eff * dlitt%c%c12 / cton_soil_local)
@@ -540,7 +540,6 @@ contains
         ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * ( dsoil_fs%n%n14 + dsoil_sl%n%n14 )
       end if
       ! <<<<<<<<<<<      
-
 
       ! get average litter -> soil flux for analytical soil C equilibration
       if ( spinup .and. invocation > ( spinupyr_soilequil_1 - recycle ) .and. invocation<spinupyr_soilequil_1 &
@@ -568,28 +567,15 @@ contains
       outaCdsoil(lu,jpngr)     = outaCdsoil(lu,jpngr)     + dsoil_fs%c%c12 + dsoil_sl%c%c12
       outaNdsoil(lu,jpngr)     = outaNdsoil(lu,jpngr)     + dsoil_fs%n%n14 + dsoil_sl%n%n14
 
-      ! if (doy==ndayyear) then
-      !   print*,'outaNdsoil(lu,jpngr)                   ',outaNdsoil(lu,jpngr)
-      !   print*,'outaClit2soil(lu,jpngr)/cton_soil_local',outaClit2soil(lu,jpngr)/cton_soil_local
-      ! end if     
-
-      ! print*,'eff * dlitt%c', eff * dlitt%c%c12
-      ! print*,'dsoil%c      ', dsoil_fs%c%c12 + dsoil_sl%c%c12
-      ! print*,'cton_soil_local',cton_soil_local
-      ! print*,'doy',doy
-      ! print*,'cton(soil)     ',cton( orgplus(psoil_fs(lu,jpngr),psoil_sl(lu,jpngr)))
-      ! print*,'cton(soil fast)',cton( psoil_fs(lu,jpngr) )
-      ! print*,'cton(soil slow)',cton( psoil_sl(lu,jpngr) )
-
       ! Record monthly (daily) soil turnover flux (labile carbon availability)
       !----------------------------------------------------------------
       ddoc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
-
 
       !----------------------------------------------------------------
       ! XXX debug: add constant N fixation 0.5 gN/m2/yr)
       !----------------------------------------------------------------
       pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + 0.5/365.0
+      ! write(0,*) 'e pninorg(lu,jpngr)%n14',pninorg
 
     enddo                   !lu
 

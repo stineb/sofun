@@ -47,7 +47,9 @@ module _nuptake
   real, dimension(npft,ndayyear,maxgrid) :: outdnup_fix
   real, dimension(npft,ndayyear,maxgrid) :: outdnup_ret
 
+
 contains
+
 
   subroutine nuptake( jpngr, pft )
     !/////////////////////////////////////////////////////////////////
@@ -83,61 +85,91 @@ contains
 
     ! xxx think about this: order in which PFTs get access to Ninorg matters!
     
-    ! xxx try:
-    dtransp = aet_d(lu_category(pft))*fpc_grid(pft,jpngr)
+    write(0,*) '---- in nuptake:'
 
-    !//////////////////////////////////////////////////////////////////////////
-    ! INITIALIZATION
-    !-------------------------------------------------------------------------
-    dNacq_active    = 0.0                          ! active uptake, sum over sub-timesteps
-    dNacq_fix       = 0.0                          ! N fixation, sum over sub-timesteps
-    dCacq_active    = 0.0
-    dCacq_fix       = 0.0
+    if ( proot(pft,jpngr)%c%c12 == 0.0 ) then
 
-    ninorg_conc   = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-    avail_ninorg  = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+      ! write(0,*) 'no roots'
 
-     
-    !//////////////////////////////////////////////////////////////////////////
-    ! USE STORED N (RETRANSLOCATION)
-    !--------------------------------------------------------------------------
-    ! As opposed to original FUN model, in which N is retranslocated at a
-    ! variable cost during leaf fall (turnover), a fraction of N is retained here
-    ! from turnover. It is stored at the end of the last year and available to
-    ! cover N demand during next year.
-    ! Just reduce the demand by amount retranslocated, not the labile N pool itself
-    !--------------------------------------------------------------------------
-    ! xxx debug
-    ! n_uptake_retrans = min( n_demand, plabl(pft,jpngr)%n%n14 )
-    ! n_demand_remaining = n_demand_remaining - n_uptake_retrans
+      ! no roots => no N uptake, no C exudation
+      n_uptake_pass    = 0.0
+      dNacq_active     = 0.0
+      dNacq_fix        = 0.0
+      n_uptake_retrans = 0.0
+
+    else
+
+      ! xxx try:
+      dtransp = aet_d(lu_category(pft)) * fpc_grid(pft,jpngr)
+
+      !//////////////////////////////////////////////////////////////////////////
+      ! INITIALIZATION
+      !-------------------------------------------------------------------------
+      dNacq_active    = 0.0                          ! active uptake, sum over sub-timesteps
+      dNacq_fix       = 0.0                          ! N fixation, sum over sub-timesteps
+      dCacq_active    = 0.0
+      dCacq_fix       = 0.0
+
+      ! write(0,*) 'lu, jpngr',lu, jpngr
+      ! write(0,*) 'pninorg(lu,jpngr)%n14',pninorg(lu,jpngr)%n14
+      ! write(0,*) 'dwtot(lu,jpngr)      ',dwtot(lu,jpngr)
+
+      ninorg_conc   = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+      avail_ninorg  = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+
+      ! write(0,*) 'avail_ninorg',avail_ninorg
+      ! write(0,*) 'ninorg_conc ',ninorg_conc 
+      ! stop
+
+      !//////////////////////////////////////////////////////////////////////////
+      ! USE STORED N (RETRANSLOCATION)
+      !--------------------------------------------------------------------------
+      ! As opposed to original FUN model, in which N is retranslocated at a
+      ! variable cost during leaf fall (turnover), a fraction of N is retained here
+      ! from turnover. It is stored at the end of the last year and available to
+      ! cover N demand during next year.
+      ! Just reduce the demand by amount retranslocated, not the labile N pool itself
+      !--------------------------------------------------------------------------
+      ! xxx debug
+      ! n_uptake_retrans = min( n_demand, plabl(pft,jpngr)%n%n14 )
+      ! n_demand_remaining = n_demand_remaining - n_uptake_retrans
 
 
-    !//////////////////////////////////////////////////////////////////////////
-    ! PASSIVE UPTAKE
-    ! No active control on passive uptake - always occurrs even if the unmet N
-    ! demand is zero.
-    !--------------------------------------------------------------------------
-    n_uptake_pass = ninorg_conc * dtransp    
-    n_uptake_pass = min( n_uptake_pass, avail_ninorg )
+      !//////////////////////////////////////////////////////////////////////////
+      ! PASSIVE UPTAKE
+      ! No active control on passive uptake - always occurrs even if the unmet N
+      ! demand is zero.
+      !--------------------------------------------------------------------------
+      n_uptake_pass = ninorg_conc * dtransp    
+      n_uptake_pass = min( n_uptake_pass, avail_ninorg )
 
-    ! Update
-    pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - n_uptake_pass
-    avail_ninorg          = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-    ninorg_conc           = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+      ! write(0,*) 'n_uptake_pass ',n_uptake_pass 
 
+      ! Update
+      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - n_uptake_pass
+      avail_ninorg          = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+      ninorg_conc           = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
 
-    !//////////////////////////////////////////////////////////////////////////
-    ! ACTIVE UPTAKE
-    ! Active N uptake is a function of initial N available and C exuded
-    !--------------------------------------------------------------------------         
-    dCacq_active = exurate * proot(pft,jpngr)%c%c12
-    dNacq_active = calc_dnup( dCacq_active, avail_ninorg )
+      ! write(0,*) 'avail_ninorg',avail_ninorg
+      ! write(0,*) 'ninorg_conc ',ninorg_conc 
 
-    dcex(pft) = dcex(pft) + dCacq_active
-    dmean_cost = dCacq_active / dNacq_active
+      !//////////////////////////////////////////////////////////////////////////
+      ! ACTIVE UPTAKE
+      ! Active N uptake is a function of initial N available and C exuded
+      !--------------------------------------------------------------------------         
+      dCacq_active = exurate * proot(pft,jpngr)%c%c12
+      dNacq_active = calc_dnup( dCacq_active, avail_ninorg )
 
-    ! Update
-    pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - dNacq_active
+      ! write(0,*) 'dCacq_active ',dCacq_active 
+      ! write(0,*) 'dNacq_active ',dNacq_active 
+
+      dcex(pft) = dcex(pft) + dCacq_active
+      dmean_cost = dCacq_active / dNacq_active
+
+      ! Update
+      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - dNacq_active
+
+    end if
 
     !--------------------------------------------------------------------------
     ! Update N-uptake of this PFT. N-retranslocation is not considered
@@ -155,6 +187,7 @@ contains
       dccost(pft) = -9999
     endif
 
+    write(0,*) '---- finished nuptake'
 
   end subroutine nuptake
 
@@ -235,11 +268,10 @@ contains
   end function fun_cost_fix
   
 
-  subroutine initdaily_nuptake
+  subroutine initdaily_nuptake()
     !////////////////////////////////////////////////////////////////
     ! Initialise daily variables with zero
     !----------------------------------------------------------------
-
     dnup_pas(:)    = 0.0
     dnup_act(:)    = 0.0
     dnup_fix(:)    = 0.0

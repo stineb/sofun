@@ -171,6 +171,9 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
       do dm=1,ndaymonth(mo)
         day=day+1
 
+        ! write(0,*) '-----------'
+        ! write(0,*) 'DAY ',day
+
         !----------------------------------------------------------------
         ! initialise daily updated variables 
         !----------------------------------------------------------------
@@ -209,10 +212,12 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         !----------------------------------------------------------------
         call npp( jpngr, dtemp_field(day,jpngr) )
 
+        ! write(0,*) 'A pninorg(lu,jpngr)%n14',pninorg
         !----------------------------------------------------------------
         ! Allocation of labile pools to biomass
         !----------------------------------------------------------------
-        call allocation_daily( jpngr, day )
+        call allocation_daily( jpngr, day, mo )
+        ! write(0,*) 'B pninorg(lu,jpngr)%n14',pninorg
 
 
         ! amount of NPP added to reproduction (xxx ignore at this point)
@@ -222,22 +227,27 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! leaf, sapwood, and fine-root turnover
         !----------------------------------------------------------------
         call turnover( jpngr )
+        ! write(0,*) 'C pninorg(lu,jpngr)%n14',pninorg
 
         !----------------------------------------------------------------
         ! litter and soil turnover
         !----------------------------------------------------------------
         call littersom( jpngr, day )
 
+        ! write(0,*) 'D pninorg(lu,jpngr)%n14',pninorg
         !----------------------------------------------------------------
         ! inorganic soil N chemistry
         !----------------------------------------------------------------
         call ntransform( dm, mo, jpngr, sum(dprec_field(:,jpngr)) )
+        ! write(0,*) 'E pninorg(lu,jpngr)%n14',pninorg
 
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
         call getout_daily( jpngr, mo, day )
 
+        ! stop 'end of day'
+        
       end do
 
     end do

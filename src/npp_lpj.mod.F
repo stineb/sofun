@@ -68,6 +68,7 @@ contains
     ! CEX: C EXUDATION
     ! ADD (NPP - CEX) AND NUP TO LABILE POOL
 
+    write(0,*) '---- in npp:'
 
     !-------------------------------------------------------------------------
     ! PFT LOOP
@@ -102,6 +103,7 @@ contains
           dresp_maint = dresp_maint + drsapw(pft)
         endif
 
+        write(0,*) 'dresp_maint',dresp_maint
 
         !/////////////////////////////////////////////////////////////////////////
         ! DAILY NPP 
@@ -113,6 +115,8 @@ contains
         !-------------------------------------------------------------------------
         drauto(pft) = dresp_maint
         dnpp(pft)   = carbon( dgpp(pft) - drauto(pft) )
+
+        write(0,*) 'dnpp(pft) ',dnpp(pft)
 
         if ( dnpp(pft)%c12 < 0.0 ) then
           write(0,*) 'pft ',pft
@@ -150,8 +154,15 @@ contains
         !end if
         call orgcp( orgpool( cminus( dnpp(pft), carbon(dcex(pft)) ), dnup(pft) ), plabl(pft,jpngr) )
 
+        write(0,*) 'dcex(pft) ',dcex(pft)
+        write(0,*) 'dnup(pft) ',dnup(pft)
+
+        if ( plabl(pft,jpngr)%c%c12 < 0.0 ) stop 'labile C negative'
+
       endif
     end do
+
+    write(0,*) '---- finished npp'
 
   end subroutine npp
 

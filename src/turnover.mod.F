@@ -12,7 +12,7 @@ contains
     use _classdefs
     use _params_modl, only: lu_category, tree, k_decay_leaf, k_decay_sapw, k_decay_root, npft, F_NRETAIN
     use _pools, only: pleaf, proot, psapw, pwood, plitt_af, plitt_bg, plabl
-    use _vegdynamics , only: nind, ispresent
+    use _vegdynamics , only: nind, ispresent, shedleaves
     use _outvars, only: outaCveg2lit, outaNveg2lit
 
     ! arguments
@@ -36,10 +36,21 @@ contains
 
         ! Turnover _rates are reciprocals of tissue longevity
         ! dleaf=1.0/long_leaf(pft)
-        dleaf = 0.0  ! assuming no continuous leaf turnover
-        dsapw = k_decay_sapw(pft)
-        droot = k_decay_root(pft)
-          
+        ! assuming no continuous leaf turnover
+        if (grass(pft)) then
+          if (summergreen(pft)) then
+            if (shedleaves) then
+              dleaf = 1.0
+              droot = 1.0
+            else
+              dleaf = 0.0  
+              droot = k_decay_root(pft)
+            end if
+          end if   
+        else
+          stop 'turnover only implemented for grasses'        
+        end if
+
         ! Calculate the biomass turnover in this year          
         lm_turn = orgfrac( dleaf, pleaf(pft,jpngr) )
         rm_turn = orgfrac( droot, proot(pft,jpngr) )

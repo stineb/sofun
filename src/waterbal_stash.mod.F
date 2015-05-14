@@ -905,12 +905,6 @@ contains
     !  Initialises module-specific variables containing a day-dimension
     !----------------------------------------------------------------
 
-    dppfd(:)                = 0.0
-    out_berger(:)%my_nu     = 0.0
-    out_berger(:)%my_lambda = 0.0 
-    dayl(:)                 = 0.0
-    dra(:)                  = 0.0
-
   end subroutine initdaily_waterbal
 
 

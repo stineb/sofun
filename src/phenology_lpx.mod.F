@@ -22,10 +22,10 @@ module _phenology
   implicit none
 
   ! PHENOLOGY PARAMETERS
-  real, dimension(npft) :: GDDBASE ! GDD base, for PFT11-14, a T0 is chosen to be 0deg C (Prentice et al. 1992, J.o.Biogeography), pftpar(pft,33) in LPX
-  real, dimension(npft) :: RAMP    ! summergreen phenology ramp, GDD requirement to grow full leaf canopy
+  real, dimension(npft) :: gddbase ! GDD base, for PFT11-14, a T0 is chosen to be 0deg C (Prentice et al. 1992, J.o.Biogeography), pftpar(pft,33) in LPX
+  real, dimension(npft) :: ramp    ! summergreen phenology ramp, GDD requirement to grow full leaf canopy
 
-  logical, dimension(npft) :: SUMMERGREEN, EVERGREEN, RAINGREEN  ! phenology type
+  logical, dimension(npft) :: summergreen, evergreen, raingreen  ! phenology type
 
   ! MODULE-SPECIFIC VARIABLES
   real, dimension(ndayyear,npft) :: dtphen   ! daily temperature-driven phenology (=dphen_t in LPX)
@@ -81,19 +81,24 @@ contains
     do pft=1,npft
       !----------------------------------------------------------
       ! Find day of leaf abscission ('firstday') at end of summer
-      ! i.e. when daily temperature falls below GDDBASE.
+      ! i.e. when daily temperature falls below gddbase.
       !----------------------------------------------------------
       firstday=midsummer+1
-      do while (dtemp_int(firstday)>=GDDBASE(pft) .and. firstday/=midsummer)
+      do while (dtemp_int(firstday)>=gddbase(pft) .and. firstday/=midsummer)
         firstday=firstday+1
         if (firstday>ndayyear) firstday=1
       enddo
       
-      write(0,*) 'summergreen', summergreen
+      ! write(0,*) 'dtemp_int'
+      ! write(0,*) dtemp_int
+      ! write(0,*) 'midsummer', midsummer
+      ! write(0,*) 'firstday', firstday
+      ! write(0,*) 'summergreen', summergreen
+      ! write(0,*) 'gddbase', gddbase
 
       if (summergreen(pft)) then
         !----------------------------------------------------------
-        ! SUMMERGREEN TAXA
+        ! summergreen TAXA
         !----------------------------------------------------------
         if (firstday==midsummer) then 
           dtphen(:,pft)=1.0     ! no leaf abscission
@@ -102,19 +107,21 @@ contains
           day=firstday+1
           if (day>ndayyear) day=1
           do while (day/=firstday)
-            if (dtemp_int(day)>GDDBASE(pft)) then ! growing day
-              gdd = gdd + dtemp_int(day) - GDDBASE(pft)
-              if (RAMP(pft)>0.0) then
-                dtphen(day,pft) = min( gdd / RAMP(pft), 1.0 )
-              else
-                dtphen(day,pft) = 1.0
-              endif
+            if (dtemp_int(day)>gddbase(pft)) then ! growing day
+              gdd = gdd + dtemp_int(day) - gddbase(pft)
+              dtphen(day,pft) = 1.0
+              ! if (ramp(pft)>0.0) then
+              !   dtphen(day,pft) = min( gdd / ramp(pft), 1.0 )
+              ! else
+              !   dtphen(day,pft) = 1.0
+              ! endif
             endif
             day=day+1
             if (day>ndayyear) day=1
-            write(0,*) 'SUMMERPHENOLOGY: day, dtphen', day, dtphen(day,pft)
-            stop 'in summerphenology'
           enddo
+          ! write(0,*) 'SUMMERPHENOLOGY: dtphen(day,pft) '
+          ! write(0,*) dtphen(:,pft)
+          ! stop
         endif
         
         if (tree(pft)) then
@@ -144,7 +151,7 @@ contains
 
       else
         !----------------------------------------------------------
-        ! NON-SUMMERGREEN TAXA
+        ! NON-summergreen TAXA
         !----------------------------------------------------------
         dtphen(:,pft)=1.0
       endif
@@ -165,7 +172,7 @@ contains
     ! from input file
     !----------------------------------------------------------------
     ! local variables
-    integer, parameter    :: npar = 2
+    integer, parameter    :: npar = 3
     integer               :: pft
     real, dimension(npar) :: params_array
     character(len=50)     :: paramfilnam
@@ -180,18 +187,18 @@ contains
     pft = 1
 
     ! growing degree days base (usually 5 deg C)
-    GDDBASE(pft) = params_array(1)
+    gddbase(pft) = params_array(1)
 
     ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
-    RAMP(pft)    = params_array(2)
+    ramp(pft)    = params_array(2)
     
     ! phenology type
-    EVERGREEN(:)   = .false.
-    SUMMERGREEN(:) = .false.
-    RAINGREEN(:)   = .false.
-    if (params_array(3)==1.0) EVERGREEN(pft)   = .true.
-    if (params_array(3)==2.0) SUMMERGREEN(pft) = .true.
-    if (params_array(3)==3.0) RAINGREEN(pft)   = .true.
+    evergreen(:)   = .false.
+    summergreen(:) = .false.
+    raingreen(:)   = .false.
+    if (params_array(3)==1.0) evergreen(pft)   = .true.
+    if (params_array(3)==2.0) summergreen(pft) = .true.
+    if (params_array(3)==3.0) raingreen(pft)   = .true.
 
     return
 

@@ -29,8 +29,8 @@ module _findroot_fzeroin
   parameter(ZERO=0.0, XMACHEPS = 1.2e-16)   !machine smallest real number
 
   type outtype_zeroin
-    real :: root
-    real :: froot
+    real    :: root
+    real    :: froot
     integer :: niter
     integer :: error
   end type outtype_zeroin
@@ -80,6 +80,8 @@ contains
     !* =  4: Error when opening intermediate result file                    *
     !*                                                                      *
     !************************************************************************
+    ! use _allocation, only: eval_imbalance
+
     ! arguments
     real, external :: func
     real, intent(in)    :: myabserr, myrelerr
@@ -123,8 +125,12 @@ contains
     abserr = myabserr
     relerr = myrelerr
 
-    c=ZERO; d=ZERO; e=ZERO; rc=0; fehler=0
-    eps = FOUR * XMACHEPS
+    c      = ZERO
+    d      = ZERO
+    e      = ZERO
+    rc     = 0
+    fehler = 0
+    eps    = FOUR * XMACHEPS
 
     fa = func(a)
     fb = func(b)
@@ -270,10 +276,10 @@ contains
     rc = fehler
 
     ! construct function return type
-    999 out_zeroin%root  = b
-    out_zeroin%froot = fb
-    out_zeroin%niter = fanz
-    out_zeroin%error = rc
+    999 out_zeroin%root = b
+    out_zeroin%froot    = fb
+    out_zeroin%niter    = fanz
+    out_zeroin%error    = rc
 
     return
 

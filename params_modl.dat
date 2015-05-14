@@ -1,4 +1,14 @@
-0.500000
-0.500000
-0.950000
-0.600000
+###############################################################
+# MODEL PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+kbeer                                   0.500000
+F_NRETAIN                               0.500000
+fpc_tree_max                            0.950000
+growtheff                               0.600000
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 

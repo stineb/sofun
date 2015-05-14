@@ -12,13 +12,12 @@ subroutine getpar_modl
   use _phenology, only: getpar_pft_summerphenology
   use _ntransform, only: getpar_modl_ntransform
   use _littersom, only: getpar_modl_littersom
+  use _sofunutils, only: getreal
 
   implicit none
 
   ! local variables
   integer :: pft
-  integer, parameter :: npar = 4
-  real, dimension(npar) :: params_array
 
   integer, parameter :: npar_pft = 18
   real, dimension(npar_pft) :: pft_params_array
@@ -27,23 +26,19 @@ subroutine getpar_modl
 
   !----------------------------------------------------------------
   ! NON-PFT DEPENDENT PARAMETERS
-  ! read parameter input file and store values in single array
   !----------------------------------------------------------------
-  open(20, file='params_modl.dat', status='old',  form='formatted', action='read', err=888)
-  read(20,*) params_array
-  close(20)
-  
   ! canopy light extinction coefficient for Beer's Law
-  kbeer        = params_array(1)
-  
+  call getreal( 'params_modl.dat', 'kbeer', kbeer )
+
   ! fraction of N retained at leaf abscission 
-  F_NRETAIN    = params_array(2)        
+  call getreal( 'params_modl.dat', 'F_NRETAIN', F_NRETAIN )
   
   ! maximum fractional plant coverage of trees (sum of all tree PFTs)
-  fpc_tree_max = params_array(3)
+  call getreal( 'params_modl.dat', 'fpc_tree_max', fpc_tree_max )
 
   ! growth efficiency = yield factor, central value: 0.6, range: 0.5-0.7; Zhang et al. (2009), see Li et al., 2014
-  growtheff    = params_array(4)
+  call getreal( 'params_modl.dat', 'growtheff', growtheff )
+
   
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC PARAMETERS

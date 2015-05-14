@@ -12,6 +12,8 @@ subroutine initglobal
   use _params_core, only: npft
   use _ntransform, only: init_global_ntransform
 
+  implicit none
+
   ! LOCAL VARIABLES
   integer :: pft
 
@@ -123,9 +125,6 @@ subroutine initpft( pft, jpngr )
   !leafondays(pft,jpngr)=0.0d0
   !leafoffdays(pft,jpngr)=0.0d0
 
-  lma(pft,jpngr) = 0.0
-  sla(pft,jpngr) = 0.0
-
 
 end subroutine initpft
 
@@ -153,6 +152,7 @@ subroutine initdaily
   use _statevars
   use _nuptake, only: initdaily_nuptake
   use _waterbal, only: initdaily_waterbal
+  use _gpp, only: initdaily_gpp
 
   implicit none
 
@@ -170,8 +170,9 @@ subroutine initdaily
   ddoc(:)        = 0.0
 
   ! initialise module-specific output variables
-  call initdaily_nuptake
-  call initdaily_waterbal
+  call initdaily_nuptake()
+  call initdaily_waterbal()
+  call initdaily_gpp()
 
   !! xxx try
   !! hold soil carbon and litter _pools at a constant size
