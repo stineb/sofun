@@ -2,6 +2,11 @@ module _allocation
 
   use _classdefs
 
+  !------------------------------------------------------------------
+  ! Define derived type to store current state variables.
+  ! Is defined within all subroutines in this module.
+  ! This avoids having to pass them as arguments.
+  !------------------------------------------------------------------
   type statetype_eval_imbalance
     type(orgpool)  :: pleaf
     type(orgpool)  :: proot
@@ -58,7 +63,7 @@ contains
 
       if (grass(pft)) then
 
-        write(0,*) '--- allocation_daily:'
+        ! write(0,*) '--- allocation_daily:'
         ! write(0,*)' pninorg(lu,jpngr)%n14',pninorg
         ! write(0,*)' plabl(lu,jpngr)',plabl
 
@@ -66,8 +71,11 @@ contains
 
           ! write(0,*) 'growing ...'
 
+          !------------------------------------------------------------------
+          ! Calculate maximum C allocatable based on current labile pool size.
           ! Maximum is the lower of all labile C and the C to be matched by all labile N,
           ! discounted by the yield factor.
+          !------------------------------------------------------------------
           max_dcleaf_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_leaf(pft,jpngr)
           max_dcroot_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_root(pft)
           max_dcleaf = min( growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint )
@@ -85,10 +93,9 @@ contains
           ! write(0,*) 'mrd_unitiabs',mrd_unitiabs(moy) ! ok
           ! write(0,*) 'meanmppfd',meanmppfd(moy) ! ok
 
-          ! Optimisation by balanced growth
-          ! Test I: Evaluate balance if all is put to roots.
-          ! If C:N ratio of return is still greater than whole-plant C:N ratio, then put all to roots.
-
+          !------------------------------------------------------------------
+          ! Store state variables for optimisation
+          !------------------------------------------------------------------
           state_eval_imbalance%pleaf        = pleaf(pft,jpngr)
           state_eval_imbalance%proot        = proot(pft,jpngr)
           state_eval_imbalance%plabl        = plabl(pft,jpngr)
@@ -101,27 +108,39 @@ contains
           state_eval_imbalance%pninorg      = pninorg(lu,jpngr)
           state_eval_imbalance%pft          = pft
 
+          !------------------------------------------------------------------
+          ! Optimisation by balanced growth
+          ! Test I: Evaluate balance if all is put to roots.
+          ! If C:N ratio of return is still greater than whole-plant C:N 
+          ! ratio, then put all to roots.
+          !------------------------------------------------------------------
           findroot = .true.
           eval_allroots  = eval_imbalance( 0.0 )
           ! write(0,*) 'eval_allroots', eval_allroots  
           if (eval_allroots > 0.0) then
             dcleaf = 0.0
             findroot = .false.
-            write(0,*) 'putting all to roots'
+            ! write(0,*) 'putting all to roots'
           end if
 
+          !------------------------------------------------------------------
           ! Test II: Evaluate balance if all is put to leaves.
-          ! If C:N ratio of return is still lower than whole-plant C:N ratio, then put all to leaves.
+          ! If C:N ratio of return is still lower than whole-plant C:N ratio, 
+          ! then put all to leaves.
+          !------------------------------------------------------------------
           eval_allleaves = eval_imbalance( max_dcleaf )
           ! write(0,*) 'eval_allleaves', eval_allleaves  
           if (eval_allleaves < 0.0) then
             dcleaf = max_dcleaf
             findroot = .false.
-            write(0,*) 'putting all to leaves'
+            ! write(0,*) 'putting all to leaves'
           end if
 
+          !------------------------------------------------------------------
+          ! Optimum is between 0.0 and max_dcleaf. Find root of function 
+          ! 'eval_imbalance()' in the interval [0.0, max_dcleaf].
+          !------------------------------------------------------------------
           if (findroot) then
-            ! Find root of function 'eval_imbalance()' in the interval [0.0, max_dcleaf]
             write(0,*) "finding root"
             out_zeroin = zeroin( eval_imbalance, abserr, relerr, 100, 0.0 ,max_dcleaf )
             if ( out_zeroin%error /= 0 ) then
@@ -132,7 +151,10 @@ contains
             write(0,*) 'no. of iterations', out_zeroin%niter
           end if
 
-          ! Allocate based on 'dcleaf' determined above
+          !------------------------------------------------------------------
+          ! Allocate to roots and leaves and extract from labile pool based 
+          ! on 'dcleaf' determined above.
+          !------------------------------------------------------------------
           dnleaf = dcleaf * r_ntoc_leaf(pft,jpngr)
 
           plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - 1.0 / growtheff * dcleaf
@@ -154,7 +176,7 @@ contains
 
         else
 
-          write(0,*) 'not growing ...'
+          ! write(0,*) 'not growing ...'
 
         end if
 

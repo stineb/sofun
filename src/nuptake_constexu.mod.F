@@ -85,7 +85,7 @@ contains
 
     ! xxx think about this: order in which PFTs get access to Ninorg matters!
     
-    write(0,*) '---- in nuptake:'
+    ! write(0,*) '---- in nuptake:'
 
     if ( proot(pft,jpngr)%c%c12 == 0.0 ) then
 
@@ -187,7 +187,7 @@ contains
       dccost(pft) = -9999
     endif
 
-    write(0,*) '---- finished nuptake'
+    ! write(0,*) '---- finished nuptake'
 
   end subroutine nuptake
 

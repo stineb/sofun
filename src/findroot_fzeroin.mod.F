@@ -1,7 +1,7 @@
 module _findroot_fzeroin
   !************************************************************************
-  !*                                                                      *
-  !* Compute a zero of a continuous real valued function with the         *
+  !* Contains function 'zeroin' to compute a zero of a continuous real    *
+  !* valued function with the                                             *
   !* ------------------------------------------------------------         *
   !* Zeroin method.                                                       *
   !* --------------                                                       *
@@ -80,10 +80,8 @@ contains
     !* =  4: Error when opening intermediate result file                    *
     !*                                                                      *
     !************************************************************************
-    ! use _allocation, only: eval_imbalance
-
     ! arguments
-    real, external :: func
+    real, external      :: func
     real, intent(in)    :: myabserr, myrelerr
     integer, intent(in) :: fmax
     real, intent(in)    :: x1

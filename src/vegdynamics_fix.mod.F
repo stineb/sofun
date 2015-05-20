@@ -70,15 +70,18 @@ contains
           !----------------------------------------------------------
           ! beginning of season
           !----------------------------------------------------------
-          write(0,*) 'starting to grow on day ',doy
+          ! write(0,*) 'starting to grow on day ',doy
           call initpft( pft, jpngr )
 
           pleaf(pft,jpngr) = get_sapl( r_ntoc_leaf(pft,jpngr) )
           proot(pft,jpngr) = get_sapl( r_ntoc_root(pft) )
-          shedleaves = .false.
+          shedleaves(pft) = .false.
+
+        else if ( dtphen(doy,pft) > 0.0 ) then
+          ! write(0,*) 'continued growth on day ',doy
 
         else
-          write(0,*) 'no growth on day ',doy
+          ! write(0,*) 'no growth on day ',doy
 
         end if
 
@@ -187,12 +190,12 @@ contains
     if (crownarea<0.0) stop 'GET_LAI_IND: crownarea < 0'
 #endif
 
-    write(0,*) '----'
-    write(0,*) 'in get_lai_ind:'
-    write(0,*) 'cleaf ',cleaf
-    write(0,*) 'sla ',sla
-    write(0,*) 'crownarea ',crownarea
-    write(0,*) '----'
+    ! write(0,*) '----'
+    ! write(0,*) 'in get_lai_ind:'
+    ! write(0,*) 'cleaf ',cleaf
+    ! write(0,*) 'sla ',sla
+    ! write(0,*) 'crownarea ',crownarea
+    ! write(0,*) '----'
 
     if (crownarea==0.0) then
       lai_ind = 0.0

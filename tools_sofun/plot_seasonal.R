@@ -1,4 +1,5 @@
-runname <- "CH-Oe1_2002"
+# runname <- "CH-Oe1_2002"
+runname <- "test_pmodel"
 outdir <- "/alphadata01/bstocker/sofun/trunk/output/"
 dvars <- c("gpp","npp","cex","nup","nup_pas","nup_act","nup_fix","nup_ret","nfixfree","cleaf","netmin","ninorg","ccost")
 avars <- c("calloc","nalloc","clit2soil","nlit2soil","nreq","cveg2lit","nveg2lit")
@@ -196,4 +197,23 @@ text( 0, 0.53, "N -> soil req.", adj=c(0,0));    text( 0.5, 0.53, as.character(f
 text( 0, 0.48, "N fBNF", adj=c(0,0));            text( 0.5, 0.48, as.character(formatC(sum(daily_sub$nfixfree),digits=2,format="f")) , adj=c(1,0))
 text( 0, 0.43, "N net min.", adj=c(0,0));        text( 0.5, 0.43, as.character(formatC(sum(daily_sub$netmin),digits=2,format="f")) , adj=c(1,0))
 dev.off()
+
+##--------------------------------------
+## GPP model - obs.
+##--------------------------------------
+pdf(paste("gpp_model_obs_seasonal.pdf"),width=sum(widths),height=sum(heights))
+panel <- layout(
+                matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
+                widths=widths,
+                heights=heights,
+                TRUE
+                )
+# layout.show(panel)
+
+par(mar=c(4,4,2,1), las=1)
+plot( daily_sub$doy, daily_sub$gpp, type="l", xlab="", ylab="gC/m2/d", ylim=c(0,max(daily_sub$gpp)) )
+legend( "bottomleft", c("simulated GPP"), col=c("black"), bty="n", lty=1 )
+
+dev.off()
+
 

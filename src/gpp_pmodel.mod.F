@@ -393,14 +393,14 @@ contains
 
     end if
 
-    write(0,*) '---in gpp: '
+    ! write(0,*) '---in gpp: '
     ! write(0,*) 'fpc_ind(pft,jpngr) ',fpc_ind
     ! write(0,*) 'dppfd(doy) ',dppfd(doy)
     ! write(0,*) 'mlue(moy) ',mlue(moy)
     ! write(0,*) 'meanmppfd(moy) ',meanmppfd(moy)
     ! write(0,*) 'mrd_unitiabs(moy) ',mrd_unitiabs(moy)
-    write(0,*) 'dgpp(pft) ',dgpp
-    write(0,*) 'drd(pft)  ',drd
+    ! write(0,*) 'dgpp(pft) ',dgpp
+    ! write(0,*) 'drd(pft)  ',drd
 
     ! write(0,*) 'dgpp', dgpp
     ! write(0,*) 'sum(dppfd)',sum(dppfd)

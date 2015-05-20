@@ -150,7 +150,8 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     call getrad( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
 
     !----------------------------------------------------------------
-    ! Get leaf traits based on photosynthetic parameters (Vcmax25)
+    ! Get leaf traits based on photosynthetic parameters (Vcmax25) 
+    ! for this year given this year's climate (temp., VPD) and CO2.
     !----------------------------------------------------------------
     call gettraits( jpngr )
 
@@ -187,12 +188,12 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         call waterbal( jpngr, day, lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
 
         !----------------------------------------------------------------
-        ! daily establishment / sprouting
+        ! simulate daily establishment / sprouting
         !----------------------------------------------------------------
         call estab_daily( jpngr, day, fpc_grid_data(:,jpngr) )
 
         !----------------------------------------------------------------
-        ! get GPP from input
+        ! calculate GPP
         !----------------------------------------------------------------
         if ( present(dgpp_data) ) then
           call gpp( jpngr, day, mo, dgpp_data(day,:) )
@@ -201,20 +202,19 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         end if   
 
         !----------------------------------------------------------------
-        ! use SR 'sitchtemp'
+        ! calculate soil temperature
         !----------------------------------------------------------------
         call soiltemp( jpngr, mo, day, dtemp_field(:,jpngr), outdcpa(:,:,jpngr) )
 
         !----------------------------------------------------------------
-        ! substract autotrophic respiration to get NPP, remainder is added to
-        ! labile pool (plabl)
-        ! xxx try: second argument is dtemp_soil
+        ! substract autotrophic respiration to get NPP, remainder is added 
+        ! to labile pool (plabl)
         !----------------------------------------------------------------
         call npp( jpngr, dtemp_field(day,jpngr) )
 
         ! write(0,*) 'A pninorg(lu,jpngr)%n14',pninorg
         !----------------------------------------------------------------
-        ! Allocation of labile pools to biomass
+        ! allocation of labile pools to biomass
         !----------------------------------------------------------------
         call allocation_daily( jpngr, day, mo )
         ! write(0,*) 'B pninorg(lu,jpngr)%n14',pninorg
@@ -230,13 +230,13 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! write(0,*) 'C pninorg(lu,jpngr)%n14',pninorg
 
         !----------------------------------------------------------------
-        ! litter and soil turnover
+        ! litter and soil decomposition and N mineralisation
         !----------------------------------------------------------------
         call littersom( jpngr, day )
 
         ! write(0,*) 'D pninorg(lu,jpngr)%n14',pninorg
         !----------------------------------------------------------------
-        ! inorganic soil N chemistry
+        ! inorganic soil N dynamics
         !----------------------------------------------------------------
         call ntransform( dm, mo, jpngr, sum(dprec_field(:,jpngr)) )
         ! write(0,*) 'E pninorg(lu,jpngr)%n14',pninorg

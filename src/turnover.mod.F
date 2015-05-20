@@ -10,7 +10,9 @@ contains
     !  year.
     !----------------------------------------------------------------
     use _classdefs
-    use _params_modl, only: lu_category, tree, k_decay_leaf, k_decay_sapw, k_decay_root, npft, F_NRETAIN
+    use _params_modl, only: lu_category, tree, grass, &
+      k_decay_leaf, k_decay_sapw, k_decay_root, npft, F_NRETAIN
+    use _phenology, only: summergreen
     use _pools, only: pleaf, proot, psapw, pwood, plitt_af, plitt_bg, plabl
     use _vegdynamics , only: nind, ispresent, shedleaves
     use _outvars, only: outaCveg2lit, outaNveg2lit
@@ -39,7 +41,7 @@ contains
         ! assuming no continuous leaf turnover
         if (grass(pft)) then
           if (summergreen(pft)) then
-            if (shedleaves) then
+            if (shedleaves(pft)) then
               dleaf = 1.0
               droot = 1.0
             else
