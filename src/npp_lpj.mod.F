@@ -43,7 +43,7 @@ contains
     use _params_core, only: npft, ndayyear
     use _params_modl, only: lu_category, tree, grass
     use _rates
-    use _fluxes, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, dcex, dnup
+    use _vars_core, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, dcex, dnup
     use _vegdynamics, only: nind, ispresent, shedleaves
     use _pools, only: proot, psapw, pexud, plabl
     use _nuptake, only: nuptake

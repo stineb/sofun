@@ -141,14 +141,14 @@ contains
           ! 'eval_imbalance()' in the interval [0.0, max_dcleaf].
           !------------------------------------------------------------------
           if (findroot) then
-            write(0,*) "finding root"
+            ! write(0,*) "finding root"
             out_zeroin = zeroin( eval_imbalance, abserr, relerr, 100, 0.0 ,max_dcleaf )
             if ( out_zeroin%error /= 0 ) then
               dcleaf = 0.0
             else
               dcleaf = out_zeroin%root
             end if
-            write(0,*) 'no. of iterations', out_zeroin%niter
+            ! write(0,*) 'no. of iterations', out_zeroin%niter
           end if
 
           !------------------------------------------------------------------

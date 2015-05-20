@@ -343,7 +343,7 @@ contains
     ! - lai_ind
     ! - dpppfd
     !------------------------------------------------------------------
-    use _fluxes, only: dgpp
+    use _vars_core, only: dgpp
     use _params_modl, only: kbeer
     use _pools, only: fpc_ind
     use _waterbal, only: dppfd, meanmppfd

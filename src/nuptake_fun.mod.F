@@ -66,7 +66,7 @@ contains
     use _params_core
     use _params_siml, only: spinup
     use _params_modl, only: lu_category, cton_pro, nfixer
-    use _fluxes, only: dnpp, dnup, dcex
+    use _vars_core, only: dnpp, dnup, dcex
     use _waterbal, only: aet_d  ! xxx make 'aet_d' a required global variable?
     use _vegdynamics, only: nind, ispresent, fpc_grid
     use _pools, only: pninorg, plabl, proot, dwtot

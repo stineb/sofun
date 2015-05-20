@@ -6,7 +6,7 @@ subroutine initglobal
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _pools
-  use _fluxes
+  use _vars_core
   use _vegdynamics
   use _params_modl, only: tree
   use _params_core, only: npft
@@ -134,7 +134,7 @@ subroutine initannual
   !  Initialises all annually updated variables with zero.
   !----------------------------------------------------------------
   use _classdefs
-  use _fluxes, only: aestab
+  use _vars_core, only: aestab
 
   implicit none
 
@@ -147,7 +147,7 @@ subroutine initdaily
   !////////////////////////////////////////////////////////////////
   !  Initialises all daily variables with zero.
   !----------------------------------------------------------------
-  use _fluxes
+  use _vars_core
   use _pools
   use _statevars
   use _nuptake, only: initdaily_nuptake

@@ -8,7 +8,7 @@ subroutine getout_daily( jpngr, moy, doy )
   !----------------------------------------------------------------
   use _params_core, only: ndayyear
   use _params_modl, only: npft, lu_category
-  use _fluxes
+  use _vars_core
   use _outvars
   use _pools
   use _statevars

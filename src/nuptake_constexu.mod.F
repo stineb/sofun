@@ -61,7 +61,7 @@ contains
     use _classdefs
     use _params_modl, only: lu_category
     use _pools, only: pninorg, plabl, proot, dwtot
-    use _fluxes, only: dcex, dnup
+    use _vars_core, only: dcex, dnup
     use _statevars, only: aet_d
     use _vegdynamics, only: fpc_grid
 

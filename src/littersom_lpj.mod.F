@@ -23,7 +23,7 @@ module _littersom
   use _classdefs
   use _rates
   use _statevars, only: ncpa_d
-  use _fluxes, only: drsoil, drhet, dcex
+  use _vars_core, only: drsoil, drhet, dcex
   use _statevars, only: dtemp_soil, ddoc
   use _pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
     psoil_sl, pninorg

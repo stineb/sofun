@@ -5,7 +5,7 @@ subroutine writeout_ascii( year, dtemp )
   use _params_siml, only: firstyeartrend, spinupyears, spinup
   use _params_core, only: ndayyear
   use _params_modl, only: lu_category
-  use _fluxes
+  use _vars_core
   use _pools
   use _outvars
   use _waterbal, only: writeout_ascii_waterbal
