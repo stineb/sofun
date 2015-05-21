@@ -8,10 +8,10 @@ subroutine getout_daily( jpngr, moy, doy )
   !----------------------------------------------------------------
   use _params_core, only: ndayyear
   use _params_modl, only: npft, lu_category
-  use _vars_core
+  use _vars_core, only: dgpp, dnpp, dnup
   use _outvars
-  use _vars_core_two
-  use _statevars
+  use _vars_core_two, only: pleaf, pninorg
+  use _statevars, only: dtemp_soil
   use _waterbal, only: getout_daily_waterbal
   use _nuptake, only: getout_daily_nuptake
   use _littersom, only: getout_daily_littersom
@@ -85,7 +85,7 @@ subroutine getout_annual( jpngr )
   !  SR called once a year to gather annual output variables.
   !----------------------------------------------------------------
   use _params_modl, only: npft, lu_category
-  use _vars_core_two
+  use _vars_core_two, only: pleaf, proot
   use _outvars
   use _littersom, only: getout_annual_littersom
 

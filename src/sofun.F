@@ -12,7 +12,7 @@ program main
   use _forcing_siterun
   use input_site
   use gridvars_siterun
-  use _vars_core
+  ! use _vars_core
 
   implicit none
 

@@ -26,9 +26,9 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _turnover, only: turnover
 
   ! xxx debug
-  use _vars_core
+  ! use _vars_core
   use _vegdynamics
-  use _vars_core_two
+  ! use _vars_core_two
 
   implicit none
 

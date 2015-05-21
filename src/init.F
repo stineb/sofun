@@ -5,9 +5,13 @@ subroutine initglobal
   !  June 2014
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _vars_core_two
-  use _vars_core
-  use _vegdynamics
+  use _classdefs
+  use _vars_core_two, only: pleaf, proot, psapw, pwood, plabl, pexud, &
+    plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, dwtot, pninorg, &
+    lma, sla, lai_ind, fpc_ind
+  ! use _vars_core
+  use _vegdynamics, only: ispresent, height, fpc_grid, &
+    nind, crownarea
   use _params_modl, only: tree
   use _params_core, only: npft
   use _ntransform, only: init_global_ntransform
@@ -41,19 +45,12 @@ subroutine initglobal
   !! here example gridcell 9.5 E, 47.5 N
   ! psoil_fs(:,:) = orgpool( carbon(4000.0), nitrogen(150.0) )
   ! psoil_sl(:,:) = orgpool( carbon(10000.0), nitrogen(550.0) )
-  psoil_fs(:,:) = orgpool( carbon(0.0), nitrogen(0.0) )
-  psoil_sl(:,:) = orgpool( carbon(0.0), nitrogen(0.0) )
-
-  plitt_af(:,:) = orgpool( carbon(0.0), nitrogen(0.0))
-  plitt_as(:,:) = orgpool( carbon(0.0), nitrogen(0.0))
-  plitt_bg(:,:) = orgpool( carbon(0.0), nitrogen(0.0))
-
+  
   ! xxx debug: change back to 0.0
   pninorg(:,:)  = nitrogen(10.0)
 
   ! Module specific initialisations
   call init_global_ntransform
-
 
   ! initialise other properties
   ispresent(:,:) = .false.
@@ -84,9 +81,11 @@ subroutine initpft( pft, jpngr )
   !  June 2014
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _vars_core_two
+  use _classdefs
+  use _vars_core_two, only: pleaf, proot, plabl, psapw, pwood, lai_ind, fpc_ind
   use _params_modl, only: tree, grass
-  use _vegdynamics
+  use _vegdynamics, only: ispresent, height, fpc_grid, nind, &
+    crownarea
 
   implicit none
   integer, intent(in) :: pft
@@ -147,9 +146,10 @@ subroutine initdaily
   !////////////////////////////////////////////////////////////////
   !  Initialises all daily variables with zero.
   !----------------------------------------------------------------
-  use _vars_core
-  use _vars_core_two
-  use _statevars
+  use _classdefs
+  use _vars_core, only: dnpp, drsoil, drhet, dnep, dcex, dgpp, &
+    drauto, drleaf, drroot, drgrow, dnup
+  use _statevars, only: ddoc
   use _nuptake, only: initdaily_nuptake
   use _waterbal, only: initdaily_waterbal
   use _gpp, only: initdaily_gpp

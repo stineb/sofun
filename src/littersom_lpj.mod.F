@@ -796,7 +796,7 @@ contains
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
     use _params_modl, only: npft, lu_category
-    use _vars_core_two
+    use _vars_core_two, only: plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
