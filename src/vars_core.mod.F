@@ -96,164 +96,164 @@ module _vars_core
   real, dimension(nlu) :: ddoc                         ! surrogate for dissolved organic carbon
 
 
-! contains
+contains
 
-!   subroutine initglobal()
-!     !////////////////////////////////////////////////////////////////
-!     !  Initialisation of all _vars_core on all gridcells at the beginning
-!     !  of the simulation.
-!     !  June 2014
-!     !  b.stocker@imperial.ac.uk
-!     !----------------------------------------------------------------
-!     use _params_modl, only: tree
+  subroutine initglobal()
+    !////////////////////////////////////////////////////////////////
+    !  Initialisation of all _pools on all gridcells at the beginning
+    !  of the simulation.
+    !  June 2014
+    !  b.stocker@imperial.ac.uk
+    !----------------------------------------------------------------
+    use _classdefs
+    use _params_modl, only: tree
+    use _params_core, only: npft
 
-!     ! LOCAL VARIABLES
-!     integer :: pft
+    ! LOCAL VARIABLES
+    integer :: pft
 
-!     ! initialise all _vars_core with zero
-!     pleaf(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! leaves   , organic pool [gC/m2/ind. and gN/m2/ind.]
-!     proot(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! roots    , organic pool [gC/m2/ind. and gN/m2/ind.]
-!     psapw(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! sapwood  , organic pool [gC/m2/ind. and gN/m2/ind.]
-!     pwood(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! heartwood, organic pool [gC/m2/ind. and gN/m2/ind.]
-!     plabl(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! labile   , organic pool [gC/m2/ind. and gN/m2/ind.]
+    ! initialise all _pools with zero
+    pleaf(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! leaves   , organic pool [gC/m2/ind. and gN/m2/ind.]
+    proot(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! roots    , organic pool [gC/m2/ind. and gN/m2/ind.]
+    psapw(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! sapwood  , organic pool [gC/m2/ind. and gN/m2/ind.]
+    pwood(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! heartwood, organic pool [gC/m2/ind. and gN/m2/ind.]
+    plabl(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! labile   , organic pool [gC/m2/ind. and gN/m2/ind.]
 
-!     pexud(:,:)    = carbon(0.0)                           ! exudates in soil, carbon pool [gC/m2]
+    pexud(:,:)    = carbon(0.0)                           ! exudates in soil, carbon pool [gC/m2]
 
-!     plitt_af(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! above-ground fine   litter, organic pool [gC/m2 and gN/m2]
-!     plitt_as(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! above-ground coarse litter, organic pool [gC/m2 and gN/m2]
-!     plitt_bg(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! below-ground fine   litter, organic pool [gC/m2 and gN/m2]
+    plitt_af(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! above-ground fine   litter, organic pool [gC/m2 and gN/m2]
+    plitt_as(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! above-ground coarse litter, organic pool [gC/m2 and gN/m2]
+    plitt_bg(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! below-ground fine   litter, organic pool [gC/m2 and gN/m2]
 
-!     psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! fast decomposing soil organic matter, organic pool [gC/m2 and gN/m2]
-!     psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! recalcitrant soil organic matter    , organic pool [gC/m2 and gN/m2]
+    psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! fast decomposing soil organic matter, organic pool [gC/m2 and gN/m2]
+    psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! recalcitrant soil organic matter    , organic pool [gC/m2 and gN/m2]
 
-!     ! xxx try
-!     dwtot(:,:)    = 50.0  ! total soil water content (mm); corresponds to 'dwn' in STASH
+    ! xxx try
+    dwtot(:,:)    = 50.0  ! total soil water content (mm); corresponds to 'dwn' in STASH
 
-!     !! xxx try
-!     !! initialise _vars_core with non-zero values
-!     !! here example gridcell 9.5 E, 47.5 N
-!     ! psoil_fs(:,:) = orgpool( carbon(4000.0), nitrogen(150.0) )
-!     ! psoil_sl(:,:) = orgpool( carbon(10000.0), nitrogen(550.0) )
-!     psoil_fs(:,:) = orgpool( carbon(0.0), nitrogen(0.0) )
-!     psoil_sl(:,:) = orgpool( carbon(0.0), nitrogen(0.0) )
+    !! xxx try
+    !! initialise _pools with non-zero values
+    !! here example gridcell 9.5 E, 47.5 N
+    ! psoil_fs(:,:) = orgpool( carbon(4000.0), nitrogen(150.0) )
+    ! psoil_sl(:,:) = orgpool( carbon(10000.0), nitrogen(550.0) )
+    
+    ! xxx debug: change back to 0.0
+    pninorg(:,:)  = nitrogen(10.0)
 
-!     plitt_af(:,:) = orgpool( carbon(0.0), nitrogen(0.0))
-!     plitt_as(:,:) = orgpool( carbon(0.0), nitrogen(0.0))
-!     plitt_bg(:,:) = orgpool( carbon(0.0), nitrogen(0.0))
+    ! initialise other properties
+    ispresent(:,:) = .false.
+    fpc_grid(:,:)  = 0.0
+    lai_ind(:,:)   = 0.0
+    fpc_ind(:,:)   = 0.0
+    height(:,:)    = 0.0
 
-!     ! xxx debug: change back to 0.0
-!     pninorg(:,:)  = nitrogen(10.0)
+    do pft=1,npft
+      if (tree(pft)) then
+        nind(pft,:)      = 0.0
+        crownarea(pft,:) = 0.0
+      else
+        nind(pft,:)      = 1.0
+        crownarea(pft,:) = 1.0
+      end if
+    end do
 
-!     ! initialise other properties
-!     ispresent(:,:) = .false.
-!     fpc_grid(:,:)  = 0.0
-!     lai_ind(:,:)   = 0.0
-!     fpc_ind(:,:)   = 0.0
-!     height(:,:)    = 0.0
+    lma(:,:) = 0.0
+    sla(:,:) = 0.0
 
-!     do pft=1,npft
-!       if (tree(pft)) then
-!         nind(pft,:)      = 0.0
-!         crownarea(pft,:) = 0.0
-!       else
-!         nind(pft,:)      = 1.0
-!         crownarea(pft,:) = 1.0
-!       end if
-!     end do
-
-!     lma(:,:) = 0.0
-!     sla(:,:) = 0.0
-
-!   end subroutine initglobal
+  end subroutine initglobal
 
 
-!   subroutine initpft( pft, jpngr )
-!     !////////////////////////////////////////////////////////////////
-!     !  Initialisation of specified PFT on specified gridcell
-!     !  June 2014
-!     !  b.stocker@imperial.ac.uk
-!     !----------------------------------------------------------------
-!     use _params_modl, only: tree, grass
+  subroutine initpft( pft, jpngr )
+    !////////////////////////////////////////////////////////////////
+    !  Initialisation of specified PFT on specified gridcell
+    !  June 2014
+    !  b.stocker@imperial.ac.uk
+    !----------------------------------------------------------------
+    use _classdefs
+    use _params_modl, only: tree, grass
 
-!     ! arguments
-!     integer, intent(in) :: pft
-!     integer, intent(in) :: jpngr
+    integer, intent(in) :: pft
+    integer, intent(in) :: jpngr
 
-!     ! initialise all _vars_core with zero
-!     pleaf(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-!     proot(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-!     plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-!     if (tree(pft)) then
-!       psapw(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-!       pwood(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-!     endif
+    ! initialise all _pools with zero
+    pleaf(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+    proot(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+    plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+    if (tree(pft)) then
+      psapw(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+      pwood(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+    endif
 
-!     ! initialise other properties
-!     fpc_grid(pft,jpngr)  = 0.0
-!     lai_ind(pft,jpngr)   = 0.0
-!     fpc_ind(pft,jpngr)   = 0.0
-!     height(pft,jpngr)    = 0.0
-!     if (tree(pft)) then
-!       nind(pft,jpngr)      = 0.0
-!       crownarea(pft,jpngr) = 0.0
-!     else
-!       nind(pft,jpngr)      = 1.0
-!       crownarea(pft,jpngr) = 1.0
-!     endif
+    ! initialise other properties
+    fpc_grid(pft,jpngr)  = 0.0
+    lai_ind(pft,jpngr)   = 0.0
+    fpc_ind(pft,jpngr)   = 0.0
+    height(pft,jpngr)    = 0.0
+    if (tree(pft)) then
+      nind(pft,jpngr)      = 0.0
+      crownarea(pft,jpngr) = 0.0
+    else
+      nind(pft,jpngr)      = 1.0
+      crownarea(pft,jpngr) = 1.0
+    endif
 
-!     !if (.not.grass(pft)) then
-!     !sm_ind(pft,jpngr,1)=orgpool(carbon(0.0),nitrogen(0.0))
-!     !hm_ind(pft,jpngr,1)=orgpool(carbon(0.0),nitrogen(0.0))
-!     ! end if
+    !if (.not.grass(pft)) then
+    !sm_ind(pft,jpngr,1)=orgpool(carbon(0.0),nitrogen(0.0))
+    !hm_ind(pft,jpngr,1)=orgpool(carbon(0.0),nitrogen(0.0))
+    ! end if
 
-!     ! xxx put this somewhere else
-!     !if(.not.tree(pft)) crownarea(pft,jpngr)=1.0d0
-!     !leafon(pft,jpngr)=.true.
-!     !leafondays(pft,jpngr)=0.0d0
-!     !leafoffdays(pft,jpngr)=0.0d0
-
-
-!   end subroutine initpft
+    ! xxx put this somewhere else
+    !if(.not.tree(pft)) crownarea(pft,jpngr)=1.0d0
+    !leafon(pft,jpngr)=.true.
+    !leafondays(pft,jpngr)=0.0d0
+    !leafoffdays(pft,jpngr)=0.0d0
 
 
-!   subroutine initannual()
-!     !////////////////////////////////////////////////////////////////
-!     !  Initialises all annually updated variables with zero.
-!     !----------------------------------------------------------------
-
-!     aestab(:) = orgpool(carbon(0.0),nitrogen(0.0))
-
-!   end subroutine initannual
+  end subroutine initpft
 
 
-!   subroutine initdaily()
-!     !////////////////////////////////////////////////////////////////
-!     !  Initialises all daily variables with zero.
-!     !----------------------------------------------------------------
-!     dnpp(:)        = carbon(0.0)
-!     drsoil(:)      = carbon(0.0)
-!     drhet(:)       = carbon(0.0)
-!     dnep(:)        = carbon(0.0)
-!     dcex(:)        = 0.0
-!     dgpp(:)        = 0.0
-!     drauto(:)      = 0.0
-!     drleaf(:)      = 0.0
-!     drroot(:)      = 0.0
-!     drgrow(:)      = 0.0
-!     dnup(:)        = nitrogen(0.0)
-!     ddoc(:)        = 0.0
+  subroutine initannual()
+    !////////////////////////////////////////////////////////////////
+    !  Initialises all annually updated variables with zero.
+    !----------------------------------------------------------------
+    use _classdefs
 
-!     !! xxx try
-!     !! hold soil carbon and litter _vars_core at a constant size
-!     !! here example gridcell 9.5 E, 47.5 N
-!     !psoil_fs = orgpool( carbon(4000.0), nitrogen(150.0) )
-!     !psoil_sl = orgpool( carbon(10000.0), nitrogen(550.0) )
+    aestab(:) = orgpool(carbon(0.0),nitrogen(0.0))
 
-!     !plitt_af = orgpool( carbon(500.0), nitrogen(10.0))
-!     !plitt_as = orgpool( carbon(1500.0), nitrogen(30.0))
-!     !plitt_bg = orgpool( carbon(400.0), nitrogen(8.))
+  end subroutine initannual
 
-!   end subroutine initdaily
+
+  subroutine initdaily
+    !////////////////////////////////////////////////////////////////
+    !  Initialises all daily variables with zero.
+    !----------------------------------------------------------------
+    use _classdefs
+
+    dnpp(:)        = carbon(0.0)
+    drsoil(:)      = carbon(0.0)
+    drhet(:)       = carbon(0.0)
+    dnep(:)        = carbon(0.0)
+    dcex(:)        = 0.0
+    dgpp(:)        = 0.0
+    drauto(:)      = 0.0
+    drleaf(:)      = 0.0
+    drroot(:)      = 0.0
+    drgrow(:)      = 0.0
+    dnup(:)        = nitrogen(0.0)
+    ddoc(:)        = 0.0
+
+
+    !! xxx try
+    !! hold soil carbon and litter _pools at a constant size
+    !! here example gridcell 9.5 E, 47.5 N
+    !psoil_fs = orgpool( carbon(4000.0), nitrogen(150.0) )
+    !psoil_sl = orgpool( carbon(10000.0), nitrogen(550.0) )
+
+    !plitt_af = orgpool( carbon(500.0), nitrogen(10.0))
+    !plitt_as = orgpool( carbon(1500.0), nitrogen(30.0))
+    !plitt_bg = orgpool( carbon(400.0), nitrogen(8.))
+
+  end subroutine initdaily
 
 end module _vars_core
 

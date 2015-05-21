@@ -14,16 +14,18 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _params_siml
   use _params_site
   use _params_modl
-  use _waterbal, only: waterbal, getrad, outdcpa
+  use _waterbal, only: waterbal, getrad, outdcpa, initdaily_waterbal
   use _soiltemp, only: soiltemp
   use _phenology, only: summerphenology
-  use _ntransform, only: ntransform
+  use _ntransform, only: ntransform, init_global_ntransform
   use _littersom, only: littersom
   use _vegdynamics, only: estab_daily
-  use _gpp, only: gpp, getlue, gettraits
+  use _gpp, only: gpp, getlue, gettraits, initdaily_gpp
   use _npp, only: npp
   use _allocation, only: allocation_daily
   use _turnover, only: turnover
+  use _nuptake, only: initdaily_nuptake
+  use _vars_core, only: initannual, initdaily, initglobal, initpft
 
   ! xxx debug
   ! use _vars_core
@@ -97,7 +99,8 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
-    call initglobal
+    call initglobal()
+    call init_global_ntransform()
 
     !----------------------------------------------------------------
     ! Open input/output files
@@ -178,7 +181,10 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         !----------------------------------------------------------------
         ! initialise daily updated variables 
         !----------------------------------------------------------------
-        call initdaily
+        call initdaily()
+        call initdaily_nuptake()
+        call initdaily_waterbal()
+        call initdaily_gpp()
 
         !----------------------------------------------------------------
         ! get soil moisture, and runoff

@@ -22,7 +22,7 @@ contains
     use _params_modl, only: r_ntoc_root
     use _phenology, only: dtphen, summergreen
     use _vars_core, only: r_ntoc_leaf, pleaf, proot, lai_ind, fpc_ind, &
-      sla, fpc_grid, ispresent, crownarea, nind
+      sla, fpc_grid, ispresent, crownarea, nind, initpft
 
     ! xxx debug
     use _classdefs
