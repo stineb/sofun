@@ -7,7 +7,7 @@ subroutine killpft( pft, jpngr )
   !----------------------------------------------------------------
   use _vars_core, only: pleaf, plitt_af, plitt_bg, psapw, plitt_as, pwood, proot, plabl
   use _params_modl, only: tree
-  use _vegdynamics, only: nind
+  use _vars_core, only: nind
   use _outvars, only: outaCveg2lit, outaNveg2lit
 
   implicit none

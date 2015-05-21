@@ -80,12 +80,12 @@ module _vars_core
   ! OTHER STATE VARIABLES
   !----------------------------------------------------------------
   ! FROM VEGDYNAMICS
-  ! logical, dimension(npft,maxgrid) :: ispresent   ! boolean whether PFT is present
-  ! real, dimension(npft,maxgrid)    :: fpc_grid    ! area fraction within gridcell occupied by PFT
-  ! real, dimension(npft,maxgrid)    :: nind        ! number of individuals [1/m2]
+  logical, dimension(npft,maxgrid) :: ispresent   ! boolean whether PFT is present
+  real, dimension(npft,maxgrid)    :: fpc_grid    ! area fraction within gridcell occupied by PFT
+  real, dimension(npft,maxgrid)    :: nind        ! number of individuals [1/m2]
 
-  ! real, dimension(npft,maxgrid)    :: height      ! tree height (m)
-  ! real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
+  real, dimension(npft,maxgrid)    :: height      ! tree height (m)
+  real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
 
   ! FROM STATEVARS
   real, dimension(nlu,maxgrid) :: dtemp_soil          ! soil temperature [deg C] xxx really maxgrid necessary? xxx

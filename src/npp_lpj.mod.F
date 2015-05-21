@@ -44,7 +44,8 @@ contains
     use _params_modl, only: lu_category, tree, grass
     use _rates
     use _vars_core, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, dcex, dnup
-    use _vegdynamics, only: nind, ispresent, shedleaves
+    use _vars_core, only: nind, ispresent
+    use _vegdynamics, only: shedleaves
     use _vars_core, only: proot, psapw, pexud, plabl
     use _nuptake, only: nuptake
     use _vars_core, only: dtemp_soil

@@ -9,7 +9,7 @@ subroutine initglobal
   use _vars_core, only: pleaf, proot, psapw, pwood, plabl, pexud, &
     plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, dwtot, pninorg, &
     lma, sla, lai_ind, fpc_ind
-  use _vegdynamics, only: ispresent, height, fpc_grid, &
+  use _vars_core, only: ispresent, height, fpc_grid, &
     nind, crownarea
   use _params_modl, only: tree
   use _params_core, only: npft
@@ -83,7 +83,7 @@ subroutine initpft( pft, jpngr )
   use _classdefs
   use _vars_core, only: pleaf, proot, plabl, psapw, pwood, lai_ind, fpc_ind
   use _params_modl, only: tree, grass
-  use _vegdynamics, only: ispresent, height, fpc_grid, nind, &
+  use _vars_core, only: ispresent, height, fpc_grid, nind, &
     crownarea
 
   implicit none

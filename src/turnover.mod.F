@@ -14,7 +14,8 @@ contains
       k_decay_leaf, k_decay_sapw, k_decay_root, npft, F_NRETAIN
     use _phenology, only: summergreen
     use _vars_core, only: pleaf, proot, psapw, pwood, plitt_af, plitt_bg, plabl
-    use _vegdynamics , only: nind, ispresent, shedleaves
+    use _vars_core , only: nind, ispresent
+    use _vegdynamics, only: shedleaves
     use _outvars, only: outaCveg2lit, outaNveg2lit
 
     ! arguments

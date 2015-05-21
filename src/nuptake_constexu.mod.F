@@ -63,7 +63,7 @@ contains
     use _vars_core, only: pninorg, plabl, proot, dwtot
     use _vars_core, only: dcex, dnup
     use _vars_core, only: aet_d
-    use _vegdynamics, only: fpc_grid
+    use _vars_core, only: fpc_grid
 
     ! arguments
     integer, intent(in) :: jpngr, pft

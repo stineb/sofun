@@ -2,12 +2,13 @@ module _vegdynamics
 
   use _params_core
 
-  logical, dimension(npft,maxgrid) :: ispresent   ! boolean whether PFT is present
-  real, dimension(npft,maxgrid)    :: fpc_grid    ! area fraction within gridcell occupied by PFT
-  real, dimension(npft,maxgrid)    :: nind        ! number of individuals [1/m2]
+  ! logical, dimension(npft,maxgrid) :: ispresent   ! boolean whether PFT is present
+  ! real, dimension(npft,maxgrid)    :: fpc_grid    ! area fraction within gridcell occupied by PFT
+  ! real, dimension(npft,maxgrid)    :: nind        ! number of individuals [1/m2]
 
-  real, dimension(npft,maxgrid)    :: height      ! tree height (m)
-  real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
+  ! real, dimension(npft,maxgrid)    :: height      ! tree height (m)
+  ! real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
+
   logical, dimension(npft)         :: shedleaves  ! true when leaf shedding is triggered
 
 contains
@@ -20,7 +21,8 @@ contains
     use _params_core, only: npft
     use _params_modl, only: r_ntoc_root
     use _phenology, only: dtphen, summergreen
-    use _vars_core, only: r_ntoc_leaf, pleaf, proot, lai_ind, fpc_ind, sla
+    use _vars_core, only: r_ntoc_leaf, pleaf, proot, lai_ind, fpc_ind, &
+      sla, fpc_grid, ispresent, crownarea, nind
 
     ! xxx debug
     use _classdefs
