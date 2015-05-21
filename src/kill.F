@@ -5,7 +5,7 @@ subroutine killpft( pft, jpngr )
   !  gC/m2!
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _vars_core_two, only: pleaf, plitt_af, plitt_bg, psapw, plitt_as, pwood, proot, plabl
+  use _vars_core, only: pleaf, plitt_af, plitt_bg, psapw, plitt_as, pwood, proot, plabl
   use _params_modl, only: tree
   use _vegdynamics, only: nind
   use _outvars, only: outaCveg2lit, outaNveg2lit

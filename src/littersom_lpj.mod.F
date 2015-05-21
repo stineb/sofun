@@ -22,10 +22,10 @@ module _littersom
   use _params_siml, only: spinup
   use _classdefs
   use _rates
-  use _statevars, only: ncpa_d
+  use _vars_core, only: ncpa_d
   use _vars_core, only: drsoil, drhet, dcex
-  use _statevars, only: dtemp_soil, ddoc
-  use _vars_core_two, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
+  use _vars_core, only: dtemp_soil, ddoc
+  use _vars_core, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
     psoil_sl, pninorg
 
   implicit none
@@ -757,7 +757,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use _vars_core_two, only: dwtot
+    use _vars_core, only: dwtot
 
     implicit none
 
@@ -796,7 +796,7 @@ contains
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
     use _params_modl, only: npft, lu_category
-    use _vars_core_two, only: plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl
+    use _vars_core, only: plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr

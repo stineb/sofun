@@ -19,7 +19,7 @@ module _waterbal
   !   - runoff ('dro')
   !----------------------------------------------------------------
   use _params_core, only: ndayyear, nmonth, nlu, maxgrid
-  use _statevars, only: aet_d, ncpa_d, dro
+  use _vars_core, only: aet_d, ncpa_d, dro
 
   implicit none
 
@@ -104,7 +104,7 @@ contains
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use _params_core, only: ndayyear, ndaymonth, nlu
-    use _vars_core_two, only: dwtot
+    use _vars_core, only: dwtot
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
@@ -340,7 +340,7 @@ contains
     ! - daily condensation (wc), mm
     !-------------------------------------------------------------------------  
     use _params_core, only: ndayyear, pi
-    use _vars_core_two, only: dwtot
+    use _vars_core, only: dwtot
 
     implicit none
 
@@ -912,7 +912,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use _vars_core_two, only: dwtot
+    use _vars_core, only: dwtot
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr

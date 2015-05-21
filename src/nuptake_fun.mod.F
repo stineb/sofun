@@ -69,8 +69,8 @@ contains
     use _vars_core, only: dnpp, dnup, dcex
     use _waterbal, only: aet_d  ! xxx make 'aet_d' a required global variable?
     use _vegdynamics, only: nind, ispresent, fpc_grid
-    use _vars_core_two, only: pninorg, plabl, proot, dwtot
-    use _statevars, only: dtemp_soil
+    use _vars_core, only: pninorg, plabl, proot, dwtot
+    use _vars_core, only: dtemp_soil
     
     ! ARGUMENTS
     integer, intent(in) :: jpngr, pft

@@ -18,7 +18,7 @@ module _soiltemp
   !   - soil moisture ('dwtot')
   !   - soil temperature ('dtemp_soil')
   !----------------------------------------------------------------
-  use _statevars, only: dtemp_soil
+  use _vars_core, only: dtemp_soil
 
 contains
 

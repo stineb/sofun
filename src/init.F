@@ -6,10 +6,9 @@ subroutine initglobal
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _classdefs
-  use _vars_core_two, only: pleaf, proot, psapw, pwood, plabl, pexud, &
+  use _vars_core, only: pleaf, proot, psapw, pwood, plabl, pexud, &
     plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, dwtot, pninorg, &
     lma, sla, lai_ind, fpc_ind
-  ! use _vars_core
   use _vegdynamics, only: ispresent, height, fpc_grid, &
     nind, crownarea
   use _params_modl, only: tree
@@ -82,7 +81,7 @@ subroutine initpft( pft, jpngr )
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _classdefs
-  use _vars_core_two, only: pleaf, proot, plabl, psapw, pwood, lai_ind, fpc_ind
+  use _vars_core, only: pleaf, proot, plabl, psapw, pwood, lai_ind, fpc_ind
   use _params_modl, only: tree, grass
   use _vegdynamics, only: ispresent, height, fpc_grid, nind, &
     crownarea
@@ -149,7 +148,7 @@ subroutine initdaily
   use _classdefs
   use _vars_core, only: dnpp, drsoil, drhet, dnep, dcex, dgpp, &
     drauto, drleaf, drroot, drgrow, dnup
-  use _statevars, only: ddoc
+  use _vars_core, only: ddoc
   use _nuptake, only: initdaily_nuptake
   use _waterbal, only: initdaily_waterbal
   use _gpp, only: initdaily_gpp
