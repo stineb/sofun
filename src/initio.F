@@ -3,10 +3,6 @@ subroutine initio()
   ! Opens input/output files.
   !----------------------------------------------------------------
   use _params_siml, only: runname
-  ! use _waterbal, only: initio_waterbal
-  ! use _nuptake, only: initio_nuptake
-  ! use _ntransform, only: initio_ntransform
-  ! use _littersom, only: initio_littersom
 
   implicit none
 

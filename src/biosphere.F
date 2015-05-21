@@ -27,6 +27,8 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _nuptake, only: initdaily_nuptake
   use _vars_core, only: initannual, initdaily, initglobal, initpft
 
+  use _outvars, only: initio
+
   use _waterbal, only: initio_waterbal
   use _nuptake, only: initio_nuptake
   use _ntransform, only: initio_ntransform
