@@ -417,7 +417,6 @@ contains
     use _params_core, only: ndayyear, nmonth, npft
     use _params_siml, only: firstyeartrend, spinupyears
 
-
     ! arguments
     integer, intent(in) :: year       ! simulation year
     logical, intent(in) :: spinup     ! true during spinup years

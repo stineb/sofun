@@ -89,6 +89,7 @@ subroutine writeout_ascii( year, dtemp )
 
   !-------------------------------------------------------------------------
   ! MODULE-SPECIFIC OUTPUT
+  ! XXX WEIRD: can't remove these calls from here XXX
   !-------------------------------------------------------------------------
   call writeout_ascii_nuptake( year, spinup )
   call writeout_ascii_littersom( year, spinup )
