@@ -400,17 +400,17 @@ contains
   end subroutine init_global_ntransform
 
 
-  subroutine initio_ntransform( prefix )
+  subroutine initio_ntransform( )
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    implicit none
+    use _params_siml, only: runname
 
-    ! ARGUMENTS
-    character(len=*) :: prefix
-
-    ! LOCAL VARIABLES
+    ! local variables
+    character(len=256) :: prefix
     character(len=256) :: filnam
+
+    prefix = "./output/"//trim(runname)
 
 
     !----------------------------------------------------------------

@@ -1,12 +1,12 @@
-subroutine initio
+subroutine initio()
   !////////////////////////////////////////////////////////////////
   ! Opens input/output files.
   !----------------------------------------------------------------
   use _params_siml, only: runname
-  use _waterbal, only: initio_waterbal
-  use _nuptake, only: initio_nuptake
-  use _ntransform, only: initio_ntransform
-  use _littersom, only: initio_littersom
+  ! use _waterbal, only: initio_waterbal
+  ! use _nuptake, only: initio_nuptake
+  ! use _ntransform, only: initio_ntransform
+  ! use _littersom, only: initio_littersom
 
   implicit none
 
@@ -14,11 +14,11 @@ subroutine initio
   character(len=256) :: prefix
   character(len=256) :: filnam
 
+  prefix = "./output/"//trim(runname)
 
   !////////////////////////////////////////////////////////////////
   ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
   !----------------------------------------------------------------
-  prefix = "./output/"//trim(runname)
 
   ! GPP
   filnam=trim(prefix)//'.d.gpp.out'
@@ -84,15 +84,6 @@ subroutine initio
   ! INORGANIC N (mean over days)
   filnam=trim(prefix)//'.a.ninorg.out'
   open(316,file=filnam,err=999,status='unknown')
-
-
-  !----------------------------------------------------------------
-  ! MODULE-SPECIFIC OUTPUT FILES
-  !----------------------------------------------------------------
-  call initio_waterbal( prefix )
-  call initio_nuptake( prefix )
-  call initio_ntransform( prefix ) ! nothing yet xxx
-  call initio_littersom( prefix )
 
 
   return

@@ -280,15 +280,17 @@ contains
   end subroutine initdaily_nuptake
 
 
-  subroutine initio_nuptake( prefix )
+  subroutine initio_nuptake( )
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    ! arguments
-    character(len=*) :: prefix
+    use _params_siml, only: runname
 
     ! local variables
+    character(len=256) :: prefix
     character(len=256) :: filnam
+
+    prefix = "./output/"//trim(runname)
 
     !----------------------------------------------------------------
     ! DAILY OUTPUT

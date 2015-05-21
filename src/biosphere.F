@@ -27,6 +27,11 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _nuptake, only: initdaily_nuptake
   use _vars_core, only: initannual, initdaily, initglobal, initpft
 
+  use _waterbal, only: initio_waterbal
+  use _nuptake, only: initio_nuptake
+  use _ntransform, only: initio_ntransform
+  use _littersom, only: initio_littersom
+
   ! xxx debug
   ! use _vars_core
   ! use _vegdynamics
@@ -105,7 +110,11 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !----------------------------------------------------------------
     ! Open input/output files
     !----------------------------------------------------------------
-    call initio(runname)
+    call initio()
+    call initio_waterbal()
+    call initio_nuptake()
+    call initio_ntransform() ! nothing yet xxx
+    call initio_littersom()
 
   endif 
 

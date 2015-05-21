@@ -772,17 +772,17 @@ contains
   end subroutine getpar_modl_waterbal
 
 
-  subroutine initio_waterbal( prefix )
+  subroutine initio_waterbal( )
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    implicit none
+    use _params_siml, only: runname
 
-    ! ARGUMENTS
-    character(len=*) :: prefix
-
-    ! LOCAL VARIABLES
+    ! local variables
+    character(len=256) :: prefix
     character(len=256) :: filnam
+
+    prefix = "./output/"//trim(runname)
 
 
     !----------------------------------------------------------------

@@ -650,17 +650,17 @@ contains
   end subroutine getpar_modl_littersom
 
 
-  subroutine initio_littersom( prefix )
+  subroutine initio_littersom( )
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
+    use _params_siml, only: runname
 
-    ! ARGUMENTS
-    character(len=*) :: prefix
-
-    ! LOCAL VARIABLES
+    ! local variables
+    character(len=256) :: prefix
     character(len=256) :: filnam
 
+    prefix = "./output/"//trim(runname)
 
     !----------------------------------------------------------------
     ! DAILY OUTPUT
