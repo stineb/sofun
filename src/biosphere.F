@@ -14,39 +14,19 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _params_siml
   use _params_site
   use _params_modl
-  use _waterbal, only: waterbal, getrad, outdcpa, initdaily_waterbal
+  use _vars_core, only: initannual, initdaily, initglobal, initpft
+  use _outvars, only: initio, getout_annual, getout_daily, initoutput
   use _soiltemp, only: soiltemp
   use _phenology, only: summerphenology
-  use _ntransform, only: ntransform, init_global_ntransform
-  use _littersom, only: littersom
   use _vegdynamics, only: estab_daily
   use _gpp, only: gpp, getlue, gettraits, initdaily_gpp
   use _npp, only: npp
   use _allocation, only: allocation_daily
   use _turnover, only: turnover
-  use _nuptake, only: initdaily_nuptake
-  use _vars_core, only: initannual, initdaily, initglobal, initpft
-
-  use _outvars, only: initio, getout_annual, getout_daily, initoutput
-
-  use _waterbal, only: initio_waterbal
-  use _nuptake, only: initio_nuptake
-  use _ntransform, only: initio_ntransform
-  use _littersom, only: initio_littersom
-
-  use _waterbal, only: getout_daily_waterbal
-  use _nuptake, only: getout_daily_nuptake
-  use _littersom, only: getout_daily_littersom
-
-  use _waterbal, only: initoutput_waterbal
-  use _nuptake, only: initoutput_nuptake
-  use _ntransform, only: initoutput_ntransform
-  use _littersom, only: initoutput_littersom
-
-
-  use _waterbal, only: getout_monthly_waterbal
-
-  use _littersom, only: getout_annual_littersom
+  use _waterbal, only: waterbal, getrad, outdcpa, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getout_monthly_waterbal
+  use _nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake
+  use _ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform
+  use _littersom, only: littersom, initio_littersom, getout_daily_littersom, initoutput_littersom, getout_annual_littersom
 
   ! xxx debug
   ! use _vars_core
