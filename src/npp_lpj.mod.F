@@ -45,7 +45,7 @@ contains
     use _rates
     use _vars_core, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, dcex, dnup
     use _vegdynamics, only: nind, ispresent, shedleaves
-    use _pools, only: proot, psapw, pexud, plabl
+    use _vars_core_two, only: proot, psapw, pexud, plabl
     use _nuptake, only: nuptake
     use _statevars, only: dtemp_soil
     use _gpp, only: drd

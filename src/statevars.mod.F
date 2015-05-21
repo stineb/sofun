@@ -1,7 +1,7 @@
 module _statevars
   !////////////////////////////////////////////////////////////////
   ! Module contains required state variables apart from those 
-  ! contained in '_pools' and '_fluxes'. 
+  ! contained in 'pools' and 'fluxes'. 
   !----------------------------------------------------------------
   use _params_core, only: nlu, maxgrid
 

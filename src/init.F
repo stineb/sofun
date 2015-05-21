@@ -5,7 +5,7 @@ subroutine initglobal
   !  June 2014
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _pools
+  use _vars_core_two
   use _vars_core
   use _vegdynamics
   use _params_modl, only: tree
@@ -84,7 +84,7 @@ subroutine initpft( pft, jpngr )
   !  June 2014
   !  b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _pools
+  use _vars_core_two
   use _params_modl, only: tree, grass
   use _vegdynamics
 
@@ -148,7 +148,7 @@ subroutine initdaily
   !  Initialises all daily variables with zero.
   !----------------------------------------------------------------
   use _vars_core
-  use _pools
+  use _vars_core_two
   use _statevars
   use _nuptake, only: initdaily_nuptake
   use _waterbal, only: initdaily_waterbal

@@ -33,7 +33,7 @@ contains
     !------------------------------------------------------------------
     use _params_core, only: npft
     use _params_modl, only: r_cton_root, r_ntoc_root, growtheff, grass
-    use _pools, only: pleaf, proot, plabl, pninorg, r_cton_leaf, r_ntoc_leaf, sla
+    use _vars_core_two, only: pleaf, proot, plabl, pninorg, r_cton_leaf, r_ntoc_leaf, sla
     use _gpp, only: mlue, mrd_unitiabs
     use _waterbal, only: dppfd, meanmppfd
     use _findroot_fzeroin

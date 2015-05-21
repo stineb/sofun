@@ -28,7 +28,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   ! xxx debug
   use _vars_core
   use _vegdynamics
-  use _pools
+  use _vars_core_two
 
   implicit none
 

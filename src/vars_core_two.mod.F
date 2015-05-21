@@ -1,4 +1,4 @@
-module _pools
+module _vars_core_two
   !////////////////////////////////////////////////////////////////
   !  Module contains all pool variables. These are handled as state
   !  variables of the model and contain a dummy spatial dimension
@@ -37,5 +37,5 @@ module _pools
   real, dimension(npft,maxgrid) :: fpc_ind
 
 
-end module _pools
+end module _vars_core_two
 

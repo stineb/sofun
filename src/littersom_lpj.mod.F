@@ -25,7 +25,7 @@ module _littersom
   use _statevars, only: ncpa_d
   use _vars_core, only: drsoil, drhet, dcex
   use _statevars, only: dtemp_soil, ddoc
-  use _pools, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
+  use _vars_core_two, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
     psoil_sl, pninorg
 
   implicit none
@@ -757,7 +757,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use _pools, only: dwtot
+    use _vars_core_two, only: dwtot
 
     implicit none
 
@@ -796,7 +796,7 @@ contains
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
     use _params_modl, only: npft, lu_category
-    use _pools
+    use _vars_core_two
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr

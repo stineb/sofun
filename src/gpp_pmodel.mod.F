@@ -252,7 +252,7 @@ contains
     ! - LMA, SLA
     !------------------------------------------------------------------
     use _params_modl, only: n_molmass, c_molmass, c_content_of_biomass
-    use _pools, only: sla, lma, r_cton_leaf, r_ntoc_leaf
+    use _vars_core_two, only: sla, lma, r_cton_leaf, r_ntoc_leaf
     use _waterbal, only: meanmppfd
 
     ! arguments
@@ -345,7 +345,7 @@ contains
     !------------------------------------------------------------------
     use _vars_core, only: dgpp
     use _params_modl, only: kbeer
-    use _pools, only: fpc_ind
+    use _vars_core_two, only: fpc_ind
     use _waterbal, only: dppfd, meanmppfd
 
     ! arguments

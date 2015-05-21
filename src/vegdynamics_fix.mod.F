@@ -20,7 +20,7 @@ contains
     use _params_core, only: npft
     use _params_modl, only: r_ntoc_root
     use _phenology, only: dtphen, summergreen
-    use _pools, only: r_ntoc_leaf, pleaf, proot, lai_ind, fpc_ind, sla
+    use _vars_core_two, only: r_ntoc_leaf, pleaf, proot, lai_ind, fpc_ind, sla
 
     ! xxx debug
     use _classdefs

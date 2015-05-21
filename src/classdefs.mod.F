@@ -18,7 +18,7 @@ module _classdefs
    real :: n14
   end type nitrogen
 
-  ! Organic _pools, contain carbon (c12) and nitrogen (n14)
+  ! Organic pools, contain carbon (c12) and nitrogen (n14)
   type orgpool
    type(carbon)   :: c
    type(nitrogen) :: n
@@ -179,7 +179,7 @@ contains
   end subroutine orgmvRec
 
 
-  subroutine orginit(pool)
+  subroutine orginit( pool )
     !////////////////////////////////////////////////////////////////
     !  Generic SR to initialise organic pool
     !----------------------------------------------------------------
@@ -500,7 +500,7 @@ contains
 
   function orgplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 )
     !////////////////////////////////////////////////////////////////
-    !  Generic function to return variable sum of two _pools of type 
+    !  Generic function to return variable sum of two pools of type 
     !  'orgpool'. Sum is of type 'orgpool' as well.
     !----------------------------------------------------------------
 
@@ -561,7 +561,7 @@ contains
 
   function cplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 )
     !////////////////////////////////////////////////////////////////
-    !  Generic function to return variable sum of two _pools of type 
+    !  Generic function to return variable sum of two pools of type 
     !  'carbon'. Sum is of type 'carbon' as well.
     !----------------------------------------------------------------
 
@@ -612,7 +612,7 @@ contains
 
   function nplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 )
     !////////////////////////////////////////////////////////////////
-    !  Generic function to return variable sum of two _pools of type 
+    !  Generic function to return variable sum of two pools of type 
     !  'nitrogen'. Sum is of type 'nitrogen' as well.
     !----------------------------------------------------------------
 
@@ -663,7 +663,7 @@ contains
 
   function orgminus( pool1, pool2 )
     !////////////////////////////////////////////////////////////////
-    !  Generic function to return variable difference of two _pools of 
+    !  Generic function to return variable difference of two pools of 
     !  type 'orgpool'. Sum is of type 'orgpool' as well.
     !----------------------------------------------------------------
 
@@ -682,7 +682,7 @@ contains
 
   function cminus( pool1, pool2 )
     !////////////////////////////////////////////////////////////////
-    !  Generic function to return variable difference of two _pools of 
+    !  Generic function to return variable difference of two pools of 
     !  type 'carbon'. Sum is of type 'carbon' as well.
     !----------------------------------------------------------------
     ! arguments
@@ -699,7 +699,7 @@ contains
 
   function nminus( pool1, pool2 )
     !////////////////////////////////////////////////////////////////
-    !  Generic function to return variable difference of two _pools of 
+    !  Generic function to return variable difference of two pools of 
     !  type 'carbon'. Sum is of type 'carbon' as well.
     !----------------------------------------------------------------
     ! arguments

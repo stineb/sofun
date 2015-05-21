@@ -63,7 +63,7 @@ contains
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     use _rates
-    use _pools, only: pninorg, dwtot
+    use _vars_core_two, only: pninorg, dwtot
     use _statevars, only: dtemp_soil, dro, ncpa_d, ddoc
 
     ! XXX beni: this is wrong: dw1 is only plant available water. 

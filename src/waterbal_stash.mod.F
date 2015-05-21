@@ -104,7 +104,7 @@ contains
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use _params_core, only: ndayyear, ndaymonth, nlu
-    use _pools, only: dwtot
+    use _vars_core_two, only: dwtot
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
@@ -340,7 +340,7 @@ contains
     ! - daily condensation (wc), mm
     !-------------------------------------------------------------------------  
     use _params_core, only: ndayyear, pi
-    use _pools, only: dwtot
+    use _vars_core_two, only: dwtot
 
     implicit none
 
@@ -912,7 +912,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use _pools, only: dwtot
+    use _vars_core_two, only: dwtot
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
