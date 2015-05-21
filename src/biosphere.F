@@ -27,7 +27,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _nuptake, only: initdaily_nuptake
   use _vars_core, only: initannual, initdaily, initglobal, initpft
 
-  use _outvars, only: initio, getout_annual, getout_daily
+  use _outvars, only: initio, getout_annual, getout_daily, initoutput
 
   use _waterbal, only: initio_waterbal
   use _nuptake, only: initio_nuptake
@@ -37,6 +37,12 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _waterbal, only: getout_daily_waterbal
   use _nuptake, only: getout_daily_nuptake
   use _littersom, only: getout_daily_littersom
+
+  use _waterbal, only: initoutput_waterbal
+  use _nuptake, only: initoutput_nuptake
+  use _ntransform, only: initoutput_ntransform
+  use _littersom, only: initoutput_littersom
+
 
   use _waterbal, only: getout_monthly_waterbal
 
@@ -132,7 +138,11 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   !----------------------------------------------------------------
   ! Initialise output variables for this year
   !----------------------------------------------------------------
-  call initoutput
+  call initoutput()
+  call initoutput_waterbal()
+  call initoutput_nuptake()
+  call initoutput_ntransform()  ! nothing yet
+  call initoutput_littersom()
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
