@@ -28,6 +28,8 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform
   use _littersom, only: littersom, initio_littersom, getout_daily_littersom, initoutput_littersom, getout_annual_littersom
 
+  use _waterbal, only: writeout_ascii_waterbal
+
   ! xxx debug
   ! use _vars_core
   ! use _vegdynamics
@@ -300,6 +302,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     ! Write to output
     !----------------------------------------------------------------
     call writeout_ascii( year, dtemp_field(:,jpngr) )
+    call writeout_ascii_waterbal( year, spinup )
 
   end do
 

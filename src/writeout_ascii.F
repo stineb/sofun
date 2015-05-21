@@ -6,7 +6,6 @@ subroutine writeout_ascii( year, dtemp )
   use _params_core, only: ndayyear
   use _params_modl, only: lu_category
   use _outvars
-  use _waterbal, only: writeout_ascii_waterbal
   use _nuptake, only: writeout_ascii_nuptake
   use _littersom, only: writeout_ascii_littersom
 
@@ -91,7 +90,6 @@ subroutine writeout_ascii( year, dtemp )
   !-------------------------------------------------------------------------
   ! MODULE-SPECIFIC OUTPUT
   !-------------------------------------------------------------------------
-  call writeout_ascii_waterbal( year, spinup )
   call writeout_ascii_nuptake( year, spinup )
   call writeout_ascii_littersom( year, spinup )
 
