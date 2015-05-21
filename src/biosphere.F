@@ -27,12 +27,20 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _nuptake, only: initdaily_nuptake
   use _vars_core, only: initannual, initdaily, initglobal, initpft
 
-  use _outvars, only: initio
+  use _outvars, only: initio, getout_annual, getout_daily
 
   use _waterbal, only: initio_waterbal
   use _nuptake, only: initio_nuptake
   use _ntransform, only: initio_ntransform
   use _littersom, only: initio_littersom
+
+  use _waterbal, only: getout_daily_waterbal
+  use _nuptake, only: getout_daily_nuptake
+  use _littersom, only: getout_daily_littersom
+
+  use _waterbal, only: getout_monthly_waterbal
+
+  use _littersom, only: getout_annual_littersom
 
   ! xxx debug
   ! use _vars_core
@@ -262,10 +270,18 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
         call getout_daily( jpngr, mo, day )
+        call getout_daily_waterbal( jpngr, mo, day )
+        call getout_daily_nuptake( jpngr, mo, day )
+        call getout_daily_littersom( jpngr, mo, day )
 
         ! stop 'end of day'
         
       end do
+
+      !----------------------------------------------------------------
+      ! MODULE-SPECIFIC VARIABLES
+      !----------------------------------------------------------------
+      call getout_monthly_waterbal( jpngr, mo )
 
     end do
 
@@ -288,6 +304,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     ! collect annually updated output variables
     !----------------------------------------------------------------
     call getout_annual( jpngr )
+    call getout_annual_littersom( jpngr )
 
     !----------------------------------------------------------------
     ! Write to output
