@@ -323,12 +323,6 @@ contains
           mean_insoil_sl(lu,jpngr) = mean_insoil_sl(lu,jpngr) + eff * (1.0-fastfrac) * dlitt%c%c12
         end if
 
-        ! OUTPUT COLLECTION
-        outaClit2soil(lu,jpngr) = outaClit2soil(lu,jpngr) + dlitt%c%c12 * eff
-        ! write(0,*) 'outaClit2soil(lu,jpngr)',outaClit2soil(lu,jpngr)
-        ! outaNlit2soil(pft,jpngr) = outaNlit2soil(pft,jpngr) + dlitt%n%n14
-        outaNlit2soil(lu,jpngr)  = outaNlit2soil(lu,jpngr)  + Nreq_S
-
 
         !----------------------------------------------------------------    
         ! N MINERALISATION
@@ -343,7 +337,12 @@ contains
         ! write(0,*) 'cton_crit      ',1.0/ntoc_crit
 
         ! OUTPUT COLLECTION
-        outanreq(lu,jpngr) = outanreq(lu,jpngr) + Nreq_S
+        outanreq(lu,jpngr)      = outanreq(lu,jpngr)      + Nreq_S
+        outaClit2soil(lu,jpngr) = outaClit2soil(lu,jpngr) + dlitt%c%c12 * eff
+        outaNlit2soil(lu,jpngr) = outaNlit2soil(lu,jpngr) + Nreq_S`
+
+        ! write(0,*) 'outaClit2soil(lu,jpngr)',outaClit2soil(lu,jpngr)
+        ! outaNlit2soil(pft,jpngr) = outaNlit2soil(pft,jpngr) + dlitt%n%n14
 
         !----------------------------------------------------------------    
         ! If N supply is sufficient, mineralisation occurrs: positive (dNLit-Nreq).

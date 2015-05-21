@@ -55,6 +55,10 @@ subroutine writeout_ascii( year, dtemp )
       write(107,999) itime, sum(outdninorg(:,day,jpngr))
       write(109,999) itime, sum(outdtemp_soil(:,day,jpngr))
       write(110,999) itime, dtemp(day)
+      write(111,999) itime, sum(outdCroot(:,day,jpngr))
+      write(112,999) itime, sum(outdClabl(:,day,jpngr))
+      write(113,999) itime, sum(outdClitt(:,day,jpngr))
+      write(114,999) itime, sum(outdtransp(:,day,jpngr))
       
     end do
   end if
@@ -89,7 +93,7 @@ subroutine writeout_ascii( year, dtemp )
 
   !-------------------------------------------------------------------------
   ! MODULE-SPECIFIC OUTPUT
-  ! XXX WEIRD: can't remove these calls from here XXX
+  ! XXX WEIRD: can't remove these calls from here and I don't know why XXX
   !-------------------------------------------------------------------------
   call writeout_ascii_nuptake( year, spinup )
   call writeout_ascii_littersom( year, spinup )

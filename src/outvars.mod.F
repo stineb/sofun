@@ -13,9 +13,13 @@ module _outvars
   ! Daily output variables
   !----------------------------------------------------------------
   real, dimension(npft,ndayyear,maxgrid) :: outdgpp
+  real, dimension(npft,ndayyear,maxgrid) :: outdtransp
   real, dimension(npft,ndayyear,maxgrid) :: outdnpp
   real, dimension(npft,ndayyear,maxgrid) :: outdnup
   real, dimension(npft,ndayyear,maxgrid) :: outdCleaf
+  real, dimension(npft,ndayyear,maxgrid) :: outdCroot
+  real, dimension(npft,ndayyear,maxgrid) :: outdClabl
+  real, dimension(npft,ndayyear,maxgrid) :: outdClitt
 
   real, dimension(nlu,ndayyear,maxgrid)  :: outdninorg
   real, dimension(nlu,ndayyear,maxgrid)  :: outdtemp_soil
@@ -48,9 +52,13 @@ contains
 
     ! daily output variables
     outdgpp(:,:,:)      = 0.0
+    outdtransp(:,:,:)   = 0.0
     outdnpp(:,:,:)      = 0.0
     outdnup(:,:,:)      = 0.0
     outdCleaf(:,:,:)    = 0.0
+    outdCroot(:,:,:)    = 0.0
+    outdClabl(:,:,:)    = 0.0
+    outdClitt(:,:,:)    = 0.0
     outdninorg(:,:,:)   = 0.0
 
     ! annual output variables
@@ -112,6 +120,22 @@ contains
     filnam=trim(prefix)//'.d.temp.out'
     open(110,file=filnam,err=999,status='unknown')
 
+    ! ROOT C
+    filnam=trim(prefix)//'.d.croot.out'
+    open(111,file=filnam,err=999,status='unknown')
+
+    ! LABILE C
+    filnam=trim(prefix)//'.d.clabl.out'
+    open(112,file=filnam,err=999,status='unknown')
+
+    ! LITTER C
+    filnam=trim(prefix)//'.d.clitt.out'
+    open(113,file=filnam,err=999,status='unknown')
+
+    ! TRANSPIRATION
+    filnam=trim(prefix)//'.d.transp.out'
+    open(114,file=filnam,err=999,status='unknown')
+
 
     !////////////////////////////////////////////////////////////////
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
@@ -149,7 +173,6 @@ contains
     filnam=trim(prefix)//'.a.ninorg.out'
     open(316,file=filnam,err=999,status='unknown')
 
-
     return
 
 
@@ -168,9 +191,8 @@ contains
     !----------------------------------------------------------------
     use _params_core, only: ndayyear
     use _params_modl, only: npft, lu_category
-    use _vars_core, only: dgpp, dnpp, dnup
-    use _vars_core, only: pleaf, pninorg
-    use _vars_core, only: dtemp_soil
+    use _vars_core, only: dgpp, dnpp, dnup, pleaf, pninorg, proot, &
+      plabl, plitt_bg, plitt_af, plitt_as, dtemp_soil, dtransp
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
@@ -188,13 +210,16 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    outdgpp(:,doy,jpngr)   = dgpp(:)
-    outdnpp(:,doy,jpngr)   = dnpp(:)%c12
-    outdnup(:,doy,jpngr)   = dnup(:)%n14
-    outdCleaf(:,doy,jpngr) = pleaf(:,jpngr)%c%c12
-
-    outdninorg(:,doy,jpngr)   = pninorg(:,jpngr)%n14
-    outdtemp_soil(:,doy,jpngr)= dtemp_soil(:,jpngr)
+    outdgpp(:,doy,jpngr)        = dgpp(:)
+    outdtransp(:,doy,jpngr)     = dtransp(:)
+    outdnpp(:,doy,jpngr)        = dnpp(:)%c12
+    outdnup(:,doy,jpngr)        = dnup(:)%n14
+    outdCleaf(:,doy,jpngr)      = pleaf(:,jpngr)%c%c12
+    outdCroot(:,doy,jpngr)      = proot(:,jpngr)%c%c12
+    outdClabl(:,doy,jpngr)      = plabl(:,jpngr)%c%c12
+    outdClitt(:,doy,jpngr)      = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
+    outdninorg(:,doy,jpngr)     = pninorg(:,jpngr)%n14
+    outdtemp_soil(:,doy,jpngr)  = dtemp_soil(:,jpngr)
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
@@ -231,8 +256,6 @@ contains
     !----------------------------------------------------------------
     use _params_modl, only: npft, lu_category
     use _vars_core, only: pleaf, proot
-
-    implicit none
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr

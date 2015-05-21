@@ -60,17 +60,14 @@ contains
     !-----------------------------------------------------------------
     use _classdefs
     use _params_modl, only: lu_category
-    use _vars_core, only: pninorg, plabl, proot, dwtot
-    use _vars_core, only: dcex, dnup
-    use _vars_core, only: aet_d
-    use _vars_core, only: fpc_grid
+    use _vars_core, only: pninorg, plabl, proot, dwtot, dcex, dnup, &
+      dtransp, aet_d, fpc_grid
 
     ! arguments
     integer, intent(in) :: jpngr, pft
 
     ! local variables
     integer :: lu
-    real    :: dtransp                             ! daily transpiration for this PFT (mm)
     real    :: avail_ninorg                        ! available inorganic N in soil layer (gN/m2)
     real    :: ninorg_conc                         ! inorganic N concentration (gN/gH2O)
     real    :: n_uptake_pass                       ! (gN)
@@ -99,8 +96,8 @@ contains
 
     else
 
-      ! xxx try:
-      dtransp = aet_d(lu_category(pft)) * fpc_grid(pft,jpngr)
+      ! ! xxx try:
+      ! dtransp = aet_d(lu_category(pft)) * fpc_grid(pft,jpngr)
 
       !//////////////////////////////////////////////////////////////////////////
       ! INITIALIZATION
@@ -140,7 +137,7 @@ contains
       ! No active control on passive uptake - always occurrs even if the unmet N
       ! demand is zero.
       !--------------------------------------------------------------------------
-      n_uptake_pass = ninorg_conc * dtransp    
+      n_uptake_pass = ninorg_conc * dtransp(pft) / 1000.0     ! [dtransp] = g H2O; [ninorg_conc] = g N / (mm H2O) = g N / (kg H2O)
       n_uptake_pass = min( n_uptake_pass, avail_ninorg )
 
       ! write(0,*) 'n_uptake_pass ',n_uptake_pass 
@@ -223,7 +220,7 @@ contains
     real, intent(out) :: avail_ninorg
 
     if ( wtot > EPSILON_WTOT ) then 
-      avail_ninorg = ninorg - EPSILON_WTOT*ninorg/wtot
+      avail_ninorg = ninorg - EPSILON_WTOT * ninorg / wtot
     else
       avail_ninorg = 0.0
     endif
@@ -244,7 +241,7 @@ contains
     real, intent(out) :: conc_ninorg
 
     if ( wtot > EPSILON_WTOT ) then 
-      conc_ninorg = ninorg/wtot
+      conc_ninorg = ninorg / wtot
     else
       conc_ninorg = 0.0
     endif
@@ -414,8 +411,10 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_core, only: ndayyear, nmonth, npft
+    use _params_core, only: ndayyear, npft, nlu
     use _params_siml, only: firstyeartrend, spinupyears
+
+    implicit none
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -423,11 +422,17 @@ contains
 
     ! local variables
     real :: itime
-    integer :: day, moy, jpngr
+    integer :: myday, myjpngr
+
+    real :: myoutdccost
+    real :: myoutdnup_pas
+    real :: myoutdnup_act
+    real :: myoutdnup_fix
+    real :: myoutdnup_ret
 
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii: think of something ...'
-    jpngr = 1
+    myjpngr = 1
 
 
     !-------------------------------------------------------------------------
@@ -435,20 +440,27 @@ contains
     !-------------------------------------------------------------------------
     if (.not.spinup) then
       ! Write daily output only during transient simulation
-      do day=1,ndayyear
+      do myday=1,ndayyear
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
+        itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(myday-1)/real(ndayyear)
 
         if (nlu>1) stop 'writeout_ascii_nuptake: write out lu-area weighted sum'
         if (npft>1) stop 'writeout_ascii_nuptake: think of something for ccost output'
 
-        ! xxx lu-area weighted sum if nlu>0
-        write(400,999) itime, sum(outdccost(:,day,jpngr))/npft
-        write(401,999) itime, sum(outdnup_pas(:,day,jpngr))
-        write(402,999) itime, sum(outdnup_act(:,day,jpngr))
-        write(403,999) itime, sum(outdnup_fix(:,day,jpngr))
-        write(404,999) itime, sum(outdnup_ret(:,day,jpngr))
+        ! xxx lu-area weighted sum if npft>0
+        myoutdccost   = sum(outdccost(:,myday,myjpngr))
+        myoutdccost   = myoutdccost / real(npft)
+        myoutdnup_pas = sum(outdnup_pas(:,myday,myjpngr))
+        myoutdnup_act = sum(outdnup_act(:,myday,myjpngr))
+        myoutdnup_fix = sum(outdnup_fix(:,myday,myjpngr))
+        myoutdnup_ret = sum(outdnup_ret(:,myday,myjpngr))
+        
+        write(400,999) itime, myoutdccost
+        write(401,999) itime, myoutdnup_pas
+        write(402,999) itime, myoutdnup_act
+        write(403,999) itime, myoutdnup_fix
+        write(404,999) itime, myoutdnup_ret
 
       end do
     end if
@@ -458,7 +470,5 @@ contains
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_nuptake
-
-
 
 end module _nuptake

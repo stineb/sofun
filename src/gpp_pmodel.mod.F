@@ -49,7 +49,7 @@ module _gpp
   ! updated by 'pmodel') are:
   !   - xxx
   !----------------------------------------------------------------
-  use _params_core, only: nmonth, npft, c_molmass
+  use _params_core, only: nmonth, npft, c_molmass, h2o_molmass
 
 
   implicit none
@@ -128,11 +128,12 @@ module _gpp
 
   ! MODULE-SPECIFIC VARIABLES
   ! These are not required outside module 'pmodel', but are used in different SRs of this module
-  real, dimension(nmonth) :: mlue            ! Light use efficiency: (gpp - rd) per unit light absorbed
-  real, dimension(nmonth) :: mvcmax_unitiabs ! Vcmax per unit fAPAR
-  real, dimension(nmonth) :: mactnv_unitiabs ! conversion factor to get from APAR to Rubisco-N
-  real, dimension(nmonth) :: factor25        ! factor to convert from 25 deg-normalised to ambient T
-  real, dimension(nmonth) :: mrd_unitiabs    ! dark respiration per unit fAPAR (assuming fAPAR=1)
+  real, dimension(nmonth) :: mlue             ! Light use efficiency: (gpp - rd) per unit light absorbed
+  real, dimension(nmonth) :: mvcmax_unitiabs  ! Vcmax per unit fAPAR
+  real, dimension(nmonth) :: mactnv_unitiabs  ! conversion factor to get from APAR to Rubisco-N
+  real, dimension(nmonth) :: factor25         ! factor to convert from 25 deg-normalised to ambient T
+  real, dimension(nmonth) :: mrd_unitiabs     ! dark respiration per unit fAPAR (assuming fAPAR=1)
+  real, dimension(nmonth) :: mtransp_unitiabs ! transpiration per unit light absorbed [g H2O (mol photons)-1]
 
   ! Function return variables as derived types
   type outtype_pmodel
@@ -149,6 +150,9 @@ module _gpp
     real :: actnv_unitfapar 
     real :: actnv_unitiabs 
     real :: lue
+    real :: transp          
+    real :: transp_unitfapar
+    real :: transp_unitiabs 
   end type outtype_pmodel
 
   type outtype_lue
@@ -206,22 +210,25 @@ contains
     do moy=1,nmonth
 
       ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
-      out_pmodel           = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
+      out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
 
       ! Light use efficiency: (gpp - rd) per unit light absorbed
-      mlue(moy)            = out_pmodel%lue
+      mlue(moy)             = out_pmodel%lue
       
-      ! Vcmax per unit fAPAR
-      mvcmax_unitiabs(moy) = out_pmodel%vcmax_unitiabs
+      ! Vcmax per unit absorbed light
+      mvcmax_unitiabs(moy)  = out_pmodel%vcmax_unitiabs
       
-      ! conversion factor to get from APAR to Rubisco-N
-      mactnv_unitiabs(moy) = out_pmodel%actnv_unitiabs
+      ! conversion factor to get from absorbed light to Rubisco-N
+      mactnv_unitiabs(moy)  = out_pmodel%actnv_unitiabs
       
       ! factor to convert from 25 deg-normalised to ambient T
-      factor25(moy)        = out_pmodel%factor25_vcmax
+      factor25(moy)         = out_pmodel%factor25_vcmax
       
-      ! dark respiration per unit fAPAR (assuming fAPAR=1)
-      mrd_unitiabs(moy)    = out_pmodel%rd_unitiabs
+      ! dark respiration per unit absorbed light
+      mrd_unitiabs(moy)     = out_pmodel%rd_unitiabs
+
+      ! transpiration per unit 
+      mtransp_unitiabs(moy) = out_pmodel%transp_unitiabs
 
     end do
 
@@ -343,9 +350,8 @@ contains
     ! - lai_ind
     ! - dpppfd
     !------------------------------------------------------------------
-    use _vars_core, only: dgpp
+    use _vars_core, only: dgpp, dtransp, fpc_ind
     use _params_modl, only: kbeer
-    use _vars_core, only: fpc_ind
     use _waterbal, only: dppfd, meanmppfd
 
     ! arguments
@@ -378,14 +384,18 @@ contains
   
         if (fpc_ind(pft,jpngr)>0.0) then
           ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-          dgpp(pft) = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
-
+          dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
+          
           ! Dark respiration
-          drd(pft) = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
+          drd(pft)     = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
+          
+          ! transpiration
+          dtransp(pft) = calc_dtransp( fpc_ind(pft,jpngr), dppfd(doy), mtransp_unitiabs(moy) )
 
         else  
-          dgpp(pft) = 0.0
-          drd(pft)  = 0.0
+          dgpp(pft)    = 0.0
+          drd(pft)     = 0.0
+          dtransp(pft) = 0.0
 
         end if 
 
@@ -445,11 +455,29 @@ contains
   end function calc_drd
 
 
+  function calc_dtransp( fapar, dppfd, transp_unitiabs ) result( dtransp )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates daily GPP
+    !------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: fapar
+    real, intent(in) :: dppfd
+    real, intent(in) :: transp_unitiabs
+
+    ! function return variable
+    real, intent(out) :: dtransp
+
+    ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
+    dtransp = fapar * dppfd * transp_unitiabs * h2o_molmass
+
+  end function calc_dtransp
+
+
   subroutine initdaily_gpp()
     !////////////////////////////////////////////////////////////////
     ! Initialise daily variables with zero
     !----------------------------------------------------------------
-    drd(:)    = 0.0
+    drd(:)     = 0.0
 
   end subroutine initdaily_gpp
 
@@ -482,8 +510,9 @@ contains
     real :: ns                       ! viscosity of H2O at ambient temperatures (Pa s)
     real :: ns25                     ! viscosity of H2O at 25 deg C (Pa s)
     real :: ns_star                  ! viscosity correction factor (unitless)
-    real :: m, n
-
+    real :: m
+    real :: n
+    real :: chi
     real :: gpp                      ! assimilation (mol m-2 s-1)
     real :: lue                      ! Light use efficiency
     real :: vcmax                    ! Vcmax per unit ground area (mol m-2 s-1)
@@ -499,6 +528,9 @@ contains
     real :: actnv 
     real :: actnv_unitfapar 
     real :: actnv_unitiabs 
+    real :: transp          
+    real :: transp_unitfapar
+    real :: transp_unitiabs 
 
     type(outtype_lue) :: out_lue
 
@@ -553,8 +585,9 @@ contains
     end select
 
     ! LUE-functions return m, n, and chi
-    m = out_lue%m
-    n = out_lue%n
+    m   = out_lue%m
+    n   = out_lue%n
+    chi = out_lue%chi
 
     !-----------------------------------------------------------------------
     ! Calculate function return variables
@@ -599,22 +632,34 @@ contains
     actnv_unitfapar = vcmax25_unitfapar * n_v
     actnv_unitiabs  = vcmax25_unitiabs  * n_v
 
+    ! Transpiration (E)
+    ! Using 
+    ! - E = 1.6 gs D
+    ! - gs = A / (ca (1-chi))
+    ! (- chi = ci / ca)
+    ! => E = (1.6 A D) / (ca - ci)
+    transp           = (1.6 * iabs * kphio * fa * m * vpd) / (ca * (1.0 - chi))   ! gpp = iabs * kphio * fa * m
+    transp_unitfapar = (1.6 * ppfd * kphio * fa * m * vpd) / (ca * (1.0 - chi))
+    transp_unitiabs  = (1.6 * 1.0  * kphio * fa * m * vpd) / (ca * (1.0 - chi))
 
     ! Construct derived type for output
-    out_pmodel%gpp             = gpp
-    out_pmodel%vcmax           = vcmax
-    out_pmodel%vcmax25         = vcmax25
-    out_pmodel%vcmax_unitfapar = vcmax_unitfapar
-    out_pmodel%vcmax_unitiabs  = vcmax_unitiabs
-    out_pmodel%factor25_vcmax  = factor25_vcmax
-    out_pmodel%rd              = rd
-    out_pmodel%rd_unitfapar    = rd_unitfapar 
-    out_pmodel%rd_unitiabs     = rd_unitiabs 
-    out_pmodel%actnv           = actnv 
-    out_pmodel%actnv_unitfapar = actnv_unitfapar 
-    out_pmodel%actnv_unitiabs  = actnv_unitiabs 
-    out_pmodel%lue             = lue
-  
+    out_pmodel%gpp               = gpp
+    out_pmodel%vcmax             = vcmax
+    out_pmodel%vcmax25           = vcmax25
+    out_pmodel%vcmax_unitfapar   = vcmax_unitfapar
+    out_pmodel%vcmax_unitiabs    = vcmax_unitiabs
+    out_pmodel%factor25_vcmax    = factor25_vcmax
+    out_pmodel%rd                = rd
+    out_pmodel%rd_unitfapar      = rd_unitfapar 
+    out_pmodel%rd_unitiabs       = rd_unitiabs 
+    out_pmodel%actnv             = actnv 
+    out_pmodel%actnv_unitfapar   = actnv_unitfapar 
+    out_pmodel%actnv_unitiabs    = actnv_unitiabs 
+    out_pmodel%lue               = lue
+    out_pmodel%transp            = transp          
+    out_pmodel%transp_unitfapar  = transp_unitfapar
+    out_pmodel%transp_unitiabs   = transp_unitiabs 
+    
   end function pmodel
 
 

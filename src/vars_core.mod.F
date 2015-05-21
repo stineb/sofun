@@ -24,16 +24,16 @@ module _vars_core
 
   type(carbon), dimension(npft)   :: drsoil   ! soil respiration (only from exudates decomp.) [gC/m2/d]
   type(carbon), dimension(nlu)    :: drhet    ! heterotrophic respiration [gC/m2/d]
-  real, dimension(npft)           :: drauto           ! autotrophic respiration (growth+maintenance resp. of all compartments), no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-  real, dimension(npft)           :: drleaf           ! leaf maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-  real, dimension(npft)           :: drroot           ! root maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-  real, dimension(npft)           :: drsapw           ! sapwood maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-  real, dimension(npft)           :: drgrow           ! growth respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-  real, dimension(npft)           :: dcex             ! labile C exudation for N uptake, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+  real, dimension(npft)           :: drauto   ! autotrophic respiration (growth+maintenance resp. of all compartments), no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+  real, dimension(npft)           :: drleaf   ! leaf maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+  real, dimension(npft)           :: drroot   ! root maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+  real, dimension(npft)           :: drsapw   ! sapwood maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+  real, dimension(npft)           :: drgrow   ! growth respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+  real, dimension(npft)           :: dcex     ! labile C exudation for N uptake, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
 
-  real, dimension(nlu)            :: doc             ! daily soil turnover, used as surrogate for labile C (former 'doc') [gC/m2/d]
+  real, dimension(nlu)            :: doc      ! daily soil turnover, used as surrogate for labile C (former 'doc') [gC/m2/d]
 
-  type(nitrogen), dimension(npft) :: dnup   ! daily N uptake [gN/m2/d]
+  type(nitrogen), dimension(npft) :: dnup     ! daily N uptake [gN/m2/d]
 
                                  ! variables without spatial dimension: have NO memory from one to next year
   type(orgpool), dimension(nlu)   :: aestab   ! annual C and N fixation due to establishment (=acflux_estab,an_uptake_estab)
@@ -50,36 +50,36 @@ module _vars_core
   ! All these variables are required by the model and are independent
   ! of which modules are used.
   !----------------------------------------------------------------
-  type(orgpool), dimension(npft,maxgrid)  :: pleaf           ! leaf biomass [gC/ind.] (=lm_ind)
-  type(orgpool), dimension(npft,maxgrid)  :: proot           ! root biomass [gC/ind.] (=rm_ind)
-  type(orgpool), dimension(npft,maxgrid)  :: psapw           ! sapwood biomass [gC/ind.] (=sm_ind)
-  type(orgpool), dimension(npft,maxgrid)  :: pwood           ! heartwood (non-living) biomass [gC/ind.] (=hm_ind)
-  type(orgpool), dimension(npft,maxgrid)  :: plabl           ! labile pool, temporary storage of N and C [gC/ind.] (=bm_inc but contains also N) 
-
-  type(carbon),  dimension(npft,maxgrid)  :: pexud           ! exudates pool (very short turnover) [gC/m2]
-
-  type(orgpool), dimension(npft,maxgrid)  :: plitt_af        ! above-ground litter, fast turnover [gC/m2]
-  type(orgpool), dimension(npft,maxgrid)  :: plitt_as        ! above-ground litter, slow turnover [gC/m2]
-  type(orgpool), dimension(npft,maxgrid)  :: plitt_bg        ! below-ground litter [gC/m2]
-
-  type(orgpool), dimension(nlu,maxgrid)   :: psoil_sl        ! soil organic matter, fast turnover [gC/m2]
-  type(orgpool), dimension(nlu,maxgrid)   :: psoil_fs        ! soil organic matter, slow turnover [gC/m2]
-
-  type(nitrogen), dimension(nlu,maxgrid)  :: pninorg         ! total inorganic N pool (sum of NO3 and NH4) [gC/m2]
-
-  real, dimension(nlu,maxgrid) :: dwtot                      ! soil water mass [mm = kg/m2]
-
-  real, dimension(npft,maxgrid) :: r_cton_leaf, r_ntoc_leaf  ! leaf C:N [gC/gN] and N:C ratio [gN/gC]
-  real, dimension(npft,maxgrid) :: lma, sla                  ! leaf mass per area [g-dry mass/m2], specific leaf area [m2/g-dry mass]
-
-  real, dimension(npft,maxgrid) :: lai_ind
-  real, dimension(npft,maxgrid) :: fpc_ind
+  type(orgpool), dimension(npft,maxgrid) :: pleaf           ! leaf biomass [gC/ind.] (=lm_ind)
+  type(orgpool), dimension(npft,maxgrid) :: proot           ! root biomass [gC/ind.] (=rm_ind)
+  type(orgpool), dimension(npft,maxgrid) :: psapw           ! sapwood biomass [gC/ind.] (=sm_ind)
+  type(orgpool), dimension(npft,maxgrid) :: pwood           ! heartwood (non-living) biomass [gC/ind.] (=hm_ind)
+  type(orgpool), dimension(npft,maxgrid) :: plabl           ! labile pool, temporary storage of N and C [gC/ind.] (=bm_inc but contains also N) 
+  
+  type(carbon),  dimension(npft,maxgrid) :: pexud           ! exudates pool (very short turnover) [gC/m2]
+  
+  type(orgpool), dimension(npft,maxgrid) :: plitt_af        ! above-ground litter, fast turnover [gC/m2]
+  type(orgpool), dimension(npft,maxgrid) :: plitt_as        ! above-ground litter, slow turnover [gC/m2]
+  type(orgpool), dimension(npft,maxgrid) :: plitt_bg        ! below-ground litter [gC/m2]
+  
+  type(orgpool), dimension(nlu,maxgrid)  :: psoil_sl        ! soil organic matter, fast turnover [gC/m2]
+  type(orgpool), dimension(nlu,maxgrid)  :: psoil_fs        ! soil organic matter, slow turnover [gC/m2]
+  
+  type(nitrogen), dimension(nlu,maxgrid) :: pninorg         ! total inorganic N pool (sum of NO3 and NH4) [gC/m2]
+  
+  real, dimension(nlu,maxgrid)           :: dwtot           ! soil water mass [mm = kg/m2]
+  
+  real, dimension(npft,maxgrid)          :: r_cton_leaf     ! leaf C:N ratio [gC/gN] 
+  real, dimension(npft,maxgrid)          :: r_ntoc_leaf     ! leaf N:C ratio [gN/gC]
+  real, dimension(npft,maxgrid)          :: lma, sla        ! leaf mass per area [g-dry mass/m2], specific leaf area [m2/g-dry mass]
+  
+  real, dimension(npft,maxgrid)          :: lai_ind
+  real, dimension(npft,maxgrid)          :: fpc_ind
 
 
   !////////////////////////////////////////////////////////////////
   ! OTHER STATE VARIABLES
   !----------------------------------------------------------------
-  ! FROM VEGDYNAMICS
   logical, dimension(npft,maxgrid) :: ispresent   ! boolean whether PFT is present
   real, dimension(npft,maxgrid)    :: fpc_grid    ! area fraction within gridcell occupied by PFT
   real, dimension(npft,maxgrid)    :: nind        ! number of individuals [1/m2]
@@ -87,13 +87,13 @@ module _vars_core
   real, dimension(npft,maxgrid)    :: height      ! tree height (m)
   real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
 
-  ! FROM STATEVARS
-  real, dimension(nlu,maxgrid) :: dtemp_soil          ! soil temperature [deg C] xxx really maxgrid necessary? xxx
-  real, dimension(nlu) :: aet_d                       ! daily AET (mm)
-  real, dimension(nlu) :: ncpa_d                      ! daily normalised Cramer-Prentice-Alpha (AET/EET) {0,1}
-  real, dimension(nlu) :: dro                         ! daily runoff [mm]
+  real, dimension(nlu,maxgrid)     :: dtemp_soil      ! soil temperature [deg C] xxx really maxgrid necessary? xxx
+  real, dimension(nlu)             :: aet_d           ! daily AET (mm)
+  real, dimension(nlu)             :: ncpa_d          ! daily normalised Cramer-Prentice-Alpha (AET/EET) {0,1}
+  real, dimension(nlu)             :: dro             ! daily runoff [mm]
+  real, dimension(npft)            :: dtransp         ! daily transpiration [mm]
 
-  real, dimension(nlu) :: ddoc                         ! surrogate for dissolved organic carbon
+  real, dimension(nlu)             :: ddoc            ! surrogate for dissolved organic carbon
 
 
 contains
@@ -235,6 +235,7 @@ contains
     dnep(:)        = carbon(0.0)
     dcex(:)        = 0.0
     dgpp(:)        = 0.0
+    dtransp(:)     = 0.0
     drauto(:)      = 0.0
     drleaf(:)      = 0.0
     drroot(:)      = 0.0
