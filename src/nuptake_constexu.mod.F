@@ -331,23 +331,14 @@ contains
     ! Subroutine reads nuptake module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    ! local variables
-    integer, parameter :: npar = 5
-    real, dimension(npar) :: params_array
-    character(len=50)     ::paramfilnam
-    
-    paramfilnam = 'params_nuptake_constexu.dat'
-
-    open(unit=04,file=trim(paramfilnam),status='OLD')      
-    read (04,*) params_array
-    close (04)
+    use _sofunutils, only: getreal
 
     ! C exudation rate per unit root mass
-    exurate = params_array(1)
+    call getreal( 'params_nuptake_constexu.dat', 'exurate', exurate )
 
     ! uptake efficiency for equation
     ! dCexu/dNup = K / (N0 - Nup); K=1/eff_nup
-    eff_nup = params_array(2)
+    call getreal( 'params_nuptake_constexu.dat', 'eff_nup', eff_nup )
 
     ! shape parameter of cost function of N fixation 
     ! Below parameters (MINIMUMCOSTFIX, FIXOPTIMUM, FIXWIDTH ) are based on 
@@ -355,13 +346,13 @@ contains
     ! inverse of nitrogenase activity. 
     ! After Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
     ! (value from Gutschik 1981)
-    MINIMUMCOSTFIX = params_array(3)
+    call getreal( 'params_nuptake_constexu.dat', 'MINIMUMCOSTFIX', MINIMUMCOSTFIX )
 
     ! shape parameter of cost function of N fixation 
-    FIXOPTIMUM = params_array(4)
+    call getreal( 'params_nuptake_constexu.dat', 'FIXOPTIMUM', FIXOPTIMUM )
 
     ! shape parameter of cost function of N fixation 
-    FIXWIDTH = params_array(5)
+    call getreal( 'params_nuptake_constexu.dat', 'FIXWIDTH', FIXWIDTH )
 
 
   end subroutine getpar_modl_nuptake

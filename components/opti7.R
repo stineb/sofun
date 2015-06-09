@@ -26,12 +26,13 @@ ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ## xxx as it stands now, it's extremely sensitive to inorganic N 
 ## availability. Linear N uptake function may not be appropriate.
 Nscale <- 0.1
-ninorg <- Nscale * sapply( days, FUN=sin_season )
-ntrans <- 5.0  # free N taken up by transpiration stream
+# ninorg <- Nscale * sapply( days, FUN=sin_season )
+ninorg <- rep( 0.05, ndayyear )
+ntrans <- 0.0  # free N taken up by transpiration stream
 
-## Assumption: root phenology is congruent with 
-## seasonality of inorganic N availability
-root_season <- sapply( days, FUN=sin_season )
+# ## Assumption: root phenology is congruent with 
+# ## seasonality of inorganic N availability
+# root_season <- sapply( days, FUN=sin_season )
 
 ## Set fixed boundary conditions
 elv    <- 450.0

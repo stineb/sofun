@@ -143,12 +143,11 @@ contains
           !------------------------------------------------------------------
           cont = .true.
           eval_allroots  = eval_imbalance( 0.0 )
-          ! write(0,*) 'eval_allroots', eval_allroots  
+          write(0,*) 'eval_allroots', eval_allroots  
           if (eval_allroots > 0.0) then
             dcleaf = 0.0
             cont = .false.
             write(0,*) '* putting all to roots *'
-            ! write(0,*) 'current C:N'
           end if
 
           !------------------------------------------------------------------
@@ -194,8 +193,8 @@ contains
           !------------------------------------------------------------------
           dnleaf = dcleaf * r_ntoc_leaf(pft,jpngr)
 
-          ! write(0,*) 'dcleaf', dcleaf  
-          ! write(0,*) 'dnleaf', dnleaf  
+          write(0,*) 'dcleaf', dcleaf  
+          write(0,*) 'dnleaf', dnleaf  
 
           plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - 1.0 / growtheff * dcleaf
           plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnleaf
@@ -205,6 +204,8 @@ contains
           dcroot = min( growtheff * plabl(pft,jpngr)%c%c12, r_cton_root(pft) * plabl(pft,jpngr)%n%n14 )
           dnroot = dcroot * r_ntoc_root(pft)
 
+          write(0,*) 'dcroot', dcroot  
+          write(0,*) 'dnroot', dnroot  
           write(0,*) 'dcroot:dcleaf', dcroot / dcleaf
 
           plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - 1.0 / growtheff * dcroot
@@ -214,7 +215,7 @@ contains
 
           ! write(0,*) 'dcroot'
           ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)
-          if (doy==39) stop 'here'
+          if (doy==48) stop 'here'
 
         else
 
@@ -378,13 +379,13 @@ contains
     dc         = gpp - rd - mresp_root - exu
     dn         = calc_dnup( exu, ninorg )
 
-    if (present(verbose)) then
-      write(0,*) 'gpp                ', gpp
-      write(0,*) 'dc                 ', dc
-      write(0,*) 'dn                 ', dn
-      write(0,*) 'current   plant C:N', ( cleaf + croot ) / ( nleaf + nroot )
-      write(0,*) 'tomorrows plant C:N', growtheff * (dc + clabl) / (dn + nlabl)
-    end if
+    ! if (present(verbose)) then
+    !   write(0,*) 'gpp                ', gpp
+    !   write(0,*) 'dc                 ', dc
+    !   write(0,*) 'dn                 ', dn
+    !   write(0,*) 'current   plant C:N', ( cleaf + croot ) / ( nleaf + nroot )
+    !   write(0,*) 'tomorrows plant C:N', growtheff * (dc + clabl) / (dn + nlabl)
+    ! end if
 
     ! Evaluation quantity is the difference between the 
     ! C:N ratio of new assimilates and the C:N ratio 

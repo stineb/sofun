@@ -1,5 +1,15 @@
-0.001000
-0.100000
-4.320000
-25.20000
-8.000000
+###############################################################
+# MODEL PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+exurate                                 0.001000
+eff_nup                                 0.100000
+MINIMUMCOSTFIX                          4.320000
+FIXOPTIMUM                              25.20000
+FIXWIDTH                                8.000000
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 
