@@ -307,6 +307,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     call writeout_ascii( year, dtemp_field(:,jpngr) )
     call writeout_ascii_waterbal( year, spinup )
     
+    ! XXX Mysterious problem: when called from here, model does weird things (check e.g. gpp and soil C)
     ! call writeout_ascii_nuptake( year, spinup )
     ! call writeout_ascii_littersom( year, spinup )
 

@@ -350,7 +350,7 @@ contains
 
     ! shape parameter of cost function of N fixation 
     call getreal( 'params_nuptake_constexu.dat', 'FIXOPTIMUM', FIXOPTIMUM )
-
+! 
     ! shape parameter of cost function of N fixation 
     call getreal( 'params_nuptake_constexu.dat', 'FIXWIDTH', FIXWIDTH )
 

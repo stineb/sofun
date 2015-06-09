@@ -127,24 +127,21 @@ calc_fapar <- function( lai, params ){
   })
 }
 
-calc_dgpp <- function( lai, mlue, dppfd, params ){
+calc_dgpp <- function( fapar, mlue, dppfd, params ){
   ## Returns daily GPP leaf C as a function of LAI
 
   with( params, {
 
-    fapar  <- calc_fapar( lai, params )
-
     ## calculate monthly gpp vector, convert from mol/m2/month to gC/m2/month
-    dgpp <- sum( dppfd * fapar * mlue ) * c_molmass 
+    dgpp <- fapar * dppfd * mlue * c_molmass 
 
     return(dgpp)  
   })
 }
 
 
-calc_drd <- function( lai, mrd_unitiabs, meanmppfd, params ){
+calc_drd <- function( fapar, mrd_unitiabs, meanmppfd, params ){
   with( params,{
-    fapar <- calc_fapar( lai, params )
     drd   <- fapar * meanmppfd * mrd_unitiabs * 60 * 60 * 24 * c_molmass
     return(drd)
   })
@@ -227,9 +224,10 @@ eval_imbalance <- function( dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, r_
     nroot <- nroot * (1.0 - k_root)
 
     ## Calculate next day's C and N return after assumed allocation (tissue turnover happens before!)
-    lai <- cleaf * sla
-    gpp <- calc_dgpp( lai, mlue, dppfd, params )
-    rd  <- calc_drd( lai, mrd_unitiabs, meanmppfd, params )
+    lai   <- cleaf * sla
+    fapar <- calc_fapar( lai, params )
+    gpp   <- calc_dgpp( fapar, mlue, dppfd, params )
+    rd    <- calc_drd( fapar, mrd_unitiabs, meanmppfd, params )
     rroot <- croot * (r_root + exu)
 
     dc  <- gpp - rd - rroot
@@ -360,254 +358,270 @@ for (moy in 1:nmonth){
     doy <- doy + 1 
     doy <- min( 364, doy )
 
-    # ## Two modes of optimisation: 
-    # ## 1. balanced C:N. During early season, maximises growth
-    # ## 2. constant C cost of N uptake. During late season
-    # if (doy>1 && ninorg[doy]<ninorg[doy-1]) {
-    #   ## Optimisation by constant C cost of N uptake
-    #   const_cost <- TRUE
-    # }
+    ## xxx try: force same phenology as in Fortran version
+    if (doy>=38) {
+      
+      print(paste("DOY:",doy))
 
-    ## Continuous root turnover
-    croot <- croot * ( 1.0 - params$k_root )
-    nroot <- nroot * ( 1.0 - params$k_root )         
+      # ## Two modes of optimisation: 
+      # ## 1. balanced C:N. During early season, maximises growth
+      # ## 2. constant C cost of N uptake. During late season
+      # if (doy>1 && ninorg[doy]<ninorg[doy-1]) {
+      #   ## Optimisation by constant C cost of N uptake
+      #   const_cost <- TRUE
+      # }
 
-    ## Get LAI based on current leaf-C
-    lai   <- cleaf * sla
+      ## Get LAI based on current leaf-C
+      lai   <- cleaf * sla
+      fapar <- calc_fapar( lai, params )
 
-    ## Gross primary production minus leaf respiration
-    gpp <- calc_dgpp( lai, mlue[moy], dppfd[doy], params )
-    out_gpp[doy] <- gpp
+      # print(paste("cleaf",cleaf))
+      # print(paste("lai",lai))
 
-    ## Dark respiration
-    rd <- calc_drd( lai, mrd_unitiabs[moy], meanmppfd[moy], params )
-    out_rd[doy] <- rd
+      ## Gross primary production minus leaf respiration
+      gpp <- calc_dgpp( fapar, mlue[moy], dppfd[doy], params )
+      out_gpp[doy] <- gpp
 
-    ## "net GPP" (=GPP-Rd)
-    gpp_net <- gpp - rd
-    out_gpp_net[doy] <- gpp_net
+      # print(paste("fapar",fapar))
+      # print(paste("lue",mlue[moy]))
+      # print(paste("ppfd",dppfd[doy]))
+      # print(paste("gpp",gpp))
 
-    # Root maintenance respiration
-    rm_root <- croot * params$r_root
-    # print(paste("rm_root",rm_root))
+      ## Dark respiration
+      rd <- calc_drd( fapar, mrd_unitiabs[moy], meanmppfd[moy], params )
+      out_rd[doy] <- rd
+      # print(paste("rd",rd))
 
-    ## Root exudation
-    cexu <- croot * params$exu
-    # print(paste("rm_root+cexu",rm_root+cexu))
+      ## "net GPP" (=GPP-Rd)
+      gpp_net <- gpp - rd
+      out_gpp_net[doy] <- gpp_net
 
-    ## # Root growth respiration of root growth to maintain root mass
-    ## rg_root <- params$y * params$k_root * croot 
-    # print(paste("rg_root",rg_root))
+      # Root maintenance respiration
+      rm_root <- croot * params$r_root
+      # print(paste("rm_root",rm_root))
 
-    ## Add remainder C to labile pool
-    dclabl <- gpp_net - cexu - rm_root
-    clabl  <- clabl + dclabl
-    out_dclabl[doy] <- dclabl
+      ## Root exudation
+      cexu <- croot * params$exu
+      # print(paste("cexu",cexu))
 
-    if ((gpp_net - cexu - rm_root)<0.0) { mess <- "net C assimilation neg."; break }
+      ## Add remainder C to labile pool
+      dclabl <- gpp_net - cexu - rm_root
+      # print(paste("dclabl",dclabl))
+      clabl  <- clabl + dclabl
+      out_dclabl[doy] <- dclabl
 
-    ## Nitrogen uptake
-    nup <- calc_dnup( croot, ninorg[doy], params )
-    # print(paste("Nup",nup))
+      if ((gpp_net - cexu - rm_root)<0.0) { mess <- "net C assimilation neg."; break }
 
-    out_nup[doy] <- nup
+      ## Nitrogen uptake
+      nup <- calc_dnup( croot, ninorg[doy], params )
+      # print(paste("nup",nup))
 
-    out_ncost[doy] <- cexu / nup
+      out_nup[doy] <- nup
 
-    print(paste("croot",croot))
-    print(paste("cexu",cexu))
-    print(paste("nup ",nup))
-    print(paste("cost",out_ncost[doy]))
+      out_ncost[doy] <- cexu / nup
 
-    ## Two modes of optimisation: 
-    ## 1. balanced C:N. During early season, maximises growth
-    ## 2. constant C cost of N uptake. During late season
-    if (doy>30 && out_ncost[doy] > 999999 && !const_cost ) {
-      ## Optimisation by constant C cost of N uptake
-      const_cost <- TRUE
-    }
+      ## Two modes of optimisation: 
+      ## 1. balanced C:N. During early season, maximises growth
+      ## 2. constant C cost of N uptake. During late season
+      if (doy>30 && out_ncost[doy] > 999999 && !const_cost ) {
+        ## Optimisation by constant C cost of N uptake
+        const_cost <- TRUE
+      }
 
 
-    ## Nitrogen addition to labile pool
-    nlabl <- nlabl + nup
+      ## Nitrogen addition to labile pool
+      nlabl <- nlabl + nup
 
-    if (nlabl<0) { mess <- "nlabl neg."; break }
-    if (clabl<0) { mess <- "clabl neg."; break }
+      if (nlabl<0) { mess <- "nlabl neg."; break }
+      if (clabl<0) { mess <- "clabl neg."; break }
 
-    print(paste("day of yr", doy))
-    # print(paste("C labl. a", clabl))
-    # print(paste("N labl.  ", nlabl))
-    # print(paste("C:N labl.", clabl/nlabl))
+      # print(paste("day of yr", doy))
+      # print(paste("C labl. a", clabl))
+      # print(paste("N labl.  ", nlabl))
+      # print(paste("C:N labl.", clabl/nlabl))
 
-    out_cton_labl[doy] <- clabl/nlabl
+      out_cton_labl[doy] <- clabl/nlabl
 
-    ## Maximum is the lower of all labile C and the C to be matched by all labile N,
-    ## discounted by the yield factor.
-    max_dcleaf_n_constraint <- nlabl * r_cton_leaf 
-    max_dcroot_n_constraint <- nlabl * params$r_cton_root
-    max_dcleaf <- min( params$y * clabl, max_dcleaf_n_constraint )
-    max_dcroot <- min( params$y * clabl, max_dcroot_n_constraint )
+      ## Maximum is the lower of all labile C and the C to be matched by all labile N,
+      ## discounted by the yield factor.
+      max_dcleaf_n_constraint <- nlabl * r_cton_leaf 
+      max_dcroot_n_constraint <- nlabl * params$r_cton_root
+      max_dcleaf <- min( params$y * clabl, max_dcleaf_n_constraint )
+      max_dcroot <- min( params$y * clabl, max_dcroot_n_constraint )
 
-    # print(paste("C in labile pool      ", clabl ) )
-    # print(paste("C avl. for growth     ", params$y * clabl ) )
-    # print(paste("C for roots, avl. by N", nlabl * params$r_cton_root ) )
-    # print(paste("C for leafs, avl. by N", nlabl * r_cton_leaf ) )
-    # print(paste("max_dcleaf            ", max_dcleaf))
+      # print(paste("C in labile pool      ", clabl ) )
+      # print(paste("C avl. for growth     ", params$y * clabl ) )
+      # print(paste("C for roots, avl. by N", nlabl * params$r_cton_root ) )
+      # print(paste("C for leafs, avl. by N", nlabl * r_cton_leaf ) )
+      # print(paste("max_dcleaf            ", max_dcleaf))
 
-    # print(paste("clabl              ",clabl))
-    # print(paste("nlabl * r_cton_leaf",nlabl * r_cton_leaf))
+      # print("")
+      # print(paste("clabl              ",clabl))
+      # print(paste("nlabl * r_cton_leaf",nlabl * r_cton_leaf))
 
-    if (const_cost) {
+      if (const_cost) {
 
-      ## Optimisation by constant C cost of N uptake
-      # print(paste("croot",croot))
-      if (ninorg[doy+1]>0.0){
+        ## Optimisation by constant C cost of N uptake
+        # print(paste("croot",croot))
+        if (ninorg[doy+1]>0.0){
 
-        if ( croot==0.0 || eval_cost( 1e-12, ninorg[doy+1], params ) > out_ncost[doy] ) {
+          if ( croot==0.0 || eval_cost( 1e-12, ninorg[doy+1], params ) > out_ncost[doy] ) {
 
-          croot_tgt <- 0.0
+            croot_tgt <- 0.0
+
+          } else {
+
+            # ## test
+            # croot_range <- seq( 0.0, croot, by=croot/100)
+            # eval_range  <- sapply( croot_range, FUN = function(x) eval_cost( x, ninorg[doy+1], params ) )
+
+            out.root  <- uniroot( function(x) eval_const_cost( x, out_ncost[doy], ninorg[doy+1], params ), interval=c(1e-12,croot) )        
+            croot_tgt <- out.root$root
+
+          }
 
         } else {
 
-          # ## test
-          # croot_range <- seq( 0.0, croot, by=croot/100)
-          # eval_range  <- sapply( croot_range, FUN = function(x) eval_cost( x, ninorg[doy+1], params ) )
+          croot_tgt <- 0.0
 
-          out.root  <- uniroot( function(x) eval_const_cost( x, out_ncost[doy], ninorg[doy+1], params ), interval=c(1e-12,croot) )        
-          croot_tgt <- out.root$root
+        }
+
+        print(paste("cost today:   ",out_ncost[doy]))
+        print(paste("cost tomorrow:",croot_tgt*params$exu/calc_dnup( croot_tgt, ninorg[doy+1],params)))
+        print(paste("croot_tgt",croot_tgt))
+
+        ## Find root C increment to satisfy targeted root mass after allocation and continuous decay
+        dcroot <- croot_tgt / (1.0 - params$k_root ) - croot
+        print(paste("dcroot",dcroot))
+
+        if ( dcroot <= 0.0 ){
+          kill_croot <- (-1.0) * dcroot
+          deactivate <- TRUE
+          dcroot <- 0.0
+          print("deactivate")
+        }
+
+        if (deactivate){
+
+          ## Deactivate root mass, use all assimilates for leaf growth
+          croot  <- croot - kill_croot 
+          nroot  <- croot * params$r_ntoc_root
+
+          ## Stop leaf growth
+
+          ## Use all assimilates for leaf growth
+          dcleaf <- max_dcleaf
+          dnleaf <- dcleaf * r_ntoc_leaf
+          clabl  <- clabl - 1.0 / params$y * dcleaf
+          nlabl  <- nlabl - dnleaf
+          cleaf  <- cleaf + dcleaf
+          nleaf  <- nleaf + dnleaf
+
+        } else {
+
+          ## Allocate based on 'dcroot' determined above
+          dnroot <- dcroot * params$r_ntoc_root
+          clabl  <- clabl - 1.0 / params$y * dcroot
+          nlabl  <- nlabl - dnroot
+          croot  <- croot + dcroot
+          nroot  <- nroot + dnroot
+          
+          dcleaf <- min( params$y * clabl, r_cton_leaf * nlabl )
+
+          dnleaf <- dcleaf * r_ntoc_leaf
+          clabl  <- clabl - 1.0 / params$y * dcleaf
+          nlabl  <- nlabl - dnleaf
+          cleaf  <- cleaf + dcleaf
+          nleaf  <- nleaf + dnleaf
 
         }
 
       } else {
 
-        croot_tgt <- 0.0
+        ## Optimisation by balanced growth
+        ## Test I: Evaluate balance if all is put to roots.
+        ## If C:N ratio of return is still greater than whole-plant C:N ratio, then put all to roots.
+        findroot <- TRUE
+        eval_allroots  <- eval_imbalance( 0.0, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params )
+        if (eval_allroots > 0.0) { dcleaf <- 0.0; findroot <- FALSE; print("* putting all to roots *") }
 
-      }
+        ## Test II: Evaluate balance if all is put to leaves.
+        ## If C:N ratio of return is still lower than whole-plant C:N ratio, then put all to leaves.
+        eval_allleaves <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params )
+        if (eval_allleaves < 0.0) { dcleaf <- max_dcleaf; findroot <- FALSE; print("* putting all to leaves *")}
 
-      print(paste("cost today:   ",out_ncost[doy]))
-      print(paste("cost tomorrow:",croot_tgt*params$exu/calc_dnup( croot_tgt, ninorg[doy+1],params)))
-      print(paste("croot_tgt",croot_tgt))
+        if (findroot) {
 
-      ## Find root C increment to satisfy targeted root mass after allocation and continuous decay
-      dcroot <- croot_tgt / (1.0 - params$k_root ) - croot
-      print(paste("dcroot",dcroot))
+          ## Find root
+          print("finding root")
+          out.root <- NA
+          try ( 
+            out.root <- uniroot( function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params ), interval=c(0,max_dcleaf) )                                                            )        
+          if( is.na(out.root) ){
+            dcleaf <- 0.0
+          } else { 
+            dcleaf <- out.root$root
+          }
+        }
 
-      if ( dcroot <= 0.0 ){
-        kill_croot <- (-1.0) * dcroot
-        deactivate <- TRUE
-        dcroot <- 0.0
-        print("deactivate")
-      }
-
-      if (deactivate){
-
-        ## Deactivate root mass, use all assimilates for leaf growth
-        croot  <- croot - kill_croot 
-        nroot  <- croot * params$r_ntoc_root
-
-        ## Stop leaf growth
-
-        ## Use all assimilates for leaf growth
-        dcleaf <- max_dcleaf
+        ## Allocate based on 'dcleaf' determined above
         dnleaf <- dcleaf * r_ntoc_leaf
         clabl  <- clabl - 1.0 / params$y * dcleaf
         nlabl  <- nlabl - dnleaf
         cleaf  <- cleaf + dcleaf
         nleaf  <- nleaf + dnleaf
+        
+        dcroot <- min( params$y * clabl, params$r_cton_root * nlabl )
 
-      } else {
+        print(paste("dcleaf", dcleaf ))
+        print(paste("dcroot", dcroot ))
+        print(paste("dcroot:dcleaf", dcroot / dcleaf ))
 
-        ## Allocate based on 'dcroot' determined above
+        # print(paste("Allocation decision, dcroot:",dcroot))
         dnroot <- dcroot * params$r_ntoc_root
         clabl  <- clabl - 1.0 / params$y * dcroot
         nlabl  <- nlabl - dnroot
         croot  <- croot + dcroot
         nroot  <- nroot + dnroot
-        
-        dcleaf <- min( params$y * clabl, r_cton_leaf * nlabl )
-
-        dnleaf <- dcleaf * r_ntoc_leaf
-        clabl  <- clabl - 1.0 / params$y * dcleaf
-        nlabl  <- nlabl - dnleaf
-        cleaf  <- cleaf + dcleaf
-        nleaf  <- nleaf + dnleaf
 
       }
 
-    } else {
+      # print(paste("Allocation decision, dcleaf:",dcleaf))
 
-      ## Optimisation by balanced growth
-      ## Test I: Evaluate balance if all is put to roots.
-      ## If C:N ratio of return is still greater than whole-plant C:N ratio, then put all to roots.
-      findroot <- TRUE
-      eval_allroots  <- eval_imbalance( 0.0, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params )
-      if (eval_allroots > 0.0) { dcleaf <- 0.0; findroot <- FALSE }
-
-      ## Test II: Evaluate balance if all is put to leaves.
-      ## If C:N ratio of return is still lower than whole-plant C:N ratio, then put all to leaves.
-      eval_allleaves <- eval_imbalance( max_dcleaf, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params )
-      if (eval_allleaves < 0.0) { dcleaf <- max_dcleaf; findroot <- FALSE}
-
-      if (findroot) {
-
-        ## Find root
-        print("finding root")
-        out.root <- NA
-        try ( 
-          out.root <- uniroot( function(x) eval_imbalance( x, cleaf, nleaf, croot, nroot, clabl, nlabl, r_ntoc_leaf, sla, mlue[moy], dppfd[doy+1], mrd_unitiabs[moy], meanmppfd[moy], ninorg[doy+1], params ), interval=c(0,max_dcleaf) )                                                            )        
-        if( is.na(out.root) ){
-          dcleaf <- 0.0
-        } else { 
-          dcleaf <- out.root$root
-        }
+      if ( clabl < -1e-12 ){
+        print(paste("problem: neg. clabl:",clabl))
+      }
+      if ( nlabl < -1e-12 ){
+        print(paste("problem: neg. nlabl",nlabl))
       }
 
-      ## Allocate based on 'dcleaf' determined above
-      dnleaf <- dcleaf * r_ntoc_leaf
-      clabl  <- clabl - 1.0 / params$y * dcleaf
-      nlabl  <- nlabl - dnleaf
-      cleaf  <- cleaf + dcleaf
-      nleaf  <- nleaf + dnleaf
       
-      dcroot <- min( params$y * clabl, params$r_cton_root * nlabl )
+      ## Write to output
+      out_cleaf[doy]  <- cleaf
+      out_nleaf[doy]  <- nleaf
+      out_croot[doy]  <- croot
+      out_nroot[doy]  <- nroot
+      out_dcleaf[doy] <- dcleaf
+      out_dcroot[doy] <- dcroot
+      out_dnleaf[doy] <- dnleaf
+      out_dnroot[doy] <- dnroot
+      out_lai[doy]    <- cleaf * sla
+      out_clabl[doy]  <- clabl
+      out_nlabl[doy]  <- nlabl
 
-      # print(paste("Allocation decision, dcroot:",dcroot))
-      dnroot <- dcroot * params$r_ntoc_root
-      clabl  <- clabl - 1.0 / params$y * dcroot
-      nlabl  <- nlabl - dnroot
-      croot  <- croot + dcroot
-      nroot  <- nroot + dnroot
+
+      ## assimilation at the bottom of the canopy
+      gpp_bottom <- dppfd[doy] * exp( - params$kbeer * lai ) * mlue[moy]
+
+      ## Continuous root turnover
+      croot <- croot * ( 1.0 - params$k_root )
+      nroot <- nroot * ( 1.0 - params$k_root )        
+
+      if (doy==48){
+        print("I'm done with it")
+      }  
 
     }
-
-    # print(paste("Allocation decision, dcleaf:",dcleaf))
-
-    if ( clabl < -1e-12 ){
-      print(paste("problem: neg. clabl:",clabl))
-    }
-    if ( nlabl < -1e-12 ){
-      print(paste("problem: neg. nlabl",nlabl))
-    }
-
-    
-    ## Write to output
-    out_cleaf[doy]  <- cleaf
-    out_nleaf[doy]  <- nleaf
-    out_croot[doy]  <- croot
-    out_nroot[doy]  <- nroot
-    out_dcleaf[doy] <- dcleaf
-    out_dcroot[doy] <- dcroot
-    out_dnleaf[doy] <- dnleaf
-    out_dnroot[doy] <- dnroot
-    out_lai[doy]    <- cleaf * sla
-    out_clabl[doy]  <- clabl
-    out_nlabl[doy]  <- nlabl
-
-
-    ## assimilation at the bottom of the canopy
-    gpp_bottom <- dppfd[doy] * exp( - params$kbeer * lai ) * mlue[moy]
-
-
   }
 }
 
@@ -621,7 +635,7 @@ par(las=1)
 plot( 1:doy, out_croot[1:doy], type="l", ylab="C mass (gC/m2)", xlab="DOY" )
 lines( 1:doy, out_cleaf[1:doy], type="l", col="red" )
 lines( 1:doy, out_clabl[1:doy], col="blue" )
-legend( "topleft", c("root C","leaf C", "labile C"), lty=1, bty="n", col=c("black","red","blue") )
+# legend( "topleft", c("root C","leaf C", "labile C"), lty=1, bty="n", col=c("black","red","blue") )
 # dev.off()
 
 # pdf( "nmass_vs_doy.pdf", width=6, height=5 )

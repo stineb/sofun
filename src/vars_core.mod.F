@@ -254,6 +254,9 @@ contains
     !plitt_as = orgpool( carbon(1500.0), nitrogen(30.0))
     !plitt_bg = orgpool( carbon(400.0), nitrogen(8.))
 
+    ! xxx try: 
+    pninorg%n14 = 0.05
+
   end subroutine initdaily
 
 end module _vars_core

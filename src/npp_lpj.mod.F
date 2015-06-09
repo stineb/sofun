@@ -122,6 +122,7 @@ contains
           write(0,*) 'drd ',drd(pft)
           write(0,*) 'drroot',drroot(pft)
           write(0,*) 'dgpp ',dgpp(pft)
+          write(0,*) 'dnpp ',dnpp(pft)
           write(0,*) 'NPP: dnpp negative'
         end if
 
@@ -154,6 +155,9 @@ contains
         call orgcp( orgpool( cminus( dnpp(pft), carbon(dcex(pft)) ), dnup(pft) ), plabl(pft,jpngr) )
 
         ! write(0,*) '---------------in NPP'
+        ! write(0,*) 'dclabl ',cminus( dnpp(pft), carbon(dcex(pft)))
+        ! write(0,*) 'drd ',drd(pft)
+        ! write(0,*) 'drroot',drroot(pft)
         ! write(0,*) 'dgpp(pft) ',dgpp(pft)
         ! write(0,*) 'dnpp(pft) ',dnpp(pft)
         ! write(0,*) 'dcex(pft) ',dcex(pft)
@@ -207,27 +211,20 @@ contains
     ! from input file
     !----------------------------------------------------------------
     use _params_core, only: ndayyear
-
-    ! local variables
-    integer, parameter    :: npar = 2
-    real, dimension(npar) :: params_array
-    character(len=50)     ::paramfilnam
-    
-    paramfilnam = 'params_npp_lpj.dat'
-
-    open(unit=04,file=trim(paramfilnam),status='OLD')      
-    read (04,*) params_array
-    close (04)
+    use _sofunutils, only: getreal
 
     ! Fine-root specific respiration rate (gC gC-1 year-1)
     ! Central value: 0.913 year-1 (Yan and Zhao (2007); see Li et al., 2014)
-    r_root = params_array(1)
-    r_root = r_root / ndayyear  ! conversion to rate per day
+    call getreal( 'params_npp_lpj.dat', 'r_root', r_root )
+    r_root = r_root / ndayyear          ! conversion to rate per day
+
+    ! xxx try:
+    r_root = 0.005    
 
     ! Fine-root specific respiration rate (gC gC-1 year-1)
     ! Central value: 0.044 year-1 (Yan and Zhao (2007); see Li et al., 2014)
     ! (= 0.044 nmol mol-1 s-1; range: 0.5–10, 20 nmol mol-1 s-1 (Landsberg and Sands (2010))
-    r_sapw = params_array(2)
+    call getreal( 'params_npp_lpj.dat', 'r_sapw', r_sapw )
     r_sapw = r_sapw / ndayyear  ! conversion to rate per day
 
 

@@ -55,7 +55,7 @@ contains
     logical :: cont          ! true if allocation to leaves (roots) is not 100% and not 0%
     real    :: max_dcleaf_n_constraint
     real    :: max_dcroot_n_constraint
-    real    :: max_dcleaf
+    real    :: max_dc
     real    :: eval_allroots
     real    :: abserr
     real    :: relerr
@@ -88,7 +88,7 @@ contains
           !------------------------------------------------------------------
           max_dcleaf_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_leaf(pft,jpngr)
           max_dcroot_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_root(pft)
-          max_dcleaf = min( growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint, max_dcroot_n_constraint )
+          max_dc = min( growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint, max_dcroot_n_constraint )
 
           ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)  
           ! write(0,*) 'r_cton_leaf(pft,jpngr)',r_cton_leaf(pft,jpngr)
@@ -96,7 +96,7 @@ contains
           ! write(0,*) 'growtheff', growtheff  
           ! write(0,*) 'max_dcleaf_n_constraint', max_dcleaf_n_constraint  
           ! write(0,*) 'max_dcroot_n_constraint', max_dcroot_n_constraint  
-          ! write(0,*) 'max_dcleaf', max_dcleaf  
+          ! write(0,*) 'max_dc', max_dc  
 
           ! write(0,*) 'moy',moy
           ! write(0,*) 'lai',lai
@@ -143,9 +143,10 @@ contains
           !------------------------------------------------------------------
           cont = .true.
           eval_allroots  = eval_imbalance( 0.0 )
-          write(0,*) 'eval_allroots', eval_allroots  
+          ! write(0,*) 'eval_allroots', eval_allroots  
           if (eval_allroots > 0.0) then
             dcleaf = 0.0
+            ! dcroot = max_dc
             cont = .false.
             write(0,*) '* putting all to roots *'
           end if
@@ -156,22 +157,23 @@ contains
           ! then put all to leaves.
           !------------------------------------------------------------------
           if (cont) then
-            eval_allleaves = eval_imbalance( max_dcleaf )
+            eval_allleaves = eval_imbalance( max_dc )
             ! write(0,*) 'eval_allleaves', eval_allleaves  
             if (eval_allleaves < 0.0) then
-              dcleaf = max_dcleaf
+              dcleaf = max_dc
+              ! dcroot = 0.0
               cont = .false.
               write(0,*) '* putting all to leaves *'
             end if
           end if
 
           !------------------------------------------------------------------
-          ! Optimum is between 0.0 and max_dcleaf. Find root of function 
-          ! 'eval_imbalance()' in the interval [0.0, max_dcleaf].
+          ! Optimum is between 0.0 and max_dc. Find root of function 
+          ! 'eval_imbalance()' in the interval [0.0, max_dc].
           !------------------------------------------------------------------
           if (cont) then
             write(0,*) '* finding root *'
-            out_zeroin = zeroin( eval_imbalance, abserr, relerr, 100, 0.0 ,max_dcleaf )
+            out_zeroin = zeroin( eval_imbalance, abserr, relerr, 100, 0.0 ,max_dc )
             if ( out_zeroin%error /= 0 ) then
               dcleaf = 0.0
             else
@@ -184,8 +186,8 @@ contains
           ! xxx debug: project next-day's fluxes with optimal dcleaf, derived now
           !------------------------------------------------------------------
           ! write(0,*) 'dcleaf', dcleaf
-          ! test = eval_imbalance( dcleaf, .true. )
-
+          test = eval_imbalance( dcleaf, .true. )
+          ! stop
 
           !------------------------------------------------------------------
           ! Allocate to roots and leaves and extract from labile pool based 
@@ -193,19 +195,21 @@ contains
           !------------------------------------------------------------------
           dnleaf = dcleaf * r_ntoc_leaf(pft,jpngr)
 
-          write(0,*) 'dcleaf', dcleaf  
-          write(0,*) 'dnleaf', dnleaf  
+          ! write(0,*) 'dcleaf', dcleaf  
+          ! write(0,*) 'dnleaf', dnleaf  
 
           plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - 1.0 / growtheff * dcleaf
           plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnleaf
           pleaf(pft,jpngr)%c%c12 = pleaf(pft,jpngr)%c%c12 + dcleaf
           pleaf(pft,jpngr)%n%n14 = pleaf(pft,jpngr)%n%n14 + dnleaf
 
+          ! write(0,*) 'a dcroot', dcroot  
           dcroot = min( growtheff * plabl(pft,jpngr)%c%c12, r_cton_root(pft) * plabl(pft,jpngr)%n%n14 )
           dnroot = dcroot * r_ntoc_root(pft)
 
-          write(0,*) 'dcroot', dcroot  
-          write(0,*) 'dnroot', dnroot  
+          write(0,*) 'b dcroot', dcroot  
+          write(0,*) 'dcleaf', dcleaf  
+          ! write(0,*) 'dnroot', dnroot  
           write(0,*) 'dcroot:dcleaf', dcroot / dcleaf
 
           plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - 1.0 / growtheff * dcroot
@@ -215,7 +219,7 @@ contains
 
           ! write(0,*) 'dcroot'
           ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)
-          if (doy==48) stop 'here'
+          ! if (doy==48) stop 'here'
 
         else
 

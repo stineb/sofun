@@ -386,7 +386,7 @@ contains
   
         if (fpc_ind(pft,jpngr)>0.0) then
           ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-          ! write(0,*) 'in SR gpp: fpc_ind(pft,jpngr)',fpc_ind(pft,jpngr) !OK!
+          ! write(0,*) 'in SR gpp: fapar',fpc_ind(pft,jpngr) !OK!
           ! write(0,*) 'in SR gpp: doy, dppfd(doy)', doy, dppfd(doy) !OK!
           ! write(0,*) 'in SR gpp: moy, mlue(moy)', moy, mlue(moy) !OK! 
           dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
