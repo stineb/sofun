@@ -42,13 +42,15 @@ contains
         ! assuming no continuous leaf turnover
         if (grass(pft)) then
           if (summergreen(pft)) then
-            if (shedleaves(pft)) then
-              dleaf = 1.0
-              droot = 1.0
-            else
-              dleaf = 0.0  
-              droot = k_decay_root(pft)
-            end if
+            dleaf = k_decay_leaf(pft)
+            droot = k_decay_root(pft)
+            ! if (shedleaves(pft)) then
+            !   dleaf = 1.0
+            !   droot = 1.0
+            ! else
+            !   dleaf = 0.0  
+            !   droot = k_decay_root(pft)
+            ! end if
           end if   
         else
           stop 'turnover only implemented for grasses'        

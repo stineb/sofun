@@ -262,6 +262,7 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 57, STASH 2.0 Documentation
       dppfd(doy) = (1.0e-6)*kfFEC*(1.0 - kalb_vis)*tau*dra(doy)
+      ! write(0,*) 'doy, dppfd(doy)', doy, dppfd(doy)
 
 
     end do

@@ -27,7 +27,6 @@ module _nuptake
   ! MODULE-SPECIFIC PARAMETERS
   real :: exurate           ! C exudation rate per unit root mass
   real :: eff_nup           ! uptake efficiency for equation
-  real :: EPSILON_WTOT      ! minimum soil water content above which N becomes available  
   real :: MINIMUMCOSTFIX    ! minimum cost of N fixation (at optimal temperature)
   real :: FIXOPTIMUM        ! optimum temperature for N fixation
   real :: FIXWIDTH          ! shape parameter for width of N fixation cost function
@@ -60,7 +59,7 @@ contains
     !-----------------------------------------------------------------
     use _classdefs
     use _params_modl, only: lu_category
-    use _vars_core, only: pninorg, plabl, proot, dwtot, dcex, dnup, &
+    use _vars_core, only: pninorg, plabl, proot, dcex, dnup, &
       dtransp, aet_d, fpc_grid
 
     ! arguments
@@ -102,6 +101,8 @@ contains
       !//////////////////////////////////////////////////////////////////////////
       ! INITIALIZATION
       !-------------------------------------------------------------------------
+      n_uptake_pass   = 0.0
+
       dNacq_active    = 0.0                          ! active uptake, sum over sub-timesteps
       dNacq_fix       = 0.0                          ! N fixation, sum over sub-timesteps
       dCacq_active    = 0.0
@@ -111,8 +112,8 @@ contains
       ! write(0,*) 'pninorg(lu,jpngr)%n14',pninorg(lu,jpngr)%n14
       ! write(0,*) 'dwtot(lu,jpngr)      ',dwtot(lu,jpngr)
 
-      ninorg_conc   = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-      avail_ninorg  = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+      ! ninorg_conc   = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+      ! avail_ninorg  = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
 
       ! write(0,*) 'avail_ninorg',avail_ninorg
       ! write(0,*) 'ninorg_conc ',ninorg_conc 
@@ -132,20 +133,20 @@ contains
       ! n_demand_remaining = n_demand_remaining - n_uptake_retrans
 
 
-      !//////////////////////////////////////////////////////////////////////////
-      ! PASSIVE UPTAKE
-      ! No active control on passive uptake - always occurrs even if the unmet N
-      ! demand is zero.
-      !--------------------------------------------------------------------------
-      n_uptake_pass = ninorg_conc * dtransp(pft) / 1000.0     ! [dtransp] = g H2O; [ninorg_conc] = g N / (mm H2O) = g N / (kg H2O)
-      n_uptake_pass = min( n_uptake_pass, avail_ninorg )
+      ! !//////////////////////////////////////////////////////////////////////////
+      ! ! PASSIVE UPTAKE
+      ! ! No active control on passive uptake - always occurrs even if the unmet N
+      ! ! demand is zero.
+      ! !--------------------------------------------------------------------------
+      ! n_uptake_pass = ninorg_conc * dtransp(pft) / 1000.0     ! [dtransp] = g H2O; [ninorg_conc] = g N / (mm H2O) = g N / (kg H2O)
+      ! n_uptake_pass = min( n_uptake_pass, avail_ninorg )
 
       ! write(0,*) 'n_uptake_pass ',n_uptake_pass 
 
       ! Update
       pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - n_uptake_pass
-      avail_ninorg          = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-      ninorg_conc           = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+      ! avail_ninorg          = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+      ! ninorg_conc           = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
 
       ! write(0,*) 'avail_ninorg',avail_ninorg
       ! write(0,*) 'ninorg_conc ',ninorg_conc 
@@ -155,10 +156,13 @@ contains
       ! Active N uptake is a function of initial N available and C exuded
       !--------------------------------------------------------------------------         
       dCacq_active = exurate * proot(pft,jpngr)%c%c12
-      dNacq_active = calc_dnup( dCacq_active, avail_ninorg )
+      ! dNacq_active = calc_dnup( dCacq_active, avail_ninorg )
+      dNacq_active = calc_dnup( dCacq_active, pninorg(lu,jpngr)%n14 )
 
       ! write(0,*) 'dCacq_active ',dCacq_active 
-      ! write(0,*) 'dNacq_active ',dNacq_active 
+      ! write(0,*) 'in SR nuptake: dCacq_active          ',dCacq_active 
+      ! write(0,*) 'in SR nuptake: dNacq_active          ',dNacq_active 
+      ! write(0,*) 'in SR nuptake: pninorg(lu,jpngr)%n14 ',pninorg(lu,jpngr)%n14 
 
       dcex(pft) = dcex(pft) + dCacq_active
       dmean_cost = dCacq_active / dNacq_active
@@ -202,51 +206,52 @@ contains
     ! function return variable
     real :: dnup
 
+    ! N uptake function of C exuded
     dnup = n0 * ( 1.0 - exp( - eff_nup * cexu ) )
 
   end function calc_dnup
 
 
-  function calc_avail_ninorg( ninorg, wtot ) result( avail_ninorg )
-    !//////////////////////////////////////////////////////////////////////////
-    ! Returns N available for uptake accounting for constraint of mobility by
-    ! soil moisture.
-    !--------------------------------------------------------------------------
-    ! arguments
-    real, intent(in)  :: ninorg 
-    real, intent(in)  :: wtot           ! total soil water content (mm)
+  ! function calc_avail_ninorg( ninorg, wtot ) result( avail_ninorg )
+  !   !//////////////////////////////////////////////////////////////////////////
+  !   ! Returns N available for uptake accounting for constraint of mobility by
+  !   ! soil moisture.
+  !   !--------------------------------------------------------------------------
+  !   ! arguments
+  !   real, intent(in)  :: ninorg 
+  !   real, intent(in)  :: wtot           ! total soil water content (mm)
 
-    ! function return value
-    real, intent(out) :: avail_ninorg
+  !   ! function return value
+  !   real, intent(out) :: avail_ninorg
 
-    if ( wtot > EPSILON_WTOT ) then 
-      avail_ninorg = ninorg - EPSILON_WTOT * ninorg / wtot
-    else
-      avail_ninorg = 0.0
-    endif
+  !   if ( wtot > EPSILON_WTOT ) then 
+  !     avail_ninorg = ninorg - EPSILON_WTOT * ninorg / wtot
+  !   else
+  !     avail_ninorg = 0.0
+  !   endif
 
-  end function calc_avail_ninorg
+  ! end function calc_avail_ninorg
 
 
-  function calc_conc_ninorg( ninorg, wtot ) result( conc_ninorg )
-    !//////////////////////////////////////////////////////////////////////////
-    ! Returns N available for uptake accounting for constraint of mobility by
-    ! soil moisture.
-    !--------------------------------------------------------------------------
-    ! arguments
-    real, intent(in)  :: ninorg 
-    real, intent(in)  :: wtot           ! total soil water content (mm)
+  ! function calc_conc_ninorg( ninorg, wtot ) result( conc_ninorg )
+  !   !//////////////////////////////////////////////////////////////////////////
+  !   ! Returns N available for uptake accounting for constraint of mobility by
+  !   ! soil moisture.
+  !   !--------------------------------------------------------------------------
+  !   ! arguments
+  !   real, intent(in)  :: ninorg 
+  !   real, intent(in)  :: wtot           ! total soil water content (mm)
 
-    ! function return value
-    real, intent(out) :: conc_ninorg
+  !   ! function return value
+  !   real, intent(out) :: conc_ninorg
 
-    if ( wtot > EPSILON_WTOT ) then 
-      conc_ninorg = ninorg / wtot
-    else
-      conc_ninorg = 0.0
-    endif
+  !   if ( wtot > EPSILON_WTOT ) then 
+  !     conc_ninorg = ninorg / wtot
+  !   else
+  !     conc_ninorg = 0.0
+  !   endif
 
-  end function calc_conc_ninorg
+  ! end function calc_conc_ninorg
 
 
   function fun_cost_fix( soiltemp )
@@ -327,7 +332,7 @@ contains
     ! from input file
     !----------------------------------------------------------------
     ! local variables
-    integer, parameter :: npar = 6
+    integer, parameter :: npar = 5
     real, dimension(npar) :: params_array
     character(len=50)     ::paramfilnam
     
@@ -344,23 +349,19 @@ contains
     ! dCexu/dNup = K / (N0 - Nup); K=1/eff_nup
     eff_nup = params_array(2)
 
-    ! minimum soil water content above which N becomes available 
-    ! central value 0.05 mm
-    EPSILON_WTOT = params_array(3)
-
     ! shape parameter of cost function of N fixation 
     ! Below parameters (MINIMUMCOSTFIX, FIXOPTIMUM, FIXWIDTH ) are based on 
     ! the assumption that the cost of symbiotic N fixation is the 
     ! inverse of nitrogenase activity. 
     ! After Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
     ! (value from Gutschik 1981)
-    MINIMUMCOSTFIX = params_array(4)
+    MINIMUMCOSTFIX = params_array(3)
 
     ! shape parameter of cost function of N fixation 
-    FIXOPTIMUM = params_array(5)
+    FIXOPTIMUM = params_array(4)
 
     ! shape parameter of cost function of N fixation 
-    FIXWIDTH = params_array(6)
+    FIXWIDTH = params_array(5)
 
 
   end subroutine getpar_modl_nuptake

@@ -116,6 +116,7 @@ contains
               !   dtphen(day,pft) = 1.0
               ! endif
             endif
+            ! write(0,*) 'day, dtphen', day, dtphen(day,pft)
             day=day+1
             if (day>ndayyear) day=1
           enddo

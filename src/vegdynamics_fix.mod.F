@@ -94,17 +94,17 @@ contains
  
         ! write(0,*) 'pft   ',pft
         ! write(0,*) 'jpngr   ',jpngr
-        ! write(0,*) 'pleaf(pft,jpngr) ',pleaf(pft,jpngr)
-        ! write(0,*) 'proot(pft,jpngr) ',proot(pft,jpngr)
+        ! write(0,*) 'in vegdynamics: pleaf(pft,jpngr) ',pleaf(pft,jpngr)
+        ! write(0,*) 'in vegdynamics: proot(pft,jpngr) ',proot(pft,jpngr)
         ! write(0,*) 'C:N of pleaf     ',cton(pleaf(pft,jpngr), 0.0 )
         ! write(0,*) 'C:N of proot     ',cton(proot(pft,jpngr), 0.0 )
-        ! write(0,*) 'sla(pft,jpngr)   ',sla(pft,jpngr)
-        ! write(0,*) 'crownarea(pft,jpngr)   ',crownarea(pft,jpngr)
 
-        ! write(0,*) 'lai_ind(pft,jpngr) ',lai_ind(pft,jpngr)
-        ! write(0,*) 'fpc_ind(pft,jpngr) ',fpc_ind(pft,jpngr)
+        ! write(0,*) 'in vegdynamics: lai_ind(pft,jpngr) ',lai_ind(pft,jpngr)
+        ! write(0,*) 'in vegdynamics: sla(pft,jpngr)   ',sla(pft,jpngr)
+        ! write(0,*) 'in vegdynamics: crownarea(pft,jpngr)   ',crownarea(pft,jpngr)
+        ! write(0,*) 'in vegdynamics: fpc_ind(pft,jpngr) ',fpc_ind(pft,jpngr)
         ! write(0,*) 'fpc_grid(pft,jpngr)',fpc_grid(pft,jpngr)
-
+! 
       else
 
         stop 'estab_daily not implemented for trees'

@@ -117,8 +117,6 @@ contains
         drauto(pft) = dresp_maint
         dnpp(pft)   = carbon( dgpp(pft) - drauto(pft) )
 
-        ! write(0,*) 'dnpp(pft) ',dnpp(pft)
-
         if ( dnpp(pft)%c12 < 0.0 ) then
           write(0,*) 'pft ',pft
           write(0,*) 'drd ',drd(pft)
@@ -155,8 +153,12 @@ contains
         !end if
         call orgcp( orgpool( cminus( dnpp(pft), carbon(dcex(pft)) ), dnup(pft) ), plabl(pft,jpngr) )
 
+        ! write(0,*) '---------------in NPP'
+        ! write(0,*) 'dgpp(pft) ',dgpp(pft)
+        ! write(0,*) 'dnpp(pft) ',dnpp(pft)
         ! write(0,*) 'dcex(pft) ',dcex(pft)
         ! write(0,*) 'dnup(pft) ',dnup(pft)
+        ! write(0,*) 'plabl(pft,jpngr) ',plabl(pft,jpngr)
 
         !-------------------------------------------------------------------------
         ! Leaves are shed in (annual) grasses (=end of vegetation period) when 

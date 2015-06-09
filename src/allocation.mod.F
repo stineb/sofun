@@ -13,6 +13,7 @@ module _allocation
     type(orgpool)  :: plabl
     real           :: r_ntoc_leaf
     real           :: sla
+    real           :: crownarea
     real           :: mlue
     real           :: dppfd
     real           :: mrd_unitiabs
@@ -26,28 +27,32 @@ module _allocation
 
 contains
 
-  subroutine allocation_daily( jpngr, doy, moy )
+  subroutine allocation_daily( jpngr, doy, moy, dom )
     !//////////////////////////////////////////////////////////////////
     ! Finds optimal shoot:root growth ratio to balance C:N stoichiometry
     ! of a grass (no wood allocation).
     !------------------------------------------------------------------
-    use _params_core, only: npft
-    use _params_modl, only: r_cton_root, r_ntoc_root, growtheff, grass
-    use _vars_core, only: pleaf, proot, plabl, pninorg, r_cton_leaf, r_ntoc_leaf, sla
+    use _params_core, only: npft, ndaymonth
+    use _params_modl, only: r_cton_root, r_ntoc_root, growtheff, grass, &
+      lu_category
+    use _vars_core, only: pleaf, proot, plabl, pninorg, r_cton_leaf, &
+      r_ntoc_leaf, sla, crownarea
     use _gpp, only: mlue, mrd_unitiabs
     use _waterbal, only: dppfd, meanmppfd
     use _findroot_fzeroin
 
     ! arguments
     integer, intent(in) :: jpngr
-    integer, intent(in) :: doy
-    integer, intent(in) :: moy
+    integer, intent(in) :: doy     ! day of year
+    integer, intent(in) :: moy     ! month of year
+    integer, intent(in) :: dom     ! day of month
 
     ! local variables
     integer :: pft
+    integer :: usemoy
     real    :: dcleaf
     real    :: dnleaf
-    logical :: findroot          ! true if allocation to leaves (roots) is not 100% and not 0%
+    logical :: cont          ! true if allocation to leaves (roots) is not 100% and not 0%
     real    :: max_dcleaf_n_constraint
     real    :: max_dcroot_n_constraint
     real    :: max_dcleaf
@@ -56,14 +61,19 @@ contains
     real    :: relerr
     type(outtype_zeroin) :: out_zeroin
 
+    ! xxx debug
+    real    :: test
+
     abserr=100.0*XMACHEPS
     relerr=1000.0*XMACHEPS
 
     do pft=1,npft
 
+      lu = lu_category(pft)
+
       if (grass(pft)) then
 
-        ! write(0,*) '--- allocation_daily:'
+        write(0,*) '--- allocation_daily, doy:',doy
         ! write(0,*)' pninorg(lu,jpngr)%n14',pninorg
         ! write(0,*)' plabl(lu,jpngr)',plabl
 
@@ -78,9 +88,12 @@ contains
           !------------------------------------------------------------------
           max_dcleaf_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_leaf(pft,jpngr)
           max_dcroot_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_root(pft)
-          max_dcleaf = min( growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint )
+          max_dcleaf = min( growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint, max_dcroot_n_constraint )
 
-          ! write(0,*) 'plabl(pft,jpngr)%n%n14', plabl(pft,jpngr)%n%n14  
+          ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)  
+          ! write(0,*) 'r_cton_leaf(pft,jpngr)',r_cton_leaf(pft,jpngr)
+          ! write(0,*) 'r_cton_root(pft)',r_cton_root(pft)
+          ! write(0,*) 'growtheff', growtheff  
           ! write(0,*) 'max_dcleaf_n_constraint', max_dcleaf_n_constraint  
           ! write(0,*) 'max_dcroot_n_constraint', max_dcroot_n_constraint  
           ! write(0,*) 'max_dcleaf', max_dcleaf  
@@ -96,17 +109,31 @@ contains
           !------------------------------------------------------------------
           ! Store state variables for optimisation
           !------------------------------------------------------------------
+          ! P-model uses monthly input values, implying jumps in LUC etc. 
+          ! Anticipate next day's GPP etc. by using next day's (monthly) LUE.
+          if (dom==ndaymonth(moy)) then
+            usemoy = moy + 1
+          else
+            usemoy = moy
+          end if
+          if (doy==ndayyear) then
+            usedoy = 1
+          else
+            usedoy = doy + 1
+          end if
           state_eval_imbalance%pleaf        = pleaf(pft,jpngr)
           state_eval_imbalance%proot        = proot(pft,jpngr)
           state_eval_imbalance%plabl        = plabl(pft,jpngr)
           state_eval_imbalance%r_ntoc_leaf  = r_ntoc_leaf(pft,jpngr)
           state_eval_imbalance%sla          = sla(pft,jpngr)
-          state_eval_imbalance%mlue         = mlue(moy)
-          state_eval_imbalance%dppfd        = dppfd(doy)
-          state_eval_imbalance%mrd_unitiabs = mrd_unitiabs(moy)
-          state_eval_imbalance%meanmppfd    = meanmppfd(moy)
-          state_eval_imbalance%pninorg      = pninorg(lu,jpngr)
+          state_eval_imbalance%crownarea    = crownarea(pft,jpngr)
+          state_eval_imbalance%mlue         = mlue(usemoy)
+          state_eval_imbalance%dppfd        = dppfd(usedoy)
+          state_eval_imbalance%mrd_unitiabs = mrd_unitiabs(usemoy)
+          state_eval_imbalance%meanmppfd    = meanmppfd(usemoy)
+          state_eval_imbalance%pninorg      = pninorg(lu,jpngr)  ! the only data that is not yet available - use today's value 
           state_eval_imbalance%pft          = pft
+
 
           !------------------------------------------------------------------
           ! Optimisation by balanced growth
@@ -114,13 +141,14 @@ contains
           ! If C:N ratio of return is still greater than whole-plant C:N 
           ! ratio, then put all to roots.
           !------------------------------------------------------------------
-          findroot = .true.
+          cont = .true.
           eval_allroots  = eval_imbalance( 0.0 )
           ! write(0,*) 'eval_allroots', eval_allroots  
           if (eval_allroots > 0.0) then
             dcleaf = 0.0
-            findroot = .false.
-            ! write(0,*) 'putting all to roots'
+            cont = .false.
+            write(0,*) '* putting all to roots *'
+            ! write(0,*) 'current C:N'
           end if
 
           !------------------------------------------------------------------
@@ -128,20 +156,22 @@ contains
           ! If C:N ratio of return is still lower than whole-plant C:N ratio, 
           ! then put all to leaves.
           !------------------------------------------------------------------
-          eval_allleaves = eval_imbalance( max_dcleaf )
-          ! write(0,*) 'eval_allleaves', eval_allleaves  
-          if (eval_allleaves < 0.0) then
-            dcleaf = max_dcleaf
-            findroot = .false.
-            ! write(0,*) 'putting all to leaves'
+          if (cont) then
+            eval_allleaves = eval_imbalance( max_dcleaf )
+            ! write(0,*) 'eval_allleaves', eval_allleaves  
+            if (eval_allleaves < 0.0) then
+              dcleaf = max_dcleaf
+              cont = .false.
+              write(0,*) '* putting all to leaves *'
+            end if
           end if
 
           !------------------------------------------------------------------
           ! Optimum is between 0.0 and max_dcleaf. Find root of function 
           ! 'eval_imbalance()' in the interval [0.0, max_dcleaf].
           !------------------------------------------------------------------
-          if (findroot) then
-            ! write(0,*) "finding root"
+          if (cont) then
+            write(0,*) '* finding root *'
             out_zeroin = zeroin( eval_imbalance, abserr, relerr, 100, 0.0 ,max_dcleaf )
             if ( out_zeroin%error /= 0 ) then
               dcleaf = 0.0
@@ -152,10 +182,20 @@ contains
           end if
 
           !------------------------------------------------------------------
+          ! xxx debug: project next-day's fluxes with optimal dcleaf, derived now
+          !------------------------------------------------------------------
+          ! write(0,*) 'dcleaf', dcleaf
+          ! test = eval_imbalance( dcleaf, .true. )
+
+
+          !------------------------------------------------------------------
           ! Allocate to roots and leaves and extract from labile pool based 
           ! on 'dcleaf' determined above.
           !------------------------------------------------------------------
           dnleaf = dcleaf * r_ntoc_leaf(pft,jpngr)
+
+          ! write(0,*) 'dcleaf', dcleaf  
+          ! write(0,*) 'dnleaf', dnleaf  
 
           plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - 1.0 / growtheff * dcleaf
           plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnleaf
@@ -165,14 +205,16 @@ contains
           dcroot = min( growtheff * plabl(pft,jpngr)%c%c12, r_cton_root(pft) * plabl(pft,jpngr)%n%n14 )
           dnroot = dcroot * r_ntoc_root(pft)
 
+          write(0,*) 'dcroot:dcleaf', dcroot / dcleaf
+
           plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - 1.0 / growtheff * dcroot
           plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnroot
           proot(pft,jpngr)%c%c12 = proot(pft,jpngr)%c%c12 + dcroot
           proot(pft,jpngr)%n%n14 = proot(pft,jpngr)%n%n14 + dnroot
 
-
-          ! write(0,*) 'plabl(pft,jpngr)%c%c12', plabl(pft,jpngr)%c%c12
-          ! write(0,*) 'plabl(pft,jpngr)%n%n14', plabl(pft,jpngr)%n%n14
+          ! write(0,*) 'dcroot'
+          ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)
+          if (doy==39) stop 'here'
 
         else
 
@@ -188,10 +230,12 @@ contains
 
     end do
 
+    ! write(0,*) '--- END allocation_daily:'
+
   end subroutine allocation_daily
 
 
-  function eval_imbalance( dcleaf ) result ( eval )
+  function eval_imbalance( dcleaf, verbose ) result ( eval )
     !/////////////////////////////////////////////////////////
     ! Evaluates C:N ratio of new assimilation after allocation 
     ! versus whole-plant C:N ratio after allocation. Optimal 
@@ -203,9 +247,11 @@ contains
     use _gpp, only: calc_dgpp, calc_drd
     use _nuptake, only: calc_dnup, exurate
     use _npp, only: calc_resp_maint, r_root
+    use _vegdynamics, only: get_fapar
 
     ! arguments
-    real, intent(in)          :: dcleaf
+    real, intent(in)  :: dcleaf
+    logical, intent(in), optional :: verbose
 
     ! function return variable
     real, intent(out) :: eval
@@ -213,6 +259,7 @@ contains
     ! local variables
     real    :: r_ntoc_leaf
     real    :: sla
+    real    :: crownarea
     real    :: mlue
     real    :: dppfd
     real    :: mrd_unitiabs
@@ -234,8 +281,12 @@ contains
     real :: exu
     real :: dc
     real :: dn
+    real :: kcleaf
+    real :: knleaf
+    real :: kcroot
+    real :: knroot
 
-    ! write(0,*) '--- in eval_imbalance:'
+    ! write(0,*) '--- in eval_imbalance with dcleaf=',dcleaf
 
     ! shorter ...
     cleaf        = state_eval_imbalance%pleaf%c%c12
@@ -246,14 +297,16 @@ contains
     nlabl        = state_eval_imbalance%plabl%n%n14
     r_ntoc_leaf  = state_eval_imbalance%r_ntoc_leaf
     sla          = state_eval_imbalance%sla          
+    crownarea    = state_eval_imbalance%crownarea
     mlue         = state_eval_imbalance%mlue         
-    dppf         = state_eval_imbalance%dppfd        
+    dppfd        = state_eval_imbalance%dppfd        
     mrd_unitiabs = state_eval_imbalance%mrd_unitiabs 
     meanmppfd    = state_eval_imbalance%meanmppfd    
     ninorg       = state_eval_imbalance%pninorg%n14 
     pft          = state_eval_imbalance%pft          
 
-    ! write(0,*) 'A cleaf', cleaf
+    ! write(0,*) 'before presumed allocation:'
+    ! write(0,*) 'cleaf', cleaf
     ! write(0,*) 'nleaf', nleaf
     ! write(0,*) 'croot', croot
     ! write(0,*) 'nroot', nroot
@@ -274,43 +327,64 @@ contains
     croot  = croot + dcroot
     nroot  = nroot + dnroot
 
-    ! write(0,*) 'dcleaf', dcleaf
-    ! write(0,*) 'dcroot', dcroot
-    ! write(0,*) 'dnleaf', dnleaf
-    ! write(0,*) 'dnroot', dnroot
-    ! write(0,*) 'B cleaf', cleaf
+    ! if (present(verbose)) then
+    !   write(0,*) 'after presumed allocation:'
+    !   write(0,*) 'clabl', clabl ! OK
+    !   write(0,*) 'nlabl', nlabl ! OK
+    !   ! write(0,*) 'dcleaf', dcleaf
+    !   ! write(0,*) 'dcroot', dcroot
+    !   ! write(0,*) 'dnleaf', dnleaf
+    !   ! write(0,*) 'dnroot', dnroot
 
-    ! Allocation and decay
-    cleaf = cleaf * (1.0 - k_decay_leaf(pft))
-    croot = croot * (1.0 - k_decay_root(pft))
-    nleaf = nleaf * (1.0 - k_decay_leaf(pft))
-    nroot = nroot * (1.0 - k_decay_root(pft))
+    !   ! write(0,*) 'after presumed allocation:'
+    !   ! write(0,*) 'B cleaf', cleaf
+    !   ! write(0,*) 'B root', root
+    ! end if
+
+    ! continuous decay
+    kcleaf = cleaf * k_decay_leaf(pft)
+    knleaf = nleaf * k_decay_leaf(pft)
+    kcroot = croot * k_decay_root(pft)
+    knroot = nroot * k_decay_root(pft)
+
+    cleaf = cleaf - kcleaf
+    nleaf = nleaf - knleaf
+    croot = croot - kcroot
+    nroot = nroot - knroot
 
     ! write(0,*) 'B cleaf', cleaf
 
     ! Calculate next day's C and N return after assumed allocation (tissue turnover happens before!)
-    lai = cleaf * sla
+    lai   = cleaf * sla / crownarea
+    fapar = get_fapar( lai )
 
-    ! write(0,*) 'lai',lai ! ok
-    ! write(0,*) 'sla',sla ! ok
-    ! write(0,*) 'mlue',mlue ! ok
-    ! write(0,*) 'dppfd',dppfd  ! ok
-    ! write(0,*) 'mrd_unitiabs',mrd_unitiabs ! ok
-    ! write(0,*) 'meanmppfd',meanmppfd ! ok
-    ! write(0,*) 'exurate',exurate
+    ! if (present(verbose)) then
+    !   write(0,*) 'cleaf',cleaf
+    !   write(0,*) 'croot',croot
+    !   write(0,*) 'fapar',fapar ! nicht ganz ok!
+    !   write(0,*) 'mlue',mlue ! ok
+    !   write(0,*) 'dppfd',dppfd  ! ok
+    !   write(0,*) 'ninorg',ninorg
+    !   ! write(0,*) 'mrd_unitiabs',mrd_unitiabs ! ok
+    !   ! write(0,*) 'meanmppfd',meanmppfd ! ok
+    !   ! write(0,*) 'exurate',exurate
+    ! end if
 
-    gpp        = calc_dgpp( lai, mlue, dppfd )
-    rd         = calc_drd( lai, mrd_unitiabs, meanmppfd )
+    gpp        = calc_dgpp( fapar, mlue, dppfd ) ! XXX this gives incorrect results (next day's GPP is much smaller!)
+    rd         = calc_drd( fapar, mrd_unitiabs, meanmppfd )
     exu        = croot * exurate
     mresp_root = calc_resp_maint( croot, r_root)
     
     dc         = gpp - rd - mresp_root - exu
-    dn         = calc_dnup( croot, ninorg )
+    dn         = calc_dnup( exu, ninorg )
 
-    ! write(0,*) 'gpp',gpp
-    ! write(0,*) 'rd',rd
-    ! write(0,*) 'exu',exu
-    ! write(0,*) 'mresp_root',mresp_root
+    if (present(verbose)) then
+      write(0,*) 'gpp                ', gpp
+      write(0,*) 'dc                 ', dc
+      write(0,*) 'dn                 ', dn
+      write(0,*) 'current   plant C:N', ( cleaf + croot ) / ( nleaf + nroot )
+      write(0,*) 'tomorrows plant C:N', growtheff * (dc + clabl) / (dn + nlabl)
+    end if
 
     ! Evaluation quantity is the difference between the 
     ! C:N ratio of new assimilates and the C:N ratio 

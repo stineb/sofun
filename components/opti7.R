@@ -612,6 +612,8 @@ for (moy in 1:nmonth){
 
 print(mess)
 
+par(las=1)
+
 # plot( 1:doy, out_cton_labl, type="l", ylim=c(-80,80) )
 
 # pdf( "cmass_vs_doy.pdf", width=6, height=5 )
@@ -621,28 +623,35 @@ lines( 1:doy, out_clabl[1:doy], col="blue" )
 legend( "topleft", c("root C","leaf C", "labile C"), lty=1, bty="n", col=c("black","red","blue") )
 # dev.off()
 
-plot( 1:doy, out_clabl[1:doy], type="l", ylim=range(c( out_clabl[1:doy], out_nlabl[1:doy]),na.rm=T) )
-lines( 1:doy, out_nlabl[1:doy], col="red" )
-
-plot( 1:doy, out_dcroot[1:doy], type="l" )
-lines( 1:doy, out_dcleaf[1:doy], col="red" )
-
-plot( 1:doy, out_cleaf[1:doy]/out_nleaf[1:doy], type="l" )
-plot( 1:doy, out_croot[1:doy]/out_nroot[1:doy], type="l"  )
-
-# pdf( "lai_vs_doy.pdf", width=6, height=5 )
-plot( 1:doy, out_lai[1:doy], type="l", ylab="LAI", xlab="DOY")
+# pdf( "nmass_vs_doy.pdf", width=6, height=5 )
+plot( 1:doy, out_nroot[1:doy], type="l", ylab="N mass (gN/m2)", xlab="DOY", ylim=range( c( out_nroot, out_nleaf ), na.rm=TRUE ) )
+lines( 1:doy, out_nleaf[1:doy], type="l", col="red" )
+lines( 1:doy, out_nlabl[1:doy], col="blue" )
+legend( "topleft", c("root N","leaf N", "labile N"), lty=1, bty="n", col=c("black","red","blue") )
 # dev.off()
 
-# pdf( "cost_of_n_vs_doy.pdf", width=6, height=5 )
-plot( 1:doy, out_ncost[1:doy], type="l", ylim=c(0,200), ylab="C cost per N uptake (gC/gN)", xlab="DOY")
-# dev.off()
+# plot( 1:doy, out_clabl[1:doy], type="l", ylim=range(c( out_clabl[1:doy], out_nlabl[1:doy]),na.rm=T) )
+# lines( 1:doy, out_nlabl[1:doy], col="red" )
 
-# pdf( "nup_vs_doy.pdf", width=6, height=5 )
-plot( 1:doy, out_nup[1:doy], type="l", ylab="N uptake (gN/day)", xlab="DOY")
-# dev.off()
+# plot( 1:doy, out_dcroot[1:doy], type="l" )
+# lines( 1:doy, out_dcleaf[1:doy], col="red" )
 
-plot( 1:doy, out_dclabl[1:doy], type="l", ylab="C balance (gC/m2/day)", xlab="DOY")
-plot( 1:doy, out_gpp[1:doy], type="l", ylab="GPP (gC/m2/day)", xlab="DOY")
-plot( 1:doy, out_gpp_net[1:doy], type="l", ylab="GPP-Rd (gC/m2/day)", xlab="DOY")
+# plot( 1:doy, out_cleaf[1:doy]/out_nleaf[1:doy], type="l" )
+# plot( 1:doy, out_croot[1:doy]/out_nroot[1:doy], type="l"  )
+
+# # pdf( "lai_vs_doy.pdf", width=6, height=5 )
+# plot( 1:doy, out_lai[1:doy], type="l", ylab="LAI", xlab="DOY")
+# # dev.off()
+
+# # pdf( "cost_of_n_vs_doy.pdf", width=6, height=5 )
+# plot( 1:doy, out_ncost[1:doy], type="l", ylim=c(0,200), ylab="C cost per N uptake (gC/gN)", xlab="DOY")
+# # dev.off()
+
+# # pdf( "nup_vs_doy.pdf", width=6, height=5 )
+# plot( 1:doy, out_nup[1:doy], type="l", ylab="N uptake (gN/day)", xlab="DOY")
+# # dev.off()
+
+# plot( 1:doy, out_dclabl[1:doy], type="l", ylab="C balance (gC/m2/day)", xlab="DOY")
+# plot( 1:doy, out_gpp[1:doy], type="l", ylab="GPP (gC/m2/day)", xlab="DOY")
+# plot( 1:doy, out_gpp_net[1:doy], type="l", ylab="GPP-Rd (gC/m2/day)", xlab="DOY")
 

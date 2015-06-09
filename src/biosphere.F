@@ -236,7 +236,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         !----------------------------------------------------------------
         ! allocation of labile pools to biomass
         !----------------------------------------------------------------
-        call allocation_daily( jpngr, day, mo )
+        call allocation_daily( jpngr, day, mo, dm )
         ! write(0,*) 'B pninorg(lu,jpngr)%n14',pninorg
 
 

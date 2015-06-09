@@ -198,11 +198,12 @@ contains
     ! write(0,*) 'mvpd', mvpd
     ! stop
 
-    ! ! xxx try out: -- THIS WORKS PERFECTLY -- 
-    ! co2    = 376.0
-    ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
-    ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
-    ! ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
+    ! xxx try out: -- THIS WORKS PERFECTLY -- 
+    write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
+    co2    = 376.0
+    mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
+    mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
+    ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
 
 
     ! Run P-model for monthly averages and store monthly variables 
@@ -214,6 +215,7 @@ contains
 
       ! Light use efficiency: (gpp - rd) per unit light absorbed
       mlue(moy)             = out_pmodel%lue
+      ! write(0,*) 'moy, mlue', moy, mlue(moy)
       
       ! Vcmax per unit absorbed light
       mvcmax_unitiabs(moy)  = out_pmodel%vcmax_unitiabs
@@ -384,8 +386,12 @@ contains
   
         if (fpc_ind(pft,jpngr)>0.0) then
           ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
+          ! write(0,*) 'in SR gpp: fpc_ind(pft,jpngr)',fpc_ind(pft,jpngr) !OK!
+          ! write(0,*) 'in SR gpp: doy, dppfd(doy)', doy, dppfd(doy) !OK!
+          ! write(0,*) 'in SR gpp: moy, mlue(moy)', moy, mlue(moy) !OK! 
           dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
-          
+          ! write(0,*) 'doy, dgpp(pft)', doy, dgpp(pft)
+
           ! Dark respiration
           drd(pft)     = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
           
