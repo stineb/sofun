@@ -98,7 +98,7 @@ module _vars_core
 
 contains
 
-  subroutine initglobal()
+  subroutine initglobal( fpc_grid_data )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of all _pools on all gridcells at the beginning
     !  of the simulation.
@@ -107,10 +107,33 @@ contains
     !----------------------------------------------------------------
     use _classdefs
     use _params_modl, only: tree
-    use _params_core, only: npft
+    use _params_core, only: npft, maxgrid
 
-    ! LOCAL VARIABLES
+    ! arguments
+    real, dimension(npft,maxgrid), intent(in) :: fpc_grid_data
+
+    ! local variables
     integer :: pft
+    integer :: jpngr
+
+    !-----------------------------------------------------------------------------
+    ! Prescribe FPC grid from data
+    !-----------------------------------------------------------------------------
+    fpc_grid(:,:) = fpc_grid_data(:,:)
+
+    !-----------------------------------------------------------------------------
+    ! derive which PFTs are present from fpc_grid (which is prescribed)
+    !-----------------------------------------------------------------------------
+    do jpngr=1,maxgrid
+      do pft=1,npft
+        if (fpc_grid(pft,jpngr)>0.0) then
+          ispresent(pft,jpngr) = .true.
+        else
+          ispresent(pft,jpngr) = .false.
+        end if
+      end do
+    end do
+ 
 
     ! initialise all _pools with zero
     pleaf(:,:)    = orgpool(carbon(0.0),nitrogen(0.0))    ! leaves   , organic pool [gC/m2/ind. and gN/m2/ind.]
@@ -141,8 +164,6 @@ contains
     pninorg(:,:)  = nitrogen(10.0)
 
     ! initialise other properties
-    ispresent(:,:) = .false.
-    fpc_grid(:,:)  = 0.0
     lai_ind(:,:)   = 0.0
     fpc_ind(:,:)   = 0.0
     height(:,:)    = 0.0

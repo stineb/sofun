@@ -13,7 +13,7 @@ module _vegdynamics
 
 contains
 
-  subroutine estab_daily( jpngr, doy, fpc_grid_data )
+  subroutine estab_daily( jpngr, doy )
     !//////////////////////////////////////////////////////////////////
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
@@ -30,36 +30,11 @@ contains
     ! arguments
     integer, intent(in)               :: jpngr
     integer, intent(in)               :: doy
-    real, dimension(npft), intent(in) :: fpc_grid_data
 
     ! local variables
-    logical, save :: firstcall = .true.
+    ! logical, save :: firstcall = .true.
     integer :: pft
 
-    ! write(0,*) 'sla(pft,jpngr)   ',sla
-
-    if (firstcall) then
-      !-----------------------------------------------------------------------------
-      ! Prescribe FPC grid from data
-      !-----------------------------------------------------------------------------
-      fpc_grid(:,jpngr) = fpc_grid_data(:)
-
-      !-----------------------------------------------------------------------------
-      ! derive which PFTs are present from fpc_grid (which is prescribed)
-      !-----------------------------------------------------------------------------
-      do pft=1,npft
-        if (fpc_grid(pft,jpngr)>0.0) then
-          ispresent(pft,jpngr) = .true.
-        else
-          ispresent(pft,jpngr) = .false.
-        end if
-      end do
-
-      firstcall = .false.
-
-    end if
-
-    ! write(0,*) 'summergreen(pft)',summergreen
 
     do pft=1,npft
 

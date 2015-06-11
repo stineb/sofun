@@ -105,7 +105,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
-    call initglobal( )
+    call initglobal( fpc_grid_data(:,:) )
     call init_global_ntransform()
 
     !----------------------------------------------------------------
@@ -210,7 +210,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         !----------------------------------------------------------------
         ! simulate daily establishment / sprouting
         !----------------------------------------------------------------
-        call estab_daily( jpngr, day, fpc_grid_data(:,jpngr) )
+        call estab_daily( jpngr, day )
 
         !----------------------------------------------------------------
         ! calculate GPP
