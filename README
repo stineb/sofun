@@ -75,6 +75,7 @@ Year-to-year memory
 
 In general, all pool variables carry on information from year to year, while all others don't. Exceptions are previous year's values to define "buffers", e.g., where moving average of previous N days is used to calculate stuff. This is the case for soil temperature (soiltemp_sitch), where the previous year's daily temperature field is used. This is defined within biosphere, using Fortran's 'SAVE' statement, and updated at the end of each year. For the first simulation year, the "previous" year's values are taken as the present year's values.
 
+
 Output
 ------
 One output file is written for each output variable. Output variables have an according time dimension (daily and monthly output), and a space dimension (jpngr) and are kept separate from model state variables. To add a (module-independent) variable to be written to the output, add statements in the following files:
@@ -85,6 +86,11 @@ One output file is written for each output variable. Output variables have an ac
 - writeout_ascii.F: Write output array into file opened by initio.F.
 For module-specific output variables, add according statements contained in SR (named as 'initio_<modulename>') contained within respective module.
 
+
+Processes
+---------
+*Phenology*
+Temperature driven phenology ('dtphen') is determined by smoothed daily temperature (smoothing by interpolating from monthly mean air temperatures). For grasses, 'dtphen' is zero if smoothed temperature is <5 deg C and 1 if it is >5 deg C. When dtphen=1, then grass grows daily with LAI dynamically developping over the course of the season.
 
 
 

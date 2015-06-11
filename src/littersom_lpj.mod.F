@@ -339,7 +339,7 @@ contains
         ! OUTPUT COLLECTION
         outanreq(lu,jpngr)      = outanreq(lu,jpngr)      + Nreq_S
         outaClit2soil(lu,jpngr) = outaClit2soil(lu,jpngr) + dlitt%c%c12 * eff
-        outaNlit2soil(lu,jpngr) = outaNlit2soil(lu,jpngr) + Nreq_S`
+        outaNlit2soil(lu,jpngr) = outaNlit2soil(lu,jpngr) + Nreq_S
 
         ! write(0,*) 'outaClit2soil(lu,jpngr)',outaClit2soil(lu,jpngr)
         ! outaNlit2soil(pft,jpngr) = outaNlit2soil(pft,jpngr) + dlitt%n%n14

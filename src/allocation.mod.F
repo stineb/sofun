@@ -73,7 +73,7 @@ contains
 
       if (grass(pft)) then
 
-        write(0,*) '--- allocation_daily, doy:',doy
+        ! write(0,*) '--- allocation_daily, doy:',doy
         ! write(0,*)' pninorg(lu,jpngr)%n14',pninorg
         ! write(0,*)' plabl(lu,jpngr)',plabl
 
@@ -148,7 +148,7 @@ contains
             dcleaf = 0.0
             ! dcroot = max_dc
             cont = .false.
-            write(0,*) '* putting all to roots *'
+            ! write(0,*) '* putting all to roots *'
           end if
 
           !------------------------------------------------------------------
@@ -163,7 +163,7 @@ contains
               dcleaf = max_dc
               ! dcroot = 0.0
               cont = .false.
-              write(0,*) '* putting all to leaves *'
+              ! write(0,*) '* putting all to leaves *'
             end if
           end if
 
@@ -172,7 +172,7 @@ contains
           ! 'eval_imbalance()' in the interval [0.0, max_dc].
           !------------------------------------------------------------------
           if (cont) then
-            write(0,*) '* finding root *'
+            ! write(0,*) '* finding root *'
             out_zeroin = zeroin( eval_imbalance, abserr, relerr, 100, 0.0 ,max_dc )
             if ( out_zeroin%error /= 0 ) then
               dcleaf = 0.0
@@ -207,10 +207,10 @@ contains
           dcroot = min( growtheff * plabl(pft,jpngr)%c%c12, r_cton_root(pft) * plabl(pft,jpngr)%n%n14 )
           dnroot = dcroot * r_ntoc_root(pft)
 
-          write(0,*) 'b dcroot', dcroot  
-          write(0,*) 'dcleaf', dcleaf  
+          ! write(0,*) 'b dcroot', dcroot  
+          ! write(0,*) 'dcleaf', dcleaf  
           ! write(0,*) 'dnroot', dnroot  
-          write(0,*) 'dcroot:dcleaf', dcroot / dcleaf
+          ! write(0,*) 'dcroot:dcleaf', dcroot / dcleaf
 
           plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - 1.0 / growtheff * dcroot
           plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnroot
