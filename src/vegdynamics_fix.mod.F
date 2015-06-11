@@ -20,7 +20,7 @@ contains
     !------------------------------------------------------------------
     use _params_core, only: npft
     use _params_modl, only: r_ntoc_root
-    use _phenology, only: dtphen, summergreen
+    use _phenology, only: dtphen, summergreen, sprout
     use _vars_core, only: r_ntoc_leaf, pleaf, proot, lai_ind, fpc_ind, &
       sla, fpc_grid, ispresent, crownarea, nind, initpft
 
@@ -68,7 +68,7 @@ contains
         ! GRASSES, summergreen
         !----------------------------------------------------------
 
-        if ( dtphen(doy,pft) > 0.0 .and. dtphen(doy-1,pft) == 0.0 ) then
+        if ( sprout(doy,pft) ) then
           !----------------------------------------------------------
           ! beginning of season
           !----------------------------------------------------------

@@ -24,6 +24,8 @@ module _phenology
 
   ! MODULE-SPECIFIC VARIABLES
   real, dimension(ndayyear,npft) :: dtphen   ! daily temperature-driven phenology (=dphen_t in LPX)
+  logical, dimension(ndayyear,npft) :: sprout   ! boolean whether PFT is present
+  logical, dimension(ndayyear,npft) :: shedleaves   ! boolean whether PFT is present
 
 
 contains
@@ -50,7 +52,9 @@ contains
 
 
     ! initialise
-    dtphen(:,:) = 0.0
+    dtphen(:,:)     = 0.0
+    ! sprout(:,:)     = .false.
+    ! shedleaves(:,:) = .false.
 
     ! Phenology is driven by monthly temperatures and daily temperatures
     ! as interpolated from monthly temperatures to remove day-to-day
@@ -104,12 +108,11 @@ contains
           do while (day/=firstday)
             if (dtemp_int(day)>GDDBASE) then ! growing day
               gdd = gdd + dtemp_int(day) - GDDBASE
-              dtphen(day,pft) = 1.0
-              ! if (RAMP(pft)>0.0) then
-              !   dtphen(day,pft) = min( gdd / RAMP(pft), 1.0 )
-              ! else
-              !   dtphen(day,pft) = 1.0
-              ! endif
+              if (RAMP(pft)>0.0) then
+                dtphen(day,pft) = min( gdd / RAMP(pft), 1.0 )
+              else
+                dtphen(day,pft) = 1.0
+              endif
             endif
             ! write(0,*) 'day, dtphen', day, dtphen(day,pft)
             day=day+1
@@ -156,7 +159,65 @@ contains
 
     ! save monthly temperature for next year
     mtemp_pvy(:,jpngr) = mtemp(:)
-      
+
+    ! do day=1,ndayyear
+    !   if (sprout(day,1)) write(0,*) 'sprouting on day',day
+    !   if (shedleaves(day,1)) write(0,*) 'shedleavesing on day',day
+    ! end do
+    ! write(0,*) shedleaves
+    ! stop
+
+    ! XXX MOVE THIS TO SEPARATE ROUTINE
+    do day=1,ndayyear
+      do pft=1,npft
+
+        if (summergreen(pft)) then
+          !----------------------------------------------------------
+          ! temperature-driven phenology summergreen
+          !----------------------------------------------------------
+
+          if ( dtphen(day,pft) > 0.0 .and. dtphen(day-1,pft) == 0.0 ) then
+            !----------------------------------------------------------
+            ! beginning of season (spring)
+            !----------------------------------------------------------
+            sprout(day,pft) = .true.
+            shedleaves(day,pft) = .false.
+            write(0,*) 'sprouting on day ', day 
+
+          else if ( dtphen(day,pft) > 0.0 ) then
+            !----------------------------------------------------------
+            ! during season (after spring and before autumn)
+            !----------------------------------------------------------
+            sprout(day,pft) = .false.
+            shedleaves(day,pft) = .false.
+
+          else if ( dtphen(day,pft) == 0.0 .and. dtphen(day-1,pft) > 0.0 ) then
+            !----------------------------------------------------------
+            ! end of season (autumn)
+            !----------------------------------------------------------
+            sprout(day,pft) = .false.
+            shedleaves(day,pft) = .true.
+            write(0,*) 'shedding leaves on day ', day 
+
+          else if ( dtphen(day,pft) == 0.0 ) then
+            !----------------------------------------------------------
+            ! during dormant season (after autumn and before spring)
+            !----------------------------------------------------------
+            sprout(day,pft) = .false.
+            shedleaves(day,pft) = .false.
+
+          end if
+
+        else
+
+          stop 'estab_daily not implemented for trees'
+
+        end if
+
+      end do
+    end do
+    ! XXXX
+
     return
 
   end subroutine gettempphenology
