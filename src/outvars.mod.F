@@ -19,6 +19,7 @@ module _outvars
   real, dimension(npft,ndayyear,maxgrid) :: outdCleaf
   real, dimension(npft,ndayyear,maxgrid) :: outdCroot
   real, dimension(npft,ndayyear,maxgrid) :: outdClabl
+  real, dimension(npft,ndayyear,maxgrid) :: outdNlabl
   real, dimension(npft,ndayyear,maxgrid) :: outdClitt
 
   real, dimension(nlu,ndayyear,maxgrid)  :: outdninorg
@@ -58,6 +59,7 @@ contains
     outdCleaf(:,:,:)    = 0.0
     outdCroot(:,:,:)    = 0.0
     outdClabl(:,:,:)    = 0.0
+    outdNlabl(:,:,:)    = 0.0
     outdClitt(:,:,:)    = 0.0
     outdninorg(:,:,:)   = 0.0
 
@@ -135,6 +137,10 @@ contains
     ! TRANSPIRATION
     filnam=trim(prefix)//'.d.transp.out'
     open(114,file=filnam,err=999,status='unknown')
+
+    ! LABILE N
+    filnam=trim(prefix)//'.d.nlabl.out'
+    open(115,file=filnam,err=999,status='unknown')
 
 
     !////////////////////////////////////////////////////////////////
@@ -217,6 +223,7 @@ contains
     outdCleaf(:,doy,jpngr)      = pleaf(:,jpngr)%c%c12
     outdCroot(:,doy,jpngr)      = proot(:,jpngr)%c%c12
     outdClabl(:,doy,jpngr)      = plabl(:,jpngr)%c%c12
+    outdClabl(:,doy,jpngr)      = plabl(:,jpngr)%n%n14
     outdClitt(:,doy,jpngr)      = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
     outdninorg(:,doy,jpngr)     = pninorg(:,jpngr)%n14
     outdtemp_soil(:,doy,jpngr)  = dtemp_soil(:,jpngr)

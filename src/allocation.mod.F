@@ -1,4 +1,13 @@
 module _allocation
+  !////////////////////////////////////////////////////////////////
+  ! ALLOCATION MODULE
+  ! Contains the "main" subroutine 'allocation_daily' and all 
+  ! necessary subroutines for handling input/output, and auxiliary
+  ! subroutines.
+  ! Every module that implements 'allocation_daily' must contain 
+  ! this list of subroutines (names that way).
+  !   - allocation_daily
+  !----------------------------------------------------------------
 
   use _classdefs
 
@@ -36,7 +45,7 @@ contains
     use _params_modl, only: r_cton_root, r_ntoc_root, growtheff, grass, &
       lu_category
     use _vars_core, only: pleaf, proot, plabl, pninorg, r_cton_leaf, &
-      r_ntoc_leaf, sla, crownarea
+      r_ntoc_leaf, sla, crownarea, drauto, dnpp
     use _gpp, only: mlue, mrd_unitiabs
     use _waterbal, only: dppfd, meanmppfd
     use _findroot_fzeroin
@@ -50,8 +59,13 @@ contains
     ! local variables
     integer :: pft
     integer :: usemoy
+    integer :: usedoy
     real    :: dcleaf
     real    :: dnleaf
+    real    :: dcroot
+    real    :: dnroot
+    real    :: dclabl
+    real    :: dnlabl
     logical :: cont          ! true if allocation to leaves (roots) is not 100% and not 0%
     real    :: max_dcleaf_n_constraint
     real    :: max_dcroot_n_constraint
@@ -198,8 +212,13 @@ contains
           ! write(0,*) 'dcleaf', dcleaf  
           ! write(0,*) 'dnleaf', dnleaf  
 
-          plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - 1.0 / growtheff * dcleaf
-          plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnleaf
+          ! to ensure plabl not getting negative (within numerical imprecision)
+          dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcleaf )
+          dnlabl = min( plabl(pft,jpngr)%n%n14, dnleaf )
+
+          plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
+          plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
+
           pleaf(pft,jpngr)%c%c12 = pleaf(pft,jpngr)%c%c12 + dcleaf
           pleaf(pft,jpngr)%n%n14 = pleaf(pft,jpngr)%n%n14 + dnleaf
 
@@ -212,10 +231,21 @@ contains
           ! write(0,*) 'dnroot', dnroot  
           ! write(0,*) 'dcroot:dcleaf', dcroot / dcleaf
 
-          plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - 1.0 / growtheff * dcroot
-          plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnroot
+          ! to ensure plabl not getting negative (within numerical imprecision)
+          dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcroot )
+          dnlabl = min( plabl(pft,jpngr)%n%n14, dnroot )
+
+          plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
+          plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
+
           proot(pft,jpngr)%c%c12 = proot(pft,jpngr)%c%c12 + dcroot
           proot(pft,jpngr)%n%n14 = proot(pft,jpngr)%n%n14 + dnroot
+
+          ! add growth respiration to autotrophic respiration and substract from NPP
+          ! (note that NPP is added to plabl in and growth resp. is implicitly removed
+          ! from plabl above)
+          drauto(pft)   = drauto(pft)     + ( 1.0 - growtheff ) * ( dcleaf + dcroot )
+          dnpp(pft)%c12 = dnpp(pft)%c12   - ( 1.0 - growtheff ) * ( dcleaf + dcroot ) 
 
           ! write(0,*) 'dcroot'
           ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)

@@ -59,6 +59,7 @@ subroutine writeout_ascii( year, dtemp )
       write(112,999) itime, sum(outdClabl(:,day,jpngr))
       write(113,999) itime, sum(outdClitt(:,day,jpngr))
       write(114,999) itime, sum(outdtransp(:,day,jpngr))
+      write(115,999) itime, sum(outdNlabl(:,day,jpngr))
       
     end do
   end if
