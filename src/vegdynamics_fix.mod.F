@@ -9,8 +9,6 @@ module _vegdynamics
   ! real, dimension(npft,maxgrid)    :: height      ! tree height (m)
   ! real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
 
-  logical, dimension(npft)         :: shedleaves  ! true when leaf shedding is triggered
-
 contains
 
   subroutine estab_daily( jpngr, doy )
@@ -19,9 +17,8 @@ contains
     ! function of Vcmax25.
     !------------------------------------------------------------------
     use _params_core, only: npft
-    use _params_modl, only: r_ntoc_root
     use _phenology, only: dtphen, summergreen, sprout
-    use _vars_core, only: r_ntoc_leaf, pleaf, proot, lai_ind, fpc_ind, &
+    use _vars_core, only: pleaf, proot, lai_ind, fpc_ind, &
       sla, fpc_grid, ispresent, crownarea, nind, initpft
 
     ! xxx debug
@@ -50,8 +47,7 @@ contains
           ! write(0,*) 'starting to grow on day ',doy
           call initpft( pft, jpngr )
 
-          pleaf(pft,jpngr) = get_sapl( r_ntoc_leaf(pft,jpngr) )
-          proot(pft,jpngr) = get_sapl( r_ntoc_root(pft) )
+          call add_sapl( pft, jpngr )
 
         end if
 
@@ -84,26 +80,29 @@ contains
   end subroutine estab_daily
 
 
-  function get_sapl( r_ntoc ) result( sapl )
+  subroutine add_sapl( pft, jpngr )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates the sapling C and N content in respective pool
-    ! (variable of type 'orgpool'), given C:N ratio in that pool. 
+    ! 
     !------------------------------------------------------------------
     use _classdefs
+    use _params_modl, only: r_ntoc_root
+    use _vars_core, only: pleaf, proot, r_ntoc_leaf
 
     ! arguments
-    real, intent(in) :: r_ntoc
+    integer, intent(in) :: pft
+    integer, intent(in) :: jpngr
 
     ! local variables
-    real, parameter :: sapling_c_init = 0.1     ! xxx to parameters?
+    real, parameter :: cleaf_sapl = 0.2
+    real, parameter :: croot_sapl = 0.1
+    
+    pleaf(pft,jpngr)%c%c12 = cleaf_sapl
+    proot(pft,jpngr)%c%c12 = croot_sapl
 
-    ! function return variable
-    type(orgpool) :: sapl    ! sapling pool mass
+    pleaf(pft,jpngr)%n%n14 = cleaf_sapl * r_ntoc_leaf(pft,jpngr)
+    proot(pft,jpngr)%n%n14 = croot_sapl * r_ntoc_root(pft)
 
-    sapl%c%c12 = sapling_c_init
-    sapl%n%n14 = sapling_c_init * r_ntoc
-
-  end function get_sapl
+  end subroutine add_sapl
 
 
   function get_fpc_grid( crownarea, nind, fpc_ind ) result( fpc_grid )

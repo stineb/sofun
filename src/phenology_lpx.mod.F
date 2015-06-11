@@ -182,7 +182,7 @@ contains
             !----------------------------------------------------------
             sprout(day,pft) = .true.
             shedleaves(day,pft) = .false.
-            write(0,*) 'sprouting on day ', day 
+            ! write(0,*) 'sprouting on day ', day 
 
           else if ( dtphen(day,pft) > 0.0 ) then
             !----------------------------------------------------------

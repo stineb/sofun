@@ -27,7 +27,7 @@ module _npp
 
 contains
 
-  subroutine npp( jpngr, dtemp )
+  subroutine npp( jpngr, dtemp, doy )
     !/////////////////////////////////////////////////////////////////////////
     ! NET PRIMARY PRODUCTIVITY
     ! Calculate maintenance and growth respiration and substract this from GPP 
@@ -45,16 +45,18 @@ contains
     use _rates
     use _vars_core, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, dcex, dnup
     use _vars_core, only: nind, ispresent
-    use _vegdynamics, only: shedleaves
     use _vars_core, only: proot, psapw, pexud, plabl
     use _nuptake, only: nuptake
     use _vars_core, only: dtemp_soil
     use _gpp, only: drd
-    use _phenology, only: summergreen
+    use _phenology, only: summergreen, shedleaves
 
     ! arguments
     integer, intent(in) :: jpngr
     real, intent(in)    :: dtemp      ! air temperature at this day
+
+    ! xxx debug
+    integer, intent(in) :: doy
 
     ! local variables
     integer :: pft
@@ -169,9 +171,10 @@ contains
         ! Leaves are shed in (annual) grasses (=end of vegetation period) when 
         ! labile C pool gets negative.
         !-------------------------------------------------------------------------
-        if ( plabl(pft,jpngr)%c%c12 < 0.0 ) then
+        if ( dnpp(pft)%c12 < 0.0 ) then
           if (summergreen(pft)) then
-            shedleaves(pft) = .true.
+            shedleaves(:,pft)   = .false.
+            shedleaves(doy,pft) = .true.
           else
             stop 'labile C negative'
           end if

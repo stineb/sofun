@@ -4,7 +4,7 @@ module _turnover
 
 contains
 
-  subroutine turnover( jpngr )
+  subroutine turnover( jpngr, doy )
     !////////////////////////////////////////////////////////////////
     !  Annual vegetation biomass turnover, called at the end of the
     !  year.
@@ -12,14 +12,14 @@ contains
     use _classdefs
     use _params_modl, only: lu_category, tree, grass, &
       k_decay_leaf, k_decay_sapw, k_decay_root, npft, F_NRETAIN
-    use _phenology, only: summergreen
+    use _phenology, only: summergreen, shedleaves
     use _vars_core, only: pleaf, proot, psapw, pwood, plitt_af, plitt_bg, plabl
     use _vars_core , only: nind, ispresent
-    use _vegdynamics, only: shedleaves
     use _outvars, only: outaCveg2lit, outaNveg2lit
 
     ! arguments
     integer, intent(in) :: jpngr
+    integer, intent(in) :: doy
 
     ! local variables
     integer :: pft
@@ -44,13 +44,13 @@ contains
           if (summergreen(pft)) then
             dleaf = k_decay_leaf(pft)
             droot = k_decay_root(pft)
-            ! if (shedleaves(pft)) then
-            !   dleaf = 1.0
-            !   droot = 1.0
-            ! else
-            !   dleaf = 0.0  
-            !   droot = k_decay_root(pft)
-            ! end if
+            if (shedleaves(doy,pft)) then
+              dleaf = 1.0
+              droot = 1.0
+            else
+              dleaf = k_decay_leaf(pft)  
+              droot = k_decay_root(pft)
+            end if
           end if   
         else
           stop 'turnover only implemented for grasses'        

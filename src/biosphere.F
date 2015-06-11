@@ -230,7 +230,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         ! substract autotrophic respiration to get NPP, remainder is added 
         ! to labile pool (plabl)
         !----------------------------------------------------------------
-        call npp( jpngr, dtemp_field(day,jpngr) )
+        call npp( jpngr, dtemp_field(day,jpngr), day )
 
         ! write(0,*) 'A pninorg(lu,jpngr)%n14',pninorg
         !----------------------------------------------------------------
@@ -246,7 +246,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         !----------------------------------------------------------------
         ! leaf, sapwood, and fine-root turnover
         !----------------------------------------------------------------
-        call turnover( jpngr )
+        call turnover( jpngr, day )
         ! write(0,*) 'C pninorg(lu,jpngr)%n14',pninorg
 
         !----------------------------------------------------------------
