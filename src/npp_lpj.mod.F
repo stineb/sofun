@@ -50,6 +50,7 @@ contains
     use _nuptake, only: nuptake
     use _vars_core, only: dtemp_soil
     use _gpp, only: drd
+    use _phenology, only: summergreen
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -169,7 +170,7 @@ contains
         ! labile C pool gets negative.
         !-------------------------------------------------------------------------
         if ( plabl(pft,jpngr)%c%c12 < 0.0 ) then
-          if (grass(pft)) then
+          if (summergreen(pft)) then
             shedleaves(pft) = .true.
           else
             stop 'labile C negative'

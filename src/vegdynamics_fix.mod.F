@@ -52,13 +52,6 @@ contains
 
           pleaf(pft,jpngr) = get_sapl( r_ntoc_leaf(pft,jpngr) )
           proot(pft,jpngr) = get_sapl( r_ntoc_root(pft) )
-          shedleaves(pft) = .false.
-
-        else if ( dtphen(doy,pft) > 0.0 ) then
-          ! write(0,*) 'continued growth on day ',doy
-
-        else
-          ! write(0,*) 'no growth on day ',doy
 
         end if
 

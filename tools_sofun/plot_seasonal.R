@@ -233,7 +233,7 @@ panel <- layout(
 # layout.show(panel)
 
 par(mar=c(4,4,2,1), las=1)
-plot( daily_sub$doy, daily_sub$cleaf, type="l", xlab="", ylab="gC/m2/d", ylim=c(0,max(daily_sub$cleaf)) )
+plot( daily_sub$doy, daily_sub$cleaf, type="l", xlab="", ylab="gC/m2/d", ylim=range(c(daily_sub$cleaf,daily_sub$croot)) )
 lines( daily_sub$doy, daily_sub$croot, type="l", xlab="day of year", ylab="gC/m2/d", col="green" )
 lines( daily_sub$doy, daily_sub$clabl, type="l", xlab="day of year", ylab="gC/m2/d", col="blue" )
 legend( "bottomleft", c("leaf C","root C","labile C"), col=c("black","green","blue"), bty="n", lty=1 )
