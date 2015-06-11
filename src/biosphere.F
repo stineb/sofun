@@ -17,7 +17,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _vars_core, only: initannual, initdaily, initglobal, initpft
   use _outvars, only: initio, getout_annual, getout_daily, initoutput
   use _soiltemp, only: soiltemp
-  use _phenology, only: summerphenology
+  use _phenology, only: gettempphenology  !, phenology
   use _vegdynamics, only: estab_daily
   use _gpp, only: gpp, getlue, gettraits, initdaily_gpp
   use _npp, only: npp
@@ -105,7 +105,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
-    call initglobal()
+    call initglobal( )
     call init_global_ntransform()
 
     !----------------------------------------------------------------
@@ -144,7 +144,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !----------------------------------------------------------------
     ! get temperature-driven phenology (drought-driven phenology is calculated after waterbalance)
     !----------------------------------------------------------------
-    call summerphenology(jpngr, dtemp_field(:,jpngr))
+    call gettempphenology(jpngr, dtemp_field(:,jpngr))
 
     !call climate20
     !call bioclim -> SR contained in 'establishment'

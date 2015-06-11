@@ -9,7 +9,7 @@ subroutine getpar_modl
   use _waterbal, only: getpar_modl_waterbal
   use _nuptake, only: getpar_modl_nuptake
   use _npp, only: getpar_modl_npp
-  use _phenology, only: getpar_pft_summerphenology
+  use _phenology, only: getpar_phenology
   use _ntransform, only: getpar_modl_ntransform
   use _littersom, only: getpar_modl_littersom
   use _sofunutils, only: getreal
@@ -134,7 +134,7 @@ subroutine getpar_modl
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC PARAMETERS
   !----------------------------------------------------------------
-  call getpar_pft_summerphenology()
+  call getpar_phenology()
 
   return
   888 write(0,*) 'GETPAR_MODL: error opening file params_modl.dat. Abort. '

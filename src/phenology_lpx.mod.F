@@ -2,17 +2,12 @@ module _phenology
   !////////////////////////////////////////////////////////////////
   ! TEMPERATURE-DRIVEN PHENOLOGY 
   ! Adopted from LPX-Bern
-  ! Contains the "main" subroutine 'summerphenology' and all 
+  ! Contains the "main" subroutine 'gettempphenology and phenology' and all 
   ! necessary subroutines for handling input/output. 
-  ! Every module that implements 'summerphenology' must contain 
+  ! Every module that implements 'tempphenology' must contain 
   ! this list of subroutines (names that way).
-  !   - summerphenology
-  !   - getpar_modl_summerphenology
-  !   - initio_summerphenology, (optional)
-  !   - initoutput_summerphenology, (optional)
-  !   - getout_daily_summerphenology, (optional)
-  !   - getout_monthly_summerphenology, (optional)
-  !   - writeout_ascii_summerphenology, (optional)
+  !   - tempphenology
+  !   - getpar_modl_tempphenology
   ! Required module-independent model state variables (necessarily 
   ! updated by 'waterbal') are:
   !   - (none)
@@ -22,8 +17,8 @@ module _phenology
   implicit none
 
   ! PHENOLOGY PARAMETERS
-  real, dimension(npft) :: gddbase ! GDD base, for PFT11-14, a T0 is chosen to be 0deg C (Prentice et al. 1992, J.o.Biogeography), pftpar(pft,33) in LPX
-  real, dimension(npft) :: ramp    ! summergreen phenology ramp, GDD requirement to grow full leaf canopy
+  real                  :: GDDBASE ! GDD base, for PFT11-14, a T0 is chosen to be 0deg C (Prentice et al. 1992, J.o.Biogeography), pftpar(pft,33) in LPX
+  real, dimension(npft) :: RAMP    ! summergreen phenology RAMP, GDD requirement to grow full leaf canopy
 
   logical, dimension(npft) :: summergreen, evergreen, raingreen  ! phenology type
 
@@ -33,7 +28,7 @@ module _phenology
 
 contains
 
-  subroutine summerphenology( jpngr, dtemp )
+  subroutine gettempphenology( jpngr, dtemp )
     !//////////////////////////////////////////////////////////
     ! Defines dtphen, the temperature-driven phenology
     !----------------------------------------------------------
@@ -81,10 +76,10 @@ contains
     do pft=1,npft
       !----------------------------------------------------------
       ! Find day of leaf abscission ('firstday') at end of summer
-      ! i.e. when daily temperature falls below gddbase.
+      ! i.e. when daily temperature falls below GDDBASE.
       !----------------------------------------------------------
       firstday=midsummer+1
-      do while (dtemp_int(firstday)>=gddbase(pft) .and. firstday/=midsummer)
+      do while (dtemp_int(firstday)>=GDDBASE .and. firstday/=midsummer)
         firstday=firstday+1
         if (firstday>ndayyear) firstday=1
       enddo
@@ -94,7 +89,7 @@ contains
       ! write(0,*) 'midsummer', midsummer
       ! write(0,*) 'firstday', firstday
       ! write(0,*) 'summergreen', summergreen
-      ! write(0,*) 'gddbase', gddbase
+      ! write(0,*) 'GDDBASE', GDDBASE
 
       if (summergreen(pft)) then
         !----------------------------------------------------------
@@ -107,11 +102,11 @@ contains
           day=firstday+1
           if (day>ndayyear) day=1
           do while (day/=firstday)
-            if (dtemp_int(day)>gddbase(pft)) then ! growing day
-              gdd = gdd + dtemp_int(day) - gddbase(pft)
+            if (dtemp_int(day)>GDDBASE) then ! growing day
+              gdd = gdd + dtemp_int(day) - GDDBASE
               dtphen(day,pft) = 1.0
-              ! if (ramp(pft)>0.0) then
-              !   dtphen(day,pft) = min( gdd / ramp(pft), 1.0 )
+              ! if (RAMP(pft)>0.0) then
+              !   dtphen(day,pft) = min( gdd / RAMP(pft), 1.0 )
               ! else
               !   dtphen(day,pft) = 1.0
               ! endif
@@ -120,7 +115,7 @@ contains
             day=day+1
             if (day>ndayyear) day=1
           enddo
-          ! write(0,*) 'SUMMERPHENOLOGY: dtphen(day,pft) '
+          ! write(0,*) 'gettempphenology: dtphen(day,pft) '
           ! write(0,*) dtphen(:,pft)
           ! stop
         endif
@@ -164,46 +159,49 @@ contains
       
     return
 
-  end subroutine summerphenology
+  end subroutine gettempphenology
 
 
-  subroutine getpar_pft_summerphenology( )
+  subroutine getpar_phenology( )
     !////////////////////////////////////////////////////////////////
     ! Subroutine reads nuptake module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
+    use _sofunutils, only: getreal
+
     ! local variables
-    integer, parameter    :: npar = 3
+    character*2           :: char_pftno
+    real, dimension(npft) :: PHENTYPE
     integer               :: pft
-    real, dimension(npar) :: params_array
-    character(len=50)     :: paramfilnam
-    
-    paramfilnam = 'params_pft_summerphenology.dat'
 
-    open(unit=07,file=trim(paramfilnam),status='OLD')      
-    read(07,*) params_array
-    close(07)
-
-    ! xxx implement array readin (for each pft, then loop over pfts)
-    pft = 1
+    ! initialise
 
     ! growing degree days base (usually 5 deg C)
-    gddbase(pft) = params_array(1)
+    call getreal( 'params_phenology.dat', 'GDDBASE', GDDBASE )
 
-    ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
-    ramp(pft)    = params_array(2)
-    
-    ! phenology type
-    evergreen(:)   = .false.
-    summergreen(:) = .false.
-    raingreen(:)   = .false.
-    if (params_array(3)==1.0) evergreen(pft)   = .true.
-    if (params_array(3)==2.0) summergreen(pft) = .true.
-    if (params_array(3)==3.0) raingreen(pft)   = .true.
+    do pft=1,npft
 
+      ! define PFT-extension used for parameter names in parameter file
+      write(char_pftno, 999) pft
+
+      ! RAMP slope for phenology (1 for grasses: immediate phenology turning on)
+      call getreal( 'params_phenology.dat', trim('RAMP_PFT')//char_pftno, RAMP(pft) )
+
+      ! phenology type
+      call getreal( 'params_phenology.dat', trim('PHENTYPE_PFT')//char_pftno, PHENTYPE(pft) )
+
+      if (PHENTYPE(pft)==1.0) evergreen(pft)   = .true.
+      if (PHENTYPE(pft)==2.0) summergreen(pft) = .true.
+      if (PHENTYPE(pft)==3.0) raingreen(pft)   = .true.
+
+    end do
+ 
     return
+ 
+    999  format (I2.2)
 
-  end subroutine getpar_pft_summerphenology
+  end subroutine getpar_phenology
+
 
 end module _phenology
 

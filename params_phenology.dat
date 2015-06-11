@@ -1,0 +1,13 @@
+###############################################################
+# MODEL PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+GDDBASE                                 5.0
+RAMP_PFT01                              0.0
+PHENTYPE_PFT01                          2.0
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 
