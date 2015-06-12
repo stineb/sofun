@@ -37,8 +37,6 @@ module _outvars
   real, dimension(npft,maxgrid) :: outanpp
   real, dimension(npft,maxgrid) :: outanup
   real, dimension(npft,maxgrid) :: outaCveg
-  real, dimension(npft,maxgrid) :: outaCalloc
-  real, dimension(npft,maxgrid) :: outaNalloc
   real, dimension(npft,maxgrid) :: outaCveg2lit
   real, dimension(npft,maxgrid) :: outaNveg2lit
   real, dimension(nlu, maxgrid) :: outaNinorg
@@ -68,8 +66,6 @@ contains
     outanpp(:,:)        = 0.0
     outanup(:,:)        = 0.0
     outaCveg(:,:)       = 0.0
-    outaCalloc(:,:)     = 0.0
-    outaNalloc(:,:)     = 0.0
     outaCveg2lit(:,:)   = 0.0
     outaNveg2lit(:,:)   = 0.0
     outaninorg(:,:)     = 0.0
@@ -147,10 +143,6 @@ contains
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
     !----------------------------------------------------------------
 
-    ! C ALLOCATED TO GROWTH 
-    filnam=trim(prefix)//'.a.calloc.out'
-    open(303,file=filnam,err=999,status='unknown')
-
     ! C VEGETATION -> LITTER TRANSFER
     filnam=trim(prefix)//'.a.cveg2lit.out'
     open(307,file=filnam,err=999,status='unknown')
@@ -158,10 +150,6 @@ contains
     ! N VEGETATION -> LITTER TRANSFER
     filnam=trim(prefix)//'.a.nveg2lit.out'
     open(308,file=filnam,err=999,status='unknown')
-
-    ! N ALLOCATED TO GROWTH 
-    filnam=trim(prefix)//'.a.nalloc.out'
-    open(309,file=filnam,err=999,status='unknown')
 
     ! GPP 
     filnam=trim(prefix)//'.a.gpp.out'
@@ -180,7 +168,6 @@ contains
     open(316,file=filnam,err=999,status='unknown')
 
     return
-
 
     999  stop 'INITIO: error opening output files'
 
@@ -264,12 +251,10 @@ contains
     use _params_modl, only: npft, lu_category
     use _vars_core, only: pleaf, proot
 
-    ! ARGUMENTS
+    ! arguments
     integer, intent(in) :: jpngr
 
     outaCveg(:,jpngr)  = pleaf(:,jpngr)%c%c12 + proot(:,jpngr)%c%c12 !+ psapw(:,jpngr)%c%c12 + pwood(:,jpngr)%c%c12
-
-    return
 
   end subroutine getout_annual
 

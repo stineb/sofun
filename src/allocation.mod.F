@@ -8,7 +8,7 @@ module _allocation
   ! this list of subroutines (names that way).
   !   - allocation_daily
   !----------------------------------------------------------------
-
+  use _params_core, only: npft, maxgrid
   use _classdefs
 
   !------------------------------------------------------------------
@@ -33,6 +33,16 @@ module _allocation
 
   type(statetype_eval_imbalance) :: state_eval_imbalance
 
+  ! MODULE-SPECIFIC VARIABLES
+  real, dimension(npft) :: dcleaf
+  real, dimension(npft) :: dnleaf
+  real, dimension(npft) :: dcroot
+  real, dimension(npft) :: dnroot
+
+  ! OUTPUT VARIABLES
+  real, dimension(npft,maxgrid) :: outaCalloc
+  real, dimension(npft,maxgrid) :: outaNalloc
+
 
 contains
 
@@ -41,7 +51,7 @@ contains
     ! Finds optimal shoot:root growth ratio to balance C:N stoichiometry
     ! of a grass (no wood allocation).
     !------------------------------------------------------------------
-    use _params_core, only: npft, ndaymonth
+    use _params_core, only: ndaymonth, ndayyear
     use _params_modl, only: r_cton_root, r_ntoc_root, growtheff, grass, &
       lu_category
     use _vars_core, only: pleaf, proot, plabl, pninorg, r_cton_leaf, &
@@ -60,10 +70,6 @@ contains
     integer :: pft
     integer :: usemoy
     integer :: usedoy
-    real    :: dcleaf
-    real    :: dnleaf
-    real    :: dcroot
-    real    :: dnroot
     real    :: dclabl
     real    :: dnlabl
     logical :: cont          ! true if allocation to leaves (roots) is not 100% and not 0%
@@ -77,6 +83,10 @@ contains
 
     ! xxx debug
     real    :: test
+    ! real    :: test_calloc
+
+    ! ! xxx debug
+    ! if (doy==1) test_calloc = 0.0
 
     abserr=100.0*XMACHEPS
     relerr=1000.0*XMACHEPS
@@ -159,8 +169,7 @@ contains
           eval_allroots  = eval_imbalance( 0.0 )
           ! write(0,*) 'eval_allroots', eval_allroots  
           if (eval_allroots > 0.0) then
-            dcleaf = 0.0
-            ! dcroot = max_dc
+            dcleaf(pft) = 0.0
             cont = .false.
             ! write(0,*) '* putting all to roots *'
           end if
@@ -174,8 +183,7 @@ contains
             eval_allleaves = eval_imbalance( max_dc )
             ! write(0,*) 'eval_allleaves', eval_allleaves  
             if (eval_allleaves < 0.0) then
-              dcleaf = max_dc
-              ! dcroot = 0.0
+              dcleaf(pft) = max_dc
               cont = .false.
               ! write(0,*) '* putting all to leaves *'
             end if
@@ -189,9 +197,9 @@ contains
             ! write(0,*) '* finding root *'
             out_zeroin = zeroin( eval_imbalance, abserr, relerr, 100, 0.0 ,max_dc )
             if ( out_zeroin%error /= 0 ) then
-              dcleaf = 0.0
+              dcleaf(pft) = 0.0
             else
-              dcleaf = out_zeroin%root
+              dcleaf(pft) = out_zeroin%root
             end if
             ! write(0,*) 'no. of iterations', out_zeroin%niter
           end if
@@ -199,59 +207,60 @@ contains
           !------------------------------------------------------------------
           ! xxx debug: project next-day's fluxes with optimal dcleaf, derived now
           !------------------------------------------------------------------
-          ! write(0,*) 'dcleaf', dcleaf
-          test = eval_imbalance( dcleaf, .true. )
+          ! write(0,*) 'dcleaf(pft)', dcleaf(pft)
+          test = eval_imbalance( dcleaf(pft), .true. )
           ! stop
 
           !------------------------------------------------------------------
           ! Allocate to roots and leaves and extract from labile pool based 
-          ! on 'dcleaf' determined above.
+          ! on 'dcleaf(pft)' determined above.
           !------------------------------------------------------------------
-          dnleaf = dcleaf * r_ntoc_leaf(pft,jpngr)
+          dnleaf(pft) = dcleaf(pft) * r_ntoc_leaf(pft,jpngr)
 
-          ! write(0,*) 'dcleaf', dcleaf  
-          ! write(0,*) 'dnleaf', dnleaf  
+          ! write(0,*) 'dcleaf(pft)', dcleaf(pft)  
+          ! write(0,*) 'dnleaf(pft)', dnleaf(pft)  
 
           ! to ensure plabl not getting negative (within numerical imprecision)
-          dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcleaf )
-          dnlabl = min( plabl(pft,jpngr)%n%n14, dnleaf )
+          dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcleaf(pft) )
+          dnlabl = min( plabl(pft,jpngr)%n%n14, dnleaf(pft) )
 
           plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
           plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
 
-          pleaf(pft,jpngr)%c%c12 = pleaf(pft,jpngr)%c%c12 + dcleaf
-          pleaf(pft,jpngr)%n%n14 = pleaf(pft,jpngr)%n%n14 + dnleaf
+          pleaf(pft,jpngr)%c%c12 = pleaf(pft,jpngr)%c%c12 + dcleaf(pft)
+          pleaf(pft,jpngr)%n%n14 = pleaf(pft,jpngr)%n%n14 + dnleaf(pft)
 
-          ! write(0,*) 'a dcroot', dcroot  
-          dcroot = min( growtheff * plabl(pft,jpngr)%c%c12, r_cton_root(pft) * plabl(pft,jpngr)%n%n14 )
-          dnroot = dcroot * r_ntoc_root(pft)
+          dcroot(pft) = min( growtheff * plabl(pft,jpngr)%c%c12, r_cton_root(pft) * plabl(pft,jpngr)%n%n14 )
+          dnroot(pft) = dcroot(pft) * r_ntoc_root(pft)
 
-          ! write(0,*) 'b dcroot', dcroot  
-          ! write(0,*) 'dcleaf', dcleaf  
-          ! write(0,*) 'dnroot', dnroot  
-          ! write(0,*) 'dcroot:dcleaf', dcroot / dcleaf
+          ! write(0,*) 'dcroot(pft):dcleaf(pft)', dcroot(pft) / dcleaf(pft)
 
           ! to ensure plabl not getting negative (within numerical imprecision)
-          dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcroot )
-          dnlabl = min( plabl(pft,jpngr)%n%n14, dnroot )
+          dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcroot(pft) )
+          dnlabl = min( plabl(pft,jpngr)%n%n14, dnroot(pft) )
 
           plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
           plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
 
-          proot(pft,jpngr)%c%c12 = proot(pft,jpngr)%c%c12 + dcroot
-          proot(pft,jpngr)%n%n14 = proot(pft,jpngr)%n%n14 + dnroot
+          proot(pft,jpngr)%c%c12 = proot(pft,jpngr)%c%c12 + dcroot(pft)
+          proot(pft,jpngr)%n%n14 = proot(pft,jpngr)%n%n14 + dnroot(pft)
 
           ! add growth respiration to autotrophic respiration and substract from NPP
           ! (note that NPP is added to plabl in and growth resp. is implicitly removed
           ! from plabl above)
-          drauto(pft)   = drauto(pft)     + ( 1.0 - growtheff ) * ( dcleaf + dcroot )
-          dnpp(pft)%c12 = dnpp(pft)%c12   - ( 1.0 - growtheff ) * ( dcleaf + dcroot ) 
+          drauto(pft)   = drauto(pft)     + ( 1.0 - growtheff ) * ( dcleaf(pft) + dcroot(pft) )
+          dnpp(pft)%c12 = dnpp(pft)%c12   - ( 1.0 - growtheff ) * ( dcleaf(pft) + dcroot(pft) ) 
 
-          ! write(0,*) 'dcroot'
+          ! write(0,*) 'dcroot(pft)'
           ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)
           ! if (doy==48) stop 'here'
 
         else
+
+          dcleaf(pft) = 0.0
+          dcroot(pft) = 0.0
+          dnleaf(pft) = 0.0
+          dnroot(pft) = 0.0
 
           ! write(0,*) 'not growing ...'
 
@@ -265,12 +274,15 @@ contains
 
     end do
 
+    ! test_calloc = test_calloc + dcleaf + dcroot
+    ! write(0,*) 'test_calloc', test_calloc
+    
     ! write(0,*) '--- END allocation_daily:'
 
   end subroutine allocation_daily
 
 
-  function eval_imbalance( dcleaf, verbose ) result ( eval )
+  function eval_imbalance( mydcleaf, verbose ) result ( eval )
     !/////////////////////////////////////////////////////////
     ! Evaluates C:N ratio of new assimilation after allocation 
     ! versus whole-plant C:N ratio after allocation. Optimal 
@@ -285,7 +297,7 @@ contains
     use _vegdynamics, only: get_fapar
 
     ! arguments
-    real, intent(in)  :: dcleaf
+    real, intent(in)  :: mydcleaf
     logical, intent(in), optional :: verbose
 
     ! function return variable
@@ -302,7 +314,9 @@ contains
     real    :: ninorg
     integer :: pft
 
-    real :: dnleaf
+    real :: mydcroot
+    real :: mydnleaf
+    real :: mydnroot
     real :: cleaf
     real :: nleaf
     real :: croot
@@ -321,7 +335,7 @@ contains
     real :: kcroot
     real :: knroot
 
-    ! write(0,*) '--- in eval_imbalance with dcleaf=',dcleaf
+    ! write(0,*) '--- in eval_imbalance with mydcleaf=',mydcleaf
 
     ! shorter ...
     cleaf        = state_eval_imbalance%pleaf%c%c12
@@ -349,27 +363,27 @@ contains
     ! write(0,*) 'nlabl', nlabl
 
     ! Allocate
-    dnleaf = dcleaf * r_ntoc_leaf
-    clabl  = clabl - 1.0 / growtheff * dcleaf
-    nlabl  = nlabl - dnleaf
-    cleaf  = cleaf + dcleaf
-    nleaf  = nleaf + dnleaf
+    mydnleaf = mydcleaf * r_ntoc_leaf
+    clabl  = clabl - 1.0 / growtheff * mydcleaf
+    nlabl  = nlabl - mydnleaf
+    cleaf  = cleaf + mydcleaf
+    nleaf  = nleaf + mydnleaf
     
-    dcroot = min( growtheff * clabl, r_cton_root(pft) * nlabl )
-    dnroot = dcroot * r_ntoc_root(pft)
-    clabl  = clabl - 1.0 / growtheff * dcroot
-    nlabl  = nlabl - dnroot
-    croot  = croot + dcroot
-    nroot  = nroot + dnroot
+    mydcroot = min( growtheff * clabl, r_cton_root(pft) * nlabl )
+    mydnroot = mydcroot * r_ntoc_root(pft)
+    clabl  = clabl - 1.0 / growtheff * mydcroot
+    nlabl  = nlabl - mydnroot
+    croot  = croot + mydcroot
+    nroot  = nroot + mydnroot
 
     ! if (present(verbose)) then
     !   write(0,*) 'after presumed allocation:'
     !   write(0,*) 'clabl', clabl ! OK
     !   write(0,*) 'nlabl', nlabl ! OK
-    !   ! write(0,*) 'dcleaf', dcleaf
-    !   ! write(0,*) 'dcroot', dcroot
-    !   ! write(0,*) 'dnleaf', dnleaf
-    !   ! write(0,*) 'dnroot', dnroot
+    !   ! write(0,*) 'mydcleaf', mydcleaf
+    !   ! write(0,*) 'mydcroot', mydcroot
+    !   ! write(0,*) 'mydnleaf', mydnleaf
+    !   ! write(0,*) 'mydnroot', mydnroot
 
     !   ! write(0,*) 'after presumed allocation:'
     !   ! write(0,*) 'B cleaf', cleaf
@@ -430,6 +444,117 @@ contains
     ! write(0,*) 'current stoichiometry:         ', ( cleaf + croot ) / ( nleaf + nroot )
     ! write(0,*) 'eval                           ', eval
 
- end function eval_imbalance
+  end function eval_imbalance
+
+
+  subroutine initio_allocation( )
+    !////////////////////////////////////////////////////////////////
+    ! OPEN ASCII OUTPUT FILES FOR OUTPUT
+    !----------------------------------------------------------------
+    use _params_siml, only: runname
+
+    ! local variables
+    character(len=256) :: prefix
+    character(len=256) :: filnam
+
+    prefix = "./output/"//trim(runname)
+
+    !////////////////////////////////////////////////////////////////
+    ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
+    !----------------------------------------------------------------
+
+    ! C ALLOCATED TO GROWTH 
+    filnam=trim(prefix)//'.a.calloc.out'
+    open(303,file=filnam,err=999,status='unknown')
+
+    ! N ALLOCATED TO GROWTH 
+    filnam=trim(prefix)//'.a.nalloc.out'
+    open(309,file=filnam,err=999,status='unknown')
+
+    write(0,*) 'opening files for outaCalloc'
+
+    return
+
+    999  stop 'INITIO_ALLOCATION: error opening output files'
+
+  end subroutine initio_allocation
+
+
+  ! subroutine getpar_modl_allocation()
+  !   !////////////////////////////////////////////////////////////////
+  !   ! Subroutine reads nuptake module-specific parameters 
+  !   ! from input file
+  !   !----------------------------------------------------------------
+  !   use _sofunutils, only: getreal
+
+  ! end subroutine getpar_modl_allocation
+
+
+  subroutine initoutput_allocation()
+    !////////////////////////////////////////////////////////////////
+    !  Initialises nuptake-specific output variables
+    !----------------------------------------------------------------
+    ! xxx remove their day-dimension
+    outaCalloc(:,:) = 0.0
+    outaNalloc(:,:) = 0.0
+
+    ! write(0,*) 'initialising outaCalloc',outaCalloc
+
+  end subroutine initoutput_allocation
+
+
+  subroutine getout_daily_allocation( jpngr, moy, doy )
+    !////////////////////////////////////////////////////////////////
+    !  SR called daily to sum up output variables.
+    !----------------------------------------------------------------
+    ! arguments
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: moy
+    integer, intent(in) :: doy
+
+    outaCalloc(:,jpngr) = outaCalloc(:,jpngr) + dcleaf(:) + dcroot(:)
+    outaNalloc(:,jpngr) = outaNalloc(:,jpngr) + dnleaf(:) + dnroot(:)
+
+    ! write(0,*) 'collecting outaCalloc',outaCalloc
+
+  end subroutine getout_daily_allocation
+
+
+  subroutine writeout_ascii_allocation( year, spinup )
+    !/////////////////////////////////////////////////////////////////////////
+    ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
+    !-------------------------------------------------------------------------
+    use _params_core, only: ndayyear, nlu
+    use _params_siml, only: firstyeartrend, spinupyears
+
+    ! arguments
+    integer, intent(in) :: year       ! simulation year
+    logical, intent(in) :: spinup     ! true during spinup years
+
+    ! local variables
+    real    :: itime
+    integer :: jpngr
+
+    ! xxx implement this: sum over gridcells? single output per gridcell?
+    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
+    jpngr = 1
+
+    !-------------------------------------------------------------------------
+    ! ANNUAL OUTPUT
+    ! Write annual value, summed over all PFTs / LUs
+    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+    !-------------------------------------------------------------------------
+    itime = real(year) + real(firstyeartrend) - real(spinupyears)
+
+    ! write(0,*) 'writing time, outaCalloc',itime, sum(outaCalloc(:,jpngr))
+
+    write(303,999) itime, sum(outaCalloc(:,jpngr))
+    write(309,999) itime, sum(outaNalloc(:,jpngr))
+
+    return
+    
+    999 format (F20.8,F20.8)
+
+  end subroutine writeout_ascii_allocation
 
 end module _allocation

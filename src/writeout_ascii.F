@@ -83,10 +83,8 @@ subroutine writeout_ascii( year, dtemp )
   !-------------------------------------------------------------------------
   itime = real(year) + real(firstyeartrend) - real(spinupyears)
 
-  write(303,999) itime, sum(outaCalloc(:,jpngr))
   write(307,999) itime, sum(outaCveg2lit(:,jpngr))
   write(308,999) itime, sum(outaNveg2lit(:,jpngr))
-  write(309,999) itime, sum(outaNalloc(:,jpngr))
   write(310,999) itime, sum(outagpp(:,jpngr))
   write(311,999) itime, sum(outanpp(:,jpngr))
   write(312,999) itime, sum(outaCveg(:,jpngr))

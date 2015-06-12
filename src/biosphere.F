@@ -21,7 +21,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _vegdynamics, only: estab_daily
   use _gpp, only: gpp, getlue, gettraits, initdaily_gpp
   use _npp, only: npp
-  use _allocation, only: allocation_daily
+  use _allocation, only: allocation_daily, initio_allocation, initoutput_allocation, getout_daily_allocation, writeout_ascii_allocation
   use _turnover, only: turnover
   use _waterbal, only: waterbal, getrad, outdcpa, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getout_monthly_waterbal
   use _nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake
@@ -116,6 +116,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     call initio_nuptake()
     call initio_ntransform() ! nothing yet xxx
     call initio_littersom()
+    call initio_allocation()
 
   endif 
 
@@ -128,6 +129,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   call initoutput_nuptake()
   call initoutput_ntransform()  ! nothing yet
   call initoutput_littersom()
+  call initoutput_allocation()
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
@@ -268,6 +270,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         call getout_daily_waterbal( jpngr, mo, day )
         call getout_daily_nuptake( jpngr, mo, day )
         call getout_daily_littersom( jpngr, mo, day )
+        call getout_daily_allocation( jpngr, mo, day )
 
         ! stop 'end of day'
         
@@ -306,6 +309,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !----------------------------------------------------------------
     call writeout_ascii( year, dtemp_field(:,jpngr) )
     call writeout_ascii_waterbal( year, spinup )
+    call writeout_ascii_allocation( year, spinup )
     
     ! XXX Mysterious problem: when called from here, model does weird things (check e.g. gpp and soil C)
     ! call writeout_ascii_nuptake( year, spinup )

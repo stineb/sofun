@@ -156,6 +156,18 @@ contains
     !-------------------------------------------------------------------------
     if (doy==1) invocation = invocation + 1
 
+
+    ! xxx try
+    ! initialise _pools with non-zero values
+    ! here example gridcell 9.5 E, 47.5 N
+    write(0,*) 'LITTERSOM: litter and soil pool size set manually'
+    psoil_fs(:,:) = orgpool( carbon(400.0), nitrogen(400.0/cton_soil(1)) )
+    psoil_sl(:,:) = orgpool( carbon(1500.0), nitrogen(1500.0/cton_soil(1)) )
+    plitt_as(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
+    plitt_af(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
+    plitt_bg(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
+
+
     ! initialise 
     if (invocation==1 .and. doy==1) then
       mean_insoil_fs(:,:) = 0.0
@@ -573,7 +585,7 @@ contains
       !----------------------------------------------------------------
       ! XXX debug: add constant N fixation 0.5 gN/m2/yr)
       !----------------------------------------------------------------
-      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + 0.5/365.0
+      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + 1.0/365.0
       ! write(0,*) 'e pninorg(lu,jpngr)%n14',pninorg
 
     enddo                   !lu

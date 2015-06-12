@@ -65,6 +65,23 @@ annual$eff <- annual$clit2soil / annual$cveg2lit
 annual_sub <- annual[which(annual$year==plotyear),]
 
 ##--------------------------------------
+## read GPP data from observation (CH-Oe1_2002)
+##--------------------------------------
+filn <- paste( outdir, 'save/CH-Oe1_2002.d.gpp.out', sep="" )
+gpp_obs_daily <- read.table( filn, col.names=c('time','gpp') )
+nyears <- length(gpp_obs_daily$time)/ndayyear
+
+obsdaily <- gpp_obs_daily
+print("reading daily observation file ...")
+obsdaily[[ "year" ]] <- as.integer(gpp_obs_daily$time)
+obsdaily[[ "moy" ]]  <- rep(rep(seq(12),times=ndaymonth),nyears)
+obsdaily[[ "doy" ]]  <- rep(seq(ndayyear),nyears)
+
+## take subset of one year and normalise all variables to [0,1]
+obsdaily_sub <- obsdaily[obsdaily$year==plotyear,]
+
+
+##--------------------------------------
 ## Plot absolute C variables
 ##--------------------------------------
 aspect <- 0.5
@@ -90,21 +107,23 @@ panel <- layout(
 # layout.show(panel)
 
 par(mar=c(4,4,2,1), las=1)
-plot( daily_sub$doy, daily_sub$gpp, type="l", xlab="", ylab="gC/m2/d", ylim=c(0,max(daily_sub$gpp)) )
-lines( daily_sub$doy, daily_sub$npp, type="l", xlab="day of year", ylab="gC/m2/d", col="green" )
-lines( daily_sub$doy, daily_sub$cex, type="l", xlab="day of year", ylab="gC/m2/d", col="blue" )
-legend( "bottomleft", c("GPP","NPP","EXU"), col=c("black","green","blue"), bty="n", lty=1 )
+plot( obsdaily_sub$doy, obsdaily_sub$gpp, type="l", xlab="", ylab="gC/m2/d", ylim=c(0,max(daily_sub$gpp)) )
+lines( daily_sub$doy, daily_sub$gpp, col="red" )
+lines( daily_sub$doy, daily_sub$npp, col="green" )
+lines( daily_sub$doy, daily_sub$cex, col="blue" )
+legend( "bottomleft", c("GPP obs.","GPP","NPP","EXU"), col=c("black","red","green","blue"), bty="n", lty=1 )
 
 par(mar=c(0,0,2,0))
 plot( c(0,1), c(0,1), type="n", axes=FALSE )
 lab <- expression(paste("(gC m"^-2," yr"^-1,")", sep=""))
 text( 0, 0.98, "ANNUAL TOTALS", adj=c(0,0),font=2); text( 0.5, 0.98, lab, adj=c(0,0),font=2, cex=0.7 )
-text( 0, 0.93, "GPP", adj=c(0,0));          text( 0.5, 0.93, as.character(formatC(sum(daily_sub$gpp),digits=1,format="f")) , adj=c(1,0))
-text( 0, 0.88, "NPP", adj=c(0,0));          text( 0.5, 0.88, as.character(formatC(sum(daily_sub$npp),digits=1,format="f")) , adj=c(1,0))
-text( 0, 0.83, "CEX ", adj=c(0,0));         text( 0.5, 0.83, as.character(formatC(sum(daily_sub$cex),digits=1,format="f")) , adj=c(1,0)); text( 0.55, 0.83, paste( as.character(formatC(sum(daily_sub$cex)/sum(daily_sub$npp)*100,digits=1,format="f")),"% of NPP",sep=""), adj=c(0,0))
-text( 0, 0.78, "C -> veg ", adj=c(0,0));    text( 0.5, 0.78, as.character(formatC(annual_sub$calloc,digits=1,format="f")), adj=c(1,0))
-text( 0, 0.73, "C veg -> lit", adj=c(0,0)); text( 0.5, 0.73, as.character(formatC(annual_sub$cveg2lit,digits=1,format="f")), adj=c(1,0))
-text( 0, 0.68, "C lit -> soil", adj=c(0,0));text( 0.5, 0.68, as.character(formatC(annual_sub$clit2soil,digits=1,format="f")), adj=c(1,0)); text( 0.55, 0.68, paste(as.character(formatC(annual_sub$eff*100,digits=1,format="f")),"% efficiency",sep=""), adj=c(0,0))
+text( 0, 0.93, "GPP obs.", adj=c(0,0));     text( 0.5, 0.93, as.character(formatC(sum(obsdaily_sub$gpp),digits=1,format="f")) , adj=c(1,0))
+text( 0, 0.88, "GPP", adj=c(0,0));          text( 0.5, 0.88, as.character(formatC(sum(daily_sub$gpp),digits=1,format="f")) , adj=c(1,0))
+text( 0, 0.83, "NPP", adj=c(0,0));          text( 0.5, 0.83, as.character(formatC(sum(daily_sub$npp),digits=1,format="f")) , adj=c(1,0)); text( 0.55, 0.83, paste( as.character(formatC(sum(daily_sub$npp)/sum(daily_sub$gpp)*100,digits=1,format="f")),"% of GPP",sep=""), adj=c(0,0))
+text( 0, 0.78, "CEX ", adj=c(0,0));         text( 0.5, 0.78, as.character(formatC(sum(daily_sub$cex),digits=1,format="f")) , adj=c(1,0)); text( 0.55, 0.78, paste( as.character(formatC(sum(daily_sub$cex)/sum(daily_sub$npp)*100,digits=1,format="f")),"% of NPP",sep=""), adj=c(0,0))
+text( 0, 0.73, "C -> veg ", adj=c(0,0));    text( 0.5, 0.73, as.character(formatC(annual_sub$calloc,digits=1,format="f")), adj=c(1,0))
+text( 0, 0.68, "C veg -> lit", adj=c(0,0)); text( 0.5, 0.68, as.character(formatC(annual_sub$cveg2lit,digits=1,format="f")), adj=c(1,0))
+text( 0, 0.63, "C lit -> soil", adj=c(0,0));text( 0.5, 0.63, as.character(formatC(annual_sub$clit2soil,digits=1,format="f")), adj=c(1,0)); text( 0.55, 0.63, paste(as.character(formatC(annual_sub$eff*100,digits=1,format="f")),"% efficiency",sep=""), adj=c(0,0))
 
 dev.off()
 
