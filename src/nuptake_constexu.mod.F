@@ -39,7 +39,7 @@ module _nuptake
   real, dimension(npft) :: dnup_fix         ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
   real, dimension(npft) :: dnup_ret         ! daily N uptake [gN/m2/d]
 
-  ! FUN OUTPUT VARIABLES
+  ! OUTPUT VARIABLES
   real, dimension(npft,ndayyear,maxgrid) :: outdccost   ! daily mean C cost of N uptake (gC/gN) 
   real, dimension(npft,ndayyear,maxgrid) :: outdnup_pas
   real, dimension(npft,ndayyear,maxgrid) :: outdnup_act
@@ -82,6 +82,10 @@ contains
     ! xxx think about this: order in which PFTs get access to Ninorg matters!
     
     ! write(0,*) '---- in nuptake:'
+
+    ! xxx try: 
+    ! write(0,*) 'NUPTAKE: pninorg pool size set manually'
+    ! pninorg%n14 = 0.01
 
     if ( proot(pft,jpngr)%c%c12 == 0.0 ) then
 
@@ -282,7 +286,7 @@ contains
   end subroutine initdaily_nuptake
 
 
-  subroutine initio_nuptake( )
+  subroutine initio_nuptake()
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
@@ -371,8 +375,6 @@ contains
     outdnup_fix(:,:,:) = 0.0
     outdnup_ret(:,:,:) = 0.0
 
-    return
-
   end subroutine initoutput_nuptake
 
 
@@ -394,8 +396,6 @@ contains
     outdnup_fix(:,doy,jpngr) = dnup_fix(:)
     outdnup_ret(:,doy,jpngr) = dnup_ret(:)
 
-    return  
-
   end subroutine getout_daily_nuptake
 
 
@@ -405,8 +405,6 @@ contains
     !-------------------------------------------------------------------------
     use _params_core, only: ndayyear, npft, nlu
     use _params_siml, only: firstyeartrend, spinupyears
-
-    implicit none
 
     ! arguments
     integer, intent(in) :: year       ! simulation year

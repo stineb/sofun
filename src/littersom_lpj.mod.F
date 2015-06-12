@@ -56,8 +56,9 @@ module _littersom
   ! DAILY OUTPUT VARIABLES
   ! xxx add jpngr dim
   real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin
+  real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin_soil
+  real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin_litt
   real, dimension(nlu,ndayyear,maxgrid)  :: outdnfixfree  ! N fixation by free-living organisms [gN/m2/d]
-  ! real, dimension(nlu,ndayyear,maxgrid)  :: outdNimmo
   real, dimension(npft,ndayyear,maxgrid) :: outdcex
 
   real, dimension(npft,maxgrid) :: outaClitt
@@ -380,13 +381,16 @@ contains
         netmin_litt = dlitt%n%n14 - Nreq_S
         ! <<<<<<<<<<<
 
+        Nfix = 0.0
+
         ! write(0,*) 'netmin_litt', netmin_litt
         ! write(0,*) 'immo direct', dlitt%c%c12 * ( ntoc_crit - dlitt%n%n14 / dlitt%c%c12 )
 
-        ! OUTPUT COLLECTION
-        outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + netmin_litt
-        ! outdNimmo(lu,doy,jpngr)  = outdNimmo(lu,doy,jpngr)  - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
-        outaNimmo(lu,jpngr)      = outaNimmo(lu,jpngr)      - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
+                                     ! OUTPUT COLLECTION
+        outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + netmin_litt
+        outdnetmin_litt(lu,doy,jpngr) = outdnetmin_litt(lu,doy,jpngr) + netmin_litt
+        
+        outaNimmo(lu,jpngr)           = outaNimmo(lu,jpngr) - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
 
 
         ! write(0,*) 'a pninorg(lu,jpngr)%n14',pninorg
@@ -437,7 +441,7 @@ contains
               !----------------------------------------------------------------    
               ! N fixation by free-living bacteria in litter to satisfy remainder
               !----------------------------------------------------------------    
-              Nfix = req
+              ! Nfix = req
               req = 0.0
               ! write(0,*) 'fixing remainder:',Nfix
               ! stop 'fixing remainder'
@@ -574,9 +578,10 @@ contains
 
       
       ! OUTPUT COLLECTION
-      outdnetmin(lu,doy,jpngr) = outdnetmin(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      outaCdsoil(lu,jpngr)     = outaCdsoil(lu,jpngr)     + dsoil_fs%c%c12 + dsoil_sl%c%c12
-      outaNdsoil(lu,jpngr)     = outaNdsoil(lu,jpngr)     + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      outdnetmin_soil(lu,doy,jpngr) = outdnetmin_soil(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      outaCdsoil(lu,jpngr)          = outaCdsoil(lu,jpngr)     + dsoil_fs%c%c12 + dsoil_sl%c%c12
+      outaNdsoil(lu,jpngr)          = outaNdsoil(lu,jpngr)     + dsoil_fs%n%n14 + dsoil_sl%n%n14
 
       ! Record monthly (daily) soil turnover flux (labile carbon availability)
       !----------------------------------------------------------------
@@ -585,7 +590,11 @@ contains
       !----------------------------------------------------------------
       ! XXX debug: add constant N fixation 0.5 gN/m2/yr)
       !----------------------------------------------------------------
-      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + 1.0/365.0
+      Nfix = 1.0/365.0
+      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + Nfix
+
+      ! OUTPUT COLLECTION
+      outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
       ! write(0,*) 'e pninorg(lu,jpngr)%n14',pninorg
 
     enddo                   !lu
@@ -689,6 +698,13 @@ contains
     filnam=trim(prefix)//'.d.nfixfree.out'
     open(108,file=filnam,err=999,status='unknown')
 
+    ! NET LITTER N MINERALISATION
+    filnam=trim(prefix)//'.d.netmin_litt.out'
+    open(116,file=filnam,err=999,status='unknown')
+
+    ! NET SOIL N MINERALISATION
+    filnam=trim(prefix)//'.d.netmin_soil.out'
+    open(117,file=filnam,err=999,status='unknown')
 
 
     !----------------------------------------------------------------
@@ -746,19 +762,20 @@ contains
     !----------------------------------------------------------------
 
     ! xxx remove their day-dimension
-    outaClitt(:,:)      = 0.0
-    outaCsoil(:,:)      = 0.0
-    outanreq(:,:)       = 0.0
-    outaClit2soil(:,:)  = 0.0
-    outaNlit2soil(:,:)  = 0.0
-    outaNdsoil(:,:)     = 0.0
-    outaCdsoil(:,:)     = 0.0
-    outaNimmo(:,:)      = 0.0
-
-    outdcex(:,:,:)      = 0.0
-    outdnetmin(:,:,:)   = 0.0
-    ! outdNimmo(:,:,:)    = 0.0
-    outdnfixfree(:,:,:) = 0.0
+    outaClitt(:,:)         = 0.0
+    outaCsoil(:,:)         = 0.0
+    outanreq(:,:)          = 0.0
+    outaClit2soil(:,:)     = 0.0
+    outaNlit2soil(:,:)     = 0.0
+    outaNdsoil(:,:)        = 0.0
+    outaCdsoil(:,:)        = 0.0
+    outaNimmo(:,:)         = 0.0
+    
+    outdcex(:,:,:)         = 0.0
+    outdnetmin(:,:,:)      = 0.0
+    outdnetmin_soil(:,:,:) = 0.0
+    outdnetmin_litt(:,:,:) = 0.0
+    outdnfixfree(:,:,:)    = 0.0
 
 
   end subroutine initoutput_littersom
@@ -853,7 +870,8 @@ contains
         ! xxx lu-area weighted sum if nlu>0
         write(105,999) itime, sum(outdcex(:,day,jpngr))
         write(106,999) itime, sum(outdnetmin(:,day,jpngr))
-        ! write(109,999) itime, sum(outdNimmo(:,day,jpngr))
+        write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
+        write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))
         write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
 
       end do

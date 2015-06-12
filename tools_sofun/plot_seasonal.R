@@ -1,7 +1,11 @@
 # runname <- "CH-Oe1_2002"
-runname <- "test_lastworking"
+runname <- "test_soilfix"
 outdir <- "/alphadata01/bstocker/sofun/trunk/output/"
-dvars <- c("gpp","npp","cex","nup","nup_pas","nup_act","nup_fix","nup_ret","nfixfree","cleaf","netmin","ninorg","ccost","cleaf","croot","clabl","clitt")
+dvars <- c(
+  "gpp","npp","cex","nup","nup_pas","nup_act","nup_fix","nup_ret","nfixfree",
+  "cleaf","netmin","ninorg","ccost","cleaf","croot","clabl","clitt","netmin_litt",
+  "netmin_soil","nloss","nvol","denitr","nitr","nleach"
+  )
 avars <- c("calloc","nalloc","clit2soil","nlit2soil","nreq","cveg2lit","nveg2lit")
 
 plotyear <- 2000
@@ -97,7 +101,8 @@ heights <- rep(aspect*magn,nrows)
 ##--------------------------------------
 ## C FLUXES
 ##--------------------------------------
-pdf(paste("C_flux_overview_sofun_seasonal.pdf"),width=sum(widths),height=sum(heights))
+filn <- paste( "C_flux_overview_sofun_seasonal_", runname, ".pdf", sep="" )
+pdf( filn, width=sum(widths), height=sum(heights) )
 panel <- layout(
                 matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
                 widths=widths,
@@ -131,7 +136,8 @@ dev.off()
 ##--------------------------------------
 ## N FLUXES
 ##--------------------------------------
-pdf(paste("N_flux_overview_sofun_seasonal.pdf"),width=sum(widths),height=sum(heights))
+filn <- paste( "N_flux_overview_sofun_seasonal_", runname, ".pdf", sep="" )
+pdf( filn, width=sum(widths), height=sum(heights) )
 panel <- layout(
                 matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
                 widths=widths,
@@ -139,35 +145,51 @@ panel <- layout(
                 TRUE
                 )
 par(mar=c(4,4,2,1), las=1 )
-plot( daily_sub$doy, daily_sub$nup,    type="l", xlab="day of year", ylab="gC/m2/d", ylim=c(0,max(daily_sub$nup)), col="green" )
+plot( daily_sub$doy, daily_sub$nup, type="l", xlab="day of year", ylab="gC/m2/d", ylim=range(c(daily_sub$nup, daily_sub$netmin_litt, daily_sub$netmin_soil, daily_sub$nfixfree) ), col="green" )
 lines( daily_sub$doy, daily_sub$netmin, col="blue" )
+lines( daily_sub$doy, daily_sub$netmin_litt, col="blue", lty=2 )
+lines( daily_sub$doy, daily_sub$netmin_soil, col="blue", lty=3 )
 lines( daily_sub$doy, daily_sub$nfixfree, col="red" )
-legend( "bottomleft", c("Ninorg","Nup","net N min.","free-living BNF"), col=c("black","green","blue","red"), bty="n", lty=1 )
+lines( daily_sub$doy, daily_sub$nloss, col="magenta" )
+lines( daily_sub$doy, daily_sub$nvol, col="magenta", lty=2 )
+lines( daily_sub$doy, daily_sub$denitr, col="magenta", lty=3 )
+lines( daily_sub$doy, daily_sub$nitr, col="magenta", lty=4 )
+lines( daily_sub$doy, daily_sub$nleach, col="magenta", lty=5 )
+abline( h=0.0, col=rgb(0,0,0,0.3))
+legend( "topleft", c("Nup","net N min.","net N min., litter","net N min., soil","N fix.","N loss tot.","N vol.","denitr.","nitr.","N leach"), col=c("green","blue","blue","blue","red","magenta","magenta","magenta","magenta","magenta"),lty=c(1,1,2,3,1,1,2,3,4,5), bty="n" )
 
 par(mar=c(0,0,2,0))
 plot( c(0,1), c(0,1), type="n", axes=FALSE )
 lab <- expression(paste("(gN m"^-2," yr"^-1,")", sep=""))
 text( 0.10, 0.98, "ANNUAL TOTALS" , adj=c(0,0),font=2); text( 0.60, 0.98, lab , adj=c(0,0),font=2, cex=0.7)
 text( 0.10, 0.93, "N uptake", adj=c(0,0));              text( 0.60, 0.93, as.character(formatC(sum(daily_sub$nup),digits=2,format="f")) , adj=c(1,0))
-text( 0.10, 0.88, "N up. pas.", adj=c(0,0));            text( 0.60, 0.88, as.character(formatC(sum(daily_sub$nup_pas),digits=2,format="f")) , adj=c(1,0))
-text( 0.10, 0.83, "N up. act.", adj=c(0,0));            text( 0.60, 0.83, as.character(formatC(sum(daily_sub$nup_act),digits=2,format="f")) , adj=c(1,0))
-text( 0.10, 0.78, "N up. fix.", adj=c(0,0));            text( 0.60, 0.78, as.character(formatC(sum(daily_sub$nup_fix),digits=2,format="f")) , adj=c(1,0))
-text( 0.10, 0.73, "N up. ret.", adj=c(0,0));            text( 0.60, 0.73, as.character(formatC(sum(daily_sub$nup_ret),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.88, "N up. pas.", adj=c(0,0), cex=1.0);            text( 0.60, 0.88, as.character(formatC(sum(daily_sub$nup_pas),digits=2,format="f")) , adj=c(1,0), cex=1.0)
+text( 0.10, 0.83, "N up. act.", adj=c(0,0), cex=1.0);            text( 0.60, 0.83, as.character(formatC(sum(daily_sub$nup_act),digits=2,format="f")) , adj=c(1,0), cex=1.0)
+text( 0.10, 0.78, "N up. fix.", adj=c(0,0), cex=1.0);            text( 0.60, 0.78, as.character(formatC(sum(daily_sub$nup_fix),digits=2,format="f")) , adj=c(1,0), cex=1.0)
+text( 0.10, 0.73, "N up. ret.", adj=c(0,0), cex=1.0);            text( 0.60, 0.73, as.character(formatC(sum(daily_sub$nup_ret),digits=2,format="f")) , adj=c(1,0), cex=1.0)
 
 
 text( 0.10, 0.68, "N -> veg", adj=c(0,0));              text( 0.60, 0.68, as.character(formatC(annual_sub$nalloc,digits=2,format="f")) , adj=c(1,0));     text( 0.65, 0.68, paste(as.character(formatC(annual_sub$calloc/annual_sub$nalloc,digits=2,format="f")),"C:N") , adj=c(0,0))
 text( 0.10, 0.63, "N veg -> lit", adj=c(0,0));          text( 0.60, 0.63, as.character(formatC(annual_sub$nveg2lit,digits=2,format="f")) , adj=c(1,0));   text( 0.65, 0.63, paste(as.character(formatC(annual_sub$cveg2lit/annual_sub$nveg2lit,digits=2,format="f")),"C:N") , adj=c(0,0))
 text( 0.10, 0.58, "N lit -> soil", adj=c(0,0));         text( 0.60, 0.58, as.character(formatC(annual_sub$nlit2soil,digits=2,format="f")) , adj=c(1,0));  text( 0.65, 0.58, paste(as.character(formatC(annual_sub$clit2soil/annual_sub$nlit2soil,digits=2,format="f")),"C:N") , adj=c(0,0))
 text( 0.10, 0.53, "N -> soil req.", adj=c(0,0));        text( 0.60, 0.53, as.character(formatC(annual_sub$nreq,digits=2,format="f")) , adj=c(1,0))
-text( 0.10, 0.48, "N fBNF", adj=c(0,0));                text( 0.60, 0.48, as.character(formatC(sum(daily_sub$nfixfree),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.48, "N fix.", adj=c(0,0));                text( 0.60, 0.48, as.character(formatC(sum(daily_sub$nfixfree),digits=2,format="f")) , adj=c(1,0))
 text( 0.10, 0.43, "N net min.", adj=c(0,0));            text( 0.60, 0.43, as.character(formatC(sum(daily_sub$netmin),digits=2,format="f")) , adj=c(1,0))
+
+text( 0.10, 0.38, "N loss tot.", adj=c(0,0));          text( 0.60, 0.38, as.character(formatC(sum(daily_sub$nloss),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.33, "N vol", adj=c(0,0));                text( 0.60, 0.33, as.character(formatC(sum(daily_sub$nvol),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.28, "N denitr.", adj=c(0,0));            text( 0.60, 0.28, as.character(formatC(sum(daily_sub$denitr),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.23, "N nitr.", adj=c(0,0));              text( 0.60, 0.23, as.character(formatC(sum(daily_sub$nitr),digits=2,format="f")) , adj=c(1,0))
+text( 0.10, 0.18, "N leach.", adj=c(0,0));             text( 0.60, 0.18, as.character(formatC(sum(daily_sub$nleach),digits=2,format="f")) , adj=c(1,0))
+
 dev.off()
 
 
 ##--------------------------------------
 ## N COST ANALYSIS
 ##--------------------------------------
-pdf(paste("CostOverview_sofun_seasonal.pdf"),width=sum(widths),height=sum(heights))
+filn <- paste( "CostOverview_sofun_seasonal_", runname, ".pdf", sep="" )
+pdf( filn, width=sum(widths), height=sum(heights) )
 panel <- layout(
                 matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
                 widths=widths,
@@ -188,7 +210,8 @@ dev.off()
 ##--------------------------------------
 ## CUMULATIVE N FLUXES
 ##--------------------------------------
-pdf(paste("N_flux_overview_cumulative_sofun_seasonal.pdf"),width=sum(widths),height=sum(heights))
+filn <- paste( "N_flux_overview_cumulative_sofun_seasonal_", runname, ".pdf", sep="" )
+pdf( filn, width=sum(widths), height=sum(heights) )
 panel <- layout(
                 matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
                 widths=widths,
@@ -242,7 +265,8 @@ dev.off()
 ##--------------------------------------
 ## C POOLS
 ##--------------------------------------
-pdf(paste("C_pool_overview_sofun_seasonal.pdf"),width=sum(widths),height=sum(heights))
+filn <- paste( "C_pool_overview_sofun_seasonal_", runname, ".pdf", sep="" )
+pdf( filn, width=sum(widths), height=sum(heights) )
 panel <- layout(
                 matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
                 widths=widths,

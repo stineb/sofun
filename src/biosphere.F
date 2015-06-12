@@ -25,7 +25,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _turnover, only: turnover
   use _waterbal, only: waterbal, getrad, outdcpa, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getout_monthly_waterbal
   use _nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake
-  use _ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform
+  use _ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform
   use _littersom, only: littersom, initio_littersom, getout_daily_littersom, initoutput_littersom, getout_annual_littersom
 
   use _waterbal, only: writeout_ascii_waterbal
@@ -114,7 +114,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     call initio()
     call initio_waterbal()
     call initio_nuptake()
-    call initio_ntransform() ! nothing yet xxx
+    call initio_ntransform()
     call initio_littersom()
     call initio_allocation()
 
@@ -127,7 +127,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   call initoutput()
   call initoutput_waterbal()
   call initoutput_nuptake()
-  call initoutput_ntransform()  ! nothing yet
+  call initoutput_ntransform()
   call initoutput_littersom()
   call initoutput_allocation()
 
@@ -270,6 +270,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         call getout_daily_waterbal( jpngr, mo, day )
         call getout_daily_nuptake( jpngr, mo, day )
         call getout_daily_littersom( jpngr, mo, day )
+        call getout_daily_ntransform( jpngr, mo, day )
         call getout_daily_allocation( jpngr, mo, day )
 
         ! stop 'end of day'
@@ -310,6 +311,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     call writeout_ascii( year, dtemp_field(:,jpngr) )
     call writeout_ascii_waterbal( year, spinup )
     call writeout_ascii_allocation( year, spinup )
+    call writeout_ascii_ntransform( year, spinup )
     
     ! XXX Mysterious problem: when called from here, model does weird things (check e.g. gpp and soil C)
     ! call writeout_ascii_nuptake( year, spinup )
