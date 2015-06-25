@@ -21,6 +21,9 @@ module _outvars
   real, dimension(npft,ndayyear,maxgrid) :: outdClabl
   real, dimension(npft,ndayyear,maxgrid) :: outdNlabl
   real, dimension(npft,ndayyear,maxgrid) :: outdClitt
+  real, dimension(npft,ndayyear,maxgrid) :: outdNlitt
+  real, dimension(nlu,ndayyear,maxgrid)  :: outdCsoil
+  real, dimension(nlu,ndayyear,maxgrid)  :: outdNsoil
 
   real, dimension(nlu,ndayyear,maxgrid)  :: outdninorg
   real, dimension(nlu,ndayyear,maxgrid)  :: outdtemp_soil
@@ -59,6 +62,9 @@ contains
     outdClabl(:,:,:)    = 0.0
     outdNlabl(:,:,:)    = 0.0
     outdClitt(:,:,:)    = 0.0
+    outdCsoil(:,:,:)    = 0.0
+    outdNlitt(:,:,:)    = 0.0
+    outdNsoil(:,:,:)    = 0.0
     outdninorg(:,:,:)   = 0.0
 
     ! annual output variables
@@ -138,6 +144,17 @@ contains
     filnam=trim(prefix)//'.d.nlabl.out'
     open(115,file=filnam,err=999,status='unknown')
 
+    ! SOIL C
+    filnam=trim(prefix)//'.d.csoil.out'
+    open(118,file=filnam,err=999,status='unknown')
+
+    ! LITTER N
+    filnam=trim(prefix)//'.d.nlitt.out'
+    open(119,file=filnam,err=999,status='unknown')
+
+    ! SOIL N
+    filnam=trim(prefix)//'.d.nsoil.out'
+    open(120,file=filnam,err=999,status='unknown')
 
     !////////////////////////////////////////////////////////////////
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
@@ -185,7 +202,8 @@ contains
     use _params_core, only: ndayyear
     use _params_modl, only: npft, lu_category
     use _vars_core, only: dgpp, dnpp, dnup, pleaf, pninorg, proot, &
-      plabl, plitt_bg, plitt_af, plitt_as, dtemp_soil, dtransp
+      plabl, plitt_bg, plitt_af, plitt_as, dtemp_soil, dtransp, &
+      psoil_sl, psoil_fs
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
@@ -212,8 +230,16 @@ contains
     outdClabl(:,doy,jpngr)      = plabl(:,jpngr)%c%c12
     outdClabl(:,doy,jpngr)      = plabl(:,jpngr)%n%n14
     outdClitt(:,doy,jpngr)      = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
+    outdNlitt(:,doy,jpngr)      = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
+    outdCsoil(:,doy,jpngr)      = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
+    outdNsoil(:,doy,jpngr)      = psoil_sl(:,jpngr)%n%n14 + psoil_fs(:,jpngr)%n%n14
     outdninorg(:,doy,jpngr)     = pninorg(:,jpngr)%n14
     outdtemp_soil(:,doy,jpngr)  = dtemp_soil(:,jpngr)
+
+    ! write(0,*) 'outdCsoil', outdCsoil(:,doy,jpngr)
+    ! write(0,*) 'psoil_sl(:,jpngr)%c%c12', psoil_sl(:,jpngr)%c%c12
+    ! write(0,*) 'psoil_fs(:,jpngr)%c%c12', psoil_fs(:,jpngr)%c%c12
+    ! if (doy==ndayyear) stop
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES

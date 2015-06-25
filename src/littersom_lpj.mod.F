@@ -158,15 +158,15 @@ contains
     if (doy==1) invocation = invocation + 1
 
 
-    ! xxx try
-    ! initialise _pools with non-zero values
-    ! here example gridcell 9.5 E, 47.5 N
-    write(0,*) 'LITTERSOM: litter and soil pool size set manually'
-    psoil_fs(:,:) = orgpool( carbon(400.0), nitrogen(400.0/cton_soil(1)) )
-    psoil_sl(:,:) = orgpool( carbon(1500.0), nitrogen(1500.0/cton_soil(1)) )
-    plitt_as(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
-    plitt_af(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
-    plitt_bg(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
+    ! ! xxx try
+    ! ! initialise _pools with non-zero values
+    ! ! here example gridcell 9.5 E, 47.5 N
+    ! write(0,*) 'LITTERSOM: litter and soil pool size set manually'
+    ! psoil_fs(:,:) = orgpool( carbon(400.0), nitrogen(400.0/cton_soil(1)) )
+    ! psoil_sl(:,:) = orgpool( carbon(1500.0), nitrogen(1500.0/cton_soil(1)) )
+    ! plitt_as(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
+    ! plitt_af(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
+    ! plitt_bg(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
 
 
     ! initialise 
@@ -529,8 +529,15 @@ contains
       psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14 - dsoil_fs%n%n14
       psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14 - dsoil_sl%n%n14
 
-      if ( abs( cton( psoil_fs(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-5 ) stop 'C fs: C:N not ok'
-      if ( abs( cton( psoil_sl(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-5 ) stop 'C sl: C:N not ok'
+      if ( psoil_fs(lu,jpngr)%c%c12 >0.0 .and. abs( cton( psoil_fs(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-5 ) then
+        write(0,*) 'cton_soil_local', cton_soil_local
+        write(0,*) 'psoil_fs', psoil_fs(lu,jpngr)
+        stop 'C fs: C:N not ok'
+      end if
+      if ( psoil_sl(lu,jpngr)%c%c12 >0.0 .and. abs( cton( psoil_sl(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-5 ) then
+        write(0,*) 'psoil_sl', psoil_fs(lu,jpngr)
+        stop 'C sl: C:N not ok'
+      end if
 
       ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
       ! Warning: this does not strictly conserve mass!

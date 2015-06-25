@@ -60,7 +60,10 @@ subroutine writeout_ascii( year, dtemp )
       write(113,999) itime, sum(outdClitt(:,day,jpngr))
       write(114,999) itime, sum(outdtransp(:,day,jpngr))
       write(115,999) itime, sum(outdNlabl(:,day,jpngr))
-      
+      write(118,999) itime, sum(outdCsoil(:,day,jpngr))
+      write(119,999) itime, sum(outdNlitt(:,day,jpngr))
+      write(120,999) itime, sum(outdNsoil(:,day,jpngr))
+        
     end do
   end if
 

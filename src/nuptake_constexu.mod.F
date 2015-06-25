@@ -189,7 +189,7 @@ contains
     if (dnup(pft)%n14>0.0) then
       dccost(pft) = dmean_cost       
     else
-      dccost(pft) = -9999
+      dccost(pft) = 0.0
     endif
 
     ! write(0,*) '---- finished nuptake'
