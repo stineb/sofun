@@ -3,6 +3,8 @@ module _outvars
 !  Module contains all daily variables. These variables have no 
 !  spatial dimension. At the end of the daily loop, values may be 
 !  copied to spatial arrays.
+! Copyright (C) 2015  Benjamin David Stocker
+! contact: b.stocker@imperial.ac.uk
 !----------------------------------------------------------------
   use _params_core
   use _classdefs

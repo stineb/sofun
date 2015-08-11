@@ -4,6 +4,8 @@ module _params_modl
   !  Model parameters adopted here are from LPX C3 grass PFT
   !  Litter and soil turnover parameters are divided by 365 to 
   !  convert from [1/yr] to [1/d].
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core
 

@@ -18,6 +18,8 @@ module _nuptake
   !   - soil temperature ('xxx')
   !   - inorganic N _pools ('no3', 'nh4')
   !   - xxx 
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: ndayyear, nmonth, nlu, npft, maxgrid
 

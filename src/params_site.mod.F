@@ -1,6 +1,8 @@
 module _params_site
   !////////////////////////////////////////////////////////////////
   !  Module contains site-specific parameters read by getpar_site
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   implicit none
 

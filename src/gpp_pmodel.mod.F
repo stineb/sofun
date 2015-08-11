@@ -2,6 +2,8 @@ module _gpp
   !////////////////////////////////////////////////////////////////
   ! P-MODEL GPP MODULE
   ! Contains P model functions adopted from GePiSaT
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   !
   ! _gpp

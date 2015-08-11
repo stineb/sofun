@@ -17,6 +17,8 @@ module _waterbal
   !   - daytime net radiation ('drn')
   !   - soil moisture ('dwtot')
   !   - runoff ('dro')
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: ndayyear, nmonth, nlu, maxgrid
   use _vars_core, only: aet_d, ncpa_d, dro

@@ -2,6 +2,8 @@
        !////////////////////////////////////////////////////////////////
        !  Module contains all monthly variables (with explicit dimension
        !  for month). For output.
+        ! Copyright (C) 2015  Benjamin David Stocker
+        ! contact: b.stocker@imperial.ac.uk
        !----------------------------------------------------------------
          use _params_core
 

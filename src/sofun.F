@@ -3,6 +3,8 @@ program main
   !  Main program for site scale simulations, here used for 
   !  SOFUN (Seasonal Optimisation of Fixation and Uptake of 
   !  Nitrogen)
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
   use _params_core

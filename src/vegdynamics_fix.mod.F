@@ -1,4 +1,6 @@
 module _vegdynamics
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
 
   use _params_core
 

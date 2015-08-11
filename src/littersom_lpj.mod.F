@@ -15,6 +15,8 @@ module _littersom
   ! Required module-independent model state variables (necessarily 
   ! updated by 'littersom') are:
   !   - xxx
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: npft, maxgrid, nmonth, nlu, recycle, ndayyear, &
     pft_start, pft_end

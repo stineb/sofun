@@ -17,6 +17,8 @@ module _soiltemp
   ! updated by 'waterbal') are:
   !   - soil moisture ('dwtot')
   !   - soil temperature ('dtemp_soil')
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _vars_core, only: dtemp_soil
 

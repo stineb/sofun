@@ -1,6 +1,8 @@
 module _params_siml
   !////////////////////////////////////////////////////////////////
   !  Module contains simulation parameters read in by getpar_siml
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: recycle
 

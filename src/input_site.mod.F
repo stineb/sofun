@@ -2,6 +2,8 @@ module input_site
   !////////////////////////////////////////////////////////////////
   ! This module contains subroutines and variables needed when pre-
   ! scribing certain variables instead of simulating them online.
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
   use _params_core, only: npft, maxgrid

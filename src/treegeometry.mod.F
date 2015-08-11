@@ -3,6 +3,8 @@ module _vegdynamics
   ! Module contains tree geometry variables and functions.
   ! Variables have 'jpngr' dimension, thus have "memory" from one
   ! year to the next like pool variables.
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: npft, maxgrid
   implicit none

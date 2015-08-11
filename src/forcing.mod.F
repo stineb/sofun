@@ -5,6 +5,8 @@ module _forcing_siterun
   ! This module is only used on the level of 'sofun', but not
   ! within 'biosphere', as these variables are passed on to 'biosphere'
   ! as arguments.
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core
   implicit none

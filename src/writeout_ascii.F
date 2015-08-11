@@ -1,6 +1,8 @@
 subroutine writeout_ascii( year, dtemp )
   !/////////////////////////////////////////////////////////////////////////
   ! Write daily ASCII output
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !-------------------------------------------------------------------------
   use _params_siml, only: firstyeartrend, spinupyears, spinup
   use _params_core, only: ndayyear

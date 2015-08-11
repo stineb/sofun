@@ -2,6 +2,8 @@ module _vars_core
   !////////////////////////////////////////////////////////////////
   ! MANDATORY (MODULE-INDEPENDENT) VARIABLES
   ! *not* output variables.
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core
   use _classdefs

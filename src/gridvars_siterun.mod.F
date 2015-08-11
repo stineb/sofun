@@ -6,6 +6,8 @@ module gridvars_siterun
   !
   ! ... and define the following variables that are global within
   ! 'sofun' (but passed on to 'biosphere' as arguments).
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core
 

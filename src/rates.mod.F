@@ -1,6 +1,8 @@
 module _rates
   !////////////////////////////////////////////////////////////////
   !  Module containing temperature and moisture response functions.
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   implicit none
 

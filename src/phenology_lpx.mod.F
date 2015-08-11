@@ -11,6 +11,8 @@ module _phenology
   ! Required module-independent model state variables (necessarily 
   ! updated by 'waterbal') are:
   !   - (none)
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: npft, ndayyear
   

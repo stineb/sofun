@@ -11,6 +11,8 @@ module _fixveg
   ! contained in '_vegdynamics'.
   ! This module requires optional argument 'fpc_grid_data' to be passed on to 
   ! 'biosphere'. 
+  ! Copyright (C) 2015  Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !-----------------------------------------------------------------------------
   use _vegdynamics
 
