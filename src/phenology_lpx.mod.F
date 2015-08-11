@@ -197,7 +197,7 @@ contains
             !----------------------------------------------------------
             sprout(day,pft) = .false.
             shedleaves(day,pft) = .true.
-            write(0,*) 'shedding leaves on day ', day 
+            ! write(0,*) 'shedding leaves on day ', day 
 
           else if ( dtphen(day,pft) == 0.0 ) then
             !----------------------------------------------------------

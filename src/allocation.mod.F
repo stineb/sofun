@@ -81,12 +81,24 @@ contains
     real    :: relerr
     type(outtype_zeroin) :: out_zeroin
 
+    integer, save      :: invocation = 0                 ! internally counted simulation year
+    integer, parameter :: spinupyr_phaseinit_2 = 1       ! this is unnecessary: might as well do flexible allocation right from the start.
+    logical            :: flexalloc
+    real, parameter    :: r_shoot_root = 0.5
+
     ! xxx debug
     real    :: test
-    ! real    :: test_calloc
 
-    ! ! xxx debug
-    ! if (doy==1) test_calloc = 0.0
+    !-------------------------------------------------------------------------
+    ! Count number of calls (one for each simulation year) and allow flexible
+    ! allocation only after year 'spinupyr_phaseinit_2'.
+    !-------------------------------------------------------------------------
+    if (doy==1) invocation = invocation + 1
+    if ( invocation > spinupyr_phaseinit_2 ) then
+      flexalloc = .true.
+    else
+      flexalloc = .false.
+    end if
 
     abserr=100.0*XMACHEPS
     relerr=1000.0*XMACHEPS
@@ -104,156 +116,205 @@ contains
         if ( plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 ) then
 
           ! write(0,*) 'growing ...'
+          if (flexalloc) then
+            !------------------------------------------------------------------
+            ! Calculate maximum C allocatable based on current labile pool size.
+            ! Maximum is the lower of all labile C and the C to be matched by all labile N,
+            ! discounted by the yield factor.
+            !------------------------------------------------------------------
+            max_dcleaf_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_leaf(pft,jpngr)
+            max_dcroot_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_root(pft) ! should be obsolete as generally r_ntoc_leaf > r_ntoc_root
+            max_dc = min( growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint, max_dcroot_n_constraint )
 
-          !------------------------------------------------------------------
-          ! Calculate maximum C allocatable based on current labile pool size.
-          ! Maximum is the lower of all labile C and the C to be matched by all labile N,
-          ! discounted by the yield factor.
-          !------------------------------------------------------------------
-          max_dcleaf_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_leaf(pft,jpngr)
-          max_dcroot_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_root(pft)
-          max_dc = min( growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint, max_dcroot_n_constraint )
+            ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)  
+            ! write(0,*) 'r_cton_leaf(pft,jpngr)',r_cton_leaf(pft,jpngr)
+            ! write(0,*) 'r_cton_root(pft)',r_cton_root(pft)
+            ! write(0,*) 'growtheff', growtheff  
+            ! write(0,*) 'max_dcleaf_n_constraint', max_dcleaf_n_constraint  
+            ! write(0,*) 'max_dcroot_n_constraint', max_dcroot_n_constraint  
+            ! write(0,*) 'max_dc', max_dc  
 
-          ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)  
-          ! write(0,*) 'r_cton_leaf(pft,jpngr)',r_cton_leaf(pft,jpngr)
-          ! write(0,*) 'r_cton_root(pft)',r_cton_root(pft)
-          ! write(0,*) 'growtheff', growtheff  
-          ! write(0,*) 'max_dcleaf_n_constraint', max_dcleaf_n_constraint  
-          ! write(0,*) 'max_dcroot_n_constraint', max_dcroot_n_constraint  
-          ! write(0,*) 'max_dc', max_dc  
+            ! write(0,*) 'moy',moy
+            ! write(0,*) 'lai',lai
+            ! write(0,*) 'sla',sla
+            ! write(0,*) 'mlue',mlue(moy) ! ok
+            ! write(0,*) 'dppfd',dppfd(doy)  ! ok
+            ! write(0,*) 'mrd_unitiabs',mrd_unitiabs(moy) ! ok
+            ! write(0,*) 'meanmppfd',meanmppfd(moy) ! ok
 
-          ! write(0,*) 'moy',moy
-          ! write(0,*) 'lai',lai
-          ! write(0,*) 'sla',sla
-          ! write(0,*) 'mlue',mlue(moy) ! ok
-          ! write(0,*) 'dppfd',dppfd(doy)  ! ok
-          ! write(0,*) 'mrd_unitiabs',mrd_unitiabs(moy) ! ok
-          ! write(0,*) 'meanmppfd',meanmppfd(moy) ! ok
-
-          !------------------------------------------------------------------
-          ! Store state variables for optimisation
-          !------------------------------------------------------------------
-          ! P-model uses monthly input values, implying jumps in LUC etc. 
-          ! Anticipate next day's GPP etc. by using next day's (monthly) LUE.
-          if (dom==ndaymonth(moy)) then
-            usemoy = moy + 1
-          else
-            usemoy = moy
-          end if
-          if (doy==ndayyear) then
-            usedoy = 1
-          else
-            usedoy = doy + 1
-          end if
-          state_eval_imbalance%pleaf        = pleaf(pft,jpngr)
-          state_eval_imbalance%proot        = proot(pft,jpngr)
-          state_eval_imbalance%plabl        = plabl(pft,jpngr)
-          state_eval_imbalance%r_ntoc_leaf  = r_ntoc_leaf(pft,jpngr)
-          state_eval_imbalance%sla          = sla(pft,jpngr)
-          state_eval_imbalance%crownarea    = crownarea(pft,jpngr)
-          state_eval_imbalance%mlue         = mlue(usemoy)
-          state_eval_imbalance%dppfd        = dppfd(usedoy)
-          state_eval_imbalance%mrd_unitiabs = mrd_unitiabs(usemoy)
-          state_eval_imbalance%meanmppfd    = meanmppfd(usemoy)
-          state_eval_imbalance%pninorg      = pninorg(lu,jpngr)  ! the only data that is not yet available - use today's value 
-          state_eval_imbalance%pft          = pft
-
-
-          !------------------------------------------------------------------
-          ! Optimisation by balanced growth
-          ! Test I: Evaluate balance if all is put to roots.
-          ! If C:N ratio of return is still greater than whole-plant C:N 
-          ! ratio, then put all to roots.
-          !------------------------------------------------------------------
-          cont = .true.
-          eval_allroots  = eval_imbalance( 0.0 )
-          ! write(0,*) 'eval_allroots', eval_allroots  
-          if (eval_allroots > 0.0) then
-            dcleaf(pft) = 0.0
-            cont = .false.
-            ! write(0,*) '* putting all to roots *'
-          end if
-
-          !------------------------------------------------------------------
-          ! Test II: Evaluate balance if all is put to leaves.
-          ! If C:N ratio of return is still lower than whole-plant C:N ratio, 
-          ! then put all to leaves.
-          !------------------------------------------------------------------
-          if (cont) then
-            eval_allleaves = eval_imbalance( max_dc )
-            ! write(0,*) 'eval_allleaves', eval_allleaves  
-            if (eval_allleaves < 0.0) then
-              dcleaf(pft) = max_dc
-              cont = .false.
-              ! write(0,*) '* putting all to leaves *'
-            end if
-          end if
-
-          !------------------------------------------------------------------
-          ! Optimum is between 0.0 and max_dc. Find root of function 
-          ! 'eval_imbalance()' in the interval [0.0, max_dc].
-          !------------------------------------------------------------------
-          if (cont) then
-            ! write(0,*) '* finding root *'
-            out_zeroin = zeroin( eval_imbalance, abserr, relerr, 100, 0.0 ,max_dc )
-            if ( out_zeroin%error /= 0 ) then
-              dcleaf(pft) = 0.0
+            !------------------------------------------------------------------
+            ! Store state variables for optimisation
+            !------------------------------------------------------------------
+            ! P-model uses monthly input values, implying jumps in LUC etc. 
+            ! Anticipate next day's GPP etc. by using next day's (monthly) LUE.
+            if (dom==ndaymonth(moy)) then
+              usemoy = moy + 1
             else
-              dcleaf(pft) = out_zeroin%root
+              usemoy = moy
             end if
-            ! write(0,*) 'no. of iterations', out_zeroin%niter
+            if (doy==ndayyear) then
+              usedoy = 1
+            else
+              usedoy = doy + 1
+            end if
+            state_eval_imbalance%pleaf        = pleaf(pft,jpngr)
+            state_eval_imbalance%proot        = proot(pft,jpngr)
+            state_eval_imbalance%plabl        = plabl(pft,jpngr)
+            state_eval_imbalance%r_ntoc_leaf  = r_ntoc_leaf(pft,jpngr)
+            state_eval_imbalance%sla          = sla(pft,jpngr)
+            state_eval_imbalance%crownarea    = crownarea(pft,jpngr)
+            state_eval_imbalance%mlue         = mlue(usemoy)
+            state_eval_imbalance%dppfd        = dppfd(usedoy)
+            state_eval_imbalance%mrd_unitiabs = mrd_unitiabs(usemoy)
+            state_eval_imbalance%meanmppfd    = meanmppfd(usemoy)
+            state_eval_imbalance%pninorg      = pninorg(lu,jpngr)  ! the only data that is not yet available - use today's value 
+            state_eval_imbalance%pft          = pft
+
+
+            !------------------------------------------------------------------
+            ! Optimisation by balanced growth
+            ! Test I: Evaluate balance if all is put to roots.
+            ! If C:N ratio of return is still greater than whole-plant C:N 
+            ! ratio, then put all to roots.
+            !------------------------------------------------------------------
+            cont = .true.
+            eval_allroots  = eval_imbalance( 0.0 )
+            ! write(0,*) 'eval_allroots', eval_allroots  
+            if (eval_allroots > 0.0) then
+              dcleaf(pft) = 0.0
+              cont = .false.
+              ! write(0,*) '* putting all to roots *'
+            end if
+
+            !------------------------------------------------------------------
+            ! Test II: Evaluate balance if all is put to leaves.
+            ! If C:N ratio of return is still lower than whole-plant C:N ratio, 
+            ! then put all to leaves.
+            !------------------------------------------------------------------
+            if (cont) then
+              eval_allleaves = eval_imbalance( max_dc )
+              ! write(0,*) 'eval_allleaves', eval_allleaves  
+              if (eval_allleaves < 0.0) then
+                dcleaf(pft) = max_dc
+                cont = .false.
+                ! write(0,*) '* putting all to leaves *'
+              end if
+            end if
+
+            !------------------------------------------------------------------
+            ! Optimum is between 0.0 and max_dc. Find root of function 
+            ! 'eval_imbalance()' in the interval [0.0, max_dc].
+            !------------------------------------------------------------------
+            if (cont) then
+              ! write(0,*) '* finding root *'
+              out_zeroin = zeroin( eval_imbalance, abserr, relerr, 100, 0.0 ,max_dc )
+              if ( out_zeroin%error /= 0 ) then
+                dcleaf(pft) = 0.0
+              else
+                dcleaf(pft) = out_zeroin%root
+              end if
+              ! write(0,*) 'no. of iterations', out_zeroin%niter
+            end if
+
+            !------------------------------------------------------------------
+            ! xxx debug: project next-day's fluxes with optimal dcleaf, derived now
+            !------------------------------------------------------------------
+            ! write(0,*) 'dcleaf(pft)', dcleaf(pft)
+            test = eval_imbalance( dcleaf(pft), .true. )
+            ! stop
+
+            !------------------------------------------------------------------
+            ! Allocate to roots and leaves and extract from labile pool based 
+            ! on 'dcleaf(pft)' determined above.
+            !------------------------------------------------------------------
+            dnleaf(pft) = dcleaf(pft) * r_ntoc_leaf(pft,jpngr)
+
+            ! write(0,*) 'dcleaf(pft)', dcleaf(pft)  
+            ! write(0,*) 'dnleaf(pft)', dnleaf(pft)  
+
+            ! to ensure plabl not getting negative (within numerical imprecision)
+            dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcleaf(pft) )
+            dnlabl = min( plabl(pft,jpngr)%n%n14, dnleaf(pft) )
+
+            plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
+            plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
+
+            pleaf(pft,jpngr)%c%c12 = pleaf(pft,jpngr)%c%c12 + dcleaf(pft)
+            pleaf(pft,jpngr)%n%n14 = pleaf(pft,jpngr)%n%n14 + dnleaf(pft)
+
+            dcroot(pft) = min( growtheff * plabl(pft,jpngr)%c%c12, r_cton_root(pft) * plabl(pft,jpngr)%n%n14 )
+            dnroot(pft) = dcroot(pft) * r_ntoc_root(pft)
+
+            ! write(0,*) 'dcroot(pft):dcleaf(pft)', dcroot(pft) / dcleaf(pft)
+
+            ! to ensure plabl not getting negative (within numerical imprecision)
+            dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcroot(pft) )
+            dnlabl = min( plabl(pft,jpngr)%n%n14, dnroot(pft) )
+
+            plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
+            plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
+
+            proot(pft,jpngr)%c%c12 = proot(pft,jpngr)%c%c12 + dcroot(pft)
+            proot(pft,jpngr)%n%n14 = proot(pft,jpngr)%n%n14 + dnroot(pft)
+
+            ! add growth respiration to autotrophic respiration and substract from NPP
+            ! (note that NPP is added to plabl in and growth resp. is implicitly removed
+            ! from plabl above)
+            drauto(pft)   = drauto(pft)     + ( 1.0 - growtheff ) * ( dcleaf(pft) + dcroot(pft) )
+            dnpp(pft)%c12 = dnpp(pft)%c12   - ( 1.0 - growtheff ) * ( dcleaf(pft) + dcroot(pft) ) 
+
+            ! write(0,*) 'dcroot(pft)'
+            ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)
+            ! if (doy==48) stop 'here'
+        
+          else
+            !------------------------------------------------------------------
+            ! Prescribe constant root:shoot ratio (in terms of C mass).
+            ! Calculate maximum C allocatable based on current labile pool size.
+            ! Maximum is the lower of all labile C and the C to be matched by 
+            ! all labile N, discounted by the yield factor.
+            !------------------------------------------------------------------
+            max_dc = growtheff * plabl(pft,jpngr)%c%c12
+            max_dc_n_constraint = plabl(pft,jpngr)%n%n14 / ( r_shoot_root * r_ntoc_leaf(pft,jpngr) + ( 1.0 - r_shoot_root) * r_ntoc_root(pft) )
+            max_dc = min( max_dc, max_dc_n_constraint )
+
+            !------------------------------------------------------------------
+            ! Allocate to roots and leaves and extract from labile pool based 
+            ! on 'dcleaf(pft)' determined above.
+            !------------------------------------------------------------------
+            ! allocation to leaves is prescribed
+            dcleaf(pft) = max_dc * r_shoot_root
+            dnleaf(pft) = dcleaf(pft) * r_ntoc_leaf(pft,jpngr)
+
+            dcroot(pft) = max_dc * ( 1.0 - r_shoot_root )
+            dnroot(pft) = dcroot(pft) * r_ntoc_root(pft)
+
+            ! to ensure plabl not getting negative (within numerical imprecision)
+            dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * ( dcleaf(pft) + dcroot(pft) ) )
+            dnlabl = min( plabl(pft,jpngr)%n%n14, ( dnleaf(pft) + dnroot(pft) ) )
+
+            ! write(0,*) 'plabl  ', plabl(pft,jpngr) 
+            ! write(0,*) 'dcleaf ', dcleaf(pft)
+            ! write(0,*) 'dcroot ', dcroot(pft)
+            ! write(0,*) 'dclabl ', dclabl
+            ! write(0,*) 'dnlabl ', dnlabl
+
+            plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
+            plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
+
+            pleaf(pft,jpngr)%c%c12 = pleaf(pft,jpngr)%c%c12 + dcleaf(pft)
+            pleaf(pft,jpngr)%n%n14 = pleaf(pft,jpngr)%n%n14 + dnleaf(pft)
+
+            proot(pft,jpngr)%c%c12 = proot(pft,jpngr)%c%c12 + dcroot(pft)
+            proot(pft,jpngr)%n%n14 = proot(pft,jpngr)%n%n14 + dnroot(pft)
+
+            ! add growth respiration to autotrophic respiration and substract from NPP
+            ! (note that NPP is added to plabl in and growth resp. is implicitly removed
+            ! from plabl above)
+            drauto(pft)   = drauto(pft)     + ( 1.0 - growtheff ) * ( dcleaf(pft) + dcroot(pft) )
+            dnpp(pft)%c12 = dnpp(pft)%c12   - ( 1.0 - growtheff ) * ( dcleaf(pft) + dcroot(pft) ) 
+
           end if
-
-          !------------------------------------------------------------------
-          ! xxx debug: project next-day's fluxes with optimal dcleaf, derived now
-          !------------------------------------------------------------------
-          ! write(0,*) 'dcleaf(pft)', dcleaf(pft)
-          test = eval_imbalance( dcleaf(pft), .true. )
-          ! stop
-
-          !------------------------------------------------------------------
-          ! Allocate to roots and leaves and extract from labile pool based 
-          ! on 'dcleaf(pft)' determined above.
-          !------------------------------------------------------------------
-          dnleaf(pft) = dcleaf(pft) * r_ntoc_leaf(pft,jpngr)
-
-          ! write(0,*) 'dcleaf(pft)', dcleaf(pft)  
-          ! write(0,*) 'dnleaf(pft)', dnleaf(pft)  
-
-          ! to ensure plabl not getting negative (within numerical imprecision)
-          dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcleaf(pft) )
-          dnlabl = min( plabl(pft,jpngr)%n%n14, dnleaf(pft) )
-
-          plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
-          plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
-
-          pleaf(pft,jpngr)%c%c12 = pleaf(pft,jpngr)%c%c12 + dcleaf(pft)
-          pleaf(pft,jpngr)%n%n14 = pleaf(pft,jpngr)%n%n14 + dnleaf(pft)
-
-          dcroot(pft) = min( growtheff * plabl(pft,jpngr)%c%c12, r_cton_root(pft) * plabl(pft,jpngr)%n%n14 )
-          dnroot(pft) = dcroot(pft) * r_ntoc_root(pft)
-
-          ! write(0,*) 'dcroot(pft):dcleaf(pft)', dcroot(pft) / dcleaf(pft)
-
-          ! to ensure plabl not getting negative (within numerical imprecision)
-          dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcroot(pft) )
-          dnlabl = min( plabl(pft,jpngr)%n%n14, dnroot(pft) )
-
-          plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
-          plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
-
-          proot(pft,jpngr)%c%c12 = proot(pft,jpngr)%c%c12 + dcroot(pft)
-          proot(pft,jpngr)%n%n14 = proot(pft,jpngr)%n%n14 + dnroot(pft)
-
-          ! add growth respiration to autotrophic respiration and substract from NPP
-          ! (note that NPP is added to plabl in and growth resp. is implicitly removed
-          ! from plabl above)
-          drauto(pft)   = drauto(pft)     + ( 1.0 - growtheff ) * ( dcleaf(pft) + dcroot(pft) )
-          dnpp(pft)%c12 = dnpp(pft)%c12   - ( 1.0 - growtheff ) * ( dcleaf(pft) + dcroot(pft) ) 
-
-          ! write(0,*) 'dcroot(pft)'
-          ! write(0,*) 'plabl(pft,jpngr)', plabl(pft,jpngr)
-          ! if (doy==48) stop 'here'
 
         else
 

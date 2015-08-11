@@ -127,8 +127,8 @@ contains
     integer, save :: invocation = 0                 ! internally counted simulation year
     integer, parameter :: spinupyr_soilequil_1 = 600   ! year of analytical soil equilibration, based on mean litter -> soil input flux
     integer, parameter :: spinupyr_soilequil_2 = 1200  ! year of analytical soil equilibration, based on mean litter -> soil input flux
-    integer, parameter :: spinupyr_phaseinit_2 = 900
-    integer, parameter :: spinupyr_phaseinit_3 = 300
+    ! integer, parameter :: spinupyr_phaseinit_2 = 900
+    integer, parameter :: spinupyr_phaseinit_3 = 1300   ! change this to 9999 to make fully coupled simulation working
 
     ! real :: acc                                     ! soil equilibration acceleration factor
     ! real :: scal, hi, lo
