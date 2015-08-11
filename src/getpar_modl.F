@@ -4,7 +4,7 @@ subroutine getpar_modl
   !  It was necessary to separate this SR from module _params_modl
   !  because this SR uses module _waterbal, which also uses
   !  _params_modl.
-  ! Copyright (C) 2015  Benjamin David Stocker
+  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_modl

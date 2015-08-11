@@ -9,7 +9,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   !  in response to environmental boundary conditions (atmospheric 
   !  CO2, temperature, Nitrogen deposition. This SR "replaces" 
   !  LPJ, also formulated as subroutine.
-  ! Copyright (C) 2015  Benjamin David Stocker
+  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core

@@ -15,7 +15,7 @@ module _ntransform
   ! Required module-independent model state variables (necessarily 
   ! updated by 'ntransform') are:
   !   - inorganic N pool, sum of NO3 and NH4 ('pninorg')
-  ! Copyright (C) 2015  Benjamin David Stocker
+  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: nlu, maxgrid, ndayyear

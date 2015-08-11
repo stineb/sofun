@@ -2,6 +2,8 @@ module _params_core
   !////////////////////////////////////////////////////////////////
   !  This module contains parameters that are not modified, but needed
   !  to define variables, dimension lengths, etc.
+  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   implicit none
 

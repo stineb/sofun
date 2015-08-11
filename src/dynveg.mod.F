@@ -1,5 +1,5 @@
 module _dynveg
-  ! Copyright (C) 2015  Benjamin David Stocker
+  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
 
 

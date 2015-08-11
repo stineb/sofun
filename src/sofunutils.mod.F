@@ -4,7 +4,7 @@ module _sofunutils
   ! values or 12 monthly values representing one year.
   ! - running: calculates running mean
   ! - daily2monthly: calculates monthly mean/sum of daily values for resp. mo.
-  ! Copyright (C) 2015  Benjamin David Stocker
+  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !-------------------------------------------------------------------------
   implicit none

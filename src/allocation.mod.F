@@ -7,6 +7,8 @@ module _allocation
   ! Every module that implements 'allocation_daily' must contain 
   ! this list of subroutines (names that way).
   !   - allocation_daily
+  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: npft, maxgrid
   use _classdefs

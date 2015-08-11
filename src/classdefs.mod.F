@@ -2,7 +2,7 @@ module _classdefs
   !////////////////////////////////////////////////////////////////
   !  Module contains Fortran 90 derived-type declarations to define
   !  objects
-  ! Copyright (C) 2015  Benjamin David Stocker
+  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
