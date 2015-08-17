@@ -230,7 +230,7 @@ contains
     outdCleaf(:,doy,jpngr)      = pleaf(:,jpngr)%c%c12
     outdCroot(:,doy,jpngr)      = proot(:,jpngr)%c%c12
     outdClabl(:,doy,jpngr)      = plabl(:,jpngr)%c%c12
-    outdClabl(:,doy,jpngr)      = plabl(:,jpngr)%n%n14
+    outdNlabl(:,doy,jpngr)      = plabl(:,jpngr)%n%n14
     outdClitt(:,doy,jpngr)      = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
     outdNlitt(:,doy,jpngr)      = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
     outdCsoil(:,doy,jpngr)      = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
