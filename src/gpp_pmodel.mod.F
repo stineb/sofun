@@ -107,7 +107,7 @@ module _gpp
   real, parameter :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
   real, parameter :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
 
-  real, parameter :: r_ctostructn_leaf = 20        ! constant ratio of C to structural N
+  real, parameter :: r_ctostructn_leaf = 25        ! constant ratio of C to structural N
   
   ! parameters for Narea -- under construction
   ! sla = 0.0014       ! specific leaf area (m2/gC)
@@ -165,6 +165,154 @@ module _gpp
 
 
 contains
+
+
+  subroutine gpp( jpngr, doy, moy, dgpp_data )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
+    ! etic parameters (P-model output) and actual daily PPFD and soil
+    ! moisture stress (Cramer-Prentice Alpha).
+    ! Alternatively ready from data (prescribed GPP array).
+    !
+    ! Output:   
+    ! - gpp (gC/m2/d)   : gross primary production
+    !
+    ! Requires from outside this module:
+    ! - lai_ind
+    ! - dpppfd
+    !------------------------------------------------------------------
+    use _vars_core, only: dgpp, dtransp, fpc_ind
+    use _params_modl, only: kbeer
+    use _waterbal, only: dppfd, meanmppfd
+
+    ! arguments
+    ! integer, intent(in), optional               :: jpngr     ! gridcell number
+    ! integer, intent(in), optional               :: doy       ! day of year and month of year
+    ! integer, intent(in), optional               :: moy       ! month of year and month of year
+    ! real, dimension(npft), intent(in), optional :: dgpp_data ! prescribed daily GPP for this gridcell
+    integer, intent(in)                         :: jpngr     ! gridcell number
+    integer, intent(in)                         :: doy       ! day of year and month of year
+    integer, intent(in)                         :: moy       ! month of year and month of year
+    real, dimension(npft), intent(in), optional :: dgpp_data ! prescribed daily GPP for this gridcell
+
+    ! local variables
+    integer :: pft
+    real    :: fapar
+
+
+    if (present(dgpp_data)) then
+      !----------------------------------------------------------------
+      ! PRESCRIBED GPP
+      !----------------------------------------------------------------
+      dgpp(:) = dgpp_data(:)
+
+    else
+      !----------------------------------------------------------------
+      ! CALCULATE PREDICTED GPP FROM P-model
+      ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
+      !----------------------------------------------------------------
+      do pft=1,npft
+  
+        if (fpc_ind(pft,jpngr)>0.0) then
+
+          ! ! xxx try: fix effective leaf area (=>fapar)
+          ! write(0,*) 'WARNING: fAPAR SET TO XXX in gpp SR'
+
+          ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
+          ! write(0,*) 'in SR gpp: fapar',fpc_ind(pft,jpngr) !OK!
+          ! write(0,*) 'in SR gpp: doy, dppfd(doy)', doy, dppfd(doy) !OK!
+          ! write(0,*) 'in SR gpp: moy, mlue(moy)', moy, mlue(moy) !OK! 
+          dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
+          ! dgpp(pft)    = calc_dgpp( 0.05, dppfd(doy), mlue(moy) )
+          ! write(0,*) 'doy, dgpp(pft)', doy, dgpp(pft)
+
+          ! Dark respiration
+          drd(pft)     = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
+          ! drd(pft)     = calc_drd( 0.05, meanmppfd(moy), mrd_unitiabs(moy) )
+          
+          ! transpiration
+          dtransp(pft) = calc_dtransp( fpc_ind(pft,jpngr), dppfd(doy), mtransp_unitiabs(moy) )
+          ! dtransp(pft) = calc_dtransp( 0.05, dppfd(doy), mtransp_unitiabs(moy) )
+
+        else  
+          dgpp(pft)    = 0.0
+          drd(pft)     = 0.0
+          dtransp(pft) = 0.0
+
+        end if 
+
+      end do
+
+    end if
+
+    ! write(0,*) '---in gpp: '
+    ! write(0,*) 'fpc_ind(pft,jpngr) ',fpc_ind
+    ! write(0,*) 'dppfd(doy) ',dppfd(doy)
+    ! write(0,*) 'mlue(moy) ',mlue(moy)
+    ! write(0,*) 'meanmppfd(moy) ',meanmppfd(moy)
+    ! write(0,*) 'mrd_unitiabs(moy) ',mrd_unitiabs(moy)
+    ! write(0,*) 'dgpp(pft) ',dgpp
+    ! write(0,*) 'drd(pft)  ',drd
+
+    ! write(0,*) 'dgpp', dgpp
+    ! write(0,*) 'sum(dppfd)',sum(dppfd)
+    ! stop
+
+  end subroutine gpp
+
+
+  function calc_dgpp( fapar, dppfd, mlue ) result( dgpp )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates daily GPP
+    !------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: fapar
+    real, intent(in) :: dppfd
+    real, intent(in) :: mlue
+
+    ! function return variable
+    real, intent(out) :: dgpp
+
+    ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
+    dgpp = fapar * dppfd * mlue * c_molmass
+
+  end function calc_dgpp
+
+
+  function calc_drd( fapar, meanmppfd, mrd_unitiabs ) result( drd )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates daily dark respiration (Rd)
+    !------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: fapar           ! fraction of absorbed PAR (unitless)
+    real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
+    real, intent(in) :: mrd_unitiabs
+
+    ! function return variable
+    real, intent(out) :: drd
+
+    ! Dark respiration takes place during night and day (24 hours)
+    drd = fapar * meanmppfd * mrd_unitiabs * 60.0 * 60.0 * 24.0 * c_molmass
+
+  end function calc_drd
+
+
+  function calc_dtransp( fapar, dppfd, transp_unitiabs ) result( dtransp )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates daily GPP
+    !------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: fapar
+    real, intent(in) :: dppfd
+    real, intent(in) :: transp_unitiabs
+
+    ! function return variable
+    real, intent(out) :: dtransp
+
+    ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
+    dtransp = fapar * dppfd * transp_unitiabs * h2o_molmass
+
+  end function calc_dtransp
 
 
   subroutine getlue( jpngr, co2, dtemp, dvpd, elv )
@@ -338,147 +486,6 @@ contains
     ncw_leaf = nr_leaf * r_n_cw_v + ncw_min
 
   end function calc_ncw_leaf
-
-
-  subroutine gpp( jpngr, doy, moy, dgpp_data )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
-    ! etic parameters (P-model output) and actual daily PPFD and soil
-    ! moisture stress (Cramer-Prentice Alpha).
-    ! Alternatively ready from data (prescribed GPP array).
-    !
-    ! Output:   
-    ! - gpp (gC/m2/d)   : gross primary production
-    !
-    ! Requires from outside this module:
-    ! - lai_ind
-    ! - dpppfd
-    !------------------------------------------------------------------
-    use _vars_core, only: dgpp, dtransp, fpc_ind
-    use _params_modl, only: kbeer
-    use _waterbal, only: dppfd, meanmppfd
-
-    ! arguments
-    ! integer, intent(in), optional               :: jpngr     ! gridcell number
-    ! integer, intent(in), optional               :: doy       ! day of year and month of year
-    ! integer, intent(in), optional               :: moy       ! month of year and month of year
-    ! real, dimension(npft), intent(in), optional :: dgpp_data ! prescribed daily GPP for this gridcell
-    integer, intent(in)                         :: jpngr     ! gridcell number
-    integer, intent(in)                         :: doy       ! day of year and month of year
-    integer, intent(in)                         :: moy       ! month of year and month of year
-    real, dimension(npft), intent(in), optional :: dgpp_data ! prescribed daily GPP for this gridcell
-
-    ! local variables
-    integer :: pft
-    real    :: fapar
-
-
-    if (present(dgpp_data)) then
-      !----------------------------------------------------------------
-      ! PRESCRIBED GPP
-      !----------------------------------------------------------------
-      dgpp(:) = dgpp_data(:)
-
-    else
-      !----------------------------------------------------------------
-      ! CALCULATE PREDICTED GPP FROM P-model
-      ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
-      !----------------------------------------------------------------
-      do pft=1,npft
-  
-        if (fpc_ind(pft,jpngr)>0.0) then
-          ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-          ! write(0,*) 'in SR gpp: fapar',fpc_ind(pft,jpngr) !OK!
-          ! write(0,*) 'in SR gpp: doy, dppfd(doy)', doy, dppfd(doy) !OK!
-          ! write(0,*) 'in SR gpp: moy, mlue(moy)', moy, mlue(moy) !OK! 
-          dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
-          ! write(0,*) 'doy, dgpp(pft)', doy, dgpp(pft)
-
-          ! Dark respiration
-          drd(pft)     = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
-          
-          ! transpiration
-          dtransp(pft) = calc_dtransp( fpc_ind(pft,jpngr), dppfd(doy), mtransp_unitiabs(moy) )
-
-        else  
-          dgpp(pft)    = 0.0
-          drd(pft)     = 0.0
-          dtransp(pft) = 0.0
-
-        end if 
-
-      end do
-
-    end if
-
-    ! write(0,*) '---in gpp: '
-    ! write(0,*) 'fpc_ind(pft,jpngr) ',fpc_ind
-    ! write(0,*) 'dppfd(doy) ',dppfd(doy)
-    ! write(0,*) 'mlue(moy) ',mlue(moy)
-    ! write(0,*) 'meanmppfd(moy) ',meanmppfd(moy)
-    ! write(0,*) 'mrd_unitiabs(moy) ',mrd_unitiabs(moy)
-    ! write(0,*) 'dgpp(pft) ',dgpp
-    ! write(0,*) 'drd(pft)  ',drd
-
-    ! write(0,*) 'dgpp', dgpp
-    ! write(0,*) 'sum(dppfd)',sum(dppfd)
-    ! stop
-
-  end subroutine gpp
-
-
-  function calc_dgpp( fapar, dppfd, mlue ) result( dgpp )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates daily GPP
-    !------------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: fapar
-    real, intent(in) :: dppfd
-    real, intent(in) :: mlue
-
-    ! function return variable
-    real, intent(out) :: dgpp
-
-    ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    dgpp = fapar * dppfd * mlue * c_molmass
-
-  end function calc_dgpp
-
-
-  function calc_drd( fapar, meanmppfd, mrd_unitiabs ) result( drd )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates daily dark respiration (Rd)
-    !------------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: fapar           ! fraction of absorbed PAR (unitless)
-    real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
-    real, intent(in) :: mrd_unitiabs
-
-    ! function return variable
-    real, intent(out) :: drd
-
-    ! Dark respiration takes place during night and day (24 hours)
-    drd = fapar * meanmppfd * mrd_unitiabs * 60.0 * 60.0 * 24.0 * c_molmass
-
-  end function calc_drd
-
-
-  function calc_dtransp( fapar, dppfd, transp_unitiabs ) result( dtransp )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates daily GPP
-    !------------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: fapar
-    real, intent(in) :: dppfd
-    real, intent(in) :: transp_unitiabs
-
-    ! function return variable
-    real, intent(out) :: dtransp
-
-    ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    dtransp = fapar * dppfd * transp_unitiabs * h2o_molmass
-
-  end function calc_dtransp
 
 
   subroutine initdaily_gpp()

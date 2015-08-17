@@ -18,9 +18,9 @@ module _params_modl
   real :: growtheff         ! growth respiration coefficient = yield factor [unitless]
 
   ! PFT-DEPENDENT PARAMETERS
-  real, dimension(npft)        :: k_decay_leaf        ! leaf decay constant [days-1]
-  real, dimension(npft)        :: k_decay_sapw        ! sapwood decay constant [days-1]
-  real, dimension(npft)        :: k_decay_root        ! root decay constant [days-1]
+  real, dimension(npft)        :: k_decay_leaf        ! leaf decay constant [year-1]
+  real, dimension(npft)        :: k_decay_sapw        ! sapwood decay constant [year-1]
+  real, dimension(npft)        :: k_decay_root        ! root decay constant [year-1]
   real, dimension(npft)        :: cton_soil           ! C:N ratio of soil organic matter [gC/gN]
 
   integer, dimension(npft)     :: lu_category      ! land use category associated with PFT

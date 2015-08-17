@@ -225,7 +225,7 @@ contains
     r_root = r_root / ndayyear          ! conversion to rate per day
 
     ! xxx try:
-    r_root = 0.005    
+    r_root = 0.01    
 
     ! Fine-root specific respiration rate (gC gC-1 year-1)
     ! Central value: 0.044 year-1 (Yan and Zhao (2007); see Li et al., 2014)

@@ -95,8 +95,8 @@ contains
     integer, intent(in) :: jpngr
 
     ! local variables
-    real, parameter :: cleaf_sapl = 0.2
-    real, parameter :: croot_sapl = 0.1
+    real, parameter :: cleaf_sapl = 5.0
+    real, parameter :: croot_sapl = 5.0
     
     pleaf(pft,jpngr)%c%c12 = cleaf_sapl
     proot(pft,jpngr)%c%c12 = croot_sapl

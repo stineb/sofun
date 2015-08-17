@@ -77,6 +77,7 @@ contains
     logical :: cont          ! true if allocation to leaves (roots) is not 100% and not 0%
     real    :: max_dcleaf_n_constraint
     real    :: max_dcroot_n_constraint
+    real    :: max_dc_n_constraint
     real    :: max_dc
     real    :: eval_allroots
     real    :: abserr
@@ -84,9 +85,9 @@ contains
     type(outtype_zeroin) :: out_zeroin
 
     integer, save      :: invocation = 0                 ! internally counted simulation year
-    integer, parameter :: spinupyr_phaseinit_2 = 1       ! this is unnecessary: might as well do flexible allocation right from the start.
+    integer, parameter :: spinupyr_phaseinit_2 = 9999    ! this is unnecessary: might as well do flexible allocation right from the start.
     logical            :: flexalloc
-    real, parameter    :: r_shoot_root = 0.5
+    real, parameter    :: frac_shoot = 0.5
 
     ! xxx debug
     real    :: test
@@ -95,7 +96,10 @@ contains
     ! Count number of calls (one for each simulation year) and allow flexible
     ! allocation only after year 'spinupyr_phaseinit_2'.
     !-------------------------------------------------------------------------
-    if (doy==1) invocation = invocation + 1
+    if (doy==1) then
+      invocation = invocation + 1
+      write(0,*) 'WARNING: FIXED ALLOCATION'
+    end if
     if ( invocation > spinupyr_phaseinit_2 ) then
       flexalloc = .true.
     else
@@ -277,7 +281,9 @@ contains
             ! all labile N, discounted by the yield factor.
             !------------------------------------------------------------------
             max_dc = growtheff * plabl(pft,jpngr)%c%c12
-            max_dc_n_constraint = plabl(pft,jpngr)%n%n14 / ( r_shoot_root * r_ntoc_leaf(pft,jpngr) + ( 1.0 - r_shoot_root) * r_ntoc_root(pft) )
+            max_dc_n_constraint = plabl(pft,jpngr)%n%n14 / ( frac_shoot * r_ntoc_leaf(pft,jpngr) + ( 1.0 - frac_shoot) * r_ntoc_root(pft) )
+            ! write(0,*) "clabl, nlabl", plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14 
+            ! write(0,*) "max_dc, max_dc_n_constraint", max_dc, max_dc_n_constraint
             max_dc = min( max_dc, max_dc_n_constraint )
 
             !------------------------------------------------------------------
@@ -285,10 +291,10 @@ contains
             ! on 'dcleaf(pft)' determined above.
             !------------------------------------------------------------------
             ! allocation to leaves is prescribed
-            dcleaf(pft) = max_dc * r_shoot_root
+            dcleaf(pft) = max_dc * frac_shoot
             dnleaf(pft) = dcleaf(pft) * r_ntoc_leaf(pft,jpngr)
 
-            dcroot(pft) = max_dc * ( 1.0 - r_shoot_root )
+            dcroot(pft) = max_dc * ( 1.0 - frac_shoot )
             dnroot(pft) = dcroot(pft) * r_ntoc_root(pft)
 
             ! to ensure plabl not getting negative (within numerical imprecision)

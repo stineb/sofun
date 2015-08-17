@@ -20,8 +20,10 @@ FCOM=pgf95
 CPPFLAGS=-E
 # COMPFLAGS=-Mextend -Mfreeform
 COMPFLAGS=-Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
+DPCOMPFLAGS=-r8 -Mextend -Mfreeform  -Mdalign -Kieee -Ktrap=fp -O2
 #COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
 DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
+DPDEBUGFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
 
 # System libraries
 #LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
@@ -85,6 +87,16 @@ standard:
 debug: 
 	$(MAKE) debug -C src
 	$(FCOM) -o $(EXE) $(DEBUGFLAGS) $(ARCHIVES) #$(LIBS)
+
+# including double precision flag
+dp: 
+	 $(MAKE) -C src
+	 $(FCOM) -o $(EXE) $(DPCOMPFLAGS) $(ARCHIVES)
+
+# code for debugging, including double precision flags:
+dpdebug: 
+	$(MAKE) debug -C src
+	$(FCOM) -o $(EXE) $(DPDEBUGFLAGS) $(ARCHIVES) #$(LIBS)
 
 # clean: remove exe and .o and .do files
 .PHONY: clean

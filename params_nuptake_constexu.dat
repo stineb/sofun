@@ -4,8 +4,8 @@
 #                                      |
 # write value behind this position:    |->
 
-exurate                                 0.001000
-eff_nup                                 10.00000
+exurate                                 0.004000
+eff_nup                                 5.000000
 MINIMUMCOSTFIX                          4.320000
 FIXOPTIMUM                              25.20000
 FIXWIDTH                                8.000000

@@ -47,6 +47,7 @@ contains
             dleaf = k_decay_leaf(pft)
             droot = k_decay_root(pft)
             if (shedleaves(doy,pft)) then
+              write(0,*) 'end of season: labile C, labile N', plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14
               dleaf = 1.0
               droot = 1.0
             else
