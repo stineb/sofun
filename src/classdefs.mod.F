@@ -62,7 +62,7 @@ contains
     real, optional, intent(in) :: scale
     !real, optional, intent(in) :: d13C
 
-    if (present(scale )) then
+    if ( present( scale ) ) then
       call ccp( amount%c,to%c,scale )
       call ncp( amount%n,to%n,scale )
     else
@@ -141,7 +141,7 @@ contains
     type(orgpool), intent(inout) :: to
     real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
-    if (present(scale )) then
+    if ( present( scale ) ) then
       call orgcp(orgfrac(scale,amount),to) 
       call orgsub( amount, from )       
     else
@@ -166,7 +166,7 @@ contains
     real, intent(inout) :: outn
     real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
-    if (present(scale )) then
+    if ( present( scale ) ) then
       outc = outc + amount%c%c12 * scale
       outn = outn + amount%n%n14 * scale
       call orgcp(orgfrac(scale,amount),to) 
@@ -207,7 +207,7 @@ contains
     type(carbon), intent(inout) :: to
     real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
-    if (present(scale )) then
+    if ( present( scale ) ) then
       call ccp(cfrac(scale,amount),to)
       call csub( amount, from )
     else
@@ -232,7 +232,7 @@ contains
     real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
 
-    if (present(scale )) then
+    if ( present( scale ) ) then
       outc = outc + amount%c12 * scale
       call ccp(cfrac(scale,amount),to)
       call csub( amount, from )
@@ -255,7 +255,7 @@ contains
     real, optional, intent(in) :: scale
     !real, optional, intent(in) :: d13C
 
-    if (present(scale )) then
+    if ( present( scale ) ) then
       to%c12 = to%c12 + amount%c12 * scale
     else
       to%c12 = to%c12 + amount%c12 
@@ -342,7 +342,7 @@ contains
     type(nitrogen), intent(inout) :: to
     real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
-    if (present(scale )) then
+    if ( present( scale ) ) then
       call ncp(nfrac(scale,amount),to)
       call nsub( amount, from )
     else
@@ -366,7 +366,7 @@ contains
     real, intent(inout) :: outn
     real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
-    if (present(scale )) then
+    if ( present( scale ) ) then
       outn = outn + amount%n14 * scale
       call ncp(nfrac(scale,amount),to)
       call nsub( amount, from )
@@ -388,7 +388,7 @@ contains
     type(nitrogen), intent(inout) :: to
     real, intent(in), optional :: scale
 
-    if (present(scale )) then
+    if ( present( scale ) ) then
       to%n14 = to%n14 + amount%n14 * scale
     else
       to%n14 = to%n14 + amount%n14 

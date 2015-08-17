@@ -15,7 +15,8 @@ contains
     use _params_modl, only: lu_category, tree, grass, &
       k_decay_leaf, k_decay_sapw, k_decay_root, npft, F_NRETAIN
     use _phenology, only: summergreen, shedleaves
-    use _vars_core, only: pleaf, proot, psapw, pwood, plitt_af, plitt_bg, plabl
+    use _vars_core, only: pleaf, proot, psapw, pwood, plitt_af, &
+      plitt_bg, plabl, pexud, pninorg
     use _vars_core , only: nind, ispresent
     use _outvars, only: outaCveg2lit, outaNveg2lit
 
@@ -29,9 +30,11 @@ contains
     real :: dleaf
     real :: dsapw
     real :: droot
+    real :: dlabl
     type(orgpool) :: lm_turn
     type(orgpool) :: sm_turn
     type(orgpool) :: rm_turn
+    type(orgpool) :: lb_turn
 
     do pft=1,npft
 
@@ -44,16 +47,21 @@ contains
         ! assuming no continuous leaf turnover
         if (grass(pft)) then
           if (summergreen(pft)) then
-            dleaf = k_decay_leaf(pft)
-            droot = k_decay_root(pft)
             if (shedleaves(doy,pft)) then
               write(0,*) 'end of season: labile C, labile N', plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14
               dleaf = 1.0
               droot = 1.0
+              dlabl = 1.0
+              ! write(0,*) 'complete die-off on day', doy
             else
               dleaf = k_decay_leaf(pft)  
               droot = k_decay_root(pft)
+              dlabl = 0.0
             end if
+          else
+            dleaf = k_decay_leaf(pft)
+            droot = k_decay_root(pft)
+            dlabl = 0.0
           end if   
         else
           stop 'turnover only implemented for grasses'        
@@ -65,6 +73,7 @@ contains
         if (tree(pft)) then
           sm_turn = orgfrac( dsapw, psapw(pft,jpngr) )
         endif
+        lb_turn = orgfrac( dlabl, plabl(pft,jpngr) )
 
         ! xxx try
         F_NRETAIN = 0.0
@@ -72,10 +81,24 @@ contains
         ! reduce leaf mass and root mass
         call orgsub( lm_turn, pleaf(pft,jpngr) )
         call orgsub( rm_turn, proot(pft,jpngr) )
+        if (dlabl>0.0) then
+          call orgsub( lb_turn, plabl(pft,jpngr) )
+        end if
 
-        ! add all C to litter
+        ! add all organic (fixed) C to litter
         call cmvRec( lm_turn%c, lm_turn%c, plitt_af(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
         call cmvRec( rm_turn%c, rm_turn%c, plitt_bg(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
+
+        ! add labile C and N to litter as well
+        if (dlabl>0.0) then
+          write(0,*) 'TURNOVER: WARNING LABILE C AND N ARE SET TO ZERO WITHOUT MASS CONSERVATION'
+          lb_turn%c%c12 = 0.0
+          lb_turn%n%n14 = 0.0
+          ! call cmvRec( lb_turn%c, lb_turn%c, plitt_bg(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
+          ! call nmvRec( lb_turn%n, lb_turn%n, plitt_bg(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
+          ! write(0,*) 'end of growing season-plabl:', plabl
+          ! write(0,*) 'moving C and N to exudates and ninorg:', lb_turn
+        end if
 
         ! retain fraction of N
         call nmv( nfrac( F_NRETAIN, lm_turn%n ), lm_turn%n, plabl(pft,jpngr)%n )

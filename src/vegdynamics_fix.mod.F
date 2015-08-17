@@ -48,7 +48,6 @@ contains
           !----------------------------------------------------------
           ! write(0,*) 'starting to grow on day ',doy
           call initpft( pft, jpngr )
-
           call add_sapl( pft, jpngr )
 
         end if
@@ -96,7 +95,7 @@ contains
 
     ! local variables
     real, parameter :: cleaf_sapl = 5.0
-    real, parameter :: croot_sapl = 5.0
+    real, parameter :: croot_sapl = 1.0
     
     pleaf(pft,jpngr)%c%c12 = cleaf_sapl
     proot(pft,jpngr)%c%c12 = croot_sapl
