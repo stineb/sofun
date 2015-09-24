@@ -85,7 +85,7 @@ contains
     type(outtype_zeroin) :: out_zeroin
 
     integer, save      :: invocation = 0                 ! internally counted simulation year
-    integer, parameter :: spinupyr_phaseinit_2 = 9999    ! this is unnecessary: might as well do flexible allocation right from the start.
+    integer, parameter :: spinupyr_phaseinit_2 = 1   ! this is unnecessary: might as well do flexible allocation right from the start.
     logical            :: flexalloc
     real, parameter    :: frac_shoot = 0.5
 
@@ -98,7 +98,7 @@ contains
     !-------------------------------------------------------------------------
     if (doy==1) then
       invocation = invocation + 1
-      write(0,*) 'WARNING: FIXED ALLOCATION'
+      ! write(0,*) 'WARNING: FIXED ALLOCATION'
     end if
     if ( invocation > spinupyr_phaseinit_2 ) then
       flexalloc = .true.

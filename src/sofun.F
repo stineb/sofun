@@ -23,6 +23,11 @@ program main
 
   real    :: c_uptake     ! annual net global C uptake by biosphere
 
+  ! local variables
+  real                              :: pco2
+  real, dimension(ndayyear,maxgrid) :: dndep_field
+  real, dimension(nlu,maxgrid)      :: lu_area
+
   ! This is necessary because of keyword-specification of arguments to 'biosphere'
   interface
     subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
@@ -129,9 +134,9 @@ program main
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
-    call getco2( trim(runname), realyear )
-    call getndep( trim(runname), realyear )
-    call getlanduse( trim(runname), realyear )
+    pco2        = getco2( trim(runname), realyear )
+    dndep_field = getndep( trim(runname), realyear )
+    lu_area     = getlanduse( trim(runname), realyear )
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 

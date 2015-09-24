@@ -389,7 +389,7 @@ contains
         ! write(0,*) 'netmin_litt', netmin_litt
         ! write(0,*) 'immo direct', dlitt%c%c12 * ( ntoc_crit - dlitt%n%n14 / dlitt%c%c12 )
 
-                                     ! OUTPUT COLLECTION
+        ! OUTPUT COLLECTION
         outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + netmin_litt
         outdnetmin_litt(lu,doy,jpngr) = outdnetmin_litt(lu,doy,jpngr) + netmin_litt
         
@@ -547,7 +547,6 @@ contains
       psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_soil_local
       psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_soil_local
 
-
       ! xxx try:
       ! >>>>>>>>>>>
       ! ! to inorganic N pool
@@ -565,7 +564,7 @@ contains
       !   ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * ( dsoil_fs%n%n14 + dsoil_sl%n%n14 )
       ! end if
       ! xxxxxxxxxxx
-      ! xxx try: use budgeted N mineralisation also after spinup to avoid problem (most likely budget violation in turnover)
+      ! xxx try: use budgeted N mineralisation also after spinup and equilibration to avoid problem (most likely budget violation in turnover)
       if ( dlitt%c%c12 > 0.0 ) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
       ! <<<<<<<<<<<      
 
@@ -588,8 +587,7 @@ contains
         mean_ksoil_fs(lu,jpngr)  = 0.0
         mean_ksoil_sl(lu,jpngr)  = 0.0
       end if
-
-      
+ 
       ! OUTPUT COLLECTION
       outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
       outdnetmin_soil(lu,doy,jpngr) = outdnetmin_soil(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14

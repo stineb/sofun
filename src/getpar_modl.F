@@ -14,7 +14,7 @@ subroutine getpar_modl
   use _phenology, only: getpar_phenology
   use _ntransform, only: getpar_modl_ntransform
   use _littersom, only: getpar_modl_littersom
-  use _sofunutils, only: getreal
+  use _sofunutils, only: getparreal
 
   implicit none
 
@@ -30,16 +30,16 @@ subroutine getpar_modl
   ! NON-PFT DEPENDENT PARAMETERS
   !----------------------------------------------------------------
   ! canopy light extinction coefficient for Beer's Law
-  call getreal( 'params_modl.dat', 'kbeer', kbeer )
+  kbeer = getparreal( 'params_modl.dat', 'kbeer' )
 
   ! fraction of N retained at leaf abscission 
-  call getreal( 'params_modl.dat', 'F_NRETAIN', F_NRETAIN )
+  F_NRETAIN = getparreal( 'params_modl.dat', 'F_NRETAIN' )
   
   ! maximum fractional plant coverage of trees (sum of all tree PFTs)
-  call getreal( 'params_modl.dat', 'fpc_tree_max', fpc_tree_max )
+  fpc_tree_max = getparreal( 'params_modl.dat', 'fpc_tree_max' )
 
   ! growth efficiency = yield factor, central value: 0.6, range: 0.5-0.7; Zhang et al. (2009), see Li et al., 2014
-  call getreal( 'params_modl.dat', 'growtheff', growtheff )
+  growtheff = getparreal( 'params_modl.dat', 'growtheff' )
 
   
   !----------------------------------------------------------------

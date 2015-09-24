@@ -4,6 +4,8 @@ module _params_site
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
+  use _sofunutils, only: getparreal
+  use _params_siml, only: sitename
   implicit none
 
   real :: lon_site, lat_site, elv_site
@@ -14,13 +16,10 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR reads site-specific parameters from <sitename>.parameter
     !----------------------------------------------------------------
-    use _sofunutils, only: getreal
-    use _params_siml, only: sitename
-
     write(0,*) 'reading site parameter file ', sitename//".parameter ..."
-    call getreal(sitename//".parameter",'longitude',lon_site)
-    call getreal(sitename//".parameter",'latitude',lat_site)
-    call getreal(sitename//".parameter",'altitude',elv_site)
+    lon_site = getparreal( sitename//".parameter", 'longitude' )
+    lat_site = getparreal( sitename//".parameter", 'latitude' )
+    elv_site = getparreal( sitename//".parameter", 'altitude' )
 
   end subroutine getpar_site
 

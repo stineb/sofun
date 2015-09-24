@@ -217,11 +217,11 @@ contains
     ! from input file
     !----------------------------------------------------------------
     use _params_core, only: ndayyear
-    use _sofunutils, only: getreal
+    use _sofunutils, only: getparreal
 
     ! Fine-root specific respiration rate (gC gC-1 year-1)
     ! Central value: 0.913 year-1 (Yan and Zhao (2007); see Li et al., 2014)
-    call getreal( 'params_npp_lpj.dat', 'r_root', r_root )
+    r_root = getparreal( 'params_npp_lpj.dat', 'r_root' )
     r_root = r_root / ndayyear          ! conversion to rate per day
 
     ! xxx try:
@@ -230,7 +230,7 @@ contains
     ! Fine-root specific respiration rate (gC gC-1 year-1)
     ! Central value: 0.044 year-1 (Yan and Zhao (2007); see Li et al., 2014)
     ! (= 0.044 nmol mol-1 s-1; range: 0.5–10, 20 nmol mol-1 s-1 (Landsberg and Sands (2010))
-    call getreal( 'params_npp_lpj.dat', 'r_sapw', r_sapw )
+    r_sapw = getparreal( 'params_npp_lpj.dat', 'r_sapw' )
     r_sapw = r_sapw / ndayyear  ! conversion to rate per day
 
 

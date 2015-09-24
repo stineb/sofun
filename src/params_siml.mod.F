@@ -5,6 +5,7 @@ module _params_siml
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: recycle
+  use _sofunutils, only: getparint, getparstring, getparlogical
 
   implicit none
   integer :: runyears                    ! number of years of entire simulation (spinup+transient)
@@ -14,6 +15,7 @@ module _params_siml
   logical :: do_spinup                   ! whether this simulation does spinup 
   logical :: init                        ! is true in first simulation year
   logical :: spinup                      ! is true during spinup
+  logical :: const_co2                   ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
   integer :: transyear                   ! year in transient simulation
   character(len=256) :: runname
   character(len=6)   :: sitename
@@ -69,23 +71,35 @@ contains
     !  SR for reading and defining simulation parameters from file 
     !  <runname>.sofun.parameter. Only once at start of simulation.
     !----------------------------------------------------------------
-    use _sofunutils
-
     character(len=*), intent(in) :: runname
 
     ! Read in main model parameters
     write(0,*) 'reading parameter file ', runname//".sofun.parameter ..."
 
-    call getstring(runname//".sofun.parameter",'sitename',sitename)
-    call getlogical(runname//".sofun.parameter",'spinup',do_spinup)
-    call getint(runname//".sofun.parameter",'spinupyears',spinupyears)
-    call getint(runname//".sofun.parameter",'firstyeartrend',firstyeartrend)
-    call getint(runname//".sofun.parameter",'nyeartrend',nyeartrend)
+    ! sitename         = getparstring( runname//".sofun.parameter", 'sitename' )
+    ! input_dir        = getparstring( runname//".sofun.parameter", 'input_dir' )
+    ! co2_forcing_file = getparstring( runname//".sofun.parameter", 'co2_forcing_file' )
+    ! pftparfil        = getparstring( runname//".sofun.parameter", 'pftparfil' )
 
-    call getstring(runname//".sofun.parameter",'input_dir',input_dir)
-    call getstring(runname//".sofun.parameter",'co2_forcing_file',co2_forcing_file)
-    call getstring(runname//".sofun.parameter",'pftparfil',pftparfil)
+    ! do_spinup        = getparlogical( runname//".sofun.parameter", 'spinup' )
+    ! const_co2        = getparlogical( runname//".sofun.parameter", 'const_co2' )
 
+    ! spinupyears      = getparint( runname//".sofun.parameter", 'spinupyears' )
+    ! firstyeartrend   = getparint( runname//".sofun.parameter", 'firstyeartrend' )
+    ! nyeartrend       = getparint( runname//".sofun.parameter", 'nyeartrend' )
+
+    call getparstring( runname//".sofun.parameter", 'sitename', sitename )
+    call getparstring( runname//".sofun.parameter", 'input_dir', input_dir )
+    call getparstring( runname//".sofun.parameter", 'co2_forcing_file', co2_forcing_file )
+    call getparstring( runname//".sofun.parameter", 'pftparfil', pftparfil )
+    
+    do_spinup        = getparlogical( runname//".sofun.parameter", 'spinup' )
+    const_co2        = getparlogical( runname//".sofun.parameter", 'const_co2' )
+    
+    spinupyears      = getparint( runname//".sofun.parameter", 'spinupyears' )
+    firstyeartrend   = getparint( runname//".sofun.parameter", 'firstyeartrend' )
+    nyeartrend       = getparint( runname//".sofun.parameter", 'nyeartrend' )
+    
     if (do_spinup) then
       runyears = nyeartrend + spinupyears
     else

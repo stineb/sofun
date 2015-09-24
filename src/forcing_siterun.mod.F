@@ -8,52 +8,53 @@ module _forcing_siterun
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core
+  use _params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu
   use _sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal
+  use _params_siml, only: const_co2, firstyeartrend, sitename, co2_forcing_file, &
+    input_dir
+
   implicit none
 
   real, dimension(ndayyear,maxgrid) :: dtemp_field, dprec_field, &
     dfsun_field, dvpd_field
-  real, dimension(ndayyear,maxgrid) :: dndep_field
-  real, dimension(nlu,maxgrid)      :: lu_area
-  real                              :: pco2
 
 contains
 
-  subroutine getco2( runname, realyear )
+  function getco2( runname, realyear ) result( pco2 )
     !////////////////////////////////////////////////////////////////
-    !  SR reads this year's atmospheric CO2 from input
+    !  Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
-    use _params_core
-    use _params_siml
-
-    implicit none
+    ! arguments
     character(len=*), intent(in) :: runname
     integer, intent(in) :: realyear
 
-    pco2 = getvalreal( trim(input_dir)//trim(co2_forcing_file), realyear )
+    ! function return variable
+    real, intent(out) :: pco2
 
-    return
+    ! local variables 
+    integer :: readyear
 
-  end subroutine getco2
+    if (const_co2) then
+      readyear = firstyeartrend
+    else  
+      readyear = realyear
+    end if
+    pco2 = getvalreal( trim(input_dir)//trim(co2_forcing_file), readyear )
+
+  end function getco2
 
 
   subroutine getclimate_fields( runname )
     !////////////////////////////////////////////////////////////////
     !  SR reads this year's daily temperature and precipitation.
     !----------------------------------------------------------------
-    use _params_core, only: nmonth, ndaymonth
-    use _params_siml, only: sitename
-    implicit none
-
     ! arguments
     character(len=*), intent(in) :: runname     
 
     ! local variables
     integer :: day, mo, dm, yr
     real, dimension(nmonth) :: mtemp, mfsun, mvapr, mvpd
-
 
     ! PRESCRIBED DAILY CLIMATE (TEMP, PREC, FSUN) FOR ONE YEAR
     ! xxx deal with jpngr dimension only when using NetCDF
@@ -154,18 +155,17 @@ contains
 
 !  !end subroutine getclimate
 
-
-  subroutine getndep( runname, realyear )
+  function getndep( runname, realyear ) result( dndep_field )
     !////////////////////////////////////////////////////////////////
-    !  SR reads this year's annual ndeposition and distributes it
+    !  Function reads this year's annual ndeposition and distributes it
     !  over days according to daily precipitation.
     !----------------------------------------------------------------
-    use _params_core
-    implicit none
-
     ! arguments
     character(len=*), intent(in) :: runname
     integer, intent(in) :: realyear
+
+    ! function return variable
+    real, dimension(ndayyear,maxgrid) :: dndep_field
 
     ! local variables
     real :: in_andep
@@ -181,27 +181,23 @@ contains
       dndep_field(:,jpngr) = in_andep * dprec_rel(:)
     end do
 
-    return
-
-  end subroutine getndep
+  end function getndep
 
 
-  subroutine getlanduse( runname, realyear )
+  function getlanduse( runname, realyear ) result( lu_area )
     !////////////////////////////////////////////////////////////////
-    !  SR reads this year's annual landuse state
+    !  Function reads this year's annual landuse state
     !----------------------------------------------------------------
-    use _params_core, only: lunat
-    implicit none
-
     ! arguments
     character(len=*), intent(in)      :: runname
     integer, intent(in)               :: realyear
 
+    ! function return variable
+    real, dimension(nlu,maxgrid)      :: lu_area
+
     lu_area(lunat,:) = 1.0
 
-    return
-
-  end subroutine getlanduse
+  end function getlanduse
 
 
   function calc_vpd( tc, vap, tmin, tmax ) result( vpd )

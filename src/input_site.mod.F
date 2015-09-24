@@ -29,10 +29,8 @@ contains
     !----------------------------------------------------------------
     use _params_siml, only: nyeartrend, sitename
     use _forcing_siterun, only: read1year_daily  ! xxx put all reading functions/subroutines into a single module
-    use _sofunutils, only: getreal  ! xxx put all reading functions/subroutines into a single module
+    use _sofunutils, only: getparreal  ! xxx put all reading functions/subroutines into a single module
     use _params_core, only: ndayyear
-
-    implicit none
 
     ! local variables
     integer :: day, mo, dm, pft, yr
@@ -69,15 +67,15 @@ contains
     ! Get prescribed PFT selection 
     ! xxx try: make npft a definable variable depending on this selection 
     ! Get prescribed fractional plant cover (FPC) for each PFT
-    call getreal(sitename//".parameter",'in_fpc_grid_1',fpc_grid_data(1,1))
-    call getreal(sitename//".parameter",'in_fpc_grid_2',fpc_grid_data(2,1))
-    call getreal(sitename//".parameter",'in_fpc_grid_3',fpc_grid_data(3,1))
-    call getreal(sitename//".parameter",'in_fpc_grid_4',fpc_grid_data(4,1))
-    call getreal(sitename//".parameter",'in_fpc_grid_5',fpc_grid_data(5,1))
-    call getreal(sitename//".parameter",'in_fpc_grid_6',fpc_grid_data(6,1))
-    call getreal(sitename//".parameter",'in_fpc_grid_7',fpc_grid_data(7,1))
-    call getreal(sitename//".parameter",'in_fpc_grid_8',fpc_grid_data(8,1))
-    call getreal(sitename//".parameter",'in_fpc_grid_9',fpc_grid_data(9,1))
+    fpc_grid_data(1,1) = getparreal( sitename//".parameter", 'in_fpc_grid_1' )
+    fpc_grid_data(2,1) = getparreal( sitename//".parameter", 'in_fpc_grid_2' )
+    fpc_grid_data(3,1) = getparreal( sitename//".parameter", 'in_fpc_grid_3' )
+    fpc_grid_data(4,1) = getparreal( sitename//".parameter", 'in_fpc_grid_4' )
+    fpc_grid_data(5,1) = getparreal( sitename//".parameter", 'in_fpc_grid_5' )
+    fpc_grid_data(6,1) = getparreal( sitename//".parameter", 'in_fpc_grid_6' )
+    fpc_grid_data(7,1) = getparreal( sitename//".parameter", 'in_fpc_grid_7' )
+    fpc_grid_data(8,1) = getparreal( sitename//".parameter", 'in_fpc_grid_8' )
+    fpc_grid_data(9,1) = getparreal( sitename//".parameter", 'in_fpc_grid_9' )
 #endif
 
     return

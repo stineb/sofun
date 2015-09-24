@@ -25,6 +25,7 @@ pftparfil                               params_pft.dat
 # input files
 input_dir                               /alphadata01/bstocker/sofun/trunk/input/
 co2_forcing_file                        cCO2_rcp85_const850-1765.dat
+const_co2                               .true.
 
 
 # ------------------------OPTIONAL-----------------------------

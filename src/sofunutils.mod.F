@@ -348,14 +348,13 @@ contains
   end function read1year_monthly
 
 
-  function getvalreal( filename, realyear, day, dm, mo )
+  function getvalreal( filename, realyear, day, dm, mo ) result( valreal )
     !////////////////////////////////////////////////////////////////
     !  Function reads one (annual) value corresponding to the given 
     !  year from a time series ascii file. 
     !----------------------------------------------------------------
     use _params_core, only: ndayyear
 
-    implicit none
     ! arguments
     character(len=*), intent(in) :: filename
     integer, intent(in) :: realyear
@@ -364,7 +363,7 @@ contains
     integer, intent(in), optional :: mo  ! month in year (1:12)
 
     ! function return value
-    real :: getvalreal
+    real :: valreal
 
     ! local variables
     integer :: l
@@ -394,7 +393,7 @@ contains
 
     endif
 
-    getvalreal = tmp(2) 
+    valreal = tmp(2) 
 
     100     format (30d16.8)
     close(20)
@@ -409,7 +408,7 @@ contains
   end function getvalreal
   
 
-  function getvalreal_STANDARD( filename, realyear, mo, dm, day, realyear_decimal )
+  function getvalreal_STANDARD( filename, realyear, mo, dm, day, realyear_decimal ) result( valreal )
     !////////////////////////////////////////////////////////////////
     !  SR reads one (annual) value corresponding to the given year 
     !  from a time series ascii file. File has to be located in 
@@ -430,7 +429,7 @@ contains
     real,    intent(in), optional :: realyear_decimal ! year AD as decimal number corresponding to day in the year
 
     ! function return value
-    real :: getvalreal_STANDARD
+    real :: valreal
 
     ! local variables
     integer :: inyear
@@ -520,7 +519,7 @@ contains
 
     !print*,'found realyear, mo, dm      ',inyear,inmo,indm,inval1
 
-    getvalreal_STANDARD = inval1
+    valreal = inval1
 
     100     format (I4,I3,I3,F9.7,F9.7)
     200     format (I4,I3,F9.7,F9.7)
@@ -544,15 +543,17 @@ contains
   end function getvalreal_STANDARD
 
 
-  subroutine getreal( filename, paraname, paravalue )
+  function getparreal( filename, paraname ) result( paravalue )
     !////////////////////////////////////////////////////////////////
-    !  "Low-level" SR for reading parameter values from text file
+    !  "Low-level" function for reading parameter values from text file
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: filename, paraname
-    real,intent(out) :: paravalue
 
-    ! local vraibles
+    ! function return value
+    real, intent(out) :: paravalue
+
+    ! local variables
     integer :: filehandle
     character(len=40) :: readname, readvalue
 
@@ -566,7 +567,7 @@ contains
       goto 9
     endif
     10   continue
-    write(0,*) 'GETREAL: '//paraname//' of type real not found'
+    write(0,*) 'getparreal: '//paraname//' of type real not found'
     stop
 
     11   continue
@@ -576,18 +577,20 @@ contains
 
     return
 
-    19   write(0,*) 'GETREAL: '//filename//' not found!'
+    19   write(0,*) 'getparreal: '//filename//' not found!'
     stop
 
-  end subroutine getreal
-  
+  end function getparreal
 
-  subroutine getint( filename, paraname, paravalue )
+
+  function getparint( filename, paraname ) result( paravalue )
     !////////////////////////////////////////////////////////////////
-    ! "Low-level" SR for reading parameter values from text file
+    ! "Low-level" function for reading parameter values from text file
     !----------------------------------------------------------------
     ! arguments
-    character(len=*), intent(in) :: filename, paraname      
+    character(len=*), intent(in) :: filename, paraname 
+     
+    ! function return variable    
     integer, intent(out) :: paravalue
 
     ! local variables
@@ -604,8 +607,8 @@ contains
       goto 9
     endif
     10   continue
-    write(0,*) 'GETINT: in file '//filename//':'
-    write(0,*) 'GETINT: '//paraname//' of type integer not found'
+    write(0,*) 'getparint: in file '//filename//':'
+    write(0,*) 'getparint: '//paraname//' of type integer not found'
     stop
 
     11   continue
@@ -615,19 +618,20 @@ contains
 
     return
 
-    19   write(0,*) 'GETINT: file '//filename//' not found:'
+    19   write(0,*) 'getparint: file '//filename//' not found:'
     write(0,*) filename
     stop
 
-  end subroutine getint
+  end function getparint
 
 
-  subroutine getlogical( filename, paraname, paravalue )
+  function getparlogical( filename, paraname ) result( paravalue )
     !////////////////////////////////////////////////////////////////
-    ! "Low-level" SR for reading parameter values from text file
+    ! "Low-level" function for reading parameter values from text file
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: filename, paraname
+    ! function return variable
     logical, intent(out) :: paravalue
 
     ! local variables
@@ -644,7 +648,7 @@ contains
       goto 9
     endif
     10   continue
-    write(0,*) 'GETLOGICAL: '//paraname//' of type logical not found'
+    write(0,*) 'GETPARLOGICAL: '//paraname//' of type logical not found'
     stop
 
     11   continue
@@ -654,15 +658,15 @@ contains
 
     return
 
-    19   write(0,*) 'GETLOGICAL: '//filename//' not found!'
+    19   write(0,*) 'GETPARLOGICAL: '//filename//' not found!'
     stop
 
-  end subroutine getlogical
+  end function getparlogical
 
 
-  subroutine getstring( filename, paraname, paravalue )
+  subroutine getparstring( filename, paraname, paravalue )
     !////////////////////////////////////////////////////////////////
-    ! "Low-level" SR for reading parameter values from text file
+    ! "Low-level" function for reading parameter values from text file
     !----------------------------------------------------------------
     character(len=*), intent(in) :: filename, paraname
     character(len=*), intent(out) :: paravalue
@@ -699,12 +703,11 @@ contains
     19   write(0,*) 'GETSTRING: '//filename//' not found!'
     stop
 
-  end subroutine getstring
+  end subroutine getparstring
 
-
-  subroutine getchar( filename, paraname, paravalue )
+  function getparchar( filename, paraname ) result( paravalue )
     !////////////////////////////////////////////////////////////////
-    ! "Low-level" SR for reading parameter values from text file
+    ! "Low-level" function for reading parameter values from text file
     !----------------------------------------------------------------
     character(len=*), intent(in) :: filename, paraname
     character(len=1), intent(out) :: paravalue
@@ -722,7 +725,7 @@ contains
       goto 9
     endif
     10   continue
-    write(0,*) 'GETCHAR: '//paraname//' of type char not found'
+    write(0,*) 'getparchar: '//paraname//' of type char not found'
     stop
 
     11   continue
@@ -732,10 +735,10 @@ contains
 
     return
 
-    19   write(0,*) 'GETCHAR: '//filename//' not found!'
+    19   write(0,*) 'getparchar: '//filename//' not found!'
     stop
 
-  end subroutine getchar
+  end function getparchar
 
  !  subroutine setreal(filename,paraname,default,paravalue)
  !          !////////////////////////////////////////////////////////////////
