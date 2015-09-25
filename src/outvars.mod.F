@@ -26,6 +26,7 @@ module _outvars
   real, dimension(npft,ndayyear,maxgrid) :: outdNlitt
   real, dimension(nlu,ndayyear,maxgrid)  :: outdCsoil
   real, dimension(nlu,ndayyear,maxgrid)  :: outdNsoil
+  real, dimension(npft,ndayyear,maxgrid) :: outdlai
 
   real, dimension(nlu,ndayyear,maxgrid)  :: outdninorg
   real, dimension(nlu,ndayyear,maxgrid)  :: outdtemp_soil
@@ -45,6 +46,7 @@ module _outvars
   real, dimension(npft,maxgrid) :: outaCveg2lit
   real, dimension(npft,maxgrid) :: outaNveg2lit
   real, dimension(nlu, maxgrid) :: outaNinorg
+  real, dimension(npft,maxgrid) :: outalai
 
 contains
 
@@ -68,6 +70,7 @@ contains
     outdNlitt(:,:,:)    = 0.0
     outdNsoil(:,:,:)    = 0.0
     outdninorg(:,:,:)   = 0.0
+    outdlai(:,:,:)      = 0.0
 
     ! annual output variables
     outagpp(:,:)        = 0.0
@@ -77,7 +80,7 @@ contains
     outaCveg2lit(:,:)   = 0.0
     outaNveg2lit(:,:)   = 0.0
     outaninorg(:,:)     = 0.0
-
+    outalai(:,:)        = 0.0
 
   end subroutine initoutput
 
@@ -158,6 +161,10 @@ contains
     filnam=trim(prefix)//'.d.nsoil.out'
     open(120,file=filnam,err=999,status='unknown')
 
+    ! LAI
+    filnam=trim(prefix)//'.d.lai.out'
+    open(121,file=filnam,err=999,status='unknown')
+
 
     !////////////////////////////////////////////////////////////////
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
@@ -191,6 +198,10 @@ contains
     filnam=trim(prefix)//'.a.nup.out'
     open(317,file=filnam,err=999,status='unknown')
 
+    ! LAI (ANNUAL MAXIMUM)
+    filnam=trim(prefix)//'.a.lai.out'
+    open(318,file=filnam,err=999,status='unknown')
+
     return
 
     999  stop 'INITIO: error opening output files'
@@ -210,7 +221,7 @@ contains
     use _params_modl, only: npft, lu_category
     use _vars_core, only: dgpp, dnpp, dnup, pleaf, pninorg, proot, &
       plabl, plitt_bg, plitt_af, plitt_as, dtemp_soil, dtransp, &
-      psoil_sl, psoil_fs
+      psoil_sl, psoil_fs, lai_ind
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
@@ -242,6 +253,7 @@ contains
     outdNsoil(:,doy,jpngr)      = psoil_sl(:,jpngr)%n%n14 + psoil_fs(:,jpngr)%n%n14
     outdninorg(:,doy,jpngr)     = pninorg(:,jpngr)%n14
     outdtemp_soil(:,doy,jpngr)  = dtemp_soil(:,jpngr)
+    outdlai(:,doy,jpngr)        = lai_ind(:,jpngr)
 
     ! write(0,*) 'outdCsoil', outdCsoil(:,doy,jpngr)
     ! write(0,*) 'psoil_sl(:,jpngr)%c%c12', psoil_sl(:,jpngr)%c%c12
@@ -288,6 +300,8 @@ contains
     integer, intent(in) :: jpngr
 
     outaCveg(:,jpngr)  = pleaf(:,jpngr)%c%c12 + proot(:,jpngr)%c%c12 !+ psapw(:,jpngr)%c%c12 + pwood(:,jpngr)%c%c12
+    outalai(:,jpngr)   = maxval( outdlai(:,:,jpngr), 2 )
+
 
   end subroutine getout_annual
 

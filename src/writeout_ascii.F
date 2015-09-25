@@ -65,6 +65,7 @@ subroutine writeout_ascii( year, dtemp )
       write(118,999) itime, sum(outdCsoil(:,day,jpngr))
       write(119,999) itime, sum(outdNlitt(:,day,jpngr))
       write(120,999) itime, sum(outdNsoil(:,day,jpngr))
+      write(121,999) itime, sum(outdlai(:,day,jpngr))
         
     end do
   end if
@@ -95,6 +96,7 @@ subroutine writeout_ascii( year, dtemp )
   write(312,999) itime, sum(outaCveg(:,jpngr))
   write(316,999) itime, sum(outaninorg(:,jpngr))
   write(317,999) itime, sum(outanup(:,jpngr))
+  write(318,999) itime, sum(outalai(:,jpngr))
 
   !-------------------------------------------------------------------------
   ! MODULE-SPECIFIC OUTPUT
