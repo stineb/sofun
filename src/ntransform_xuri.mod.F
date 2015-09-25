@@ -50,11 +50,15 @@ module _ntransform
   real, dimension(nlu,maxgrid), save :: fno3             ! fraction: no3/(no3+nh4)
 
   ! OUTPUT VARIABLES
+  ! daily
   real, dimension(nlu,ndayyear,maxgrid) :: outdnloss     ! daily mean C cost of N uptake (gC/gN) 
   real, dimension(nlu,ndayyear,maxgrid) :: outddenitr    ! daily mean C cost of N uptake (gC/gN) 
   real, dimension(nlu,ndayyear,maxgrid) :: outdnitr      ! daily mean C cost of N uptake (gC/gN) 
   real, dimension(nlu,ndayyear,maxgrid) :: outdnvol      ! daily mean C cost of N uptake (gC/gN) 
   real, dimension(nlu,ndayyear,maxgrid) :: outdnleach    ! daily mean C cost of N uptake (gC/gN) 
+
+  ! annual
+  real, dimension(nlu,maxgrid) :: outanloss     ! daily mean C cost of N uptake (gC/gN)   
 
 contains
 
@@ -440,6 +444,16 @@ contains
     filnam=trim(prefix)//'.d.nleach.out'
     open(504,file=filnam,err=888,status='unknown')
 
+
+    !----------------------------------------------------------------
+    ! ANNUAL OUTPUT
+    !----------------------------------------------------------------
+
+    ! ANNUAL TOTAL N LOSS (gN/m2/yr)
+    filnam=trim(prefix)//'.a.nloss.out'
+    open(550,file=filnam,err=888,status='unknown')
+
+
     return
 
     888  stop 'INITIO_NTRANSFORM: error opening output files'
@@ -457,6 +471,8 @@ contains
     outdnvol(:,:,:)   = 0.0
     outdnleach(:,:,:) = 0.0
 
+    outanloss(:,:)  = 0.0
+
   end subroutine initoutput_ntransform
 
 
@@ -469,11 +485,22 @@ contains
     integer, intent(in) :: moy    
     integer, intent(in) :: doy    
 
+    !----------------------------------------------------------------
+    ! DAILY
+    ! Collect daily output variables
+    !----------------------------------------------------------------
     outdnloss(:,doy,jpngr)  = dnloss(:)
     outddenitr(:,doy,jpngr) = ddenitr(:)
     outdnitr(:,doy,jpngr)   = dnitr(:)
     outdnvol(:,doy,jpngr)   = dnvol(:)
     outdnleach(:,doy,jpngr) = dnleach(:)
+
+    !----------------------------------------------------------------
+    ! ANNUAL SUM OVER DAILY VALUES
+    ! Collect annual output variables as sum of daily values
+    !----------------------------------------------------------------
+    outanloss(:,jpngr)    = outanloss(:,jpngr) + dnloss(:)
+
 
   end subroutine getout_daily_ntransform
 
@@ -518,6 +545,15 @@ contains
 
       end do
     end if
+
+    !-------------------------------------------------------------------------
+    ! ANNUAL OUTPUT
+    ! Write annual value, summed over all PFTs / LUs
+    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+    !-------------------------------------------------------------------------
+    itime = real(year) + real(firstyeartrend) - real(spinupyears)
+
+    write(550,999) itime, sum(outanloss(:,myjpngr))
 
     return
     
