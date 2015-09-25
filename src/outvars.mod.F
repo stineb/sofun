@@ -158,6 +158,7 @@ contains
     filnam=trim(prefix)//'.d.nsoil.out'
     open(120,file=filnam,err=999,status='unknown')
 
+
     !////////////////////////////////////////////////////////////////
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
     !----------------------------------------------------------------
@@ -185,6 +186,10 @@ contains
     ! INORGANIC N (mean over days)
     filnam=trim(prefix)//'.a.ninorg.out'
     open(316,file=filnam,err=999,status='unknown')
+
+    ! N UPTAKE
+    filnam=trim(prefix)//'.a.nup.out'
+    open(317,file=filnam,err=999,status='unknown')
 
     return
 
