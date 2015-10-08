@@ -25,7 +25,7 @@ module _littersom
   use _classdefs
   use _rates
   use _vars_core, only: ncpa_d
-  use _vars_core, only: drsoil, drhet, dcex
+  use _vars_core, only: drsoil, drhet
   use _vars_core, only: dtemp_soil, ddoc
   use _vars_core, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
     psoil_sl, pninorg
@@ -61,7 +61,6 @@ module _littersom
   real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin_soil
   real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin_litt
   real, dimension(nlu,ndayyear,maxgrid)  :: outdnfixfree  ! N fixation by free-living organisms [gN/m2/d]
-  real, dimension(npft,ndayyear,maxgrid) :: outdcex
 
   real, dimension(npft,maxgrid) :: outaClitt
   real, dimension(nlu,maxgrid)  :: outaCsoil
@@ -697,10 +696,6 @@ contains
     ! DAILY OUTPUT
     !----------------------------------------------------------------
 
-    ! C EXUDATION
-    filnam=trim(prefix)//'.d.cex.out'
-    open(105,file=filnam,err=999,status='unknown')
-
     ! NET N MINERALISATION
     filnam=trim(prefix)//'.d.netmin.out'
     open(106,file=filnam,err=999,status='unknown')
@@ -782,7 +777,6 @@ contains
     outaCdsoil(:,:)        = 0.0
     outaNimmo(:,:)         = 0.0
     
-    outdcex(:,:,:)         = 0.0
     outdnetmin(:,:,:)      = 0.0
     outdnetmin_soil(:,:,:) = 0.0
     outdnetmin_litt(:,:,:) = 0.0
@@ -792,24 +786,21 @@ contains
   end subroutine initoutput_littersom
 
 
-  subroutine getout_daily_littersom( jpngr, moy, doy )
-    !////////////////////////////////////////////////////////////////
-    !  SR called daily to sum up output variables.
-    !----------------------------------------------------------------
-    use _vars_core, only: dwtot
+  ! subroutine getout_daily_littersom( jpngr, moy, doy )
+  !   !////////////////////////////////////////////////////////////////
+  !   !  SR called daily to sum up output variables.
+  !   !----------------------------------------------------------------
+  !   use _vars_core, only: dwtot
 
-    implicit none
+  !   ! ARGUMENTS
+  !   integer, intent(in) :: jpngr
+  !   integer, intent(in) :: moy    
+  !   integer, intent(in) :: doy    
 
-    ! ARGUMENTS
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: moy    
-    integer, intent(in) :: doy    
+  !   ! Save the daily totals:
+  !   ! xxx add lu-dimension and jpngr-dimension
 
-    ! Save the daily totals:
-    ! xxx add lu-dimension and jpngr-dimension
-    outdcex(:,doy,jpngr)   = dcex(:)
-
-  end subroutine getout_daily_littersom
+  ! end subroutine getout_daily_littersom
 
 
   ! subroutine getout_monthly_littersom( jpngr, moy )
@@ -879,7 +870,6 @@ contains
         if (nlu>1) stop 'writeout_ascii_littersom: write out lu-area weighted sum'
 
         ! xxx lu-area weighted sum if nlu>0
-        write(105,999) itime, sum(outdcex(:,day,jpngr))
         write(106,999) itime, sum(outdnetmin(:,day,jpngr))
         write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
         write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))

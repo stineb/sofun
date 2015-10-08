@@ -42,8 +42,10 @@ module _allocation
   real, dimension(npft) :: dnroot
 
   ! OUTPUT VARIABLES
-  real, dimension(npft,maxgrid) :: outaCalloc
-  real, dimension(npft,maxgrid) :: outaNalloc
+  real, dimension(npft,maxgrid) :: outaCalclm
+  real, dimension(npft,maxgrid) :: outaNalclm
+  real, dimension(npft,maxgrid) :: outaCalcrm
+  real, dimension(npft,maxgrid) :: outaNalcrm
 
 
 contains
@@ -532,15 +534,21 @@ contains
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
     !----------------------------------------------------------------
 
-    ! C ALLOCATED TO GROWTH 
-    filnam=trim(prefix)//'.a.calloc.out'
-    open(303,file=filnam,err=999,status='unknown')
+    ! C ALLOCATED TO LEAF GROWTH 
+    filnam=trim(prefix)//'.a.calclm.out'
+    open(350,file=filnam,err=999,status='unknown')
 
-    ! N ALLOCATED TO GROWTH 
-    filnam=trim(prefix)//'.a.nalloc.out'
-    open(309,file=filnam,err=999,status='unknown')
+    ! N ALLOCATED TO LEAF GROWTH 
+    filnam=trim(prefix)//'.a.nalclm.out'
+    open(351,file=filnam,err=999,status='unknown')
 
-    write(0,*) 'opening files for outaCalloc'
+    ! C ALLOCATED TO ROOT GROWTH 
+    filnam=trim(prefix)//'.a.calcrm.out'
+    open(352,file=filnam,err=999,status='unknown')
+
+    ! N ALLOCATED TO ROOT GROWTH 
+    filnam=trim(prefix)//'.a.nalcrm.out'
+    open(353,file=filnam,err=999,status='unknown')
 
     return
 
@@ -564,8 +572,10 @@ contains
     !  Initialises nuptake-specific output variables
     !----------------------------------------------------------------
     ! xxx remove their day-dimension
-    outaCalloc(:,:) = 0.0
-    outaNalloc(:,:) = 0.0
+    outaCalclm(:,:) = 0.0
+    outaNalclm(:,:) = 0.0
+    outaCalcrm(:,:) = 0.0
+    outaNalcrm(:,:) = 0.0
 
     ! write(0,*) 'initialising outaCalloc',outaCalloc
 
@@ -581,8 +591,10 @@ contains
     integer, intent(in) :: moy
     integer, intent(in) :: doy
 
-    outaCalloc(:,jpngr) = outaCalloc(:,jpngr) + dcleaf(:) + dcroot(:)
-    outaNalloc(:,jpngr) = outaNalloc(:,jpngr) + dnleaf(:) + dnroot(:)
+    outaCalclm(:,jpngr) = outaCalclm(:,jpngr) + dcleaf(:) 
+    outaNalclm(:,jpngr) = outaNalclm(:,jpngr) + dnleaf(:)
+    outaCalcrm(:,jpngr) = outaCalcrm(:,jpngr) + dcroot(:) 
+    outaNalcrm(:,jpngr) = outaNalcrm(:,jpngr) + dnroot(:)
 
     ! write(0,*) 'collecting outaCalloc',outaCalloc
 
@@ -617,8 +629,10 @@ contains
 
     ! write(0,*) 'writing time, outaCalloc',itime, sum(outaCalloc(:,jpngr))
 
-    write(303,999) itime, sum(outaCalloc(:,jpngr))
-    write(309,999) itime, sum(outaNalloc(:,jpngr))
+    write(350,999) itime, sum(outaCalclm(:,jpngr))
+    write(351,999) itime, sum(outaNalclm(:,jpngr))
+    write(352,999) itime, sum(outaCalcrm(:,jpngr))
+    write(353,999) itime, sum(outaNalcrm(:,jpngr))
 
     return
     

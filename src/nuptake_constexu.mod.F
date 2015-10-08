@@ -22,6 +22,9 @@ module _nuptake
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: ndayyear, nmonth, nlu, npft, maxgrid
+  use _vars_core, only: dcex, pninorg, plabl, proot, dcex, dnup, &
+      dtransp, aet_d, fpc_grid
+
   use _classdefs
 
   implicit none
@@ -42,12 +45,16 @@ module _nuptake
   real, dimension(npft) :: dnup_ret         ! daily N uptake [gN/m2/d]
 
   ! OUTPUT VARIABLES
+  ! daily
   real, dimension(npft,ndayyear,maxgrid) :: outdccost   ! daily mean C cost of N uptake (gC/gN) 
   real, dimension(npft,ndayyear,maxgrid) :: outdnup_pas
   real, dimension(npft,ndayyear,maxgrid) :: outdnup_act
   real, dimension(npft,ndayyear,maxgrid) :: outdnup_fix
   real, dimension(npft,ndayyear,maxgrid) :: outdnup_ret
+  real, dimension(npft,ndayyear,maxgrid) :: outdcex
 
+  ! annual
+  real, dimension(npft,maxgrid) :: outacex
 
 contains
 
@@ -61,8 +68,6 @@ contains
     !-----------------------------------------------------------------
     use _classdefs
     use _params_modl, only: lu_category
-    use _vars_core, only: pninorg, plabl, proot, dcex, dnup, &
-      dtransp, aet_d, fpc_grid
 
     ! arguments
     integer, intent(in) :: jpngr, pft
@@ -324,6 +329,20 @@ contains
     filnam=trim(prefix)//'.d.nup_ret.out'
     open(404,file=filnam,err=888,status='unknown')
 
+    ! C EXUDATION
+    filnam=trim(prefix)//'.d.cex.out'
+    open(105,file=filnam,err=888,status='unknown')
+
+
+    !----------------------------------------------------------------
+    ! ANNUAL OUTPUT
+    !----------------------------------------------------------------
+
+    ! ANNUAL TOTAL C EXUDATION
+    filnam=trim(prefix)//'.a.cex.out'
+    open(405,file=filnam,err=888,status='unknown')
+
+
     return
 
     888  stop 'INITIO_NUPTAKE: error opening output files'
@@ -376,6 +395,10 @@ contains
     outdnup_act(:,:,:) = 0.0
     outdnup_fix(:,:,:) = 0.0
     outdnup_ret(:,:,:) = 0.0
+    outdcex(:,:,:)     = 0.0
+
+    outacex(:,:)       = 0.0
+
 
   end subroutine initoutput_nuptake
 
@@ -390,13 +413,24 @@ contains
     integer, intent(in) :: moy    
     integer, intent(in) :: doy    
 
-    ! Save the daily totals:
-    ! xxx add lu-dimension and jpngr-dimension
+    !----------------------------------------------------------------
+    ! DAILY
+    ! Collect daily output variables
+    ! so far not implemented for isotopes
+    !----------------------------------------------------------------
     outdccost(:,doy,jpngr)   = dccost(:)
     outdnup_pas(:,doy,jpngr) = dnup_pas(:)
     outdnup_act(:,doy,jpngr) = dnup_act(:)
     outdnup_fix(:,doy,jpngr) = dnup_fix(:)
     outdnup_ret(:,doy,jpngr) = dnup_ret(:)
+    outdcex(:,doy,jpngr)     = dcex(:)
+
+    !----------------------------------------------------------------
+    ! ANNUAL SUM OVER DAILY VALUES
+    ! Collect annual output variables as sum of daily values
+    !----------------------------------------------------------------
+    outacex(:,jpngr) = outacex(:,jpngr) + dcex(:)
+
 
   end subroutine getout_daily_nuptake
 
@@ -429,6 +463,8 @@ contains
 
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
+    ! Write daily value, summed over all PFTs / LUs
+    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
     if (.not.spinup) then
       ! Write daily output only during transient simulation
@@ -447,7 +483,8 @@ contains
         myoutdnup_act = sum(outdnup_act(:,myday,myjpngr))
         myoutdnup_fix = sum(outdnup_fix(:,myday,myjpngr))
         myoutdnup_ret = sum(outdnup_ret(:,myday,myjpngr))
-        
+
+        write(105,999) itime, sum(outdcex(:,myday,myjpngr))
         write(400,999) itime, myoutdccost
         write(401,999) itime, myoutdnup_pas
         write(402,999) itime, myoutdnup_act
@@ -457,11 +494,21 @@ contains
       end do
     end if
 
+    !-------------------------------------------------------------------------
+    ! ANNUAL OUTPUT
+    ! Write annual value, summed over all PFTs / LUs
+    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+    !-------------------------------------------------------------------------
+    itime = real(year) + real(firstyeartrend) - real(spinupyears)
+
+    write(405,999) itime, sum(outacex(:,myjpngr))
+
     return
     
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_nuptake
+
 
   ! subroutine n_fixation_cryptogam( day, lu, jpngr, dnfix_cpc, dnfix_cgc )
   ! !******************************************************************************

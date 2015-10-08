@@ -4,7 +4,7 @@ outdir <- "/alphadata01/bstocker/sofun/trunk/output/"
 dvars <- c(
   "gpp","npp","cex","nup","nup_pas","nup_act","nup_fix","nup_ret","nfixfree",
   "cleaf","netmin","ninorg","ccost","cleaf","croot","clabl","clitt","nlitt","csoil","nsoil","netmin_litt",
-  "netmin_soil","nloss","nvol","denitr","nitr","nleach","soiltemp","temp"
+  "netmin_soil","nloss","nvol","denitr","nitr","nleach","soiltemp","temp","lai"
   )
 avars <- c("calloc","nalloc","clit2soil","nlit2soil","nreq","cveg2lit","nveg2lit")
 
@@ -321,6 +321,25 @@ heights <- rep(aspect*magn,nrows)
   lines( daily_sub$doy,  daily_sub$nsoil - min(daily_sub$nsoil), col="red" )
 
   legend( "topleft", c("N inorg","N litt. change","N soil change"), col=c("blue","brown","red"), bty="n", lty=1 )
+
+  dev.off()
+
+
+##--------------------------------------
+## LITTER/SOIL C and N POOLS
+##--------------------------------------
+  filn <- paste( "lai_overview_sofun_seasonal", runname, ".pdf", sep="" )
+  pdf( filn, width=sum(widths), height=sum(heights) )
+  panel <- layout(
+                  matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
+                  widths=widths,
+                  heights=heights,
+                  TRUE
+                  )
+  par(mar=c(4,4,2,1), las=1 )
+  plot(  daily_sub$doy,  daily_sub$lai, type="l", xlab="day of year", ylab="gN/m2/d", ylim=c(0,max(daily_sub$lai)), col="red" )
+
+  legend( "topleft", c("LAI"), col=c("red"), bty="n", lty=1 )
 
   dev.off()
 

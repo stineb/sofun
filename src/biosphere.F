@@ -21,14 +21,14 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _soiltemp, only: soiltemp
   use _phenology, only: gettempphenology  !, phenology
   use _vegdynamics, only: estab_daily
-  use _gpp, only: gpp, getlue, gettraits, initdaily_gpp
+  use _gpp, only: gpp, getlue, gettraits, initdaily_gpp, writeout_ascii_gpp, getout_annual_gpp, initio_gpp, initoutput_gpp
   use _npp, only: npp
   use _allocation, only: allocation_daily, initio_allocation, initoutput_allocation, getout_daily_allocation, writeout_ascii_allocation
   use _turnover, only: turnover
   use _waterbal, only: waterbal, getrad, outdcpa, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getout_monthly_waterbal
   use _nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake
   use _ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform
-  use _littersom, only: littersom, initio_littersom, getout_daily_littersom, initoutput_littersom, getout_annual_littersom
+  use _littersom, only: littersom, initio_littersom, initoutput_littersom, getout_annual_littersom !, getout_daily_littersom
 
   use _waterbal, only: writeout_ascii_waterbal
 
@@ -115,6 +115,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !----------------------------------------------------------------
     call initio()
     call initio_waterbal()
+    call initio_gpp()
     call initio_nuptake()
     call initio_ntransform()
     call initio_littersom()
@@ -128,6 +129,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   !----------------------------------------------------------------
   call initoutput()
   call initoutput_waterbal()
+  call initoutput_gpp()
   call initoutput_nuptake()
   call initoutput_ntransform()
   call initoutput_littersom()
@@ -271,7 +273,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         call getout_daily( jpngr, mo, day )
         call getout_daily_waterbal( jpngr, mo, day )
         call getout_daily_nuptake( jpngr, mo, day )
-        call getout_daily_littersom( jpngr, mo, day )
+        ! call getout_daily_littersom( jpngr, mo, day )
         call getout_daily_ntransform( jpngr, mo, day )
         call getout_daily_allocation( jpngr, mo, day )
 
@@ -305,12 +307,14 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     ! collect annually updated output variables
     !----------------------------------------------------------------
     call getout_annual( jpngr )
+    call getout_annual_gpp( jpngr )
     call getout_annual_littersom( jpngr )
 
     !----------------------------------------------------------------
     ! Write to output
     !----------------------------------------------------------------
     call writeout_ascii( year, dtemp_field(:,jpngr) )
+    call writeout_ascii_gpp( year, spinup )
     call writeout_ascii_waterbal( year, spinup )
     call writeout_ascii_allocation( year, spinup )
     call writeout_ascii_ntransform( year, spinup )
