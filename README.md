@@ -15,6 +15,9 @@ This repository holds utility and general functionality scripts.
 ### asc2cdf.jnl
 * Ferret script to convert an ASCII file (gridded, geo-referenced data in text format) into NetCDF.
 
+### batch_audio_cvt.sh
+* Performs batch audio conversions (e.g., lossless m4a to lossy mp3) using VLC Media Player (Unix/Mac OSX)
+
 ### calc_centroids.R
 * Writes CSV file (ID, LAT, LON) of regular grid pixel centroids for given map extents and pixel resolution.
 
