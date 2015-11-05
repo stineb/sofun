@@ -1,5 +1,5 @@
 mycolorbar <- function( col,           # a vector of colors from which to interpolate
-                       lev,            # levels of colorbar either in the form of c(min,by,max) or by a vector of length > 3 containing margins of levels
+                       lev,            # levels of colorbar either in the form of c(min,max, N levels) or by a vector of length > 3 containing margins of levels
                        plot=TRUE,      # if false, then no colorbar is plotted but colors, levels and margins are returned
                        alpha=NA,       # transparency value, 0=100% transparent, 1=0% transparent
                        orient="h",     # orentation of colorbar
@@ -17,7 +17,6 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
   ## defined by 'layout'.
   ## Beni Stocker, 3.6.2013
   ## -------------------------------------------------------------------------
-  
   library(gplots)
 
   if (length(lev)>3){

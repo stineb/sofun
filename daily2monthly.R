@@ -13,19 +13,19 @@ daily2monthly <- function( dval, method ){
     ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
   }
   ndayyear <- sum(ndaymonth)    
-  nmonths <- 12
+  nmonth <- 12
+
+  istart <- cumsum(ndaymonth)-ndaymonth+1
+  iend   <- cumsum(ndaymonth)
 
   ## loop over months and take sum/mean of days in that month
   mval <- rep( NA, nmonth )
   for (moy in 1:nmonth){
     
-    istart <- sum( ndaymonth[1:(moy-1)] )+1
-    iend   <- sum( ndaymonth[1:moy] )
-
     if (method == "sum"){
-      mval[moy] <- sum( dval[ istart : iend ])
+      mval[moy] <- sum( dval[ istart[moy] : iend[moy] ])
     } else if (method == "mean") {
-      mval[moy] <- sum( dval[ istart : iend ]) / ndaymonth[moy]
+      mval[moy] <- sum( dval[ istart[moy] : iend[moy] ]) / ndaymonth[moy]
     } else {
       print( "DAILY2MONTHLY: select valid method (sum, mean)" )
     }

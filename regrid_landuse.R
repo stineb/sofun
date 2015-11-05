@@ -1,8 +1,8 @@
 ####################################################################
 ## lu             3-dim array containing absolute landuse area on original grid (first two 
-##		  dimensions). The third dimension holds the different landuse categories (crop, 
-##		  pasture, ...) for which consistent fields are calculated (their sum cannot exceed 
-##		  available land on output grid).
+##      dimensions). The third dimension holds the different landuse categories (crop, 
+##      pasture, ...) for which consistent fields are calculated (their sum cannot exceed 
+##      available land on output grid).
 ## land.avail     2-dim array containing the gridcell area fraction of available land on desired 
 ##                output grid
 ## fraction=FALSE defaults to FALSE, TRUE when 'lu' and 'land.avail' are fractions of grid cell area.
@@ -16,22 +16,22 @@
 ## aligned=NA     Flag to declarea whether original and output grids are aligned (natural number of
 ##                original gridcells fit inside one output gridcell, AND grids have common lower
 ##                left corner (south-west corner)).
-## lon=NA	  longitudes (grid cell center) of original grid. If NA, equally spaced grid points 
+## lon=NA   longitudes (grid cell center) of original grid. If NA, equally spaced grid points 
 ##                covering -180 to 180 degrees E are assumed, with length corresponding to number of 
-##		  columns of 'lu'
-## lat=NA	  latitudes (grid cell center) of original grid. If NA, equally spaced grid points 
-##		  covering -90 to 90 degrees N are assumed, with length corresonding to number of 
-##		  rows of 'lu'.
+##      columns of 'lu'
+## lat=NA   latitudes (grid cell center) of original grid. If NA, equally spaced grid points 
+##      covering -90 to 90 degrees N are assumed, with length corresonding to number of 
+##      rows of 'lu'.
 ## dx=NA          Explicit declaration of original gridcell size in longitude. May be necessary
 ##                to avoid numerical imprecisions.
 ## dy=NA          Explicit declaration of original gridcell size in latitude. May be necessary
 ##                to avoid numerical imprecisions.
-## lono=NA	  longitudes (grid cell center) of destination grid. If NA, equally spaced grid 
-##		  points covering -180 to 180 degrees E are assumed, with length corresponding to 
-##		  number of columns of land.avail.
-## lato=NA	  latitudes (grid cell center) of destination grid. If NA, equally spaced grid 
-##		  points covering -180 to 180 degrees E are assumed, with length corresponding to 
-##		  number of columns of land.avail.
+## lono=NA    longitudes (grid cell center) of destination grid. If NA, equally spaced grid 
+##      points covering -180 to 180 degrees E are assumed, with length corresponding to 
+##      number of columns of land.avail.
+## lato=NA    latitudes (grid cell center) of destination grid. If NA, equally spaced grid 
+##      points covering -180 to 180 degrees E are assumed, with length corresponding to 
+##      number of columns of land.avail.
 ##
 ## Beni Stocker, 17.07.2013
 ## -----------------------------------------------------------------
@@ -51,7 +51,7 @@ regrid.landuse <- function(
                            lato=NA,
                            verbose=FALSE
                            ){
-                               	                               	
+                                                                
   ## /////////////////////////////////////////////////////////////////
   ## INITIALISATIONS AND DEFINITIONS
   ## -----------------------------------------------------------------
@@ -62,7 +62,15 @@ regrid.landuse <- function(
   
   ## Get total number of landuse categories for which consistent fields
   ## are required
-  ncat <- dim(lu)[3]
+  if (length(dim(lu))==2) { 
+    ncat <- 1
+    ## add a dummy dimension
+    tmp <- array( NA, dim=c(dim(lu),1) )
+    tmp[,,1] <- lu
+    lu <- tmp
+  } else {
+    ncat <- dim(lu)[3]
+  }
 
   ## Input grid definition
   if (is.na(dx)){dx=lon[2]-lon[1]}
@@ -76,7 +84,7 @@ regrid.landuse <- function(
     lat <- seq(from=-90+dy/2, to=90-dy/2, by=dy)
   }
 
-  ## Output grid definition	
+  ## Output grid definition 
   if (is.na(lono)){
     ## Interpret longitude information from 'land.avail'
     dxo <- 360/dim(land.avail)[1]
@@ -162,6 +170,7 @@ regrid.landuse <- function(
   ## AREA ALLOCATION TO DESTINATION GRID
   ## -----------------------------------------------------------------
   ## Loop over coarse grid.
+  print("collecting landuse area")
   for (l in seq(nlato)){
     for (k in seq(nlono)){
       if (land.avail[k,l]>0){
@@ -209,7 +218,7 @@ regrid.landuse <- function(
               
               if (aligned) {              
                 
-                a_to_dest <- 1	
+                a_to_dest <- 1  
                 
               } else {
                 
@@ -394,7 +403,7 @@ regrid.landuse <- function(
           aluo.rel[k,l,m] <- aluo[k,l,m]/area.lpx[k,l]
         }
       }
-    } 	
+    }   
   }
   
   ## Fill up all ocean cells with NA
