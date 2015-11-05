@@ -18,6 +18,9 @@ This repository holds utility and general functionality scripts.
 ### batch_audio_cvt.sh
 * Performs batch audio conversions (e.g., lossless m4a to lossy mp3) using VLC Media Player (Unix/Mac OSX)
 
+### biomisation.R
+* R function returns the biome as a function of GDD, fractional plant cover of 9 PFTs (LPX) and vegetation height. 
+
 ### calc_centroids.R
 * Writes CSV file (ID, LAT, LON) of regular grid pixel centroids for given map extents and pixel resolution.
 
@@ -62,6 +65,9 @@ This repository holds utility and general functionality scripts.
 ### peirce_dev
 * Python (__peirce_dev.py__) and R (__peirce_dev.R__) scripts that remove outliers from observation pairs based on a model fit using Peirce's criterion.
 * Example data is available (__peirce_example.csv__)
+
+### plot_biome.R
+* R function creates a PDF with a nice map of biomes, given biome categorised using function 'biomisation.R'.
 
 ### regrid_landuse.R
 * R function to regrid (remap) landuse data conserving total area in categories cropland, pasture, urban.
