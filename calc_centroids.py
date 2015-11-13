@@ -1,12 +1,12 @@
 #!/usr/bin/python
 #
-# reg_points.py
+# calc_centroids.py
 #
 # written by Tyler W. Davis
 # Imperial College London
 #
 # 2013-08-28 -- created
-# 2014-12-01 -- last updated
+# 2015-11-13 -- last updated
 #
 # ------------
 # description:
@@ -18,24 +18,26 @@
 # ----------
 # changelog:
 # ----------
-# 00. created [13.08.28]
-# 01. updated comments [14.02.12]
-# 02. updated function doc string [14.12.01]
-#
+#  - created [13.08.28]
+#  - updated comments [14.02.12]
+#  - updated function doc string [14.12.01]
+#  - PEP8 style fixes [15.11.13]
+
+
 ###############################################################################
 ## DEFINE FUNCTIONS:
 ###############################################################################
 def calc_centroids(gv, ev, out):
     """
     Name:     calc_centroids
-    Input:    - tuple, grid values (i.e., the number of columns and rows, aka 
+    Input:    - tuple, grid values (i.e., the number of columns and rows, aka
                 pixels in x and y, and pixel resolution)
-              - tuple, extent values (i.e., northing, southing, westing and 
+              - tuple, extent values (i.e., northing, southing, westing and
                 easting, in degrees)
               - str, output file name (with path) for CSV file
-    Output:   None. 
+    Output:   None.
     Features: Writes to CSV file the ID, latitude and longitude of a regular
-              grid (centroid locations) given the extents and pixel resolution, 
+              grid (centroid locations) given the extents and pixel resolution,
               numbering from the top-left (north-west) corner.
     """
     # Create an output header:
@@ -69,7 +71,7 @@ def calc_centroids(gv, ev, out):
                 # If file writing not available, print to stdout:
                 print ct, lat, lon
             else:
-                f.write("%d,%0.3f,%0.3f\n" % (ct,lat,lon))
+                f.write("%d,%0.3f,%0.3f\n" % (ct, lat, lon))
                 f.close()
 
 ###############################################################################
@@ -89,7 +91,7 @@ ext_west = -180.0
 ext_east = 180.0
 
 # Define output file and directory:
-output_dir = "/home/user/Desktop/"
+output_dir = "~/Desktop/"
 output_file = "global_hd_grid.csv"
 
 ###############################################################################
@@ -100,4 +102,3 @@ grid_vals = (grid_cells_x, grid_cells_y, grid_resolution)
 ext_vals = (ext_north, ext_south, ext_west, ext_east)
 output_location = output_dir + output_file
 calc_centroids(grid_vals, ext_vals, output_location)
-
