@@ -136,9 +136,9 @@ module _gpp
   real, dimension(nmonth) :: mtransp_unitiabs ! transpiration per unit light absorbed [g H2O (mol photons)-1]
   real, dimension(nmonth) :: mvcmax           ! Vcmax per unit ground area (mol m-2 s-1)
   real, dimension(nmonth) :: mnrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]
+  real, dimension(nmonth) :: mchi             ! chi = ci/ca, leaf internal-to-ambient CO2 partial pressure
   real                    :: avcmax           ! Vcmax per unit ground area (mol m-2 s-1); annual value is maximum of monthly values
   real                    :: anrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]; annual value is maximum of monthly values
-  
 
   ! OUTPUT VARIABLES
   ! daily
@@ -147,12 +147,14 @@ module _gpp
   ! annual
   real, dimension(maxgrid) :: outanrlarea
   real, dimension(maxgrid) :: outavcmax
+  real, dimension(maxgrid) :: outachi
+  real, dimension(maxgrid) :: outalue
 
   ! Function return variables as derived types
   type outtype_pmodel
     real :: gpp
     real :: gs
-    real :: ci
+    real :: chi
     real :: vcmax
     real :: vcmax25
     real :: vcmax_unitfapar
@@ -357,18 +359,12 @@ contains
     mtemp(:) = daily2monthly( dtemp(:), "mean" )
     mvpd(:)  = daily2monthly( dvpd(:), "mean" )
 
-    ! ! xxx debug
-    ! write(0,*) 'mtemp', mtemp
-    ! write(0,*) 'mvpd', mvpd
-    ! stop  
-
     ! xxx try out: -- THIS WORKS PERFECTLY -- 
-    write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
-    co2   = 376.0
-    mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
-    mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
+    ! write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
+    ! co2   = 376.0
+    ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
+    ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
     ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
-
 
     ! Run P-model for monthly averages and store monthly variables 
     ! per unit absorbed light (not corrected for soil moisture)
@@ -396,19 +392,22 @@ contains
       ! transpiration per unit 
       mtransp_unitiabs(moy) = out_pmodel%transp_unitiabs
 
+      ! ci:ca
+      mchi(moy)             = out_pmodel%chi
+
     end do
 
 
-    ! xxx debug
-    write(0,*) 'mtemp', mtemp
-    write(0,*) 'mvpd', mvpd
-    write(0,*) 'co2', co2
-    write(0,*) 'elv', elv
-    write(0,*) 'mlue', mlue
-    write(0,*) 'mvcmax_unitiabs', mvcmax_unitiabs
-    write(0,*) 'mactnv_unitiabs', mactnv_unitiabs
-    write(0,*) 'factor25', factor25
-    write(0,*) 'mrd_unitiabs', mrd_unitiabs
+    ! ! xxx debug
+    ! write(0,*) 'mtemp', mtemp
+    ! write(0,*) 'mvpd', mvpd
+    ! write(0,*) 'co2', co2
+    ! write(0,*) 'elv', elv
+    ! write(0,*) 'mlue', mlue
+    ! write(0,*) 'mvcmax_unitiabs', mvcmax_unitiabs
+    ! write(0,*) 'mactnv_unitiabs', mactnv_unitiabs
+    ! write(0,*) 'factor25', factor25
+    ! write(0,*) 'mrd_unitiabs', mrd_unitiabs
     ! stop
 
 
@@ -441,7 +440,7 @@ contains
     ! xxx try: assumue seasonal maximum LAI to determine leaf N beforehand
     max_lai = 1.0
 
-    write(0,*) 'meanmppfd', meanmppfd
+    ! write(0,*) 'meanmppfd', meanmppfd
 
     do moy=1,nmonth
       mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), meanmppfd(moy) )
@@ -450,9 +449,9 @@ contains
     avcmax = maxval( mvcmax(:) )
     anrlarea = maxval( mnrlarea(:) )
 
-    write(0,*) 'mvcmax  ', mvcmax(:) * 1e3
-    write(0,*) 'anrlarea', anrlarea
-    stop
+    ! write(0,*) 'mvcmax  ', mvcmax(:) * 1e3
+    ! write(0,*) 'anrlarea', anrlarea
+    ! stop
 
     do pft=1,npft
 
@@ -490,7 +489,7 @@ contains
 
     fapar = get_fapar( lai )
 
-    ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
+    ! Calculate leaf-scale Rubisco-N as a function of LAI and current LUE
     nr_leaf = fapar * meanmppfd * mactnv_unitiabs / lai
 
   end function calc_nr_leaf
@@ -569,7 +568,8 @@ contains
     real :: iabs                     ! absorbed photosynthetically active radiation (mol/m2)
     real :: patm                     ! atmospheric pressure as a function of elevation (Pa)
     real :: ca                       ! ambient CO2 partial pression (Pa)
-    real :: ci                       ! leaf-internal CO2 partial pression (Pa)
+    real :: ci                       ! leaf-internal CO2 partial pression, (Pa)
+    real :: chi                      ! leaf-internal to ambient CO2 partial pression, ci/ca (unitless)
     real :: gs                       ! photorespiratory compensation point - Gamma-star (Pa)
     real :: fa                       ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
     real :: kmm                      ! Michaelis-Menten coefficient (Pa)
@@ -578,7 +578,6 @@ contains
     real :: ns_star                  ! viscosity correction factor (unitless)
     real :: m
     real :: n
-    real :: chi
     real :: gpp                      ! assimilation (mol m-2 s-1)
     real :: lue                      ! Light use efficiency
     real :: vcmax                    ! Vcmax per unit ground area (mol m-2 s-1)
@@ -717,7 +716,7 @@ contains
     ! Construct derived type for output
     out_pmodel%gpp               = gpp
     out_pmodel%gs                = gs
-    out_pmodel%ci                = ci
+    out_pmodel%chi               = chi
     out_pmodel%vcmax             = vcmax
     out_pmodel%vcmax25           = vcmax25
     out_pmodel%vcmax_unitfapar   = vcmax_unitfapar
@@ -768,7 +767,6 @@ contains
     !----------------------------------------------------------------
     ! ANNUAL OUTPUT
     !----------------------------------------------------------------
-
     ! ANNUAL MAXIMUM N_AREA IN ACTIVE RUBISCO (gN/m2-leaf)
     filnam=trim(prefix)//'.a.nrlarea.out'
     open(650,file=filnam,err=888,status='unknown')
@@ -776,6 +774,14 @@ contains
     ! VCMAX (annual maximum) (mol m-2 s-1)
     filnam=trim(prefix)//'.a.vcmax.out'
     open(651,file=filnam,err=888,status='unknown')
+
+    ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
+    filnam=trim(prefix)//'.a.chi.out'
+    open(652,file=filnam,err=888,status='unknown')
+
+    ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
+    filnam=trim(prefix)//'.a.lue.out'
+    open(653,file=filnam,err=888,status='unknown')
 
     return
 
@@ -790,6 +796,8 @@ contains
     !----------------------------------------------------------------
     outanrlarea(:) = 0.0
     outavcmax(:)   = 0.0
+    outachi(:)     = 0.0
+    outalue(:)     = 0.0
 
   end subroutine initoutput_gpp
 
@@ -798,11 +806,15 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
+    use _waterbal, only: meanmppfd
+
     ! arguments
     integer, intent(in) :: jpngr
 
     outanrlarea(jpngr) = anrlarea
     outavcmax(jpngr)   = avcmax
+    outachi(jpngr)     = sum( mchi(:) * meanmppfd(:) ) / sum( meanmppfd(:) )
+    outalue(jpngr)     = sum( mlue(:) * meanmppfd(:) ) / sum( meanmppfd(:) )
 
   end subroutine getout_annual_gpp
 
@@ -857,6 +869,8 @@ contains
 
     write(650,999) itime, outanrlarea(myjpngr)
     write(651,999) itime, outavcmax(myjpngr)
+    write(652,999) itime, outachi(myjpngr)
+    write(653,999) itime, outalue(myjpngr)
 
     return
     

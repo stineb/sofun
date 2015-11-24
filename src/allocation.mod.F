@@ -368,7 +368,7 @@ contains
     use _vegdynamics, only: get_fapar
 
     ! arguments
-    real, intent(in)  :: mydcleaf
+    real, intent(in)              :: mydcleaf
     logical, intent(in), optional :: verbose
 
     ! function return variable
