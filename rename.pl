@@ -6,7 +6,7 @@
 # Imperial College London
 #
 # 2011-06-06 -- created
-# 2014-10-27 -- last updated
+# 2015-11-25 -- last updated
 #
 # HOW TO RUN:
 # > perl rename.pl
@@ -36,18 +36,17 @@ my @files = grep {/.*\.{1}txt$/} readdir MYDIR;
 closedir(MYDIR);
 
 # Read through each file name you found and rename it appropriately:
-for my $name (@files)
-{
-	chomp($name);
+for my $name (@files) {
+    chomp($name);
 
-	# Save original filename:
-	my $oldname = $name;
+    # Save original filename:
+    my $oldname = $name;
 
-	# Renaming scheme
+    # Renaming scheme
     # e.g., s/SEARCH_FOR/REPLACE_WITH/;
-	$name =~ s/_test/_master/;
+    $name =~ s/_test/_master/;
 
-	# Rename file:
-	rename $oldname, $name;
-#	print "$oldname, $name\n";
+    # Rename file:
+    rename $oldname, $name;
+    print "$oldname, $name\n";
 }
