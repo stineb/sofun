@@ -12,7 +12,7 @@ module _forcing_siterun
   use _sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal
   use _params_siml, only: const_co2, firstyeartrend, sitename, co2_forcing_file, &
-    input_dir
+    input_dir, const_ndep, ndep_forcing_file
 
   implicit none
 
@@ -162,23 +162,30 @@ contains
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: runname
-    integer, intent(in) :: realyear
+    integer, intent(in)          :: realyear
 
     ! function return variable
     real, dimension(ndayyear,maxgrid) :: dndep_field
 
     ! local variables
-    real :: in_andep
+    real                      :: andep
     real, dimension(ndayyear) :: dprec_rel
-    integer :: jpngr
+    integer                   :: jpngr
+    integer                   :: readyear
+    
+    if (const_ndep) then
+      readyear = firstyeartrend
+    else  
+      readyear = realyear
+    end if
+    andep = getvalreal( trim(input_dir)//trim(ndep_forcing_file), readyear )
 
-    ! Get annual N-deposition           
-    in_andep = 1.0  
-
+    write(0,*) 'andep', andep
+    
     ! Distribute annual Ndep to days by daily precipitation
     do jpngr=1,maxgrid
-      dprec_rel(:) = dprec_field(:,jpngr)/sum(dprec_field(:,jpngr))
-      dndep_field(:,jpngr) = in_andep * dprec_rel(:)
+      dprec_rel(:)         = dprec_field(:,jpngr)/sum(dprec_field(:,jpngr))
+      dndep_field(:,jpngr) = andep * dprec_rel(:)
     end do
 
   end function getndep

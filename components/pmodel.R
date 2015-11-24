@@ -16,7 +16,7 @@
 # This collection of function implements the Global ecosystem
 # in Space and Time (GePiSaT) model of the terrestrial biosphere. 
 #
-# GePiSaT takes a simplistic approach to modelling terrestrial gross primary 
+# GePiSaT takes a simple approach to modelling terrestrial gross primary 
 # production (GPP) by making the use of the optimality principle of vegetation 
 # minimizing the summed costs associated with maintaining carbon fixation and 
 # water transport capabilities (Prentice et al., 2014).

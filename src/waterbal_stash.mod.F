@@ -201,7 +201,6 @@ contains
 
 
     do doy=1,ndayyear
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
       ! Store daily return values for later use in subroutine 'evap'.
@@ -269,14 +268,11 @@ contains
 
     end do
 
-
     ! Calculate monthly average daylight PPFD 
     daysecs(:)   = dayl(:) * 60.0 * 60.0              ! conversion of daylight hours to seconds
     monsecs(:)   = daily2monthly( daysecs(:), "sum" )
     mppfd(:)     = daily2monthly( dppfd(:), "sum" )   ! mol m-2 month-1
     meanmppfd(:) = mppfd(:) / monsecs(:)              ! mol m-2 s-1
-
-
 
     !-------------------------------------------------------------   
     ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 

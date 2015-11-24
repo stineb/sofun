@@ -62,7 +62,7 @@ module _ntransform
 
 contains
 
-  subroutine ntransform( dm, mo, jpngr, aprec )
+  subroutine ntransform( dm, mo, jpngr, dndep, aprec )
     !////////////////////////////////////////////////////////////////
     !  Litter and SOM decomposition and nitrogen mineralisation.
     !  1st order decay of litter and SOM _pools, governed by temperature
@@ -82,28 +82,29 @@ contains
     integer, intent(in) :: mo                              ! month
     integer, intent(in) :: dm                              ! day of the current month
     integer, intent(in) :: jpngr                           ! grid cell number
+    real, intent(in)    :: dndep                           ! daily N deposition [gN/d]
     real, intent(in)    :: aprec                           ! annual total precipitation [mm/d]
-
-    ! LOCAL VARIABLES
-    integer :: lu                                          ! gridcell unit counter variable
-
-    real, save :: ph_soil
-    real, save :: nh3max
-
-    real :: dnmax                                          ! labile carbon availability modifier
-    real :: ftemp_ninorg                                   ! temperature modifier
-
-    real :: no3_inc, n2o_inc, no_inc, no2_inc, n2_inc      ! temporary variables
-    real :: tmp                                            ! temporary variable
-
-    real :: nh4      ! ammonium [gN/m2]
-    real :: no3      ! nitrate [gN/m2]
-
-    real :: nh4_w, no3_w, no2_w                            ! anaerobic _pools
-    real :: nh4_d, no3_d, no2_d                            ! aerobic _pools
-    real :: doc_w, no, n2o, n2                             ! anaerobic _pools
-
-    real :: doc_d                                          ! aerobic _pools
+    
+    ! local variables
+    integer       :: lu                                             ! gridcell unit counter variable
+    
+    real, save    :: ph_soil
+    real, save    :: nh3max
+    
+    real          :: dnmax                                          ! labile carbon availability modifier
+    real          :: ftemp_ninorg                                   ! temperature modifier
+    
+    real          :: no3_inc, n2o_inc, no_inc, no2_inc, n2_inc      ! temporary variables
+    real          :: tmp                                            ! temporary variable
+    
+    real          :: nh4      ! ammonium [gN/m2]
+    real          :: no3      ! nitrate [gN/m2]
+    
+    real          :: nh4_w, no3_w, no2_w                            ! anaerobic _pools
+    real          :: nh4_d, no3_d, no2_d                            ! aerobic _pools
+    real          :: doc_w, no, n2o, n2                             ! anaerobic _pools
+    
+    real          :: doc_d                                          ! aerobic _pools
 
 
     !///////////////////////////////////////////////////////////////////////
@@ -135,9 +136,14 @@ contains
       
     endif
           
-
     ! LOOP OVER GRIDCELL LAND UNITS
     do lu=1,nlu
+
+      !-------------------------------------------------------------------------
+      ! Add N deposition to inorganic pool
+      !-------------------------------------------------------------------------
+      ! write(0,*) 'adding N deposition ', dndep(doy)
+      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dndep
               
       !-------------------------------------------------------------------------
       ! Define NO3 and NH4 from total inorganic N and previous day's shares

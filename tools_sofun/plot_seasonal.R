@@ -1,12 +1,11 @@
-# runname <- "CH-Oe1_2002"
-runname <- "test"
+runname <- "CH-Oe1_2002"
 outdir <- "/alphadata01/bstocker/sofun/trunk/output/"
 dvars <- c(
   "gpp","npp","cex","nup","nup_pas","nup_act","nup_fix","nup_ret","nfixfree",
   "cleaf","netmin","ninorg","ccost","cleaf","croot","clabl","clitt","nlitt","csoil","nsoil","netmin_litt",
-  "netmin_soil","nloss","nvol","denitr","nitr","nleach","soiltemp","temp","lai"
+  "netmin_soil","nloss","nvol","denitr","nitr","nleach","soiltemp","temp","lai","transp","ea_n"
   )
-avars <- c("calloc","nalloc","clit2soil","nlit2soil","nreq","cveg2lit","nveg2lit")
+avars <- c("calclm","nalclm","clit2soil","nlit2soil","nreq","cveg2lit","nveg2lit")
 
 plotyear <- 2000
 
@@ -96,7 +95,6 @@ widths[2] <- 0.4*magn
 heights <- rep(aspect*magn,nrows)
 # heights[nrows] <- 0.3*magn
 
-
 ##--------------------------------------
 ## C FLUXES
 ##--------------------------------------
@@ -180,6 +178,37 @@ heights <- rep(aspect*magn,nrows)
   text( 0.10, 0.28, "N denitr.", adj=c(0,0));            text( 0.60, 0.28, as.character(formatC(sum(daily_sub$denitr),digits=2,format="f")) , adj=c(1,0))
   text( 0.10, 0.23, "N nitr.", adj=c(0,0));              text( 0.60, 0.23, as.character(formatC(sum(daily_sub$nitr),digits=2,format="f")) , adj=c(1,0))
   text( 0.10, 0.18, "N leach.", adj=c(0,0));             text( 0.60, 0.18, as.character(formatC(sum(daily_sub$nleach),digits=2,format="f")) , adj=c(1,0))
+
+  dev.off()
+
+##--------------------------------------
+## C FLUXES
+##--------------------------------------
+  filn <- paste( "water_overview_sofun_seasonal_", runname, ".pdf", sep="" )
+  pdf( filn, width=sum(widths), height=sum(heights) )
+  panel <- layout(
+                  matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE),
+                  widths=widths,
+                  heights=heights,
+                  TRUE
+                  )
+  # layout.show(panel)
+  xlim <- range( daily_sub$doy )
+  ylim <- c( 0.0, max( daily_sub$transp*1e-3, daily_sub$ea_n ) )
+  par(mar=c(4,4,2,1), las=1)
+  plot( xlim, ylim, type="n", xlab="DOY", ylab="mm/d", ylim=ylim )
+
+  lines( daily_sub$doy, daily_sub$transp * 1e-3, col="red" )
+  lines( daily_sub$doy, daily_sub$ea_n, col="blue" ) # ea_n is given in mm, conversion to gH2O/m2
+
+  legend( "topleft", c("T (P-model)","AET (SPLASH)"), col=c("red","blue"), bty="n", lty=1 )
+
+  par(mar=c(0,0,2,0))
+  plot( c(0,1), c(0,1), type="n", axes=FALSE )
+  lab <- expression(paste("(mm"," yr"^-1,")", sep=""))
+  text( 0, 0.98, "ANNUAL TOTALS", adj=c(0,0),font=2); text( 0.5, 0.98, lab, adj=c(0,0),font=2, cex=0.7 )
+  text( 0, 0.93, "T (P-model) ", adj=c(0,0) );        text( 0.7, 0.93, as.character(formatC(sum(daily_sub$transp*1e-3),digits=1,format="f")) , adj=c(1,0))
+  text( 0, 0.88, "AET (SPLASH)", adj=c(0,0) );        text( 0.7, 0.88, as.character(formatC(sum(daily_sub$ea_n),digits=1,format="f")) , adj=c(1,0))
 
   dev.off()
 

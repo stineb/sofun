@@ -264,7 +264,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         !----------------------------------------------------------------
         ! inorganic soil N dynamics
         !----------------------------------------------------------------
-        call ntransform( dm, mo, jpngr, sum(dprec_field(:,jpngr)) )
+        call ntransform( dm, mo, jpngr, dndep_field(day,jpngr), sum(dprec_field(:,jpngr)) )
         ! write(0,*) 'E pninorg(lu,jpngr)%n14',pninorg
 
         !----------------------------------------------------------------

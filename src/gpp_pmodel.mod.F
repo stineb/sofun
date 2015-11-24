@@ -44,7 +44,6 @@ module _gpp
   !   - initio_gpp
   !   - initoutput_gpp
   !   - getout_daily_gpp
-  !   - getout_monthly_gpp
   !   - writeout_ascii_gpp
   !   - pmodel
   ! Required module-independent model state variables (necessarily 
@@ -106,7 +105,6 @@ module _gpp
   ! From regressing Narea to metabolic Narea in Hikosaka data
   real, parameter :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
   real, parameter :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
-
   real, parameter :: r_ctostructn_leaf = 35        ! constant ratio of C to structural N
   
   ! parameters for Narea -- under construction
@@ -125,7 +123,7 @@ module _gpp
   ! MONTHLY OUTPUT VARIABLES
   ! xxx add jpngr dim
 
-  ! PUBLIC VARIABLES
+  ! PUBLIC variables
   real, dimension(npft) :: drd      ! dark respiration [gC/m2/d]
 
   ! MODULE-SPECIFIC VARIABLES
@@ -136,21 +134,25 @@ module _gpp
   real, dimension(nmonth) :: factor25         ! factor to convert from 25 deg-normalised to ambient T
   real, dimension(nmonth) :: mrd_unitiabs     ! dark respiration per unit fAPAR (assuming fAPAR=1)
   real, dimension(nmonth) :: mtransp_unitiabs ! transpiration per unit light absorbed [g H2O (mol photons)-1]
-
-  real, dimension(npft)   :: nrlarea_trait     ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]
-  real, dimension(npft)   :: vcmax_trait       ! Vcmax per unit ground area (mol m-2 s-1), corresponds to annual maximum
+  real, dimension(nmonth) :: mvcmax           ! Vcmax per unit ground area (mol m-2 s-1)
+  real, dimension(nmonth) :: mnrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]
+  real                    :: avcmax           ! Vcmax per unit ground area (mol m-2 s-1); annual value is maximum of monthly values
+  real                    :: anrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]; annual value is maximum of monthly values
+  
 
   ! OUTPUT VARIABLES
   ! daily
   ! real, dimension(nlu,ndayyear,maxgrid) :: outdnloss     ! daily mean C cost of N uptake (gC/gN) 
 
   ! annual
-  real, dimension(npft,maxgrid) :: outanrlarea
-  real, dimension(npft,maxgrid) :: outavcmax
+  real, dimension(maxgrid) :: outanrlarea
+  real, dimension(maxgrid) :: outavcmax
 
   ! Function return variables as derived types
   type outtype_pmodel
     real :: gpp
+    real :: gs
+    real :: ci
     real :: vcmax
     real :: vcmax25
     real :: vcmax_unitfapar
@@ -292,7 +294,8 @@ contains
 
   function calc_drd( fapar, meanmppfd, mrd_unitiabs ) result( drd )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates daily dark respiration (Rd)
+    ! Calculates daily dark respiration (Rd) based on monthly mean 
+    ! PPFD (assumes acclimation on a monthly time scale).
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: fapar           ! fraction of absorbed PAR (unitless)
@@ -361,7 +364,7 @@ contains
 
     ! xxx try out: -- THIS WORKS PERFECTLY -- 
     write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
-    ! co2    = 376.0
+    co2   = 376.0
     mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
     mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
     ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
@@ -396,16 +399,16 @@ contains
     end do
 
 
-    ! ! xxx debug
-    ! write(0,*) 'mtemp', mtemp
-    ! write(0,*) 'mvpd', mvpd
-    ! write(0,*) 'co2', co2
-    ! write(0,*) 'elv', elv
-    ! write(0,*) 'mlue', mlue
-    ! write(0,*) 'mvcmax_unitiabs', mvcmax_unitiabs
-    ! write(0,*) 'mactnv_unitiabs', mactnv_unitiabs
-    ! write(0,*) 'factor25', factor25
-    ! write(0,*) 'mrd_unitiabs', mrd_unitiabs
+    ! xxx debug
+    write(0,*) 'mtemp', mtemp
+    write(0,*) 'mvpd', mvpd
+    write(0,*) 'co2', co2
+    write(0,*) 'elv', elv
+    write(0,*) 'mlue', mlue
+    write(0,*) 'mvcmax_unitiabs', mvcmax_unitiabs
+    write(0,*) 'mactnv_unitiabs', mactnv_unitiabs
+    write(0,*) 'factor25', factor25
+    write(0,*) 'mrd_unitiabs', mrd_unitiabs
     ! stop
 
 
@@ -414,8 +417,8 @@ contains
 
   subroutine gettraits( jpngr )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf traits based on Vcmax25, assuming a constant 
-    ! ratio of leaf-C to leaf-structural N:
+    ! Calculates leaf traits at the beginning of the year based on 
+    ! Vcmax25, assuming a constant ratio of leaf-C to leaf-structural N:
     ! - metabolic Narea
     ! - structural Narea
     ! - leaf C:N 
@@ -429,31 +432,38 @@ contains
     integer, intent(in) :: jpngr 
 
     ! local variables
-    integer :: pft
+    integer :: pft, moy
     real    :: max_lai
     real    :: nr_leaf
     real    :: ncw_leaf
     real    :: cleaf
 
+    ! xxx try: assumue seasonal maximum LAI to determine leaf N beforehand
+    max_lai = 1.0
+
+    write(0,*) 'meanmppfd', meanmppfd
+
+    do moy=1,nmonth
+      mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), meanmppfd(moy) )
+      mnrlarea(moy) = calc_nr_leaf(  max_lai, mactnv_unitiabs(moy), meanmppfd(moy) )
+    end do
+    avcmax = maxval( mvcmax(:) )
+    anrlarea = maxval( mnrlarea(:) )
+
+    write(0,*) 'mvcmax  ', mvcmax(:) * 1e3
+    write(0,*) 'anrlarea', anrlarea
+    stop
+
     do pft=1,npft
 
-      ! xxx try: assumue seasonal maximum LAI to determine leaf N beforehand
-      max_lai = 1.0
-
-      nrlarea_trait(pft) = calc_nr_leaf(  max_lai, mactnv_unitiabs(:), meanmppfd(:) )
-      vcmax_trait(pft)   = calc_vcmax( max_lai, mvcmax_unitiabs(:), meanmppfd(:) )
-
-      nrlarea_trait(pft)  = calc_nr_leaf(  max_lai, mactnv_unitiabs(:), meanmppfd(:) )
-      ncw_leaf = calc_ncw_leaf( nrlarea_trait(pft) )
-      cleaf    = ncw_leaf * n_molmass * r_ctostructn_leaf
-
-      r_cton_leaf(pft,jpngr) = cleaf / ( (nrlarea_trait(pft)+ncw_leaf) * n_molmass )
+      ncw_leaf               = calc_ncw_leaf( anrlarea )
+      cleaf                  = ncw_leaf * n_molmass * r_ctostructn_leaf
+      
+      r_cton_leaf(pft,jpngr) = cleaf / ( (anrlarea+ncw_leaf) * n_molmass )
       r_ntoc_leaf(pft,jpngr) = 1.0 / r_cton_leaf(pft,jpngr)
-
-      lma(pft,jpngr) = cleaf / c_content_of_biomass
-      sla(pft,jpngr) = 1.0 / lma(pft,jpngr)
-
-      ! write(0,*) 'sla(pft,jpngr) ',sla(pft,jpngr)
+      
+      lma(pft,jpngr)         = cleaf / c_content_of_biomass
+      sla(pft,jpngr)         = 1.0 / lma(pft,jpngr)
 
     end do
 
@@ -468,9 +478,9 @@ contains
     use _vegdynamics, only: get_fapar
 
     ! arguments
-    real, intent(in)                    :: lai
-    real, dimension(nmonth), intent(in) :: mactnv_unitiabs
-    real, dimension(nmonth), intent(in) :: meanmppfd
+    real, intent(in) :: lai
+    real, intent(in) :: mactnv_unitiabs
+    real, intent(in) :: meanmppfd
 
     ! function return variable
     real, intent(out) :: nr_leaf
@@ -481,7 +491,7 @@ contains
     fapar = get_fapar( lai )
 
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-    nr_leaf = maxval( fapar * meanmppfd(:) * mactnv_unitiabs(:) ) / lai
+    nr_leaf = fapar * meanmppfd * mactnv_unitiabs / lai
 
   end function calc_nr_leaf
 
@@ -494,9 +504,9 @@ contains
     use _vegdynamics, only: get_fapar
 
     ! arguments
-    real, intent(in)                    :: lai
-    real, dimension(nmonth), intent(in) :: vcmax_unitiabs
-    real, dimension(nmonth), intent(in) :: meanmppfd
+    real, intent(in) :: lai
+    real, intent(in) :: vcmax_unitiabs
+    real, intent(in) :: meanmppfd
 
     ! function return variable
     real, intent(out) :: vcmax
@@ -507,7 +517,7 @@ contains
     fapar = get_fapar( lai )
 
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-    vcmax = maxval( fapar * meanmppfd(:) * vcmax_unitiabs(:) ) / lai
+    vcmax = fapar * meanmppfd * vcmax_unitiabs / lai
 
   end function calc_vcmax
 
@@ -559,6 +569,7 @@ contains
     real :: iabs                     ! absorbed photosynthetically active radiation (mol/m2)
     real :: patm                     ! atmospheric pressure as a function of elevation (Pa)
     real :: ca                       ! ambient CO2 partial pression (Pa)
+    real :: ci                       ! leaf-internal CO2 partial pression (Pa)
     real :: gs                       ! photorespiratory compensation point - Gamma-star (Pa)
     real :: fa                       ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
     real :: kmm                      ! Michaelis-Menten coefficient (Pa)
@@ -652,10 +663,16 @@ contains
     ! efficiency, the absorbed PAR, the function of alpha (drought-reduction),
     ! and 'm'
     m   = calc_mprime( m )
-    gpp = iabs * kphio * fa * m
+    gpp = iabs * kphio * fa * m  ! in mol m-2 s-1
 
-    ! Light use efficiency
+    ! Light use efficiency (gpp per unit iabs)
     lue = kphio * fa * m 
+
+    ! leaf-internal CO2 partial pressure (Pa)
+    ci = chi * ca
+
+    ! stomatal conductance
+    gs = gpp  / ( ca - ci )
 
     ! Vcmax per unit ground area is the product of the intrinsic quantum 
     ! efficiency, the absorbed PAR, and 'n'
@@ -693,12 +710,14 @@ contains
     ! - gs = A / (ca (1-chi))
     ! (- chi = ci / ca)
     ! => E = (1.6 A D) / (ca - ci)
-    transp           = (1.6 * iabs * kphio * fa * m * vpd) / (ca * (1.0 - chi))   ! gpp = iabs * kphio * fa * m
-    transp_unitfapar = (1.6 * ppfd * kphio * fa * m * vpd) / (ca * (1.0 - chi))
-    transp_unitiabs  = (1.6 * 1.0  * kphio * fa * m * vpd) / (ca * (1.0 - chi))
+    transp           = (1.6 * iabs * kphio * fa * m * vpd) / (ca - ci)   ! gpp = iabs * kphio * fa * m
+    transp_unitfapar = (1.6 * ppfd * kphio * fa * m * vpd) / (ca - ci)
+    transp_unitiabs  = (1.6 * 1.0  * kphio * fa * m * vpd) / (ca - ci)
 
     ! Construct derived type for output
     out_pmodel%gpp               = gpp
+    out_pmodel%gs                = gs
+    out_pmodel%ci                = ci
     out_pmodel%vcmax             = vcmax
     out_pmodel%vcmax25           = vcmax25
     out_pmodel%vcmax_unitfapar   = vcmax_unitfapar
@@ -738,6 +757,13 @@ contains
     ! filnam=trim(prefix)//'.d.nloss.out'
     ! open(500,file=filnam,err=888,status='unknown')
 
+    ! !----------------------------------------------------------------
+    ! ! MONTHLY OUTPUT
+    ! !----------------------------------------------------------------
+    ! ! VCMAX (mol m-2 s-1)
+    ! filnam=trim(prefix)//'.m.vcmax.out'
+    ! open(601,file=filnam,err=888,status='unknown')
+
 
     !----------------------------------------------------------------
     ! ANNUAL OUTPUT
@@ -762,34 +788,10 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
-    outanrlarea(:,:) = 0.0
-    outavcmax(:,:)   = 0.0
+    outanrlarea(:) = 0.0
+    outavcmax(:)   = 0.0
 
   end subroutine initoutput_gpp
-
-
-  ! subroutine getout_daily_gpp( jpngr, moy, doy )
-    !   !////////////////////////////////////////////////////////////////
-    !   !  SR called daily to sum up output variables.
-    !   !----------------------------------------------------------------
-    !   ! arguments
-    !   integer, intent(in) :: jpngr
-    !   integer, intent(in) :: moy    
-    !   integer, intent(in) :: doy    
-
-    !   !----------------------------------------------------------------
-    !   ! DAILY
-    !   ! Collect daily output variables
-    !   !----------------------------------------------------------------
-    !   ! outdnloss(:,doy,jpngr)  = dnloss(:)
-
-    !   !----------------------------------------------------------------
-    !   ! ANNUAL SUM OVER DAILY VALUES
-    !   ! Collect annual output variables as sum of daily values
-    !   !----------------------------------------------------------------
-    !   ! outanrlarea(:,jpngr) = nrlarea_trait(:)
-
-  ! end subroutine getout_daily_gpp
 
 
   subroutine getout_annual_gpp( jpngr )
@@ -799,8 +801,8 @@ contains
     ! arguments
     integer, intent(in) :: jpngr
 
-    outanrlarea(:,jpngr) = nrlarea_trait(:)
-    outavcmax(:,jpngr)   = vcmax_trait(:)
+    outanrlarea(jpngr) = anrlarea
+    outavcmax(jpngr)   = avcmax
 
   end subroutine getout_annual_gpp
 
@@ -818,7 +820,7 @@ contains
 
     ! local variables
     real :: itime
-    integer :: myday, myjpngr
+    integer :: myday, myjpngr, mymonth
 
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii_gpp: think of something ...'
@@ -853,8 +855,8 @@ contains
     !-------------------------------------------------------------------------
     itime = real(year) + real(firstyeartrend) - real(spinupyears)
 
-    write(650,999) itime, sum(outanrlarea(:,myjpngr))
-    write(651,999) itime, sum(outavcmax(:,myjpngr))
+    write(650,999) itime, outanrlarea(myjpngr)
+    write(651,999) itime, outavcmax(myjpngr)
 
     return
     
@@ -1017,8 +1019,8 @@ contains
     real :: vdcg, vacg, vbkg, vsr
 
     ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
-    xi  = sqrt( (beta * ( kmm + gs ) ) / ( 1.6 * ns_star ) )
-    chi = gs / ca + ( 1.0 - gs / ca ) * xi / ( xi + sqrt(vpd) )
+    xi  = sqrt( (beta * ( kmm + gs ) ) / ( 1.6 * ns_star ) )     ! see Eq. 2 in 'Estimation_of_beta.pdf'
+    chi = gs / ca + ( 1.0 - gs / ca ) * xi / ( xi + sqrt(vpd) )  ! see Eq. 1 in 'Estimation_of_beta.pdf'
 
     ! consistent with this, directly return light-use-efficiency (m)
     ! see Eq. 13 in 'Simplifying_LUE.pdf'
@@ -1165,7 +1167,8 @@ contains
     !-----------------------------------------------------------------------
     ! Features: Returns the temperature-dependent photorespiratory 
     !           compensation point, Gamma star (Pascals), based on constants 
-    !           derived from Bernacchi et al. (2001) study.
+    !           derived from Bernacchi et al. (2001) study. Corresponds
+    !           to 'calc_gstar_colin' in pmodel.R.
     ! Ref:      Colin's document
     !-----------------------------------------------------------------------
     ! arguments
@@ -1193,7 +1196,8 @@ contains
     !-----------------------------------------------------------------------
     ! Output:   vcmax25  : Vcmax at 25 deg C
     ! Features: Returns the temperature-corrected Vcmax at 25 deg C
-    ! Ref:      Analogue function like 'calc_gstar_gepisat'
+    ! Ref:      Analogue function like 'calc_gstar_gepisat' in Python version
+    !           and 'calc_vcmax25_colin' in R version (pmodel.R)
     !-----------------------------------------------------------------------
     ! arguments
     real, intent(in) :: vcmax   ! Vcmax at a given temperature tc 
