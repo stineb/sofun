@@ -121,8 +121,8 @@ contains
     ! end if
     flexalloc = .true.
 
-    abserr=100.0*XMACHEPS*10e5
-    relerr=1000.0*XMACHEPS*10e5
+    abserr=100.0*XMACHEPS !*10e5
+    relerr=1000.0*XMACHEPS !*10e5
 
     do pft=1,npft
 
@@ -670,6 +670,7 @@ contains
     ! This is implemented in function 'mustbe_zero_for_lai()'.
     !----------------------------------------------------------------
     use _findroot_fzeroin
+    use _gpp, only: r_n_cw_v, ncw_min, r_ctostructn_leaf
 
     ! arguments 
     real, intent(in) :: cleaf
@@ -680,8 +681,8 @@ contains
     real                 :: abserr
     real                 :: relerr
     real, parameter      :: lai0 = 0.0
-    real, parameter      :: lai1 = 20.0
-    integer, parameter :: nmax = 100
+    real                 :: lai1
+    integer, parameter   :: nmax = 100
     type(outtype_zeroin) :: out_zeroin
 
     ! xxx debug
@@ -691,7 +692,7 @@ contains
     real, intent(out) :: lai
 
     ! xxx debug
-    cleaf = 200.0
+    cleaf = 1000
 
     write(0,*) 'what is LAI for Cleaf=', cleaf, '?'
 
@@ -703,6 +704,10 @@ contains
     state_mustbe_zero_for_lai%meanmppfd = meanmppfd
     state_mustbe_zero_for_lai%nv        = nv
 
+    ! initial guess for LAI
+    lai1 = 1.0 / ( c_molmass * ncw_min * r_ctostructn_leaf ) * cleaf
+    write(0,*) 'lai1 ', lai1
+
     test = mustbe_zero_for_lai( 0.0 ) 
     write(0,*) 'LAI =  0 =>', test
 
@@ -710,15 +715,15 @@ contains
     write(0,*) 'LAI = 20 =>', test 
 
     ! call function zeroin to find root (value of LAI for which evaluation expression is zero)
-    abserr=100.0*XMACHEPS*10e5
-    relerr=1000.0*XMACHEPS*10e5
+    abserr=100.0*XMACHEPS !*10e5
+    relerr=1000.0*XMACHEPS !*10e5
 
     write(0,*) 'abserr', abserr
     write(0,*) 'relerr', relerr
     ! stop 'here'
 
     write(0,*) '*** finding root of mustbe_zero_for_lai ***'
-    out_zeroin = zeroin( mustbe_zero_for_lai, abserr, relerr, nmax, "fzeroin.log", 0.0, 20.0 )
+    out_zeroin = zeroin( mustbe_zero_for_lai, abserr, relerr, nmax, "fzeroin.log", 0.0, lai1 )
     if ( out_zeroin%error /= 0 ) then
       lai = 0.0
     else

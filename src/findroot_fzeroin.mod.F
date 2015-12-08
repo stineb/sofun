@@ -31,7 +31,8 @@ module _findroot_fzeroin
   real, parameter :: TWO  = 2.0
   real, parameter :: THREE= 3.0
   real, parameter :: FOUR = 4.0
-  real, parameter :: XMACHEPS = 1.2e-16 ! machine smallest real number
+  ! real, parameter :: XMACHEPS = 1.2e-16 ! machine smallest real number, real 8
+  real, parameter :: XMACHEPS = 1.2e-11 ! machine smallest real number, real 4
 
   ! parameter(FOUR=4.0,HALF=0.50,ONE=1.0,THREE=3.0,TWO=2.0)
   ! parameter(ZERO=0.0, XMACHEPS = 1.2e-16)   ! machine smallest real number
