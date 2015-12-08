@@ -22,6 +22,8 @@ module _soiltemp
   !----------------------------------------------------------------
   use _vars_core, only: dtemp_soil
 
+  implicit none
+
 contains
 
   subroutine soiltemp( jpngr, moy, day, dtemp, dcpa ) 
@@ -31,8 +33,6 @@ contains
     use _params_core, only: ndayyear, nlu, nmonth, maxgrid, ndaymonth, pi
     use _params_siml, only: init
     use _sofunutils, only: running, daily2monthly
-
-    implicit none
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr

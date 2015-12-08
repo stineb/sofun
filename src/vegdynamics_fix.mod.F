@@ -11,6 +11,8 @@ module _vegdynamics
   ! real, dimension(npft,maxgrid)    :: height      ! tree height (m)
   ! real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
 
+  implicit none
+
 contains
 
   subroutine estab_daily( jpngr, doy )
@@ -69,7 +71,7 @@ contains
         ! write(0,*) 'in vegdynamics: crownarea(pft,jpngr)   ',crownarea(pft,jpngr)
         ! write(0,*) 'in vegdynamics: fpc_ind(pft,jpngr) ',fpc_ind(pft,jpngr)
         ! write(0,*) 'fpc_grid(pft,jpngr)',fpc_grid(pft,jpngr)
-! 
+
       else
 
         stop 'estab_daily not implemented for trees'
@@ -86,22 +88,26 @@ contains
     ! 
     !------------------------------------------------------------------
     use _classdefs
-    use _params_modl, only: r_ntoc_root
-    use _vars_core, only: pleaf, proot, r_ntoc_leaf
+    use _vars_core, only: plabl
 
     ! arguments
     integer, intent(in) :: pft
     integer, intent(in) :: jpngr
 
     ! local variables
-    real, parameter :: cleaf_sapl = 5.0
-    real, parameter :: croot_sapl = 1.0
-    
-    pleaf(pft,jpngr)%c%c12 = cleaf_sapl
-    proot(pft,jpngr)%c%c12 = croot_sapl
+    real, parameter :: clabl_sapl = 5.0
+    real, parameter :: nlabl_sapl = 0.25
+    ! real, parameter :: cleaf_sapl = 5.0
+    ! real, parameter :: croot_sapl = 1.0
 
-    pleaf(pft,jpngr)%n%n14 = cleaf_sapl * r_ntoc_leaf(pft,jpngr)
-    proot(pft,jpngr)%n%n14 = croot_sapl * r_ntoc_root(pft)
+    plabl(pft,jpngr)%c%c12 = clabl_sapl
+    plabl(pft,jpngr)%n%n14 = nlabl_sapl
+
+    ! pleaf(pft,jpngr)%c%c12 = cleaf_sapl
+    ! proot(pft,jpngr)%c%c12 = croot_sapl
+
+    ! pleaf(pft,jpngr)%n%n14 = cleaf_sapl * r_ntoc_leaf(pft,jpngr)
+    ! proot(pft,jpngr)%n%n14 = croot_sapl * r_ntoc_root(pft)
 
   end subroutine add_sapl
 
@@ -111,7 +117,6 @@ contains
     ! Function returns total fractional plant cover of a PFT
     ! Eq. 8 in Sitch et al., 2003
     !----------------------------------------------------------------
-
     ! arguments
     real, intent(in) :: crownarea
     real, intent(in) :: nind

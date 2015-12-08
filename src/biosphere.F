@@ -148,7 +148,8 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !call snow
 
     !----------------------------------------------------------------
-    ! get temperature-driven phenology (drought-driven phenology is calculated after waterbalance)
+    ! get temperature-driven phenology (drought-driven phenology is 
+    ! calculated after waterbalance)
     !----------------------------------------------------------------
     call gettempphenology(jpngr, dtemp_field(:,jpngr))
 
@@ -216,7 +217,8 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
         !----------------------------------------------------------------
         ! simulate daily establishment / sprouting
         !----------------------------------------------------------------
-        call estab_daily( jpngr, day )
+        call estab_daily( jpngr, day ) 
+        ! XXX this is no longer executed like this. Instead, provide a certain C and N free of charge in allocation XX
 
         !----------------------------------------------------------------
         ! calculate GPP

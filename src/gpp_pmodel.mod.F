@@ -52,7 +52,6 @@ module _gpp
   !----------------------------------------------------------------
   use _params_core, only: nmonth, npft, c_molmass, h2o_molmass, maxgrid
 
-
   implicit none
   ! private
   ! public gpp, outtype_pmodel
@@ -105,7 +104,7 @@ module _gpp
   ! From regressing Narea to metabolic Narea in Hikosaka data
   real, parameter :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
   real, parameter :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
-  real, parameter :: r_ctostructn_leaf = 35        ! constant ratio of C to structural N
+  real, parameter :: r_ctostructn_leaf = 40        ! constant ratio of C to structural N
   
   ! parameters for Narea -- under construction
   ! sla = 0.0014       ! specific leaf area (m2/gC)
@@ -193,8 +192,8 @@ contains
     ! - gpp (gC/m2/d)   : gross primary production
     !
     ! Requires from outside this module:
-    ! - lai_ind
     ! - dpppfd
+    ! - meanmppfd
     !------------------------------------------------------------------
     use _vars_core, only: dgpp, dtransp, fpc_ind
     use _params_modl, only: kbeer

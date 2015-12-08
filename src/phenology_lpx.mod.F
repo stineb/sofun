@@ -218,8 +218,7 @@ contains
 
       end do
     end do
-    ! XXXX
-
+    
     return
 
   end subroutine gettempphenology
