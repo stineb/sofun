@@ -134,17 +134,17 @@ module _gpp
   real, dimension(nmonth) :: mrd_unitiabs     ! dark respiration per unit fAPAR (assuming fAPAR=1)
   real, dimension(nmonth) :: mtransp_unitiabs ! transpiration per unit light absorbed [g H2O (mol photons)-1]
   real, dimension(nmonth) :: mvcmax           ! Vcmax per unit ground area (mol m-2 s-1)
-  real, dimension(nmonth) :: mnrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]
+  ! real, dimension(nmonth) :: mnrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]
   real, dimension(nmonth) :: mchi             ! chi = ci/ca, leaf internal-to-ambient CO2 partial pressure
   real                    :: avcmax           ! Vcmax per unit ground area (mol m-2 s-1); annual value is maximum of monthly values
-  real                    :: anrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]; annual value is maximum of monthly values
+  ! real                    :: anrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]; annual value is maximum of monthly values
 
   ! OUTPUT VARIABLES
   ! daily
   ! real, dimension(nlu,ndayyear,maxgrid) :: outdnloss     ! daily mean C cost of N uptake (gC/gN) 
 
   ! annual
-  real, dimension(maxgrid) :: outanrlarea
+  ! real, dimension(maxgrid) :: outanrlarea
   real, dimension(maxgrid) :: outavcmax
   real, dimension(maxgrid) :: outachi
   real, dimension(maxgrid) :: outalue
@@ -196,7 +196,6 @@ contains
     ! - meanmppfd
     !------------------------------------------------------------------
     use _vars_core, only: dgpp, dtransp, fpc_ind
-    use _params_modl, only: kbeer
     use _waterbal, only: dppfd, meanmppfd
 
     ! arguments
@@ -243,7 +242,8 @@ contains
           ! Dark respiration
           drd(pft)     = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
           ! drd(pft)     = calc_drd( 0.05, meanmppfd(moy), mrd_unitiabs(moy) )
-          
+          ! write(0,*) 'doy, drd(pft)', doy, drd(pft)
+
           ! transpiration
           dtransp(pft) = calc_dtransp( fpc_ind(pft,jpngr), dppfd(doy), mtransp_unitiabs(moy) )
           ! dtransp(pft) = calc_dtransp( 0.05, dppfd(doy), mtransp_unitiabs(moy) )
@@ -413,127 +413,127 @@ contains
   end subroutine getlue
 
 
-  subroutine gettraits( jpngr )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf traits at the beginning of the year based on 
-    ! Vcmax25, assuming a constant ratio of leaf-C to leaf-structural N:
-    ! - metabolic Narea
-    ! - structural Narea
-    ! - leaf C:N 
-    ! - LMA, SLA
-    !------------------------------------------------------------------
-    use _params_modl, only: n_molmass, c_molmass, c_content_of_biomass
-    use _vars_core, only: sla, lma, r_cton_leaf, r_ntoc_leaf
-    use _waterbal, only: meanmppfd
+  ! subroutine gettraits( jpngr )
+  !   !//////////////////////////////////////////////////////////////////
+  !   ! Calculates leaf traits at the beginning of the year based on 
+  !   ! Vcmax25, assuming a constant ratio of leaf-C to leaf-structural N:
+  !   ! - metabolic Narea
+  !   ! - structural Narea
+  !   ! - leaf C:N 
+  !   ! - LMA, SLA
+  !   !------------------------------------------------------------------
+  !   use _params_modl, only: n_molmass, c_molmass, c_content_of_biomass
+  !   use _vars_core, only: sla, lma, r_cton_leaf, r_ntoc_leaf
+  !   use _waterbal, only: meanmppfd
 
-    ! arguments
-    integer, intent(in) :: jpngr 
+  !   ! arguments
+  !   integer, intent(in) :: jpngr 
 
-    ! local variables
-    integer :: pft, moy
-    real    :: max_lai
-    real    :: nr_leaf
-    real    :: ncw_leaf
-    real    :: cleaf
+  !   ! local variables
+  !   integer :: pft, moy
+  !   real    :: max_lai
+  !   real    :: nr_leaf
+  !   real    :: ncw_leaf
+  !   real    :: cleaf
 
-    ! xxx try: assumue seasonal maximum LAI to determine leaf N beforehand
-    max_lai = 1.0
+  !   ! xxx try: assumue seasonal maximum LAI to determine leaf N beforehand
+  !   ! max_lai = 1.0
 
-    ! write(0,*) 'meanmppfd', meanmppfd
+  !   ! write(0,*) 'meanmppfd', meanmppfd
 
-    do moy=1,nmonth
-      mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), meanmppfd(moy) )
-      mnrlarea(moy) = calc_nr_leaf(  max_lai, mactnv_unitiabs(moy), meanmppfd(moy) )
-    end do
-    avcmax = maxval( mvcmax(:) )
-    anrlarea = maxval( mnrlarea(:) )
+  !   ! do moy=1,nmonth
+  !   !   mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), meanmppfd(moy) )
+  !   !   ! mnrlarea(moy) = calc_nr_leaf(  max_lai, mactnv_unitiabs(moy), meanmppfd(moy) )
+  !   ! end do
+  !   ! avcmax = maxval( mvcmax(:) )
+  !   ! anrlarea = maxval( mnrlarea(:) )
 
-    ! write(0,*) 'mvcmax  ', mvcmax(:) * 1e3
-    ! write(0,*) 'anrlarea', anrlarea
-    ! stop
+  !   ! write(0,*) 'mvcmax  ', mvcmax(:) * 1e3
+  !   ! write(0,*) 'anrlarea', anrlarea
+  !   ! stop
 
-    do pft=1,npft
+  !   ! do pft=1,npft
 
-      ncw_leaf               = calc_ncw_leaf( anrlarea )
-      cleaf                  = ncw_leaf * n_molmass * r_ctostructn_leaf
+  !   !   ncw_leaf               = calc_ncw_leaf( anrlarea )
+  !   !   cleaf                  = ncw_leaf * n_molmass * r_ctostructn_leaf
       
-      r_cton_leaf(pft,jpngr) = cleaf / ( (anrlarea+ncw_leaf) * n_molmass )
-      r_ntoc_leaf(pft,jpngr) = 1.0 / r_cton_leaf(pft,jpngr)
+  !   !   r_cton_leaf(pft,jpngr) = cleaf / ( (anrlarea+ncw_leaf) * n_molmass )
+  !   !   r_ntoc_leaf(pft,jpngr) = 1.0 / r_cton_leaf(pft,jpngr)
       
-      lma(pft,jpngr)         = cleaf / c_content_of_biomass
-      sla(pft,jpngr)         = 1.0 / lma(pft,jpngr)
+  !   !   lma(pft,jpngr)         = cleaf / c_content_of_biomass
+  !   !   sla(pft,jpngr)         = 1.0 / lma(pft,jpngr)
 
-    end do
+  !   ! end do
 
-  end subroutine gettraits
-
-
-  function calc_nr_leaf( lai, mactnv_unitiabs, meanmppfd ) result( nr_leaf )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level metabolic N content per unit leaf area as a
-    ! function of Vcmax25.
-    !------------------------------------------------------------------
-    use _vegdynamics, only: get_fapar
-
-    ! arguments
-    real, intent(in) :: lai
-    real, intent(in) :: mactnv_unitiabs
-    real, intent(in) :: meanmppfd
-
-    ! function return variable
-    real, intent(out) :: nr_leaf
-
-    ! local variables
-    real :: fapar
-
-    fapar = get_fapar( lai )
-
-    ! Calculate leaf-scale Rubisco-N as a function of LAI and current LUE
-    nr_leaf = fapar * meanmppfd * mactnv_unitiabs / lai
-
-  end function calc_nr_leaf
+  ! end subroutine gettraits
 
 
-  function calc_vcmax( lai, vcmax_unitiabs, meanmppfd ) result( vcmax )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level metabolic N content per unit leaf area as a
-    ! function of Vcmax25.
-    !------------------------------------------------------------------
-    use _vegdynamics, only: get_fapar
+  ! function calc_nr_leaf( lai, mactnv_unitiabs, meanmppfd ) result( nr_leaf )
+  !   !//////////////////////////////////////////////////////////////////
+  !   ! Calculates leaf-level metabolic N content per unit leaf area as a
+  !   ! function of Vcmax25.
+  !   !------------------------------------------------------------------
+  !   use _vegdynamics, only: get_fapar
 
-    ! arguments
-    real, intent(in) :: lai
-    real, intent(in) :: vcmax_unitiabs
-    real, intent(in) :: meanmppfd
+  !   ! arguments
+  !   real, intent(in) :: lai
+  !   real, intent(in) :: mactnv_unitiabs
+  !   real, intent(in) :: meanmppfd
 
-    ! function return variable
-    real, intent(out) :: vcmax
+  !   ! function return variable
+  !   real, intent(out) :: nr_leaf
 
-    ! local variables
-    real :: fapar
+  !   ! local variables
+  !   real :: fapar
 
-    fapar = get_fapar( lai )
+  !   fapar = get_fapar( lai )
 
-    ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-    vcmax = fapar * meanmppfd * vcmax_unitiabs / lai
+  !   ! Calculate leaf-scale Rubisco-N as a function of LAI and current LUE
+  !   nr_leaf = fapar * meanmppfd * mactnv_unitiabs / lai
 
-  end function calc_vcmax
+  ! end function calc_nr_leaf
 
 
-  function calc_ncw_leaf( nr_leaf ) result( ncw_leaf )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level structural N content per unit leaf area as a
-    ! function of metabolic Narea.
-    !------------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: nr_leaf
+  ! function calc_vcmax( lai, vcmax_unitiabs, meanmppfd ) result( vcmax )
+  !   !//////////////////////////////////////////////////////////////////
+  !   ! Calculates leaf-level metabolic N content per unit leaf area as a
+  !   ! function of Vcmax25.
+  !   !------------------------------------------------------------------
+  !   use _vegdynamics, only: get_fapar
 
-    ! function return variable
-    real, intent(out) :: ncw_leaf
+  !   ! arguments
+  !   real, intent(in) :: lai
+  !   real, intent(in) :: vcmax_unitiabs
+  !   real, intent(in) :: meanmppfd
 
-    ncw_leaf = nr_leaf * r_n_cw_v + ncw_min
+  !   ! function return variable
+  !   real, intent(out) :: vcmax
 
-  end function calc_ncw_leaf
+  !   ! local variables
+  !   real :: fapar
+
+  !   fapar = get_fapar( lai )
+
+  !   ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
+  !   vcmax = fapar * meanmppfd * vcmax_unitiabs / lai
+
+  ! end function calc_vcmax
+
+
+  ! function calc_ncw_leaf( nr_leaf ) result( ncw_leaf )
+  !   !//////////////////////////////////////////////////////////////////
+  !   ! Calculates leaf-level structural N content per unit leaf area as a
+  !   ! function of metabolic Narea.
+  !   !------------------------------------------------------------------
+  !   ! arguments
+  !   real, intent(in) :: nr_leaf
+
+  !   ! function return variable
+  !   real, intent(out) :: ncw_leaf
+
+  !   ncw_leaf = nr_leaf * r_n_cw_v + ncw_min
+
+  ! end function calc_ncw_leaf
 
 
   subroutine initdaily_gpp()
@@ -793,7 +793,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
-    outanrlarea(:) = 0.0
+    ! outanrlarea(:) = 0.0
     outavcmax(:)   = 0.0
     outachi(:)     = 0.0
     outalue(:)     = 0.0
@@ -810,7 +810,7 @@ contains
     ! arguments
     integer, intent(in) :: jpngr
 
-    outanrlarea(jpngr) = anrlarea
+    ! outanrlarea(jpngr) = anrlarea
     outavcmax(jpngr)   = avcmax
     outachi(jpngr)     = sum( mchi(:) * meanmppfd(:) ) / sum( meanmppfd(:) )
     outalue(jpngr)     = sum( mlue(:) * meanmppfd(:) ) / sum( meanmppfd(:) )
@@ -866,7 +866,7 @@ contains
     !-------------------------------------------------------------------------
     itime = real(year) + real(firstyeartrend) - real(spinupyears)
 
-    write(650,999) itime, outanrlarea(myjpngr)
+    ! write(650,999) itime, outanrlarea(myjpngr)
     write(651,999) itime, outavcmax(myjpngr)
     write(652,999) itime, outachi(myjpngr)
     write(653,999) itime, outalue(myjpngr)

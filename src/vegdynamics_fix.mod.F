@@ -55,7 +55,7 @@ contains
         end if
 
         ! update 
-        lai_ind(pft,jpngr)  = get_lai_ind( pleaf(pft,jpngr)%c%c12, sla(pft,jpngr), crownarea(pft,jpngr) )
+        ! lai_ind(pft,jpngr)  = get_lai_ind( pleaf(pft,jpngr)%c%c12, sla(pft,jpngr), crownarea(pft,jpngr) )
         fpc_ind(pft,jpngr)  = get_fapar( lai_ind(pft,jpngr) )
         fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fpc_ind(pft,jpngr) )    
  
@@ -114,6 +114,7 @@ contains
 
   function get_fpc_grid( crownarea, nind, fpc_ind ) result( fpc_grid )
     !////////////////////////////////////////////////////////////////
+    ! FRACTIONAL PLANT COVERAGE
     ! Function returns total fractional plant cover of a PFT
     ! Eq. 8 in Sitch et al., 2003
     !----------------------------------------------------------------
@@ -132,6 +133,8 @@ contains
 
   function get_fapar( lai ) result( fapar )
     !////////////////////////////////////////////////////////////////
+    ! FOLIAGE PROJECTIVE COVER 
+    ! = Fraction of Absorbed Photosynthetically Active Radiation
     ! Function returns fractional plant cover an individual
     ! Eq. 7 in Sitch et al., 2003
     !----------------------------------------------------------------
@@ -148,36 +151,36 @@ contains
   end function get_fapar
 
 
-  function get_lai_ind( cleaf, sla, crownarea ) result( lai_ind )
-    !////////////////////////////////////////////////////////////////
-    ! Function returns leaf area index of an individual
-    ! Eq. 5 in Sitch et al., 2003
-    !----------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: cleaf
-    real, intent(in) :: sla
-    real, intent(in) :: crownarea
+!   function get_lai_ind( cleaf, sla, crownarea ) result( lai_ind )
+!     !////////////////////////////////////////////////////////////////
+!     ! Function returns leaf area index of an individual
+!     ! Eq. 5 in Sitch et al., 2003
+!     !----------------------------------------------------------------
+!     ! arguments
+!     real, intent(in) :: cleaf
+!     real, intent(in) :: sla
+!     real, intent(in) :: crownarea
 
-    ! function return variable
-    real, intent(out) :: lai_ind
+!     ! function return variable
+!     real, intent(out) :: lai_ind
 
-#if _check_sanity
-    if (crownarea<0.0) stop 'GET_LAI_IND: crownarea < 0'
-#endif
+! #if _check_sanity
+!     if (crownarea<0.0) stop 'GET_LAI_IND: crownarea < 0'
+! #endif
 
-    ! write(0,*) '----'
-    ! write(0,*) 'in get_lai_ind:'
-    ! write(0,*) 'cleaf ',cleaf
-    ! write(0,*) 'sla ',sla
-    ! write(0,*) 'crownarea ',crownarea
-    ! write(0,*) '----'
+!     ! write(0,*) '----'
+!     ! write(0,*) 'in get_lai_ind:'
+!     ! write(0,*) 'cleaf ',cleaf
+!     ! write(0,*) 'sla ',sla
+!     ! write(0,*) 'crownarea ',crownarea
+!     ! write(0,*) '----'
 
-    if (crownarea==0.0) then
-      lai_ind = 0.0
-    else
-      lai_ind = cleaf * sla / crownarea
-    endif
+!     if (crownarea==0.0) then
+!       lai_ind = 0.0
+!     else
+!       lai_ind = cleaf * sla / crownarea
+!     endif
 
-  end function get_lai_ind
+!   end function get_lai_ind
 
 end module _vegdynamics

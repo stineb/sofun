@@ -205,7 +205,6 @@ contains
 
       write(2,120)  xm, tol1
 
-      write(0,*) 'xm, tol1', xm, tol1
       if (abs(xm) <= tol1) then          ! reached desired accuracy ?
         fehler = 0
         goto 999                         ! normal exit

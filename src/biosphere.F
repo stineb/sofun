@@ -5,10 +5,10 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   , fpc_grid_data &
   )
   !////////////////////////////////////////////////////////////////
-  !  Subroutine BIOSPHERE calculates net ecosystem exchange (nee)
-  !  in response to environmental boundary conditions (atmospheric 
-  !  CO2, temperature, Nitrogen deposition. This SR "replaces" 
-  !  LPJ, also formulated as subroutine.
+  ! Subroutine BIOSPHERE calculates net ecosystem exchange (nee)
+  ! in response to environmental boundary conditions (atmospheric 
+  ! CO2, temperature, Nitrogen deposition. This SR "replaces" 
+  ! LPJ, also formulated as subroutine.
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
@@ -21,7 +21,7 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _soiltemp, only: soiltemp
   use _phenology, only: gettempphenology  !, phenology
   use _vegdynamics, only: estab_daily
-  use _gpp, only: gpp, getlue, gettraits, initdaily_gpp, writeout_ascii_gpp, getout_annual_gpp, initio_gpp, initoutput_gpp
+  use _gpp, only: gpp, getlue, initdaily_gpp, writeout_ascii_gpp, getout_annual_gpp, initio_gpp, initoutput_gpp
   use _npp, only: npp
   use _allocation, only: allocation_daily, initio_allocation, initoutput_allocation, getout_daily_allocation, writeout_ascii_allocation
   use _turnover, only: turnover
@@ -173,11 +173,11 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
     !----------------------------------------------------------------
     call getrad( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
 
-    !----------------------------------------------------------------
-    ! Get leaf traits based on photosynthetic parameters (Vcmax25) 
-    ! for this year given this year's climate (temp., VPD) and CO2.
-    !----------------------------------------------------------------
-    call gettraits( jpngr )
+    ! !----------------------------------------------------------------
+    ! ! Get leaf traits based on photosynthetic parameters (Vcmax25) 
+    ! ! for this year given this year's climate (temp., VPD) and CO2.
+    ! !----------------------------------------------------------------
+    ! call gettraits( jpngr )
 
     ! !----------------------------------------------------------------
     ! ! sapling addition on bare ground, tree geometry update
