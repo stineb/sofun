@@ -101,10 +101,6 @@ module _gpp
   ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
   real, parameter :: rd_to_vcmax = 0.015
 
-  ! From regressing Narea to metabolic Narea in Hikosaka data
-  real, parameter :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
-  real, parameter :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
-  real, parameter :: r_ctostructn_leaf = 40        ! constant ratio of C to structural N
   
   ! parameters for Narea -- under construction
   ! sla = 0.0014       ! specific leaf area (m2/gC)
@@ -228,16 +224,22 @@ contains
   
         if (fpc_ind(pft,jpngr)>0.0) then
 
-          ! ! xxx try: fix effective leaf area (=>fapar)
+          ! xxx try: fix effective leaf area (=>fapar)
           ! write(0,*) 'WARNING: fAPAR SET TO XXX in gpp SR'
 
           ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-          ! write(0,*) 'in SR gpp: fapar',fpc_ind(pft,jpngr) !OK!
+
+          ! xxx debug
+          ! xxx problem with allocation: always allocates all to leaves. => is C acquisition too slow? xxx 
+
+          ! fpc_ind(pft,jpngr) = 1.0
+          ! write(0,*) 'in SR gpp: fapar          ', fpc_ind(pft,jpngr) !OK!
           ! write(0,*) 'in SR gpp: doy, dppfd(doy)', doy, dppfd(doy) !OK!
-          ! write(0,*) 'in SR gpp: moy, mlue(moy)', moy, mlue(moy) !OK! 
+          ! write(0,*) 'in SR gpp: moy, mlue(moy) ', moy, mlue(moy) !OK! 
+          ! dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
           dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
-          ! dgpp(pft)    = calc_dgpp( 0.05, dppfd(doy), mlue(moy) )
-          ! write(0,*) 'doy, dgpp(pft)', doy, dgpp(pft)
+          ! write(0,*) 'doy, dgpp(pft)            ', doy, dgpp(pft)
+          ! stop 
 
           ! Dark respiration
           drd(pft)     = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
@@ -359,10 +361,10 @@ contains
     mvpd(:)  = daily2monthly( dvpd(:), "mean" )
 
     ! xxx try out: -- THIS WORKS PERFECTLY -- 
-    ! write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
-    ! co2   = 376.0
-    ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
-    ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
+    write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
+    co2   = 376.0
+    mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
+    mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
     ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
 
     ! Run P-model for monthly averages and store monthly variables 
