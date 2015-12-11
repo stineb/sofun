@@ -56,7 +56,6 @@ module _allocation
     real :: narea_metabolic
     real :: narea_structural
     real :: lma
-    real :: sla
     real :: nmass
     real :: r_cton_leaf
     real :: r_ntoc_leaf
@@ -93,7 +92,7 @@ contains
       lu_category
     use _vars_core, only: pleaf, proot, plabl, pninorg, r_cton_leaf, &
       r_ntoc_leaf, crownarea, drauto, dnpp, lai_ind, nind, fpc_ind, fpc_grid, &
-      narea, narea_metabolic, narea_structural, lma, sla, nmass
+      narea, narea_metabolic, narea_structural, lma, nmass
     use _gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
     use _waterbal, only: dppfd, meanmppfd
     use _vegdynamics, only: update_fpc_grid
@@ -379,12 +378,11 @@ contains
             ! Update leaf traits
             !-------------------------------------------------------------------  
             traits                      = get_leaftraits( lai_ind(pft,jpngr), meanmppfd(:), mactnv_unitiabs(:) )
-            narea(pft,jpngr)            = traits%narea
-            narea_metabolic(pft,jpngr)  = traits%narea_metabolic
-            narea_structural(pft,jpngr) = traits%narea_structural
+            narea(pft)                  = traits%narea
+            narea_metabolic(pft)        = traits%narea_metabolic
+            narea_structural(pft)       = traits%narea_structural
             lma(pft,jpngr)              = traits%lma
-            sla(pft,jpngr)              = traits%sla
-            nmass(pft,jpngr)            = traits%nmass
+            nmass(pft)                  = traits%nmass
 
             r_cton_leaf(pft,jpngr)      = traits%r_cton_leaf
             r_ntoc_leaf(pft,jpngr)      = traits%r_ntoc_leaf
@@ -420,7 +418,6 @@ contains
             ! write(0,*) 'narea_metabolic  ', narea_metabolic(pft,jpngr)
             ! write(0,*) 'narea_structural ', narea_structural(pft,jpngr)
             ! write(0,*) 'lma              ', lma(pft,jpngr) 
-            ! write(0,*) 'sla              ', sla(pft,jpngr) 
             ! write(0,*) 'nmass(%)         ', nmass(pft,jpngr) * 100
 
             ! write(0,*) 'traits, cton_leaf', traits%r_cton_leaf
@@ -1184,7 +1181,6 @@ contains
     traits%narea_structural = n_molmass * mynarea_structural_canop / mylai  ! g N m-2-leaf
     traits%narea            = n_molmass * ( mynarea_metabolic_canop + mynarea_structural_canop ) / mylai ! g N m-2-leaf
     traits%lma              = c_molmass * r_ctostructn_leaf * mynarea_structural_canop / mylai 
-    traits%sla              = 1.0 / traits%lma
     traits%nmass            = traits%narea / ( traits%lma / c_content_of_biomass )
     traits%r_cton_leaf      = traits%lma / traits%narea
     traits%r_ntoc_leaf      = 1.0 / traits%r_cton_leaf
@@ -1195,7 +1191,6 @@ contains
     ! write(0,*) 'traits%narea_structural', traits%narea_structural
     ! write(0,*) 'traits%narea           ', traits%narea           
     ! write(0,*) 'traits%lma             ', traits%lma             
-    ! write(0,*) 'traits%sla             ', traits%sla             
     ! write(0,*) 'traits%nmass           ', traits%nmass           
     ! write(0,*) 'traits%r_cton_leaf     ', traits%r_cton_leaf     
     ! write(0,*) 'traits%r_ntoc_leaf     ', traits%r_ntoc_leaf     

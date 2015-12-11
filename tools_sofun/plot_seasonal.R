@@ -289,7 +289,7 @@ heights <- rep(aspect*magn,nrows)
   # layout.show(panel)
 
   par(mar=c(4,4,2,1), las=1)
-  plot( daily_sub$doy, daily_sub$cleaf, type="l", xlab="", ylab="gC/m2/d", ylim=range(c(daily_sub$cleaf,daily_sub$croot)) )
+  plot( daily_sub$doy, daily_sub$cleaf, type="l", xlab="", ylab="gC/m2", ylim=range(c(daily_sub$cleaf,daily_sub$croot)) )
   lines( daily_sub$doy, daily_sub$croot, type="l", xlab="day of year", ylab="gC/m2/d", col="green" )
   lines( daily_sub$doy, daily_sub$clabl, type="l", xlab="day of year", ylab="gC/m2/d", col="blue" )
   legend( "bottomleft", c("leaf C","root C","labile C"), col=c("black","green","blue"), bty="n", lty=1 )
@@ -346,7 +346,7 @@ heights <- rep(aspect*magn,nrows)
                   TRUE
                   )
   par(mar=c(4,4,2,1), las=1 )
-  plot(  daily_sub$doy,  daily_sub$ninorg, type="l", xlab="day of year", ylab="gN/m2/d", ylim=c(0,max(cumsum(daily_sub$netmin))), col="blue" )
+  plot(  daily_sub$doy,  daily_sub$ninorg, type="l", xlab="day of year", ylab="gN/m2", ylim=c(0,max(cumsum(daily_sub$netmin))), col="blue" )
   lines( daily_sub$doy,  daily_sub$nlitt - min(daily_sub$nlitt), col="brown" )
   lines( daily_sub$doy,  daily_sub$nsoil - min(daily_sub$nsoil), col="red" )
 
@@ -367,7 +367,7 @@ heights <- rep(aspect*magn,nrows)
                   TRUE
                   )
   par(mar=c(4,4,2,1), las=1 )
-  plot(  daily_sub$doy,  daily_sub$lai, type="l", xlab="day of year", ylab="gN/m2/d", ylim=c(0,max(daily_sub$lai)), col="red" )
+  plot(  daily_sub$doy,  daily_sub$lai, type="l", xlab="day of year", ylab="LAI", ylim=c(0,max(daily_sub$lai)), col="red" )
 
   legend( "topleft", c("LAI"), col=c("red"), bty="n", lty=1 )
 

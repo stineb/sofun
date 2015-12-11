@@ -30,6 +30,13 @@ module _outvars
 
   real, dimension(nlu,ndayyear,maxgrid)  :: outdninorg
   real, dimension(nlu,ndayyear,maxgrid)  :: outdtemp_soil
+
+  ! These are stored as dayly variables for annual output
+  ! at day of year when LAI is at its maximum.
+  real, dimension(npft,ndayyear) :: dnarea_mb
+  real, dimension(npft,ndayyear) :: dnarea_cw
+  real, dimension(npft,ndayyear) :: dlma
+  real, dimension(npft,ndayyear) :: dcton_lm
   
   !----------------------------------------------------------------
   ! Monthly output variables
@@ -46,7 +53,11 @@ module _outvars
   real, dimension(npft,maxgrid) :: outaCveg2lit
   real, dimension(npft,maxgrid) :: outaNveg2lit
   real, dimension(nlu, maxgrid) :: outaNinorg
+  real, dimension(npft,maxgrid) :: outanarea_mb
+  real, dimension(npft,maxgrid) :: outanarea_cw
   real, dimension(npft,maxgrid) :: outalai
+  real, dimension(npft,maxgrid) :: outalma
+  real, dimension(npft,maxgrid) :: outacton_lm
 
 contains
 
@@ -80,7 +91,12 @@ contains
     outaCveg2lit(:,:)   = 0.0
     outaNveg2lit(:,:)   = 0.0
     outaninorg(:,:)     = 0.0
-    outalai(:,:)        = 0.0
+    outanarea_mb(:,:)   = 0.0
+    outanarea_cw(:,:)   = 0.0
+    outalai     (:,:)   = 0.0
+    outalma     (:,:)   = 0.0
+    outacton_lm (:,:)   = 0.0
+
 
   end subroutine initoutput
 
@@ -202,6 +218,22 @@ contains
     filnam=trim(prefix)//'.a.lai.out'
     open(318,file=filnam,err=999,status='unknown')
 
+    ! METABOLIC NAREA (AT ANNUAL LAI MAXIMUM)
+    filnam=trim(prefix)//'.a.narea_mb.out'
+    open(319,file=filnam,err=999,status='unknown')
+
+    ! CELL WALL NAREA (AT ANNUAL LAI MAXIMUM)
+    filnam=trim(prefix)//'.a.narea_cw.out'
+    open(320,file=filnam,err=999,status='unknown')
+
+    ! LEAF C:N RATIO (AT ANNUAL LAI MAXIMUM)
+    filnam=trim(prefix)//'.a.cton_lm.out'
+    open(321,file=filnam,err=999,status='unknown')
+
+    ! LMA (AT ANNUAL LAI MAXIMUM)
+    filnam=trim(prefix)//'.a.lma.out'
+    open(322,file=filnam,err=999,status='unknown')
+
     return
 
     999  stop 'INITIO: error opening output files'
@@ -221,7 +253,8 @@ contains
     use _params_modl, only: npft, lu_category
     use _vars_core, only: dgpp, dnpp, dnup, pleaf, pninorg, proot, &
       plabl, plitt_bg, plitt_af, plitt_as, dtemp_soil, dtransp, &
-      psoil_sl, psoil_fs, lai_ind
+      psoil_sl, psoil_fs, lai_ind, narea_metabolic, narea_structural, &
+      r_cton_leaf, lma
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
@@ -239,23 +272,27 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    outdgpp(:,doy,jpngr)        = dgpp(:)
-    outdtransp(:,doy,jpngr)     = dtransp(:)
-    outdnpp(:,doy,jpngr)        = dnpp(:)%c12
-    outdnup(:,doy,jpngr)        = dnup(:)%n14
-    outdCleaf(:,doy,jpngr)      = pleaf(:,jpngr)%c%c12
-    outdCroot(:,doy,jpngr)      = proot(:,jpngr)%c%c12
-    outdClabl(:,doy,jpngr)      = plabl(:,jpngr)%c%c12
-    outdNlabl(:,doy,jpngr)      = plabl(:,jpngr)%n%n14
-    outdClitt(:,doy,jpngr)      = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
-    outdNlitt(:,doy,jpngr)      = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
-    outdCsoil(:,doy,jpngr)      = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
-    outdNsoil(:,doy,jpngr)      = psoil_sl(:,jpngr)%n%n14 + psoil_fs(:,jpngr)%n%n14
-    outdninorg(:,doy,jpngr)     = pninorg(:,jpngr)%n14
-    outdtemp_soil(:,doy,jpngr)  = dtemp_soil(:,jpngr)
-    outdlai(:,doy,jpngr)        = lai_ind(:,jpngr)
+    outdgpp(:,doy,jpngr)       = dgpp(:)
+    outdtransp(:,doy,jpngr)    = dtransp(:)
+    outdnpp(:,doy,jpngr)       = dnpp(:)%c12
+    outdnup(:,doy,jpngr)       = dnup(:)%n14
+    outdCleaf(:,doy,jpngr)     = pleaf(:,jpngr)%c%c12
+    outdCroot(:,doy,jpngr)     = proot(:,jpngr)%c%c12
+    outdClabl(:,doy,jpngr)     = plabl(:,jpngr)%c%c12
+    outdNlabl(:,doy,jpngr)     = plabl(:,jpngr)%n%n14
+    outdClitt(:,doy,jpngr)     = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
+    outdNlitt(:,doy,jpngr)     = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
+    outdCsoil(:,doy,jpngr)     = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
+    outdNsoil(:,doy,jpngr)     = psoil_sl(:,jpngr)%n%n14 + psoil_fs(:,jpngr)%n%n14
+    outdninorg(:,doy,jpngr)    = pninorg(:,jpngr)%n14
+    outdtemp_soil(:,doy,jpngr) = dtemp_soil(:,jpngr)
+    outdlai(:,doy,jpngr)       = lai_ind(:,jpngr)
+    
+    dnarea_mb(:,doy)           = narea_metabolic(:)  
+    dnarea_cw(:,doy)           = narea_structural(:)
+    dcton_lm(:,doy)            = r_cton_leaf(:,jpngr)
+    dlma(:,doy)                = lma(:)
 
-    ! write(0,*) 'outdCsoil', outdCsoil(:,doy,jpngr)
     ! write(0,*) 'psoil_sl(:,jpngr)%c%c12', psoil_sl(:,jpngr)%c%c12
     ! write(0,*) 'psoil_fs(:,jpngr)%c%c12', psoil_fs(:,jpngr)%c%c12
     ! if (doy==ndayyear) stop
@@ -293,15 +330,52 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
+    use _params_core, only: ndayyear
     use _params_modl, only: npft, lu_category
     use _vars_core, only: pleaf, proot
 
     ! arguments
     integer, intent(in) :: jpngr
 
-    outaCveg(:,jpngr)  = pleaf(:,jpngr)%c%c12 + proot(:,jpngr)%c%c12 !+ psapw(:,jpngr)%c%c12 + pwood(:,jpngr)%c%c12
-    outalai(:,jpngr)   = maxval( outdlai(:,:,jpngr), 2 )
+    ! local variables
+    integer                  :: pft
+    integer                  :: doy
+    integer, dimension(npft) :: maxdoy
+    ! intrinsic                :: maxloc
 
+    ! real, dimension(ndayyear) :: tmp
+
+
+    ! Output annual value at day of peak LAI
+    do pft=1,npft
+      maxdoy(pft)=1
+      do doy=2,ndayyear
+        if ( outdlai(pft,doy,jpngr) > outdlai(pft,(doy-1),jpngr) ) then
+          maxdoy(pft) = doy
+        end if
+      end do
+      ! tmp = outdlai(pft,:,jpngr)
+      ! maxdoy(pft) = maxloc( tmp )
+      ! write(0,*) 'supposed max is ', outdlai(pft,maxdoy(pft),jpngr)
+      ! write(0,*) 'actual   max is ', maxval( outdlai(pft,:,jpngr) )
+      ! write(0,*) 'maxdoy is ', maxdoy(pft)
+      ! stop
+      outaCveg    (pft,jpngr) = outdCleaf(pft,maxdoy(pft),jpngr) + outdCroot(pft,maxdoy(pft),jpngr) 
+      outanarea_mb(pft,jpngr) = dnarea_mb(pft,maxdoy(pft))
+      outanarea_cw(pft,jpngr) = dnarea_cw(pft,maxdoy(pft))
+      outalai     (pft,jpngr) = outdlai(pft,maxdoy(pft),jpngr)
+      outalma     (pft,jpngr) = dlma(pft,maxdoy(pft))
+      outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy(pft))
+    end do
+
+    open(unit=666,file='cton_vs_lai.log',status='unknown')
+    do doy=1,ndayyear
+      write(666,*) outdlai(1,doy,1), ",", dcton_lm(1,doy)
+    end do
+    close(unit=666)
+
+    ! write(0,*) 'dcton_lm    ', dcton_lm(1,:)
+    ! write(0,*) 'outacton_lm ', outacton_lm (1,jpngr)
 
   end subroutine getout_annual
 

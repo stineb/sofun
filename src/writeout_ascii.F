@@ -97,6 +97,10 @@ subroutine writeout_ascii( year, dtemp )
   write(316,999) itime, sum(outaninorg(:,jpngr))
   write(317,999) itime, sum(outanup(:,jpngr))
   write(318,999) itime, sum(outalai(:,jpngr))
+  write(319,999) itime, sum(outanarea_mb(:,jpngr))
+  write(320,999) itime, sum(outanarea_cw(:,jpngr))
+  write(321,999) itime, sum(outacton_lm(:,jpngr))
+  write(322,999) itime, sum(outalma(:,jpngr))
 
   !-------------------------------------------------------------------------
   ! MODULE-SPECIFIC OUTPUT

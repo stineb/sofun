@@ -71,13 +71,14 @@ module _vars_core
   
   real, dimension(nlu,maxgrid)           :: dwtot           ! soil water mass [mm = kg/m2]
   
+  ! xxx todo: do we really need maxgrid dimension for these variables?
   real, dimension(npft,maxgrid)          :: r_cton_leaf     ! leaf C:N ratio [gC/gN] 
   real, dimension(npft,maxgrid)          :: r_ntoc_leaf     ! leaf N:C ratio [gN/gC]
   real, dimension(npft,maxgrid)          :: lma, sla        ! leaf mass per area [gC/m2], specific leaf area [m2/gC]. C, NOT DRY-MASS!
-  real, dimension(npft,maxgrid)          :: narea           ! g N m-2-leaf
-  real, dimension(npft,maxgrid)          :: narea_metabolic ! g N m-2-leaf
-  real, dimension(npft,maxgrid)          :: narea_structural! g N m-2-leaf
-  real, dimension(npft,maxgrid)          :: nmass           ! g N / g-dry mass
+  real, dimension(npft)                  :: narea           ! g N m-2-leaf
+  real, dimension(npft)                  :: narea_metabolic ! g N m-2-leaf
+  real, dimension(npft)                  :: narea_structural! g N m-2-leaf
+  real, dimension(npft)                  :: nmass           ! g N / g-dry mass
 
   real, dimension(npft,maxgrid)          :: lai_ind
   real, dimension(npft,maxgrid)          :: fpc_ind

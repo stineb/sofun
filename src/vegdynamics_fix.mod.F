@@ -23,7 +23,7 @@ contains
     use _params_core, only: npft
     use _phenology, only: dtphen, summergreen, sprout
     use _vars_core, only: pleaf, proot, lai_ind, fpc_ind, &
-      sla, fpc_grid, ispresent, crownarea, nind, initpft
+      fpc_grid, ispresent, crownarea, nind, initpft
 
     ! xxx debug
     use _classdefs
@@ -67,7 +67,6 @@ contains
         ! write(0,*) 'C:N of proot     ',cton(proot(pft,jpngr), 0.0 )
 
         ! write(0,*) 'in vegdynamics: lai_ind(pft,jpngr) ',lai_ind(pft,jpngr)
-        ! write(0,*) 'in vegdynamics: sla(pft,jpngr)   ',sla(pft,jpngr)
         ! write(0,*) 'in vegdynamics: crownarea(pft,jpngr)   ',crownarea(pft,jpngr)
         ! write(0,*) 'in vegdynamics: fpc_ind(pft,jpngr) ',fpc_ind(pft,jpngr)
         ! write(0,*) 'fpc_grid(pft,jpngr)',fpc_grid(pft,jpngr)
