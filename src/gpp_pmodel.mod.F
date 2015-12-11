@@ -238,13 +238,13 @@ contains
           ! write(0,*) 'in SR gpp: moy, mlue(moy) ', moy, mlue(moy) !OK! 
           ! dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
           dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
-          ! write(0,*) 'doy, dgpp(pft)            ', doy, dgpp(pft)
+          write(0,*) 'doy, dgpp(pft)            ', doy, dgpp(pft)
           ! stop 
 
           ! Dark respiration
           drd(pft)     = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
           ! drd(pft)     = calc_drd( 0.05, meanmppfd(moy), mrd_unitiabs(moy) )
-          ! write(0,*) 'doy, drd(pft)', doy, drd(pft)
+          write(0,*) 'doy, drd(pft)', doy, drd(pft)
 
           ! transpiration
           dtransp(pft) = calc_dtransp( fpc_ind(pft,jpngr), dppfd(doy), mtransp_unitiabs(moy) )
