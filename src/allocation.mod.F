@@ -18,11 +18,11 @@ module _allocation
 
   ! Parameters determining the relationship of structural N and C to metabolic N
   ! From regressing Narea to metabolic Narea in Hikosaka data
-  real, parameter :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
-  real, parameter :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
-  real, parameter :: r_ctostructn_leaf = 40        ! constant ratio of C to structural N
-
-  logical, parameter :: write_logfile_eval_imbalance = .true.
+  real, parameter    :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
+  real, parameter    :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
+  real, parameter    :: r_ctostructn_leaf = 40        ! constant ratio of C to structural N
+  
+  logical, parameter :: write_logfile_eval_imbalance = .false.
 
   !------------------------------------------------------------------
   ! Define derived type to store current state variables.
@@ -96,7 +96,7 @@ contains
       narea, narea_metabolic, narea_structural, lma, sla, nmass
     use _gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
     use _waterbal, only: dppfd, meanmppfd
-    use _vegdynamics, only: get_fapar, get_fpc_grid
+    use _vegdynamics, only: update_fpc_grid
     use _findroot_fzeroin
 
     ! arguments
@@ -161,16 +161,16 @@ contains
 
       if (grass(pft)) then
 
-        write(0,*) '--- allocation_daily, doy:',doy
+        ! write(0,*) '--- allocation_daily, doy:',doy
         ! write(0,*)' pninorg(lu,jpngr)%n14',pninorg
-        write(0,*) 'plabl(lu,jpngr)', plabl
-        write(0,*) 'cleaf          ', pleaf(pft,jpngr)%c%c12
-        write(0,*) 'croot          ', proot(pft,jpngr)%c%c12
-        write(0,*) 'C:N in leaves  ', cton( pleaf(pft,jpngr), default=0.0 )
+        ! write(0,*) 'plabl(lu,jpngr)', plabl
+        ! write(0,*) 'cleaf          ', pleaf(pft,jpngr)%c%c12
+        ! write(0,*) 'croot          ', proot(pft,jpngr)%c%c12
+        ! write(0,*) 'C:N in leaves  ', cton( pleaf(pft,jpngr), default=0.0 )
 
         if ( plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 ) then
 
-          write(0,*) 'growing ...'
+          ! write(0,*) 'growing ...'
 
           if (flexalloc) then
             !------------------------------------------------------------------
@@ -215,7 +215,7 @@ contains
               r_cton_leaf(pft,jpngr) = get_rcton_init( meanmppfd(:), mactnv_unitiabs(:) )
               ! write(0,*) 'meanmppfd(usemoy)      ', meanmppfd(usemoy)  
               ! write(0,*) 'maxval( mactnv_unitiabs(:) )', maxval( mactnv_unitiabs(:) )  
-              write(0,*) 'initial guess: r_cton_leaf(pft,jpngr) ', r_cton_leaf(pft,jpngr)  
+              ! write(0,*) 'initial guess: r_cton_leaf(pft,jpngr) ', r_cton_leaf(pft,jpngr)  
               ! stop
             end if
             max_dcleaf_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_leaf(pft,jpngr)
@@ -301,13 +301,13 @@ contains
             ! ratio, then put all to roots.
             !------------------------------------------------------------------
             cont = .true.
-            write(0,*) 'check alloation: all to roots'
+            ! write(0,*) 'check alloation: all to roots'
             eval_allroots  = eval_imbalance( min_dc )
-            write(0,*) 'eval_allroots', eval_allroots  
+            ! write(0,*) 'eval_allroots', eval_allroots  
             if (eval_allroots > 0.0) then
               dcleaf(pft) = 0.0
               cont = .false.
-              write(0,*) '* putting all to roots *'
+              ! write(0,*) '* putting all to roots *'
             end if
 
             !------------------------------------------------------------------
@@ -316,13 +316,13 @@ contains
             ! then put all to leaves.
             !------------------------------------------------------------------
             if (cont) then
-              write(0,*) 'check alloation: all to leaves with dcleaf =', max_dc
+              ! write(0,*) 'check alloation: all to leaves with dcleaf =', max_dc
               eval_allleaves = eval_imbalance( max_dc )
-              write(0,*) 'eval_allleaves', eval_allleaves  
+              ! write(0,*) 'eval_allleaves', eval_allleaves  
               if (eval_allleaves < 0.0) then
                 dcleaf(pft) = max_dc
                 cont = .false.
-                write(0,*) '* putting all to leaves *'
+                ! write(0,*) '* putting all to leaves *'
               end if
             end if
 
@@ -331,11 +331,11 @@ contains
             ! 'eval_imbalance()' in the interval [0.0, max_dc].
             !------------------------------------------------------------------
             if (cont) then
-              write(0,*) '*** finding root of eval_imbalance ***'
+              ! write(0,*) '*** finding root of eval_imbalance ***'
               if (write_logfile_eval_imbalance) open(unit=666,file='eval_imbalance.log',status='unknown')
               ! write(0,*) 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
               out_zeroin = zeroin( eval_imbalance, abserr, relerr, nmax, min_dc, max_dc )
-              write(0,*) 'error code ', out_zeroin%error
+              ! write(0,*) 'error code ', out_zeroin%error
               if ( out_zeroin%error /= 0 ) then
                 stop 'zeroin for eval_imbalance() failed'
                 dcleaf(pft) = 0.0
@@ -343,16 +343,15 @@ contains
                 dcleaf(pft) = out_zeroin%root
               end if
               if (write_logfile_eval_imbalance) close(unit=666)
-              write(0,*) 'no. of iterations   ', out_zeroin%niter
-              write(0,*) 'dcleaf(pft) is root ', dcleaf(pft)
+              ! write(0,*) 'no. of iterations   ', out_zeroin%niter
+              ! write(0,*) 'dcleaf(pft) is root ', dcleaf(pft)
+              ! write(0,*) 'found root of eval_imbalance for dc = ', dcleaf(pft)
+              ! test = eval_imbalance( dcleaf(pft), .true. )
+              ! write(0,*) 'eval                              =', test
+              ! write(0,*) '----------------------------------'
+              ! if (doy==200) stop 'do beni'
+
             end if
-
-            write(0,*) 'found root of eval_imbalance for dc = ', dcleaf(pft)
-            test = eval_imbalance( dcleaf(pft), .true. )
-            write(0,*) 'eval                              =', test
-            write(0,*) '----------------------------------'
-
-            stop 'do beni'
 
             !------------------------------------------------------------------
             ! xxx debug: project next-day's fluxes with optimal dcleaf, derived now
@@ -376,12 +375,9 @@ contains
             ! write(0,*) 'plabl after  ', plabl(pft,jpngr)
             ! stop
 
-            ! Update foliar projective cover (=fAPAR) and fractional plant cover
-            ! to calculate GPP below
-            fpc_ind(pft,jpngr)  = get_fapar( lai_ind(pft,jpngr) )
-            fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fpc_ind(pft,jpngr) ) 
-
+            !-------------------------------------------------------------------  
             ! Update leaf traits
+            !-------------------------------------------------------------------  
             traits                      = get_leaftraits( lai_ind(pft,jpngr), meanmppfd(:), mactnv_unitiabs(:) )
             narea(pft,jpngr)            = traits%narea
             narea_metabolic(pft,jpngr)  = traits%narea_metabolic
@@ -392,6 +388,11 @@ contains
 
             r_cton_leaf(pft,jpngr)      = traits%r_cton_leaf
             r_ntoc_leaf(pft,jpngr)      = traits%r_ntoc_leaf
+
+            !-------------------------------------------------------------------  
+            ! Update fpc_grid and fpc_ind (not lai_ind)
+            !-------------------------------------------------------------------  
+            call update_fpc_grid( pft, jpngr )
 
             ! write(0,*) '--- in main allocation'
             ! write(0,*) 'dcleaf           ', dcleaf(pft)
@@ -445,6 +446,15 @@ contains
             ! stop 
             ! write(0,*) 'dcleaf, dnleaf', dcleaf(pft), dnleaf(pft)
             ! write(0,*) 'dcroot, dnleaf', dcroot(pft), dnroot(pft)
+
+            ! SUMMARY OF THIS DAY'S ALLOCATION
+            ! write(0,*) 'dcleaf, dnleaf ', dcleaf(pft), dnleaf(pft)
+            ! write(0,*) 'cleaf, nleaf   ', pleaf(pft,jpngr)
+            ! write(0,*) 'croot, nroot   ', proot(pft,jpngr)
+            ! write(0,*) 'lai_ind        ', lai_ind(pft,jpngr)
+            ! write(0,*) 'C:N in leaves  ', cton( pleaf(pft,jpngr), default=0.0 )
+            ! write(0,*) 'clabl, nlabl   ', plabl(pft,jpngr)
+            ! if (doy>250) stop 'do beni, end of year'
 
           else
             !------------------------------------------------------------------
@@ -528,9 +538,13 @@ contains
 
 
   subroutine allocate_leaf( mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd,    nv,    lai,   mydnleaf )
-      ! call allocate_leaf( mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd(:), nv(:), mylai, mydnleaf )
-    !-------------------------------------------------------------------
+    !///////////////////////////////////////////////////////////////////
     ! LEAF ALLOCATION
+    ! Sequence of steps:
+    ! - increment foliage C pool
+    ! - update LAI
+    ! - calculate canopy-level foliage N as a function of LAI 
+    ! - reduce labile pool by C and N increments
     !-------------------------------------------------------------------
     use _classdefs
     ! use _params_core, only: nmonth
@@ -549,9 +563,6 @@ contains
     real :: nleaf0
     real :: dclabl, dnlabl
 
-    !-------------------------------------------------------------------
-    ! LEAF ALLOCATION
-    !-------------------------------------------------------------------
     ! find LAI, given new leaf mass. This is necessary to get leaf-N as 
     ! a function of LAI.
     if (mydcleaf>0.0) then
@@ -619,46 +630,48 @@ contains
     real :: dclabl
     real :: dnlabl
 
-    ! use remainder for allocation to roots
-    mydcroot = min( growtheff * clabl, r_cton_root(pft) * nlabl )
-    mydnroot = min( mydcroot * r_ntoc_root(pft), nlabl )
+    if (clabl>0.0 .and. nlabl>0.0) then
+      ! use remainder for allocation to roots
+      mydcroot = min( growtheff * clabl, r_cton_root(pft) * nlabl )
+      mydnroot = min( mydcroot * r_ntoc_root(pft), nlabl )
 
-    dclabl = min( clabl, 1.0 / growtheff * mydcroot )
-    dnlabl = min( nlabl, mydnroot)
-    ! write (0,*) 'C balance after reducing labile:', (clabl - dclabl)
-    ! write (0,*) 'N balance after reducing labile:', (nlabl - dnlabl)
-    if ( (dclabl - clabl) > 1e-8 ) stop 'trying to remove too much from labile pool: root C'
-    if ( (dnlabl - nlabl) > 1e-8 ) stop 'trying to remove too much from labile pool: root N'
-    clabl  = clabl - dclabl
-    nlabl  = nlabl - dnlabl
+      dclabl = min( clabl, 1.0 / growtheff * mydcroot )
+      dnlabl = min( nlabl, mydnroot)
+      ! write (0,*) 'C balance after reducing labile:', (clabl - dclabl)
+      ! write (0,*) 'N balance after reducing labile:', (nlabl - dnlabl)
+      if ( (dclabl - clabl) > 1e-8 ) stop 'trying to remove too much from labile pool: root C'
+      if ( (dnlabl - nlabl) > 1e-8 ) stop 'trying to remove too much from labile pool: root N'
+      clabl  = clabl - dclabl
+      nlabl  = nlabl - dnlabl
 
-    ! dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcleaf(pft) )
-    ! dnlabl = min( plabl(pft,jpngr)%n%n14, dnleaf(pft) )
+      ! dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcleaf(pft) )
+      ! dnlabl = min( plabl(pft,jpngr)%n%n14, dnleaf(pft) )
 
-    ! plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
-    ! plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
+      ! plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
+      ! plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
 
-    ! write(0,*) 'mydcroot ', mydcroot 
-    ! write(0,*) 'mydnroot ', mydnroot 
-    if (mydcroot<0.0) stop 'root allocation neg.: C'
-    if (mydnroot<0.0) stop 'root allocation neg.: N'
+      ! write(0,*) 'mydcroot ', mydcroot 
+      ! write(0,*) 'mydnroot ', mydnroot 
+      if (mydcroot<0.0) stop 'root allocation neg.: C'
+      if (mydnroot<0.0) stop 'root allocation neg.: N'
 
-    croot = croot + mydcroot
-    nroot = nroot + mydnroot
+      croot = croot + mydcroot
+      nroot = nroot + mydnroot
 
-    ! if (present(verbose)) then
-    !   write(0,*) 'after presumed allocation:'
-    !   write(0,*) 'clabl', clabl ! OK
-    !   write(0,*) 'nlabl', nlabl ! OK
-    !   ! write(0,*) 'mydcleaf', mydcleaf
-    !   ! write(0,*) 'mydcroot', mydcroot
-    !   ! write(0,*) 'mydnleaf', mydnleaf
-    !   ! write(0,*) 'mydnroot', mydnroot
+      ! if (present(verbose)) then
+      !   write(0,*) 'after presumed allocation:'
+      !   write(0,*) 'clabl', clabl ! OK
+      !   write(0,*) 'nlabl', nlabl ! OK
+      !   ! write(0,*) 'mydcleaf', mydcleaf
+      !   ! write(0,*) 'mydcroot', mydcroot
+      !   ! write(0,*) 'mydnleaf', mydnleaf
+      !   ! write(0,*) 'mydnroot', mydnroot
 
-    !   ! write(0,*) 'after presumed allocation:'
-    !   ! write(0,*) 'B cleaf', cleaf
-    !   ! write(0,*) 'B root', root
-    ! end if
+      !   ! write(0,*) 'after presumed allocation:'
+      !   ! write(0,*) 'B cleaf', cleaf
+      !   ! write(0,*) 'B root', root
+      ! end if
+    end if
 
   end subroutine allocate_root
 
@@ -726,7 +739,7 @@ contains
 
     type(outtype_zeroin) :: out_zeroin
 
-    write(0,*) '--- in eval_imbalance with mydcleaf=', mydcleaf
+    ! write(0,*) '--- in eval_imbalance with mydcleaf=', mydcleaf
 
     ! Copy to local variables for shorter writing
     cleaf        = state_eval_imbalance%pleaf%c%c12
@@ -856,9 +869,9 @@ contains
     ! write(0,*) 'current stoichiometry:         ', ( cleaf + croot ) / ( nleaf + nroot )
     if (write_logfile_eval_imbalance) write(666,*) mydcleaf, ",", eval
 
-    write(0,*) mydcleaf, ",", eval
-    write(0,*) 'eval                                       ', eval
-    write(0,*) '-------------'
+    ! write(0,*) mydcleaf, ",", eval
+    ! write(0,*) 'eval                                       ', eval
+    ! write(0,*) '-------------'
     ! stop
 
   end function eval_imbalance

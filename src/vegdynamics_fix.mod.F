@@ -54,11 +54,11 @@ contains
 
         end if
 
-        ! update 
-        ! lai_ind(pft,jpngr)  = get_lai_ind( pleaf(pft,jpngr)%c%c12, sla(pft,jpngr), crownarea(pft,jpngr) )
-        fpc_ind(pft,jpngr)  = get_fapar( lai_ind(pft,jpngr) )
-        fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fpc_ind(pft,jpngr) )    
- 
+        !----------------------------------------------------------
+        ! Update fpc_grid (and fpc_ind)
+        !----------------------------------------------------------
+        call update_fpc_grid( pft, jpngr )
+
         ! write(0,*) 'pft   ',pft
         ! write(0,*) 'jpngr   ',jpngr
         ! write(0,*) 'in vegdynamics: pleaf(pft,jpngr) ',pleaf(pft,jpngr)
@@ -81,6 +81,45 @@ contains
     end do
 
   end subroutine estab_daily
+
+
+  subroutine update_foliage_vars( pft, jpngr )
+    !//////////////////////////////////////////////////////////////////
+    ! Updates PFT-specific state variables after change in LAI.
+    !------------------------------------------------------------------
+    use _vars_core, only: pleaf, lma, crownarea, lai_ind, nind, fpc_ind, fpc_grid
+
+    ! arguments
+    integer, intent(in) :: pft
+    integer, intent(in) :: jpngr
+
+    if (pleaf(pft,jpngr)%c%c12==0.0) then
+      lai_ind(pft,jpngr)  = 0.0
+      fpc_ind(pft,jpngr)  = 0.0
+      fpc_grid(pft,jpngr) = 0.0
+    else
+      ! This assumes that leaf canopy-average traits (LMA) do not change upon changes in LAI.
+      lai_ind(pft,jpngr) = pleaf(pft,jpngr)%c%c12 / ( lma(pft,jpngr) * crownarea(pft,jpngr) * nind(pft,jpngr) )
+      call update_fpc_grid( pft, jpngr )
+    end if
+
+  end subroutine update_foliage_vars
+
+
+  subroutine update_fpc_grid( pft, jpngr )
+    !//////////////////////////////////////////////////////////////////
+    ! Updates PFT-specific state variables after change in LAI.
+    !------------------------------------------------------------------
+    use _vars_core, only: lai_ind, fpc_ind, fpc_grid, crownarea, nind
+
+    ! arguments
+    integer, intent(in) :: pft
+    integer, intent(in) :: jpngr
+
+    fpc_ind(pft,jpngr)  = get_fapar( lai_ind(pft,jpngr) )
+    fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fpc_ind(pft,jpngr) ) 
+
+  end subroutine update_fpc_grid
 
 
   subroutine add_sapl( pft, jpngr )

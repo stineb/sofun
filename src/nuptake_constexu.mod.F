@@ -189,7 +189,7 @@ contains
     !--------------------------------------------------------------------------
     ! daily
     dnup(pft)%n14 = n_uptake_pass + dNacq_active + dNacq_fix  ! n_uptake_retrans is not considered uptake
-    write(0,*) 'dnup ', dnup(pft)%n14 
+    ! write(0,*) 'dnup ', dnup(pft)%n14 
     ! stop
     dnup_pas(pft) = n_uptake_pass
     dnup_act(pft) = dNacq_active                   

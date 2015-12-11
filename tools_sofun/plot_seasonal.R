@@ -1,4 +1,5 @@
-runname <- "CH-Oe1_2002"
+# runname <- "CH-Oe1_2002"
+runname <- "test"
 outdir <- "/alphadata01/bstocker/sofun/trunk/output/"
 dvars <- c(
   "gpp","npp","cex","nup","nup_pas","nup_act","nup_fix","nup_ret","nfixfree",

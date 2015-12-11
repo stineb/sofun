@@ -238,13 +238,13 @@ contains
           ! write(0,*) 'in SR gpp: moy, mlue(moy) ', moy, mlue(moy) !OK! 
           ! dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
           dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
-          write(0,*) 'doy, dgpp(pft)            ', doy, dgpp(pft)
+          ! write(0,*) 'doy, dgpp(pft)            ', doy, dgpp(pft)
           ! stop 
 
           ! Dark respiration
           drd(pft)     = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
           ! drd(pft)     = calc_drd( 0.05, meanmppfd(moy), mrd_unitiabs(moy) )
-          write(0,*) 'doy, drd(pft)', doy, drd(pft)
+          ! write(0,*) 'doy, drd(pft)             ', doy, drd(pft)
 
           ! transpiration
           dtransp(pft) = calc_dtransp( fpc_ind(pft,jpngr), dppfd(doy), mtransp_unitiabs(moy) )
@@ -768,13 +768,13 @@ contains
     !----------------------------------------------------------------
     ! ANNUAL OUTPUT
     !----------------------------------------------------------------
-    ! ANNUAL MAXIMUM N_AREA IN ACTIVE RUBISCO (gN/m2-leaf)
-    filnam=trim(prefix)//'.a.nrlarea.out'
-    open(650,file=filnam,err=888,status='unknown')
+    ! ! ANNUAL MAXIMUM N_AREA IN ACTIVE RUBISCO (gN/m2-leaf)
+    ! filnam=trim(prefix)//'.a.nrlarea.out'
+    ! open(650,file=filnam,err=888,status='unknown')
 
-    ! VCMAX (annual maximum) (mol m-2 s-1)
-    filnam=trim(prefix)//'.a.vcmax.out'
-    open(651,file=filnam,err=888,status='unknown')
+    ! ! VCMAX (annual maximum) (mol m-2 s-1)
+    ! filnam=trim(prefix)//'.a.vcmax.out'
+    ! open(651,file=filnam,err=888,status='unknown')
 
     ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
     filnam=trim(prefix)//'.a.chi.out'
