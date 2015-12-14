@@ -37,6 +37,7 @@ module _outvars
   real, dimension(npft,ndayyear) :: dnarea_cw
   real, dimension(npft,ndayyear) :: dlma
   real, dimension(npft,ndayyear) :: dcton_lm
+  real, dimension(npft,ndayyear) :: dvcmax
   
   !----------------------------------------------------------------
   ! Monthly output variables
@@ -58,6 +59,7 @@ module _outvars
   real, dimension(npft,maxgrid) :: outalai
   real, dimension(npft,maxgrid) :: outalma
   real, dimension(npft,maxgrid) :: outacton_lm
+  real, dimension(npft,maxgrid) :: outavcmax
 
 contains
 
@@ -96,7 +98,7 @@ contains
     outalai     (:,:)   = 0.0
     outalma     (:,:)   = 0.0
     outacton_lm (:,:)   = 0.0
-
+    outavcmax(:,:)      = 0.0
 
   end subroutine initoutput
 
@@ -234,6 +236,11 @@ contains
     filnam=trim(prefix)//'.a.lma.out'
     open(322,file=filnam,err=999,status='unknown')
 
+    ! VCMAX (annual maximum) (mol m-2 s-1)
+    filnam=trim(prefix)//'.a.vcmax.out'
+    open(323,file=filnam,err=999,status='unknown')
+
+
     return
 
     999  stop 'INITIO: error opening output files'
@@ -254,7 +261,7 @@ contains
     use _vars_core, only: dgpp, dnpp, dnup, pleaf, pninorg, proot, &
       plabl, plitt_bg, plitt_af, plitt_as, dtemp_soil, dtransp, &
       psoil_sl, psoil_fs, lai_ind, narea_metabolic, narea_structural, &
-      r_cton_leaf, lma
+      r_cton_leaf, lma, vcmax
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr
@@ -291,7 +298,8 @@ contains
     dnarea_mb(:,doy)           = narea_metabolic(:)  
     dnarea_cw(:,doy)           = narea_structural(:)
     dcton_lm(:,doy)            = r_cton_leaf(:,jpngr)
-    dlma(:,doy)                = lma(:)
+    dlma(:,doy)                = lma(:,jpngr)
+    dvcmax(:,doy)              = vcmax(:)
 
     ! write(0,*) 'psoil_sl(:,jpngr)%c%c12', psoil_sl(:,jpngr)%c%c12
     ! write(0,*) 'psoil_fs(:,jpngr)%c%c12', psoil_fs(:,jpngr)%c%c12
@@ -366,6 +374,7 @@ contains
       outalai     (pft,jpngr) = outdlai(pft,maxdoy(pft),jpngr)
       outalma     (pft,jpngr) = dlma(pft,maxdoy(pft))
       outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy(pft))
+      outavcmax   (pft,jpngr) = dvcmax(pft,maxdoy(pft))
     end do
 
     open(unit=666,file='cton_vs_lai.log',status='unknown')

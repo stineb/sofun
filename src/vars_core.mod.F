@@ -79,6 +79,7 @@ module _vars_core
   real, dimension(npft)                  :: narea_metabolic ! g N m-2-leaf
   real, dimension(npft)                  :: narea_structural! g N m-2-leaf
   real, dimension(npft)                  :: nmass           ! g N / g-dry mass
+  real, dimension(npft)                  :: vcmax           ! 
 
   real, dimension(npft,maxgrid)          :: lai_ind
   real, dimension(npft,maxgrid)          :: fpc_ind

@@ -191,7 +191,7 @@ contains
     ! - dpppfd
     ! - meanmppfd
     !------------------------------------------------------------------
-    use _vars_core, only: dgpp, dtransp, fpc_ind
+    use _vars_core, only: dgpp, dtransp, fpc_ind, vcmax
     use _waterbal, only: dppfd, meanmppfd
 
     ! arguments
@@ -250,6 +250,11 @@ contains
           dtransp(pft) = calc_dtransp( fpc_ind(pft,jpngr), dppfd(doy), mtransp_unitiabs(moy) )
           ! dtransp(pft) = calc_dtransp( 0.05, dppfd(doy), mtransp_unitiabs(moy) )
 
+          ! Vcmax
+          vcmax(pft) = calc_vcmax( fpc_ind(pft,jpngr), mvcmax_unitiabs(moy), meanmppfd(moy) )
+          ! mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), meanmppfd(moy) )
+
+
         else  
           dgpp(pft)    = 0.0
           drd(pft)     = 0.0
@@ -275,6 +280,90 @@ contains
     ! stop
 
   end subroutine gpp
+
+
+  subroutine getlue( jpngr, co2, dtemp, dvpd, elv )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates the monthly acclimated photosynthetic parameters for 
+    ! assimilation, Vcmax, and dark respiration per unit light absorbed.
+    ! This SR is called before the daily loop. This implies that all 
+    ! input variables need to be known beforehand => no daily coupling
+    ! possible.
+    !------------------------------------------------------------------
+    use _params_core, only: ndayyear
+    use _sofunutils, only: daily2monthly
+
+    ! arguments
+    integer, intent(in)                   :: jpngr    ! gridcell number
+    real, intent(in)                      :: co2      ! atmospheric CO2 (ppm)
+    real, dimension(ndayyear), intent(in) :: dtemp    ! daily air temperature (deg C)
+    real, dimension(ndayyear), intent(in) :: dvpd     ! daily vapour pressure deficit (Pa)
+    real, intent(in)                      :: elv      ! elevation above sea level (m)
+
+    ! local variables
+    type(outtype_pmodel)    :: out_pmodel ! derived type for P-model output variable list
+    real, dimension(nmonth) :: mtemp      ! monthly air temperature (deg C)
+    real, dimension(nmonth) :: mvpd       ! monthly vapour pressure deficit (Pa)
+    integer                 :: moy
+
+    ! Get monthly averages
+    mtemp(:) = daily2monthly( dtemp(:), "mean" )
+    mvpd(:)  = daily2monthly( dvpd(:), "mean" )
+
+    ! xxx try out: -- THIS WORKS PERFECTLY -- 
+    ! write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
+    ! co2   = 376.0
+    ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
+    ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
+    ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
+
+    ! Run P-model for monthly averages and store monthly variables 
+    ! per unit absorbed light (not corrected for soil moisture)
+    do moy=1,nmonth
+
+      ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
+      out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
+
+      ! Light use efficiency: (gpp - rd) per unit light absorbed
+      mlue(moy)             = out_pmodel%lue
+      ! write(0,*) 'moy, mlue', moy, mlue(moy)
+      
+      ! Vcmax per unit absorbed light
+      mvcmax_unitiabs(moy)  = out_pmodel%vcmax_unitiabs
+      
+      ! conversion factor to get from absorbed light to Rubisco-N
+      mactnv_unitiabs(moy)  = out_pmodel%actnv_unitiabs
+      
+      ! factor to convert from 25 deg-normalised to ambient T
+      factor25(moy)         = out_pmodel%factor25_vcmax
+      
+      ! dark respiration per unit absorbed light
+      mrd_unitiabs(moy)     = out_pmodel%rd_unitiabs
+
+      ! transpiration per unit 
+      mtransp_unitiabs(moy) = out_pmodel%transp_unitiabs
+
+      ! ci:ca
+      mchi(moy)             = out_pmodel%chi
+
+    end do
+
+
+    ! ! xxx debug
+    ! write(0,*) 'mtemp', mtemp
+    ! write(0,*) 'mvpd', mvpd
+    ! write(0,*) 'co2', co2
+    ! write(0,*) 'elv', elv
+    ! write(0,*) 'mlue', mlue
+    ! write(0,*) 'mvcmax_unitiabs', mvcmax_unitiabs
+    ! write(0,*) 'mactnv_unitiabs', mactnv_unitiabs
+    ! write(0,*) 'factor25', factor25
+    ! write(0,*) 'mrd_unitiabs', mrd_unitiabs
+    ! stop
+
+
+  end subroutine getlue
+
 
 
   function calc_dgpp( fapar, dppfd, mlue ) result( dgpp )
@@ -330,89 +419,6 @@ contains
     dtransp = fapar * dppfd * transp_unitiabs * h2o_molmass
 
   end function calc_dtransp
-
-
-  subroutine getlue( jpngr, co2, dtemp, dvpd, elv )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates the monthly acclimated photosynthetic parameters for 
-    ! assimilation, Vcmax, and dark respiration per unit light absorbed.
-    ! This SR is called before the daily loop. This implies that all 
-    ! input variables need to be known beforehand => no daily coupling
-    ! possible.
-    !------------------------------------------------------------------
-    use _params_core, only: ndayyear
-    use _sofunutils, only: daily2monthly
-
-    ! arguments
-    integer, intent(in)                   :: jpngr    ! gridcell number
-    real, intent(in)                      :: co2      ! atmospheric CO2 (ppm)
-    real, dimension(ndayyear), intent(in) :: dtemp    ! daily air temperature (deg C)
-    real, dimension(ndayyear), intent(in) :: dvpd     ! daily vapour pressure deficit (Pa)
-    real, intent(in)                      :: elv      ! elevation above sea level (m)
-
-    ! local variables
-    type(outtype_pmodel)    :: out_pmodel ! derived type for P-model output variable list
-    real, dimension(nmonth) :: mtemp      ! monthly air temperature (deg C)
-    real, dimension(nmonth) :: mvpd       ! monthly vapour pressure deficit (Pa)
-    integer                 :: moy
-
-    ! Get monthly averages
-    mtemp(:) = daily2monthly( dtemp(:), "mean" )
-    mvpd(:)  = daily2monthly( dvpd(:), "mean" )
-
-    ! xxx try out: -- THIS WORKS PERFECTLY -- 
-    write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
-    co2   = 376.0
-    mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
-    mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
-    ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
-
-    ! Run P-model for monthly averages and store monthly variables 
-    ! per unit absorbed light (not corrected for soil moisture)
-    do moy=1,nmonth
-
-      ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
-      out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
-
-      ! Light use efficiency: (gpp - rd) per unit light absorbed
-      mlue(moy)             = out_pmodel%lue
-      ! write(0,*) 'moy, mlue', moy, mlue(moy)
-      
-      ! Vcmax per unit absorbed light
-      mvcmax_unitiabs(moy)  = out_pmodel%vcmax_unitiabs
-      
-      ! conversion factor to get from absorbed light to Rubisco-N
-      mactnv_unitiabs(moy)  = out_pmodel%actnv_unitiabs
-      
-      ! factor to convert from 25 deg-normalised to ambient T
-      factor25(moy)         = out_pmodel%factor25_vcmax
-      
-      ! dark respiration per unit absorbed light
-      mrd_unitiabs(moy)     = out_pmodel%rd_unitiabs
-
-      ! transpiration per unit 
-      mtransp_unitiabs(moy) = out_pmodel%transp_unitiabs
-
-      ! ci:ca
-      mchi(moy)             = out_pmodel%chi
-
-    end do
-
-
-    ! ! xxx debug
-    ! write(0,*) 'mtemp', mtemp
-    ! write(0,*) 'mvpd', mvpd
-    ! write(0,*) 'co2', co2
-    ! write(0,*) 'elv', elv
-    ! write(0,*) 'mlue', mlue
-    ! write(0,*) 'mvcmax_unitiabs', mvcmax_unitiabs
-    ! write(0,*) 'mactnv_unitiabs', mactnv_unitiabs
-    ! write(0,*) 'factor25', factor25
-    ! write(0,*) 'mrd_unitiabs', mrd_unitiabs
-    ! stop
-
-
-  end subroutine getlue
 
 
   ! subroutine gettraits( jpngr )
@@ -496,30 +502,30 @@ contains
   ! end function calc_nr_leaf
 
 
-  ! function calc_vcmax( lai, vcmax_unitiabs, meanmppfd ) result( vcmax )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Calculates leaf-level metabolic N content per unit leaf area as a
-  !   ! function of Vcmax25.
-  !   !------------------------------------------------------------------
-  !   use _vegdynamics, only: get_fapar
+  function calc_vcmax( lai, vcmax_unitiabs, meanmppfd ) result( vcmax )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates leaf-level metabolic N content per unit leaf area as a
+    ! function of Vcmax25.
+    !------------------------------------------------------------------
+    use _vegdynamics, only: get_fapar
 
-  !   ! arguments
-  !   real, intent(in) :: lai
-  !   real, intent(in) :: vcmax_unitiabs
-  !   real, intent(in) :: meanmppfd
+    ! arguments
+    real, intent(in) :: lai
+    real, intent(in) :: vcmax_unitiabs
+    real, intent(in) :: meanmppfd
 
-  !   ! function return variable
-  !   real, intent(out) :: vcmax
+    ! function return variable
+    real, intent(out) :: vcmax
 
-  !   ! local variables
-  !   real :: fapar
+    ! local variables
+    real :: fapar
 
-  !   fapar = get_fapar( lai )
+    fapar = get_fapar( lai )
 
-  !   ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-  !   vcmax = fapar * meanmppfd * vcmax_unitiabs / lai
+    ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
+    vcmax = fapar * meanmppfd * vcmax_unitiabs / lai
 
-  ! end function calc_vcmax
+  end function calc_vcmax
 
 
   ! function calc_ncw_leaf( nr_leaf ) result( ncw_leaf )

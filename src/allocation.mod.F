@@ -18,8 +18,10 @@ module _allocation
 
   ! Parameters determining the relationship of structural N and C to metabolic N
   ! From regressing Narea to metabolic Narea in Hikosaka data
-  real, parameter    :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
-  real, parameter    :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
+  ! real, parameter    :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
+  ! real, parameter    :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
+  real, parameter    :: r_n_cw_v = 0.1            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
+  real, parameter    :: ncw_min = 0.1               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
   real, parameter    :: r_ctostructn_leaf = 40        ! constant ratio of C to structural N
   
   logical, parameter :: write_logfile_eval_imbalance = .false.
@@ -44,6 +46,7 @@ module _allocation
     type(nitrogen)          :: pninorg
     real                    :: pft 
     integer                 :: usemoy
+    real                    :: soiltemp
   end type statetype_eval_imbalance
 
   type statetype_mustbe_zero_for_lai
@@ -92,7 +95,7 @@ contains
       lu_category
     use _vars_core, only: pleaf, proot, plabl, pninorg, r_cton_leaf, &
       r_ntoc_leaf, crownarea, drauto, dnpp, lai_ind, nind, fpc_ind, fpc_grid, &
-      narea, narea_metabolic, narea_structural, lma, nmass
+      narea, narea_metabolic, narea_structural, lma, nmass, dtemp_soil
     use _gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
     use _waterbal, only: dppfd, meanmppfd
     use _vegdynamics, only: update_fpc_grid
@@ -131,7 +134,7 @@ contains
     integer, save      :: invocation = 0                 ! internally counted simulation year
     integer, parameter :: spinupyr_phaseinit_2 = 1   ! this is unnecessary: might as well do flexible allocation right from the start.
     logical            :: flexalloc
-    real, parameter    :: frac_shoot = 0.5
+    real, parameter    :: frac_shoot = 0.6
 
     ! xxx debug
     real    :: test
@@ -149,7 +152,12 @@ contains
     ! else
     !   flexalloc = .false.
     ! end if
+
+    !-------------------------------------------------------------------------
+    ! xxx try
+    !-------------------------------------------------------------------------
     flexalloc = .true.
+    !-------------------------------------------------------------------------
 
     abserr=100.0*XMACHEPS !*10e5
     relerr=1000.0*XMACHEPS !*10e5
@@ -202,6 +210,7 @@ contains
             state_eval_imbalance%pft          = pft
             state_eval_imbalance%nv(:)        = mactnv_unitiabs(:)
             state_eval_imbalance%usemoy       = usemoy
+            state_eval_imbalance%soiltemp     = dtemp_soil(lu,jpngr)
 
             !------------------------------------------------------------------
             ! Calculate maximum C allocatable based on current labile pool size.
@@ -334,8 +343,8 @@ contains
               if (write_logfile_eval_imbalance) open(unit=666,file='eval_imbalance.log',status='unknown')
               ! write(0,*) 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
               out_zeroin = zeroin( eval_imbalance, abserr, relerr, nmax, min_dc, max_dc )
-              ! write(0,*) 'error code ', out_zeroin%error
               if ( out_zeroin%error /= 0 ) then
+                write(0,*) 'error code ', out_zeroin%error
                 stop 'zeroin for eval_imbalance() failed'
                 dcleaf(pft) = 0.0
               else
@@ -484,6 +493,24 @@ contains
               meanmppfd(:), mactnv_unitiabs(:), &
               lai_ind(pft,jpngr), dnleaf(pft) &
               )
+
+            !-------------------------------------------------------------------  
+            ! Update leaf traits
+            !-------------------------------------------------------------------  
+            traits                      = get_leaftraits( lai_ind(pft,jpngr), meanmppfd(:), mactnv_unitiabs(:) )
+            narea(pft)                  = traits%narea
+            narea_metabolic(pft)        = traits%narea_metabolic
+            narea_structural(pft)       = traits%narea_structural
+            lma(pft,jpngr)              = traits%lma
+            nmass(pft)                  = traits%nmass
+
+            r_cton_leaf(pft,jpngr)      = traits%r_cton_leaf
+            r_ntoc_leaf(pft,jpngr)      = traits%r_ntoc_leaf
+
+            !-------------------------------------------------------------------  
+            ! Update fpc_grid and fpc_ind (not lai_ind)
+            !-------------------------------------------------------------------  
+            call update_fpc_grid( pft, jpngr )
 
             !-------------------------------------------------------------------
             ! ROOT ALLOCATION
@@ -683,7 +710,7 @@ contains
     use _params_modl, only: growtheff, k_decay_leaf, k_decay_root,&
      r_cton_root, r_ntoc_root
     use _gpp, only: calc_dgpp, calc_drd
-    use _nuptake, only: calc_dnup, exurate
+    use _nuptake, only: calc_dnup, exurate, outtype_calc_dnup
     use _npp, only: calc_resp_maint, r_root
     use _vegdynamics, only: get_fapar, get_fpc_grid
     use _findroot_fzeroin
@@ -707,6 +734,7 @@ contains
     real, dimension(nmonth) :: nv
     integer                 :: pft
     integer                 :: usemoy
+    real                    :: soiltemp
 
     real :: mydcroot
     real :: mydnleaf
@@ -734,7 +762,9 @@ contains
     real :: nleaf0
     real :: lai0, lai1
 
-    type(outtype_zeroin) :: out_zeroin
+    type(outtype_zeroin)    :: out_zeroin
+    ! type(outtype_calc_dnup) :: out_calc_dnup
+    real, dimension(2) :: out_calc_dnup
 
     ! write(0,*) '--- in eval_imbalance with mydcleaf=', mydcleaf
 
@@ -755,6 +785,7 @@ contains
     pft          = state_eval_imbalance%pft
     nv(:)        = state_eval_imbalance%nv(:)
     usemoy       = state_eval_imbalance%usemoy
+    soiltemp     = state_eval_imbalance%soiltemp
 
     ! write(0,*) '-------------'
     ! write(0,*) 'BEFORE presumed allocation:'
@@ -818,13 +849,24 @@ contains
     !   ! write(0,*) 'exurate',exurate
     ! end if
 
-    gpp        = calc_dgpp( myfpc_grid, mlue, dppfd ) ! XXX this gives incorrect results (next day's GPP is much smaller!)
-    rd         = calc_drd(  myfpc_grid, mrd_unitiabs, meanmppfd(usemoy) )
-    exu        = croot * exurate
-    mresp_root = calc_resp_maint( croot, r_root )
+    gpp           = calc_dgpp( myfpc_grid, mlue, dppfd ) ! XXX this gives incorrect results (next day's GPP is much smaller!)
+    rd            = calc_drd(  myfpc_grid, mrd_unitiabs, meanmppfd(usemoy) )
+    exu           = croot * exurate
+    mresp_root    = calc_resp_maint( croot, r_root )
     
-    dc         = gpp - rd - mresp_root - exu
-    dn         = calc_dnup( exu, ninorg )
+    dc            = gpp - rd - mresp_root - exu
+    
+    out_calc_dnup = calc_dnup( exu, ninorg, soiltemp )
+    dn            = sum( out_calc_dnup )
+    ! dn            = out_calc_dnup%dnup_act +  out_calc_dnup%dnup_fix
+
+    ! write(0,*) 'exu ', exu
+    ! write(0,*) 'ninorg', ninorg
+    ! write(0,*) 'soiltemp', soiltemp
+    ! write(0,*) 'out_calc_dnup%dnup_act', out_calc_dnup%dnup_act
+    ! write(0,*) 'out_calc_dnup%dnup_fix', out_calc_dnup%dnup_fix
+
+    ! if (out_calc_dnup%dnup_fix>0.0) stop 'finally fixing'
 
     ! write(0,*) 'AFTER presumed allocation:'
     ! write(0,*) 'cleaf      ', cleaf

@@ -138,6 +138,9 @@ program main
     dndep_field = getndep( trim(runname), realyear )
     lu_area     = getlanduse( trim(runname), realyear )
 
+    ! ! xxx test
+    ! dndep_field(:) = dndep_field(:) * 0.4
+
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
     ! containing data for each day of this year.

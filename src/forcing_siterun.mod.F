@@ -179,8 +179,6 @@ contains
       readyear = realyear
     end if
     andep = getvalreal( trim(input_dir)//trim(ndep_forcing_file), readyear )
-
-    write(0,*) 'andep', andep
     
     ! Distribute annual Ndep to days by daily precipitation
     do jpngr=1,maxgrid

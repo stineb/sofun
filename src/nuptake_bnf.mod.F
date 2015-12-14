@@ -22,9 +22,6 @@ module _nuptake
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: ndayyear, nmonth, nlu, npft, maxgrid
-  use _vars_core, only: dcex, pninorg, plabl, proot, dcex, dnup, &
-      dtransp, aet_d, fpc_grid, pleaf
-
   use _classdefs
 
   implicit none
@@ -63,7 +60,6 @@ module _nuptake
 
 contains
 
-
   subroutine nuptake( jpngr, pft )
     !/////////////////////////////////////////////////////////////////
     ! SUBROUTINE NUPTAKE ASSUMING CONSTANT EXUDATION PER UNIT ROOT MASS
@@ -73,6 +69,8 @@ contains
     !-----------------------------------------------------------------
     use _classdefs
     use _params_modl, only: lu_category
+    use _vars_core, only: dtemp_soil, dcex, pninorg, plabl, proot, &
+      dnup, dtransp, aet_d, fpc_grid
 
     ! arguments
     integer, intent(in) :: jpngr, pft
@@ -83,14 +81,18 @@ contains
     real    :: ninorg_conc                         ! inorganic N concentration (gN/gH2O)
     real    :: n_uptake_pass                       ! (gN)
     real    :: n_uptake_retrans
-    real    :: dNacq_active
+    real    :: dNacq_act
     real    :: dNacq_fix
-    real    :: dCacq_active
+    real    :: dCexu    
     real    :: dCacq_fix
     real    :: dmean_cost
 
     ! type(outtype_calc_dnup) :: out_calc_dnup
     real, dimension(2) :: out_calc_dnup
+
+    ! xxx debug
+    real :: test_eff_bnf
+    real :: test_eff_act
 
     lu = lu_category(pft)
 
@@ -108,7 +110,7 @@ contains
 
       ! no roots => no N uptake, no C exudation
       n_uptake_pass    = 0.0
-      dNacq_active     = 0.0
+      dNacq_act        = 0.0
       dNacq_fix        = 0.0
       n_uptake_retrans = 0.0
 
@@ -120,12 +122,12 @@ contains
       !//////////////////////////////////////////////////////////////////////////
       ! INITIALIZATION
       !-------------------------------------------------------------------------
-      n_uptake_pass   = 0.0
-
-      dNacq_active    = 0.0                          ! active uptake, sum over sub-timesteps
-      dNacq_fix       = 0.0                          ! N fixation, sum over sub-timesteps
-      dCacq_active    = 0.0
-      dCacq_fix       = 0.0
+      n_uptake_pass = 0.0
+      
+      dNacq_act = 0.0                          ! active uptake, sum over sub-timesteps
+      dNacq_fix = 0.0                          ! N fixation, sum over sub-timesteps
+      dCexu     = 0.0
+      dCacq_fix = 0.0
 
       ! write(0,*) 'lu, jpngr',lu, jpngr
       ! write(0,*) 'pninorg(lu,jpngr)%n14',pninorg(lu,jpngr)%n14
@@ -173,45 +175,49 @@ contains
       !//////////////////////////////////////////////////////////////////////////
       ! ACTIVE UPTAKE
       ! Active N uptake is a function of initial N available and C exuded
-      !--------------------------------------------------------------------------
-      ! dCacq_active = exurate * max( 0.0, proot(pft,jpngr)%c%c12 - 0.3 * pleaf(pft,jpngr)%c%c12 )
-      dCacq_active = exurate * proot(pft,jpngr)%c%c12
-      ! dCacq_active = exurate * proot(pft,jpngr)%c%c12 / (proot(pft,jpngr)%c%c12 + 0.5 * pleaf(pft,jpngr)%c%c12) + exurate * 0.02
+      !--------------------------------------------------------------------------         
+      dCexu = exurate * proot(pft,jpngr)%c%c12
 
-      ! write(0,*) 'dCacq_active ', dCacq_active
-      ! stop
-      ! dNacq_active = calc_dnup( dCacq_active, avail_ninorg )
-      out_calc_dnup = calc_dnup( dCacq_active, pninorg(lu,jpngr)%n14 )
-      dNacq_active  = out_calc_dnup(1)
+      out_calc_dnup = calc_dnup( dCexu, pninorg(lu,jpngr)%n14, dtemp_soil(lu,jpngr) )
+      dNacq_act     = out_calc_dnup(1)
       dNacq_fix     = out_calc_dnup(2)
 
-      ! write(0,*) 'dCacq_active ', dCacq_active 
-      ! write(0,*) 'in SR nuptake: dCacq_active          ',dCacq_active 
-      ! write(0,*) 'in SR nuptake: dNacq_active          ',dNacq_active 
+      ! dNacq_act     = out_calc_dnup%dnup_act
+      ! dNacq_fix     = out_calc_dnup%dnup_fix
+
+      ! write(0,*) 'dCexu     ', dCexu     
+      ! write(0,*) 'in SR nuptake: dCexu           ',dCexu     
+      ! write(0,*) 'in SR nuptake: dNacq_act          ',dNacq_act 
       ! write(0,*) 'in SR nuptake: pninorg(lu,jpngr)%n14 ',pninorg(lu,jpngr)%n14 
 
-      dcex(pft) = dcex(pft) + dCacq_active
-      if (dNacq_active>0.0) then
-        dmean_cost = dCacq_active / dNacq_active
-      else
-        dmean_cost = 9999.0
-      end if
+      dcex(pft) = dcex(pft) + dCexu    
+      dmean_cost = dCexu / dNacq_act
 
       ! Update
-      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - dNacq_active
+      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - dNacq_act
 
     end if
+
+    ! ! xxx debug
+    ! ! get efficiency of BNF 
+    ! if (dNacq_fix>0.0) then
+    !   test_eff_bnf = 1.0 / fun_cost_fix( dtemp_soil(lu,jpngr) )
+    !   test_eff_act = eff_nup * pninorg(lu,jpngr)%n14
+    !   write(0,*) 'dNacq_act    ', dNacq_act
+    !   write(0,*) 'dNacq_fix    ', dNacq_fix
+    !   write(0,*) 'test_eff_bnf ', test_eff_bnf
+    !   write(0,*) 'test_eff_act ', test_eff_act
+    !   ! stop
+    ! end if
 
     !--------------------------------------------------------------------------
     ! Update N-uptake of this PFT. N-retranslocation is not considered
     ! N-uptake.
     !--------------------------------------------------------------------------
     ! daily
-    dnup(pft)%n14 = n_uptake_pass + dNacq_active + dNacq_fix  ! n_uptake_retrans is not considered uptake
-    ! write(0,*) 'dnup ', dnup(pft)%n14 
-    ! stop
+    dnup(pft)%n14 = n_uptake_pass + dNacq_act + dNacq_fix  ! n_uptake_retrans is not considered uptake
     dnup_pas(pft) = n_uptake_pass
-    dnup_act(pft) = dNacq_active                   
+    dnup_act(pft) = dNacq_act                   
     dnup_fix(pft) = dNacq_fix  
     dnup_ret(pft) = n_uptake_retrans
     if (dnup(pft)%n14>0.0) then
@@ -237,19 +243,65 @@ contains
     real, intent(in), optional :: soiltemp  ! soil temperature (deg C)
 
     ! function return variable
+    ! type(outtype_calc_dnup) :: out_dnup
     real, dimension(2), intent(out) :: out_dnup
 
-    ! local variable
-    real :: mydnup
+    ! local variables
+    real :: mydnup_act
+    real :: mydnup_fix
+    real :: cost_bnf
+    real :: eff_bnf
+    real :: cexu_act
+    real :: cexu_bnf
 
-    ! N uptake function of C exuded
-    mydnup = n0 * ( 1.0 - exp( - eff_nup * cexu ) )
+    !-----------------------------------------------------------------
+    ! get cost of BNF at this soil temperature. Cost = dCex / dNfix
+    !-----------------------------------------------------------------
+    cost_bnf = fun_cost_fix( soiltemp )
 
-    ! out_dnup%dnup_act = mydnup
-    ! out_dnup%dnup_fix = 0.0
+    !-----------------------------------------------------------------
+    ! get inverse of cost = efficiency: eff_bnf = dNfix / dCex
+    !-----------------------------------------------------------------
+    eff_bnf = 1.0 / cost_bnf
 
-    out_dnup(1) = mydnup
-    out_dnup(2) = 0.0
+    !-----------------------------------------------------------------
+    ! Find amount of active uptake (~Cex) for which eff_act = eff_bnf
+    ! eff_act = dNup_act / dCex
+    ! Nup_act = N0 * ( 1.0 - exp( -K * Cex ) )
+    ! dNup_act / dCex = K * exp( -K * Cex)
+    ! dNup_act / dCex = eff_bnf
+    ! ==> Cex = - 1/K * ln( bnf_eff/K )
+    !-----------------------------------------------------------------
+    cexu_act = -1.0 / eff_nup * log( eff_bnf / ( n0 * eff_nup ) )
+
+    if (cexu_act < cexu) then
+      !-----------------------------------------------------------------
+      ! Remaining Cex is consumed by N fixing processes
+      !-----------------------------------------------------------------
+      cexu_bnf = cexu - cexu_act
+
+      !-----------------------------------------------------------------
+      ! N uptake via BNF
+      !-----------------------------------------------------------------
+      mydnup_fix = cexu_bnf * eff_bnf
+
+      !-----------------------------------------------------------------
+      ! N uptake via active uptake
+      !-----------------------------------------------------------------
+      mydnup_act = n0 * ( 1.0 - exp( - eff_nup * cexu_act ) )
+
+    else
+
+      mydnup_fix = 0.0
+      mydnup_act = n0 * ( 1.0 - exp( - eff_nup * cexu ) )
+
+    end if
+
+    out_dnup(1) = mydnup_act
+    out_dnup(2) = mydnup_fix
+
+    ! out_dnup%dnup_act = mydnup_act
+    ! out_dnup%dnup_fix = mydnup_fix
 
 
   end function calc_dnup
@@ -440,6 +492,8 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
+    use _vars_core, only: dcex 
+
     ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy    
