@@ -1,7 +1,7 @@
 # runname <- "CH-Oe1_2002"
 namstat <- "CH-Oe1"
 runname <- "test"
-outdir <- "/alphadata01/bstocker/sofun/trunk/output/"
+outdir <- "/alphadata01/bstocker/sofun/trunk/output/constalloc"
 dvars <- c(
   "gpp","npp","cex","nup","nup_pas","nup_act","nup_fix","nup_ret","nfixfree",
   "cleaf","netmin","ninorg","ccost","cleaf","croot","clabl","clitt","nlitt","csoil","nsoil","netmin_litt",

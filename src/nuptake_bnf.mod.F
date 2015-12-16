@@ -70,7 +70,7 @@ contains
     use _classdefs
     use _params_modl, only: lu_category
     use _vars_core, only: dtemp_soil, dcex, pninorg, plabl, proot, &
-      dnup, dtransp, aet_d, fpc_grid
+      dnup, dtransp, aet_d, fpc_grid, pleaf
 
     ! arguments
     integer, intent(in) :: jpngr, pft
@@ -176,7 +176,7 @@ contains
       ! ACTIVE UPTAKE
       ! Active N uptake is a function of initial N available and C exuded
       !--------------------------------------------------------------------------         
-      dCexu = exurate * proot(pft,jpngr)%c%c12
+      dCexu = calc_cexu( proot(pft,jpngr)%c%c12, pleaf(pft,jpngr)%c%c12  )
 
       out_calc_dnup = calc_dnup( dCexu, pninorg(lu,jpngr)%n14, dtemp_soil(lu,jpngr) )
       dNacq_act     = out_calc_dnup(1)
@@ -191,7 +191,11 @@ contains
       ! write(0,*) 'in SR nuptake: pninorg(lu,jpngr)%n14 ',pninorg(lu,jpngr)%n14 
 
       dcex(pft) = dcex(pft) + dCexu    
-      dmean_cost = dCexu / dNacq_act
+      if ((dNacq_act+dNacq_fix)>0.0) then
+        dmean_cost = dCexu / (dNacq_act+dNacq_fix)
+      else
+        dmean_cost = 9999.0
+      end if
 
       ! Update
       pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - dNacq_act
@@ -229,6 +233,23 @@ contains
     ! write(0,*) '---- finished nuptake'
 
   end subroutine nuptake
+
+
+  function calc_cexu( croot, cleaf ) result( cexu )
+    !/////////////////////////////////////////////////////////////////
+    !-----------------------------------------------------------------
+    ! arguments
+    real, intent(in)           :: croot
+    real, intent(in), optional :: cleaf
+
+    ! function return variable
+    real, intent(out) :: cexu
+
+    cexu = exurate * croot
+    ! cexu = 2.0 * exurate * max( 0.0, croot - 0.5 * cleaf )
+    ! cexu = exurate * croot / ( croot + 0.5 * cleaf ) + exurate * 0.02
+
+  end function calc_cexu
 
 
   function calc_dnup( cexu, n0, soiltemp ) result( out_dnup )

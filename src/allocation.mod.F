@@ -131,10 +131,10 @@ contains
     type(outtype_zeroin)  :: out_zeroin
     type(leaftraits_type) :: traits
 
-    integer, save      :: invocation = 0                 ! internally counted simulation year
+    integer, save      :: invocation = 0             ! internally counted simulation year
     integer, parameter :: spinupyr_phaseinit_2 = 1   ! this is unnecessary: might as well do flexible allocation right from the start.
     logical            :: flexalloc
-    real, parameter    :: frac_shoot = 0.6
+    real, parameter    :: frac_shoot = 0.5
 
     ! xxx debug
     real    :: test
@@ -358,7 +358,6 @@ contains
               ! write(0,*) 'eval                              =', test
               ! write(0,*) '----------------------------------'
               ! if (doy==200) stop 'do beni'
-
             end if
 
             !------------------------------------------------------------------
@@ -561,6 +560,231 @@ contains
   end subroutine allocation_daily
 
 
+  function eval_imbalance( mydcleaf, verbose ) result ( eval )
+    !/////////////////////////////////////////////////////////
+    ! Evaluates C:N ratio of new assimilation after allocation 
+    ! versus whole-plant C:N ratio after allocation. Optimal 
+    ! allocation is where the two are equal. 
+    !---------------------------------------------------------
+    use _classdefs, only: orgpool, nitrogen
+    use _params_modl, only: growtheff, k_decay_leaf, k_decay_root,&
+     r_cton_root, r_ntoc_root
+    use _gpp, only: calc_dgpp, calc_drd
+    use _nuptake, only: calc_dnup, outtype_calc_dnup, calc_cexu
+    use _npp, only: calc_resp_maint, r_root
+    use _vegdynamics, only: get_fapar, get_fpc_grid
+    use _findroot_fzeroin
+
+    ! arguments
+    real, intent(in)              :: mydcleaf
+    logical, intent(in), optional :: verbose
+
+    ! function return variable
+    real, intent(out) :: eval
+
+    ! local variables
+    real                    :: dclabl, dnlabl 
+    real                    :: mycrownarea
+    real                    :: mynind
+    real                    :: mlue
+    real                    :: dppfd
+    real                    :: mrd_unitiabs
+    real, dimension(nmonth) :: meanmppfd
+    real                    :: ninorg
+    real, dimension(nmonth) :: nv
+    integer                 :: pft
+    integer                 :: usemoy
+    real                    :: soiltemp
+
+    real :: mydcroot
+    real :: mydnleaf
+    real :: mydnroot
+    real :: cleaf
+    real :: nleaf
+    real :: croot
+    real :: nroot
+    real :: clabl
+    real :: nlabl
+    real :: mylai
+    real :: myfpc_ind
+    real :: myfpc_grid
+    real :: gpp
+    real :: rd
+    real :: mresp_root
+    real :: exu
+    real :: dc
+    real :: dn
+    real :: kcleaf
+    real :: knleaf
+    real :: kcroot
+    real :: knroot
+
+    real :: nleaf0
+    real :: lai0, lai1
+
+    type(outtype_zeroin)    :: out_zeroin
+    ! type(outtype_calc_dnup) :: out_calc_dnup
+    real, dimension(2) :: out_calc_dnup
+
+    ! write(0,*) '--- in eval_imbalance with mydcleaf=', mydcleaf
+
+    ! Copy to local variables for shorter writing
+    cleaf        = state_eval_imbalance%pleaf%c%c12
+    nleaf        = state_eval_imbalance%pleaf%n%n14
+    croot        = state_eval_imbalance%proot%c%c12
+    nroot        = state_eval_imbalance%proot%n%n14
+    clabl        = state_eval_imbalance%plabl%c%c12
+    nlabl        = state_eval_imbalance%plabl%n%n14
+    mycrownarea  = state_eval_imbalance%crownarea
+    mynind       = state_eval_imbalance%nind
+    mlue         = state_eval_imbalance%mlue         
+    dppfd        = state_eval_imbalance%dppfd        
+    mrd_unitiabs = state_eval_imbalance%mrd_unitiabs 
+    meanmppfd(:) = state_eval_imbalance%meanmppfd(:)    
+    ninorg       = state_eval_imbalance%pninorg%n14 
+    pft          = state_eval_imbalance%pft
+    nv(:)        = state_eval_imbalance%nv(:)
+    usemoy       = state_eval_imbalance%usemoy
+    soiltemp     = state_eval_imbalance%soiltemp
+
+    ! write(0,*) '-------------'
+    ! write(0,*) 'BEFORE presumed allocation:'
+    ! write(0,*) 'cleaf', cleaf
+    ! write(0,*) 'nleaf', nleaf
+    ! write(0,*) 'croot', croot
+    ! write(0,*) 'nroot', nroot
+    ! write(0,*) 'clabl', clabl
+    ! write(0,*) 'nlabl', nlabl
+    ! write(0,*) '-------------'
+
+    !-------------------------------------------------------------------
+    ! LEAF ALLOCATION
+    !-------------------------------------------------------------------
+    call allocate_leaf( mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd(:), nv(:), mylai, mydnleaf )
+
+    ! Update foliar projective cover (=fAPAR) and fractional plant cover
+    ! to calculate GPP below
+    myfpc_ind  = get_fapar( mylai )
+    myfpc_grid = get_fpc_grid( mycrownarea, mynind, myfpc_ind ) 
+
+    !-------------------------------------------------------------------
+    ! ROOT ALLOCATION
+    !-------------------------------------------------------------------
+    call allocate_root( croot, nroot, clabl, nlabl, pft, mydcroot, mydnroot )
+
+    !-------------------------------------------------------------------
+    ! PROJECT NEXT DAY'S C AND N BALANCE:
+    ! decay, GPP, respiration, N uptake
+    !-------------------------------------------------------------------
+    ! continuous decay
+    kcleaf = cleaf * k_decay_leaf(pft)
+    knleaf = nleaf * k_decay_leaf(pft)
+    kcroot = croot * k_decay_root(pft)
+    knroot = nroot * k_decay_root(pft)
+    
+    cleaf  = cleaf - kcleaf
+    nleaf  = nleaf - knleaf
+    croot  = croot - kcroot
+    nroot  = nroot - knroot
+
+    ! Calculate next day's C and N return after assumed allocation (tissue turnover happens before!)
+
+    ! if (present(verbose)) then
+    !   write(0,*) '--- in eval_imbalance:'
+    !   write(0,*) 'cleaf      ', cleaf
+    !   write(0,*) 'mylai      ', mylai
+    !   write(0,*) 'mycrownarea', mycrownarea
+    !   write(0,*) 'mynind     ', mynind
+    !   write(0,*) 'myfpc_ind  ', myfpc_ind
+    !   write(0,*) 'myfpc_grid ', myfpc_grid
+
+    !   write(0,*) 'cleaf',cleaf
+    !   write(0,*) 'croot',croot
+    !   write(0,*) 'fapar',fapar ! nicht ganz ok!
+    !   write(0,*) 'mlue',mlue ! ok
+    !   write(0,*) 'dppfd',dppfd  ! ok
+    !   write(0,*) 'ninorg',ninorg
+    !   ! write(0,*) 'mrd_unitiabs',mrd_unitiabs ! ok
+    !   ! write(0,*) 'meanmppfd',meanmppfd ! ok
+    ! end if
+
+    gpp           = calc_dgpp( myfpc_grid, mlue, dppfd ) ! XXX this gives incorrect results (next day's GPP is much smaller!)
+    rd            = calc_drd(  myfpc_grid, mrd_unitiabs, meanmppfd(usemoy) )
+    exu           = calc_cexu( croot, cleaf )
+    mresp_root    = calc_resp_maint( croot, r_root )
+    
+    dc            = gpp - rd - mresp_root - exu
+    
+    out_calc_dnup = calc_dnup( exu, ninorg, soiltemp )
+    dn            = sum( out_calc_dnup )
+
+
+    ! if (mydcroot>0.0) write(0,*) 'dcleaf/dcroot, dn ', mydcleaf/mydcroot, dn
+
+
+    ! dn            = out_calc_dnup%dnup_act +  out_calc_dnup%dnup_fix
+
+    ! write(0,*) 'exu ', exu
+    ! write(0,*) 'ninorg', ninorg
+    ! write(0,*) 'soiltemp', soiltemp
+    ! write(0,*) 'out_calc_dnup%dnup_act', out_calc_dnup%dnup_act
+    ! write(0,*) 'out_calc_dnup%dnup_fix', out_calc_dnup%dnup_fix
+
+    ! if (out_calc_dnup%dnup_fix>0.0) stop 'finally fixing'
+
+    ! write(0,*) 'AFTER presumed allocation:'
+    ! write(0,*) 'cleaf      ', cleaf
+    ! write(0,*) 'croot      ', croot
+    ! write(0,*) 'myfpc_grid ', myfpc_grid
+    ! write(0,*) 'dc         ', dc
+    ! stop
+    ! write(0,*) 'nleaf', nleaf
+    ! write(0,*) 'nroot', nroot
+    ! write(0,*) 'clabl', clabl
+    ! write(0,*) 'nlabl', nlabl
+
+
+    ! if (present(verbose)) then
+      ! write(0,*) 'gpp                ', gpp
+      ! write(0,*) 'rd                 ', rd
+      ! write(0,*) 'exu                ', exu
+      ! write(0,*) 'mresp_root         ', mresp_root
+      ! write(0,*) 'dc                 ', dc
+      ! write(0,*) 'dn                 ', dn
+      ! write(0,*) 'current   plant C:N', ( cleaf + croot ) / ( nleaf + nroot )
+      ! write(0,*) 'tomorrows plant C:N', growtheff * (dc + clabl) / (dn + nlabl)
+      ! stop
+    ! end if
+
+    !-------------------------------------------------------------------
+    ! EVALUATION QUANTITY - IS MINIMISED BY OPTIMISATION
+    !-------------------------------------------------------------------
+    ! Evaluation quantity is the difference between the 
+    ! C:N ratio of new assimilates and the C:N ratio 
+    ! of the whole plant after allocation.
+
+    if ((dn + nlabl)==0.0) then
+      eval = -999.0
+    else
+      !     |---------------------------------------|  |------------------------------------|
+      eval = growtheff * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
+      !     |---------------------------------------|  |------------------------------------|
+      !     |lab. pool C:N ratio after acq. nxt. day|  | current whole-plant C:N ratio      |
+      !     |---------------------------------------|  |------------------------------------|
+    end if
+
+    ! write(0,*) 'new assimilates stoichiometry: ', growtheff * (dc + clabl) / (dn + nlabl)
+    ! write(0,*) 'current stoichiometry:         ', ( cleaf + croot ) / ( nleaf + nroot )
+    if (write_logfile_eval_imbalance) write(666,*) mydcleaf, ",", eval
+
+    ! write(0,*) mydcleaf, ",", eval
+    ! write(0,*) 'eval                                       ', eval
+    ! write(0,*) '-------------'
+    ! stop
+
+  end function eval_imbalance
+
+
   subroutine allocate_leaf( mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd,    nv,    lai,   mydnleaf )
     !///////////////////////////////////////////////////////////////////
     ! LEAF ALLOCATION
@@ -700,222 +924,6 @@ contains
   end subroutine allocate_root
 
 
-  function eval_imbalance( mydcleaf, verbose ) result ( eval )
-    !/////////////////////////////////////////////////////////
-    ! Evaluates C:N ratio of new assimilation after allocation 
-    ! versus whole-plant C:N ratio after allocation. Optimal 
-    ! allocation is where the two are equal. 
-    !---------------------------------------------------------
-    use _classdefs, only: orgpool, nitrogen
-    use _params_modl, only: growtheff, k_decay_leaf, k_decay_root,&
-     r_cton_root, r_ntoc_root
-    use _gpp, only: calc_dgpp, calc_drd
-    use _nuptake, only: calc_dnup, exurate, outtype_calc_dnup
-    use _npp, only: calc_resp_maint, r_root
-    use _vegdynamics, only: get_fapar, get_fpc_grid
-    use _findroot_fzeroin
-
-    ! arguments
-    real, intent(in)              :: mydcleaf
-    logical, intent(in), optional :: verbose
-
-    ! function return variable
-    real, intent(out) :: eval
-
-    ! local variables
-    real                    :: dclabl, dnlabl 
-    real                    :: mycrownarea
-    real                    :: mynind
-    real                    :: mlue
-    real                    :: dppfd
-    real                    :: mrd_unitiabs
-    real, dimension(nmonth) :: meanmppfd
-    real                    :: ninorg
-    real, dimension(nmonth) :: nv
-    integer                 :: pft
-    integer                 :: usemoy
-    real                    :: soiltemp
-
-    real :: mydcroot
-    real :: mydnleaf
-    real :: mydnroot
-    real :: cleaf
-    real :: nleaf
-    real :: croot
-    real :: nroot
-    real :: clabl
-    real :: nlabl
-    real :: mylai
-    real :: myfpc_ind
-    real :: myfpc_grid
-    real :: gpp
-    real :: rd
-    real :: mresp_root
-    real :: exu
-    real :: dc
-    real :: dn
-    real :: kcleaf
-    real :: knleaf
-    real :: kcroot
-    real :: knroot
-
-    real :: nleaf0
-    real :: lai0, lai1
-
-    type(outtype_zeroin)    :: out_zeroin
-    ! type(outtype_calc_dnup) :: out_calc_dnup
-    real, dimension(2) :: out_calc_dnup
-
-    ! write(0,*) '--- in eval_imbalance with mydcleaf=', mydcleaf
-
-    ! Copy to local variables for shorter writing
-    cleaf        = state_eval_imbalance%pleaf%c%c12
-    nleaf        = state_eval_imbalance%pleaf%n%n14
-    croot        = state_eval_imbalance%proot%c%c12
-    nroot        = state_eval_imbalance%proot%n%n14
-    clabl        = state_eval_imbalance%plabl%c%c12
-    nlabl        = state_eval_imbalance%plabl%n%n14
-    mycrownarea  = state_eval_imbalance%crownarea
-    mynind       = state_eval_imbalance%nind
-    mlue         = state_eval_imbalance%mlue         
-    dppfd        = state_eval_imbalance%dppfd        
-    mrd_unitiabs = state_eval_imbalance%mrd_unitiabs 
-    meanmppfd(:) = state_eval_imbalance%meanmppfd(:)    
-    ninorg       = state_eval_imbalance%pninorg%n14 
-    pft          = state_eval_imbalance%pft
-    nv(:)        = state_eval_imbalance%nv(:)
-    usemoy       = state_eval_imbalance%usemoy
-    soiltemp     = state_eval_imbalance%soiltemp
-
-    ! write(0,*) '-------------'
-    ! write(0,*) 'BEFORE presumed allocation:'
-    ! write(0,*) 'cleaf', cleaf
-    ! write(0,*) 'nleaf', nleaf
-    ! write(0,*) 'croot', croot
-    ! write(0,*) 'nroot', nroot
-    ! write(0,*) 'clabl', clabl
-    ! write(0,*) 'nlabl', nlabl
-    ! write(0,*) '-------------'
-
-    !-------------------------------------------------------------------
-    ! LEAF ALLOCATION
-    !-------------------------------------------------------------------
-    call allocate_leaf( mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd(:), nv(:), mylai, mydnleaf )
-
-    ! Update foliar projective cover (=fAPAR) and fractional plant cover
-    ! to calculate GPP below
-    myfpc_ind  = get_fapar( mylai )
-    myfpc_grid = get_fpc_grid( mycrownarea, mynind, myfpc_ind ) 
-
-    !-------------------------------------------------------------------
-    ! ROOT ALLOCATION
-    !-------------------------------------------------------------------
-    call allocate_root( croot, nroot, clabl, nlabl, pft, mydcroot, mydnroot )
-
-    !-------------------------------------------------------------------
-    ! PROJECT NEXT DAY'S C AND N BALANCE:
-    ! decay, GPP, respiration, N uptake
-    !-------------------------------------------------------------------
-    ! continuous decay
-    kcleaf = cleaf * k_decay_leaf(pft)
-    knleaf = nleaf * k_decay_leaf(pft)
-    kcroot = croot * k_decay_root(pft)
-    knroot = nroot * k_decay_root(pft)
-    
-    cleaf  = cleaf - kcleaf
-    nleaf  = nleaf - knleaf
-    croot  = croot - kcroot
-    nroot  = nroot - knroot
-
-    ! Calculate next day's C and N return after assumed allocation (tissue turnover happens before!)
-
-    ! if (present(verbose)) then
-    !   write(0,*) '--- in eval_imbalance:'
-    !   write(0,*) 'cleaf      ', cleaf
-    !   write(0,*) 'mylai      ', mylai
-    !   write(0,*) 'mycrownarea', mycrownarea
-    !   write(0,*) 'mynind     ', mynind
-    !   write(0,*) 'myfpc_ind  ', myfpc_ind
-    !   write(0,*) 'myfpc_grid ', myfpc_grid
-
-    !   write(0,*) 'cleaf',cleaf
-    !   write(0,*) 'croot',croot
-    !   write(0,*) 'fapar',fapar ! nicht ganz ok!
-    !   write(0,*) 'mlue',mlue ! ok
-    !   write(0,*) 'dppfd',dppfd  ! ok
-    !   write(0,*) 'ninorg',ninorg
-    !   ! write(0,*) 'mrd_unitiabs',mrd_unitiabs ! ok
-    !   ! write(0,*) 'meanmppfd',meanmppfd ! ok
-    !   ! write(0,*) 'exurate',exurate
-    ! end if
-
-    gpp           = calc_dgpp( myfpc_grid, mlue, dppfd ) ! XXX this gives incorrect results (next day's GPP is much smaller!)
-    rd            = calc_drd(  myfpc_grid, mrd_unitiabs, meanmppfd(usemoy) )
-    exu           = croot * exurate
-    mresp_root    = calc_resp_maint( croot, r_root )
-    
-    dc            = gpp - rd - mresp_root - exu
-    
-    out_calc_dnup = calc_dnup( exu, ninorg, soiltemp )
-    dn            = sum( out_calc_dnup )
-    ! dn            = out_calc_dnup%dnup_act +  out_calc_dnup%dnup_fix
-
-    ! write(0,*) 'exu ', exu
-    ! write(0,*) 'ninorg', ninorg
-    ! write(0,*) 'soiltemp', soiltemp
-    ! write(0,*) 'out_calc_dnup%dnup_act', out_calc_dnup%dnup_act
-    ! write(0,*) 'out_calc_dnup%dnup_fix', out_calc_dnup%dnup_fix
-
-    ! if (out_calc_dnup%dnup_fix>0.0) stop 'finally fixing'
-
-    ! write(0,*) 'AFTER presumed allocation:'
-    ! write(0,*) 'cleaf      ', cleaf
-    ! write(0,*) 'croot      ', croot
-    ! write(0,*) 'myfpc_grid ', myfpc_grid
-    ! write(0,*) 'dc         ', dc
-    ! write(0,*) 'dn         ', dn
-    ! write(0,*) 'nleaf', nleaf
-    ! write(0,*) 'nroot', nroot
-    ! write(0,*) 'clabl', clabl
-    ! write(0,*) 'nlabl', nlabl
-
-
-    ! if (present(verbose)) then
-      ! write(0,*) 'gpp                ', gpp
-      ! write(0,*) 'rd                 ', rd
-      ! write(0,*) 'exu                ', exu
-      ! write(0,*) 'mresp_root         ', mresp_root
-      ! write(0,*) 'dc                 ', dc
-      ! write(0,*) 'dn                 ', dn
-      ! write(0,*) 'current   plant C:N', ( cleaf + croot ) / ( nleaf + nroot )
-      ! write(0,*) 'tomorrows plant C:N', growtheff * (dc + clabl) / (dn + nlabl)
-      ! stop
-    ! end if
-
-    !-------------------------------------------------------------------
-    ! EVALUATION QUANTITY - IS MINIMISED BY OPTIMISATION
-    !-------------------------------------------------------------------
-    ! Evaluation quantity is the difference between the 
-    ! C:N ratio of new assimilates and the C:N ratio 
-    ! of the whole plant after allocation.
-    !     |---------------------------------------|  |------------------------------------|
-    eval = growtheff * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
-    !     |---------------------------------------|  |------------------------------------|
-    !     |lab. pool C:N ratio after acq. nxt. day|  | current whole-plant C:N ratio      |
-    !     |---------------------------------------|  |------------------------------------|
-
-    ! write(0,*) 'new assimilates stoichiometry: ', growtheff * (dc + clabl) / (dn + nlabl)
-    ! write(0,*) 'current stoichiometry:         ', ( cleaf + croot ) / ( nleaf + nroot )
-    if (write_logfile_eval_imbalance) write(666,*) mydcleaf, ",", eval
-
-    ! write(0,*) mydcleaf, ",", eval
-    ! write(0,*) 'eval                                       ', eval
-    ! write(0,*) '-------------'
-    ! stop
-
-  end function eval_imbalance
-
-
   function get_lai( cleaf, meanmppfd, nv ) result( lai )
     !////////////////////////////////////////////////////////////////
     ! Calculates LAI as a function of canopy-level leaf-C:
@@ -973,11 +981,11 @@ contains
     ! write(0,*) 'upper ', upper
 
     ! write(0,*) 'lower =', lower
-    test = mustbe_zero_for_lai( lower ) 
+    ! test = mustbe_zero_for_lai( lower ) 
     ! write(0,*) '=> test =', test
 
     ! write(0,*) 'upper =', upper
-    test = mustbe_zero_for_lai( upper ) 
+    ! test = mustbe_zero_for_lai( upper ) 
     ! write(0,*) '=> test =', test
 
     ! call function zeroin to find root (value of LAI for which evaluation expression is zero)

@@ -135,6 +135,7 @@ contains
     ! local variables
     real, parameter :: clabl_sapl = 5.0
     real, parameter :: nlabl_sapl = 0.12
+    ! real, parameter :: nlabl_sapl = 0.5
     ! real, parameter :: cleaf_sapl = 5.0
     ! real, parameter :: croot_sapl = 1.0
 

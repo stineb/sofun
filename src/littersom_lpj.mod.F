@@ -601,11 +601,12 @@ contains
       ! XXX debug: add constant N fixation 0.5 gN/m2/yr)
       !----------------------------------------------------------------
       ! if (invocation<200) then
-      !   Nfix = 3.0/365.0
+      !   Nfix = 5.0/365.0
       ! else
       !   Nfix = 1.0/365.0
       ! end if
-      Nfix = 1.0/365.0
+      ! Nfix = 1.0 / 365.0
+      Nfix = 0.0
       pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + Nfix
 
       ! OUTPUT COLLECTION
