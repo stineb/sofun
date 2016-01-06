@@ -104,10 +104,10 @@ contains
     real, dimension(nmonth) :: mtemp, mfsun, mvapr, mvpd
     character(len=4) :: climateyear_char
 
-    ! ! xxx try
-    ! real, dimension(nmonth) :: mprec, mwetd
+    ! xxx try
+    real, dimension(nmonth) :: mprec, mwetd
 
-    ! ! xxx used in combination with weather generator
+    ! xxx used in combination with weather generator
     ! real :: harvest1, harvest2
     ! real, dimension(ndayyear,2) :: prdaily_random
 

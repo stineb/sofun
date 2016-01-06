@@ -145,10 +145,14 @@ contains
     enddo
     daysum = 0
 
-    write(0,*) 'A'
+    ! write(0,*) 'A'
 
     ! Initialize 2nd random number generator
-    call srand( int( prdaily_random(1,1) * 100000 ) )
+    ! call srand( int( prdaily_random(1,1) * 100000 ) )
+
+    ! xxx this solves the problem (removing multiplication with 1e5. But number of 
+    ! actual wet days is not perfectly consistent with prescribed number of wet days.
+    call srand( int( prdaily_random(1,1) ) )
    
     do moy=1,nmonth
       if ( mval_wet(moy)<=1.0 ) mval_wet(moy) = 1.0
@@ -157,14 +161,14 @@ contains
       dry = .TRUE.
       iloop = 0
 
-      write(0,*) 'B'
+      ! write(0,*) 'B'
 
       do while( dry )
-        write(0,*) 'aa'
+        ! write(0,*) 'aa'
         iloop = iloop + 1
         nwet = 0
         do dm=1,ndaymonth(moy)
-          write(0,*) 'a'
+          ! write(0,*) 'a'
           doy = doy + 1
    
           ! Transitional probabilities (Geng et al. 1986)
@@ -175,37 +179,38 @@ contains
               prob = 0.25 + (0.75 * prob_rain(moy))
             endif
           endif
-          write(0,*) 'b'
+          ! write(0,*) 'b'
         
           ! Determine we randomly and use Krysanova / Cramer estimates of 
           ! parameter values (c1,c2) for an exponential distribution
           if (iloop==1) then 
-            write(0,*) 'getting prdaily_random'
+            ! write(0,*) 'getting prdaily_random'
             vv = real(prdaily_random(doy,1))
-            write(0,*) 'vv', vv
+            ! write(0,*) 'vv', vv
           else
-            write(0,*) 'calling rand'
+            ! write(0,*) 'calling rand'
             ! xxx problem: rand() generates a random number that leads to floating point exception
             vv = rand()
-            write(0,*) 'vv', vv
+            ! write(0,*) 'vv'
+            ! write(0,*) vv
           endif
-          write(0,*) 'c'
-          write(0,*) 'prob', prob
+          ! write(0,*) 'c'
+          ! write(0,*) 'prob', prob
           if (vv>prob) then
-            write(0,*) 'd1'
+            ! write(0,*) 'd1'
             dval_prec(doy) = 0.0
           else
-            write(0,*) 'c1'
+            ! write(0,*) 'c1'
             nwet = nwet + 1
-            write(0,*) 'c2'
+            ! write(0,*) 'c2'
             v1 = real( prdaily_random(doy,2) )
-            write(0,*) 'c3'
+            ! write(0,*) 'c3'
             dval_prec(doy) = ((-log(v1)) ** c2) * mprecave(moy) * c1 
-            write(0,*) 'c4'
+            ! write(0,*) 'c4'
             if (dval_prec(doy) < 0.1) dval_prec(doy) = 0.0
-            write(0,*) 'c5'
+            ! write(0,*) 'c5'
           endif
-          write(0,*) 'd'
+          ! write(0,*) 'd'
           mprecip(moy) = mprecip(moy) + dval_prec(doy)
         enddo
     
@@ -223,7 +228,7 @@ contains
 
       enddo !while
       
-      write(0,*) 'C'
+      ! write(0,*) 'C'
 
 
       ! normalise generated precipitation by monthly CRU values

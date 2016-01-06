@@ -26,6 +26,9 @@ program main
   real, dimension(ndayyear,maxgrid) :: dndep_field
   real, dimension(nlu,maxgrid)      :: lu_area
 
+  ! xxx try
+  integer :: day
+
   type( outtype_steering ) :: out_steering
   ! type( outtype_climate )  :: out_climate
 
@@ -126,6 +129,15 @@ program main
     ! out_climate = getclimate_site( trim(runname), trim(sitename), out_steering%climateyear )
     call getclimate_site( trim(runname), trim(sitename), out_steering%climateyear )
 
+    ! if (year==1) then
+    !   ! write daily generated precpitpiation to file
+    !   open(1000,file='output/dprec.out',err=888,status='unknown')
+    !   do day=1,ndayyear
+    !     write(1000,777) real(day), dprec_field(day,1)
+    !   end do
+    !   close(1000)
+    ! end if
+
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
@@ -156,6 +168,8 @@ program main
 
   write(0,*) '--------------END OF SIMULATION---------------'
 
-100     format(A,I6,I6,F8.2)
+100  format(A,I6,I6,F8.2)
+888  write(0,*) 'error opening file'
+777  format (F20.8,F20.8)
 
 end program
