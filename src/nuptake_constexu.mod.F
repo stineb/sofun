@@ -71,7 +71,7 @@ contains
     use _classdefs
     use _params_modl, only: lu_category
     use _vars_core, only: dcex, pninorg, plabl, proot, dcex, dnup, &
-          dtransp, aet_d, fpc_grid, pleaf
+          dtransp, daet, fpc_grid, pleaf
 
     ! arguments
     integer, intent(in) :: jpngr, pft
@@ -114,7 +114,7 @@ contains
     else
 
       ! ! xxx try:
-      ! dtransp = aet_d(lu_category(pft)) * fpc_grid(pft,jpngr)
+      ! dtransp = daet(lu_category(pft)) * fpc_grid(pft,jpngr)
 
       !//////////////////////////////////////////////////////////////////////////
       ! INITIALIZATION
@@ -235,9 +235,9 @@ contains
     ! function return variable
     real, intent(out) :: cexu
 
-    ! cexu = exurate * croot
+    cexu = exurate * croot
     ! cexu = 2.0 * exurate * max( 0.0, croot - 0.5 * cleaf )
-    cexu = exurate * croot / ( croot + 0.5 * cleaf ) + exurate * 0.02
+    ! cexu = exurate * croot / ( croot + 0.5 * cleaf ) + exurate * 0.02
 
   end function calc_cexu
 

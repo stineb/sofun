@@ -21,7 +21,7 @@ module _waterbal
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: ndayyear, nmonth, nlu, maxgrid
-  use _vars_core, only: aet_d, ncpa_d, dro
+  use _vars_core, only: daet, dncpa, dro
 
   implicit none
 
@@ -71,8 +71,8 @@ module _waterbal
   real :: drnn                                               ! nighttime net radiation (J/m^2)
   real :: drnl                                               ! net longwave radiation (W/m^2)
   real :: deet                                               ! daily EET (mm)
-  real :: dpet                                               ! daily PET (mm)
-  real, dimension(nlu) :: cpa_d                              ! daily Cramer-Prentice-Alpha (AET/EET)
+  real :: dpet                                               ! daily potential evapotranspiration, PET (mm)
+  real, dimension(nlu) :: dcpa                               ! daily Cramer-Prentice-Alpha (AET/EET)
   real, dimension(nlu) :: wc                                 ! daily condensation (mm)
 
   ! DAILY OUTPUT VARIABLES
@@ -84,9 +84,9 @@ module _waterbal
   real, dimension(ndayyear,maxgrid)     :: outdayl            ! daily day length, h
   real, dimension(nlu,ndayyear,maxgrid) :: outdcn             ! daily condensation water, mm
   real, dimension(nlu,ndayyear,maxgrid) :: outdro             ! daily runoff, mm
-  real, dimension(ndayyear,maxgrid)     :: outdeq_n           ! daily equilibrium ET, mm
-  real, dimension(ndayyear,maxgrid)     :: outdep_n           ! daily potential ET, mm
-  real, dimension(nlu,ndayyear,maxgrid) :: outdea_n           ! daily actual ET, mm
+  real, dimension(ndayyear,maxgrid)     :: outdeet            ! daily equilibrium ET, mm
+  real, dimension(ndayyear,maxgrid)     :: outdpet            ! daily potential ET, mm
+  real, dimension(nlu,ndayyear,maxgrid) :: outdaet            ! daily actual ET, mm
   real, dimension(nlu,ndayyear,maxgrid) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
 
   ! MONTHLY OUTPUT VARIABLES
@@ -138,7 +138,7 @@ contains
       !print*,'... done'
 
       ! Update soil moisture
-      dwtot(lu,jpngr) = dwtot(lu,jpngr) + dprec + wc(lu) - aet_d(lu)
+      dwtot(lu,jpngr) = dwtot(lu,jpngr) + dprec + wc(lu) - daet(lu)
 
       ! Bucket model for runoff generation
       if (dwtot(lu,jpngr)>kWm) then
@@ -335,7 +335,7 @@ contains
     ! - daily nighttime net radiation (drnn), J/m^2
     ! - daily EET (deet), mm
     ! - daily PET (dpet), mm
-    ! - daily AET (aet_d), mm
+    ! - daily AET (daet), mm
     ! - daily condensation (wc), mm
     !-------------------------------------------------------------------------  
     use _params_core, only: ndayyear, pi
@@ -552,18 +552,18 @@ contains
 
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 21. Estimate daily AET (aet_d), mm
+    ! 21. Estimate daily AET (daet), mm
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 81, STASH 2.0 Documentation
-    aet_d(lu) = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*drnl)*(hn - hi)))
+    daet(lu) = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*drnl)*(hn - hi)))
 
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Ref? XXX
-    cpa_d(lu) = aet_d(lu) / deet
-    ncpa_d(lu) = cpa_d(lu) / 1.26
+    dcpa(lu) = daet(lu) / deet
+    dncpa(lu) = dcpa(lu) / 1.26
 
 
     !-------------------------------------------------------------   
@@ -844,16 +844,16 @@ contains
     filnam=trim(prefix)//'.d.ro.out'
     open(257,file=filnam,err=888,status='unknown')
 
-    ! EQ_N: daily equilibrium ET, mm
-    filnam=trim(prefix)//'.d.eq_n.out'
+    ! eet: daily equilibrium ET, mm
+    filnam=trim(prefix)//'.d.eet.out'
     open(258,file=filnam,err=888,status='unknown')
 
-    ! EP_N: daily potential ET, mm
-    filnam=trim(prefix)//'.d.ep_n.out'
+    ! PET: daily potential ET, mm
+    filnam=trim(prefix)//'.d.pet.out'
     open(259,file=filnam,err=888,status='unknown')
 
-    ! EA_N: daily actual ET, mm
-    filnam=trim(prefix)//'.d.ea_n.out'
+    ! AET: daily actual ET, mm
+    filnam=trim(prefix)//'.d.aet.out'
     open(260,file=filnam,err=888,status='unknown')
 
     ! DAYL: day length, h
@@ -903,24 +903,24 @@ contains
     implicit none
 
     ! xxx remove their day-dimension
-    outdwn(:,:,:) = 0.0
-    outdho(:,:) = 0.0
-    outdhn(:,:) = 0.0
-    outdqn(:,:) = 0.0
-    outdayl(:,:) = 0.0
-    outdcn(:,:,:) = 0.0
-    outdro(:,:,:) = 0.0
-    outdeq_n(:,:) = 0.0
-    outdep_n(:,:) = 0.0
-    outdea_n(:,:,:) = 0.0
+    outdwn(:,:,:)  = 0.0
+    outdho(:,:)    = 0.0
+    outdhn(:,:)    = 0.0
+    outdqn(:,:)    = 0.0
+    outdayl(:,:)   = 0.0
+    outdcn(:,:,:)  = 0.0
+    outdro(:,:,:)  = 0.0
+    outdeet(:,:)   = 0.0
+    outdpet(:,:)   = 0.0
+    outdaet(:,:,:) = 0.0
 
     ! xxx remove their month-dimension
-    outmeq_m(:,:) = 0.0
-    outmep_m(:,:) = 0.0
+    outmeq_m(:,:)   = 0.0
+    outmep_m(:,:)   = 0.0
     outmea_m(:,:,:) = 0.0
-    outmcpa(:,:,:) = 0.0
-    outmcwd(:,:,:) = 0.0
-    outmqm(:,:) = 0.0
+    outmcpa(:,:,:)  = 0.0
+    outmcwd(:,:,:)  = 0.0
+    outmqm(:,:)     = 0.0
 
     return
 
@@ -955,15 +955,15 @@ contains
     outdqn(doy,jpngr)     = dppfd(doy)
     outdayl(doy,jpngr)    = dayl(doy)
     outdcn(:,doy,jpngr)   = wc(:)
-    outdeq_n(doy,jpngr)   = deet
-    outdep_n(doy,jpngr)   = dpet
-    outdea_n(:,doy,jpngr) = aet_d(:)
-    outdcpa(:,doy,jpngr)  = cpa_d(:)
+    outdeet(doy,jpngr)    = deet
+    outdpet(doy,jpngr)    = dpet
+    outdaet(:,doy,jpngr)  = daet(:)
+    outdcpa(:,doy,jpngr)  = dcpa(:)
 
     ! Update monthly totals:
     outmeq_m(moy,jpngr)   = outmeq_m(moy,jpngr) + deet
     outmep_m(moy,jpngr)   = outmep_m(moy,jpngr) + dpet
-    outmea_m(:,moy,jpngr) = outmea_m(:,moy,jpngr) + aet_d(:)
+    outmea_m(:,moy,jpngr) = outmea_m(:,moy,jpngr) + daet(:)
     outmqm(moy,jpngr)     = outmqm(moy,jpngr) + dppfd(doy)
 
     return  
@@ -1033,9 +1033,9 @@ contains
         write(254,999) itime, outdcn(1,day,jpngr)
         write(255,999) itime, outdwn(1,day,jpngr)
         write(257,999) itime, outdro(1,day,jpngr)
-        write(258,999) itime, outdeq_n(day,jpngr)
-        write(259,999) itime, outdep_n(day,jpngr)
-        write(260,999) itime, outdea_n(1,day,jpngr)
+        write(258,999) itime, outdeet(day,jpngr)
+        write(259,999) itime, outdpet(day,jpngr)
+        write(260,999) itime, outdaet(1,day,jpngr)
         write(261,999) itime, outdayl(day,jpngr)
 
       end do

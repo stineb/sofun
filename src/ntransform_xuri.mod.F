@@ -73,7 +73,7 @@ contains
     !----------------------------------------------------------------
     use _rates
     use _vars_core, only: pninorg, dwtot
-    use _vars_core, only: dtemp_soil, dro, ncpa_d, ddoc
+    use _vars_core, only: dtemp_soil, dro, dncpa, ddoc
 
     ! XXX beni: this is wrong: dw1 is only plant available water. 
     ! should be water-filled pore space = ( (porosity - ice) - (total fluid water volume) ) / dz
@@ -165,7 +165,7 @@ contains
       !-----------------------------------------------------------------------
       ! use mw1 for monthly timestep and wpool for daily, because this is updated daily
       ! XXX nh3max is not considered in the equations presented in the paper! XXX
-      dnvol(lu)  = ( nh3max*(ncpa_d(lu)*(1.0-ncpa_d(lu))) * ftemp_ninorg*ftemp_ninorg*exp(2.0*(ph_soil-10.0)) ) * nh4
+      dnvol(lu)  = ( nh3max*(dncpa(lu)*(1.0-dncpa(lu))) * ftemp_ninorg*ftemp_ninorg*exp(2.0*(ph_soil-10.0)) ) * nh4
       nh4        = nh4 - dnvol(lu)
       dnloss(lu) = dnloss(lu) + dnvol(lu)
 
@@ -188,19 +188,19 @@ contains
       
       ! wet (anaerobic) fraction
       !------------------------------------------------------------------
-      nh4_w = ncpa_d(lu)/3.3 * nh4
-      no3_w = ncpa_d(lu)/3.3 * no3
-      no2_w = ncpa_d(lu)/3.3 * no2(lu,jpngr)
+      nh4_w = dncpa(lu)/3.3 * nh4
+      no3_w = dncpa(lu)/3.3 * no3
+      no2_w = dncpa(lu)/3.3 * no2(lu,jpngr)
 
-      doc_w = ddoc(lu)*ncpa_d(lu)/3.3
+      doc_w = ddoc(lu)*dncpa(lu)/3.3
       
       ! dry (aerobic) fraction
       !------------------------------------------------------------------
-      nh4_d = (1.0-ncpa_d(lu)/3.3) * nh4
-      no3_d = (1.0-ncpa_d(lu)/3.3) * no3
-      no2_d = (1.0-ncpa_d(lu)/3.3) * no2(lu,jpngr)
+      nh4_d = (1.0-dncpa(lu)/3.3) * nh4
+      no3_d = (1.0-dncpa(lu)/3.3) * no3
+      no2_d = (1.0-dncpa(lu)/3.3) * no2(lu,jpngr)
 
-      doc_d = ddoc(lu)*(1.0-ncpa_d(lu)/3.3)
+      doc_d = ddoc(lu)*(1.0-dncpa(lu)/3.3)
 
     
       !///////////////////////////////////////////////////////////////////////
@@ -269,9 +269,9 @@ contains
       
       ! N2O from denitrification (Eq.6, Tab.9, XP08)
       !------------------------------------------------------------------
-      ! n2o_inc = 0.018d0*ftemp_ninorg*(1.01d0-0.21d0*ncpa_d(lu))*n2_inc  !Colin says 0.018 was used here. Code I got had 0.015
+      ! n2o_inc = 0.018d0*ftemp_ninorg*(1.01d0-0.21d0*dncpa(lu))*n2_inc  !Colin says 0.018 was used here. Code I got had 0.015
       ! Factor reduced from 1.8% to 1.2% to get ~6.5 TgN/yr N2O emissions
-      n2o_inc = DNITR2N2O*ftemp_ninorg*(1.01-0.21*ncpa_d(lu))*n2_inc
+      n2o_inc = DNITR2N2O*ftemp_ninorg*(1.01-0.21*dncpa(lu))*n2_inc
       n2_inc  = n2_inc - n2o_inc
       
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr) + n2o_inc
@@ -279,7 +279,7 @@ contains
 
       ! NO from denitrification (Eq.5, Tab.9, XP08)
       !------------------------------------------------------------------
-      no_inc = 0.0001*ftemp_ninorg*(1.01-0.21*ncpa_d(lu))*n2_inc
+      no_inc = 0.0001*ftemp_ninorg*(1.01-0.21*dncpa(lu))*n2_inc
       n2_inc = n2_inc - no_inc
 
       no_w(lu,jpngr) = no_w(lu,jpngr) + no_inc
@@ -326,28 +326,28 @@ contains
 
       ! Nitrification _fluxes
       !------------------------------------------------------------------
-      tmp = ftemp_ninorg*(1.0-ncpa_d(lu))*no_d(lu,jpngr)
+      tmp = ftemp_ninorg*(1.0-dncpa(lu))*no_d(lu,jpngr)
       no_d(lu,jpngr) = no_d(lu,jpngr)-tmp
       
-      tmp = ftemp_ninorg*(1.0-ncpa_d(lu))*n2o_d(lu,jpngr)
+      tmp = ftemp_ninorg*(1.0-dncpa(lu))*n2o_d(lu,jpngr)
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr)-tmp
 
       
       ! Denitrification _fluxes
       !------------------------------------------------------------------
-      tmp = ftemp_ninorg*(1.0-ncpa_d(lu))*no_w(lu,jpngr)
+      tmp = ftemp_ninorg*(1.0-dncpa(lu))*no_w(lu,jpngr)
       no_w(lu,jpngr) = no_w(lu,jpngr)-tmp
       
-      tmp = ftemp_ninorg*(1.0-ncpa_d(lu))*n2o_w(lu,jpngr)
+      tmp = ftemp_ninorg*(1.0-dncpa(lu))*n2o_w(lu,jpngr)
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr)-tmp
                  
 
       ! Total _fluxes (XXX should be equal to sum of nitrification and
       ! denitrification _fluxes. XXX)
       !------------------------------------------------------------------
-      dno(lu) = ftemp_ninorg*(1.0-ncpa_d(lu))*no
-      dn2o(lu)= ftemp_ninorg*(1.0-ncpa_d(lu))*n2o
-      dn2(lu) = ftemp_ninorg*(1.0-ncpa_d(lu))*n2
+      dno(lu) = ftemp_ninorg*(1.0-dncpa(lu))*no
+      dn2o(lu)= ftemp_ninorg*(1.0-dncpa(lu))*n2o
+      dn2(lu) = ftemp_ninorg*(1.0-dncpa(lu))*n2
 
       n2_w(lu,jpngr) = n2_w(lu,jpngr)-dn2(lu)
       

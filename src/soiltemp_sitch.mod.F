@@ -26,7 +26,7 @@ module _soiltemp
 
 contains
 
-  subroutine soiltemp( jpngr, moy, day, dtemp, dcpa ) 
+  subroutine soiltemp( jpngr, moy, day, dtemp, dcpa_alldays ) 
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates soil temperature based on.
     !-------------------------------------------------------------------------
@@ -39,7 +39,7 @@ contains
     integer, intent(in) :: moy
     integer, intent(in) :: day                            ! current day of year
     real, dimension(ndayyear), intent(in) :: dtemp        ! daily temperature (deg C)
-    real, dimension(nlu,ndayyear), intent(in) :: dcpa     ! daily Cramer-Prentice-Alpha (unitless) 
+    real, dimension(nlu,ndayyear), intent(in) :: dcpa_alldays     ! daily Cramer-Prentice-Alpha (unitless) 
 
     ! LOCAL VARIABLES
     real, dimension(ndayyear,maxgrid), save :: dtemp_pvy    ! daily temperature of previous year (deg C)
@@ -99,9 +99,9 @@ contains
       ! meanw1 stores running mean soil moisture in layer 1 of previous 12 months 
       !-------------------------------------------------------------------------
       if (init) then
-        meanw1  = running( dcpa(lu,:),  day, ndayyear, ndayyear, "mean"  )
+        meanw1  = running( dcpa_alldays(lu,:),  day, ndayyear, ndayyear, "mean"  )
       else
-        meanw1  = running( dcpa(lu,:),  day, ndayyear, ndayyear, "mean", dcpa_pvy(lu,:,jpngr)  )
+        meanw1  = running( dcpa_alldays(lu,:),  day, ndayyear, ndayyear, "mean", dcpa_pvy(lu,:,jpngr)  )
       end if
 
       ! In case of zero soil water, return with soil temp = air temp
@@ -141,7 +141,7 @@ contains
     ! save temperature for next year
     if (day==ndayyear) then
       dtemp_pvy(:,jpngr) = dtemp(:)
-      dcpa_pvy(:,:,jpngr) = dcpa(:,:)
+      dcpa_pvy(:,:,jpngr) = dcpa_alldays(:,:)
     end if
 
     return

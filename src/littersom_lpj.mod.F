@@ -24,7 +24,7 @@ module _littersom
   use _params_siml, only: spinup
   use _classdefs
   use _rates
-  use _vars_core, only: ncpa_d
+  use _vars_core, only: dncpa
   use _vars_core, only: drsoil, drhet
   use _vars_core, only: dtemp_soil, ddoc
   use _vars_core, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
@@ -229,16 +229,16 @@ contains
           ! define decomposition _rates for current soil temperature and moisture
           klitt_af(lu) = klitt_af10 &
             * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-            * fmoist(ncpa_d(lu),"foley") ! alternative: "gerten"
+            * fmoist(dncpa(lu),"foley") ! alternative: "gerten"
           klitt_as(lu) = klitt_as10 &
             * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-            * fmoist(ncpa_d(lu),"foley") ! alternative: "gerten"
+            * fmoist(dncpa(lu),"foley") ! alternative: "gerten"
           klitt_bg(lu) = klitt_bg10 &
             * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-            * fmoist(ncpa_d(lu),"foley") ! alternative: "gerten"
+            * fmoist(dncpa(lu),"foley") ! alternative: "gerten"
           kexu(lu)     = kexu10     &
             * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-            * fmoist(ncpa_d(lu),"foley") ! alternative: "gerten"
+            * fmoist(dncpa(lu),"foley") ! alternative: "gerten"
 
         end if
       end do
@@ -251,10 +251,10 @@ contains
       !-------------------------------------------------------------------------
       ksoil_fs(lu) = ksoil_fs10 &
         * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-        * fmoist(ncpa_d(lu),"foley")     ! alternative: "gerten"
+        * fmoist(dncpa(lu),"foley")     ! alternative: "gerten"
       ksoil_sl(lu) = ksoil_sl10 &
         * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-        * fmoist(ncpa_d(lu),"foley")     ! alternative: "gerten"
+        * fmoist(dncpa(lu),"foley")     ! alternative: "gerten"
 
       !-------------------------------------------------------------------------
       ! Initialisation of decomposing pool 

@@ -69,7 +69,7 @@ contains
     use _params_siml, only: spinup
     use _params_modl, only: lu_category, cton_pro, nfixer
     use _vars_core, only: dnpp, dnup, dcex
-    use _waterbal, only: aet_d  ! xxx make 'aet_d' a required global variable?
+    use _waterbal, only: daet  ! xxx make 'daet' a required global variable?
     use _vars_core, only: nind, ispresent, fpc_grid
     use _vars_core, only: pninorg, plabl, proot, dwtot
     use _vars_core, only: dtemp_soil
@@ -164,7 +164,7 @@ contains
     ! xxx think about this: order in which PFTs get access to Ninorg matters!
     
     ! xxx try:
-    dtransp = aet_d(lu_category(pft))*fpc_grid(pft,jpngr)
+    dtransp = daet(lu_category(pft))*fpc_grid(pft,jpngr)
 
     ! ! Change the order in which pfts get access to N stores daily.
     ! do ppft=1,npft

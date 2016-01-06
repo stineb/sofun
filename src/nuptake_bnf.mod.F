@@ -70,7 +70,7 @@ contains
     use _classdefs
     use _params_modl, only: lu_category
     use _vars_core, only: dtemp_soil, dcex, pninorg, plabl, proot, &
-      dnup, dtransp, aet_d, fpc_grid, pleaf
+      dnup, dtransp, daet, fpc_grid, pleaf
 
     ! arguments
     integer, intent(in) :: jpngr, pft
@@ -117,7 +117,7 @@ contains
     else
 
       ! ! xxx try:
-      ! dtransp = aet_d(lu_category(pft)) * fpc_grid(pft,jpngr)
+      ! dtransp = daet(lu_category(pft)) * fpc_grid(pft,jpngr)
 
       !//////////////////////////////////////////////////////////////////////////
       ! INITIALIZATION
