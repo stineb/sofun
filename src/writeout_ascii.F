@@ -4,7 +4,8 @@ subroutine writeout_ascii( year, dtemp )
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !-------------------------------------------------------------------------
-  use _params_siml, only: firstyeartrend, spinupyears, spinup
+  use _params_siml, only: firstyeartrend, spinupyears, spinup, daily_out_startyr, &
+    daily_out_endyr, outyear
   use _params_core, only: ndayyear
   use _params_modl, only: lu_category
   use _outvars
@@ -18,7 +19,6 @@ subroutine writeout_ascii( year, dtemp )
   ! Local variables
   real :: itime
   integer :: day, moy, jpngr
-
 
   ! xxx implement this: sum over gridcells? single output per gridcell?
   if (maxgrid>1) stop 'writeout_ascii: think of something ...'
@@ -42,13 +42,13 @@ subroutine writeout_ascii( year, dtemp )
   ! Write daily value, summed over all PFTs / LUs
   ! xxx implement taking sum over PFTs (and gridcells) in this land use category
   !-------------------------------------------------------------------------
-  if (.not.spinup) then
+  if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
 
     ! Write daily output only during transient simulation
     do day=1,ndayyear
 
       ! Define 'itime' as a decimal number corresponding to day in the year + year
-      itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
+      itime = real(outyear) + real(day-1)/real(ndayyear)
 
       write(101,999) itime, sum(outdgpp(:,day,jpngr))
       write(102,999) itime, sum(outdnpp(:,day,jpngr))
@@ -69,7 +69,6 @@ subroutine writeout_ascii( year, dtemp )
         
     end do
   end if
-
 
   !-------------------------------------------------------------------------
   ! MONTHLY OUTPUT

@@ -13,6 +13,9 @@ module _params_siml
   integer :: spinupyears     ! number of spinup years
   integer :: nyeartrend      ! number of transient years
   integer :: firstyeartrend  ! year AD of first transient year
+  integer :: outyear         ! year AD written to output
+  integer :: daily_out_startyr! first year where daily output is written
+  integer :: daily_out_endyr ! last year where daily output is written
   logical :: do_spinup       ! whether this simulation does spinup 
   logical :: const_co2       ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
   logical :: const_ndep      ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
@@ -74,13 +77,17 @@ contains
         out_steering%climateyear = out_steering%forcingyear
 
       endif
+      outyear = year + firstyeartrend - spinupyears - 1
 
     else
 
       out_steering%forcingyear = year + firstyeartrend - 1 
       out_steering%climateyear = out_steering%forcingyear
+      outyear = year + firstyeartrend - 1
 
     endif
+
+
 
     ! write(0,*) 'recycle_test, spinupyears, firstyeartrend', recycle_test, spinupyears, firstyeartrend
     ! write(0,*) 'first_cycleyear, cycleyear', first_cycleyear, cycleyear
@@ -117,14 +124,17 @@ contains
     call getparstring( runname//".sofun.parameter", 'ndep_forcing_file', ndep_forcing_file )
     call getparstring( runname//".sofun.parameter", 'pftparfil', pftparfil )
 
-    do_spinup        = getparlogical( runname//".sofun.parameter", 'spinup' )
-    const_co2        = getparlogical( runname//".sofun.parameter", 'const_co2' )
-    const_ndep       = getparlogical( runname//".sofun.parameter", 'const_ndep' )
+    do_spinup         = getparlogical( runname//".sofun.parameter", 'spinup' )
+    const_co2         = getparlogical( runname//".sofun.parameter", 'const_co2' )
+    const_ndep        = getparlogical( runname//".sofun.parameter", 'const_ndep' )
     
-    spinupyears      = getparint( runname//".sofun.parameter", 'spinupyears' )
-    firstyeartrend   = getparint( runname//".sofun.parameter", 'firstyeartrend' )
-    nyeartrend       = getparint( runname//".sofun.parameter", 'nyeartrend' )
+    spinupyears       = getparint( runname//".sofun.parameter", 'spinupyears' )
+    firstyeartrend    = getparint( runname//".sofun.parameter", 'firstyeartrend' )
+    nyeartrend        = getparint( runname//".sofun.parameter", 'nyeartrend' )
     
+    daily_out_startyr = getparint( runname//".sofun.parameter", 'daily_out_startyr' )
+    daily_out_endyr   = getparint( runname//".sofun.parameter", 'daily_out_endyr' )
+
     if (do_spinup) then
       runyears = nyeartrend + spinupyears
     else

@@ -605,8 +605,8 @@ contains
       ! else
       !   Nfix = 1.0/365.0
       ! end if
-      ! Nfix = 1.0 / 365.0
-      Nfix = 0.0
+      Nfix = 1.0 / 365.0
+      ! Nfix = 0.0
       pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + Nfix
 
       ! OUTPUT COLLECTION
@@ -838,7 +838,8 @@ contains
     ! WRITE littersom-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use _params_core, only: ndayyear, nmonth
-    use _params_siml, only: firstyeartrend, spinupyears
+    use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
+      daily_out_endyr, outyear
 
     ! Arguments
     integer, intent(in) :: year       ! simulation year
@@ -856,7 +857,7 @@ contains
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
-    if (.not.spinup) then
+    if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
       ! Write daily output only during transient simulation
       do day=1,ndayyear
 

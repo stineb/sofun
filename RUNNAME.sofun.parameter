@@ -29,6 +29,9 @@ ndep_forcing_file                       ndep_ctrl.dat
 const_co2                               .true.
 const_ndep                              .true.
 
+# limit period for which daily output is written
+daily_out_startyr                       2000
+daily_out_endyr                         2000
 
 # ------------------------OPTIONAL-----------------------------
 # N availability (only needed for mak* simulations, i.e. when _nuptake_makela is activated)

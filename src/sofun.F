@@ -135,11 +135,13 @@ program main
 
     ! ! xxx test
     ! dndep_field(:) = dndep_field(:) * 0.4
+    ! dprec_field(100:250,1) = 0.0
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
     ! containing data for each day of this year.
     !----------------------------------------------------------------
+    write(0,100) 'sim. year, year AD, pco2', year, out_steering%forcingyear, pco2
     call biosphere( year, lon, lat, elv, lu_area, pco2 &
       , dtemp_field, dprec_field &
       , dfsun_field, dvpd_field, dndep_field &
@@ -149,8 +151,6 @@ program main
 #endif
       , fpc_grid_data=fpc_grid_data &
       ) 
-
-    write(0,100) 'sim. year, year AD, pco2', year, out_steering%forcingyear, pco2
 
   enddo
 

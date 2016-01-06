@@ -547,7 +547,8 @@ contains
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use _params_core, only: ndayyear, npft, nlu
-    use _params_siml, only: firstyeartrend, spinupyears
+    use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
+      daily_out_startyr, outyear
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -573,7 +574,7 @@ contains
     ! Write daily value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    if (.not.spinup) then
+    if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
       ! Write daily output only during transient simulation
       do myday=1,ndayyear
 
