@@ -361,40 +361,28 @@ contains
     ! Subroutine reads waterbalance module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-
-    ! LOCAL VARIABLES
-    integer, parameter :: npar = 7
-    real, dimension(npar) :: params_array
-    character(len=50) paramfilnam
-
-    paramfilnam = 'params_ntransform_xuri.dat'
-
-    open(unit=05,file=trim(paramfilnam),status='OLD')      
-    read(05,*) params_array
-    close(05)
+    use _sofunutils, only: getparreal
 
     ! maximum nitrification rate
-    MAXNITR = params_array(1)
+    MAXNITR = getparreal( 'params/params_ntransform_xuri.dat', 'MAXNITR' )
 
     ! maximum NO from nitrification (day-1)
-    NON = params_array(2)
+    NON = getparreal( 'params/params_ntransform_xuri.dat', 'NON' )
 
     ! maximum N2O from nitrification (day-1)
-    N2ON = params_array(3)
+    N2ON = getparreal( 'params/params_ntransform_xuri.dat', 'N2ON' )
 
     ! Michaelis-Menten coefficient [gN/m2]. Use this value if soil represents top 100 cm 
-    KN = params_array(4)
+    KN = getparreal( 'params/params_ntransform_xuri.dat', 'KN' )
 
     ! Michaelis-Menten coefficient [gC/m2]. Use this value if soil represents top 100 cm 
-    KDOC = params_array(5)
+    KDOC = getparreal( 'params/params_ntransform_xuri.dat', 'KDOC' )
 
     ! DOCMAX
-    DOCMAX = params_array(6)
+    DOCMAX = getparreal( 'params/params_ntransform_xuri.dat', 'DOCMAX' )
 
     ! Fraction of denitrification lost as N2O. Range of possible values: 0.002 - 0.047 (Xu-Ri and Prentice, 2008)
-    DNITR2N2O = params_array(7)
-
-    return
+    DNITR2N2O = getparreal( 'params/params_ntransform_xuri.dat', 'DNITR2N2O' )
 
   end subroutine getpar_modl_ntransform
 

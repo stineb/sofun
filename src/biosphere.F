@@ -1,4 +1,4 @@
-subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
+subroutine biosphere( year, lon, lat, elv, lu_area, pco2 &
   , dtemp_field, dprec_field, dfsun_field, dvpd_field, dndep_field &
   , c_uptake &
   , dgpp_data &
@@ -19,18 +19,28 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   use _vars_core, only: initannual, initdaily, initglobal, initpft
   use _outvars, only: initio, getout_annual, getout_daily, initoutput
   use _soiltemp, only: soiltemp
-  use _phenology, only: gettempphenology  !, phenology
+  use _phenology, only: gettempphenology, getpar_phenology  !, phenology
   use _vegdynamics, only: estab_daily
   use _gpp, only: gpp, getlue, initdaily_gpp, writeout_ascii_gpp, getout_annual_gpp, initio_gpp, initoutput_gpp
-  use _npp, only: npp
+  use _npp, only: npp, getpar_modl_npp
   use _allocation, only: allocation_daily, initio_allocation, initoutput_allocation, getout_daily_allocation, writeout_ascii_allocation
   use _turnover, only: turnover
-  use _waterbal, only: waterbal, getrad, outdcpa, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getout_monthly_waterbal
-  use _nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake
-  use _ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform
-  use _littersom, only: littersom, initio_littersom, initoutput_littersom, getout_annual_littersom !, getout_daily_littersom
+  use _waterbal, only: waterbal, getrad, outdcpa, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getout_monthly_waterbal, getpar_modl_waterbal
+  use _nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake, getpar_modl_nuptake
+  use _ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform, getpar_modl_ntransform
+  use _littersom, only: littersom, initio_littersom, initoutput_littersom, getout_annual_littersom, getpar_modl_littersom !, getout_daily_littersom
 
   use _waterbal, only: writeout_ascii_waterbal
+
+  ! xxx try
+  ! use _waterbal, only: getpar_modl_waterbal
+  ! use _nuptake, only: getpar_modl_nuptake
+  ! use _npp, only: getpar_modl_npp
+  ! use _phenology, only: getpar_phenology
+  ! use _ntransform, only: getpar_modl_ntransform
+  ! use _littersom, only: getpar_modl_littersom
+  ! use _sofunutils, only: getparreal
+
 
   ! use _nuptake, only: writeout_ascii_nuptake
   ! use _littersom, only: writeout_ascii_littersom
@@ -44,7 +54,6 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
 
   ! arguments
   integer, intent(in)                           :: year       ! simulation year
-  integer, intent(in)                           :: realyear   ! year AD (=first simulation year )
   real, intent(in), dimension(maxgrid)          :: lon        ! longitude vector/field (degrees E)              
   real, intent(in), dimension(maxgrid)          :: lat        ! latitude vector/field (degrees N)             
   real, intent(in), dimension(maxgrid)          :: elv        ! elevation (altitude) vector/field (m above sea level)                  
@@ -103,6 +112,19 @@ subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
   if (init) then
 
     ! xxx check: if (present(fpc_grid_data)) .and. _dynveg then abort
+
+    !----------------------------------------------------------------
+    ! GET MODEL PARAMETERS
+    ! read model parameters that may be varied for optimisation
+    !----------------------------------------------------------------
+    ! print*,'getting model parameters'
+    call getpar_modl()
+    call getpar_modl_waterbal()
+    call getpar_modl_npp()
+    call getpar_modl_nuptake()
+    call getpar_modl_ntransform()
+    call getpar_modl_littersom()
+    call getpar_phenology()
 
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)

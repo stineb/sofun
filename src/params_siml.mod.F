@@ -8,16 +8,14 @@ module _params_siml
   use _sofunutils, only: getparint, getparstring, getparlogical
 
   implicit none
-  integer :: runyears                    ! number of years of entire simulation (spinup+transient)
-  integer :: spinupyears                 ! number of spinup years
-  integer :: nyeartrend                  ! number of transient years
-  integer :: firstyeartrend              ! year AD of first transient year
-  logical :: do_spinup                   ! whether this simulation does spinup 
-  logical :: init                        ! is true in first simulation year
-  logical :: spinup                      ! is true during spinup
-  logical :: const_co2                   ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
-  logical :: const_ndep                  ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
-  integer :: transyear                   ! year in transient simulation
+
+  integer :: runyears        ! number of years of entire simulation (spinup+transient)
+  integer :: spinupyears     ! number of spinup years
+  integer :: nyeartrend      ! number of transient years
+  integer :: firstyeartrend  ! year AD of first transient year
+  logical :: do_spinup       ! whether this simulation does spinup 
+  logical :: const_co2       ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
+  logical :: const_ndep      ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
   character(len=256) :: runname
   character(len=6)   :: sitename
   character(len=256) :: input_dir
@@ -25,27 +23,69 @@ module _params_siml
   character(len=256) :: ndep_forcing_file
   character(len=256) :: pftparfil
 
+  logical :: spinup          ! is true during spinup
+  logical :: init            ! is true in first simulation year
+
+  type outtype_steering
+    integer :: forcingyear     ! year AD for which forcings are read in (=firstyeartrend during spinup)
+    integer :: climateyear     ! year AD for which climate is read in (recycling during spinup or when climate is held const.)
+  end type
+
 contains
 
-  subroutine getsteering( year, realyear)
+  function getsteering( year ) result( out_steering )
     !////////////////////////////////////////////////////////////////
     !  SR defines variables used for steering simulation for each 
     !  simulation year (setting booleans for opening files, doing   
     !  spinup etc.)
     !----------------------------------------------------------------
+    ! arguments
     integer, intent(in) :: year
-    integer, intent(out) :: realyear
+
+    ! local variables
+    integer :: first_cycleyear, cycleyear
+
+    ! function return variable
+    type( outtype_steering ) :: out_steering
+
+    ! xxx try
+    integer, parameter :: recycle_test = 5
+
+    integer :: remainder, nfits
 
     if (do_spinup) then
-      realyear = max( firstyeartrend, year - spinupyears + firstyeartrend - 1 )
+
       if (year<=spinupyears) then
+
         spinup = .true.
+        out_steering%forcingyear = firstyeartrend
+
+        remainder = mod( spinupyears, recycle_test )
+        nfits = (spinupyears - remainder) / recycle_test
+        first_cycleyear = recycle_test - remainder + 1
+        cycleyear = modulo( first_cycleyear + year - 1, recycle_test )  
+        if (cycleyear==0) cycleyear = recycle_test
+        out_steering%climateyear = cycleyear + firstyeartrend - 1
+
       else  
+
         spinup = .false.
+        out_steering%forcingyear =  year - spinupyears + firstyeartrend - 1 
+        out_steering%climateyear = out_steering%forcingyear
+
       endif
+
     else
-      realyear = year + firstyeartrend
+
+      out_steering%forcingyear = year + firstyeartrend - 1 
+      out_steering%climateyear = out_steering%forcingyear
+
     endif
+
+    ! write(0,*) 'recycle_test, spinupyears, firstyeartrend', recycle_test, spinupyears, firstyeartrend
+    ! write(0,*) 'first_cycleyear, cycleyear', first_cycleyear, cycleyear
+    ! write(0,*) 'year, forcingyear, climateyear', year, out_steering%forcingyear, out_steering%climateyear
+    ! stop
 
     if (year==1) then
       init = .true.
@@ -53,19 +93,7 @@ contains
       init = .false.
     endif 
 
-    if (spinup) then
-      transyear = mod(year,recycle)
-      if (transyear==0) transyear = recycle
-      ! use this if data starts from a given year that is not equal to the required start 
-      ! year of the transient simulation. Here '1901' is start year in data set.
-      !first_cycleyear = mod(recycle-mod(spinupyears+1901-firstyeartrend,recycle)+1,recycle)
-      !cycleyear = modulo(first_cycleyear+year-1,recycle)
-      !if (cycleyear.eq.0) cycleyear=31
-    else
-      transyear = realyear-firstyeartrend+1
-    endif
-
-  end subroutine getsteering
+  end function getsteering
 
 
   subroutine getpar_siml( runname )

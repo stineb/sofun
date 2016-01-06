@@ -10,24 +10,32 @@ module _forcing_siterun
   !----------------------------------------------------------------
   use _params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu
   use _sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
-    getvalreal
-  use _params_siml, only: const_co2, firstyeartrend, sitename, co2_forcing_file, &
+    getvalreal, monthly2daily_weather, monthly2daily
+  use _params_siml, only: const_co2, firstyeartrend, co2_forcing_file, &
     input_dir, const_ndep, ndep_forcing_file
 
   implicit none
 
-  real, dimension(ndayyear,maxgrid) :: dtemp_field, dprec_field, &
-    dfsun_field, dvpd_field
+  ! real, dimension(ndayyear,maxgrid) :: dtemp_field, dprec_field, &
+  !   dfsun_field, dvpd_field
+
+  real, dimension(ndayyear,maxgrid) :: dtemp_field
+  real, dimension(ndayyear,maxgrid) :: dprec_field
+  real, dimension(ndayyear,maxgrid) :: dfsun_field
+  real, dimension(ndayyear,maxgrid) :: dvpd_field
+
+  ! type outtype_climate
+  ! end type
 
 contains
 
-  function getco2( runname, realyear ) result( pco2 )
+  function getco2( runname, forcingyear ) result( pco2 )
     !////////////////////////////////////////////////////////////////
     !  Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: runname
-    integer, intent(in) :: realyear
+    integer, intent(in) :: forcingyear
 
     ! function return variable
     real, intent(out) :: pco2
@@ -38,23 +46,73 @@ contains
     if (const_co2) then
       readyear = firstyeartrend
     else  
-      readyear = realyear
+      readyear = forcingyear
     end if
-    pco2 = getvalreal( trim(input_dir)//trim(co2_forcing_file), readyear )
+    pco2 = getvalreal( trim(co2_forcing_file), readyear )
 
   end function getco2
 
 
-  subroutine getclimate_fields( runname )
+  function getndep( runname, sitename, forcingyear ) result( dndep_field )
     !////////////////////////////////////////////////////////////////
-    !  SR reads this year's daily temperature and precipitation.
+    !  Function reads this year's annual ndeposition and distributes it
+    !  over days according to daily precipitation.
     !----------------------------------------------------------------
     ! arguments
+    character(len=*), intent(in) :: runname
+    character(len=*), intent(in) :: sitename
+    integer, intent(in)          :: forcingyear
+
+    ! function return variable
+    real, dimension(ndayyear,maxgrid) :: dndep_field
+
+    ! local variables
+    real                      :: andep
+    real, dimension(ndayyear) :: dprec_rel
+    integer                   :: jpngr
+    integer                   :: readyear
+    
+    if (const_ndep) then
+      readyear = firstyeartrend
+    else  
+      readyear = forcingyear
+    end if
+    ! andep = getvalreal( trim(input_dir)//trim(ndep_forcing_file), readyear )
+    andep = getvalreal( 'sitedata/ndep/'//sitename//'/'//trim(ndep_forcing_file), readyear )
+
+    
+    ! Distribute annual Ndep to days by daily precipitation
+    do jpngr=1,maxgrid
+      dprec_rel(:)         = dprec_field(:,jpngr)/sum(dprec_field(:,jpngr))
+      dndep_field(:,jpngr) = andep * dprec_rel(:)
+    end do
+
+  end function getndep
+
+
+  subroutine getclimate_site( runname, sitename, climateyear ) result ( out_climate )
+    !////////////////////////////////////////////////////////////////
+    !  SR reads this year's daily temperature and precipitation.
+    !----------------------------------------------------------------    
+    ! arguments
     character(len=*), intent(in) :: runname     
+    character(len=*), intent(in) :: sitename
+    integer, intent(in) :: climateyear
 
     ! local variables
     integer :: day, mo, dm, yr
     real, dimension(nmonth) :: mtemp, mfsun, mvapr, mvpd
+    character(len=4) :: climateyear_char
+
+    ! ! xxx try
+    ! real, dimension(nmonth) :: mprec, mwetd
+
+    ! ! xxx used in combination with weather generator
+    ! real :: harvest1, harvest2
+    ! real, dimension(ndayyear,2) :: prdaily_random
+
+    ! ! function return variable
+    ! type( outtype_climate )  :: out_climate
 
     ! PRESCRIBED DAILY CLIMATE (TEMP, PREC, FSUN) FOR ONE YEAR
     ! xxx deal with jpngr dimension only when using NetCDF
@@ -64,28 +122,41 @@ contains
     dprec_field(:,:) = 0.0
     dfsun_field(:,:) = 0.0
 
-    dtemp_field(:,1) = read1year_daily('dtemp_'//sitename//'_2002.txt')
-    dprec_field(:,1) = read1year_daily('dprec_'//sitename//'_2002.txt')
+    ! create 4-digit string for year  
+    write(climateyear_char,999) climateyear
 
-    mfsun(:) = read1year_monthly('mfsun_'//sitename//'_2002.txt')
-    mvapr(:) = read1year_monthly('mvapr_'//sitename//'_2002.txt')
+    ! xxx try
+    climateyear_char = '2002'
+
+    dtemp_field(:,1) = read1year_daily('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'dtemp_'//sitename//'_'//climateyear_char//'.txt')
+    dprec_field(:,1) = read1year_daily('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'dprec_'//sitename//'_'//climateyear_char//'.txt')
+
+    ! ! xxx alternatively, if no daily values are available, use weather generator for precip
+    ! ! mprec(:) = read1year_monthly('mprec_'//sitename//'_2002.txt')
+    ! ! mwetd(:) = read1year_monthly('mwetd_'//sitename//'_2002.txt')
+    ! ! xxx try:
+    ! mprec = (/ 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0 /)
+    ! mwetd = (/ 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0 /)
+    ! do day=1,ndayyear
+    !   call random_number( harvest1 )
+    !   call random_number( harvest2 )
+    !   prdaily_random(day,1) = harvest1
+    !   prdaily_random(day,2) = harvest2
+    ! end do
+    ! dprec_field(:,1) = monthly2daily_weather( mprec(:), mwetd(:), prdaily_random(:,:) )
+
+    mfsun(:) = read1year_monthly('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'mfsun_'//sitename//'_'//climateyear_char//'.txt')
+    mvapr(:) = read1year_monthly('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'mvapr_'//sitename//'_'//climateyear_char//'.txt')
 
     ! calculate monthly VPD based on monthly vapour pressure and temperature data
     mtemp(:) = daily2monthly( dtemp_field(:,1), "mean")
     do mo=1,nmonth
       mvpd(mo) = calc_vpd( mtemp(mo), mvapr(mo) )
     end do
-    write(0,*) 'mvpd', mvpd(:)
 
     ! use monthly value for each day in month for dfsun, and dvpd
-    day=0
-    do mo=1,nmonth
-      do dm=1,ndaymonth(mo)
-        day=day+1
-        dfsun_field(day,1) = mfsun(mo)
-        dvpd_field(day,1)  = mvpd(mo)
-      end do
-    end do
+    dfsun_field(:,1) = monthly2daily( mfsun(:), "uniform" )
+    dvpd_field(:,1)  = monthly2daily( mvpd(:), "uniform" )
 
     !insf  = (/0.21, 0.27, 0.30, 0.40, 0.39, 0.39, 0.40, 0.43, 0.36, 0.32, 0.23, 0.19/)
     !intc  = (/4.80, 4.85, 7.10, 9.10, 12.4, 15.3, 17.6, 17.3, 14.6, 11.2, 7.55, 5.05/)
@@ -120,8 +191,9 @@ contains
     write(0,*) '... done. Good job, beni.'
 
     return
+    999  format (I4.4)
 
-  end subroutine getclimate_fields
+  end subroutine getclimate_site
 
 
   !subroutine getclimate( day, jpngr, dtemp, dprec, dfsun )
@@ -155,47 +227,14 @@ contains
 
 !  !end subroutine getclimate
 
-  function getndep( runname, realyear ) result( dndep_field )
-    !////////////////////////////////////////////////////////////////
-    !  Function reads this year's annual ndeposition and distributes it
-    !  over days according to daily precipitation.
-    !----------------------------------------------------------------
-    ! arguments
-    character(len=*), intent(in) :: runname
-    integer, intent(in)          :: realyear
 
-    ! function return variable
-    real, dimension(ndayyear,maxgrid) :: dndep_field
-
-    ! local variables
-    real                      :: andep
-    real, dimension(ndayyear) :: dprec_rel
-    integer                   :: jpngr
-    integer                   :: readyear
-    
-    if (const_ndep) then
-      readyear = firstyeartrend
-    else  
-      readyear = realyear
-    end if
-    andep = getvalreal( trim(input_dir)//trim(ndep_forcing_file), readyear )
-    
-    ! Distribute annual Ndep to days by daily precipitation
-    do jpngr=1,maxgrid
-      dprec_rel(:)         = dprec_field(:,jpngr)/sum(dprec_field(:,jpngr))
-      dndep_field(:,jpngr) = andep * dprec_rel(:)
-    end do
-
-  end function getndep
-
-
-  function getlanduse( runname, realyear ) result( lu_area )
+  function getlanduse( runname, forcingyear ) result( lu_area )
     !////////////////////////////////////////////////////////////////
     !  Function reads this year's annual landuse state
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in)      :: runname
-    integer, intent(in)               :: realyear
+    integer, intent(in)               :: forcingyear
 
     ! function return variable
     real, dimension(nlu,maxgrid)      :: lu_area

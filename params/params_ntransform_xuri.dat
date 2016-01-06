@@ -1,0 +1,17 @@
+###############################################################
+# NTRANSFORM XURI PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+MAXNITR                                 0.1
+NON                                     0.01
+N2ON                                    0.0005
+KN                                      83.0
+KDOC                                    17.0
+DOCMAX                                  1.0
+DNITR2N2O                               0.01
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 

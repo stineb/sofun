@@ -239,7 +239,7 @@ contains
     ! initialise
 
     ! growing degree days base (usually 5 deg C)
-    GDDBASE = getparreal( 'params_phenology.dat', 'GDDBASE' )
+    GDDBASE = getparreal( 'params/params_phenology.dat', 'GDDBASE' )
 
     do pft=1,npft
 
@@ -247,10 +247,10 @@ contains
       write(char_pftno, 999) pft
 
       ! RAMP slope for phenology (1 for grasses: immediate phenology turning on)
-      RAMP(pft) = getparreal( 'params_phenology.dat', trim('RAMP_PFT')//char_pftno )
+      RAMP(pft) = getparreal( 'params/params_phenology.dat', trim('RAMP_PFT')//char_pftno )
 
       ! phenology type
-      PHENTYPE(pft) = getparreal( 'params_phenology.dat', trim('PHENTYPE_PFT')//char_pftno )
+      PHENTYPE(pft) = getparreal( 'params/params_phenology.dat', trim('PHENTYPE_PFT')//char_pftno )
 
       if (PHENTYPE(pft)==1.0) evergreen(pft)   = .true.
       if (PHENTYPE(pft)==2.0) summergreen(pft) = .true.

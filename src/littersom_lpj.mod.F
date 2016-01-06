@@ -641,47 +641,37 @@ contains
     ! Subroutine reads littersom module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
+    use _sofunutils, only: getparreal
 
-    ! LOCAL VARIABLES
-    integer, parameter :: npar = 10
-    real, dimension(npar) :: params_array
-    character(len=50) paramfilnam
-
-    paramfilnam = 'params_littersom_lpj.dat'
-
-    open(unit=06,file=trim(paramfilnam),status='OLD')      
-    read (06,*) params_array
-    close (06)
-
-    ! above-ground fast (leaf) litter decay rate [1/d]
-    klitt_af10 = params_array(1)/ndayyear
+    ! above-ground fast (foliage and roots) litter decay rate [1/d] 
+    klitt_af10 = getparreal( 'params/params_littersom_lpj.dat', 'klitt_af10' ) / ndayyear
 
     ! above-ground slow (woody) litter decay rate [1/d] 
-    klitt_as10 = params_array(2)/ndayyear
+    klitt_as10 = getparreal( 'params/params_littersom_lpj.dat', 'klitt_as10' ) / ndayyear
 
     ! below-ground (root) litter decay rate [1/d] 
-    klitt_bg10 = params_array(3)/ndayyear
+    klitt_bg10 = getparreal( 'params/params_littersom_lpj.dat', 'klitt_bg10' ) / ndayyear
 
     ! exudates decay rate [1/d]
-    kexu10 = params_array(4)/ndayyear
+    kexu10 = getparreal( 'params/params_littersom_lpj.dat', 'kexu10' ) / ndayyear
 
     ! fast soil pool decay rate [1/d]
-    ksoil_fs10 = params_array(5)/ndayyear
+    ksoil_fs10 = getparreal( 'params/params_littersom_lpj.dat', 'ksoil_fs10' ) / ndayyear
 
     ! slow soil pool decay rate [1/d]
-    ksoil_sl10 = params_array(6)/ndayyear
+    ksoil_sl10 = getparreal( 'params/params_littersom_lpj.dat', 'ksoil_sl10' ) / ndayyear
 
     ! factor for "Manzoni Equation" (XPXXX) [1]
-    ntoc_crit1 = params_array(7)
-
+    ntoc_crit1 = getparreal( 'params/params_littersom_lpj.dat', 'ntoc_crit1' ) 
+ 
     ! exponent for "Manzoni Equation" (XPXXX) [1]
-    ntoc_crit2 = params_array(8)
-
+    ntoc_crit2 = getparreal( 'params/params_littersom_lpj.dat', 'ntoc_crit2' ) 
+ 
     ! C:N ratio of microbial biomass [1]
-    cton_microb = params_array(9)
-
+    cton_microb = getparreal( 'params/params_littersom_lpj.dat', 'cton_microb' ) 
+ 
     ! fraction of litter input to fast soil pool [1]
-    fastfrac = params_array(10)
+    fastfrac = getparreal( 'params/params_littersom_lpj.dat', 'fastfrac' ) 
 
   end subroutine getpar_modl_littersom
 

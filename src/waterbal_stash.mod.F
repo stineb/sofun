@@ -731,42 +731,70 @@ contains
     ! Subroutine reads waterbalance module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    implicit none
+    use _sofunutils, only: getparreal
 
-    ! LOCAL VARIABLES
-    integer, parameter :: npar = 21
-    real, dimension(npar) :: params_array
-    character(len=50) paramfilnam
-
-    paramfilnam = 'params_waterbal_stash.dat'
-
-    open(unit=03,file=trim(paramfilnam),status='OLD')      
-    read (03,*) params_array
-    close (03)
-
-    kA = params_array(1)         ! constant for dRnl (Monteith & Unsworth, 1990)
-    kalb_sw = params_array(2)    ! shortwave albedo (Federer, 1968)
-    kalb_vis = params_array(3)   ! visible light albedo (Sellers, 1985)
-    kb = params_array(4)         ! constant for dRnl (Linacre, 1968)
-    kc = params_array(5)         ! cloudy transmittivity (Linacre, 1968)
-    kCw = params_array(6)        ! supply constant, mm/hr (Federer, 1982)
-    kd = params_array(7)         ! angular coefficient of transmittivity (Linacre, 1968)
-    ke = params_array(8)         ! eccentricity for 2000 CE (Berger, 1978)
-    keps = params_array(9)       ! obliquity for 2000 CE, degrees (Berger, 1978)
-    kfFEC = params_array(10)     ! from flux to energy conversion, umol/J (Meek et al., 1984)
-    kG = params_array(11)        ! gravitational acceleration, m/s^2 (Allen, 1973)
-    kGsc = params_array(12)      ! solar constant, W/m^2 (Kopp & Lean, 2011)
-    kL = params_array(13)        ! temperature lapse rate, K/m (Cavcar, 2000)
-    kMa = params_array(14)       ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
-    kMv = params_array(15)       ! molecular weight of water vapor, kg/mol (Tsilingiris, 2008)
-    kPo = params_array(16)       ! standard atmosphere, Pa (Allen, 1973)
-    kR = params_array(17)        ! universal gas constant, J/mol/K (Allen, 1973)
-    kTo = params_array(18)       ! base temperature, K (Prentice, unpublished)
-    kWm = params_array(19)       ! soil moisture capacity, mm (Cramer & Prentice, 1988)
-    kw = params_array(20)        ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
-    komega = params_array(21)    ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
-
-    return
+    ! constant for dRnl (Monteith & Unsworth, 1990)
+    kA       = getparreal( 'params/params_waterbal_stash.dat', 'kA' )
+    
+    ! shortwave albedo (Federer, 1968)
+    kalb_sw  = getparreal( 'params/params_waterbal_stash.dat', 'kalb_sw' )
+    
+    ! visible light albedo (Sellers, 1985)
+    kalb_vis = getparreal( 'params/params_waterbal_stash.dat', 'kalb_vis' )
+    
+    ! constant for dRnl (Linacre, 1968)
+    kb       = getparreal( 'params/params_waterbal_stash.dat', 'kb' )
+    
+    ! cloudy transmittivity (Linacre, 1968)
+    kc       = getparreal( 'params/params_waterbal_stash.dat', 'kc' )
+    
+    ! supply constant, mm/hr (Federer, 1982)
+    kCw      = getparreal( 'params/params_waterbal_stash.dat', 'kCw' )
+    
+    ! angular coefficient of transmittivity (Linacre, 1968)
+    kd       = getparreal( 'params/params_waterbal_stash.dat', 'kd' )
+    
+    ! eccentricity for 2000 CE (Berger, 1978)
+    ke       = getparreal( 'params/params_waterbal_stash.dat', 'ke' )
+    
+    ! obliquity for 2000 CE, degrees (Berger, 1978)
+    keps     = getparreal( 'params/params_waterbal_stash.dat', 'keps' )
+    
+    ! from flux to energy conversion, umol/J (Meek et al., 1984)
+    kfFEC    = getparreal( 'params/params_waterbal_stash.dat', 'kfFEC' )
+    
+    ! gravitational acceleration, m/s^2 (Allen, 1973)
+    kG       = getparreal( 'params/params_waterbal_stash.dat', 'kG' )
+    
+    ! solar constant, W/m^2 (Kopp & Lean, 2011)
+    kGsc     = getparreal( 'params/params_waterbal_stash.dat', 'kGsc' )
+    
+    ! temperature lapse rate, K/m (Cavcar, 2000)
+    kL       = getparreal( 'params/params_waterbal_stash.dat', 'kL' )
+    
+    ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
+    kMa      = getparreal( 'params/params_waterbal_stash.dat', 'kMa' )
+    
+    ! molecular weight of water vapor, kg/mol (Tsilingiris, 2008)
+    kMv      = getparreal( 'params/params_waterbal_stash.dat', 'kMv' )
+    
+    ! standard atmosphere, Pa (Allen, 1973)
+    kPo      = getparreal( 'params/params_waterbal_stash.dat', 'kPo' )
+    
+    ! universal gas constant, J/mol/K (Allen, 1973)
+    kR       = getparreal( 'params/params_waterbal_stash.dat', 'kR' )
+    
+    ! base temperature, K (Prentice, unpublished)
+    kTo      = getparreal( 'params/params_waterbal_stash.dat', 'kTo' )
+    
+    ! soil moisture capacity, mm (Cramer & Prentice, 1988)
+    kWm      = getparreal( 'params/params_waterbal_stash.dat', 'kWm' )
+    
+    ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
+    kw       = getparreal( 'params/params_waterbal_stash.dat', 'kw' )
+    
+    ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
+    komega   = getparreal( 'params/params_waterbal_stash.dat', 'komega' )
 
   end subroutine getpar_modl_waterbal
 

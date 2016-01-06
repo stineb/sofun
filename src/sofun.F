@@ -10,7 +10,6 @@ program main
   use _params_core
   use _params_siml
   use _params_site
-  use _params_modl
   use _forcing_siterun
   use input_site
   use gridvars_siterun
@@ -19,18 +18,20 @@ program main
   implicit none
 
   integer :: year
-  integer :: realyear
 
-  real    :: c_uptake     ! annual net global C uptake by biosphere
+  real :: c_uptake     ! annual net global C uptake by biosphere
 
   ! local variables
   real                              :: pco2
   real, dimension(ndayyear,maxgrid) :: dndep_field
   real, dimension(nlu,maxgrid)      :: lu_area
 
+  type( outtype_steering ) :: out_steering
+  ! type( outtype_climate )  :: out_climate
+
   ! This is necessary because of keyword-specification of arguments to 'biosphere'
   interface
-    subroutine biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
+    subroutine biosphere( year, lon, lat, elv, lu_area, pco2 &
       , dtemp_field, dprec_field, dfsun_field, dvpd_field, dndep_field &
       , c_uptake &
       , dgpp_data &
@@ -39,7 +40,6 @@ program main
 
     ! required arguments
     integer, intent(in)                   :: year       ! simulation year
-    integer, intent(in)                   :: realyear   ! year AD (=first simulation year )
     real, intent(in), dimension(maxgrid)  :: lon        ! longitude vector/field (degrees E)              
     real, intent(in), dimension(maxgrid)  :: lat        ! latitude vector/field (degrees N)             
     real, intent(in), dimension(maxgrid)  :: elv        ! elevation (altitude) vector/field (m above sea level)                  
@@ -51,6 +51,7 @@ program main
     real, intent(in), dimension(ndayyear,maxgrid) :: dvpd_field
     real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
     real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
+    logical                               :: spinup
 
     ! optional arguments
     real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data       ! for runs with prescribed GPP
@@ -103,40 +104,34 @@ program main
   !----------------------------------------------------------------
   call getinput_site
 
-  !----------------------------------------------------------------
-  ! Get external (environmental) forcing for all simulation years
-  ! xxx move this into annual loop
-  !----------------------------------------------------------------
-  call getclimate_fields( trim(runname) )
-
-  !----------------------------------------------------------------
-  ! GET MODEL PARAMETERS
-  ! read model parameters that may be varied for optimisation
-  !----------------------------------------------------------------
-  ! print*,'getting model parameters'
-  call getpar_modl
-
 
   ! LOOP THROUGH YEARS
   write(0,*) '------------START OF SIMULATION-------------'
   do year=1,runyears
 
     !----------------------------------------------------------------
-    ! Define simulations "steering" variables (realyear, etc.)
+    ! Define simulations "steering" variables (forcingyear, etc.)
     !----------------------------------------------------------------
     ! print*,'getting steering'
-    call getsteering(year,realyear)
+    out_steering = getsteering( year )
 
     if (year == spinupyears+1 ) then
       write(0,*) '-----------TRANSIENT SIMULATION-------------'
     endif
 
     !----------------------------------------------------------------
+    ! Get external (environmental) forcing for all simulation years
+    ! xxx move this into annual loop
+    !----------------------------------------------------------------
+    ! out_climate = getclimate_site( trim(runname), trim(sitename), out_steering%climateyear )
+    call getclimate_site( trim(runname), trim(sitename), out_steering%climateyear )
+
+    !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
-    pco2        = getco2( trim(runname), realyear )
-    dndep_field = getndep( trim(runname), realyear )
-    lu_area     = getlanduse( trim(runname), realyear )
+    pco2        = getco2( trim(runname), out_steering%forcingyear )
+    dndep_field = getndep( trim(runname), trim(sitename), out_steering%forcingyear )
+    lu_area     = getlanduse( trim(runname), out_steering%forcingyear )
 
     ! ! xxx test
     ! dndep_field(:) = dndep_field(:) * 0.4
@@ -145,8 +140,9 @@ program main
     ! Call SR biosphere at an annual time step but with vectors 
     ! containing data for each day of this year.
     !----------------------------------------------------------------
-    call biosphere( year, realyear, lon, lat, elv, lu_area, pco2 &
-      , dtemp_field, dprec_field, dfsun_field, dvpd_field, dndep_field &
+    call biosphere( year, lon, lat, elv, lu_area, pco2 &
+      , dtemp_field, dprec_field &
+      , dfsun_field, dvpd_field, dndep_field &
       , c_uptake &
 #if _prescr_gpp_site
       , dgpp_data=dgpp_data(transyear,:,:) &  ! optional argument
@@ -154,7 +150,7 @@ program main
       , fpc_grid_data=fpc_grid_data &
       ) 
 
-    write(0,100) 'sim. year, year AD, pco2',year,realyear,pco2
+    write(0,100) 'sim. year, year AD, pco2', year, out_steering%forcingyear, pco2
 
   enddo
 

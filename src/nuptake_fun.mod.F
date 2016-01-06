@@ -657,7 +657,7 @@ contains
     real, dimension(npar) :: params_array
     character(len=50)     ::paramfilnam
     
-    paramfilnam = 'params_nuptake_fun.dat'
+    paramfilnam = 'params/params_nuptake_fun.dat'
 
     open(unit=04,file=trim(paramfilnam),status='OLD')      
     read (04,*) params_array

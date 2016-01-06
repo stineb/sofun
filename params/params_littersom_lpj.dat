@@ -1,0 +1,20 @@
+###############################################################
+# LPX LITTERSOM PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+klitt_af10                              1.2
+klitt_as10                              0.35
+klitt_bg10                              0.35
+kexu10                                  13.0
+ksoil_fs10                              0.021
+ksoil_sl10                              7.0e-04
+ntoc_crit1                              0.45
+ntoc_crit2                              0.76
+cton_microb                             10.0
+fastfrac                                0.985
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 

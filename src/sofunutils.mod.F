@@ -11,7 +11,7 @@ module _sofunutils
 
 contains
 
-  function running( presval, inow, lenval, lenper, method, prevval )
+  function running( presval, inow, lenval, lenper, method, prevval ) result( runningval )
     !/////////////////////////////////////////////////////////////////////////
     ! Returns running sum or average over. 'prevval' is optional, if not pro-
     ! vided, sum/average is taken only over preceeding days/months of current
@@ -31,7 +31,7 @@ contains
     real, dimension(lenval) :: valbuf
 
     ! function return variable
-    real, intent(out) :: running
+    real, intent(out) :: runningval
 
     !print*,'day, lenper ',inow, lenper
 
@@ -53,12 +53,12 @@ contains
 
     select case (method)
       case ("sum")
-        running = sum(valbuf((lenval-lenper+1):lenval))
+        runningval = sum(valbuf((lenval-lenper+1):lenval))
       case ("mean")
         if (present(prevval)) then
-          running = sum(valbuf((lenval-lenper+1):lenval))/lenper
+          runningval = sum(valbuf((lenval-lenper+1):lenval))/lenper
         else
-          running = sum(valbuf((lenval-lenper+1):lenval))/inow
+          runningval = sum(valbuf((lenval-lenper+1):lenval))/inow
         end if
       case default
         stop 'RUNNING: declare valid method.'
@@ -67,7 +67,7 @@ contains
   end function running
 
 
-  function daily2monthly( dval, method )
+  function daily2monthly( dval, method ) result( mval )
     !/////////////////////////////////////////////////////////////////////////
     ! Returns monthly values as a mean over daily values in each month.
     ! Arguments:
@@ -81,7 +81,7 @@ contains
     character(len=*), intent(in) :: method
 
     ! function return variable
-    real, dimension(nmonth), intent(out) :: daily2monthly
+    real, dimension(nmonth), intent(out) :: mval
 
     ! local variables
     integer :: moy
@@ -94,9 +94,9 @@ contains
     do moy=1,nmonth
       select case (method)
         case ("sum")
-          daily2monthly(moy) = sum( dval( istart(moy) : iend(moy) ))
+          mval(moy) = sum( dval( istart(moy) : iend(moy) ))
         case ("mean")
-          daily2monthly(moy) = sum( dval( istart(moy) : iend(moy) )) / ndaymonth(moy)
+          mval(moy) = sum( dval( istart(moy) : iend(moy) )) / ndaymonth(moy)
         case default
           stop 'DAILY2MONTHLY: select valid method (sum, mean)' 
       end select
@@ -107,7 +107,152 @@ contains
   end function daily2monthly
 
 
-  function monthly2daily( mval, method, monthistotal, mval_pvy, mval_nxy )
+  function monthly2daily_weather( mval_prec, mval_wet, prdaily_random ) result( dval_prec )
+    !--------------------------------------------------------------------
+    ! Distributes monthly total precipitation to days, given number of 
+    ! monthly wet days. Adopted from LPX.
+    !--------------------------------------------------------------------
+    use _params_core, only: nmonth, ndayyear, ndaymonth
+
+    ! arguments
+    real, dimension(nmonth), intent(in)     :: mval_prec  ! monthly precipitation totals
+    real, dimension(nmonth), intent(in)     :: mval_wet   ! monthly number of wet days
+    real, dimension(ndayyear,2), intent(in) :: prdaily_random ! random number seed
+
+    ! local vars
+    integer :: doy, moy, dm, iloop
+    integer :: daysum            !accumulated days at beginning of month
+    integer :: nwet              !# of generated wet days
+    
+    logical :: dry
+
+    real :: prob, vv, v1, rand
+    real, parameter :: c1 = 1.0
+    real, parameter :: c2 = 1.2
+    real, dimension(nmonth) :: prob_rain
+    real, dimension(nmonth) :: mprecave      !average precipitation on wet days
+    real, dimension(nmonth) :: mprecip       !acc. monthly generated precipitation
+
+    ! function return variable
+    real, dimension(ndayyear), intent(out) :: dval_prec
+
+    doy = 0
+    prob = 0.0
+    do moy=1,nmonth
+      prob_rain(moy) = 0.0
+      mprecave(moy) = 0.0
+      mprecip(moy) = 0.0
+    enddo
+    daysum = 0
+
+    write(0,*) 'A'
+
+    ! Initialize 2nd random number generator
+    call srand( int( prdaily_random(1,1) * 100000 ) )
+   
+    do moy=1,nmonth
+      if ( mval_wet(moy)<=1.0 ) mval_wet(moy) = 1.0
+      prob_rain(moy) = mval_wet(moy) / real( ndaymonth(moy) )
+      mprecave(moy) = mval_prec(moy) / mval_wet(moy)
+      dry = .TRUE.
+      iloop = 0
+
+      write(0,*) 'B'
+
+      do while( dry )
+        write(0,*) 'aa'
+        iloop = iloop + 1
+        nwet = 0
+        do dm=1,ndaymonth(moy)
+          write(0,*) 'a'
+          doy = doy + 1
+   
+          ! Transitional probabilities (Geng et al. 1986)
+          if (doy>1) then
+            if (dval_prec(doy-1) < 0.1) then
+              prob = 0.75 * prob_rain(moy)
+            else 
+              prob = 0.25 + (0.75 * prob_rain(moy))
+            endif
+          endif
+          write(0,*) 'b'
+        
+          ! Determine we randomly and use Krysanova / Cramer estimates of 
+          ! parameter values (c1,c2) for an exponential distribution
+          if (iloop==1) then 
+            write(0,*) 'getting prdaily_random'
+            vv = real(prdaily_random(doy,1))
+            write(0,*) 'vv', vv
+          else
+            write(0,*) 'calling rand'
+            ! xxx problem: rand() generates a random number that leads to floating point exception
+            vv = rand()
+            write(0,*) 'vv', vv
+          endif
+          write(0,*) 'c'
+          write(0,*) 'prob', prob
+          if (vv>prob) then
+            write(0,*) 'd1'
+            dval_prec(doy) = 0.0
+          else
+            write(0,*) 'c1'
+            nwet = nwet + 1
+            write(0,*) 'c2'
+            v1 = real( prdaily_random(doy,2) )
+            write(0,*) 'c3'
+            dval_prec(doy) = ((-log(v1)) ** c2) * mprecave(moy) * c1 
+            write(0,*) 'c4'
+            if (dval_prec(doy) < 0.1) dval_prec(doy) = 0.0
+            write(0,*) 'c5'
+          endif
+          write(0,*) 'd'
+          mprecip(moy) = mprecip(moy) + dval_prec(doy)
+        enddo
+    
+        ! If it never rained this month and mprec(moy)>0 and mval_wet(moy)>0, do
+        ! again
+        dry = (nwet==0 .and. iloop<50 .and. mval_prec(moy)>0.1)
+        if (iloop>50) then
+          write(0,*) 'Daily.F, prdaily: Warning stopped after 50 tries in cell'
+        endif
+
+        ! Reset counter to start of month          
+        if (dry) then
+          doy = doy-ndaymonth(moy)
+        endif
+
+      enddo !while
+      
+      write(0,*) 'C'
+
+
+      ! normalise generated precipitation by monthly CRU values
+      if ( moy > 1 ) daysum = daysum + ndaymonth(moy-1)
+      if ( mprecip(moy) < 1.0 ) mprecip(moy) = 1.0
+      do dm=1,ndaymonth(moy)
+        doy = daysum + dm
+        dval_prec(doy) = dval_prec(doy) * (mval_prec(moy) / mprecip(moy))
+        if ( dval_prec(doy) < 0.1 ) dval_prec(doy) = 0.0
+        ! dval_prec(doy) = mval_prec(moy) / ndaymonth(moy)  !no generator
+      enddo
+         
+      ! Alternative: equal distribution of rain for fixed number of wet days
+      ! prob = prob_rain(moy) + prob
+      ! if (prob.ge.1.0) then   
+      !   dval_prec(doy) = mprec(moy)
+      !   prob = prob-1.0
+      ! else
+      !   dval_prec(doy) = 0.0
+      !   prob = prob
+      ! endif
+                      
+    enddo                     !month 
+    
+
+  end function monthly2daily_weather
+
+
+  function monthly2daily( mval, method, monthistotal, mval_pvy, mval_nxy ) result( dval )
     !/////////////////////////////////////////////////////////////////////////
     ! Returns daily values based on monthly values, using a defined method.
     !-------------------------------------------------------------------------
@@ -116,22 +261,22 @@ contains
     ! arguments
     real, dimension(nmonth), intent(in) :: mval  ! vector containing 12 monthly values
     character(len=*), intent(in) :: method
-    logical, intent(in) :: monthistotal ! true of monthly values represent total of daily values in resp. month
+    logical, intent(in), optional :: monthistotal ! true of monthly values represent total of daily values in resp. month
     real, dimension(nmonth), intent(in), optional :: mval_pvy  ! vector containing 12 monthly values of the previous year
     real, dimension(nmonth), intent(in), optional :: mval_nxy  ! vector containing 12 monthly values of the next year
+
+    ! function return variable
+    real, dimension(ndayyear) :: dval
     
     ! local variables
-    integer :: moy, doy, today, dm
+    integer :: moy, doy, today, dm, iloop
     real :: dd, todaysval
 
     real, dimension(0:(nmonth+1))    :: mval_ext
     !integer, dimension(0:(nmonth+1)) :: middaymonth_ext
     real :: startt, endt, starttemp, endtemp, dt, d2t, d3t, dtold, &
       dtnew, lastmonthtemp, nextmonthtemp, deltatemp, polya, polyb, polyc
-    
-    ! function return variable
-    real, dimension(ndayyear) :: monthly2daily
-    
+        
     ! xxx implement select case also in '_rates' module
 
     select case (method)
@@ -174,7 +319,7 @@ contains
             else
               today = doy-ndayyear
             endif
-            monthly2daily(today) = todaysval
+            dval(today) = todaysval
             todaysval = todaysval + dd
           enddo
         enddo
@@ -184,7 +329,7 @@ contains
           do moy=1,nmonth
             do dm=1,ndaymonth(moy)
               doy = doy+1
-              monthly2daily(doy) = monthly2daily(doy) / real(ndaymonth(moy))
+              dval(doy) = dval(doy) / real(ndaymonth(moy))
             enddo
           enddo
         endif
@@ -196,13 +341,13 @@ contains
         !    doy=doy+1
         !    if (doy>middaymonth(moy)) then
         !      ! interpolate to next month
-        !      monthly2daily(doy) = mval_ext(moy) + (doy-middaymonth_ext(moy))/ndaymonth_ext(moy) * (mval_ext(moy+1)-mval_ext(moy))
+        !      dval(doy) = mval_ext(moy) + (doy-middaymonth_ext(moy))/ndaymonth_ext(moy) * (mval_ext(moy+1)-mval_ext(moy))
         !    else if (doy<middaymonth(moy)) then
         !      ! interpolate to previous month
-        !      monthly2daily(doy) = mval_ext(moy-1) + (doy-middaymonth_ext(moy-1))/ndaymonth_ext(moy-1) * (mval_ext(moy)-mval_ext(moy-1))
+        !      dval(doy) = mval_ext(moy-1) + (doy-middaymonth_ext(moy-1))/ndaymonth_ext(moy-1) * (mval_ext(moy)-mval_ext(moy-1))
         !    else
         !      ! take value directly
-        !      monthly2daily(doy) = mval_ext(moy)
+        !      dval(doy) = mval_ext(moy)
         !    end if
         !  end do
         !end do
@@ -212,7 +357,7 @@ contains
         !  do moy=1,nmonth
         !    do doyofmonth=1,ndaymonth(moy)
         !      doy=doy+1
-        !      monthly2daily(doy)=monthly2daily(doy)/dble(ndaymonth(moy))
+        !      dval(doy)=dval(doy)/dble(ndaymonth(moy))
         !    enddo
         !  enddo
         !endif
@@ -272,10 +417,22 @@ contains
           ! Calculate daily values with the polynom function
           do dm=1,ndaymonth(moy)
             doy = doy + 1
-            monthly2daily(doy) = polya * real(doy)**2.0 + polyb * real(doy) + polyc
+            dval(doy) = polya * real(doy)**2.0 + polyb * real(doy) + polyc
           enddo
           lastmonthtemp = mval(moy)
         enddo
+
+      case( "uniform" )
+        !--------------------------------------------------------------------
+        ! Each day in month has the same (monthly) value
+        !--------------------------------------------------------------------!      
+        doy=0
+        do moy=1,nmonth
+          do dm=1,ndaymonth(moy)
+            doy=doy+1
+            dval(doy) = mval(moy)
+          end do
+        end do
 
       case default
 
@@ -375,19 +532,19 @@ contains
      realyear_decimal = real(realyear) + real(day)/real(ndayyear)
     endif
 
-    open(20, file=filename, status='old',  form='formatted', err=888)
+    open(20, file='./input/'//filename, status='old',  form='formatted', err=888)
 
     if (present(day)) then
      ! find corresponding day in first column and read 3 values on this line
      read(20, 100, err=999) (tmp(l), l=1,3)  
-     do while (abs(realyear_decimal-tmp(1)).gt.1.0d-8)
+     do while (abs(realyear_decimal-tmp(1))>1.0d-8)
        read(20, 100, err=999) (tmp(l), l=1,3)
      enddo
 
     else
      ! find corresponding year in first column and read 3 values on this line
      read(20, 100, err=999) (tmp(l), l=1,3)  
-     do while (abs(realyear-tmp(1)).gt.1.0d-8)
+     do while (abs(realyear-tmp(1))>1.0d-8)
        read(20, 100, err=999) (tmp(l), l=1,3)
      enddo
 
@@ -560,7 +717,7 @@ contains
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
     9    read(filehandle,12,end=10)readname,readvalue
-    if (trim(readname).eq.paraname) then
+    if (trim(readname)==paraname) then
       read(readvalue,*) paravalue
       goto 11
     else
@@ -600,7 +757,7 @@ contains
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
     9    read(filehandle,12,end=10)readname,readvalue
-    if (trim(readname).eq.paraname) then
+    if (trim(readname)==paraname) then
       read(readvalue,*) paravalue
       goto 11
     else
@@ -641,7 +798,7 @@ contains
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
     9    read(filehandle,12,end=10)readname,readvalue
-    if (trim(readname).eq.paraname) then
+    if (trim(readname)==paraname) then
       read(readvalue,*) paravalue
       goto 11
     else
@@ -678,10 +835,10 @@ contains
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
     9    read(filehandle,12,end=10)readname,readvalue
-    if (trim(readname).eq.paraname) then
+    if (trim(readname)==paraname) then
       ! Strip leading and trailing whitespace from readvalue
       i=1
-      do while (readvalue(i:i).eq.' ' .and. i.lt.len(readvalue))
+      do while (readvalue(i:i)==' ' .and. i.lt.len(readvalue))
         i=i+1
       enddo
       paravalue = trim(readvalue(i:))
@@ -718,7 +875,7 @@ contains
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
     9    read(filehandle,12,end=10)readname,readvalue
-    if (trim(readname).eq.paraname) then
+    if (trim(readname)==paraname) then
       read(readvalue,*) paravalue
       goto 11
     else
@@ -757,7 +914,7 @@ contains
  !          filehandle = 111
  !          open(filehandle,status='old',err=19,file=filename)
  ! 9        read(filehandle,12,end=10)readname,readvalue
- !          if (trim(readname).eq.paraname) then
+ !          if (trim(readname)==paraname) then
  !             read(readvalue,*) paravalue
  !             goto 11
  !          else
@@ -794,7 +951,7 @@ contains
  !          filehandle = 111
  !          open(filehandle,status='old',err=19,file=filename)
  ! 9        read(filehandle,12,end=10)readname,readvalue
- !          if (trim(readname).eq.paraname) then
+ !          if (trim(readname)==paraname) then
  !             read(readvalue,*) paravalue
  !             goto 11
  !          else
@@ -831,7 +988,7 @@ contains
  !          filehandle = 111
  !          open(filehandle,status='old',err=19,file=filename)
  ! 9        read(filehandle,12,end=10)readname,readvalue
- !          if (trim(readname).eq.paraname) then
+ !          if (trim(readname)==paraname) then
  !             read(readvalue,*) paravalue
  !             goto 11
  !          else
@@ -870,10 +1027,10 @@ contains
  !          filehandle = 111
  !          open(filehandle,status='old',err=19,file=filename)
  ! 9        read(filehandle,12,end=10)readname,readvalue
- !          if (trim(readname).eq.paraname) then
+ !          if (trim(readname)==paraname) then
  !             ! Strip leading and trailing whitespace from readvalue
  !             i=1
- !             do while (readvalue(i:i).eq.' ' .and. i.lt.len(readvalue))
+ !             do while (readvalue(i:i)==' ' .and. i.lt.len(readvalue))
  !                i=i+1
  !             enddo
  !             paravalue = trim(readvalue(i:))
@@ -897,122 +1054,6 @@ contains
  !          end
 
 
-  !  function monthly2daily_precip( mval_prec, mval_wet )!
-
-  !    use _params_core, only: nmonth, ndayyear
-
-  !    ! arguments
-  !    real, dimension(nmonth), intent(in) :: mval_prec  ! monthly precipitation totals
-  !    real, dimension(nmonth), intent(in) :: mval_wet   ! monthly number of wet days
-
-  !    ! local variables
-  !    integer :: dm,day,d,m
-  !    integer :: daysum            !accumulated days at beginning of month
-  !    
-  !    real :: prob, vv, v1, random
-  !    real, parameter :: c1 = 1.0
-  !    real, parameter :: c2 = 1.2
-  !    real, dimension(nmonth) :: prob_rain
-  !    real, dimension(nmonth) :: mprecave     !average precipitation on wet days
-  !    real, dimension(nmonth) :: mprecip      !acc. monthly generated precipitation
-  !    real, dimension(ndayyear) :: dval_prec_save
-
-  !    ! function return variable
-  !    real, dimension(ndayyear), intent(out) :: dval_prec
-
-
-  !    day=0
-  !    prob=0.0
-  !    do m=1,nmonth
-  !      prob_rain(m)=0.0
-  !      mprecave(m)=0.0
-  !      mprecip(m)=0.0
-  !    enddo
-  !    daysum=0
-  !   
-  !    do m=1,nmonth
-  !      if(mval_wet(m)<=1.0) mval_wet(m)=1.0
-  !      prob_rain(m)=mval_wet(m)/real(ndaymonth(m))
-  !      mprecave(m)=mval_prec(m)/mval_wet(m)
-  !       
-  !      do dm=1,ndaymonth(m)
-  !        day=day+1
-  !   
-  !        ! Transitional probabilities (Geng et al. 1986)
-  !        if (day>1) then
-  !          if (dval_prec(day-1)<0.1) then
-  !            prob=0.75*prob_rain(m)
-  !          else 
-  !            prob=0.25+(0.75*prob_rain(m))
-  !          endif
-  !        endif
-  !        
-  !        ! Determine wet days randomly and use Krysanova/Cramer estimates of 
-  !        ! parameter values (c1,c2) for an exponential distribution
-  !        vv=real(prdaily_random(jpngr,day,1))
-  !        if(vv>prob) then
-  !          dval_prec(day)=0.0
-  !        else
-  !          v1=real(prdaily_random(jpngr,day,2))
-  !          dval_prec(day)=((-log(v1))**c2)*mprecave(m)*c1 
-  !          if(dval_prec(day)<0.1) dval_prec(day)=0.0
-  !        endif
-  !        mprecip(m)=mprecip(m)+dval_prec(day)
-  !        dval_prec_save(day)=dval_prec(day) !
-  !      enddo
-  !      
-  !      ! normalise generated precipitation by monthly values
-  !      if(m>1) daysum=daysum+ndaymonth(m-1)
-  !      if(mprecip(m)<1.0) mprecip(m)=1.0
-  !      do dm=1,ndaymonth(m)
-  !        day=daysum+dm
-  !        dval_prec(day)=dval_prec(day)*(mval_prec(m)/mprecip(m))
-  !        if (dval_prec(day)<0.1d0) dval_prec(day)=0.0
-  !      ! dval_prec(day)=mval_prec(m)/ndaymonth(m)  !no generator
-  !      enddo
-  !      
-  !    enddo                     !month 
-  !    
-  !    ! calculate monthly means after interpolation - not absolutely identical to input
-  !    day=0
-  !    do m=1,nmonth
-  !      mprecint(m)=0.0
-  !      do d=1,ndaymonth(m)
-  !        day = day + 1
-  !        mprecint(m)=mprecint(m)+dval_prec(day)!/dble(ndaymonth(m))
-  !      enddo
-  !    enddo
-  !          
-  !    return!
-
-  !  end function monthly2daily_precip!
-  !      
-  !  function random(k)!
-  !  
-  !    ! arguments
-  !    integer, dimension(4), intent(in) :: k
-  !    ! local variables
-  !    integer :: i
-
-  !    k(4)=3*k(4)+k(2)
-  !    k(3)=3*k(3)+k(1)
-  !    k(2)=3*k(2)
-  !    k(1)=3*k(1)
-  !    i=k(1)/1000
-  !    k(1)=k(1)-i*1000
-  !    k(2)=k(2)+i
-  !    i=k(2)/100
-  !    k(2)=k(2)-100*i
-  !    k(3)=k(3)+i
-  !    i=k(3)/1000
-  !    k(3)=k(3)-i*1000
-  !    k(4)=k(4)+i
-  !    i=k(4)/100
-  !    k(4)=k(4)-100*i
-  !    random=(((dble(k(1))*0.001d0+dble(k(2)))*0.01d0+dble(k(3))) * 0.001d0+dble(k(4)))*0.01d0
-  !    
-  !  end function random          
-      
 
   ! function icumsum( arr, seed )
   !   !/////////////////////////////////////////////////////////////////////////
