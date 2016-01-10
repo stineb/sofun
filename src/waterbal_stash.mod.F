@@ -73,6 +73,7 @@ module _waterbal
   real :: deet                                               ! daily EET (mm)
   real :: dpet                                               ! daily potential evapotranspiration, PET (mm)
   real, dimension(nlu) :: dcpa                               ! daily Cramer-Prentice-Alpha (AET/EET)
+  ! real, dimension(nlu) :: dncpa                              ! daily normalised Cramer-Prentice-Alpha (AET/EET) {0,1}
   real, dimension(nlu) :: wc                                 ! daily condensation (mm)
 
   ! DAILY OUTPUT VARIABLES

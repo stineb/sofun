@@ -51,14 +51,16 @@ module _ntransform
 
   ! OUTPUT VARIABLES
   ! daily
-  real, dimension(nlu,ndayyear,maxgrid) :: outdnloss     ! daily mean C cost of N uptake (gC/gN) 
-  real, dimension(nlu,ndayyear,maxgrid) :: outddenitr    ! daily mean C cost of N uptake (gC/gN) 
-  real, dimension(nlu,ndayyear,maxgrid) :: outdnitr      ! daily mean C cost of N uptake (gC/gN) 
-  real, dimension(nlu,ndayyear,maxgrid) :: outdnvol      ! daily mean C cost of N uptake (gC/gN) 
-  real, dimension(nlu,ndayyear,maxgrid) :: outdnleach    ! daily mean C cost of N uptake (gC/gN) 
+  real, dimension(nlu,ndayyear,maxgrid) :: outdnloss     ! daily total N loss (gaseous+leacing) (gN/m2/d)
+  real, dimension(nlu,ndayyear,maxgrid) :: outddenitr    ! daily amount of N denitrified (gN/m2/d)
+  real, dimension(nlu,ndayyear,maxgrid) :: outdnitr      ! daily amount of N nitrified (gN/m2/d)
+  real, dimension(nlu,ndayyear,maxgrid) :: outdnvol      ! daily amount of N volatilised (gN/m2/d)
+  real, dimension(nlu,ndayyear,maxgrid) :: outdnleach    ! daily amount of N leached (gN/m2/d)
+  real, dimension(nlu,ndayyear,maxgrid) :: outdn2o       ! daily N2O emitted (gN/m2/d)
 
   ! annual
-  real, dimension(nlu,maxgrid) :: outanloss     ! daily mean C cost of N uptake (gC/gN)   
+  real, dimension(nlu,maxgrid) :: outanloss              ! annual total N loss (gaseous+leacing) (gN/m2/yr)
+  real, dimension(nlu,maxgrid) :: outan2o                ! annual N2O emitted (gaseous+leacing) (gN/m2/yr)
 
 contains
 
@@ -175,7 +177,7 @@ contains
       !-----------------------------------------------------------------------
       ! Reduce NO3 by fraction dnleach(lu)
       !------------------------------------------------------------------
-      dnleach(lu) = no3 * dro(lu)/dwtot(lu,jpngr)
+      dnleach(lu) = no3 * dro(lu) / dwtot(lu,jpngr)
       no3         = no3 - dnleach(lu)
       dnloss(lu)  = dnloss(lu) + dnleach(lu)
 
@@ -188,12 +190,15 @@ contains
       
       ! wet (anaerobic) fraction
       !------------------------------------------------------------------
+
       nh4_w = dncpa(lu)/3.3 * nh4
       no3_w = dncpa(lu)/3.3 * no3
       no2_w = dncpa(lu)/3.3 * no2(lu,jpngr)
 
       doc_w = ddoc(lu)*dncpa(lu)/3.3
       
+      ! write(0,*) 'mo, dm, ddoc(lu) ', mo, dm, ddoc(lu)
+
       ! dry (aerobic) fraction
       !------------------------------------------------------------------
       nh4_d = (1.0-dncpa(lu)/3.3) * nh4
@@ -271,7 +276,9 @@ contains
       !------------------------------------------------------------------
       ! n2o_inc = 0.018d0*ftemp_ninorg*(1.01d0-0.21d0*dncpa(lu))*n2_inc  !Colin says 0.018 was used here. Code I got had 0.015
       ! Factor reduced from 1.8% to 1.2% to get ~6.5 TgN/yr N2O emissions
-      n2o_inc = DNITR2N2O*ftemp_ninorg*(1.01-0.21*dncpa(lu))*n2_inc
+      ! n2o_inc = DNITR2N2O*ftemp_ninorg*(1.01-0.21*dncpa(lu))*n2_inc
+      ! XXX try: Changed this to from 0.21 to 1.0 in order to get plausible results
+      n2o_inc = DNITR2N2O*ftemp_ninorg*(1.01-0.8*dncpa)*n2_inc
       n2_inc  = n2_inc - n2o_inc
       
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr) + n2o_inc
@@ -321,7 +328,7 @@ contains
       !///////////////////////////////////////////////////////////////////////
       ! Diffusion of NO, N2O and N2 from the soil (ntransform.cpp:281)
       !------------------------------------------------------------------
-      ! reference temperature: 25°C
+      ! reference temperature: 25°C. Corresponds to Eq.1, Tab.10, Xu-Ri & Prentice, 2008
       ftemp_ninorg = min( 1.0, ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=25.0 ))
 
       ! Nitrification _fluxes
@@ -417,7 +424,6 @@ contains
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------
-
     ! DAILY TOTAL N LOSS (gN/m2/d)
     filnam=trim(prefix)//'.d.nloss.out'
     open(500,file=filnam,err=888,status='unknown')
@@ -438,15 +444,20 @@ contains
     filnam=trim(prefix)//'.d.nleach.out'
     open(504,file=filnam,err=888,status='unknown')
 
+    ! DAILY N2O EMISSIONS (gN/m2/d)
+    filnam=trim(prefix)//'.d.n2o.out'
+    open(505,file=filnam,err=888,status='unknown')
 
     !----------------------------------------------------------------
     ! ANNUAL OUTPUT
     !----------------------------------------------------------------
-
     ! ANNUAL TOTAL N LOSS (gN/m2/yr)
     filnam=trim(prefix)//'.a.nloss.out'
     open(550,file=filnam,err=888,status='unknown')
 
+    ! ANNUAL N2O EMISSIONS (gN/m2/yr)
+    filnam=trim(prefix)//'.a.n2o.out'
+    open(551,file=filnam,err=888,status='unknown')
 
     return
 
@@ -464,8 +475,10 @@ contains
     outdnitr(:,:,:)   = 0.0
     outdnvol(:,:,:)   = 0.0
     outdnleach(:,:,:) = 0.0
-
-    outanloss(:,:)  = 0.0
+    outdn2o(:,:,:)    = 0.0
+    
+    outanloss(:,:)    = 0.0
+    outan2o(:,:)      = 0.0
 
   end subroutine initoutput_ntransform
 
@@ -488,13 +501,14 @@ contains
     outdnitr(:,doy,jpngr)   = dnitr(:)
     outdnvol(:,doy,jpngr)   = dnvol(:)
     outdnleach(:,doy,jpngr) = dnleach(:)
+    outdn2o(:,doy,jpngr)    = dn2o(:)
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
     outanloss(:,jpngr)    = outanloss(:,jpngr) + dnloss(:)
-
+    outan2o(:,jpngr)      = outan2o(:,jpngr) + dn2o(:)
 
   end subroutine getout_daily_ntransform
 
@@ -537,6 +551,7 @@ contains
         write(502,999) itime, sum(outddenitr(:,myday,myjpngr))
         write(503,999) itime, sum(outdnitr(:,myday,myjpngr))
         write(504,999) itime, sum(outdnleach(:,myday,myjpngr))
+        write(505,999) itime, sum(outdn2o(:,myday,myjpngr))
 
       end do
     end if
@@ -549,6 +564,7 @@ contains
     itime = real(year) + real(firstyeartrend) - real(spinupyears)
 
     write(550,999) itime, sum(outanloss(:,myjpngr))
+    write(551,999) itime, sum(outan2o(:,myjpngr))
 
     return
     
