@@ -21,7 +21,7 @@ module _waterbal
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: ndayyear, nmonth, nlu, maxgrid
-  use _vars_core, only: daet, dncpa, dro
+  use _vars_core, only: daet, dro, dwfps
 
   implicit none
 
@@ -73,7 +73,7 @@ module _waterbal
   real :: deet                                               ! daily EET (mm)
   real :: dpet                                               ! daily potential evapotranspiration, PET (mm)
   real, dimension(nlu) :: dcpa                               ! daily Cramer-Prentice-Alpha (AET/EET)
-  ! real, dimension(nlu) :: dncpa                              ! daily normalised Cramer-Prentice-Alpha (AET/EET) {0,1}
+  real, dimension(nlu) :: dncpa                              ! daily normalised Cramer-Prentice-Alpha (AET/EET) {0,1}
   real, dimension(nlu) :: wc                                 ! daily condensation (mm)
 
   ! DAILY OUTPUT VARIABLES
@@ -146,8 +146,8 @@ contains
         ! Bucket is full 
         ! * set soil moisture to capacity
         ! * add remaining water to monthly runoff total
-        dro(lu) = dwtot(lu,jpngr)
-        dro(lu) = dro(lu) - kWm
+        dro(lu)         = dwtot(lu,jpngr)
+        dro(lu)         = dro(lu) - kWm
         dwtot(lu,jpngr) = kWm
 
       elseif (dwtot(lu,jpngr)<0.0) then
@@ -161,6 +161,9 @@ contains
         dro(lu) = 0.0
 
       end if
+
+      ! water-filled pore space
+      dwfps(lu) = dwtot(lu,jpngr) / kwm
 
     end do
 

@@ -169,7 +169,7 @@ program main
   write(0,*) '--------------END OF SIMULATION---------------'
 
 100  format(A,I6,I6,F8.2)
-888  write(0,*) 'error opening file'
+! 888  write(0,*) 'error opening file'
 777  format (F20.8,F20.8)
 
 end program

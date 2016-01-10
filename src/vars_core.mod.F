@@ -100,6 +100,7 @@ module _vars_core
   real, dimension(nlu)             :: dncpa           ! daily normalised Cramer-Prentice-Alpha (AET/EET) {0,1}
   real, dimension(nlu)             :: dro             ! daily runoff [mm]
   real, dimension(npft)            :: dtransp         ! daily transpiration [mm]
+  real, dimension(nlu)             :: dwfps           ! water-filled pore space (fraction of water-holding capacity)
 
   real, dimension(nlu)             :: ddoc            ! surrogate for dissolved organic carbon
 
