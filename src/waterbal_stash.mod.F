@@ -21,7 +21,7 @@ module _waterbal
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: ndayyear, nmonth, nlu, maxgrid
-  use _vars_core, only: daet, dro, dwfps
+  use _vars_core, only: daet, dro, dwfps, dncpa
 
   implicit none
 
@@ -73,7 +73,7 @@ module _waterbal
   real :: deet                                               ! daily EET (mm)
   real :: dpet                                               ! daily potential evapotranspiration, PET (mm)
   real, dimension(nlu) :: dcpa                               ! daily Cramer-Prentice-Alpha (AET/EET)
-  real, dimension(nlu) :: dncpa                              ! daily normalised Cramer-Prentice-Alpha (AET/EET) {0,1}
+  ! real, dimension(nlu) :: dncpa                              ! daily normalised Cramer-Prentice-Alpha (AET/EET) {0,1}
   real, dimension(nlu) :: wc                                 ! daily condensation (mm)
 
   ! DAILY OUTPUT VARIABLES

@@ -548,7 +548,7 @@ contains
     !-------------------------------------------------------------------------
     use _params_core, only: ndayyear, npft, nlu
     use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
-      daily_out_startyr, outyear
+      daily_out_endyr, outyear
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
