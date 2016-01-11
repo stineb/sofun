@@ -108,6 +108,8 @@ contains
     
     real          :: doc_d                                          ! aerobic _pools
 
+    ! xxx try
+    real :: soilmoist
 
     !///////////////////////////////////////////////////////////////////////
     ! INITIALIZATION 
@@ -141,6 +143,9 @@ contains
     ! LOOP OVER GRIDCELL LAND UNITS
     do lu=1,nlu
 
+      ! xxx try
+      soilmoist = dncpa(lu)
+
       !-------------------------------------------------------------------------
       ! Add N deposition to inorganic pool
       !-------------------------------------------------------------------------
@@ -167,7 +172,7 @@ contains
       !-----------------------------------------------------------------------
       ! use mw1 for monthly timestep and wpool for daily, because this is updated daily
       ! XXX nh3max is not considered in the equations presented in the paper! XXX
-      dnvol(lu)  = ( nh3max*(dncpa(lu)*(1.0-dncpa(lu))) * ftemp_ninorg*ftemp_ninorg*exp(2.0*(ph_soil-10.0)) ) * nh4
+      dnvol(lu)  = ( nh3max*(soilmoist*(1.0-soilmoist)) * ftemp_ninorg*ftemp_ninorg*exp(2.0*(ph_soil-10.0)) ) * nh4
       nh4        = nh4 - dnvol(lu)
       dnloss(lu) = dnloss(lu) + dnvol(lu)
 
@@ -190,21 +195,21 @@ contains
       
       ! wet (anaerobic) fraction
       !------------------------------------------------------------------
-      nh4_w = dncpa(lu)/3.3 * nh4
-      no3_w = dncpa(lu)/3.3 * no3
-      no2_w = dncpa(lu)/3.3 * no2(lu,jpngr)
+      nh4_w = soilmoist/3.3 * nh4
+      no3_w = soilmoist/3.3 * no3
+      no2_w = soilmoist/3.3 * no2(lu,jpngr)
 
-      doc_w = ddoc(lu)*dncpa(lu)/3.3
+      doc_w = ddoc(lu)*soilmoist/3.3
       
       ! write(0,*) 'mo, dm, ddoc(lu) ', mo, dm, ddoc(lu)
 
       ! dry (aerobic) fraction
       !------------------------------------------------------------------
-      nh4_d = (1.0-dncpa(lu)/3.3) * nh4
-      no3_d = (1.0-dncpa(lu)/3.3) * no3
-      no2_d = (1.0-dncpa(lu)/3.3) * no2(lu,jpngr)
+      nh4_d = (1.0-soilmoist/3.3) * nh4
+      no3_d = (1.0-soilmoist/3.3) * no3
+      no2_d = (1.0-soilmoist/3.3) * no2(lu,jpngr)
 
-      doc_d = ddoc(lu)*(1.0-dncpa(lu)/3.3)
+      doc_d = ddoc(lu)*(1.0-soilmoist/3.3)
 
     
       !///////////////////////////////////////////////////////////////////////
@@ -237,6 +242,7 @@ contains
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr) + n2o_inc
       no3_d           = no3_d + no3_inc
       
+      dn2o(lu) = n2o_inc
       
       !///////////////////////////////////////////////////////////////////////
       ! DENITRIFICATION (ntransform.cpp:177) in anaerobic microsites
@@ -273,21 +279,22 @@ contains
       
       ! N2O from denitrification (Eq.6, Tab.9, XP08)
       !------------------------------------------------------------------
-      ! n2o_inc = 0.018d0*ftemp_ninorg*(1.01d0-0.21d0*dncpa(lu))*n2_inc  !Colin says 0.018 was used here. Code I got had 0.015
+      ! n2o_inc = 0.018d0*ftemp_ninorg*(1.01d0-0.21d0*soilmoist)*n2_inc  !Colin says 0.018 was used here. Code I got had 0.015
       ! Factor reduced from 1.8% to 1.2% to get ~6.5 TgN/yr N2O emissions
-      ! n2o_inc = DNITR2N2O*ftemp_ninorg*(1.01-0.21*dncpa(lu))*n2_inc
+      ! n2o_inc = DNITR2N2O*ftemp_ninorg*(1.01-0.21*soilmoist)*n2_inc
       ! XXX try: Changed this to from 0.21 to 1.0 in order to get plausible results
-      n2o_inc = DNITR2N2O*ftemp_ninorg*(1.01-0.8*dncpa(lu))*n2_inc
+      n2o_inc = DNITR2N2O*ftemp_ninorg*(1.01-0.8*soilmoist)*n2_inc
       n2_inc  = n2_inc - n2o_inc
       
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr) + n2o_inc
+      dn2o(lu) = dn2o(lu) + n2o_inc
 
 
       ! NO from denitrification (Eq.5, Tab.9, XP08)
       !------------------------------------------------------------------
-      ! no_inc = 0.0001*ftemp_ninorg*(1.01-0.21*dncpa(lu))*n2_inc
+      ! no_inc = 0.0001*ftemp_ninorg*(1.01-0.21*soilmoist)*n2_inc
       ! XXX try: Changed this to from 0.21 to 1.0 in order to get plausible results
-      no_inc = 0.0001*ftemp_ninorg*(1.01-0.8*dncpa(lu))*n2_inc
+      no_inc = 0.0001*ftemp_ninorg*(1.01-0.8*soilmoist)*n2_inc
       n2_inc = n2_inc - no_inc
 
       no_w(lu,jpngr) = no_w(lu,jpngr) + no_inc
@@ -334,28 +341,29 @@ contains
 
       ! Nitrification _fluxes
       !------------------------------------------------------------------
-      tmp = ftemp_ninorg*(1.0-dncpa(lu))*no_d(lu,jpngr)
+      tmp = ftemp_ninorg*(1.0-soilmoist)*no_d(lu,jpngr)
       no_d(lu,jpngr) = no_d(lu,jpngr)-tmp
       
-      tmp = ftemp_ninorg*(1.0-dncpa(lu))*n2o_d(lu,jpngr)
+      tmp = ftemp_ninorg*(1.0-soilmoist)*n2o_d(lu,jpngr)
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr)-tmp
 
       
       ! Denitrification _fluxes
       !------------------------------------------------------------------
-      tmp = ftemp_ninorg*(1.0-dncpa(lu))*no_w(lu,jpngr)
+      tmp = ftemp_ninorg*(1.0-soilmoist)*no_w(lu,jpngr)
       no_w(lu,jpngr) = no_w(lu,jpngr)-tmp
       
-      tmp = ftemp_ninorg*(1.0-dncpa(lu))*n2o_w(lu,jpngr)
+      tmp = ftemp_ninorg*(1.0-soilmoist)*n2o_w(lu,jpngr)
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr)-tmp
                  
 
-      ! Total _fluxes (XXX should be equal to sum of nitrification and
-      ! denitrification _fluxes. XXX)
-      !------------------------------------------------------------------
-      dno(lu) = ftemp_ninorg*(1.0-dncpa(lu))*no
-      dn2o(lu)= ftemp_ninorg*(1.0-dncpa(lu))*n2o
-      dn2(lu) = ftemp_ninorg*(1.0-dncpa(lu))*n2
+      ! xxx try: soilmoist was always too high therefore no n2o escaped
+      ! ! Total _fluxes (XXX should be equal to sum of nitrification and
+      ! ! denitrification _fluxes. XXX)
+      ! !------------------------------------------------------------------
+      ! dno(lu) = ftemp_ninorg*(1.0-soilmoist)*no
+      ! dn2o(lu)= ftemp_ninorg*(1.0-soilmoist)*n2o
+      ! dn2(lu) = ftemp_ninorg*(1.0-soilmoist)*n2
 
       ! write(0,*) 'n2o ', n2o
 
