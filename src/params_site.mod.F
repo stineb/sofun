@@ -4,13 +4,14 @@ module _params_site
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _sofunutils, only: getparreal, getparlogical
   use _params_siml, only: sitename
+  use _params_core, only: maxgrid
 
   implicit none
 
   real    :: lon_site, lat_site, elv_site
   logical :: lTeBS, lGrC3
+  integer, dimension(maxgrid) :: soilcode_field
 
 contains
 
@@ -18,6 +19,8 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR reads site-specific parameters from <sitename>.parameter
     !----------------------------------------------------------------
+    use _sofunutils, only: getparreal, getparlogical, getparint
+  
     write(0,*) 'reading site parameter file ', sitename//".parameter ..."
 
     lon_site = getparreal( sitename//".parameter", 'longitude' )
@@ -28,6 +31,9 @@ contains
     ! as well as in getpar_modl()
     lTeBS = getparlogical( sitename//".parameter", 'lTeBS' )
     lGrC3 = getparlogical( sitename//".parameter", 'lGrC3' )
+
+    ! dimension length (maxgrid) is 1 for site-scale simulations
+    soilcode_field(1) = getparint( sitename//".parameter", 'soilcode' )
 
   end subroutine getpar_site
 

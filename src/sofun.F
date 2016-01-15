@@ -11,8 +11,8 @@ program main
   use _params_siml
   use _params_site
   use _forcing_siterun
-  use input_site
   use gridvars_siterun
+  use _params_soil
   ! use _vars_core
 
   implicit none
@@ -22,9 +22,10 @@ program main
   real :: c_uptake     ! annual net global C uptake by biosphere
 
   ! local variables
-  real                              :: pco2
-  real, dimension(ndayyear,maxgrid) :: dndep_field
-  real, dimension(nlu,maxgrid)      :: lu_area
+  real                                     :: pco2
+  real, dimension(ndayyear,maxgrid)        :: dndep_field
+  real, dimension(nlu,maxgrid)             :: lu_area
+  type(paramtype_soil), dimension(maxgrid) :: params_soil_field
 
   ! xxx try
   integer :: day
@@ -32,36 +33,37 @@ program main
   type( outtype_steering ) :: out_steering
   ! type( outtype_climate )  :: out_climate
 
-  ! This is necessary because of keyword-specification of arguments to 'biosphere'
-  interface
-    subroutine biosphere( year, lon, lat, elv, lu_area, pco2 &
-      , dtemp_field, dprec_field, dfsun_field, dvpd_field, dndep_field &
-      , c_uptake &
-      , dgpp_data &
-      , fpc_grid_data &
-      )
+  ! ! This is necessary because of keyword-specification of arguments to 'biosphere'
+  ! interface
+  !   subroutine biosphere( year, lon, lat, elv, lu_area, pco2 &
+  !     , dtemp_field, dprec_field, dfsun_field, dvpd_field, dndep_field &
+  !     , c_uptake &
+  !     , dgpp_data &
+  !     , fpc_grid_data &
+  !     )
 
-    ! required arguments
-    integer, intent(in)                   :: year       ! simulation year
-    real, intent(in), dimension(maxgrid)  :: lon        ! longitude vector/field (degrees E)              
-    real, intent(in), dimension(maxgrid)  :: lat        ! latitude vector/field (degrees N)             
-    real, intent(in), dimension(maxgrid)  :: elv        ! elevation (altitude) vector/field (m above sea level)                  
-    real, dimension(3)                    :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
-    real, intent(in)                      :: pco2
-    real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
-    real, intent(in), dimension(ndayyear,maxgrid) :: dprec_field
-    real, intent(in), dimension(ndayyear,maxgrid) :: dfsun_field
-    real, intent(in), dimension(ndayyear,maxgrid) :: dvpd_field
-    real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
-    real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
-    logical                               :: spinup
+  !   ! required arguments
+  !   integer, intent(in)                   :: year       ! simulation year
+  !   real, intent(in), dimension(maxgrid)  :: lon        ! longitude vector/field (degrees E)              
+  !   real, intent(in), dimension(maxgrid)  :: lat        ! latitude vector/field (degrees N)             
+  !   real, intent(in), dimension(maxgrid)  :: elv        ! elevation (altitude) vector/field (m above sea level)                  
+  !   type(paramtype_soil), intent(in), dimension(maxgrid) :: params_soil
+  !   real, dimension(3)                    :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
+  !   real, intent(in)                      :: pco2
+  !   real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
+  !   real, intent(in), dimension(ndayyear,maxgrid) :: dprec_field
+  !   real, intent(in), dimension(ndayyear,maxgrid) :: dfsun_field
+  !   real, intent(in), dimension(ndayyear,maxgrid) :: dvpd_field
+  !   real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
+  !   real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
+  !   logical                               :: spinup
 
-    ! optional arguments
-    real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data       ! for runs with prescribed GPP
-    real, intent(in), dimension(nlu,maxgrid), optional   :: fpc_grid_data   ! for runs with prescribed GPP
+  !   ! optional arguments
+  !   real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data       ! for runs with prescribed GPP
+  !   real, intent(in), dimension(nlu,maxgrid), optional   :: fpc_grid_data   ! for runs with prescribed GPP
 
-    end subroutine biosphere
-  end interface
+  !   end subroutine biosphere
+  ! end interface
 
   !----------------------------------------------------------------
   ! READ RUNNAME FROM STANDARD INPUT
@@ -92,7 +94,12 @@ program main
   ! 'sitename' is global variable
   !----------------------------------------------------------------
   call getpar_site
-  call getgrid
+
+  ! !----------------------------------------------------------------
+  ! ! GET GRID INFORMATION
+  ! ! longitude, latitude, elevation
+  ! !----------------------------------------------------------------
+  ! call getgrid
 
   ! Get soil parameters (if not defined in <sitename>.parameter)
   !call getsoilpar
@@ -101,12 +108,9 @@ program main
   !call luparameters
 
   !----------------------------------------------------------------
-  ! GET MODEL INPUT DATA
-  ! Prescribe variables instead of calculating these parts online
-  ! This reads daily values for each day of the transient simulation
+  ! GET SOIL PARAMETERS
   !----------------------------------------------------------------
-  call getinput_site
-
+  params_soil_field(:) = getsoil_field( soilcode_field(:) )
 
   ! LOOP THROUGH YEARS
   write(0,*) '------------START OF SIMULATION-------------'
@@ -154,14 +158,11 @@ program main
     ! containing data for each day of this year.
     !----------------------------------------------------------------
     write(0,100) 'sim. year, year AD, pco2', year, out_steering%forcingyear, pco2
-    call biosphere( year, lon, lat, elv, lu_area, pco2 &
+    call biosphere( year, lon, lat, elv &
+      , params_soil_field, lu_area, pco2 &
       , dtemp_field, dprec_field &
       , dfsun_field, dvpd_field, dndep_field &
       , c_uptake &
-#if _prescr_gpp_site
-      , dgpp_data=dgpp_data(transyear,:,:) &  ! optional argument
-#endif
-      , fpc_grid_data=fpc_grid_data &
       ) 
 
   enddo

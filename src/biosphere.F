@@ -1,4 +1,4 @@
-subroutine biosphere( year, lon, lat, elv, lu_area, pco2 &
+subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
   , dtemp_field, dprec_field, dfsun_field, dvpd_field, dndep_field &
   , c_uptake &
   , dgpp_data &
@@ -29,6 +29,7 @@ subroutine biosphere( year, lon, lat, elv, lu_area, pco2 &
   use _nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake, getpar_modl_nuptake
   use _ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform, getpar_modl_ntransform
   use _littersom, only: littersom, initio_littersom, initoutput_littersom, getout_annual_littersom, getpar_modl_littersom !, getout_daily_littersom
+  use _params_soil, only: paramtype_soil
 
   use _waterbal, only: writeout_ascii_waterbal
 
@@ -57,6 +58,7 @@ subroutine biosphere( year, lon, lat, elv, lu_area, pco2 &
   real, intent(in), dimension(maxgrid)          :: lon        ! longitude vector/field (degrees E)              
   real, intent(in), dimension(maxgrid)          :: lat        ! latitude vector/field (degrees N)             
   real, intent(in), dimension(maxgrid)          :: elv        ! elevation (altitude) vector/field (m above sea level)                  
+  type(paramtype_soil), intent(in), dimension(maxgrid) :: params_soil_field
   real, dimension(3)                            :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
   real, intent(in)                              :: pco2
   real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
