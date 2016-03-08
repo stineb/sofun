@@ -122,7 +122,7 @@ contains
       if (prescr_monthly_fapar) then
         ! create 4-digit string for year  
         write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-        fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_modis_CH-Oe1_'//faparyear_char//'.txt' )
+        fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_modis_'//trim(sitename)//'_'//faparyear_char//'.txt' )
       else
         fapar_field(:,jpngr) = dummy
       end if
@@ -158,11 +158,12 @@ contains
 
     ! PRESCRIBED DAILY CLIMATE (TEMP, PREC, FSUN) FOR ONE YEAR
     ! xxx deal with jpngr dimension only when using NetCDF
-    write(0,*) 'prescribe daily climate (temp, prec, fsun, vpd) ...'
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
+    write(0,*) 'prescribe daily climate (temp, prec, fsun, vpd) for ', trim(sitename), ' yr ', climateyear_char,'...'
+    
     dtemp_field(:,1) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt')
     dprec_field(:,1) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt')
     dfsun_field(:,1) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')

@@ -7,7 +7,6 @@ module _params_core
   !----------------------------------------------------------------
   implicit none
 
-  integer, parameter :: recycle = 5              ! length of standard recycling period
   integer, parameter :: ndayyear = 365           ! number of days in a year
   integer, parameter :: nmonth = 12              ! number of months in a year
   integer, parameter :: maxlen_runname = 30      ! maximum length of runname (arbitrary)

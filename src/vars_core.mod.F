@@ -212,6 +212,18 @@ contains
   end subroutine initglobal
 
 
+  subroutine initglobal_psoilphys()
+    !////////////////////////////////////////////////////////////////
+    ! Initialises all daily variables within derived type 'psoilphys'.
+    !----------------------------------------------------------------
+    psoilphys(:,:)%temp  = 0.0
+
+    ! xxx try
+    psoilphys(:,:)%wcont = 50.0 
+
+  end subroutine initglobal_psoilphys
+
+
   subroutine initpft( pft, jpngr )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of specified PFT on specified gridcell
@@ -317,18 +329,6 @@ contains
     soilphys(:)%ro    = 0.0
     soilphys(:)%sw    = 0.0
     soilphys(:)%wscal = 0.0
-
-  end subroutine initdaily_soilphys
-
-
-  subroutine initdaily_psoilphys()
-    !////////////////////////////////////////////////////////////////
-    ! Initialises all daily variables within derived type 'soilphys'.
-    !----------------------------------------------------------------
-    soilphys(:)%temp  = 0.0
-    
-    ! xxx try
-    soilphys(:)%wcont = 50.0 
 
   end subroutine initdaily_soilphys
 

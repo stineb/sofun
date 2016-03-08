@@ -54,7 +54,7 @@ endif
 
 # Check if FCOM is set
 ifeq ($(strip $(FCOM)),)
-$(error 'ERROR: Please select a configuration profile in the Makefile (e.g. PROFILE=gfor).')
+$(error 'ERROR. Select a valid configuration profile in the Makefile (e.g. PROFILE=gfor).')
 endif
 
 # Add flags for MPI parallelization (enable the following lines when the parallel_mpi feature is turned on)
@@ -68,6 +68,7 @@ endif
 
 # name of executable
 EXE = runsofun
+SPLASH_EXE = runsplash
 
 ARCHIVES= ./src/sofun.a
 # ARLPJ= ./lpj/lpj.a (archive names when compiling with different option)
@@ -90,18 +91,23 @@ debug:
 
 # including double precision flag
 dp: 
-	 $(MAKE) -C src
+	 $(MAKE) dp -C src
 	 $(FCOM) -o $(EXE) $(DPCOMPFLAGS) $(ARCHIVES)
 
 # code for debugging, including double precision flags:
 dpdebug: 
-	$(MAKE) debug -C src
+	$(MAKE) dpdebug -C src
 	$(FCOM) -o $(EXE) $(DPDEBUGFLAGS) $(ARCHIVES) #$(LIBS)
+
+# reduced model setup: only SPLASH
+splash: 
+	 $(MAKE) splash -C src
+	 $(FCOM) -o $(SPLASH_EXE) $(COMPFLAGS) $(ARCHIVES)
 
 # clean: remove exe and .o and .do files
 .PHONY: clean
 clean:
-	-rm $(EXE)
+	-rm $(EXE) $(SPLASH_EXE)
 	$(MAKE) clean -C src
 # include libraries when necessary
 #	$(MAKE) clean -C lpj/cdfcode

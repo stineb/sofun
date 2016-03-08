@@ -4,7 +4,6 @@ module _params_siml
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: recycle
   use _sofunutils, only: getparint, getparstring, getparlogical
 
   implicit none
@@ -13,6 +12,7 @@ module _params_siml
   integer :: spinupyears     ! number of spinup years
   integer :: nyeartrend      ! number of transient years
   integer :: firstyeartrend  ! year AD of first transient year
+  integer :: recycle         ! length of standard recycling period
   integer :: outyear         ! year AD written to output
   integer :: daily_out_startyr! first year where daily output is written
   integer :: daily_out_endyr ! last year where daily output is written
@@ -151,6 +151,7 @@ contains
     spinupyears          = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
     firstyeartrend       = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )
     nyeartrend           = getparint( 'run/'//runname//'.sofun.parameter', 'nyeartrend' )
+    recycle              = getparint( 'run/'//runname//'.sofun.parameter', 'recycle' )
     
     prescr_monthly_fapar = getparlogical( 'run/'//runname//'.sofun.parameter', 'prescr_monthly_fapar' )
     

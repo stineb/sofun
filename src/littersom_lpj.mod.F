@@ -72,10 +72,10 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use _params_core, only: npft, maxgrid, nmonth, nlu, recycle, ndayyear, &
+    use _params_core, only: npft, maxgrid, nmonth, nlu, ndayyear, &
       pft_start, pft_end
     use _params_modl, only: islu, cton_soil
-    use _params_siml, only: spinup
+    use _params_siml, only: spinup, recycle
     use _classdefs
     use _rates
     use _vars_core, only: drsoil, drhet, psoilphys, soilphys, ddoc, pexud, &

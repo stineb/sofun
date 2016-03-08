@@ -931,9 +931,8 @@ contains
     integer :: day, moy, jpngr
     
     ! xxx implement this: sum over gridcells? single output per gridcell?
-    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
+    if (maxgrid>1) stop 'writeout_ascii_waterbal: think of something ...'
     jpngr = 1
-
 
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
@@ -941,11 +940,12 @@ contains
     if (loutwaterbal) then
 
       if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+
         ! Write daily output only during transient simulation
         do day=1,ndayyear
 
           ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
+          itime = real(outyear) + real(day-1)/real(ndayyear)
 
           if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
 

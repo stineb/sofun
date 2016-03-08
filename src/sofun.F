@@ -115,6 +115,7 @@ program main
 
   ! LOOP THROUGH YEARS
   write(0,*) '------------START OF SIMULATION-------------'
+
   do year=1,runyears
 
     !----------------------------------------------------------------
@@ -155,7 +156,7 @@ program main
     !----------------------------------------------------------------
     fapar_field(:,:) = getfapar( trim(runname), trim(sitename), out_steering%forcingyear )
 
-    write(0,*) 'out_steering', out_steering
+    ! write(0,*) 'out_steering', out_steering
     ! ! xxx test
     ! dndep_field(:) = dndep_field(:) * 0.4
     ! dprec_field(100:250,1) = 0.0
@@ -166,15 +167,15 @@ program main
     !----------------------------------------------------------------
     write(0,100) 'sim. year, year AD, pco2', year, out_steering%forcingyear, pco2
 
-    write(0,*) 'lon, lat, elv', lon, lat, elv
+    ! write(0,*) 'lon, lat, elv', lon, lat, elv
 
-    write(0,*) 'params_soil_field', params_soil_field(:)
-    write(0,*) 'andep', sum(dndep_field(:,:))
-    write(0,*) 'aprec', sum(dprec_field(:,:))
-    write(0,*) 'dtemp ave', sum(dtemp_field(:,:))/ndayyear
-    write(0,*) 'dfsun ave', sum(dfsun_field(:,:))/ndayyear
-    write(0,*) 'dvpd ave', sum(dvpd_field(:,:))/ndayyear
-    write(0,*) 'calling elvis ...'
+    ! write(0,*) 'params_soil_field', params_soil_field(:)
+    ! write(0,*) 'andep', sum(dndep_field(:,:))
+    ! write(0,*) 'aprec', sum(dprec_field(:,:))
+    ! write(0,*) 'dtemp ave', sum(dtemp_field(:,:))/ndayyear
+    ! write(0,*) 'dfsun ave', sum(dfsun_field(:,:))/ndayyear
+    ! write(0,*) 'dvpd ave', sum(dvpd_field(:,:))/ndayyear
+    ! write(0,*) 'calling elvis ...'
     ! stop 'before calling biosphere()'
 
     call biosphere( &
