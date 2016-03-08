@@ -11,7 +11,7 @@ program main
   use _params_siml
   use _params_site
   use _forcing_siterun
-  use gridvars_siterun
+  use _gridvars
   use _params_soil
   ! use _vars_core
 
@@ -25,6 +25,7 @@ program main
   real                                     :: pco2
   real, dimension(ndayyear,maxgrid)        :: dndep_field
   real, dimension(nlu,maxgrid)             :: lu_area
+  real, dimension(nmonth,maxgrid)          :: fapar_field
   type(paramtype_soil), dimension(maxgrid) :: params_soil_field
 
   ! xxx try
@@ -95,11 +96,11 @@ program main
   !----------------------------------------------------------------
   call getpar_site
 
-  ! !----------------------------------------------------------------
-  ! ! GET GRID INFORMATION
-  ! ! longitude, latitude, elevation
-  ! !----------------------------------------------------------------
-  ! call getgrid
+  !----------------------------------------------------------------
+  ! GET GRID INFORMATION
+  ! longitude, latitude, elevation
+  !----------------------------------------------------------------
+  call getgrid
 
   ! Get soil parameters (if not defined in <sitename>.parameter)
   !call getsoilpar
@@ -145,10 +146,16 @@ program main
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
-    pco2        = getco2( trim(runname), out_steering%forcingyear )
-    dndep_field = getndep( trim(runname), trim(sitename), out_steering%forcingyear )
-    lu_area     = getlanduse( trim(runname), out_steering%forcingyear )
+    pco2             = getco2( trim(runname), trim(sitename), out_steering%forcingyear )
+    dndep_field(:,:) = getndep( trim(runname), trim(sitename), out_steering%forcingyear )
+    lu_area(:,:)     = getlanduse( trim(runname), out_steering%forcingyear )
 
+    !----------------------------------------------------------------
+    ! Get prescribed fAPAR
+    !----------------------------------------------------------------
+    fapar_field(:,:) = getfapar( trim(runname), trim(sitename), out_steering%forcingyear )
+
+    write(0,*) 'out_steering', out_steering
     ! ! xxx test
     ! dndep_field(:) = dndep_field(:) * 0.4
     ! dprec_field(100:250,1) = 0.0
@@ -158,11 +165,25 @@ program main
     ! containing data for each day of this year.
     !----------------------------------------------------------------
     write(0,100) 'sim. year, year AD, pco2', year, out_steering%forcingyear, pco2
-    call biosphere( year, lon, lat, elv &
+
+    write(0,*) 'lon, lat, elv', lon, lat, elv
+
+    write(0,*) 'params_soil_field', params_soil_field(:)
+    write(0,*) 'andep', sum(dndep_field(:,:))
+    write(0,*) 'aprec', sum(dprec_field(:,:))
+    write(0,*) 'dtemp ave', sum(dtemp_field(:,:))/ndayyear
+    write(0,*) 'dfsun ave', sum(dfsun_field(:,:))/ndayyear
+    write(0,*) 'dvpd ave', sum(dvpd_field(:,:))/ndayyear
+    write(0,*) 'calling elvis ...'
+    ! stop 'before calling biosphere()'
+
+    call biosphere( &
+      year, lon, lat, elv &
       , params_soil_field, lu_area, pco2 &
       , dtemp_field, dprec_field &
       , dfsun_field, dvpd_field, dndep_field &
       , c_uptake &
+      , fapar_field &
       ) 
 
   enddo

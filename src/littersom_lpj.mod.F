@@ -18,17 +18,7 @@ module _littersom
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: npft, maxgrid, nmonth, nlu, recycle, ndayyear, &
-    pft_start, pft_end
-  use _params_modl, only: islu, cton_soil
-  use _params_siml, only: spinup
-  use _classdefs
-  use _rates
-  use _vars_core, only: dncpa
-  use _vars_core, only: drsoil, drhet
-  use _vars_core, only: dtemp_soil, ddoc
-  use _vars_core, only: pexud, plitt_af, plitt_as, plitt_bg, psoil_fs, &
-    psoil_sl, pninorg
+  use _params_core, only: npft, maxgrid, nlu, ndayyear
 
   implicit none
   ! private 
@@ -71,11 +61,6 @@ module _littersom
   real, dimension(nlu,maxgrid)  :: outaNdsoil
   real, dimension(nlu,maxgrid)  :: outaNimmo
 
-  ! MONTHLY OUTPUT VARIABLES
-  ! xxx add jpngr dim
-  real, dimension(nmonth,maxgrid) :: xxx
-
-
 contains
 
   subroutine littersom( jpngr, doy )
@@ -87,6 +72,14 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
+    use _params_core, only: npft, maxgrid, nmonth, nlu, recycle, ndayyear, &
+      pft_start, pft_end
+    use _params_modl, only: islu, cton_soil
+    use _params_siml, only: spinup
+    use _classdefs
+    use _rates
+    use _vars_core, only: drsoil, drhet, psoilphys, soilphys, ddoc, pexud, &
+      plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, pninorg
 
     ! ARGUMENTS
     integer, intent(in) :: jpngr                    ! grid cell number
@@ -225,20 +218,11 @@ contains
           ! Moisture: Foley, 1995; Fang and Moncrieff, 1999; Gerten et al., 2004;
           ! Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
           !-------------------------------------------------------------------------
-           
-          ! define decomposition _rates for current soil temperature and moisture
-          klitt_af(lu) = klitt_af10 &
-            * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-            * fmoist(dncpa(lu),"foley") ! alternative: "gerten"
-          klitt_as(lu) = klitt_as10 &
-            * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-            * fmoist(dncpa(lu),"foley") ! alternative: "gerten"
-          klitt_bg(lu) = klitt_bg10 &
-            * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-            * fmoist(dncpa(lu),"foley") ! alternative: "gerten"
-          kexu(lu)     = kexu10     &
-            * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-            * fmoist(dncpa(lu),"foley") ! alternative: "gerten"
+          ! define decomposition _rates for current soil temperature and moisture 
+          klitt_af(lu) = klitt_af10 * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_as(lu) = klitt_as10 * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_bg(lu) = klitt_bg10 * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          kexu(lu)     = kexu10     * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
 
         end if
       end do
@@ -249,12 +233,8 @@ contains
       ! Moisture: Foley, 1995; Fang and Moncrieff, 1999; Gerten et al., 2004;
       !           Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
       !-------------------------------------------------------------------------
-      ksoil_fs(lu) = ksoil_fs10 &
-        * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-        * fmoist(dncpa(lu),"foley")     ! alternative: "gerten"
-      ksoil_sl(lu) = ksoil_sl10 &
-        * ftemp(dtemp_soil(lu,jpngr),"lloyd_and_taylor") &
-        * fmoist(dncpa(lu),"foley")     ! alternative: "gerten"
+      ksoil_fs(lu) = ksoil_fs10 * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
+      ksoil_sl(lu) = ksoil_sl10 * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
 
       !-------------------------------------------------------------------------
       ! Initialisation of decomposing pool 
@@ -271,9 +251,9 @@ contains
       do pft=1,npft
         if (islu(pft,lu)) then
                         
-          dlitt_af = orgfrac( 1.0-exp(-klitt_af(lu)), plitt_af(pft,jpngr) )
-          dlitt_as = orgfrac( 1.0-exp(-klitt_as(lu)), plitt_as(pft,jpngr) )
-          dlitt_bg = orgfrac( 1.0-exp(-klitt_bg(lu)), plitt_bg(pft,jpngr) )
+          dlitt_af = orgfrac( 1.0 - exp( -klitt_af(lu)), plitt_af(pft,jpngr) )
+          dlitt_as = orgfrac( 1.0 - exp( -klitt_as(lu)), plitt_as(pft,jpngr) )
+          dlitt_bg = orgfrac( 1.0 - exp( -klitt_bg(lu)), plitt_bg(pft,jpngr) )
 
           ! Update the litter _pools
           call orgmv( dlitt_af(pft), plitt_af(pft,jpngr), dlitt )
@@ -782,49 +762,13 @@ contains
   end subroutine initoutput_littersom
 
 
-  ! subroutine getout_daily_littersom( jpngr, moy, doy )
-  !   !////////////////////////////////////////////////////////////////
-  !   !  SR called daily to sum up output variables.
-  !   !----------------------------------------------------------------
-  !   use _vars_core, only: dwtot
-
-  !   ! ARGUMENTS
-  !   integer, intent(in) :: jpngr
-  !   integer, intent(in) :: moy    
-  !   integer, intent(in) :: doy    
-
-  !   ! Save the daily totals:
-  !   ! xxx add lu-dimension and jpngr-dimension
-
-  ! end subroutine getout_daily_littersom
-
-
-  ! subroutine getout_monthly_littersom( jpngr, moy )
-  !   !////////////////////////////////////////////////////////////////
-  !   !  SR called daily to sum up output variables.
-  !   !----------------------------------------------------------------
-  !   implicit none
-
-  !   ! ARGUMENTS
-  !   integer, intent(in) :: jpngr
-  !   integer, intent(in) :: moy
-
-  !   ! Calculate other monthly totals:
-  !   outmxxx(:,moy,jpngr) = outxxx(:,moy,jpngr)
-
-  !   return  
-
-  ! end subroutine getout_monthly_littersom
-
-
   subroutine getout_annual_littersom( jpngr )
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use _params_modl, only: npft, lu_category
     use _vars_core, only: plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl
 
-    ! ARGUMENTS
+    ! arguments
     integer, intent(in) :: jpngr
 
     outaClitt(:,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
@@ -841,7 +785,7 @@ contains
     use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
       daily_out_endyr, outyear
 
-    ! Arguments
+    ! arguments
     integer, intent(in) :: year       ! simulation year
     logical, intent(in) :: spinup     ! true during spinup years
 
@@ -871,19 +815,6 @@ contains
         write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
         write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))
         write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
-
-      end do
-    end if
-
-
-    !-------------------------------------------------------------------------
-    ! MONTHLY OUTPUT
-    ! Write monthly value
-    !-------------------------------------------------------------------------
-    if (.not.spinup) then
-      do moy=1,nmonth
-
-        itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(moy-1)/real(nmonth)
 
       end do
     end if

@@ -20,14 +20,37 @@ module _params_siml
   logical :: const_co2       ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
   logical :: const_ndep      ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
   character(len=256) :: runname
-  character(len=6)   :: sitename
+  character(len=256) :: sitename
   character(len=256) :: input_dir
   character(len=256) :: co2_forcing_file
-  character(len=256) :: ndep_forcing_file
+  character(len=256) :: ndep_noy_forcing_file
+  character(len=256) :: ndep_nhx_forcing_file
   character(len=256) :: pftparfil
 
   logical :: spinup          ! is true during spinup
   logical :: init            ! is true in first simulation year
+  logical :: prescr_monthly_fapar
+
+  ! booleans defining whether variable is written to output
+  logical :: loutdgpp       
+  logical :: loutdtransp    
+  logical :: loutdnpp       
+  logical :: loutdnup       
+  logical :: loutdCleaf     
+  logical :: loutdCroot     
+  logical :: loutdClabl     
+  logical :: loutdNlabl     
+  logical :: loutdClitt     
+  logical :: loutdNlitt     
+  logical :: loutdCsoil     
+  logical :: loutdNsoil     
+  logical :: loutdlai       
+  logical :: loutdninorg    
+  logical :: loutdtemp_soil 
+
+  logical :: loutntransform
+  logical :: loutwaterbal  
+
 
   type outtype_steering
     integer :: forcingyear     ! year AD for which forcings are read in (=firstyeartrend during spinup)
@@ -47,14 +70,11 @@ contains
 
     ! local variables
     integer :: first_cycleyear, cycleyear
+    integer :: remainder, nfits
 
     ! function return variable
     type( outtype_steering ) :: out_steering
-
-    ! xxx try
-    integer, parameter :: recycle_test = 5
-
-    integer :: remainder, nfits
+    
 
     if (do_spinup) then
 
@@ -63,11 +83,11 @@ contains
         spinup = .true.
         out_steering%forcingyear = firstyeartrend
 
-        remainder = mod( spinupyears, recycle_test )
-        nfits = (spinupyears - remainder) / recycle_test
-        first_cycleyear = recycle_test - remainder + 1
-        cycleyear = modulo( first_cycleyear + year - 1, recycle_test )  
-        if (cycleyear==0) cycleyear = recycle_test
+        remainder = mod( spinupyears, recycle )
+        nfits = (spinupyears - remainder) / recycle
+        first_cycleyear = recycle - remainder + 1
+        cycleyear = modulo( first_cycleyear + year - 1, recycle )  
+        if (cycleyear==0) cycleyear = recycle
         out_steering%climateyear = cycleyear + firstyeartrend - 1
 
       else  
@@ -87,9 +107,7 @@ contains
 
     endif
 
-
-
-    ! write(0,*) 'recycle_test, spinupyears, firstyeartrend', recycle_test, spinupyears, firstyeartrend
+    ! write(0,*) 'recycle, spinupyears, firstyeartrend', recycle, spinupyears, firstyeartrend
     ! write(0,*) 'first_cycleyear, cycleyear', first_cycleyear, cycleyear
     ! write(0,*) 'year, forcingyear, climateyear', year, out_steering%forcingyear, out_steering%climateyear
     ! stop
@@ -108,32 +126,36 @@ contains
     !  SR for reading and defining simulation parameters from file 
     !  <runname>.sofun.parameter. Only once at start of simulation.
     !----------------------------------------------------------------
+    ! argument
     character(len=*), intent(in) :: runname
 
     ! Read in main model parameters
     write(0,*) 'reading parameter file ', runname//".sofun.parameter ..."
 
-    ! sitename         = getparstring( runname//".sofun.parameter", 'sitename' )
-    ! input_dir        = getparstring( runname//".sofun.parameter", 'input_dir' )
-    ! co2_forcing_file = getparstring( runname//".sofun.parameter", 'co2_forcing_file' )
-    ! pftparfil        = getparstring( runname//".sofun.parameter", 'pftparfil' )
+    ! sitename         = getparstring( 'run/'//runname//'.sofun.parameter', 'sitename' )
+    ! input_dir        = getparstring( 'run/'//runname//'.sofun.parameter', 'input_dir' )
+    ! co2_forcing_file = getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file' )
+    ! pftparfil        = getparstring( 'run/'//runname//'.sofun.parameter', 'pftparfil' )
 
-    call getparstring( runname//".sofun.parameter", 'sitename', sitename )
-    call getparstring( runname//".sofun.parameter", 'input_dir', input_dir )
-    call getparstring( runname//".sofun.parameter", 'co2_forcing_file', co2_forcing_file )
-    call getparstring( runname//".sofun.parameter", 'ndep_forcing_file', ndep_forcing_file )
-    call getparstring( runname//".sofun.parameter", 'pftparfil', pftparfil )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'sitename', sitename )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'input_dir', input_dir )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file', co2_forcing_file )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_noy_forcing_file', ndep_noy_forcing_file )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_nhx_forcing_file', ndep_nhx_forcing_file )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'pftparfil', pftparfil )
 
-    do_spinup         = getparlogical( runname//".sofun.parameter", 'spinup' )
-    const_co2         = getparlogical( runname//".sofun.parameter", 'const_co2' )
-    const_ndep        = getparlogical( runname//".sofun.parameter", 'const_ndep' )
+    do_spinup            = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
+    const_co2            = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_co2' )
+    const_ndep           = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_ndep' )
     
-    spinupyears       = getparint( runname//".sofun.parameter", 'spinupyears' )
-    firstyeartrend    = getparint( runname//".sofun.parameter", 'firstyeartrend' )
-    nyeartrend        = getparint( runname//".sofun.parameter", 'nyeartrend' )
+    spinupyears          = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
+    firstyeartrend       = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )
+    nyeartrend           = getparint( 'run/'//runname//'.sofun.parameter', 'nyeartrend' )
     
-    daily_out_startyr = getparint( runname//".sofun.parameter", 'daily_out_startyr' )
-    daily_out_endyr   = getparint( runname//".sofun.parameter", 'daily_out_endyr' )
+    prescr_monthly_fapar = getparlogical( 'run/'//runname//'.sofun.parameter', 'prescr_monthly_fapar' )
+    
+    daily_out_startyr    = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_startyr' )
+    daily_out_endyr      = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_endyr' )
 
     if (do_spinup) then
       runyears = nyeartrend + spinupyears
@@ -141,6 +163,25 @@ contains
       runyears = nyeartrend
       spinupyears = 0
     endif
+
+    loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
+    loutdtransp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtransp' )
+    loutdnpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnpp' )
+    loutdnup       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnup' )
+    loutdCleaf     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCleaf' )
+    loutdCroot     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCroot' )
+    loutdClabl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdClabl' )
+    loutdNlabl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNlabl' )
+    loutdClitt     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdClitt' )
+    loutdNlitt     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNlitt' )
+    loutdCsoil     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCsoil' )
+    loutdNsoil     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNsoil' )
+    loutdlai       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdlai' )
+    loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
+    loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
+
+    loutntransform = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutntransform') 
+    loutwaterbal   = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal')
 
   end subroutine getpar_siml
 

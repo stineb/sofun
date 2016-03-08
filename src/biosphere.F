@@ -1,9 +1,12 @@
-subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
-  , dtemp_field, dprec_field, dfsun_field, dvpd_field, dndep_field &
+subroutine biosphere( &
+  year, lon, lat, elv &
+  , params_soil_field, lu_area, pco2 &
+  , dtemp_field, dprec_field &
+  , dfsun_field, dvpd_field, dndep_field &
   , c_uptake &
-  , dgpp_data &
-  , fpc_grid_data &
-  )
+  , fapar_field &
+  ) 
+
   !////////////////////////////////////////////////////////////////
   ! Subroutine BIOSPHERE calculates net ecosystem exchange (nee)
   ! in response to environmental boundary conditions (atmospheric 
@@ -16,7 +19,7 @@ subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
   use _params_siml
   use _params_site
   use _params_modl
-  use _vars_core, only: initannual, initdaily, initglobal, initpft
+  use _vars_core, only: initannual, initdaily, initglobal, initpft, solar
   use _outvars, only: initio, getout_annual, getout_daily, initoutput
   use _soiltemp, only: soiltemp
   use _phenology, only: gettempphenology, getpar_phenology  !, phenology
@@ -25,7 +28,7 @@ subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
   use _npp, only: npp, getpar_modl_npp
   use _allocation, only: allocation_daily, initio_allocation, initoutput_allocation, getout_daily_allocation, writeout_ascii_allocation
   use _turnover, only: turnover
-  use _waterbal, only: waterbal, getrad, outdcpa, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getout_monthly_waterbal, getpar_modl_waterbal
+  use _waterbal, only: waterbal, getsolar_alldays, outdcpa, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal
   use _nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake, getpar_modl_nuptake
   use _ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform, getpar_modl_ntransform
   use _littersom, only: littersom, initio_littersom, initoutput_littersom, getout_annual_littersom, getpar_modl_littersom !, getout_daily_littersom
@@ -69,8 +72,7 @@ subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
   real, intent(out)                             :: c_uptake   ! annual net global C uptake by biosphere
 
   ! optional arguments
-  real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data       ! for runs with prescribed GPP
-  real, intent(in), dimension(nlu,maxgrid), optional   :: fpc_grid_data   ! for runs with prescribed GPP
+  real, intent(in), dimension(nmonth)           :: fapar_field
 
   ! local variables
   integer :: dm, mo, jpngr, day
@@ -108,12 +110,14 @@ subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
   !   end subroutine gpp
   ! end interface
 
+  ! if (present(fapar).and..not.fapar(1)==dummy) write(0,*) 'süpi: fapar ', fapar
+  ! stop
+
+
   !----------------------------------------------------------------
   ! INITIALISATIONS
   !----------------------------------------------------------------
   if (init) then
-
-    ! xxx check: if (present(fpc_grid_data)) .and. _dynveg then abort
 
     !----------------------------------------------------------------
     ! GET MODEL PARAMETERS
@@ -131,7 +135,7 @@ subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
-    call initglobal( fpc_grid_data(:,:) )
+    call initglobal()
     call init_global_ntransform()
 
     !----------------------------------------------------------------
@@ -175,7 +179,7 @@ subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
     ! get temperature-driven phenology (drought-driven phenology is 
     ! calculated after waterbalance)
     !----------------------------------------------------------------
-    call gettempphenology(jpngr, dtemp_field(:,jpngr))
+    call gettempphenology( jpngr, dtemp_field(:,jpngr) )
 
     !call climate20
     !call bioclim -> SR contained in 'establishment'
@@ -190,12 +194,12 @@ subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
     call getlue( jpngr, pco2, dtemp_field(:,jpngr), dvpd_field(:,jpngr), elv(jpngr) )
 
     !----------------------------------------------------------------
-    ! Get radiation, evaporation, and soil moisture based on daily precipitation,
-    ! temperature, sunshine fraction, and elevation (previously known!)
+    ! Get radiation based on daily temperature, sunshine fraction, and 
+    ! elevation.
     ! This is not compatible with a daily biosphere-climate coupling. I.e., 
-    ! there is a daily loop within 'getrad'!
+    ! there is a daily loop within 'getsolar'!
     !----------------------------------------------------------------
-    call getrad( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
+    call getsolar_alldays( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
 
     ! !----------------------------------------------------------------
     ! ! Get leaf traits based on photosynthetic parameters (Vcmax25) 
@@ -220,15 +224,14 @@ subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
       do dm=1,ndaymonth(mo)
         day=day+1
 
-        ! write(0,*) '-----------'
-        ! write(0,*) 'DAY ',day
+        write(0,*) '-----------'
+        write(0,*) 'DAY ',day
 
         !----------------------------------------------------------------
         ! initialise daily updated variables 
         !----------------------------------------------------------------
         call initdaily()
         call initdaily_nuptake()
-        call initdaily_waterbal()
         call initdaily_gpp()
 
         !----------------------------------------------------------------
@@ -236,41 +239,53 @@ subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
         !call waterbal( day, lon(jpngr), lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
         ! xxx try
         !----------------------------------------------------------------
+        write(0,*) 'calling waterbal() ... '
         call waterbal( jpngr, day, lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
+        write(0,*) '... done'
 
         !----------------------------------------------------------------
         ! simulate daily establishment / sprouting
         !----------------------------------------------------------------
+        write(0,*) 'calling estab_daily() ... '
         call estab_daily( jpngr, day ) 
+        write(0,*) '... done'
         ! XXX this is no longer executed like this. Instead, provide a certain C and N free of charge in allocation XX
 
         !----------------------------------------------------------------
         ! calculate GPP
         !----------------------------------------------------------------
-        if ( present(dgpp_data) ) then
-          call gpp( jpngr, day, mo, dgpp_data(day,:) )
-        else 
-          call gpp( jpngr, day, mo )
-        end if   
+        write(0,*) 'calling gpp() ... '
+        call gpp( jpngr, day, mo, fapar_field(mo) )
+        write(0,*) '... done'
+
+        ! xxx        dgpp creates FPE      xxx
 
         !----------------------------------------------------------------
         ! calculate soil temperature
         !----------------------------------------------------------------
-        call soiltemp( jpngr, mo, day, dtemp_field(:,jpngr), outdcpa(:,:,jpngr) )
+        write(0,*) 'calling soiltemp() ... '
+        write(0,*) 'with arguments ... '
+        write(0,*) 'dtemp_field(:,jpngr) =', dtemp_field(:,jpngr)
+        write(0,*) 'outdcpa(:,:,jpngr)   =', outdcpa(:,:,jpngr)
+        call soiltemp( jpngr, mo, day, dtemp_field(:,jpngr) )
+        write(0,*) '... done'
 
         !----------------------------------------------------------------
         ! substract autotrophic respiration to get NPP, remainder is added 
         ! to labile pool (plabl)
         !----------------------------------------------------------------
+        write(0,*) 'calling npp() ... '
         call npp( jpngr, dtemp_field(day,jpngr), day )
+        write(0,*) '... done'
 
         ! write(0,*) 'A pninorg(lu,jpngr)%n14',pninorg
         !----------------------------------------------------------------
         ! allocation of labile pools to biomass
         !----------------------------------------------------------------
+        write(0,*) 'calling allocation() ... '
         call allocation_daily( jpngr, day, mo, dm )
         ! write(0,*) 'B pninorg(lu,jpngr)%n14',pninorg
-
+        write(0,*) '... done'
 
         ! amount of NPP added to reproduction (xxx ignore at this point)
         !call reproduction( jpngr )
@@ -278,41 +293,53 @@ subroutine biosphere( year, lon, lat, elv, params_soil_field, lu_area, pco2 &
         !----------------------------------------------------------------
         ! leaf, sapwood, and fine-root turnover
         !----------------------------------------------------------------
+        write(0,*) 'calling turnover() ... '
         call turnover( jpngr, day )
         ! write(0,*) 'C pninorg(lu,jpngr)%n14',pninorg
+        write(0,*) '... done'
+
+        ! !----------------------------------------------------------------
+        ! ! light competition
+        ! !----------------------------------------------------------------
+        ! call light( jpngr )
 
         !----------------------------------------------------------------
         ! litter and soil decomposition and N mineralisation
         !----------------------------------------------------------------
+        write(0,*) 'calling littersom() ... '
         call littersom( jpngr, day )
+        write(0,*) '... done'
 
         ! write(0,*) 'D pninorg(lu,jpngr)%n14',pninorg
         !----------------------------------------------------------------
         ! inorganic soil N dynamics
         !----------------------------------------------------------------
+        write(0,*) 'calling ntransform() ... '
         ! ! xxx try
         ! dndep_field(day,jpngr) = dndep_field(day,jpngr) * max( 1.0, 100.0 - real( realyear ) )
         call ntransform( dm, mo, jpngr, dndep_field(day,jpngr), sum(dprec_field(:,jpngr)) )
         ! write(0,*) 'E pninorg(lu,jpngr)%n14',pninorg
+        write(0,*) '... done'
 
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
+        write(0,*) 'calling getout_daily() ... '
         call getout_daily( jpngr, mo, day )
+        write(0,*) 'calling getout_daily_waterbal() ... '
         call getout_daily_waterbal( jpngr, mo, day )
+        write(0,*) 'calling getout_daily_nuptake() ... '
         call getout_daily_nuptake( jpngr, mo, day )
+        write(0,*) 'calling getout_daily_ntransform() ... '
         ! call getout_daily_littersom( jpngr, mo, day )
         call getout_daily_ntransform( jpngr, mo, day )
+        write(0,*) 'calling getout_daily_allocation() ... '
         call getout_daily_allocation( jpngr, mo, day )
+        write(0,*) '... done'
 
         ! stop 'end of day'
         
       end do
-
-      !----------------------------------------------------------------
-      ! MODULE-SPECIFIC VARIABLES
-      !----------------------------------------------------------------
-      call getout_monthly_waterbal( jpngr, mo )
 
     end do
 

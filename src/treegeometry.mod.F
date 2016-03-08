@@ -15,13 +15,13 @@ module _vegdynamics
   real, dimension(npft,maxgrid)    :: nind        ! number of individuals [1/m2]
   real, dimension(npft,maxgrid)    :: lai_ind
   real, dimension(npft,maxgrid)    :: fpc_grid
-  real, dimension(npft,maxgrid)    :: fpc_ind 
+  real, dimension(npft,maxgrid)    :: fapar_ind 
 
 contains
 
   subroutine update_fpc( pft, jpngr )
     !////////////////////////////////////////////////////////////////
-    ! Updates fpc_grid, fpc_ind, and lai_ind
+    ! Updates fpc_grid, fapar_ind, and lai_ind
     !----------------------------------------------------------------
     use _pools, only: pleaf
     use _params_modl, only: tree, islu, lu_category, grass
@@ -43,8 +43,8 @@ contains
     ! Then compute each PFT's FPC as the product of total-grass FPC times each PFT's leaf mass.
     !-------------------------------------------------------------------------
     lai_ind(pft,jpngr)  = get_lai_ind( pleaf(pft,jpngr)%c%c12, crownarea(pft,jpngr), pft )
-    fpc_ind(pft,jpngr)  = get_fpc_ind( lai_ind(pft,jpngr) )
-    fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fpc_ind(pft,jpngr) )    
+    fapar_ind(pft,jpngr)  = get_fapar( lai_ind(pft,jpngr) )
+    fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fapar_ind(pft,jpngr) )    
 
 
     !    distribute = .false.
@@ -58,18 +58,18 @@ contains
     !    xxx lai_ind calculation here : this does not work : pft is passed on from this pft, whereas sum of all pfts leaf mass is used xxx!    
 
     !    lai_ind(pft,jpngr)  = get_lai_ind( cleaf_tot, crownarea(pft,jpngr), pft )
-    !    fpc_ind(pft,jpngr)  = get_fpc_ind( lai_ind(pft,jpngr) )
-    !    fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fpc_ind(pft,jpngr) )    
+    !    fapar_ind(pft,jpngr)  = get_fapar( lai_ind(pft,jpngr) )
+    !    fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fapar_ind(pft,jpngr) )    
 
     !    if ( distribute ) then
     !      if (cleaf_tot>0.0) then
     !        share = pleaf(pft,jpngr)%c%c12 / cleaf_tot
     !        lai_ind(pft,jpngr)  = lai_ind(pft,jpngr) * share
-    !        fpc_ind(pft,jpngr)  = fpc_ind(pft,jpngr) * share
+    !        fapar_ind(pft,jpngr)  = fapar_ind(pft,jpngr) * share
     !        fpc_grid(pft,jpngr) = fpc_grid(pft,jpngr) * share
     !      else
     !        lai_ind(pft,jpngr)  = 0.0
-    !        fpc_ind(pft,jpngr)  = 0.0
+    !        fapar_ind(pft,jpngr)  = 0.0
     !        fpc_grid(pft,jpngr) = 0.0
     !      end if
     !    end if
@@ -79,7 +79,7 @@ contains
   end subroutine update_fpc
 
 
-  function get_nind( tree, fpc_grid, crownarea, fpc_ind ) result( nind )
+  function get_nind( tree, fpc_grid, crownarea, fapar_ind ) result( nind )
     !////////////////////////////////////////////////////////////////
     !----------------------------------------------------------------
     use _pools, only: pleaf
@@ -90,13 +90,13 @@ contains
     logical, intent(in) :: tree
     real,intent(in) :: fpc_grid
     real,intent(in) :: crownarea
-    real,intent(in) :: fpc_ind
+    real,intent(in) :: fapar_ind
 
     ! FUNCTION RETURN VARIABLE
     real, intent(out) :: nind
 
     if (tree) then
-      nind = fpc_grid / ( crownarea * fpc_ind )
+      nind = fpc_grid / ( crownarea * fapar_ind )
     else
       nind = 1.0
     end if
@@ -104,7 +104,7 @@ contains
   end function get_nind
 
 
-  function get_fpc_grid( crownarea, nind, fpc_ind ) result( fpc_grid )
+  function get_fpc_grid( crownarea, nind, fapar_ind ) result( fpc_grid )
     !////////////////////////////////////////////////////////////////
     ! Function returns total fractional plant cover of a PFT
     ! Eq. 8 in Sitch et al., 2003
@@ -113,17 +113,17 @@ contains
     ! arguments
     real, intent(in) :: crownarea
     real, intent(in) :: nind
-    real, intent(in) :: fpc_ind
+    real, intent(in) :: fapar_ind
 
     ! function return variable
     real, intent(out) :: fpc_grid
 
-    fpc_grid = crownarea * nind * fpc_ind
+    fpc_grid = crownarea * nind * fapar_ind
 
   end function get_fpc_grid
 
 
-  function get_fpc_ind( lai_ind ) result( fpc_ind )
+  function get_fapar( lai_ind ) result( fapar_ind )
     !////////////////////////////////////////////////////////////////
     ! Function returns fractional plant cover an individual
     ! Eq. 7 in Sitch et al., 2003
@@ -134,11 +134,11 @@ contains
     real, intent(in) :: lai_ind
 
     ! function return variable
-    real, intent(out) :: fpc_ind
+    real, intent(out) :: fapar_ind
 
-    fpc_ind = ( 1.0 - exp( -1.0 * kbeer * lai_ind) )
+    fapar_ind = ( 1.0 - exp( -1.0 * kbeer * lai_ind) )
 
-  end function get_fpc_ind
+  end function get_fapar
 
 
   function get_lai_ind( pleaf, crownarea, pft ) result( lai_ind )

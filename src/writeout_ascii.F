@@ -11,6 +11,22 @@ subroutine writeout_ascii( year, dtemp )
   use _outvars
   use _nuptake, only: writeout_ascii_nuptake
   use _littersom, only: writeout_ascii_littersom
+  use _params_siml, only: & 
+      loutdgpp       &
+    , loutdtransp    &
+    , loutdnpp       &
+    , loutdnup       &
+    , loutdCleaf     &
+    , loutdCroot     &
+    , loutdClabl     &
+    , loutdNlabl     &
+    , loutdClitt     &
+    , loutdNlitt     &
+    , loutdCsoil     &
+    , loutdNsoil     &
+    , loutdlai       &
+    , loutdninorg    &
+    , loutdtemp_soil
 
   ! Arguments
   integer, intent(in) :: year       ! simulation year
@@ -49,23 +65,23 @@ subroutine writeout_ascii( year, dtemp )
 
       ! Define 'itime' as a decimal number corresponding to day in the year + year
       itime = real(outyear) + real(day-1)/real(ndayyear)
-
-      write(101,999) itime, sum(outdgpp(:,day,jpngr))
-      write(102,999) itime, sum(outdnpp(:,day,jpngr))
-      write(103,999) itime, sum(outdCleaf(:,day,jpngr))
-      write(104,999) itime, sum(outdnup(:,day,jpngr))
-      write(107,999) itime, sum(outdninorg(:,day,jpngr))
-      write(109,999) itime, sum(outdtemp_soil(:,day,jpngr))
+      
+      if (loutdgpp      ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
+      if (loutdnpp      ) write(102,999) itime, sum(outdnpp(:,day,jpngr))
+      if (loutdCleaf    ) write(103,999) itime, sum(outdCleaf(:,day,jpngr))
+      if (loutdnup      ) write(104,999) itime, sum(outdnup(:,day,jpngr))
+      if (loutdninorg   ) write(107,999) itime, sum(outdninorg(:,day,jpngr))
+      if (loutdtemp_soil) write(109,999) itime, sum(outdtemp_soil(:,day,jpngr))
+      if (loutdCroot    ) write(111,999) itime, sum(outdCroot(:,day,jpngr))
+      if (loutdClabl    ) write(112,999) itime, sum(outdClabl(:,day,jpngr))
+      if (loutdClitt    ) write(113,999) itime, sum(outdClitt(:,day,jpngr))
+      if (loutdtransp   ) write(114,999) itime, sum(outdtransp(:,day,jpngr))
+      if (loutdNlabl    ) write(115,999) itime, sum(outdNlabl(:,day,jpngr))
+      if (loutdCsoil    ) write(118,999) itime, sum(outdCsoil(:,day,jpngr))
+      if (loutdNlitt    ) write(119,999) itime, sum(outdNlitt(:,day,jpngr))
+      if (loutdNsoil    ) write(120,999) itime, sum(outdNsoil(:,day,jpngr))
+      if (loutdlai      ) write(121,999) itime, sum(outdlai(:,day,jpngr))
       write(110,999) itime, dtemp(day)
-      write(111,999) itime, sum(outdCroot(:,day,jpngr))
-      write(112,999) itime, sum(outdClabl(:,day,jpngr))
-      write(113,999) itime, sum(outdClitt(:,day,jpngr))
-      write(114,999) itime, sum(outdtransp(:,day,jpngr))
-      write(115,999) itime, sum(outdNlabl(:,day,jpngr))
-      write(118,999) itime, sum(outdCsoil(:,day,jpngr))
-      write(119,999) itime, sum(outdNlitt(:,day,jpngr))
-      write(120,999) itime, sum(outdNsoil(:,day,jpngr))
-      write(121,999) itime, sum(outdlai(:,day,jpngr))
         
     end do
   end if

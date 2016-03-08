@@ -57,8 +57,6 @@ contains
 
         stop 'FTEMP: select valid method'
 
-          ! ftemp_ninorg = max( min( (((70.0-dtemp_soil(lu,jpngr))/(70.0-38.0))**12.0) * exp(12.0*(dtemp_soil(lu,jpngr)-38.0)/(70.0-38.0)), 1.00), 0.0)
-
     end select
 
     return

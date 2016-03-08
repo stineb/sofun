@@ -8,28 +8,43 @@ module _outvars
 !----------------------------------------------------------------
   use _params_core
   use _classdefs
+  use _params_siml, only: & 
+      loutdgpp       &
+    , loutdtransp    &
+    , loutdnpp       &
+    , loutdnup       &
+    , loutdCleaf     &
+    , loutdCroot     &
+    , loutdClabl     &
+    , loutdNlabl     &
+    , loutdClitt     &
+    , loutdNlitt     &
+    , loutdCsoil     &
+    , loutdNsoil     &
+    , loutdlai       &
+    , loutdninorg    &
+    , loutdtemp_soil
 
   implicit none
 
   !----------------------------------------------------------------
   ! Daily output variables
   !----------------------------------------------------------------
-  real, dimension(npft,ndayyear,maxgrid) :: outdgpp
-  real, dimension(npft,ndayyear,maxgrid) :: outdtransp
-  real, dimension(npft,ndayyear,maxgrid) :: outdnpp
-  real, dimension(npft,ndayyear,maxgrid) :: outdnup
-  real, dimension(npft,ndayyear,maxgrid) :: outdCleaf
-  real, dimension(npft,ndayyear,maxgrid) :: outdCroot
-  real, dimension(npft,ndayyear,maxgrid) :: outdClabl
-  real, dimension(npft,ndayyear,maxgrid) :: outdNlabl
-  real, dimension(npft,ndayyear,maxgrid) :: outdClitt
-  real, dimension(npft,ndayyear,maxgrid) :: outdNlitt
-  real, dimension(nlu,ndayyear,maxgrid)  :: outdCsoil
-  real, dimension(nlu,ndayyear,maxgrid)  :: outdNsoil
-  real, dimension(npft,ndayyear,maxgrid) :: outdlai
-
-  real, dimension(nlu,ndayyear,maxgrid)  :: outdninorg
-  real, dimension(nlu,ndayyear,maxgrid)  :: outdtemp_soil
+  real, allocatable, dimension(:,:,:) :: outdgpp
+  real, allocatable, dimension(:,:,:) :: outdtransp
+  real, allocatable, dimension(:,:,:) :: outdnpp
+  real, allocatable, dimension(:,:,:) :: outdnup
+  real, allocatable, dimension(:,:,:) :: outdCleaf
+  real, allocatable, dimension(:,:,:) :: outdCroot
+  real, allocatable, dimension(:,:,:) :: outdClabl
+  real, allocatable, dimension(:,:,:) :: outdNlabl
+  real, allocatable, dimension(:,:,:) :: outdClitt
+  real, allocatable, dimension(:,:,:) :: outdNlitt
+  real, allocatable, dimension(:,:,:) :: outdCsoil
+  real, allocatable, dimension(:,:,:) :: outdNsoil
+  real, allocatable, dimension(:,:,:) :: outdlai
+  real, allocatable, dimension(:,:,:) :: outdninorg
+  real, allocatable, dimension(:,:,:) :: outdtemp_soil
 
   ! These are stored as dayly variables for annual output
   ! at day of year when LAI is at its maximum.
@@ -69,21 +84,37 @@ contains
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
 
-    ! daily output variables
-    outdgpp(:,:,:)      = 0.0
-    outdtransp(:,:,:)   = 0.0
-    outdnpp(:,:,:)      = 0.0
-    outdnup(:,:,:)      = 0.0
-    outdCleaf(:,:,:)    = 0.0
-    outdCroot(:,:,:)    = 0.0
-    outdClabl(:,:,:)    = 0.0
-    outdNlabl(:,:,:)    = 0.0
-    outdClitt(:,:,:)    = 0.0
-    outdCsoil(:,:,:)    = 0.0
-    outdNlitt(:,:,:)    = 0.0
-    outdNsoil(:,:,:)    = 0.0
-    outdninorg(:,:,:)   = 0.0
-    outdlai(:,:,:)      = 0.0
+    if (loutdgpp      ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
+    if (loutdtransp   ) allocate( outdtransp   (npft,ndayyear,maxgrid) )
+    if (loutdnpp      ) allocate( outdnpp      (npft,ndayyear,maxgrid) )
+    if (loutdnup      ) allocate( outdnup      (npft,ndayyear,maxgrid) )
+    if (loutdCleaf    ) allocate( outdCleaf    (npft,ndayyear,maxgrid) )
+    if (loutdCroot    ) allocate( outdCroot    (npft,ndayyear,maxgrid) )
+    if (loutdClabl    ) allocate( outdClabl    (npft,ndayyear,maxgrid) )
+    if (loutdNlabl    ) allocate( outdNlabl    (npft,ndayyear,maxgrid) )
+    if (loutdClitt    ) allocate( outdClitt    (npft,ndayyear,maxgrid) )
+    if (loutdNlitt    ) allocate( outdNlitt    (npft,ndayyear,maxgrid) )
+    if (loutdCsoil    ) allocate( outdCsoil    (nlu,ndayyear,maxgrid)  )
+    if (loutdNsoil    ) allocate( outdNsoil    (nlu,ndayyear,maxgrid)  )
+    if (loutdlai      ) allocate( outdlai      (npft,ndayyear,maxgrid) )
+    if (loutdninorg   ) allocate( outdninorg   (nlu,ndayyear,maxgrid)  )
+    if (loutdtemp_soil) allocate( outdtemp_soil(nlu,ndayyear,maxgrid)  )
+
+    ! ! daily output variables
+    !    outdgpp(:,:,:)      = 0.0
+    !    outdtransp(:,:,:)   = 0.0
+    !    outdnpp(:,:,:)      = 0.0
+    !    outdnup(:,:,:)      = 0.0
+    !    outdCleaf(:,:,:)    = 0.0
+    !    outdCroot(:,:,:)    = 0.0
+    !    outdClabl(:,:,:)    = 0.0
+    !    outdNlabl(:,:,:)    = 0.0
+    !    outdClitt(:,:,:)    = 0.0
+    !    outdCsoil(:,:,:)    = 0.0
+    !    outdNlitt(:,:,:)    = 0.0
+    !    outdNsoil(:,:,:)    = 0.0
+    !    outdninorg(:,:,:)   = 0.0
+    !    outdlai(:,:,:)      = 0.0
 
     ! annual output variables
     outagpp(:,:)        = 0.0
@@ -118,71 +149,99 @@ contains
     !////////////////////////////////////////////////////////////////
     ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
     !----------------------------------------------------------------
-
     ! GPP
-    filnam=trim(prefix)//'.d.gpp.out'
-    open(101,file=filnam,err=999,status='unknown')
+    if (loutdgpp) then
+      filnam=trim(prefix)//'.d.gpp.out'
+      open(101,file=filnam,err=999,status='unknown')
+    end if 
 
     ! NPP
-    filnam=trim(prefix)//'.d.npp.out'
-    open(102,file=filnam,err=999,status='unknown')
+    if (loutdnpp) then 
+      filnam=trim(prefix)//'.d.npp.out'
+      open(102,file=filnam,err=999,status='unknown')
+    end if
 
     ! LEAF C
-    filnam=trim(prefix)//'.d.cleaf.out'
-    open(103,file=filnam,err=999,status='unknown')
+    if (loutdCleaf    ) then
+      filnam=trim(prefix)//'.d.cleaf.out'
+      open(103,file=filnam,err=999,status='unknown')
+    end if 
 
     ! N UPTAKE
-    filnam=trim(prefix)//'.d.nup.out'
-    open(104,file=filnam,err=999,status='unknown')
+    if (loutdnup      ) then
+      filnam=trim(prefix)//'.d.nup.out'
+      open(104,file=filnam,err=999,status='unknown')
+    end if
 
     ! INORGANIC N (NO3+NH4)
-    filnam=trim(prefix)//'.d.ninorg.out'
-    open(107,file=filnam,err=999,status='unknown')
+    if (loutdninorg   ) then
+      filnam=trim(prefix)//'.d.ninorg.out'
+      open(107,file=filnam,err=999,status='unknown')
+    end if
 
     ! SOIL TEMPERATURE
-    filnam=trim(prefix)//'.d.soiltemp.out'
-    open(109,file=filnam,err=999,status='unknown')
+    if (loutdtemp_soil) then
+      filnam=trim(prefix)//'.d.soiltemp.out'
+      open(109,file=filnam,err=999,status='unknown')
+    end if
 
     ! AIR TEMPERATURE
     filnam=trim(prefix)//'.d.temp.out'
     open(110,file=filnam,err=999,status='unknown')
 
     ! ROOT C
-    filnam=trim(prefix)//'.d.croot.out'
-    open(111,file=filnam,err=999,status='unknown')
+    if (loutdCroot    ) then
+      filnam=trim(prefix)//'.d.croot.out'
+      open(111,file=filnam,err=999,status='unknown')
+    end if
 
     ! LABILE C
-    filnam=trim(prefix)//'.d.clabl.out'
-    open(112,file=filnam,err=999,status='unknown')
+    if (loutdClabl    ) then
+      filnam=trim(prefix)//'.d.clabl.out'
+      open(112,file=filnam,err=999,status='unknown')
+    end if
 
     ! LITTER C
-    filnam=trim(prefix)//'.d.clitt.out'
-    open(113,file=filnam,err=999,status='unknown')
+    if (loutdClitt    ) then
+      filnam=trim(prefix)//'.d.clitt.out'
+      open(113,file=filnam,err=999,status='unknown')
+    end if
 
     ! TRANSPIRATION
-    filnam=trim(prefix)//'.d.transp.out'
-    open(114,file=filnam,err=999,status='unknown')
+    if (loutdtransp   ) then
+      filnam=trim(prefix)//'.d.transp.out'
+      open(114,file=filnam,err=999,status='unknown')
+    end if
 
     ! LABILE N
-    filnam=trim(prefix)//'.d.nlabl.out'
-    open(115,file=filnam,err=999,status='unknown')
+    if (loutdNlabl    ) then
+      filnam=trim(prefix)//'.d.nlabl.out'
+      open(115,file=filnam,err=999,status='unknown')
+    end if
 
     ! SOIL C
-    filnam=trim(prefix)//'.d.csoil.out'
-    open(118,file=filnam,err=999,status='unknown')
+    if (loutdCsoil    ) then
+      filnam=trim(prefix)//'.d.csoil.out'
+      open(118,file=filnam,err=999,status='unknown')
+    end if
 
     ! LITTER N
-    filnam=trim(prefix)//'.d.nlitt.out'
-    open(119,file=filnam,err=999,status='unknown')
+    if (loutdNlitt    ) then
+      filnam=trim(prefix)//'.d.nlitt.out'
+      open(119,file=filnam,err=999,status='unknown')
+    end if
 
     ! SOIL N
-    filnam=trim(prefix)//'.d.nsoil.out'
-    open(120,file=filnam,err=999,status='unknown')
+    if (loutdNsoil    ) then
+      filnam=trim(prefix)//'.d.nsoil.out'
+      open(120,file=filnam,err=999,status='unknown')
+    end if
 
     ! LAI
-    filnam=trim(prefix)//'.d.lai.out'
-    open(121,file=filnam,err=999,status='unknown')
-
+    if (loutdlai      ) then
+      filnam=trim(prefix)//'.d.lai.out'
+      open(121,file=filnam,err=999,status='unknown')
+    end if
 
     !////////////////////////////////////////////////////////////////
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
@@ -259,7 +318,7 @@ contains
     use _params_core, only: ndayyear
     use _params_modl, only: npft, lu_category
     use _vars_core, only: dgpp, dnpp, dnup, pleaf, pninorg, proot, &
-      plabl, plitt_bg, plitt_af, plitt_as, dtemp_soil, dtransp, &
+      plabl, plitt_bg, plitt_af, plitt_as, psoilphys, dtransp, &
       psoil_sl, psoil_fs, lai_ind, narea_metabolic, narea_structural, &
       r_cton_leaf, lma, vcmax
 
@@ -279,28 +338,32 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    outdgpp(:,doy,jpngr)       = dgpp(:)
-    outdtransp(:,doy,jpngr)    = dtransp(:)
-    outdnpp(:,doy,jpngr)       = dnpp(:)%c12
-    outdnup(:,doy,jpngr)       = dnup(:)%n14
-    outdCleaf(:,doy,jpngr)     = pleaf(:,jpngr)%c%c12
-    outdCroot(:,doy,jpngr)     = proot(:,jpngr)%c%c12
-    outdClabl(:,doy,jpngr)     = plabl(:,jpngr)%c%c12
-    outdNlabl(:,doy,jpngr)     = plabl(:,jpngr)%n%n14
-    outdClitt(:,doy,jpngr)     = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
-    outdNlitt(:,doy,jpngr)     = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
-    outdCsoil(:,doy,jpngr)     = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
-    outdNsoil(:,doy,jpngr)     = psoil_sl(:,jpngr)%n%n14 + psoil_fs(:,jpngr)%n%n14
-    outdninorg(:,doy,jpngr)    = pninorg(:,jpngr)%n14
-    outdtemp_soil(:,doy,jpngr) = dtemp_soil(:,jpngr)
-    outdlai(:,doy,jpngr)       = lai_ind(:,jpngr)
+    if (loutdgpp      ) outdgpp(:,doy,jpngr)       = dgpp(:)
+    if (loutdtransp   ) outdtransp(:,doy,jpngr)    = dtransp(:)
+    if (loutdnpp      ) outdnpp(:,doy,jpngr)       = dnpp(:)%c12
+    if (loutdnup      ) outdnup(:,doy,jpngr)       = dnup(:)%n14
+    if (loutdCleaf    ) outdCleaf(:,doy,jpngr)     = pleaf(:,jpngr)%c%c12
+    if (loutdCroot    ) outdCroot(:,doy,jpngr)     = proot(:,jpngr)%c%c12
+    if (loutdClabl    ) outdClabl(:,doy,jpngr)     = plabl(:,jpngr)%c%c12
+
+    write(0,*) 'b'
+    if (loutdNlabl    ) outdNlabl(:,doy,jpngr)     = plabl(:,jpngr)%n%n14
+    if (loutdClitt    ) outdClitt(:,doy,jpngr)     = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
+    if (loutdNlitt    ) outdNlitt(:,doy,jpngr)     = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
+    if (loutdCsoil    ) outdCsoil(:,doy,jpngr)     = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
+    if (loutdNsoil    ) outdNsoil(:,doy,jpngr)     = psoil_sl(:,jpngr)%n%n14 + psoil_fs(:,jpngr)%n%n14
+    if (loutdninorg   ) outdninorg(:,doy,jpngr)    = pninorg(:,jpngr)%n14
+    if (loutdtemp_soil) outdtemp_soil(:,doy,jpngr) = psoilphys(:,jpngr)%temp
+    if (loutdlai      ) outdlai(:,doy,jpngr)       = lai_ind(:,jpngr)
     
+    write(0,*) 'c'
     dnarea_mb(:,doy)           = narea_metabolic(:)  
     dnarea_cw(:,doy)           = narea_structural(:)
     dcton_lm(:,doy)            = r_cton_leaf(:,jpngr)
     dlma(:,doy)                = lma(:,jpngr)
     dvcmax(:,doy)              = vcmax(:)
 
+    write(0,*) 'd'
     ! write(0,*) 'psoil_sl(:,jpngr)%c%c12', psoil_sl(:,jpngr)%c%c12
     ! write(0,*) 'psoil_fs(:,jpngr)%c%c12', psoil_fs(:,jpngr)%c%c12
     ! if (doy==ndayyear) stop
@@ -309,10 +372,17 @@ contains
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
+    write(0,*) 'e'
+
+    write(0,*) 'dgpp(:)', dgpp(:)
+    write(0,*) 'dnpp(:)', dnpp(:)%c12
+    write(0,*) 'dnup(:)', dnup(:)%n14
+
     outagpp(:,jpngr)    = outagpp(:,jpngr) + dgpp(:)
     outanpp(:,jpngr)    = outanpp(:,jpngr) + dnpp(:)%c12
     outanup(:,jpngr)    = outanup(:,jpngr) + dnup(:)%n14
     outaninorg(:,jpngr) = outaNinorg(:,jpngr) + pninorg(:,jpngr)%n14 / ndayyear
+    write(0,*) 'f'
 
 
   end subroutine getout_daily

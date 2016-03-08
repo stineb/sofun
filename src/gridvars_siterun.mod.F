@@ -1,4 +1,4 @@
-module gridvars_siterun
+module _gridvars
   !////////////////////////////////////////////////////////////////
   ! Module contains global variables defining the model grid.
   ! A module 'gridvars_*' must contain the following subroutines:
@@ -37,5 +37,5 @@ contains
 
   end subroutine getgrid
 
-end module gridvars_siterun
+end module _gridvars
 

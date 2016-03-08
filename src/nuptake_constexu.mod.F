@@ -71,7 +71,7 @@ contains
     use _classdefs
     use _params_modl, only: lu_category
     use _vars_core, only: dcex, pninorg, plabl, proot, dcex, dnup, &
-          dtransp, daet, fpc_grid, pleaf
+          dtransp, fpc_grid, pleaf
 
     ! arguments
     integer, intent(in) :: jpngr, pft

@@ -12,7 +12,8 @@ module _forcing_siterun
   use _sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
   use _params_siml, only: const_co2, firstyeartrend, co2_forcing_file, &
-    input_dir, const_ndep, ndep_forcing_file
+    input_dir, const_ndep, ndep_noy_forcing_file, ndep_nhx_forcing_file, &
+    prescr_monthly_fapar
 
   implicit none
 
@@ -29,12 +30,13 @@ module _forcing_siterun
 
 contains
 
-  function getco2( runname, forcingyear ) result( pco2 )
+  function getco2( runname, sitename, forcingyear ) result( pco2 )
     !////////////////////////////////////////////////////////////////
     !  Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: runname
+    character(len=*), intent(in) :: sitename
     integer, intent(in) :: forcingyear
 
     ! function return variable
@@ -48,7 +50,7 @@ contains
     else  
       readyear = forcingyear
     end if
-    pco2 = getvalreal( trim(co2_forcing_file), readyear )
+    pco2 = getvalreal( 'sitedata/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
 
   end function getco2
 
@@ -67,10 +69,13 @@ contains
     real, dimension(ndayyear,maxgrid) :: dndep_field
 
     ! local variables
-    real                      :: andep
+    real                      :: andep_noy
+    real                      :: andep_nhx
     real, dimension(ndayyear) :: dprec_rel
     integer                   :: jpngr
     integer                   :: readyear
+    real, dimension(ndayyear) :: dndep_noy
+    real, dimension(ndayyear) :: dndep_nhx
     
     if (const_ndep) then
       readyear = firstyeartrend
@@ -78,16 +83,55 @@ contains
       readyear = forcingyear
     end if
     ! andep = getvalreal( trim(input_dir)//trim(ndep_forcing_file), readyear )
-    andep = getvalreal( 'sitedata/ndep/'//sitename//'/'//trim(ndep_forcing_file), readyear )
+    andep_noy = getvalreal( 'sitedata/ndep/'//trim(sitename)//'/'//trim(ndep_noy_forcing_file), readyear )
+    andep_nhx = getvalreal( 'sitedata/ndep/'//trim(sitename)//'/'//trim(ndep_nhx_forcing_file), readyear )
 
     
     ! Distribute annual Ndep to days by daily precipitation
     do jpngr=1,maxgrid
       dprec_rel(:)         = dprec_field(:,jpngr)/sum(dprec_field(:,jpngr))
-      dndep_field(:,jpngr) = andep * dprec_rel(:)
+      dndep_noy(:)         = andep_noy * dprec_rel(:)
+      dndep_nhx(:)         = andep_nhx * dprec_rel(:)
+      dndep_field(:,jpngr) = dndep_nhx(:) + dndep_noy(:)
     end do
 
   end function getndep
+
+
+  function getfapar( runname, sitename, forcingyear ) result( fapar_field )
+    !////////////////////////////////////////////////////////////////
+    !  Function reads this year's atmospheric CO2 from input
+    !----------------------------------------------------------------
+    use _params_siml, only: prescr_monthly_fapar
+    use _params_core, only: dummy
+
+    ! arguments
+    character(len=*), intent(in) :: runname
+    character(len=*), intent(in) :: sitename
+    integer, intent(in) :: forcingyear
+
+    ! function return variable
+    real, dimension(nmonth,maxgrid), intent(out) :: fapar_field
+
+    ! local variables 
+    integer :: jpngr
+    integer :: readyear
+    character(len=4) :: faparyear_char
+
+    do jpngr=1,maxgrid
+      if (prescr_monthly_fapar) then
+        ! create 4-digit string for year  
+        write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
+        fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_modis_CH-Oe1_'//faparyear_char//'.txt' )
+      else
+        fapar_field(:,jpngr) = dummy
+      end if
+    end do
+
+    return
+    999  format (I4.4)
+
+  end function getfapar
 
 
   subroutine getclimate_site( runname, sitename, climateyear ) result ( out_climate )
@@ -101,11 +145,9 @@ contains
 
     ! local variables
     integer :: day, mo, dm, yr
-    real, dimension(nmonth) :: mtemp, mfsun, mvapr, mvpd
+    ! real, dimension(nmonth) :: mtemp, mfsun, mvapr, mvpd
+    real, dimension(ndayyear) :: dvapr
     character(len=4) :: climateyear_char
-
-    ! xxx try
-    real, dimension(nmonth) :: mprec, mwetd
 
     ! xxx used in combination with weather generator
     ! real :: harvest1, harvest2
@@ -116,20 +158,20 @@ contains
 
     ! PRESCRIBED DAILY CLIMATE (TEMP, PREC, FSUN) FOR ONE YEAR
     ! xxx deal with jpngr dimension only when using NetCDF
-    write(0,*) 'prescribe daily climate (temp, prec, fsun) ...'
-
-    dtemp_field(:,:) = 0.0
-    dprec_field(:,:) = 0.0
-    dfsun_field(:,:) = 0.0
+    write(0,*) 'prescribe daily climate (temp, prec, fsun, vpd) ...'
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
-    ! xxx try
-    climateyear_char = '2002'
+    dtemp_field(:,1) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    dprec_field(:,1) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    dfsun_field(:,1) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    dvapr(:)         = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dvapr_'//trim(sitename)//'_'//climateyear_char//'.txt')
 
-    dtemp_field(:,1) = read1year_daily('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'dtemp_'//sitename//'_'//climateyear_char//'.txt')
-    dprec_field(:,1) = read1year_daily('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'dprec_'//sitename//'_'//climateyear_char//'.txt')
+    ! calculate daily VPD based on daily vapour pressure and temperature data
+    do day=1,ndayyear
+      dvpd_field(day,1) = calc_vpd( dtemp_field(day,1), dvapr(day) )
+    end do
 
     ! ! xxx alternatively, if no daily values are available, use weather generator for precip
     ! ! mprec(:) = read1year_monthly('mprec_'//sitename//'_2002.txt')
@@ -145,18 +187,18 @@ contains
     ! end do
     ! dprec_field(:,1) = monthly2daily_weather( mprec(:), mwetd(:), prdaily_random(:,:) )
 
-    mfsun(:) = read1year_monthly('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'mfsun_'//sitename//'_'//climateyear_char//'.txt')
-    mvapr(:) = read1year_monthly('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'mvapr_'//sitename//'_'//climateyear_char//'.txt')
+    ! mfsun(:) = read1year_monthly('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'mfsun_'//sitename//'_'//climateyear_char//'.txt')
+    ! mvapr(:) = read1year_monthly('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'mvapr_'//sitename//'_'//climateyear_char//'.txt')
 
-    ! calculate monthly VPD based on monthly vapour pressure and temperature data
-    mtemp(:) = daily2monthly( dtemp_field(:,1), "mean")
-    do mo=1,nmonth
-      mvpd(mo) = calc_vpd( mtemp(mo), mvapr(mo) )
-    end do
+    ! ! calculate monthly VPD based on monthly vapour pressure and temperature data
+    ! mtemp(:) = daily2monthly( dtemp_field(:,1), "mean" )
+    ! do mo=1,nmonth
+    !   mvpd(mo) = calc_vpd( mtemp(mo), mvapr(mo) )
+    ! end do
 
-    ! use monthly value for each day in month for dfsun, and dvpd
-    dfsun_field(:,1) = monthly2daily( mfsun(:), "uniform" )
-    dvpd_field(:,1)  = monthly2daily( mvpd(:), "uniform" )
+    ! ! use monthly value for each day in month for dfsun, and dvpd
+    ! dfsun_field(:,1) = monthly2daily( mfsun(:), "uniform" )
+    ! dvpd_field(:,1)  = monthly2daily( mvpd(:), "uniform" )
 
     !insf  = (/0.21, 0.27, 0.30, 0.40, 0.39, 0.39, 0.40, 0.43, 0.36, 0.32, 0.23, 0.19/)
     !intc  = (/4.80, 4.85, 7.10, 9.10, 12.4, 15.3, 17.6, 17.3, 14.6, 11.2, 7.55, 5.05/)

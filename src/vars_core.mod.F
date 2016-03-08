@@ -68,9 +68,7 @@ module _vars_core
   type(orgpool), dimension(nlu,maxgrid)  :: psoil_fs        ! soil organic matter, slow turnover [gC/m2]
   
   type(nitrogen), dimension(nlu,maxgrid) :: pninorg         ! total inorganic N pool (sum of NO3 and NH4) [gC/m2]
-  
-  real, dimension(nlu,maxgrid)           :: dwtot           ! soil water mass [mm = kg/m2]
-  
+    
   ! xxx todo: do we really need maxgrid dimension for these variables?
   real, dimension(npft,maxgrid)          :: r_cton_leaf     ! leaf C:N ratio [gC/gN] 
   real, dimension(npft,maxgrid)          :: r_ntoc_leaf     ! leaf N:C ratio [gN/gC]
@@ -82,7 +80,7 @@ module _vars_core
   real, dimension(npft)                  :: vcmax           ! 
 
   real, dimension(npft,maxgrid)          :: lai_ind
-  real, dimension(npft,maxgrid)          :: fpc_ind
+  real, dimension(npft,maxgrid)          :: fapar_ind
 
 
   !////////////////////////////////////////////////////////////////
@@ -95,19 +93,49 @@ module _vars_core
   real, dimension(npft,maxgrid)    :: height      ! tree height (m)
   real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
 
-  real, dimension(nlu,maxgrid)     :: dtemp_soil      ! soil temperature [deg C] xxx really maxgrid necessary? xxx
-  real, dimension(nlu)             :: daet            ! daily AET (mm)
-  real, dimension(nlu)             :: dro             ! daily runoff [mm]
   real, dimension(npft)            :: dtransp         ! daily transpiration [mm]
-  real, dimension(nlu)             :: dwfps           ! water-filled pore space (fraction of water-holding capacity)
-  real, dimension(nlu)             :: dncpa           ! daily normalised Cramer-Prentice-Alpha (AET/EET) {0,1}
 
   real, dimension(nlu)             :: ddoc            ! surrogate for dissolved organic carbon
 
+  !----------------------------------------------------------------
+  ! Physical soil variables with memory from year to year (pools)
+  !----------------------------------------------------------------
+  type psoilphystype
+    real :: temp       ! soil temperature [deg C]
+    real :: wcont      ! soil water mass [mm = kg/m2]
+  end type psoilphystype
+
+  type( psoilphystype ), dimension(nlu,maxgrid) :: psoilphys
+
+  !----------------------------------------------------------------
+  ! Collection of physical soil variables used across modules
+  !----------------------------------------------------------------
+  type soilphystype
+    real :: ro         ! daily runoff (mm)
+    real :: sw         ! evaporative supply rate (mm/h)
+    real :: wscal      ! water filled pore space (unitless)
+  end type soilphystype
+
+  type( soilphystype ), dimension(nlu) :: soilphys(nlu)
+
+  !----------------------------------------------------------------
+  ! Collection of solar radiation-related variables used across modules
+  ! Variables are a function of latitude, elevation, and 
+  ! sunshine fraction (all variables independent of soil moisture)
+  !----------------------------------------------------------------
+  type solartype
+    real, dimension(ndayyear) :: dayl        ! day length (hours)
+    real, dimension(ndayyear) :: dra         ! daily TOA solar irradiation (J/m2)
+    real, dimension(ndayyear) :: dppfd       ! daily total PPFD (mol m-2 d-1)
+    real, dimension(nmonth)   :: mppfd       ! monthly total PPFD (mol m-2 month-1)
+    real, dimension(nmonth)   :: meanmppfd   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
+  end type solartype
+
+  type( solartype ) :: solar
 
 contains
 
-  subroutine initglobal( fpc_grid_data )
+  subroutine initglobal()
     !////////////////////////////////////////////////////////////////
     !  Initialisation of all _pools on all gridcells at the beginning
     !  of the simulation.
@@ -118,17 +146,9 @@ contains
     use _params_modl, only: tree
     use _params_core, only: npft, maxgrid
 
-    ! arguments
-    real, dimension(npft,maxgrid), intent(in) :: fpc_grid_data
-
     ! local variables
     integer :: pft
     integer :: jpngr
-
-    !-----------------------------------------------------------------------------
-    ! Prescribe FPC grid from data
-    !-----------------------------------------------------------------------------
-    fpc_grid(:,:) = fpc_grid_data(:,:)
 
     !-----------------------------------------------------------------------------
     ! derive which PFTs are present from fpc_grid (which is prescribed)
@@ -160,8 +180,7 @@ contains
     psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! fast decomposing soil organic matter, organic pool [gC/m2 and gN/m2]
     psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! recalcitrant soil organic matter    , organic pool [gC/m2 and gN/m2]
 
-    ! xxx try
-    dwtot(:,:)    = 50.0  ! total soil water content (mm); corresponds to 'dwn' in STASH
+    call initglobal_psoilphys()
 
     !! xxx try
     !! initialise _pools with non-zero values
@@ -174,7 +193,7 @@ contains
 
     ! initialise other properties
     lai_ind(:,:)   = 0.0
-    fpc_ind(:,:)   = 0.0
+    fapar_ind(:,:)   = 0.0
     height(:,:)    = 0.0
 
     do pft=1,npft
@@ -217,7 +236,7 @@ contains
     ! initialise other properties
     fpc_grid(pft,jpngr)  = 0.0
     lai_ind(pft,jpngr)   = 0.0
-    fpc_ind(pft,jpngr)   = 0.0
+    fapar_ind(pft,jpngr)   = 0.0
     height(pft,jpngr)    = 0.0
     if (tree(pft)) then
       nind(pft,jpngr)      = 0.0
@@ -255,7 +274,7 @@ contains
 
   subroutine initdaily
     !////////////////////////////////////////////////////////////////
-    !  Initialises all daily variables with zero.
+    ! Initialises all daily variables with zero.
     !----------------------------------------------------------------
     use _classdefs
 
@@ -273,6 +292,7 @@ contains
     dnup(:)        = nitrogen(0.0)
     ddoc(:)        = 0.0
 
+    call initdaily_soilphys()
 
     !! xxx try
     !! hold soil carbon and litter _pools at a constant size
@@ -288,6 +308,30 @@ contains
     ! pninorg%n14 = 0.05
 
   end subroutine initdaily
+
+
+  subroutine initdaily_soilphys()
+    !////////////////////////////////////////////////////////////////
+    ! Initialises all daily variables within derived type 'soilphys'.
+    !----------------------------------------------------------------
+    soilphys(:)%ro    = 0.0
+    soilphys(:)%sw    = 0.0
+    soilphys(:)%wscal = 0.0
+
+  end subroutine initdaily_soilphys
+
+
+  subroutine initdaily_psoilphys()
+    !////////////////////////////////////////////////////////////////
+    ! Initialises all daily variables within derived type 'soilphys'.
+    !----------------------------------------------------------------
+    soilphys(:)%temp  = 0.0
+    
+    ! xxx try
+    soilphys(:)%wcont = 50.0 
+
+  end subroutine initdaily_soilphys
+
 
 end module _vars_core
 

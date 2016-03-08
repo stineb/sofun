@@ -14,19 +14,44 @@ module _waterbal
   !   - waterbal
   ! Required module-independent model state variables (necessarily 
   ! updated by 'waterbal') are:
-  !   - daytime net radiation ('drn')
-  !   - soil moisture ('dwtot')
-  !   - runoff ('dro')
+  !   - daytime net radiation ('rn')
+  !   - soil water conent ('psoilphys%wcont')
+  !   - runoff ('soilphys%ro')
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: ndayyear, nmonth, nlu, maxgrid
-  use _vars_core, only: daet, dro, dwfps, dncpa
+  use _params_siml, only: loutwaterbal
 
   implicit none
 
   ! private
   ! public dppfd
+
+  !----------------------------------------------------------------
+  ! DERIVED TYPES FOR FUNCTION RETURN
+  !----------------------------------------------------------------
+  ! Orbit parameters 
+  type outtype_berger
+    real :: nu
+    real :: lambda
+  end type outtype_berger
+
+  ! Radiation variables. aet, sw, and cpa are affected by soil moisture.
+  type evaptype
+    real :: rn         ! daily net radiation (J/m2)
+    real :: rnn        ! nighttime net radiation (J/m^2)
+    real :: rnl        ! net longwave radiation (W/m^2)
+    real :: eet        ! daily EET (mm)
+    real :: pet        ! daily PET (mm)
+    real :: cn         ! daily condensation (mm)
+    real :: aet        ! daily AET (mm)
+    real :: cpa        ! Cramer-Prentice-Alpha = AET / EET (unitless)
+  end type evaptype
+
+  ! SPLASH state variables
+  type( outtype_berger ), dimension(ndayyear)   :: out_berger    ! stores output of function berger_tls
+  type( evaptype )      , dimension(nlu)        :: evap
 
   ! STASH PARAMETERS
   ! read from file, therefore not declared as parameter
@@ -52,76 +77,43 @@ module _waterbal
   real :: kw                ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
   real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
 
-  ! DERIVED TYPES FOR FUNCTION RETURN
-  type outtype_berger
-    real :: my_nu                        ! heliocentric longitudes
-    real :: my_lambda                    ! heliocentric longitudes
-  end type outtype_berger
-
   ! MODULE-SPECIFIC VARIABLES
   ! These are not required outside module STASH, but are used in different SRs of this module
   ! adjust these and make global if required by GePiSaT
-  type(outtype_berger), dimension(ndayyear) :: out_berger    ! stores output of function berger_tls
-  real, dimension(ndayyear) :: dppfd                         ! daily total PPFD (mol m-2 d-1), previously 'ppfd_n'
-  real, dimension(nmonth)   :: mppfd                         ! monthly total PPFD (mol m-2 month-1)
-  real, dimension(nmonth)   :: meanmppfd                     ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
-  real, dimension(ndayyear) :: dayl                          ! day length (hours)
-  real, dimension(ndayyear) :: dra                           ! daily extraterrestrial solar radiation (J/m^2)
-  real :: drn                                                ! daytime net radiation [J/m2]
-  real :: drnn                                               ! nighttime net radiation (J/m^2)
-  real :: drnl                                               ! net longwave radiation (W/m^2)
-  real :: deet                                               ! daily EET (mm)
-  real :: dpet                                               ! daily potential evapotranspiration, PET (mm)
-  real, dimension(nlu) :: dcpa                               ! daily Cramer-Prentice-Alpha (AET/EET)
-  ! real, dimension(nlu) :: dncpa                              ! daily normalised Cramer-Prentice-Alpha (AET/EET) {0,1}
-  real, dimension(nlu) :: wc                                 ! daily condensation (mm)
 
   ! DAILY OUTPUT VARIABLES
   ! xxx add jpngr dim
-  real, dimension(nlu,ndayyear,maxgrid) :: outdwn             ! daily soil moisture, mm
-  real, dimension(ndayyear,maxgrid)     :: outdho             ! daily solar irradiation, J/m2
-  real, dimension(ndayyear,maxgrid)     :: outdhn             ! daily net radiation, J/m2
-  real, dimension(ndayyear,maxgrid)     :: outdqn             ! daily PPFD, mol/m2
-  real, dimension(ndayyear,maxgrid)     :: outdayl            ! daily day length, h
-  real, dimension(nlu,ndayyear,maxgrid) :: outdcn             ! daily condensation water, mm
-  real, dimension(nlu,ndayyear,maxgrid) :: outdro             ! daily runoff, mm
-  real, dimension(ndayyear,maxgrid)     :: outdeet            ! daily equilibrium ET, mm
-  real, dimension(ndayyear,maxgrid)     :: outdpet            ! daily potential ET, mm
-  real, dimension(nlu,ndayyear,maxgrid) :: outdaet            ! daily actual ET, mm
-  real, dimension(nlu,ndayyear,maxgrid) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
-
-  ! MONTHLY OUTPUT VARIABLES
-  ! xxx add jpngr dim
-  real, dimension(nmonth,maxgrid) :: outmeq_m
-  real, dimension(nmonth,maxgrid) :: outmep_m
-  real, dimension(nlu,nmonth,maxgrid) :: outmea_m
-  real, dimension(nlu,nmonth,maxgrid) :: outmcpa
-  real, dimension(nlu,nmonth,maxgrid) :: outmcwd
-  real, dimension(nmonth,maxgrid) :: outmqm
-
+  real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
+  real, allocatable, dimension(:,:)   :: outdra             ! daily solar irradiation, J/m2
+  real, allocatable, dimension(:,:)   :: outdrn             ! daily net radiation, J/m2
+  real, allocatable, dimension(:,:)   :: outdppfd           ! daily PPFD, mol/m2
+  real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
+  real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
+  real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
+  real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
+  real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm
+  real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm
+  real, allocatable, dimension(:,:,:) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
 
 contains
 
-  subroutine waterbal( jpngr, doy, lat, dprec, dtemp, dsun, elv )
+  subroutine waterbal( jpngr, doy, lat, pr, tc, sf, elv )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use _params_core, only: ndayyear, ndaymonth, nlu
-    use _vars_core, only: dwtot
+    use _vars_core, only: psoilphys, soilphys
 
-    ! ARGUMENTS
+    ! arguments
     integer, intent(in) :: jpngr
-    integer, intent(in) :: doy                       ! day of year
-    real, intent(in) :: lat                          ! latitude (degrees)
-    real, intent(in) :: dprec       ! daily precip (mm) 
-    real, intent(in) :: dtemp        ! mean monthly temperature (deg C)
-    real, intent(in) :: dsun        ! mean monthly sunshine fraction (unitless)
-    !real, dimension(nmonth), intent(in) :: ppt       ! monthly precip (mm) 
-    !real, dimension(nmonth), intent(in) :: tc        ! mean monthly temperature (deg C)
-    !real, dimension(nmonth), intent(in) :: sf        ! mean monthly sunshine fraction (unitless)
+    integer, intent(in) :: doy    ! day of year
+    real, intent(in) :: lat       ! latitude (degrees)
+    real, intent(in) :: pr        ! daily precip (mm) 
+    real, intent(in) :: tc        ! mean monthly temperature (deg C)
+    real, intent(in) :: sf        ! mean monthly sunshine fraction (unitless)
     real, intent(in) :: elv                          ! altitude (m)
 
-    ! LOCAL VARIABLES
+    ! local variables
     integer :: lu                        ! land unit (gridcell tile)
     integer :: moy                       ! month of year
     integer :: idx                       ! day of year corresponding to yesterday
@@ -133,63 +125,88 @@ contains
     ! Loop over gricell tiles
     do lu=1,nlu
 
+      ! Calculate evaporative supply rate, mm/h
+      soilphys(lu)%sw = kCw * psoilphys(lu,jpngr)%wcont / kWm
+
       ! Calculate radiation and evaporation quantities
       !print*,'calling evap for doy', doy, '...'
-      call evap( lu, jpngr, lat, doy, elv=elv, sf=dsun, tc=dtemp )
+      evap(lu) = getevap( lat, doy, elv, sf, tc, soilphys(lu)%sw )
       !print*,'... done'
 
       ! Update soil moisture
-      dwtot(lu,jpngr) = dwtot(lu,jpngr) + dprec + wc(lu) - daet(lu)
+      psoilphys(lu,jpngr)%wcont = psoilphys(lu,jpngr)%wcont + pr + evap(lu)%cn - evap(lu)%aet
 
       ! Bucket model for runoff generation
-      if (dwtot(lu,jpngr)>kWm) then
+      if (psoilphys(lu,jpngr)%wcont>kWm) then
         ! Bucket is full 
         ! * set soil moisture to capacity
         ! * add remaining water to monthly runoff total
-        dro(lu)         = dwtot(lu,jpngr)
-        dro(lu)         = dro(lu) - kWm
-        dwtot(lu,jpngr) = kWm
+        soilphys(lu)%ro           = psoilphys(lu,jpngr)%wcont - kWm
+        psoilphys(lu,jpngr)%wcont = kWm
 
-      elseif (dwtot(lu,jpngr)<0.0) then
+      elseif (psoilphys(lu,jpngr)%wcont<0.0) then
         ! Bucket is empty
         ! * set soil moisture to zero
-        dwtot(lu,jpngr) = 0.0
-        dro(lu) = 0.0
+        evap(lu)%aet              = evap(lu)%aet + psoilphys(lu,jpngr)%wcont
+        psoilphys(lu,jpngr)%wcont = 0.0
+        soilphys(lu)%ro           = 0.0
 
       else
         ! No runoff occurrs
-        dro(lu) = 0.0
+        soilphys(lu)%ro = 0.0
 
       end if
 
       ! water-filled pore space
-      dwfps(lu) = dwtot(lu,jpngr) / kwm
+      soilphys(lu)%wscal = psoilphys(lu,jpngr)%wcont / kWm
+
+      ! water scalar (LPX-like)
+      ! xxx
 
     end do
 
   end subroutine waterbal
 
 
-  subroutine getrad( lat, elv, sf )
+  subroutine getsolar_alldays( lat, elv, sf )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Subroutine to get variables stored in derived type 'solar' (belongs
+    ! to module only, not core variable).
+    !-------------------------------------------------------------------------  
+    use _vars_core, only: solar
+
+    ! arguments
+    real, intent(in)                      :: lat           ! latitude, degrees
+    real, intent(in)                      :: elv           ! elevation, metres
+    real, dimension(ndayyear), intent(in) :: sf            ! fraction of sunshine hours 
+
+    solar = getsolar( lat, elv, sf(:) )
+
+  end subroutine getsolar_alldays
+
+
+  function getsolar( lat, elv, sf ) result( out_solar )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily PPFD. Code is an extract of the subroutine
     ! 'evap', adopted from the evap() function in GePiSaT (Python version). 
-    ! This subroutine ('getrad') is called before the daily loop.
+    ! This subroutine ('getsolar') is called before the daily loop.
     ! Output:
     ! - daily extraterrestrial solar radiation (dra), J/m^2
     ! - daily PPFD (dppfd), mol/m^2
     !-------------------------------------------------------------------------  
     use _params_core, only: ndayyear, pi
     use _sofunutils, only: daily2monthly
+    use _vars_core, only: solartype
 
-    implicit none
-
-    ! ARGUMENTS
+    ! arguments
     real, intent(in)                      :: lat           ! latitude, degrees
     real, intent(in)                      :: elv           ! elevation, metres
-    real, dimension(ndayyear), intent(in) :: sf            ! fraction of sunshine hours 
+    real, intent(in), dimension(ndayyear) :: sf            ! fraction of sunshine hours 
 
-    ! LOCAL VARIABLES
+    ! function return variable
+    type( solartype ) :: out_solar
+
+    ! local variables
     integer            :: doy
     real               :: dr                           ! distance factor
     real               :: delta                        ! declination angle 
@@ -204,6 +221,13 @@ contains
     real, dimension(nmonth)   :: monsecs ! daylight seconds for each MOY
 
 
+    ! initialise members of solartype
+    out_solar%dayl(:)      = 0.0
+    out_solar%dra(:)       = 0.0
+    out_solar%dppfd(:)     = 0.0
+    out_solar%mppfd(:)     = 0.0
+    out_solar%meanmppfd(:) = 0.0
+
     do doy=1,ndayyear
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
@@ -215,19 +239,16 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Berger (1978)
       out_berger(doy) = get_berger_tls( doy )
-      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 3. Calculate distance factor (dr), unitless
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      dr = calc_dr( out_berger(doy)%my_nu )
-
+      dr = calc_dr( out_berger(doy)%nu )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 4. Calculate declination angle (delta), degrees
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      delta = calc_delta( out_berger(doy)%my_lambda )
-
+      delta = calc_delta( out_berger(doy)%lambda )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 5. Calculate variable substitutes (u and v), unitless
@@ -236,47 +257,41 @@ contains
       ru = out_ru_rv(1)
       rv = out_ru_rv(2)
 
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 6. Calculate the sunset hour angle (hs), degrees
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       hs = calc_hs( ru, rv )
 
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 6.a Calculate day length from sunset hour angle, h
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      dayl(doy) = 24.0 * hs / 180.0  ! hs is in degrees (pi = 180 deg)
-
+      out_solar%dayl(doy) = 24.0 * hs / 180.0  ! hs is in degrees (pi = 180 deg)
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 7. Calculate daily extraterrestrial solar radiation (dra), J/m^2
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 1.10.3, Duffy & Beckman (1993)
-      dra(doy) = (86400.0/pi)*kGsc*dr*(radians(ru)*hs + rv * dgsin(hs))
-
+      out_solar%dra(doy) = ( 86400.0 / pi ) * kGsc * dr * ( radians(ru) * hs + rv * dgsin(hs) )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 8. Calculate transmittivity (tau), unitless
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       tau = calc_tau( sf(doy), elv )
 
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 9. Calculate daily PPFD (dppfd), mol/m^2
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 57, STASH 2.0 Documentation
-      dppfd(doy) = (1.0e-6)*kfFEC*(1.0 - kalb_vis)*tau*dra(doy)
-      ! write(0,*) 'doy, dppfd(doy)', doy, dppfd(doy)
-
+      out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
 
     end do
 
     ! Calculate monthly average daylight PPFD 
-    daysecs(:)   = dayl(:) * 60.0 * 60.0              ! conversion of daylight hours to seconds
+    daysecs(:)   = out_solar%dayl(:) * 60.0 * 60.0              ! conversion of daylight hours to seconds
     monsecs(:)   = daily2monthly( daysecs(:), "sum" )
-    mppfd(:)     = daily2monthly( dppfd(:), "sum" )   ! mol m-2 month-1
-    meanmppfd(:) = mppfd(:) / monsecs(:)              ! mol m-2 s-1
+
+    out_solar%mppfd(:)     = daily2monthly( out_solar%dppfd(:), "sum" )   ! mol m-2 month-1
+    out_solar%meanmppfd(:) = out_solar%mppfd(:) / monsecs(:)              ! mol m-2 s-1
 
     !-------------------------------------------------------------   
     ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 
@@ -324,39 +339,37 @@ contains
     !         Tech. rep. NASA-TM-X-164. National Aeronautics and Space 
     !         Administration (NASA).
     !-------------------------------------------------------------   
+  end function getsolar
 
-  end subroutine getrad
 
-
-  subroutine evap( lu, jpngr, lat, doy, elv, sf, tc )
+  function getevap( lat, doy, elv, sf, tc, sw ) result( out_evap )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily evaporation quantities. Code is 
     ! adopted from the evap() function in GePiSaT (Python version). 
     ! This subroutine ('evap') is called within the daily loop.
     ! Output:
-    ! - daily net longwave radiation (drnl), W/m^2
-    ! - daily daytime net radiation (drn), J/m^2
-    ! - daily nighttime net radiation (drnn), J/m^2
-    ! - daily EET (deet), mm
-    ! - daily PET (dpet), mm
-    ! - daily AET (daet), mm
-    ! - daily condensation (wc), mm
+    ! - daily net longwave radiation (out_evap%drnl), W/m^2
+    ! - daily daytime net radiation (out_evap%drn), J/m^2
+    ! - daily nighttime net radiation (out_evap%rnn), J/m^2
+    ! - daily EET (out_evap%eet), mm
+    ! - daily PET (out_evap%pet), mm
+    ! - daily AET (out_evap%aet), mm
+    ! - daily condensation (out_evap%cn), mm
     !-------------------------------------------------------------------------  
     use _params_core, only: ndayyear, pi
-    use _vars_core, only: dwtot
 
-    implicit none
-
-    ! ARGUMENTS
-    integer, intent(in) :: lu            ! land unit
-    integer, intent(in) :: jpngr         ! gridcell number
-    real, intent(in)    :: lat           ! latitude, degrees
+    ! arguments
+    real,    intent(in) :: lat           ! latitude, degrees
     integer, intent(in) :: doy           ! day of the year (formerly 'n')
-    real, intent(in)    :: elv           ! elevation, metres
-    real, intent(in)    :: sf            ! fraction of sunshine hours 
-    real, intent(in)    :: tc            ! mean daily air temperature, C
+    real,    intent(in) :: elv ! elevation, metres
+    real,    intent(in) :: sf  ! fraction of sunshine hours
+    real,    intent(in) :: tc  ! mean daily air temperature, C
+    real,    intent(in) :: sw  ! evaporative supply rate, mm/hr
 
-    ! LOCAL VARIABLES
+    ! function return variable
+    type( evaptype )  :: out_evap
+
+    ! local variables
     real :: dr                           ! distance factor
     real :: delta                        ! declination angle 
     real :: ru                           ! variable substitute for u
@@ -372,37 +385,17 @@ contains
     real :: econ                         ! Eq. 58, STASH 2.0 Documentation
     real :: rx                           ! variable substitute (mm/hr)/(W/m^2)
     real :: hi, cos_hi                   ! intersection hour angle, degrees
-    real :: sw                           ! evaporative supply rate (mm/h)
     real, dimension(2) :: out_ru_rv      ! function return variable containing 'ru' and 'rv'.
-
-
-    ! ! Set default values for optional arguments
-    ! ! xxx really keep them as optional inputs?
-
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! 1. Calculate number of days in year (kN), days
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! (is provided within SOFUN)
-
-
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! Berger (1978)
-    ! out_berger = berger_tls( doy )
-    
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 3. Calculate distance factor (dr), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    dr = calc_dr( out_berger(doy)%my_nu )
-
+    dr = calc_dr( out_berger(doy)%nu )
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 4. Calculate declination angle (delta), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    delta = calc_delta( out_berger(doy)%my_lambda )
-
+    delta = calc_delta( out_berger(doy)%lambda )
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 5. Calculate variable substitutes (u and v), unitless
@@ -411,84 +404,52 @@ contains
     ru = out_ru_rv(1)
     rv = out_ru_rv(2)
 
-
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 6. Calculate the sunset hour angle (hs), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     hs = calc_hs( ru, rv )
-
-
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! 6.a Calculate day length from sunset hour angle, h
-    ! ! Necessary to calculate here again for output.
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! Eq. 31 in STASH doc 
-    ! dayl(doy) = 24 * hs / 180.0  ! hs is in degrees (pi = 180 deg)
-
-
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! 7. Calculate daily extraterrestrial solar radiation (dra), J/m^2
-    ! ! Necessary to calculate here again for output.
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! Eq. 1.10.3, Duffy & Beckman (1993)
-    ! dra = (86400.0/pi)*kGsc*dr*(radians(ru)*hs + rv * dgsin(hs))
-
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 8. Calculate transmittivity (tau), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     tau = calc_tau( sf, elv )
 
- 
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! 9. Calculate daily PPFD (dppfd), mol/m^2
-    ! ! Necessary to calculate here again for output.
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! Eq. 57, STASH 2.0 Documentation
-    ! dppfd = (1.0e-6)*kfFEC*(1.0 - kalb_vis)*tau*dra
-
-
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 10. Estimate net longwave radiation (drnl), W/m^2
+    ! 10. Estimate net longwave radiation (out_evap%rnl), W/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
-    drnl = (kb + (1.0 - kb)*sf)*(kA - tc)
-
+    out_evap%rnl = ( kb + (1.0 - kb ) * sf ) * ( kA - tc )
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 11. Calculate variable substitute (rw), W/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rw = (1.0-kalb_sw)*tau*kGsc*dr
-
+    rw = ( 1.0 - kalb_sw ) * tau * kGsc * dr
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 12. Calculate net radiation cross-over hour angle (hn), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if ((drnl - rw*ru)/(rw*rv) >= 1.0) then
+    if ((out_evap%rnl - rw*ru)/(rw*rv) >= 1.0) then
       ! Net radiation negative all day
       hn = 0.0
-    else if ((drnl - rw*ru)/(rw*rv) <= -1.0) then
+    else if ((out_evap%rnl - rw*ru)/(rw*rv) <= -1.0) then
       ! Net radiation positive all day
       hn = 180.0
     else
-      !hn = degrees( dacos((drnl - rw*ru)/(rw*rv)) )
-      hn = degrees( acos((drnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
+      !hn = degrees( dacos((out_evap%rnl - rw*ru)/(rw*rv)) )
+      hn = degrees( acos((out_evap%rnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
     end if
 
-
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 13. Calculate daytime net radiation (drn), J/m^2
+    ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 53, STASH 2.0 Documentation
-    drn = (86400.0/pi) * (hn*(pi/180.0)*(rw*ru - drnl) + rw*rv*dgsin(hn))
-
+    out_evap%rn = (86400.0/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 14. Calculate nighttime net radiation (drnn), J/m^2
+    ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 56, STASH 2.0 Documentation
-    drnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + drnl*(pi - 2.0*radians(hs) + radians(hn)))
-
+    out_evap%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + out_evap%rnl*(pi - 2.0*radians(hs) + radians(hn)))
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 15. Calculate water-to-energy conversion (econ), m^3/J
@@ -505,45 +466,33 @@ contains
     ! Eq. 58, STASH 2.0 Documentation
     econ = s/(lv*pw*(s + g))
 
-
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 16. Calculate daily condensation (wc), mm
+    ! 16. Calculate daily condensation (out_evap%cn), mm
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 68, STASH 2.0 Documentation
-    wc(lu) = 1000.0 * econ * abs(drnn)
-
+    out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 17. Estimate daily EET (deet), mm
+    ! 17. Estimate daily EET (out_evap%eet), mm
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 70, STASH 2.0 Documentation
-    deet = 1000.0*econ*(drn)
-
+    out_evap%eet = 1000.0 * econ * out_evap%rn
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 18. Estimate daily PET (dpet), mm
+    ! 18. Estimate daily PET (out_evap%pet), mm
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 72, STASH 2.0 Documentation
-    dpet = (1.0+kw)*deet
-
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Calculate evaporative supply rate, mm/h
-    ! - moved here from waterbal SR - 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    sw = kCw * dwtot(lu,jpngr) / kWm
-
+    out_evap%pet = ( 1.0 + kw ) * out_evap%eet
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     rx = 1000.0*3600.0*(1.0+kw)*econ
 
-
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 20. Calculate the intersection hour angle (hi), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    cos_hi = sw/(rw*rv*rx) + drnl/(rw*rv) - ru/rv
+    cos_hi = sw/(rw*rv*rx) + out_evap%rnl/(rw*rv) - ru/rv
     if (cos_hi >= 1.0) then
       ! Supply exceeds demand:
       hi = 0.0
@@ -554,21 +503,17 @@ contains
       hi = degrees(acos(cos_hi))
     end if
 
-
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 21. Estimate daily AET (daet), mm
+    ! 21. Estimate daily AET (out_evap%aet), mm
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 81, STASH 2.0 Documentation
-    daet(lu) = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*drnl)*(hn - hi)))
-
+    out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Ref? XXX
-    dcpa(lu) = daet(lu) / deet
-    dncpa(lu) = dcpa(lu) / 1.26
-
+    out_evap%cpa = out_evap%aet / out_evap%eet
 
     !-------------------------------------------------------------   
     ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 
@@ -616,43 +561,41 @@ contains
     !         Tech. rep. NASA-TM-X-164. National Aeronautics and Space 
     !         Administration (NASA).
     !-------------------------------------------------------------   
+  end function getevap
 
-  end subroutine evap
 
-
-  function calc_dr( my_nu ) result( dr )
+  function calc_dr( nu ) result( dr )
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Calculates distance factor (dr), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! arguments
-    real :: my_nu
+    real :: nu
 
     ! local variables
-    real :: my_rho
+    real :: rho
 
     ! function return variable
     real :: dr
 
     ! Berger et al. (1993)
-    my_rho = (1.0 - ke**2)/(1.0 + ke * dgcos( my_nu ))        
-    dr = (1.0/my_rho)**2
+    rho = (1.0 - ke**2)/(1.0 + ke * dgcos( nu ))        
+    dr = (1.0/rho)**2
 
   end function calc_dr
 
 
-  function calc_delta( my_lambda ) result( delta )
+  function calc_delta( lambda ) result( delta )
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Calculates declination angle (delta), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! arguments
-    real :: my_lambda
+    real :: lambda
 
     ! function return variable
     real :: delta
 
     ! Woolf (1968)
-    ! delta = dasin( dgsin( my_lambda ) * dgsin( keps ) )   ! xxx arcsin is asin in Fortran?
-    delta = asin( dgsin( my_lambda ) * dgsin( keps ) )   ! xxx use asin with single-precision compilation
+    delta = asin( dgsin( lambda ) * dgsin( keps ) )   ! xxx use asin with single-precision compilation
     delta = degrees( delta )
 
   end function calc_delta
@@ -699,9 +642,7 @@ contains
       ! Polar night (no sunrise)
       hs = 0.0
     else
-      !hs = dacos(-1.0*ru/rv)
-      hs = acos(-1.0*ru/rv)  ! xxx use acos with single-precision compilation
-      hs = degrees(hs)
+      hs = degrees(acos(-1.0*ru/rv))
     end if
 
   end function calc_hs
@@ -819,79 +760,81 @@ contains
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------
+    if (loutwaterbal) then
 
-    ! HO: daily solar irradiation, J/m2
-    filnam=trim(prefix)//'.d.ho.out'
-    open(251,file=filnam,err=888,status='unknown')
+      ! RA: daily solar irradiation, J/m2
+      filnam=trim(prefix)//'.d.ra.out'
+      open(251,file=filnam,err=888,status='unknown')
 
-    ! HN: daily net radiation, J/m2
-    filnam=trim(prefix)//'.d.hn.out'
-    open(252,file=filnam,err=888,status='unknown')
+      ! RN: daily net radiation, J/m2
+      filnam=trim(prefix)//'.d.rn.out'
+      open(252,file=filnam,err=888,status='unknown')
 
-    ! QN: daily PPFD, mol/m2
-    filnam=trim(prefix)//'.d.qn.out'
-    open(253,file=filnam,err=888,status='unknown')
+      ! PPFD: daily PPFD, mol/m2
+      filnam=trim(prefix)//'.d.ppfd.out'
+      open(253,file=filnam,err=888,status='unknown')
 
-    ! CN: daily condensation water, mm
-    filnam=trim(prefix)//'.d.cn.out'
-    open(254,file=filnam,err=888,status='unknown')
+      ! CN: daily condensation water, mm
+      filnam=trim(prefix)//'.d.cn.out'
+      open(254,file=filnam,err=888,status='unknown')
 
-    ! WN: daily soil moisture, mm
-    filnam=trim(prefix)//'.d.wn.out'
-    open(255,file=filnam,err=888,status='unknown')
+      ! WCONT: daily soil moisture, mm
+      filnam=trim(prefix)//'.d.wcont.out'
+      open(255,file=filnam,err=888,status='unknown')
 
-    ! PN: daily precipitation, mm
-    filnam=trim(prefix)//'.d.pn.out'
-    open(256,file=filnam,err=888,status='unknown')
+      ! ! PN: daily precipitation, mm
+      ! filnam=trim(prefix)//'.d.pn.out'
+      ! open(256,file=filnam,err=888,status='unknown')
 
-    ! RO: daily runoff, mm
-    filnam=trim(prefix)//'.d.ro.out'
-    open(257,file=filnam,err=888,status='unknown')
+      ! RO: daily runoff, mm
+      filnam=trim(prefix)//'.d.ro.out'
+      open(257,file=filnam,err=888,status='unknown')
 
-    ! eet: daily equilibrium ET, mm
-    filnam=trim(prefix)//'.d.eet.out'
-    open(258,file=filnam,err=888,status='unknown')
+      ! eet: daily equilibrium ET, mm
+      filnam=trim(prefix)//'.d.eet.out'
+      open(258,file=filnam,err=888,status='unknown')
 
-    ! PET: daily potential ET, mm
-    filnam=trim(prefix)//'.d.pet.out'
-    open(259,file=filnam,err=888,status='unknown')
+      ! PET: daily potential ET, mm
+      filnam=trim(prefix)//'.d.pet.out'
+      open(259,file=filnam,err=888,status='unknown')
 
-    ! AET: daily actual ET, mm
-    filnam=trim(prefix)//'.d.aet.out'
-    open(260,file=filnam,err=888,status='unknown')
+      ! AET: daily actual ET, mm
+      filnam=trim(prefix)//'.d.aet.out'
+      open(260,file=filnam,err=888,status='unknown')
 
-    ! DAYL: day length, h
-    filnam=trim(prefix)//'.d.dayl.out'
-    open(261,file=filnam,err=888,status='unknown')
+      ! DAYL: day length, h
+      filnam=trim(prefix)//'.d.dayl.out'
+      open(261,file=filnam,err=888,status='unknown')
 
+    end if
 
-    !----------------------------------------------------------------
-    ! MONTHLY OUTPUT
-    !----------------------------------------------------------------
+    ! !----------------------------------------------------------------
+    ! ! MONTHLY OUTPUT
+    ! !----------------------------------------------------------------
 
-    ! eq_m
-    filnam=trim(prefix)//'.m.eq_m.out'
-    open(211,file=filnam,err=888,status='unknown')
+    ! ! eq_m
+    ! filnam=trim(prefix)//'.m.eq_m.out'
+    ! open(211,file=filnam,err=888,status='unknown')
 
-    ! ep_m
-    filnam=trim(prefix)//'.m.ep_m.out'
-    open(212,file=filnam,err=888,status='unknown')
+    ! ! ep_m
+    ! filnam=trim(prefix)//'.m.ep_m.out'
+    ! open(212,file=filnam,err=888,status='unknown')
 
-    ! ea_m
-    filnam=trim(prefix)//'.m.ea_m.out'
-    open(213,file=filnam,err=888,status='unknown')
+    ! ! ea_m
+    ! filnam=trim(prefix)//'.m.ea_m.out'
+    ! open(213,file=filnam,err=888,status='unknown')
 
-    ! cpa
-    filnam=trim(prefix)//'.m.cpa.out'
-    open(214,file=filnam,err=888,status='unknown')
+    ! ! cpa
+    ! filnam=trim(prefix)//'.m.cpa.out'
+    ! open(214,file=filnam,err=888,status='unknown')
 
-    ! cwd
-    filnam=trim(prefix)//'.m.cwd.out'
-    open(215,file=filnam,err=888,status='unknown')
+    ! ! cwd
+    ! filnam=trim(prefix)//'.m.cwd.out'
+    ! open(215,file=filnam,err=888,status='unknown')
 
-    ! qm
-    filnam=trim(prefix)//'.m.qm.out'
-    open(216,file=filnam,err=888,status='unknown')
+    ! ! qm
+    ! filnam=trim(prefix)//'.m.qm.out'
+    ! open(216,file=filnam,err=888,status='unknown')
 
     return
 
@@ -904,96 +847,71 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
-    implicit none
 
-    ! xxx remove their day-dimension
-    outdwn(:,:,:)  = 0.0
-    outdho(:,:)    = 0.0
-    outdhn(:,:)    = 0.0
-    outdqn(:,:)    = 0.0
-    outdayl(:,:)   = 0.0
-    outdcn(:,:,:)  = 0.0
-    outdro(:,:,:)  = 0.0
-    outdeet(:,:)   = 0.0
-    outdpet(:,:)   = 0.0
-    outdaet(:,:,:) = 0.0
+    if (loutwaterbal) then
 
-    ! xxx remove their month-dimension
-    outmeq_m(:,:)   = 0.0
-    outmep_m(:,:)   = 0.0
-    outmea_m(:,:,:) = 0.0
-    outmcpa(:,:,:)  = 0.0
-    outmcwd(:,:,:)  = 0.0
-    outmqm(:,:)     = 0.0
+      allocate( outdwcont (nlu,ndayyear,maxgrid) ) ! daily soil moisture, mm
+      allocate( outdra (ndayyear,maxgrid)     ) ! daily solar irradiation, J/m2
+      allocate( outdrn (ndayyear,maxgrid)     ) ! daily net radiation, J/m2
+      allocate( outdppfd (ndayyear,maxgrid)   ) ! daily PPFD, mol/m2
+      allocate( outdayl(ndayyear,maxgrid)     ) ! daily day length, h
+      allocate( outdcn (ndayyear,maxgrid)     ) ! daily condensation water, mm
+      allocate( outdro (nlu,ndayyear,maxgrid) ) ! daily runoff, mm
+      allocate( outdeet(ndayyear,maxgrid)     ) ! daily equilibrium ET, mm
+      allocate( outdpet(ndayyear,maxgrid)     ) ! daily potential ET, mm
+      allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
+      allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
 
-    return
+      ! xxx remove their day-dimension
+      outdwcont(:,:,:) = 0.0
+      outdra(:,:)      = 0.0
+      outdrn(:,:)      = 0.0
+      outdppfd(:,:)    = 0.0
+      outdayl(:,:)     = 0.0
+      outdcn(:,:)      = 0.0
+      outdro(:,:,:)    = 0.0
+      outdeet(:,:)     = 0.0
+      outdpet(:,:)     = 0.0
+      outdaet(:,:,:)   = 0.0
+      outdcpa(:,:,:)   = 0.0
+
+    end if
 
   end subroutine initoutput_waterbal
-
-
-  subroutine initdaily_waterbal
-    !////////////////////////////////////////////////////////////////
-    !  Initialises module-specific variables containing a day-dimension
-    !----------------------------------------------------------------
-
-  end subroutine initdaily_waterbal
 
 
   subroutine getout_daily_waterbal( jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use _vars_core, only: dwtot
+    use _vars_core, only: psoilphys, soilphys, solar
 
-    ! ARGUMENTS
+    ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy    
     integer, intent(in) :: doy    
 
     ! Save the daily totals:
     ! xxx add lu-dimension and jpngr-dimension
-    outdwn(:,doy,jpngr)   = dwtot(:,jpngr)
-    outdro(:,doy,jpngr)   = dro(:)
-    outdho(doy,jpngr)     = dra(doy)
-    outdhn(doy,jpngr)     = drn
-    outdqn(doy,jpngr)     = dppfd(doy)
-    outdayl(doy,jpngr)    = dayl(doy)
-    outdcn(:,doy,jpngr)   = wc(:)
-    outdeet(doy,jpngr)    = deet
-    outdpet(doy,jpngr)    = dpet
-    outdaet(:,doy,jpngr)  = daet(:)
-    outdcpa(:,doy,jpngr)  = dcpa(:)
+    if (loutwaterbal) then
 
-    ! Update monthly totals:
-    outmeq_m(moy,jpngr)   = outmeq_m(moy,jpngr) + deet
-    outmep_m(moy,jpngr)   = outmep_m(moy,jpngr) + dpet
-    outmea_m(:,moy,jpngr) = outmea_m(:,moy,jpngr) + daet(:)
-    outmqm(moy,jpngr)     = outmqm(moy,jpngr) + dppfd(doy)
+      outdra(doy,jpngr)     = solar%dra(doy)
+      outdppfd(doy,jpngr)   = solar%dppfd(doy)
+      outdayl(doy,jpngr)    = solar%dayl(doy)
 
-    return  
+      outdrn(doy,jpngr)     = evap(1)%rn
+      outdeet(doy,jpngr)    = evap(1)%eet
+      outdpet(doy,jpngr)    = evap(1)%pet
+      outdcn(doy,jpngr)     = evap(1)%cn
+      outdaet(:,doy,jpngr)  = evap(:)%aet
+      outdcpa(:,doy,jpngr)  = evap(:)%cpa
+
+      outdwcont(:,doy,jpngr)= psoilphys(:,jpngr)%wcont
+      outdro(:,doy,jpngr)   = soilphys(:)%ro
+
+    end if
 
   end subroutine getout_daily_waterbal
-
-
-  subroutine getout_monthly_waterbal( jpngr, moy )
-    !////////////////////////////////////////////////////////////////
-    !  SR called daily to sum up output variables.
-    !----------------------------------------------------------------
-    implicit none
-
-    ! ARGUMENTS
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: moy
-
-    ! Calculate other monthly totals:
-    outmcpa(:,moy,jpngr) = outmea_m(:,moy,jpngr)
-    outmcpa(:,moy,jpngr) = outmcpa(:,moy,jpngr) / outmep_m(moy,jpngr)
-    outmcwd(:,moy,jpngr) = outmep_m(moy,jpngr)
-    outmcwd(:,moy,jpngr) = outmcwd(:,moy,jpngr) - outmea_m(:,moy,jpngr)
-
-    return  
-
-  end subroutine getout_monthly_waterbal
 
 
   subroutine writeout_ascii_waterbal( year, spinup )
@@ -1004,9 +922,7 @@ contains
     use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
       daily_out_endyr, outyear
 
-    implicit none
-
-    ! Arguments
+    ! arguments
     integer, intent(in) :: year       ! simulation year
     logical, intent(in) :: spinup     ! true during spinup years
 
@@ -1022,49 +938,31 @@ contains
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
-    if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
-      ! Write daily output only during transient simulation
-      do day=1,ndayyear
+    if (loutwaterbal) then
 
-        ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
+      if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+        ! Write daily output only during transient simulation
+        do day=1,ndayyear
 
-        if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
+          ! Define 'itime' as a decimal number corresponding to day in the year + year
+          itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
 
-        ! xxx lu-area weighted sum if nlu>0
-        write(251,999) itime, outdho(day,jpngr)
-        write(252,999) itime, outdhn(day,jpngr)
-        write(253,999) itime, outdqn(day,jpngr)
-        write(254,999) itime, outdcn(1,day,jpngr)
-        write(255,999) itime, outdwn(1,day,jpngr)
-        write(257,999) itime, outdro(1,day,jpngr)
-        write(258,999) itime, outdeet(day,jpngr)
-        write(259,999) itime, outdpet(day,jpngr)
-        write(260,999) itime, outdaet(1,day,jpngr)
-        write(261,999) itime, outdayl(day,jpngr)
+          if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
 
-      end do
-    end if
+          ! xxx lu-area weighted sum if nlu>0
+          write(251,999) itime, outdra(day,jpngr)
+          write(252,999) itime, outdrn(day,jpngr)
+          write(253,999) itime, outdppfd(day,jpngr)
+          write(254,999) itime, outdcn(day,jpngr)
+          write(255,999) itime, outdwcont(1,day,jpngr)
+          write(257,999) itime, outdro(1,day,jpngr)
+          write(258,999) itime, outdeet(day,jpngr)
+          write(259,999) itime, outdpet(day,jpngr)
+          write(260,999) itime, outdaet(1,day,jpngr)
+          write(261,999) itime, outdayl(day,jpngr)
 
-
-    !-------------------------------------------------------------------------
-    ! MONTHLY OUTPUT
-    ! Write monthly value
-    !-------------------------------------------------------------------------
-    if (.not.spinup) then
-      do moy=1,nmonth
-
-        itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(moy-1)/real(nmonth)
-
-        ! STASH variables
-        write(211,999) itime, outmeq_m(moy,jpngr)
-        write(212,999) itime, outmep_m(moy,jpngr)
-        write(213,999) itime, outmea_m(1,moy,jpngr)
-        write(214,999) itime, outmcpa(1,moy,jpngr)
-        write(215,999) itime, outmcwd(1,moy,jpngr)
-        write(216,999) itime, outmqm(moy,jpngr)
-
-      end do
+        end do
+      end if
     end if
 
     return
@@ -1082,7 +980,6 @@ contains
     ! 'dsin' in Python version.
     !----------------------------------------------------------------   
     use _params_core, only: pi
-    implicit none
 
     ! arguments
     real, intent(in) :: x  ! angle, degrees (0-360)
@@ -1102,7 +999,6 @@ contains
     ! 'dsin' in Python version.
     !----------------------------------------------------------------   
     use _params_core, only: pi
-    implicit none
 
     ! arguments
     real, intent(in) :: x  ! angle, degrees (0-360)
@@ -1121,7 +1017,6 @@ contains
     ! Returns corresponding degrees if x is given in radians
     !----------------------------------------------------------------   
     use _params_core, only: pi
-    implicit none
 
     ! arguments
     real, intent(in) :: x  ! angle, radians
@@ -1139,7 +1034,6 @@ contains
     ! Returns corresponding radians if x is given in degrees
     !----------------------------------------------------------------   
     use _params_core, only: pi
-    implicit none
 
     ! arguments
     real, intent(in) :: x  ! angle, radians
@@ -1159,10 +1053,11 @@ contains
     ! insolation and quaternary climatic changes, J. Atmos. Sci., 35, 
     ! 2362-2367.
     !----------------------------------------------------------------   
-    implicit none
-
     ! arguments
     integer, intent(in) :: day   ! day of the year
+
+    ! function return value
+    type(outtype_berger) :: out_berger  ! stores output of function berger_tls
 
     ! local variables
     real :: anm, ranm, anv, ranv
@@ -1173,14 +1068,10 @@ contains
     real :: xlam                 ! Mean longitude for vernal equinox
     real :: tmp1, tmp2, tmp3     ! variable substitutes
 
-    ! function return value
-    type(outtype_berger) :: out_berger  ! stores output of function berger_tls
-
     ! Variable substitutes:
     xee = ke**2 
     xec = ke**3
-    !xse = dsqrt(1.0 - xee)
-    xse = sqrt(1.0 - xee)  ! xxx use sqrt with single-precision compilation
+    xse = sqrt(1.0 - xee)
 
     ! Mean longitude for vernal equinox:
     tmp1 = (ke/2.0 + xec/8.0)*(1.0 + xse)*dgsin(komega)
@@ -1188,9 +1079,6 @@ contains
     tmp3 = xec/8.0*(1.0/3.0 + xse)*dgsin(3.0*komega)
     xlam = tmp1 - tmp2 + tmp3
     xlam = degrees(2.0*xlam)
-
-    ! xxx debug
-    !print*,'xlam', xlam
 
     ! Mean longitude for day of year:
     dlamm = xlam + (day - 80.0)*(360.0/ndayyear)
@@ -1200,28 +1088,22 @@ contains
     ranm = radians(anm)
 
     ! True anomaly:
-    !ranv = (ranm + (2.0*ke - xec/4.0)*dsin(ranm) + 5.0/4.0*xee*dsin(2.0*ranm) + 13.0/12.0*xec*dsin(3.0*ranm))
     ranv = (ranm + (2.0*ke - xec/4.0)*sin(ranm) + 5.0/4.0*xee*sin(2.0*ranm) + 13.0/12.0*xec*sin(3.0*ranm))  ! xxx use sin with single-precision compilation
     anv = degrees(ranv)
 
     ! True longitude:
-    my_tls = anv + komega
-    if (my_tls < 0.0) then
-        my_tls = my_tls + 360.0
-    else if (my_tls > 360.0) then
-        my_tls = my_tls - 360.0
-    end if
+    out_berger%lambda = anv + komega
+    if (out_berger%lambda < 0.0) then
+        out_berger%lambda = out_berger%lambda + 360.0
+    else if (out_berger%lambda > 360.0) then
+        out_berger%lambda = out_berger%lambda - 360.0
+    endif
 
     ! True anomaly:
-    my_nu = (my_tls - komega)
-    if (my_nu < 0.0) then
-        my_nu = my_nu + 360.0
-    end if
-
-    ! construct derived type for output
-    out_berger%my_nu     = my_nu
-    out_berger%my_lambda = my_tls
-
+    out_berger%nu = (out_berger%lambda - komega)
+    if (out_berger%nu < 0.0) then
+        out_berger%nu = out_berger%nu + 360.0
+    endif
 
   end function get_berger_tls
 
@@ -1231,7 +1113,6 @@ contains
     ! Calculates the slope of the sat pressure temp curve, Pa/K
     ! Ref:      Eq. 13, Allen et al. (1998)
     !----------------------------------------------------------------   
-    implicit none
 
     ! arguments
     real, intent(in) :: tc ! air temperature, degrees C
@@ -1249,7 +1130,6 @@ contains
     ! Calculates the enthalpy of vaporization, J/kg
     ! Ref:      Eq. 8, Henderson-Sellers (1984)
     !----------------------------------------------------------------   
-    implicit none
 
     ! arguments
     real, intent(in) :: tc ! air temperature, degrees C
@@ -1267,7 +1147,6 @@ contains
     ! Calculates atm. pressure for a given elevation
     ! Ref:      Allen et al. (1998)
     !----------------------------------------------------------------   
-    implicit none
 
     ! arguments
     real, intent(in) :: alt ! elevation above sea level, m
@@ -1285,7 +1164,6 @@ contains
     ! Calculates density of water at a given temperature and pressure
     ! Ref: Chen et al. (1977)
     !----------------------------------------------------------------   
-    implicit none
 
     ! arguments
     real, intent(in) :: tc     ! air temperature (degrees C)
@@ -1351,7 +1229,6 @@ contains
     ! Calculates the psychrometric constant for a given temperature and pressure
     ! Ref: Allen et al. (1998); Tsilingiris (2008) 
     !----------------------------------------------------------------   
-    implicit none
 
     ! arguments
     real, intent(in) :: tc ! air temperature, degrees C

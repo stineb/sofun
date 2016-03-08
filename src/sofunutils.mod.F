@@ -17,7 +17,6 @@ contains
     ! vided, sum/average is taken only over preceeding days/months of current
     ! year.
     !-------------------------------------------------------------------------
-
     ! arguments
     ! xxx instead of dimension declaration with 'lenval', use size(presval)
     real, dimension(lenval), intent(in) :: presval            ! vector containing 'lenvals' values for each timestep in this year
@@ -473,7 +472,7 @@ contains
 
     return
     600 format (F9.7)
-    888 write(0,*) 'READ1YEAR: error opening file '//trim(filename)//'. Abort. '
+    888 write(0,*) 'READ1YEAR_DAILY: error opening file '//trim(filename)//'. Abort. '
     stop
 
   end function read1year_daily
@@ -504,7 +503,7 @@ contains
 
     return
     600 format (F9.7)
-    888 write(0,*) 'READ1YEAR: error opening file '//trim(filename)//'. Abort. '
+    888 write(0,*) 'READ1YEAR_MONTHLY: error opening file ./input/'//trim(filename)//'. Abort. '
     stop
 
   end function read1year_monthly
@@ -580,8 +579,6 @@ contains
     !  If 'realyear' is dummy (-9999), then it's interpreted as to 
     !  represent a mean climatology for the course of a year.
     !----------------------------------------------------------------
-
-    implicit none
     ! arguments
     character(len=*), intent(in) :: filename
     integer, intent(in), optional :: realyear ! year AD as integer

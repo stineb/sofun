@@ -135,7 +135,7 @@ contains
     call nmvRec( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
 
     !--------------------------------------------------------------
-    ! Update foliage-related state variables (lai_ind, fpc_grid, and fpc_ind)
+    ! Update foliage-related state variables (lai_ind, fpc_grid, and fapar_ind)
     ! This assumes that leaf canopy-average traits do not change upon changes in LAI.
     !--------------------------------------------------------------
     call update_foliage_vars( pft, jpngr )
@@ -245,7 +245,7 @@ contains
     ! call nmvRec( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
 
     ! !--------------------------------------------------------------
-    ! ! Update foliage-related state variables (lai_ind, fpc_grid, and fpc_ind)
+    ! ! Update foliage-related state variables (lai_ind, fpc_grid, and fapar_ind)
     ! !--------------------------------------------------------------
     ! call update_foliage_vars( pft, jpngr )
 

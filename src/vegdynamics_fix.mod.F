@@ -22,7 +22,7 @@ contains
     !------------------------------------------------------------------
     use _params_core, only: npft
     use _phenology, only: dtphen, summergreen, sprout
-    use _vars_core, only: pleaf, proot, lai_ind, fpc_ind, &
+    use _vars_core, only: pleaf, proot, lai_ind, fapar_ind, &
       fpc_grid, ispresent, crownarea, nind, initpft
 
     ! xxx debug
@@ -48,27 +48,33 @@ contains
           !----------------------------------------------------------
           ! beginning of season
           !----------------------------------------------------------
-          ! write(0,*) 'starting to grow on day ',doy
+          write(0,*) 'starting to grow on day ',doy
           call initpft( pft, jpngr )
           call add_sapl( pft, jpngr )
 
+          ! ! xxx debug
+          ! call update_fpc_grid( pft, jpngr )
+          ! write(0,*) 'pft   ',pft
+          ! write(0,*) 'jpngr   ',jpngr
+          ! write(0,*) 'pleaf(pft,jpngr) ',pleaf(pft,jpngr)
+          ! write(0,*) 'proot(pft,jpngr) ',proot(pft,jpngr)
+          ! write(0,*) 'fapar_ind  ', fapar_ind(pft,jpngr)
+          ! write(0,*) 'fpc_grid ', fpc_grid(pft,jpngr)
+          ! stop
+
         end if
 
-        !----------------------------------------------------------
-        ! Update fpc_grid (and fpc_ind)
-        !----------------------------------------------------------
-        call update_fpc_grid( pft, jpngr )
+        ! !----------------------------------------------------------
+        ! ! Update fpc_grid (and fapar_ind)
+        ! !----------------------------------------------------------
+        ! call update_fpc_grid( pft, jpngr )
 
-        ! write(0,*) 'pft   ',pft
-        ! write(0,*) 'jpngr   ',jpngr
-        ! write(0,*) 'in vegdynamics: pleaf(pft,jpngr) ',pleaf(pft,jpngr)
-        ! write(0,*) 'in vegdynamics: proot(pft,jpngr) ',proot(pft,jpngr)
         ! write(0,*) 'C:N of pleaf     ',cton(pleaf(pft,jpngr), 0.0 )
         ! write(0,*) 'C:N of proot     ',cton(proot(pft,jpngr), 0.0 )
 
         ! write(0,*) 'in vegdynamics: lai_ind(pft,jpngr) ',lai_ind(pft,jpngr)
         ! write(0,*) 'in vegdynamics: crownarea(pft,jpngr)   ',crownarea(pft,jpngr)
-        ! write(0,*) 'in vegdynamics: fpc_ind(pft,jpngr) ',fpc_ind(pft,jpngr)
+        ! write(0,*) 'in vegdynamics: fapar_ind(pft,jpngr) ',fapar_ind(pft,jpngr)
         ! write(0,*) 'fpc_grid(pft,jpngr)',fpc_grid(pft,jpngr)
 
       else
@@ -86,7 +92,7 @@ contains
     !//////////////////////////////////////////////////////////////////
     ! Updates PFT-specific state variables after change in LAI.
     !------------------------------------------------------------------
-    use _vars_core, only: pleaf, lma, crownarea, lai_ind, nind, fpc_ind, fpc_grid
+    use _vars_core, only: pleaf, lma, crownarea, lai_ind, nind, fapar_ind, fpc_grid
 
     ! arguments
     integer, intent(in) :: pft
@@ -94,7 +100,7 @@ contains
 
     if (pleaf(pft,jpngr)%c%c12==0.0) then
       lai_ind(pft,jpngr)  = 0.0
-      fpc_ind(pft,jpngr)  = 0.0
+      fapar_ind(pft,jpngr)  = 0.0
       fpc_grid(pft,jpngr) = 0.0
     else
       ! This assumes that leaf canopy-average traits (LMA) do not change upon changes in LAI.
@@ -109,14 +115,14 @@ contains
     !//////////////////////////////////////////////////////////////////
     ! Updates PFT-specific state variables after change in LAI.
     !------------------------------------------------------------------
-    use _vars_core, only: lai_ind, fpc_ind, fpc_grid, crownarea, nind
+    use _vars_core, only: lai_ind, fapar_ind, fpc_grid, crownarea, nind
 
     ! arguments
     integer, intent(in) :: pft
     integer, intent(in) :: jpngr
 
-    fpc_ind(pft,jpngr)  = get_fapar( lai_ind(pft,jpngr) )
-    fpc_grid(pft,jpngr) = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fpc_ind(pft,jpngr) ) 
+    fapar_ind(pft,jpngr) = get_fapar( lai_ind(pft,jpngr) )
+    fpc_grid(pft,jpngr)  = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fapar_ind(pft,jpngr) ) 
 
   end subroutine update_fpc_grid
 
@@ -151,7 +157,7 @@ contains
   end subroutine add_sapl
 
 
-  function get_fpc_grid( crownarea, nind, fpc_ind ) result( fpc_grid )
+  function get_fpc_grid( crownarea, nind, fapar_ind ) result( fpc_grid )
     !////////////////////////////////////////////////////////////////
     ! FRACTIONAL PLANT COVERAGE
     ! Function returns total fractional plant cover of a PFT
@@ -160,12 +166,12 @@ contains
     ! arguments
     real, intent(in) :: crownarea
     real, intent(in) :: nind
-    real, intent(in) :: fpc_ind
+    real, intent(in) :: fapar_ind
 
     ! function return variable
     real, intent(out) :: fpc_grid
 
-    fpc_grid = crownarea * nind * fpc_ind
+    fpc_grid = crownarea * nind * fapar_ind
 
   end function get_fpc_grid
 
@@ -189,37 +195,5 @@ contains
 
   end function get_fapar
 
-
-!   function get_lai_ind( cleaf, sla, crownarea ) result( lai_ind )
-!     !////////////////////////////////////////////////////////////////
-!     ! Function returns leaf area index of an individual
-!     ! Eq. 5 in Sitch et al., 2003
-!     !----------------------------------------------------------------
-!     ! arguments
-!     real, intent(in) :: cleaf
-!     real, intent(in) :: sla
-!     real, intent(in) :: crownarea
-
-!     ! function return variable
-!     real, intent(out) :: lai_ind
-
-! #if _check_sanity
-!     if (crownarea<0.0) stop 'GET_LAI_IND: crownarea < 0'
-! #endif
-
-!     ! write(0,*) '----'
-!     ! write(0,*) 'in get_lai_ind:'
-!     ! write(0,*) 'cleaf ',cleaf
-!     ! write(0,*) 'sla ',sla
-!     ! write(0,*) 'crownarea ',crownarea
-!     ! write(0,*) '----'
-
-!     if (crownarea==0.0) then
-!       lai_ind = 0.0
-!     else
-!       lai_ind = cleaf * sla / crownarea
-!     endif
-
-!   end function get_lai_ind
 
 end module _vegdynamics

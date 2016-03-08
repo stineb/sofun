@@ -177,7 +177,7 @@ module _gpp
 contains
 
 
-  subroutine gpp( jpngr, doy, moy, dgpp_data )
+  subroutine gpp( jpngr, doy, moy, fapar_prescr )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -187,90 +187,77 @@ contains
     ! Output:   
     ! - gpp (gC/m2/d)   : gross primary production
     !
-    ! Requires from outside this module:
-    ! - dpppfd
-    ! - meanmppfd
     !------------------------------------------------------------------
-    use _vars_core, only: dgpp, dtransp, fpc_ind, vcmax
-    use _waterbal, only: dppfd, meanmppfd
+    use _params_core, only: dummy
+    use _vars_core, only: dgpp, dtransp, fapar_ind, vcmax, solar
 
     ! arguments
-    ! integer, intent(in), optional               :: jpngr     ! gridcell number
-    ! integer, intent(in), optional               :: doy       ! day of year and month of year
-    ! integer, intent(in), optional               :: moy       ! month of year and month of year
-    ! real, dimension(npft), intent(in), optional :: dgpp_data ! prescribed daily GPP for this gridcell
-    integer, intent(in)                         :: jpngr     ! gridcell number
-    integer, intent(in)                         :: doy       ! day of year and month of year
-    integer, intent(in)                         :: moy       ! month of year and month of year
-    real, dimension(npft), intent(in), optional :: dgpp_data ! prescribed daily GPP for this gridcell
+    integer, intent(in) :: jpngr     ! gridcell number
+    integer, intent(in) :: doy       ! day of year and month of year
+    integer, intent(in) :: moy       ! month of year and month of year
+
+    ! optional arguments (may be dummy)
+    real, intent(in) :: fapar_prescr
 
     ! local variables
     integer :: pft
-    real    :: fapar
+
+    ! Override interactively simulated fAPAR with data
+    if (fapar_prescr/=dummy) fapar_ind(pft,jpngr) = fapar_prescr
+
+    !----------------------------------------------------------------
+    ! CALCULATE PREDICTED GPP FROM P-model
+    ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
+    !----------------------------------------------------------------
+    do pft=1,npft
+
+      if (fapar_ind(pft,jpngr)>0.0) then
+
+        ! xxx try: fix effective leaf area (=>fapar)
+        ! write(0,*) 'WARNING: fAPAR SET TO XXX in gpp SR'
+
+        ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
+
+        ! xxx debug
+        ! xxx problem with allocation: always allocates all to leaves. => is C acquisition too slow? xxx 
+
+        ! fapar_ind(pft,jpngr) = 1.0
+        ! write(0,*) 'in SR gpp: fapar          ', fapar_ind(pft,jpngr) !OK!
+        ! write(0,*) 'in SR gpp: doy, solar%dppfd(doy)', doy, solar%dppfd(doy) !OK!
+        ! write(0,*) 'in SR gpp: moy, mlue(moy) ', moy, mlue(moy) !OK! 
+        ! dgpp(pft)    = calc_dgpp( fapar_ind(pft,jpngr), solar%dppfd(doy), mlue(moy) )
+        dgpp(pft)    = calc_dgpp( fapar_ind(pft,jpngr), solar%dppfd(doy), mlue(moy) )
+
+        ! Dark respiration
+        drd(pft)     = calc_drd( fapar_ind(pft,jpngr), solar%meanmppfd(moy), mrd_unitiabs(moy) )
+        ! drd(pft)     = calc_drd( 0.05, solar%meanmppfd(moy), mrd_unitiabs(moy) )
+        ! write(0,*) 'doy, drd(pft)             ', doy, drd(pft)
+
+        ! transpiration
+        dtransp(pft) = calc_dtransp( fapar_ind(pft,jpngr), solar%dppfd(doy), mtransp_unitiabs(moy) )
+        ! dtransp(pft) = calc_dtransp( 0.05, solar%dppfd(doy), mtransp_unitiabs(moy) )
+
+        ! Vcmax
+        vcmax(pft) = calc_vcmax( fapar_ind(pft,jpngr), mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
+        ! mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
 
 
-    if (present(dgpp_data)) then
-      !----------------------------------------------------------------
-      ! PRESCRIBED GPP
-      !----------------------------------------------------------------
-      dgpp(:) = dgpp_data(:)
+      else  
 
-    else
-      !----------------------------------------------------------------
-      ! CALCULATE PREDICTED GPP FROM P-model
-      ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
-      !----------------------------------------------------------------
-      do pft=1,npft
-  
-        if (fpc_ind(pft,jpngr)>0.0) then
+        dgpp(pft)    = 0.0
+        drd(pft)     = 0.0
+        dtransp(pft) = 0.0
 
-          ! xxx try: fix effective leaf area (=>fapar)
-          ! write(0,*) 'WARNING: fAPAR SET TO XXX in gpp SR'
+      end if 
 
-          ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
+    end do
 
-          ! xxx debug
-          ! xxx problem with allocation: always allocates all to leaves. => is C acquisition too slow? xxx 
-
-          ! fpc_ind(pft,jpngr) = 1.0
-          ! write(0,*) 'in SR gpp: fapar          ', fpc_ind(pft,jpngr) !OK!
-          ! write(0,*) 'in SR gpp: doy, dppfd(doy)', doy, dppfd(doy) !OK!
-          ! write(0,*) 'in SR gpp: moy, mlue(moy) ', moy, mlue(moy) !OK! 
-          ! dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
-          dgpp(pft)    = calc_dgpp( fpc_ind(pft,jpngr), dppfd(doy), mlue(moy) )
-          ! write(0,*) 'doy, dgpp(pft)            ', doy, dgpp(pft)
-          ! stop 
-
-          ! Dark respiration
-          drd(pft)     = calc_drd( fpc_ind(pft,jpngr), meanmppfd(moy), mrd_unitiabs(moy) )
-          ! drd(pft)     = calc_drd( 0.05, meanmppfd(moy), mrd_unitiabs(moy) )
-          ! write(0,*) 'doy, drd(pft)             ', doy, drd(pft)
-
-          ! transpiration
-          dtransp(pft) = calc_dtransp( fpc_ind(pft,jpngr), dppfd(doy), mtransp_unitiabs(moy) )
-          ! dtransp(pft) = calc_dtransp( 0.05, dppfd(doy), mtransp_unitiabs(moy) )
-
-          ! Vcmax
-          vcmax(pft) = calc_vcmax( fpc_ind(pft,jpngr), mvcmax_unitiabs(moy), meanmppfd(moy) )
-          ! mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), meanmppfd(moy) )
-
-
-        else  
-          dgpp(pft)    = 0.0
-          drd(pft)     = 0.0
-          dtransp(pft) = 0.0
-
-        end if 
-
-      end do
-
-    end if
 
     ! write(0,*) '---in gpp: '
-    ! write(0,*) 'fpc_ind(pft,jpngr) ',fpc_ind
-    ! write(0,*) 'dppfd(doy) ',dppfd(doy)
+    ! write(0,*) 'fapar_ind(pft,jpngr) ',fapar_ind
+    ! write(0,*) 'solar%dppfd(doy) ',solar%dppfd(doy)
     ! write(0,*) 'mlue(moy) ',mlue(moy)
-    ! write(0,*) 'meanmppfd(moy) ',meanmppfd(moy)
+    ! write(0,*) 'solar%meanmppfd(moy) ',solar%meanmppfd(moy)
     ! write(0,*) 'mrd_unitiabs(moy) ',mrd_unitiabs(moy)
     ! write(0,*) 'dgpp(pft) ',dgpp
     ! write(0,*) 'drd(pft)  ',drd
@@ -311,11 +298,20 @@ contains
     mvpd(:)  = daily2monthly( dvpd(:), "mean" )
 
     ! xxx try out: -- THIS WORKS PERFECTLY -- 
-    ! write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
-    ! co2   = 376.0
-    ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
-    ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
+    write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
+    co2   = 376.0
+    ! elv   = 450.0
+    mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
+    mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
     ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
+
+    ! write(0,*) 'co2'
+    ! write(0,*) co2
+    ! write(0,*) 'mtemp'
+    ! write(0,*) mtemp
+    ! write(0,*) 'mvpd'
+    ! write(0,*) mvpd
+    ! stop
 
     ! Run P-model for monthly averages and store monthly variables 
     ! per unit absorbed light (not corrected for soil moisture)
@@ -348,8 +344,7 @@ contains
 
     end do
 
-
-    ! ! xxx debug
+    ! xxx debug
     ! write(0,*) 'mtemp', mtemp
     ! write(0,*) 'mvpd', mvpd
     ! write(0,*) 'co2', co2
@@ -359,11 +354,10 @@ contains
     ! write(0,*) 'mactnv_unitiabs', mactnv_unitiabs
     ! write(0,*) 'factor25', factor25
     ! write(0,*) 'mrd_unitiabs', mrd_unitiabs
+    ! write(0,*) 'mchi', mchi
     ! stop
 
-
   end subroutine getlue
-
 
 
   function calc_dgpp( fapar, dppfd, mlue ) result( dgpp )
@@ -450,8 +444,8 @@ contains
   !   ! write(0,*) 'meanmppfd', meanmppfd
 
   !   ! do moy=1,nmonth
-  !   !   mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), meanmppfd(moy) )
-  !   !   ! mnrlarea(moy) = calc_nr_leaf(  max_lai, mactnv_unitiabs(moy), meanmppfd(moy) )
+  !   !   mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
+  !   !   ! mnrlarea(moy) = calc_nr_leaf(  max_lai, mactnv_unitiabs(moy), solar%meanmppfd(moy) )
   !   ! end do
   !   ! avcmax = maxval( mvcmax(:) )
   !   ! anrlarea = maxval( mnrlarea(:) )
@@ -813,15 +807,15 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use _waterbal, only: meanmppfd
+    use _vars_core, only: solar
 
     ! arguments
     integer, intent(in) :: jpngr
 
     ! outanrlarea(jpngr) = anrlarea
     outavcmax(jpngr)   = avcmax
-    outachi(jpngr)     = sum( mchi(:) * meanmppfd(:) ) / sum( meanmppfd(:) )
-    outalue(jpngr)     = sum( mlue(:) * meanmppfd(:) ) / sum( meanmppfd(:) )
+    outachi(jpngr)     = sum( mchi(:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+    outalue(jpngr)     = sum( mlue(:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
 
   end subroutine getout_annual_gpp
 

@@ -49,7 +49,7 @@ contains
     use _vars_core, only: nind, ispresent
     use _vars_core, only: proot, psapw, pexud, plabl
     use _nuptake, only: nuptake
-    use _vars_core, only: dtemp_soil
+    use _vars_core, only: psoilphys
     use _gpp, only: drd
     use _phenology, only: summergreen, shedleaves
 
@@ -89,7 +89,7 @@ contains
         
         ! reference temperature: 10°C
         ftemp_air  = ftemp( dtemp, "lloyd_and_taylor" )
-        ftemp_soil = ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" )
+        ftemp_soil = ftemp( psoilphys(lu,jpngr)%temp , "lloyd_and_taylor" )
 
         
         !/////////////////////////////////////////////////////////////////////////

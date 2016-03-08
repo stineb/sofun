@@ -69,7 +69,7 @@ contains
     !-----------------------------------------------------------------
     use _classdefs
     use _params_modl, only: lu_category
-    use _vars_core, only: dtemp_soil, dcex, pninorg, plabl, proot, &
+    use _vars_core, only: psoilphys, dcex, pninorg, plabl, proot, &
       dnup, dtransp, daet, fpc_grid, pleaf
 
     ! arguments
@@ -178,7 +178,7 @@ contains
       !--------------------------------------------------------------------------         
       dCexu = calc_cexu( proot(pft,jpngr)%c%c12, pleaf(pft,jpngr)%c%c12  )
 
-      out_calc_dnup = calc_dnup( dCexu, pninorg(lu,jpngr)%n14, dtemp_soil(lu,jpngr) )
+      out_calc_dnup = calc_dnup( dCexu, pninorg(lu,jpngr)%n14, psoilphys(lu,jpngr)%temp )
       dNacq_act     = out_calc_dnup(1)
       dNacq_fix     = out_calc_dnup(2)
 
@@ -205,7 +205,7 @@ contains
     ! ! xxx debug
     ! ! get efficiency of BNF 
     ! if (dNacq_fix>0.0) then
-    !   test_eff_bnf = 1.0 / fun_cost_fix( dtemp_soil(lu,jpngr) )
+    !   test_eff_bnf = 1.0 / fun_cost_fix( psoilphys(lu,jpngr)%temp )
     !   test_eff_act = eff_nup * pninorg(lu,jpngr)%n14
     !   write(0,*) 'dNacq_act    ', dNacq_act
     !   write(0,*) 'dNacq_fix    ', dNacq_fix

@@ -7,7 +7,7 @@ module _params_core
   !----------------------------------------------------------------
   implicit none
 
-  integer, parameter :: recycle = 31             ! length of standard recycling period
+  integer, parameter :: recycle = 5              ! length of standard recycling period
   integer, parameter :: ndayyear = 365           ! number of days in a year
   integer, parameter :: nmonth = 12              ! number of months in a year
   integer, parameter :: maxlen_runname = 30      ! maximum length of runname (arbitrary)
@@ -26,7 +26,7 @@ module _params_core
   integer, parameter, dimension(nmonth)   :: cumdaymonth = (/31,59,90,120,151,181,212,243,273,304,334,365/)
 
   real, parameter    :: pi = 3.14159265359       ! pi - what else?
-  real, parameter    :: dummy = -9999.           ! arbitrary dummy value
+  real, parameter    :: dummy = -9999.0          ! arbitrary dummy value
 
   real, parameter :: c_molmass = 12.0107         ! g C / mol C
   real, parameter :: n_molmass = 14.0067         ! g N / mol N
