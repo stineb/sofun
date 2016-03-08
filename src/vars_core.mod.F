@@ -101,7 +101,6 @@ module _vars_core
   ! Physical soil variables with memory from year to year (pools)
   !----------------------------------------------------------------
   type psoilphystype
-    real :: temp       ! soil temperature [deg C]
     real :: wcont      ! soil water mass [mm = kg/m2]
   end type psoilphystype
 
@@ -216,8 +215,6 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables within derived type 'psoilphys'.
     !----------------------------------------------------------------
-    psoilphys(:,:)%temp  = 0.0
-
     ! xxx try
     psoilphys(:,:)%wcont = 50.0 
 

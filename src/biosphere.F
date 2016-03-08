@@ -21,7 +21,7 @@ subroutine biosphere( &
   use _params_modl
   use _vars_core, only: initannual, initdaily, initglobal, initpft, solar
   use _outvars, only: initio, getout_annual, getout_daily, initoutput
-  use _soiltemp, only: soiltemp
+  use _soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
   use _phenology, only: gettempphenology, getpar_phenology  !, phenology
   use _vegdynamics, only: estab_daily
   use _gpp, only: gpp, getlue, initdaily_gpp, writeout_ascii_gpp, getout_annual_gpp, initio_gpp, initoutput_gpp
@@ -143,6 +143,7 @@ subroutine biosphere( &
     !----------------------------------------------------------------
     call initio()
     call initio_waterbal()
+    call initio_soiltemp()
     call initio_gpp()
     call initio_nuptake()
     call initio_ntransform()
@@ -157,6 +158,7 @@ subroutine biosphere( &
   !----------------------------------------------------------------
   call initoutput()
   call initoutput_waterbal()
+  call initoutput_soiltemp()
   call initoutput_gpp()
   call initoutput_nuptake()
   call initoutput_ntransform()
@@ -336,6 +338,7 @@ subroutine biosphere( &
         write(0,*) 'calling getout_daily_allocation() ... '
         call getout_daily_allocation( jpngr, mo, day )
         write(0,*) '... done'
+        call getout_daily_soiltemp( jpngr, mo, day )
 
         ! stop 'end of day'
         
@@ -373,6 +376,7 @@ subroutine biosphere( &
     call writeout_ascii_waterbal( year, spinup )
     call writeout_ascii_allocation( year, spinup )
     call writeout_ascii_ntransform( year, spinup )
+    call writeout_ascii_soiltemp( year, spinup )
     
     ! XXX Mysterious problem: when called from here, model does weird things (check e.g. gpp and soil C)
     ! call writeout_ascii_nuptake( year, spinup )

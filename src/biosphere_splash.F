@@ -20,7 +20,7 @@ subroutine biosphere( &
   use _params_site
   use _params_modl
   use _vars_core, only: initannual, initdaily, initglobal, initpft, solar
-  use _soiltemp, only: soiltemp
+  use _soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
   use _waterbal, only: waterbal, getsolar_alldays, outdcpa, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
   use _params_soil, only: paramtype_soil
 
@@ -70,6 +70,7 @@ subroutine biosphere( &
     ! Open input/output files
     !----------------------------------------------------------------
     call initio_waterbal()
+    call initio_soiltemp()
 
   endif 
 
@@ -77,6 +78,7 @@ subroutine biosphere( &
   ! Initialise output variables for this year
   !----------------------------------------------------------------
   call initoutput_waterbal()
+  call initoutput_soiltemp()
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
@@ -124,7 +126,7 @@ subroutine biosphere( &
         ! calculate soil temperature
         !----------------------------------------------------------------
         ! write(0,*) 'calling soiltemp() ... '
-        call soiltemp( jpngr, mo, day, dtemp_field(:,jpngr) )
+        call soiltemp( jpngr, mo, day, dtemp_field(:,jpngr), params_soil_field(jpngr) )
         ! write(0,*) '... done'
 
         !----------------------------------------------------------------
@@ -132,6 +134,7 @@ subroutine biosphere( &
         !----------------------------------------------------------------
         ! write(0,*) 'calling getout_daily_waterbal() ... '
         call getout_daily_waterbal( jpngr, mo, day )
+        call getout_daily_soiltemp( jpngr, mo, day )
         ! write(0,*) '... done'
 
       end do
@@ -142,6 +145,7 @@ subroutine biosphere( &
     ! Write to output
     !----------------------------------------------------------------
     call writeout_ascii_waterbal( year, spinup )
+    call writeout_ascii_soiltemp( year, spinup )
 
   end do
 

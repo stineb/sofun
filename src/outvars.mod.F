@@ -44,7 +44,6 @@ module _outvars
   real, allocatable, dimension(:,:,:) :: outdNsoil
   real, allocatable, dimension(:,:,:) :: outdlai
   real, allocatable, dimension(:,:,:) :: outdninorg
-  real, allocatable, dimension(:,:,:) :: outdtemp_soil
 
   ! These are stored as dayly variables for annual output
   ! at day of year when LAI is at its maximum.
@@ -98,23 +97,6 @@ contains
     if (loutdNsoil    ) allocate( outdNsoil    (nlu,ndayyear,maxgrid)  )
     if (loutdlai      ) allocate( outdlai      (npft,ndayyear,maxgrid) )
     if (loutdninorg   ) allocate( outdninorg   (nlu,ndayyear,maxgrid)  )
-    if (loutdtemp_soil) allocate( outdtemp_soil(nlu,ndayyear,maxgrid)  )
-
-    ! ! daily output variables
-    !    outdgpp(:,:,:)      = 0.0
-    !    outdtransp(:,:,:)   = 0.0
-    !    outdnpp(:,:,:)      = 0.0
-    !    outdnup(:,:,:)      = 0.0
-    !    outdCleaf(:,:,:)    = 0.0
-    !    outdCroot(:,:,:)    = 0.0
-    !    outdClabl(:,:,:)    = 0.0
-    !    outdNlabl(:,:,:)    = 0.0
-    !    outdClitt(:,:,:)    = 0.0
-    !    outdCsoil(:,:,:)    = 0.0
-    !    outdNlitt(:,:,:)    = 0.0
-    !    outdNsoil(:,:,:)    = 0.0
-    !    outdninorg(:,:,:)   = 0.0
-    !    outdlai(:,:,:)      = 0.0
 
     ! annual output variables
     outagpp(:,:)        = 0.0
@@ -177,12 +159,6 @@ contains
     if (loutdninorg   ) then
       filnam=trim(prefix)//'.d.ninorg.out'
       open(107,file=filnam,err=999,status='unknown')
-    end if
-
-    ! SOIL TEMPERATURE
-    if (loutdtemp_soil) then
-      filnam=trim(prefix)//'.d.soiltemp.out'
-      open(109,file=filnam,err=999,status='unknown')
     end if
 
     ! AIR TEMPERATURE
@@ -330,9 +306,6 @@ contains
     ! LOCAL VARIABLES
     integer :: pft
 
-    !print*,'netmin_litt ',netmin_litt(1)
-    !print*,'netmin_soil ',netmin_soil(1)
-
     !----------------------------------------------------------------
     ! DAILY
     ! Collect daily output variables
@@ -346,24 +319,20 @@ contains
     if (loutdCroot    ) outdCroot(:,doy,jpngr)     = proot(:,jpngr)%c%c12
     if (loutdClabl    ) outdClabl(:,doy,jpngr)     = plabl(:,jpngr)%c%c12
 
-    write(0,*) 'b'
     if (loutdNlabl    ) outdNlabl(:,doy,jpngr)     = plabl(:,jpngr)%n%n14
     if (loutdClitt    ) outdClitt(:,doy,jpngr)     = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
     if (loutdNlitt    ) outdNlitt(:,doy,jpngr)     = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
     if (loutdCsoil    ) outdCsoil(:,doy,jpngr)     = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
     if (loutdNsoil    ) outdNsoil(:,doy,jpngr)     = psoil_sl(:,jpngr)%n%n14 + psoil_fs(:,jpngr)%n%n14
     if (loutdninorg   ) outdninorg(:,doy,jpngr)    = pninorg(:,jpngr)%n14
-    if (loutdtemp_soil) outdtemp_soil(:,doy,jpngr) = psoilphys(:,jpngr)%temp
     if (loutdlai      ) outdlai(:,doy,jpngr)       = lai_ind(:,jpngr)
     
-    write(0,*) 'c'
     dnarea_mb(:,doy)           = narea_metabolic(:)  
     dnarea_cw(:,doy)           = narea_structural(:)
     dcton_lm(:,doy)            = r_cton_leaf(:,jpngr)
     dlma(:,doy)                = lma(:,jpngr)
     dvcmax(:,doy)              = vcmax(:)
 
-    write(0,*) 'd'
     ! write(0,*) 'psoil_sl(:,jpngr)%c%c12', psoil_sl(:,jpngr)%c%c12
     ! write(0,*) 'psoil_fs(:,jpngr)%c%c12', psoil_fs(:,jpngr)%c%c12
     ! if (doy==ndayyear) stop
@@ -372,36 +341,12 @@ contains
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    write(0,*) 'e'
-
-    write(0,*) 'dgpp(:)', dgpp(:)
-    write(0,*) 'dnpp(:)', dnpp(:)%c12
-    write(0,*) 'dnup(:)', dnup(:)%n14
-
     outagpp(:,jpngr)    = outagpp(:,jpngr) + dgpp(:)
     outanpp(:,jpngr)    = outanpp(:,jpngr) + dnpp(:)%c12
     outanup(:,jpngr)    = outanup(:,jpngr) + dnup(:)%n14
     outaninorg(:,jpngr) = outaNinorg(:,jpngr) + pninorg(:,jpngr)%n14 / ndayyear
-    write(0,*) 'f'
-
 
   end subroutine getout_daily
-
-
-  ! subroutine getout_monthly( jpngr, moy )
-  !   !////////////////////////////////////////////////////////////////
-  !   !  SR called once a year to gather monthly output variables.
-  !   !----------------------------------------------------------------
-  !   implicit none
-
-  !   ! ARGUMENTS
-  !   integer, intent(in) :: jpngr
-  !   integer, intent(in) :: moy
-
-
-  !   return
-
-  ! end subroutine getout_monthly
 
 
   subroutine getout_annual( jpngr )
@@ -421,9 +366,6 @@ contains
     integer, dimension(npft) :: maxdoy
     ! intrinsic                :: maxloc
 
-    ! real, dimension(ndayyear) :: tmp
-
-
     ! Output annual value at day of peak LAI
     do pft=1,npft
       maxdoy(pft)=1
@@ -432,12 +374,7 @@ contains
           maxdoy(pft) = doy
         end if
       end do
-      ! tmp = outdlai(pft,:,jpngr)
-      ! maxdoy(pft) = maxloc( tmp )
-      ! write(0,*) 'supposed max is ', outdlai(pft,maxdoy(pft),jpngr)
-      ! write(0,*) 'actual   max is ', maxval( outdlai(pft,:,jpngr) )
-      ! write(0,*) 'maxdoy is ', maxdoy(pft)
-      ! stop
+
       outaCveg    (pft,jpngr) = outdCleaf(pft,maxdoy(pft),jpngr) + outdCroot(pft,maxdoy(pft),jpngr) 
       outanarea_mb(pft,jpngr) = dnarea_mb(pft,maxdoy(pft))
       outanarea_cw(pft,jpngr) = dnarea_cw(pft,maxdoy(pft))
@@ -453,8 +390,6 @@ contains
     end do
     close(unit=666)
 
-    ! write(0,*) 'dcton_lm    ', dcton_lm(1,:)
-    ! write(0,*) 'outacton_lm ', outacton_lm (1,jpngr)
 
   end subroutine getout_annual
 
