@@ -9,9 +9,7 @@ module _outvars
   use _params_core
   use _classdefs
   use _params_siml, only: & 
-      loutdgpp       &
-    , loutdtransp    &
-    , loutdnpp       &
+      loutdnpp       &
     , loutdnup       &
     , loutdCleaf     &
     , loutdCroot     &
@@ -30,8 +28,6 @@ module _outvars
   !----------------------------------------------------------------
   ! Daily output variables
   !----------------------------------------------------------------
-  real, allocatable, dimension(:,:,:) :: outdgpp
-  real, allocatable, dimension(:,:,:) :: outdtransp
   real, allocatable, dimension(:,:,:) :: outdnpp
   real, allocatable, dimension(:,:,:) :: outdnup
   real, allocatable, dimension(:,:,:) :: outdCleaf
@@ -51,17 +47,10 @@ module _outvars
   real, dimension(npft,ndayyear) :: dnarea_cw
   real, dimension(npft,ndayyear) :: dlma
   real, dimension(npft,ndayyear) :: dcton_lm
-  real, dimension(npft,ndayyear) :: dvcmax
-  
-  !----------------------------------------------------------------
-  ! Monthly output variables
-  !----------------------------------------------------------------
-
 
   !----------------------------------------------------------------
   ! Annual output variables
   !----------------------------------------------------------------
-  real, dimension(npft,maxgrid) :: outagpp
   real, dimension(npft,maxgrid) :: outanpp
   real, dimension(npft,maxgrid) :: outanup
   real, dimension(npft,maxgrid) :: outaCveg
@@ -73,7 +62,6 @@ module _outvars
   real, dimension(npft,maxgrid) :: outalai
   real, dimension(npft,maxgrid) :: outalma
   real, dimension(npft,maxgrid) :: outacton_lm
-  real, dimension(npft,maxgrid) :: outavcmax
 
 contains
 
@@ -82,9 +70,6 @@ contains
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
-
-    if (loutdgpp      ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
-    if (loutdtransp   ) allocate( outdtransp   (npft,ndayyear,maxgrid) )
     if (loutdnpp      ) allocate( outdnpp      (npft,ndayyear,maxgrid) )
     if (loutdnup      ) allocate( outdnup      (npft,ndayyear,maxgrid) )
     if (loutdCleaf    ) allocate( outdCleaf    (npft,ndayyear,maxgrid) )
@@ -99,7 +84,6 @@ contains
     if (loutdninorg   ) allocate( outdninorg   (nlu,ndayyear,maxgrid)  )
 
     ! annual output variables
-    outagpp(:,:)        = 0.0
     outanpp(:,:)        = 0.0
     outanup(:,:)        = 0.0
     outaCveg(:,:)       = 0.0
@@ -111,7 +95,6 @@ contains
     outalai     (:,:)   = 0.0
     outalma     (:,:)   = 0.0
     outacton_lm (:,:)   = 0.0
-    outavcmax(:,:)      = 0.0
 
   end subroutine initoutput
 
@@ -131,12 +114,6 @@ contains
     !////////////////////////////////////////////////////////////////
     ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
     !----------------------------------------------------------------
-    ! GPP
-    if (loutdgpp) then
-      filnam=trim(prefix)//'.d.gpp.out'
-      open(101,file=filnam,err=999,status='unknown')
-    end if 
-
     ! NPP
     if (loutdnpp) then 
       filnam=trim(prefix)//'.d.npp.out'
@@ -183,12 +160,6 @@ contains
       open(113,file=filnam,err=999,status='unknown')
     end if
 
-    ! TRANSPIRATION
-    if (loutdtransp   ) then
-      filnam=trim(prefix)//'.d.transp.out'
-      open(114,file=filnam,err=999,status='unknown')
-    end if
-
     ! LABILE N
     if (loutdNlabl    ) then
       filnam=trim(prefix)//'.d.nlabl.out'
@@ -231,10 +202,6 @@ contains
     filnam=trim(prefix)//'.a.nveg2lit.out'
     open(308,file=filnam,err=999,status='unknown')
 
-    ! GPP 
-    filnam=trim(prefix)//'.a.gpp.out'
-    open(310,file=filnam,err=999,status='unknown')
-
     ! NPP 
     filnam=trim(prefix)//'.a.npp.out'
     open(311,file=filnam,err=999,status='unknown')
@@ -271,11 +238,6 @@ contains
     filnam=trim(prefix)//'.a.lma.out'
     open(322,file=filnam,err=999,status='unknown')
 
-    ! VCMAX (annual maximum) (mol m-2 s-1)
-    filnam=trim(prefix)//'.a.vcmax.out'
-    open(323,file=filnam,err=999,status='unknown')
-
-
     return
 
     999  stop 'INITIO: error opening output files'
@@ -293,12 +255,11 @@ contains
     !----------------------------------------------------------------
     use _params_core, only: ndayyear
     use _params_modl, only: npft, lu_category
-    use _vars_core, only: dgpp, dnpp, dnup, pleaf, pninorg, proot, &
-      plabl, plitt_bg, plitt_af, plitt_as, psoilphys, dtransp, &
-      psoil_sl, psoil_fs, lai_ind, narea_metabolic, narea_structural, &
-      r_cton_leaf, lma, vcmax
+    use _vars_core, only: dnpp, dnup, pleaf, pninorg, proot, plabl, &
+      plitt_bg, plitt_af, plitt_as, psoil_sl, psoil_fs, lai_ind, &
+      narea_metabolic, narea_structural, r_cton_leaf, lma
 
-    ! ARGUMENTS
+    ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy
     integer, intent(in) :: doy
@@ -311,8 +272,6 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (loutdgpp      ) outdgpp(:,doy,jpngr)       = dgpp(:)
-    if (loutdtransp   ) outdtransp(:,doy,jpngr)    = dtransp(:)
     if (loutdnpp      ) outdnpp(:,doy,jpngr)       = dnpp(:)%c12
     if (loutdnup      ) outdnup(:,doy,jpngr)       = dnup(:)%n14
     if (loutdCleaf    ) outdCleaf(:,doy,jpngr)     = pleaf(:,jpngr)%c%c12
@@ -331,7 +290,6 @@ contains
     dnarea_cw(:,doy)           = narea_structural(:)
     dcton_lm(:,doy)            = r_cton_leaf(:,jpngr)
     dlma(:,doy)                = lma(:,jpngr)
-    dvcmax(:,doy)              = vcmax(:)
 
     ! write(0,*) 'psoil_sl(:,jpngr)%c%c12', psoil_sl(:,jpngr)%c%c12
     ! write(0,*) 'psoil_fs(:,jpngr)%c%c12', psoil_fs(:,jpngr)%c%c12
@@ -341,7 +299,6 @@ contains
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    outagpp(:,jpngr)    = outagpp(:,jpngr) + dgpp(:)
     outanpp(:,jpngr)    = outanpp(:,jpngr) + dnpp(:)%c12
     outanup(:,jpngr)    = outanup(:,jpngr) + dnup(:)%n14
     outaninorg(:,jpngr) = outaNinorg(:,jpngr) + pninorg(:,jpngr)%n14 / ndayyear
@@ -381,7 +338,6 @@ contains
       outalai     (pft,jpngr) = outdlai(pft,maxdoy(pft),jpngr)
       outalma     (pft,jpngr) = dlma(pft,maxdoy(pft))
       outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy(pft))
-      outavcmax   (pft,jpngr) = dvcmax(pft,maxdoy(pft))
     end do
 
     open(unit=666,file='cton_vs_lai.log',status='unknown')

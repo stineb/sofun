@@ -21,8 +21,9 @@ subroutine biosphere( &
   use _params_modl
   use _vars_core, only: initannual, initdaily, initglobal, initpft
   use _soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
-  use _waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
   use _params_soil, only: paramtype_soil
+  use _waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
+  use _gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, writeout_ascii_gpp
 
   implicit none
 
@@ -60,6 +61,7 @@ subroutine biosphere( &
     ! print*,'getting model parameters'
     call getpar_modl()
     call getpar_modl_waterbal()
+    call getpar_modl_gpp()
 
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
@@ -72,6 +74,7 @@ subroutine biosphere( &
     !----------------------------------------------------------------
     call initio_waterbal()
     call initio_soiltemp()
+    call initio_gpp()
 
   endif 
 
@@ -80,6 +83,7 @@ subroutine biosphere( &
   !----------------------------------------------------------------
   call initoutput_waterbal()
   call initoutput_soiltemp()
+  call initoutput_gpp()
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
@@ -90,6 +94,14 @@ subroutine biosphere( &
     ! initialise annually updated variables
     !----------------------------------------------------------------
     call initannual()
+
+    !----------------------------------------------------------------
+    ! Get monthly light use efficiency, and Rd per unit of light absorbed
+    ! Photosynthetic parameters acclimate at monthly time scale
+    ! This is not compatible with a daily biosphere-climate coupling. I.e., 
+    ! there is a monthly loop within 'getlue'!
+    !----------------------------------------------------------------
+    call getlue( jpngr, pco2, dtemp_field(:,jpngr), dvpd_field(:,jpngr), elv(jpngr) )
 
     !----------------------------------------------------------------
     ! Get radiation based on daily temperature, sunshine fraction, and 
@@ -116,6 +128,7 @@ subroutine biosphere( &
         !----------------------------------------------------------------
         call initdaily()
         call initdaily_waterbal()
+        call initdaily_gpp ()
 
         !----------------------------------------------------------------
         ! get soil moisture, and runoff
@@ -132,11 +145,19 @@ subroutine biosphere( &
         ! write(0,*) '... done'
 
         !----------------------------------------------------------------
+        ! calculate GPP
+        !----------------------------------------------------------------
+        ! write(0,*) 'calling gpp() ... '
+        call gpp( jpngr, day, mo, fapar_field(mo) )
+        ! write(0,*) '... done'
+
+        !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
         ! write(0,*) 'calling getout_daily_waterbal() ... '
         call getout_daily_waterbal( jpngr, mo, day )
         call getout_daily_soiltemp( jpngr, mo, day )
+        call getout_daily_gpp( jpngr, mo, day )
         ! write(0,*) '... done'
 
       end do
@@ -148,6 +169,7 @@ subroutine biosphere( &
     !----------------------------------------------------------------
     call writeout_ascii_waterbal( year, spinup )
     call writeout_ascii_soiltemp( year, spinup )
+    call writeout_ascii_gpp( year, spinup )
 
   end do
 

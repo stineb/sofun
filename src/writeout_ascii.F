@@ -65,7 +65,6 @@ subroutine writeout_ascii( year, dtemp )
       ! Define 'itime' as a decimal number corresponding to day in the year + year
       itime = real(outyear) + real(day-1)/real(ndayyear)
       
-      if (loutdgpp      ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
       if (loutdnpp      ) write(102,999) itime, sum(outdnpp(:,day,jpngr))
       if (loutdCleaf    ) write(103,999) itime, sum(outdCleaf(:,day,jpngr))
       if (loutdnup      ) write(104,999) itime, sum(outdnup(:,day,jpngr))
@@ -93,7 +92,6 @@ subroutine writeout_ascii( year, dtemp )
 
   write(307,999) itime, sum(outaCveg2lit(:,jpngr))
   write(308,999) itime, sum(outaNveg2lit(:,jpngr))
-  write(310,999) itime, sum(outagpp(:,jpngr))
   write(311,999) itime, sum(outanpp(:,jpngr))
   write(312,999) itime, sum(outaCveg(:,jpngr))
   write(316,999) itime, sum(outaninorg(:,jpngr))

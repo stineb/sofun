@@ -242,7 +242,7 @@ subroutine biosphere( &
         ! xxx try
         !----------------------------------------------------------------
         write(0,*) 'calling waterbal() ... '
-        call waterbal( jpngr, day, lat(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr), elv(jpngr) )
+        call waterbal( jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr) )
         write(0,*) '... done'
 
         !----------------------------------------------------------------

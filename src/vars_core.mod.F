@@ -20,7 +20,6 @@ module _vars_core
   ! All these variables are required by the model and are independent
   ! of which modules are used.
   !----------------------------------------------------------------
-  real, dimension(npft)           :: dgpp     ! gross primary production [gC/m2/d]
   type(carbon), dimension(nlu)    :: dnep     ! net ecosystem production [gC/m2/d]
   type(carbon), dimension(npft)   :: dnpp     ! net primary production [gC/m2/d]
 
@@ -77,7 +76,6 @@ module _vars_core
   real, dimension(npft)                  :: narea_metabolic ! g N m-2-leaf
   real, dimension(npft)                  :: narea_structural! g N m-2-leaf
   real, dimension(npft)                  :: nmass           ! g N / g-dry mass
-  real, dimension(npft)                  :: vcmax           ! 
 
   real, dimension(npft,maxgrid)          :: lai_ind
   real, dimension(npft,maxgrid)          :: fapar_ind
@@ -93,44 +91,8 @@ module _vars_core
   real, dimension(npft,maxgrid)    :: height      ! tree height (m)
   real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
 
-  real, dimension(npft)            :: dtransp         ! daily transpiration [mm]
-
   real, dimension(nlu)             :: ddoc            ! surrogate for dissolved organic carbon
 
-  !----------------------------------------------------------------
-  ! Physical soil variables with memory from year to year (pools)
-  !----------------------------------------------------------------
-  type psoilphystype
-    real :: wcont      ! soil water mass [mm = kg/m2]
-  end type psoilphystype
-
-  type( psoilphystype ), dimension(nlu,maxgrid) :: psoilphys
-
-  !----------------------------------------------------------------
-  ! Collection of physical soil variables used across modules
-  !----------------------------------------------------------------
-  type soilphystype
-    real :: ro         ! daily runoff (mm)
-    real :: sw         ! evaporative supply rate (mm/h)
-    real :: wscal      ! water filled pore space (unitless)
-  end type soilphystype
-
-  type( soilphystype ), dimension(nlu) :: soilphys(nlu)
-
-  !----------------------------------------------------------------
-  ! Collection of solar radiation-related variables used across modules
-  ! Variables are a function of latitude, elevation, and 
-  ! sunshine fraction (all variables independent of soil moisture)
-  !----------------------------------------------------------------
-  type solartype
-    real, dimension(ndayyear) :: dayl        ! day length (hours)
-    real, dimension(ndayyear) :: dra         ! daily TOA solar irradiation (J/m2)
-    real, dimension(ndayyear) :: dppfd       ! daily total PPFD (mol m-2 d-1)
-    real, dimension(nmonth)   :: mppfd       ! monthly total PPFD (mol m-2 month-1)
-    real, dimension(nmonth)   :: meanmppfd   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
-  end type solartype
-
-  type( solartype ) :: solar
 
 contains
 
@@ -179,8 +141,6 @@ contains
     psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! fast decomposing soil organic matter, organic pool [gC/m2 and gN/m2]
     psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! recalcitrant soil organic matter    , organic pool [gC/m2 and gN/m2]
 
-    call initglobal_psoilphys()
-
     !! xxx try
     !! initialise _pools with non-zero values
     !! here example gridcell 9.5 E, 47.5 N
@@ -209,16 +169,6 @@ contains
     sla(:,:) = 0.0
 
   end subroutine initglobal
-
-
-  subroutine initglobal_psoilphys()
-    !////////////////////////////////////////////////////////////////
-    ! Initialises all daily variables within derived type 'psoilphys'.
-    !----------------------------------------------------------------
-    ! xxx try
-    psoilphys(:,:)%wcont = 50.0 
-
-  end subroutine initglobal_psoilphys
 
 
   subroutine initpft( pft, jpngr )
@@ -292,16 +242,12 @@ contains
     drhet(:)       = carbon(0.0)
     dnep(:)        = carbon(0.0)
     dcex(:)        = 0.0
-    dgpp(:)        = 0.0
-    dtransp(:)     = 0.0
     drauto(:)      = 0.0
     drleaf(:)      = 0.0
     drroot(:)      = 0.0
     drgrow(:)      = 0.0
     dnup(:)        = nitrogen(0.0)
     ddoc(:)        = 0.0
-
-    call initdaily_soilphys()
 
     !! xxx try
     !! hold soil carbon and litter _pools at a constant size
@@ -317,17 +263,6 @@ contains
     ! pninorg%n14 = 0.05
 
   end subroutine initdaily
-
-
-  subroutine initdaily_soilphys()
-    !////////////////////////////////////////////////////////////////
-    ! Initialises all daily variables within derived type 'soilphys'.
-    !----------------------------------------------------------------
-    soilphys(:)%ro    = 0.0
-    soilphys(:)%sw    = 0.0
-    soilphys(:)%wscal = 0.0
-
-  end subroutine initdaily_soilphys
 
 
 end module _vars_core

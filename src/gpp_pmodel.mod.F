@@ -50,17 +50,63 @@ module _gpp
   ! updated by 'pmodel') are:
   !   - xxx
   !----------------------------------------------------------------
-  use _params_core, only: nmonth, npft, c_molmass, h2o_molmass, maxgrid
+  use _params_core, only: nmonth, npft, c_molmass, h2o_molmass, maxgrid, ndayyear
 
   implicit none
-  ! private
-  ! public gpp, outtype_pmodel
 
-  ! pmodel PARAMETERS
-  ! hard-wired here because well known (xxx some are not well known => read these from file xxx)
-  real, parameter :: kphio     = 0.093    ! quantum efficiency (Long et al., 1993)
-  real, parameter :: kPo       = 101325.0 ! standard atmosphere, Pa (Allen, 1973)
-  real, parameter :: kTo       = 25.0     ! base temperature, deg C (Prentice, unpublished)
+  private
+  public dgpp, dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
+    initdaily_gpp, gpp, getlue, getout_daily_gpp, writeout_ascii_gpp
+
+  !----------------------------------------------------------------
+  ! Public, module-specific state variables
+  !----------------------------------------------------------------
+  real, dimension(npft) :: dgpp            ! gross primary production [gC/m2/d]
+  real, dimension(npft) :: dtransp         ! daily transpiration [mm]
+  real, dimension(npft) :: drd             ! dark respiration [gC/m2/d]
+  real, dimension(npft) :: vcmax_canop     ! canopy-level Vcmax
+
+  !----------------------------------------------------------------
+  ! Module-specific output variables
+  !----------------------------------------------------------------
+  ! daily
+  real, allocatable, dimension(:,:,:) :: outdgpp
+  real, allocatable, dimension(:,:,:) :: outdtransp
+
+  ! annual
+  real, dimension(npft,maxgrid) :: outagpp
+  real, dimension(npft,maxgrid) :: outavcmax
+  real, dimension(npft,maxgrid) :: outachi
+  real, dimension(npft,maxgrid) :: outalue
+
+  ! These are stored as dayly variables for annual output
+  ! at day of year when LAI is at its maximum.
+  real, dimension(npft,ndayyear) :: outdvcmax_canop
+
+  !-----------------------------------------------------------------------
+  ! Known parameters, therefore hard-wired.
+  !-----------------------------------------------------------------------
+  real, parameter :: kPo = 101325.0        ! standard atmosphere, Pa (Allen, 1973)
+  real, parameter :: kTo = 25.0            ! base temperature, deg C (Prentice, unpublished)
+
+  !-----------------------------------------------------------------------
+  ! Metabolic N ratio (N per unit Vcmax)
+  ! Reference: Harrison et al., 2009, Plant, Cell and Environment; Eq. 3
+  !-----------------------------------------------------------------------
+  real, parameter :: mol_weight_rubisco    = 5.5e5    ! molecular weight of Rubisco, (g R)(mol R)-1
+  real, parameter :: n_conc_rubisco        = 1.14e-2  ! N concentration in rubisco, (mol N)(g R)-1
+  real, parameter :: cat_turnover_per_site = 2.33     ! catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1; use 2.33 instead of (3.5) as not all Rubisco is active (see Harrison et al., 2009)  
+  real, parameter :: cat_sites_per_mol_R   = 8.0      ! number of catalytic sites per mol R, (mol R sites)(mol R)-1
+
+  ! Metabolic N ratio (mol N s (mol CO2)-1 )
+  real, parameter :: n_v = mol_weight_rubisco * n_conc_rubisco / ( cat_turnover_per_site * cat_sites_per_mol_R )
+
+  !-----------------------------------------------------------------------
+  ! Uncertain (unknown) parameters. Runtime read-in
+  !-----------------------------------------------------------------------
+  real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
+  real :: beta
+  real :: kphio        ! quantum efficiency (Long et al., 1993)
 
   !-----------------------------------------------------------------------
   ! Email from Tyler (10.3.2015):
@@ -84,23 +130,6 @@ module _gpp
   ! set of improvements, which, as I far as I know, will be based on this uni-
   ! versal value of β.
   !-----------------------------------------------------------------------
-  real, parameter :: beta = 244.033
-  
-  !-----------------------------------------------------------------------
-  ! Metabolic N ratio (N per unit Vcmax)
-  ! Reference: Harrison et al., 2009, Plant, Cell and Environment; Eq. 3
-  !-----------------------------------------------------------------------
-  real, parameter :: mol_weight_rubisco = 5.5e5    ! molecular weight of Rubisco, (g R)(mol R)-1
-  real, parameter :: n_conc_rubisco     = 1.14e-2  ! N concentration in rubisco, (mol N)(g R)-1
-  real, parameter :: cat_turnover_per_site = 2.33  ! catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1; use 2.33 instead of (3.5) as not all Rubisco is active (see Harrison et al., 2009)  
-  real, parameter :: cat_sites_per_mol_R   = 8.0   ! number of catalytic sites per mol R, (mol R sites)(mol R)-1
-
-  ! Metabolic N ratio (mol N s (mol CO2)-1 )
-  real, parameter :: n_v = mol_weight_rubisco * n_conc_rubisco / ( cat_turnover_per_site * cat_sites_per_mol_R )
-
-  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
-  real, parameter :: rd_to_vcmax = 0.015
-
   
   ! parameters for Narea -- under construction
   ! sla = 0.0014       ! specific leaf area (m2/gC)
@@ -118,9 +147,6 @@ module _gpp
   ! MONTHLY OUTPUT VARIABLES
   ! xxx add jpngr dim
 
-  ! PUBLIC variables
-  real, dimension(npft) :: drd      ! dark respiration [gC/m2/d]
-
   ! MODULE-SPECIFIC VARIABLES
   ! These are not required outside module 'pmodel', but are used in different SRs of this module
   real, dimension(nmonth) :: mlue             ! Light use efficiency: (gpp - rd) per unit light absorbed
@@ -132,18 +158,8 @@ module _gpp
   real, dimension(nmonth) :: mvcmax           ! Vcmax per unit ground area (mol m-2 s-1)
   ! real, dimension(nmonth) :: mnrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]
   real, dimension(nmonth) :: mchi             ! chi = ci/ca, leaf internal-to-ambient CO2 partial pressure
-  real                    :: avcmax           ! Vcmax per unit ground area (mol m-2 s-1); annual value is maximum of monthly values
+  real, dimension(npft)   :: avcmax           ! Vcmax per unit ground area (mol m-2 s-1); annual value is maximum of monthly values
   ! real                    :: anrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]; annual value is maximum of monthly values
-
-  ! OUTPUT VARIABLES
-  ! daily
-  ! real, dimension(nlu,ndayyear,maxgrid) :: outdnloss     ! daily mean C cost of N uptake (gC/gN) 
-
-  ! annual
-  ! real, dimension(maxgrid) :: outanrlarea
-  real, dimension(maxgrid) :: outavcmax
-  real, dimension(maxgrid) :: outachi
-  real, dimension(maxgrid) :: outalue
 
   ! Function return variables as derived types
   type outtype_pmodel
@@ -189,7 +205,8 @@ contains
     !
     !------------------------------------------------------------------
     use _params_core, only: dummy
-    use _vars_core, only: dgpp, dtransp, fapar_ind, vcmax, solar
+    use _vars_core, only: fapar_ind
+    use _waterbal, only: solar
 
     ! arguments
     integer, intent(in) :: jpngr     ! gridcell number
@@ -238,7 +255,7 @@ contains
         ! dtransp(pft) = calc_dtransp( 0.05, solar%dppfd(doy), mtransp_unitiabs(moy) )
 
         ! Vcmax
-        vcmax(pft) = calc_vcmax( fapar_ind(pft,jpngr), mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
+        vcmax_canop(pft) = calc_vcmax_canop( fapar_ind(pft,jpngr), mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
         ! mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
 
 
@@ -277,8 +294,9 @@ contains
     ! input variables need to be known beforehand => no daily coupling
     ! possible.
     !------------------------------------------------------------------
-    use _params_core, only: ndayyear
+    use _params_core, only: ndayyear, nlu
     use _sofunutils, only: daily2monthly
+    use _waterbal, only: evap
 
     ! arguments
     integer, intent(in)                   :: jpngr    ! gridcell number
@@ -292,17 +310,18 @@ contains
     real, dimension(nmonth) :: mtemp      ! monthly air temperature (deg C)
     real, dimension(nmonth) :: mvpd       ! monthly vapour pressure deficit (Pa)
     integer                 :: moy
+    integer                 :: lu
 
     ! Get monthly averages
     mtemp(:) = daily2monthly( dtemp(:), "mean" )
     mvpd(:)  = daily2monthly( dvpd(:), "mean" )
 
     ! xxx try out: -- THIS WORKS PERFECTLY -- 
-    write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
-    co2   = 376.0
+    ! write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
+    ! co2   = 376.0
     ! elv   = 450.0
-    mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
-    mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
+    ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
+    ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
     ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
 
     ! write(0,*) 'co2'
@@ -315,33 +334,35 @@ contains
 
     ! Run P-model for monthly averages and store monthly variables 
     ! per unit absorbed light (not corrected for soil moisture)
-    do moy=1,nmonth
+    do lu=1,nlu
+      do moy=1,nmonth
 
-      ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
-      out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
+        ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
+        out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
 
-      ! Light use efficiency: (gpp - rd) per unit light absorbed
-      mlue(moy)             = out_pmodel%lue
-      ! write(0,*) 'moy, mlue', moy, mlue(moy)
-      
-      ! Vcmax per unit absorbed light
-      mvcmax_unitiabs(moy)  = out_pmodel%vcmax_unitiabs
-      
-      ! conversion factor to get from absorbed light to Rubisco-N
-      mactnv_unitiabs(moy)  = out_pmodel%actnv_unitiabs
-      
-      ! factor to convert from 25 deg-normalised to ambient T
-      factor25(moy)         = out_pmodel%factor25_vcmax
-      
-      ! dark respiration per unit absorbed light
-      mrd_unitiabs(moy)     = out_pmodel%rd_unitiabs
+        ! Light use efficiency: (gpp - rd) per unit light absorbed
+        mlue(moy)             = out_pmodel%lue
+        ! write(0,*) 'moy, mlue', moy, mlue(moy)
+        
+        ! Vcmax per unit absorbed light
+        mvcmax_unitiabs(moy)  = out_pmodel%vcmax_unitiabs
+        
+        ! conversion factor to get from absorbed light to Rubisco-N
+        mactnv_unitiabs(moy)  = out_pmodel%actnv_unitiabs
+        
+        ! factor to convert from 25 deg-normalised to ambient T
+        factor25(moy)         = out_pmodel%factor25_vcmax
+        
+        ! dark respiration per unit absorbed light
+        mrd_unitiabs(moy)     = out_pmodel%rd_unitiabs
 
-      ! transpiration per unit 
-      mtransp_unitiabs(moy) = out_pmodel%transp_unitiabs
+        ! transpiration per unit 
+        mtransp_unitiabs(moy) = out_pmodel%transp_unitiabs
 
-      ! ci:ca
-      mchi(moy)             = out_pmodel%chi
+        ! ci:ca
+        mchi(moy)             = out_pmodel%chi
 
+      end do
     end do
 
     ! xxx debug
@@ -413,6 +434,26 @@ contains
     dtransp = fapar * dppfd * transp_unitiabs * h2o_molmass
 
   end function calc_dtransp
+
+
+  function get_fapar( lai ) result( fapar )
+    !////////////////////////////////////////////////////////////////
+    ! FOLIAGE PROJECTIVE COVER 
+    ! = Fraction of Absorbed Photosynthetically Active Radiation
+    ! Function returns fractional plant cover an individual
+    ! Eq. 7 in Sitch et al., 2003
+    !----------------------------------------------------------------
+    use _params_modl, only: kbeer
+
+    ! arguments
+    real, intent(in) :: lai
+
+    ! function return variable
+    real, intent(out) :: fapar
+
+    fapar = ( 1.0 - exp( -1.0 * kbeer * lai) )
+
+  end function get_fapar
 
 
   ! subroutine gettraits( jpngr )
@@ -496,30 +537,23 @@ contains
   ! end function calc_nr_leaf
 
 
-  function calc_vcmax( lai, vcmax_unitiabs, meanmppfd ) result( vcmax )
+  function calc_vcmax_canop( fapar, vcmax_unitiabs, meanmppfd ) result( vcmax )
     !//////////////////////////////////////////////////////////////////
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
     !------------------------------------------------------------------
-    use _vegdynamics, only: get_fapar
-
     ! arguments
-    real, intent(in) :: lai
+    real, intent(in) :: fapar
     real, intent(in) :: vcmax_unitiabs
     real, intent(in) :: meanmppfd
 
     ! function return variable
     real, intent(out) :: vcmax
 
-    ! local variables
-    real :: fapar
-
-    fapar = get_fapar( lai )
-
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-    vcmax = fapar * meanmppfd * vcmax_unitiabs / lai
+    vcmax = fapar * meanmppfd * vcmax_unitiabs
 
-  end function calc_vcmax
+  end function calc_vcmax_canop
 
 
   ! function calc_ncw_leaf( nr_leaf ) result( ncw_leaf )
@@ -542,6 +576,8 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Initialise daily variables with zero
     !----------------------------------------------------------------
+    dgpp(:)    = 0.0
+    dtransp(:) = 0.0
     drd(:)     = 0.0
 
   end subroutine initdaily_gpp
@@ -737,148 +773,23 @@ contains
   end function pmodel
 
 
-  subroutine initio_gpp()
+  subroutine getpar_modl_gpp()
     !////////////////////////////////////////////////////////////////
-    ! OPEN ASCII OUTPUT FILES FOR OUTPUT
+    ! Subroutine reads waterbalance module-specific parameters 
+    ! from input file
     !----------------------------------------------------------------
-    use _params_siml, only: runname
+    use _sofunutils, only: getparreal
 
-    ! local variables
-    character(len=256) :: prefix
-    character(len=256) :: filnam
+    ! xxx
+    beta  = getparreal( 'params/params_gpp_pmodel.dat', 'beta' )
 
-    prefix = "./output/"//trim(runname)
+    ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
+    rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
 
-    !----------------------------------------------------------------
-    ! DAILY OUTPUT
-    !----------------------------------------------------------------
+    ! quantum efficiency (Long et al., 1993)
+    kphio  = getparreal( 'params/params_gpp_pmodel.dat', 'kphio' )
 
-    ! ! DAILY TOTAL N LOSS (gN/m2/d)
-    ! filnam=trim(prefix)//'.d.nloss.out'
-    ! open(500,file=filnam,err=888,status='unknown')
-
-    ! !----------------------------------------------------------------
-    ! ! MONTHLY OUTPUT
-    ! !----------------------------------------------------------------
-    ! ! VCMAX (mol m-2 s-1)
-    ! filnam=trim(prefix)//'.m.vcmax.out'
-    ! open(601,file=filnam,err=888,status='unknown')
-
-
-    !----------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    !----------------------------------------------------------------
-    ! ! ANNUAL MAXIMUM N_AREA IN ACTIVE RUBISCO (gN/m2-leaf)
-    ! filnam=trim(prefix)//'.a.nrlarea.out'
-    ! open(650,file=filnam,err=888,status='unknown')
-
-    ! ! VCMAX (annual maximum) (mol m-2 s-1)
-    ! filnam=trim(prefix)//'.a.vcmax.out'
-    ! open(651,file=filnam,err=888,status='unknown')
-
-    ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
-    filnam=trim(prefix)//'.a.chi.out'
-    open(652,file=filnam,err=888,status='unknown')
-
-    ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
-    filnam=trim(prefix)//'.a.lue.out'
-    open(653,file=filnam,err=888,status='unknown')
-
-    return
-
-    888  stop 'INITIO_gpp: error opening output files'
-
-  end subroutine initio_gpp
-
-
-  subroutine initoutput_gpp()
-    !////////////////////////////////////////////////////////////////
-    !  Initialises waterbalance-specific output variables
-    !----------------------------------------------------------------
-    ! outanrlarea(:) = 0.0
-    outavcmax(:)   = 0.0
-    outachi(:)     = 0.0
-    outalue(:)     = 0.0
-
-  end subroutine initoutput_gpp
-
-
-  subroutine getout_annual_gpp( jpngr )
-    !////////////////////////////////////////////////////////////////
-    !  SR called once a year to gather annual output variables.
-    !----------------------------------------------------------------
-    use _vars_core, only: solar
-
-    ! arguments
-    integer, intent(in) :: jpngr
-
-    ! outanrlarea(jpngr) = anrlarea
-    outavcmax(jpngr)   = avcmax
-    outachi(jpngr)     = sum( mchi(:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
-    outalue(jpngr)     = sum( mlue(:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
-
-  end subroutine getout_annual_gpp
-
-
-  subroutine writeout_ascii_gpp( year, spinup )
-    !/////////////////////////////////////////////////////////////////////////
-    ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
-    !-------------------------------------------------------------------------
-    use _params_core, only: npft
-    use _params_siml, only: firstyeartrend, spinupyears
-
-    ! arguments
-    integer, intent(in) :: year       ! simulation year
-    logical, intent(in) :: spinup     ! true during spinup years
-
-    ! local variables
-    real :: itime
-    integer :: myday, myjpngr, mymonth
-
-    ! xxx implement this: sum over gridcells? single output per gridcell?
-    if (maxgrid>1) stop 'writeout_ascii_gpp: think of something ...'
-    myjpngr = 1
-
-    ! !-------------------------------------------------------------------------
-    ! ! DAILY OUTPUT
-    ! !-------------------------------------------------------------------------
-    ! if (.not.spinup) then
-    !   ! Write daily output only during transient simulation
-    !   do myday=1,ndayyear
-
-    !     ! Define 'itime' as a decimal number corresponding to day in the year + year
-    !     itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(myday-1)/real(ndayyear)
-
-    !     if (nlu>1) stop 'writeout_ascii_gpp: write out lu-area weighted sum'
-    !     if (npft>1) stop 'writeout_ascii_gpp: think of something for ccost output'
-
-    !     write(500,999) itime, sum(outdnloss(:,myday,myjpngr))
-    !     write(501,999) itime, sum(outdnvol(:,myday,myjpngr))
-    !     write(502,999) itime, sum(outddenitr(:,myday,myjpngr))
-    !     write(503,999) itime, sum(outdnitr(:,myday,myjpngr))
-    !     write(504,999) itime, sum(outdnleach(:,myday,myjpngr))
-
-    !   end do
-    ! end if
-
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    itime = real(year) + real(firstyeartrend) - real(spinupyears)
-
-    ! write(650,999) itime, outanrlarea(myjpngr)
-    write(651,999) itime, outavcmax(myjpngr)
-    write(652,999) itime, outachi(myjpngr)
-    write(653,999) itime, outalue(myjpngr)
-
-    return
-    
-    999 format (F20.8,F20.8)
-
-  end subroutine writeout_ascii_gpp
-
+  end subroutine getpar_modl_gpp
 
   ! function calc_n_rubisco_area( vcmax25 ) result( n_rubisco_area )
   !   !-----------------------------------------------------------------------
@@ -1393,6 +1304,185 @@ contains
     viscosity_h2o = mu_bar * mu_ast    ! Pa s
 
   end function calc_viscosity_h2o
+
+
+  subroutine initio_gpp()
+    !////////////////////////////////////////////////////////////////
+    ! OPEN ASCII OUTPUT FILES FOR OUTPUT
+    !----------------------------------------------------------------
+    use _params_siml, only: runname, loutdgpp, loutdtransp
+
+    ! local variables
+    character(len=256) :: prefix
+    character(len=256) :: filnam
+
+    prefix = "./output/"//trim(runname)
+
+    !----------------------------------------------------------------
+    ! DAILY OUTPUT
+    !----------------------------------------------------------------
+    ! GPP
+    if (loutdgpp) then
+      filnam=trim(prefix)//'.d.gpp.out'
+      open(101,file=filnam,err=888,status='unknown')
+    end if 
+
+    ! TRANSPIRATION
+    if (loutdtransp) then
+      filnam=trim(prefix)//'.d.transp.out'
+      open(114,file=filnam,err=888,status='unknown')
+    end if
+
+
+    !----------------------------------------------------------------
+    ! ANNUAL OUTPUT
+    !----------------------------------------------------------------
+    ! GPP 
+    filnam=trim(prefix)//'.a.gpp.out'
+    open(310,file=filnam,err=888,status='unknown')
+
+    ! VCMAX (annual maximum) (mol m-2 s-1)
+    filnam=trim(prefix)//'.a.vcmax.out'
+    open(323,file=filnam,err=888,status='unknown')
+
+    ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
+    filnam=trim(prefix)//'.a.chi.out'
+    open(652,file=filnam,err=888,status='unknown')
+
+    ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
+    filnam=trim(prefix)//'.a.lue.out'
+    open(653,file=filnam,err=888,status='unknown')
+
+    return
+
+    888  stop 'INITIO_GPP: error opening output files'
+
+  end subroutine initio_gpp
+
+
+  subroutine initoutput_gpp()
+    !////////////////////////////////////////////////////////////////
+    !  Initialises waterbalance-specific output variables
+    !----------------------------------------------------------------
+    use _params_core, only: npft, ndayyear, maxgrid
+    use _params_siml, only: loutdgpp, loutdtransp
+
+    if (loutdgpp      ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
+    if (loutdtransp   ) allocate( outdtransp   (npft,ndayyear,maxgrid) )
+
+    outagpp(:,:)   = 0.0
+    outavcmax(:,:) = 0.0
+    outachi(:,:)   = 0.0
+    outalue(:,:)   = 0.0
+
+  end subroutine initoutput_gpp
+
+
+  subroutine getout_daily_gpp( jpngr, moy, doy )
+    !////////////////////////////////////////////////////////////////
+    ! SR called daily to sum up daily output variables.
+    ! Note that output variables are collected only for those variables
+    ! that are global anyway (e.g., outdcex). Others are not made 
+    ! global just for this, but are collected inside the subroutine 
+    ! where they are defined.
+    !----------------------------------------------------------------
+    use _params_siml, only: loutdgpp, loutdtransp
+
+    ! arguments
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: moy
+    integer, intent(in) :: doy
+
+    !----------------------------------------------------------------
+    ! DAILY
+    ! Collect daily output variables
+    ! so far not implemented for isotopes
+    !----------------------------------------------------------------
+    if (loutdgpp      ) outdgpp(:,doy,jpngr)       = dgpp(:)
+    if (loutdtransp   ) outdtransp(:,doy,jpngr)    = dtransp(:)
+
+    !----------------------------------------------------------------
+    ! ANNUAL SUM OVER DAILY VALUES
+    ! Collect annual output variables as sum of daily values
+    !----------------------------------------------------------------
+    outagpp(:,jpngr) = outagpp(:,jpngr) + dgpp(:)
+
+    ! store all daily values for outputting annual maximum
+    outdvcmax_canop(:,doy) = vcmax_canop(:)
+
+
+  end subroutine getout_daily_gpp
+
+
+  subroutine getout_annual_gpp( jpngr )
+    !////////////////////////////////////////////////////////////////
+    !  SR called once a year to gather annual output variables.
+    !----------------------------------------------------------------
+    use _waterbal, only: solar
+
+    ! arguments
+    integer, intent(in) :: jpngr
+
+    ! outanrlarea(jpngr) = anrlarea
+    outavcmax(:,jpngr)   = avcmax(:)
+    outachi(:,jpngr)     = sum( mchi(:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+    outalue(:,jpngr)     = sum( mlue(:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+
+  end subroutine getout_annual_gpp
+
+
+  subroutine writeout_ascii_gpp( year, spinup )
+    !/////////////////////////////////////////////////////////////////////////
+    ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
+    !-------------------------------------------------------------------------
+    use _params_siml, only: outyear, loutdgpp, loutdtransp, daily_out_startyr, daily_out_endyr
+
+    ! arguments
+    integer, intent(in) :: year       ! simulation year
+    logical, intent(in) :: spinup     ! true during spinup years
+
+    ! local variables
+    real :: itime
+    integer :: day, jpngr, mymonth
+
+    ! xxx implement this: sum over gridcells? single output per gridcell?
+    if (maxgrid>1) stop 'writeout_ascii_gpp: think of something ...'
+    jpngr = 1
+
+    !-------------------------------------------------------------------------
+    ! DAILY OUTPUT
+    !-------------------------------------------------------------------------
+    if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+
+      ! Write daily output only during transient simulation
+      do day=1,ndayyear
+
+        ! Define 'itime' as a decimal number corresponding to day in the year + year
+        itime = real(outyear) + real(day-1)/real(ndayyear)
+
+        if (loutdgpp   ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
+        if (loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
+
+      end do
+    end if
+
+    !-------------------------------------------------------------------------
+    ! ANNUAL OUTPUT
+    ! Write annual value, summed over all PFTs / LUs
+    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+    !-------------------------------------------------------------------------
+    itime = real(outyear)
+
+    write(310,999) itime, sum(outagpp(:,jpngr))
+    write(651,999) itime, sum(outavcmax(:,jpngr))
+    write(652,999) itime, sum(outachi(:,jpngr))
+    write(653,999) itime, sum(outalue(:,jpngr))
+
+    return
+    
+    999 format (F20.8,F20.8)
+
+  end subroutine writeout_ascii_gpp
 
 
 end module _gpp

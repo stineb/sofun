@@ -30,7 +30,7 @@ module _soiltemp
   real, dimension(nlu,maxgrid) :: dtemp_soil          ! soil temperature [deg C]
 
   !----------------------------------------------------------------
-  ! Daily output variables
+  ! Module-specific daily output variables
   !----------------------------------------------------------------
   real, allocatable, dimension(:,:,:) :: outdtemp_soil
 
@@ -43,7 +43,7 @@ contains
     use _params_core, only: ndayyear, nlu, maxgrid, ndaymonth, pi
     use _params_siml, only: init
     use _sofunutils, only: running, daily2monthly
-    use _vars_core, only: soilphys
+    use _waterbal, only: soilphys
     use _params_soil, only: paramtype_soil
 
 

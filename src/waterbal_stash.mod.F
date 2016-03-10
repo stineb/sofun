@@ -25,11 +25,86 @@ module _waterbal
 
   implicit none
 
-  ! private
-  ! public dppfd
+  private
+  public psoilphys, soilphys, solar, evap, waterbal, getsolar_alldays, &
+    initdaily_waterbal, initglobal_waterbal, initio_waterbal,          &
+    getout_daily_waterbal, initoutput_waterbal,                        &
+    getpar_modl_waterbal, writeout_ascii_waterbal
 
   !----------------------------------------------------------------
-  ! DERIVED TYPES FOR FUNCTION RETURN
+  ! Public, module-specific state variables
+  !----------------------------------------------------------------
+  ! Physical soil variables with memory from year to year (pools)
+  type psoilphystype
+    real :: wcont      ! soil water mass [mm = kg/m2]
+  end type psoilphystype
+
+  type( psoilphystype ), dimension(nlu,maxgrid) :: psoilphys
+
+  ! Collection of physical soil variables used across modules
+  type soilphystype
+    real :: ro         ! daily runoff (mm)
+    real :: sw         ! evaporative supply rate (mm/h)
+    real :: wscal      ! water filled pore space (unitless)
+  end type soilphystype
+
+  type( soilphystype ), dimension(nlu) :: soilphys(nlu)
+
+  ! Collection of solar radiation-related variables used across modules
+  ! Variables are a function of latitude, elevation, and 
+  ! sunshine fraction (all variables independent of soil moisture)
+  type solartype
+    real, dimension(ndayyear) :: dayl        ! day length (hours)
+    real, dimension(ndayyear) :: dra         ! daily TOA solar irradiation (J/m2)
+    real, dimension(ndayyear) :: dppfd       ! daily total PPFD (mol m-2 d-1)
+    real, dimension(nmonth)   :: mppfd       ! monthly total PPFD (mol m-2 month-1)
+    real, dimension(nmonth)   :: meanmppfd   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
+  end type solartype
+
+  type( solartype ) :: solar
+
+  !----------------------------------------------------------------
+  ! Module-specific output variables
+  !----------------------------------------------------------------
+  real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
+  real, allocatable, dimension(:,:)   :: outdra             ! daily solar irradiation, J/m2
+  real, allocatable, dimension(:,:)   :: outdrn             ! daily net radiation, J/m2
+  real, allocatable, dimension(:,:)   :: outdppfd           ! daily PPFD, mol/m2
+  real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
+  real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
+  real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
+  real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
+  real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm
+  real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm
+  real, allocatable, dimension(:,:,:) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
+
+  !-----------------------------------------------------------------------
+  ! Uncertain (unknown) parameters. Runtime read-in
+  !-----------------------------------------------------------------------
+  real :: kA                ! constant for dRnl (Monteith & Unsworth, 1990)
+  real :: kalb_sw           ! shortwave albedo (Federer, 1968)
+  real :: kalb_vis          ! visible light albedo (Sellers, 1985)
+  real :: kb                ! constant for dRnl (Linacre, 1968)
+  real :: kc                ! cloudy transmittivity (Linacre, 1968)
+  real :: kCw               ! supply constant, mm/hr (Federer, 1982)
+  real :: kd                ! angular coefficient of transmittivity (Linacre, 1968)
+  real :: ke                ! eccentricity for 2000 CE (Berger, 1978)
+  real :: keps              ! obliquity for 2000 CE, degrees (Berger, 1978)
+  real :: kfFEC             ! from flux to energy conversion, umol/J (Meek et al., 1984)
+  real :: kG                ! gravitational acceleration, m/s^2 (Allen, 1973)
+  real :: kGsc              ! solar constant, W/m^2 (Kopp & Lean, 2011)
+  real :: kL                ! temperature lapse rate, K/m (Cavcar, 2000)
+  real :: kMa               ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
+  real :: kMv               ! molecular weight of water vapor, kg/mol (Tsilingiris, 2008)
+  real :: kPo               ! standard atmosphere, Pa (Allen, 1973)
+  real :: kR                ! gas constant, J/mol/K (Allen, 1973)
+  real :: kTo               ! base temperature, K (Prentice, unpublished)
+  real :: kWm               ! soil moisture capacity, mm (Cramer & Prentice, 1988)
+  real :: kw                ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
+  real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
+
+  !----------------------------------------------------------------
+  ! MODULE-SPECIFIC VARIABLES
   !----------------------------------------------------------------
   ! Orbit parameters 
   type outtype_berger
@@ -53,65 +128,23 @@ module _waterbal
   type( outtype_berger ), dimension(ndayyear)   :: out_berger    ! stores output of function berger_tls
   type( evaptype )      , dimension(nlu)        :: evap
 
-  ! STASH PARAMETERS
-  ! read from file, therefore not declared as parameter
-  real :: kA                ! constant for dRnl (Monteith & Unsworth, 1990)
-  real :: kalb_sw           ! shortwave albedo (Federer, 1968)
-  real :: kalb_vis          ! visible light albedo (Sellers, 1985)
-  real :: kb                ! constant for dRnl (Linacre, 1968)
-  real :: kc                ! cloudy transmittivity (Linacre, 1968)
-  real :: kCw               ! supply constant, mm/hr (Federer, 1982)
-  real :: kd                ! angular coefficient of transmittivity (Linacre, 1968)
-  real :: ke                ! eccentricity for 2000 CE (Berger, 1978)
-  real :: keps              ! obliquity for 2000 CE, degrees (Berger, 1978)
-  real :: kfFEC             ! from flux to energy conversion, umol/J (Meek et al., 1984)
-  real :: kG                ! gravitational acceleration, m/s^2 (Allen, 1973)
-  real :: kGsc              ! solar constant, W/m^2 (Kopp & Lean, 2011)
-  real :: kL                ! temperature lapse rate, K/m (Cavcar, 2000)
-  real :: kMa               ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
-  real :: kMv               ! molecular weight of water vapor, kg/mol (Tsilingiris, 2008)
-  real :: kPo               ! standard atmosphere, Pa (Allen, 1973)
-  real :: kR                ! gas constant, J/mol/K (Allen, 1973)
-  real :: kTo               ! base temperature, K (Prentice, unpublished)
-  real :: kWm               ! soil moisture capacity, mm (Cramer & Prentice, 1988)
-  real :: kw                ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
-  real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
-
-  ! MODULE-SPECIFIC VARIABLES
-  ! These are not required outside module STASH, but are used in different SRs of this module
-  ! adjust these and make global if required by GePiSaT
-
-  ! DAILY OUTPUT VARIABLES
-  ! xxx add jpngr dim
-  real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
-  real, allocatable, dimension(:,:)   :: outdra             ! daily solar irradiation, J/m2
-  real, allocatable, dimension(:,:)   :: outdrn             ! daily net radiation, J/m2
-  real, allocatable, dimension(:,:)   :: outdppfd           ! daily PPFD, mol/m2
-  real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
-  real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
-  real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
-  real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
-  real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm
-  real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm
-  real, allocatable, dimension(:,:,:) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
 
 contains
 
-  subroutine waterbal( jpngr, doy, lat, pr, tc, sf, elv )
+  subroutine waterbal( jpngr, doy, lat, elv, pr, tc, sf )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use _params_core, only: ndayyear, ndaymonth, nlu
-    use _vars_core, only: psoilphys, soilphys
 
     ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: doy    ! day of year
     real, intent(in) :: lat       ! latitude (degrees)
+    real, intent(in) :: elv                          ! altitude (m)
     real, intent(in) :: pr        ! daily precip (mm) 
     real, intent(in) :: tc        ! mean monthly temperature (deg C)
     real, intent(in) :: sf        ! mean monthly sunshine fraction (unitless)
-    real, intent(in) :: elv                          ! altitude (m)
 
     ! local variables
     integer :: lu                        ! land unit (gridcell tile)
@@ -173,8 +206,6 @@ contains
     ! Subroutine to get variables stored in derived type 'solar' (belongs
     ! to module only, not core variable).
     !-------------------------------------------------------------------------  
-    use _vars_core, only: solar
-
     ! arguments
     real, intent(in)                      :: lat           ! latitude, degrees
     real, intent(in)                      :: elv           ! elevation, metres
@@ -196,7 +227,6 @@ contains
     !-------------------------------------------------------------------------  
     use _params_core, only: ndayyear, pi
     use _sofunutils, only: daily2monthly
-    use _vars_core, only: solartype
 
     ! arguments
     real, intent(in)                      :: lat           ! latitude, degrees
@@ -744,232 +774,6 @@ contains
   end subroutine getpar_modl_waterbal
 
 
-  subroutine initio_waterbal( )
-    !////////////////////////////////////////////////////////////////
-    ! OPEN ASCII OUTPUT FILES FOR OUTPUT
-    !----------------------------------------------------------------
-    use _params_siml, only: runname
-
-    ! local variables
-    character(len=256) :: prefix
-    character(len=256) :: filnam
-
-    prefix = "./output/"//trim(runname)
-
-
-    !----------------------------------------------------------------
-    ! DAILY OUTPUT
-    !----------------------------------------------------------------
-    if (loutwaterbal) then
-
-      ! RA: daily solar irradiation, J/m2
-      filnam=trim(prefix)//'.d.ra.out'
-      open(251,file=filnam,err=888,status='unknown')
-
-      ! RN: daily net radiation, J/m2
-      filnam=trim(prefix)//'.d.rn.out'
-      open(252,file=filnam,err=888,status='unknown')
-
-      ! PPFD: daily PPFD, mol/m2
-      filnam=trim(prefix)//'.d.ppfd.out'
-      open(253,file=filnam,err=888,status='unknown')
-
-      ! CN: daily condensation water, mm
-      filnam=trim(prefix)//'.d.cn.out'
-      open(254,file=filnam,err=888,status='unknown')
-
-      ! WCONT: daily soil moisture, mm
-      filnam=trim(prefix)//'.d.wcont.out'
-      open(255,file=filnam,err=888,status='unknown')
-
-      ! ! PN: daily precipitation, mm
-      ! filnam=trim(prefix)//'.d.pn.out'
-      ! open(256,file=filnam,err=888,status='unknown')
-
-      ! RO: daily runoff, mm
-      filnam=trim(prefix)//'.d.ro.out'
-      open(257,file=filnam,err=888,status='unknown')
-
-      ! eet: daily equilibrium ET, mm
-      filnam=trim(prefix)//'.d.eet.out'
-      open(258,file=filnam,err=888,status='unknown')
-
-      ! PET: daily potential ET, mm
-      filnam=trim(prefix)//'.d.pet.out'
-      open(259,file=filnam,err=888,status='unknown')
-
-      ! AET: daily actual ET, mm
-      filnam=trim(prefix)//'.d.aet.out'
-      open(260,file=filnam,err=888,status='unknown')
-
-      ! DAYL: day length, h
-      filnam=trim(prefix)//'.d.dayl.out'
-      open(261,file=filnam,err=888,status='unknown')
-
-    end if
-
-    ! !----------------------------------------------------------------
-    ! ! MONTHLY OUTPUT
-    ! !----------------------------------------------------------------
-
-    ! ! eq_m
-    ! filnam=trim(prefix)//'.m.eq_m.out'
-    ! open(211,file=filnam,err=888,status='unknown')
-
-    ! ! ep_m
-    ! filnam=trim(prefix)//'.m.ep_m.out'
-    ! open(212,file=filnam,err=888,status='unknown')
-
-    ! ! ea_m
-    ! filnam=trim(prefix)//'.m.ea_m.out'
-    ! open(213,file=filnam,err=888,status='unknown')
-
-    ! ! cpa
-    ! filnam=trim(prefix)//'.m.cpa.out'
-    ! open(214,file=filnam,err=888,status='unknown')
-
-    ! ! cwd
-    ! filnam=trim(prefix)//'.m.cwd.out'
-    ! open(215,file=filnam,err=888,status='unknown')
-
-    ! ! qm
-    ! filnam=trim(prefix)//'.m.qm.out'
-    ! open(216,file=filnam,err=888,status='unknown')
-
-    return
-
-  888  stop 'INITIO_WATERBAL: error opening output files'
-
-  end subroutine initio_waterbal
-
-
-  subroutine initoutput_waterbal
-    !////////////////////////////////////////////////////////////////
-    !  Initialises waterbalance-specific output variables
-    !----------------------------------------------------------------
-
-    if (loutwaterbal) then
-
-      allocate( outdwcont (nlu,ndayyear,maxgrid) ) ! daily soil moisture, mm
-      allocate( outdra (ndayyear,maxgrid)     ) ! daily solar irradiation, J/m2
-      allocate( outdrn (ndayyear,maxgrid)     ) ! daily net radiation, J/m2
-      allocate( outdppfd (ndayyear,maxgrid)   ) ! daily PPFD, mol/m2
-      allocate( outdayl(ndayyear,maxgrid)     ) ! daily day length, h
-      allocate( outdcn (ndayyear,maxgrid)     ) ! daily condensation water, mm
-      allocate( outdro (nlu,ndayyear,maxgrid) ) ! daily runoff, mm
-      allocate( outdeet(ndayyear,maxgrid)     ) ! daily equilibrium ET, mm
-      allocate( outdpet(ndayyear,maxgrid)     ) ! daily potential ET, mm
-      allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
-      allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
-
-      ! xxx remove their day-dimension
-      outdwcont(:,:,:) = 0.0
-      outdra(:,:)      = 0.0
-      outdrn(:,:)      = 0.0
-      outdppfd(:,:)    = 0.0
-      outdayl(:,:)     = 0.0
-      outdcn(:,:)      = 0.0
-      outdro(:,:,:)    = 0.0
-      outdeet(:,:)     = 0.0
-      outdpet(:,:)     = 0.0
-      outdaet(:,:,:)   = 0.0
-      outdcpa(:,:,:)   = 0.0
-
-    end if
-
-  end subroutine initoutput_waterbal
-
-
-  subroutine getout_daily_waterbal( jpngr, moy, doy )
-    !////////////////////////////////////////////////////////////////
-    !  SR called daily to sum up output variables.
-    !----------------------------------------------------------------
-    use _vars_core, only: psoilphys, soilphys, solar
-
-    ! arguments
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: moy    
-    integer, intent(in) :: doy    
-
-    ! Save the daily totals:
-    ! xxx add lu-dimension and jpngr-dimension
-    if (loutwaterbal) then
-
-      outdra(doy,jpngr)     = solar%dra(doy)
-      outdppfd(doy,jpngr)   = solar%dppfd(doy)
-      outdayl(doy,jpngr)    = solar%dayl(doy)
-
-      outdrn(doy,jpngr)     = evap(1)%rn
-      outdeet(doy,jpngr)    = evap(1)%eet
-      outdpet(doy,jpngr)    = evap(1)%pet
-      outdcn(doy,jpngr)     = evap(1)%cn
-      outdaet(:,doy,jpngr)  = evap(:)%aet
-      outdcpa(:,doy,jpngr)  = evap(:)%cpa
-
-      outdwcont(:,doy,jpngr)= psoilphys(:,jpngr)%wcont
-      outdro(:,doy,jpngr)   = soilphys(:)%ro
-
-    end if
-
-  end subroutine getout_daily_waterbal
-
-
-  subroutine writeout_ascii_waterbal( year, spinup )
-    !/////////////////////////////////////////////////////////////////////////
-    ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
-    !-------------------------------------------------------------------------
-    use _params_core, only: ndayyear, nmonth
-    use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
-      daily_out_endyr, outyear
-
-    ! arguments
-    integer, intent(in) :: year       ! simulation year
-    logical, intent(in) :: spinup     ! true during spinup years
-
-    ! Local variables
-    real :: itime
-    integer :: day, moy, jpngr
-    
-    ! xxx implement this: sum over gridcells? single output per gridcell?
-    if (maxgrid>1) stop 'writeout_ascii_waterbal: think of something ...'
-    jpngr = 1
-
-    !-------------------------------------------------------------------------
-    ! DAILY OUTPUT
-    !-------------------------------------------------------------------------
-    if (loutwaterbal) then
-
-      if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
-
-        ! Write daily output only during transient simulation
-        do day=1,ndayyear
-
-          ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(outyear) + real(day-1)/real(ndayyear)
-
-          if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
-
-          ! xxx lu-area weighted sum if nlu>0
-          write(251,999) itime, outdra(day,jpngr)
-          write(252,999) itime, outdrn(day,jpngr)
-          write(253,999) itime, outdppfd(day,jpngr)
-          write(254,999) itime, outdcn(day,jpngr)
-          write(255,999) itime, outdwcont(1,day,jpngr)
-          write(257,999) itime, outdro(1,day,jpngr)
-          write(258,999) itime, outdeet(day,jpngr)
-          write(259,999) itime, outdpet(day,jpngr)
-          write(260,999) itime, outdaet(1,day,jpngr)
-          write(261,999) itime, outdayl(day,jpngr)
-
-        end do
-      end if
-    end if
-
-    return
-    
-    999 format (F20.8,F20.8)
-
-  end subroutine writeout_ascii_waterbal
 
 
   ! xxx put these functions into a 'contain' within calling SR?
@@ -1260,6 +1064,253 @@ contains
     psychro = cp*kMa*press/(kMv*lv)
 
   end function psychro
+
+
+  subroutine initdaily_waterbal()
+    !////////////////////////////////////////////////////////////////
+    ! Initialises all daily variables within derived type 'soilphys'.
+    !----------------------------------------------------------------
+    soilphys(:)%ro    = 0.0
+    soilphys(:)%sw    = 0.0
+    soilphys(:)%wscal = 0.0
+
+  end subroutine initdaily_waterbal
+
+
+  subroutine initglobal_waterbal()
+    !////////////////////////////////////////////////////////////////
+    ! Initialises all daily variables within derived type 'psoilphys'.
+    !----------------------------------------------------------------
+    ! xxx try
+    psoilphys(:,:)%wcont = 50.0 
+
+  end subroutine initglobal_waterbal
+
+
+  subroutine initio_waterbal( )
+    !////////////////////////////////////////////////////////////////
+    ! OPEN ASCII OUTPUT FILES FOR OUTPUT
+    !----------------------------------------------------------------
+    use _params_siml, only: runname
+
+    ! local variables
+    character(len=256) :: prefix
+    character(len=256) :: filnam
+
+    prefix = "./output/"//trim(runname)
+
+
+    !----------------------------------------------------------------
+    ! DAILY OUTPUT
+    !----------------------------------------------------------------
+    if (loutwaterbal) then
+
+      ! RA: daily solar irradiation, J/m2
+      filnam=trim(prefix)//'.d.ra.out'
+      open(251,file=filnam,err=888,status='unknown')
+
+      ! RN: daily net radiation, J/m2
+      filnam=trim(prefix)//'.d.rn.out'
+      open(252,file=filnam,err=888,status='unknown')
+
+      ! PPFD: daily PPFD, mol/m2
+      filnam=trim(prefix)//'.d.ppfd.out'
+      open(253,file=filnam,err=888,status='unknown')
+
+      ! CN: daily condensation water, mm
+      filnam=trim(prefix)//'.d.cn.out'
+      open(254,file=filnam,err=888,status='unknown')
+
+      ! WCONT: daily soil moisture, mm
+      filnam=trim(prefix)//'.d.wcont.out'
+      open(255,file=filnam,err=888,status='unknown')
+
+      ! ! PN: daily precipitation, mm
+      ! filnam=trim(prefix)//'.d.pn.out'
+      ! open(256,file=filnam,err=888,status='unknown')
+
+      ! RO: daily runoff, mm
+      filnam=trim(prefix)//'.d.ro.out'
+      open(257,file=filnam,err=888,status='unknown')
+
+      ! eet: daily equilibrium ET, mm
+      filnam=trim(prefix)//'.d.eet.out'
+      open(258,file=filnam,err=888,status='unknown')
+
+      ! PET: daily potential ET, mm
+      filnam=trim(prefix)//'.d.pet.out'
+      open(259,file=filnam,err=888,status='unknown')
+
+      ! AET: daily actual ET, mm
+      filnam=trim(prefix)//'.d.aet.out'
+      open(260,file=filnam,err=888,status='unknown')
+
+      ! DAYL: day length, h
+      filnam=trim(prefix)//'.d.dayl.out'
+      open(261,file=filnam,err=888,status='unknown')
+
+    end if
+
+    ! !----------------------------------------------------------------
+    ! ! MONTHLY OUTPUT
+    ! !----------------------------------------------------------------
+
+    ! ! eq_m
+    ! filnam=trim(prefix)//'.m.eq_m.out'
+    ! open(211,file=filnam,err=888,status='unknown')
+
+    ! ! ep_m
+    ! filnam=trim(prefix)//'.m.ep_m.out'
+    ! open(212,file=filnam,err=888,status='unknown')
+
+    ! ! ea_m
+    ! filnam=trim(prefix)//'.m.ea_m.out'
+    ! open(213,file=filnam,err=888,status='unknown')
+
+    ! ! cpa
+    ! filnam=trim(prefix)//'.m.cpa.out'
+    ! open(214,file=filnam,err=888,status='unknown')
+
+    ! ! cwd
+    ! filnam=trim(prefix)//'.m.cwd.out'
+    ! open(215,file=filnam,err=888,status='unknown')
+
+    ! ! qm
+    ! filnam=trim(prefix)//'.m.qm.out'
+    ! open(216,file=filnam,err=888,status='unknown')
+
+    return
+
+  888  stop 'INITIO_WATERBAL: error opening output files'
+
+  end subroutine initio_waterbal
+
+
+  subroutine initoutput_waterbal
+    !////////////////////////////////////////////////////////////////
+    !  Initialises waterbalance-specific output variables
+    !----------------------------------------------------------------
+
+    if (loutwaterbal) then
+
+      allocate( outdwcont (nlu,ndayyear,maxgrid) ) ! daily soil moisture, mm
+      allocate( outdra (ndayyear,maxgrid)     ) ! daily solar irradiation, J/m2
+      allocate( outdrn (ndayyear,maxgrid)     ) ! daily net radiation, J/m2
+      allocate( outdppfd (ndayyear,maxgrid)   ) ! daily PPFD, mol/m2
+      allocate( outdayl(ndayyear,maxgrid)     ) ! daily day length, h
+      allocate( outdcn (ndayyear,maxgrid)     ) ! daily condensation water, mm
+      allocate( outdro (nlu,ndayyear,maxgrid) ) ! daily runoff, mm
+      allocate( outdeet(ndayyear,maxgrid)     ) ! daily equilibrium ET, mm
+      allocate( outdpet(ndayyear,maxgrid)     ) ! daily potential ET, mm
+      allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
+      allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
+
+      ! xxx remove their day-dimension
+      outdwcont(:,:,:) = 0.0
+      outdra(:,:)      = 0.0
+      outdrn(:,:)      = 0.0
+      outdppfd(:,:)    = 0.0
+      outdayl(:,:)     = 0.0
+      outdcn(:,:)      = 0.0
+      outdro(:,:,:)    = 0.0
+      outdeet(:,:)     = 0.0
+      outdpet(:,:)     = 0.0
+      outdaet(:,:,:)   = 0.0
+      outdcpa(:,:,:)   = 0.0
+
+    end if
+
+  end subroutine initoutput_waterbal
+
+
+  subroutine getout_daily_waterbal( jpngr, moy, doy )
+    !////////////////////////////////////////////////////////////////
+    !  SR called daily to sum up output variables.
+    !----------------------------------------------------------------
+    ! arguments
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: moy    
+    integer, intent(in) :: doy    
+
+    ! Save the daily totals:
+    ! xxx add lu-dimension and jpngr-dimension
+    if (loutwaterbal) then
+
+      outdra(doy,jpngr)     = solar%dra(doy)
+      outdppfd(doy,jpngr)   = solar%dppfd(doy)
+      outdayl(doy,jpngr)    = solar%dayl(doy)
+
+      outdrn(doy,jpngr)     = evap(1)%rn
+      outdeet(doy,jpngr)    = evap(1)%eet
+      outdpet(doy,jpngr)    = evap(1)%pet
+      outdcn(doy,jpngr)     = evap(1)%cn
+      outdaet(:,doy,jpngr)  = evap(:)%aet
+      outdcpa(:,doy,jpngr)  = evap(:)%cpa
+
+      outdwcont(:,doy,jpngr)= psoilphys(:,jpngr)%wcont
+      outdro(:,doy,jpngr)   = soilphys(:)%ro
+
+    end if
+
+  end subroutine getout_daily_waterbal
+
+
+  subroutine writeout_ascii_waterbal( year, spinup )
+    !/////////////////////////////////////////////////////////////////////////
+    ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
+    !-------------------------------------------------------------------------
+    use _params_core, only: ndayyear, nmonth
+    use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
+      daily_out_endyr, outyear
+
+    ! arguments
+    integer, intent(in) :: year       ! simulation year
+    logical, intent(in) :: spinup     ! true during spinup years
+
+    ! Local variables
+    real :: itime
+    integer :: day, moy, jpngr
+    
+    ! xxx implement this: sum over gridcells? single output per gridcell?
+    if (maxgrid>1) stop 'writeout_ascii_waterbal: think of something ...'
+    jpngr = 1
+
+    !-------------------------------------------------------------------------
+    ! DAILY OUTPUT
+    !-------------------------------------------------------------------------
+    if (loutwaterbal) then
+
+      if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+
+        ! Write daily output only during transient simulation
+        do day=1,ndayyear
+
+          ! Define 'itime' as a decimal number corresponding to day in the year + year
+          itime = real(outyear) + real(day-1)/real(ndayyear)
+
+          if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
+
+          ! xxx lu-area weighted sum if nlu>0
+          write(251,999) itime, outdra(day,jpngr)
+          write(252,999) itime, outdrn(day,jpngr)
+          write(253,999) itime, outdppfd(day,jpngr)
+          write(254,999) itime, outdcn(day,jpngr)
+          write(255,999) itime, outdwcont(1,day,jpngr)
+          write(257,999) itime, outdro(1,day,jpngr)
+          write(258,999) itime, outdeet(day,jpngr)
+          write(259,999) itime, outdpet(day,jpngr)
+          write(260,999) itime, outdaet(1,day,jpngr)
+          write(261,999) itime, outdayl(day,jpngr)
+
+        end do
+      end if
+    end if
+
+    return
+    
+    999 format (F20.8,F20.8)
+
+  end subroutine writeout_ascii_waterbal
 
 
 end module _waterbal
