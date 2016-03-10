@@ -33,6 +33,7 @@ module _params_siml
 
   ! booleans defining whether variable is written to output
   logical :: loutdgpp       
+  logical :: loutdrd
   logical :: loutdtransp    
   logical :: loutdnpp       
   logical :: loutdnup       
@@ -166,6 +167,7 @@ contains
     endif
 
     loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
+    loutdrd        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdrd' )
     loutdtransp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtransp' )
     loutdnpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnpp' )
     loutdnup       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnup' )

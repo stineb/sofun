@@ -2,40 +2,6 @@ module _gpp
   !////////////////////////////////////////////////////////////////
   ! P-MODEL GPP MODULE
   ! Contains P model functions adopted from GePiSaT
-  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
-  ! contact: b.stocker@imperial.ac.uk
-  !----------------------------------------------------------------
-  !
-  ! _gpp
-  ! __version__ 1.0
-  !
-  ! written by Benjamin Stocker, adopted from Python code written by Tyler Davis
-  ! Imperial College London
-  !
-  ! 2015-03-21 -- created
-  ! 2015-03-21 -- last updated
-  !
-  ! ------------
-  ! description:
-  ! ------------
-  ! This collection of functions implements the Global ecosystem
-  ! in Space and Time (GePiSaT) model of the terrestrial biosphere. 
-  !
-  ! GePiSaT takes a simplistic approach to modelling terrestrial gross primary 
-  ! production (GPP) by making  use of the optimality principle of vegetation 
-  ! minimizing the summed costs associated with maintaining carbon fixation and 
-  ! water transport capabilities (Prentice et al., 2014).
-  !
-  ! ----------
-  ! changelog:
-  ! ----------
-  ! VERSION 1.0.0
-  !  - file created [2015-03-21]
-  !
-  ! VERSION 1.0.1
-  !  - 'lue_approx' function now based on SI units.
-  !
-  !
   ! This module ontains the "main" subroutine 'pmodel' and all necessary 
   ! subroutines for handling input/output. 
   ! Every module that implements 'pmodel' must contain this list 
@@ -49,6 +15,8 @@ module _gpp
   ! Required module-independent model state variables (necessarily 
   ! updated by 'pmodel') are:
   !   - xxx
+  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
+  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use _params_core, only: nmonth, npft, c_molmass, h2o_molmass, maxgrid, ndayyear
 
@@ -71,10 +39,13 @@ module _gpp
   !----------------------------------------------------------------
   ! daily
   real, allocatable, dimension(:,:,:) :: outdgpp
+  real, allocatable, dimension(:,:,:) :: outdrd
   real, allocatable, dimension(:,:,:) :: outdtransp
 
   ! monthly
   real, allocatable, dimension(:,:,:) :: outmgpp
+  real, allocatable, dimension(:,:,:) :: outmrd
+  real, allocatable, dimension(:,:,:) :: outmtransp
 
   ! annual
   real, dimension(npft,maxgrid) :: outagpp
@@ -150,8 +121,9 @@ module _gpp
   ! MONTHLY OUTPUT VARIABLES
   ! xxx add jpngr dim
 
-  ! MODULE-SPECIFIC VARIABLES
-  ! These are not required outside module 'pmodel', but are used in different SRs of this module
+  !----------------------------------------------------------------
+  ! MODULE-SPECIFIC, PRIVATE VARIABLES
+  !----------------------------------------------------------------
   real, dimension(nmonth) :: mlue             ! Light use efficiency: (gpp - rd) per unit light absorbed
   real, dimension(nmonth) :: mvcmax_unitiabs  ! Vcmax per unit fAPAR
   real, dimension(nmonth) :: mactnv_unitiabs  ! conversion factor to get from APAR to Rubisco-N
@@ -443,107 +415,6 @@ contains
   end function calc_dtransp
 
 
-  ! function get_fapar( lai ) result( fapar )
-  !   !////////////////////////////////////////////////////////////////
-  !   ! FOLIAGE PROJECTIVE COVER 
-  !   ! = Fraction of Absorbed Photosynthetically Active Radiation
-  !   ! Function returns fractional plant cover an individual
-  !   ! Eq. 7 in Sitch et al., 2003
-  !   !----------------------------------------------------------------
-  !   use _params_modl, only: kbeer
-
-  !   ! arguments
-  !   real, intent(in) :: lai
-
-  !   ! function return variable
-  !   real, intent(out) :: fapar
-
-  !   fapar = ( 1.0 - exp( -1.0 * kbeer * lai) )
-
-  ! end function get_fapar
-
-
-  ! subroutine gettraits( jpngr )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Calculates leaf traits at the beginning of the year based on 
-  !   ! Vcmax25, assuming a constant ratio of leaf-C to leaf-structural N:
-  !   ! - metabolic Narea
-  !   ! - structural Narea
-  !   ! - leaf C:N 
-  !   ! - LMA, SLA
-  !   !------------------------------------------------------------------
-  !   use _params_modl, only: n_molmass, c_molmass, c_content_of_biomass
-  !   use _vars_core, only: sla, lma, r_cton_leaf, r_ntoc_leaf
-  !   use _waterbal, only: meanmppfd
-
-  !   ! arguments
-  !   integer, intent(in) :: jpngr 
-
-  !   ! local variables
-  !   integer :: pft, moy
-  !   real    :: max_lai
-  !   real    :: nr_leaf
-  !   real    :: ncw_leaf
-  !   real    :: cleaf
-
-  !   ! xxx try: assumue seasonal maximum LAI to determine leaf N beforehand
-  !   ! max_lai = 1.0
-
-  !   ! write(0,*) 'meanmppfd', meanmppfd
-
-  !   ! do moy=1,nmonth
-  !   !   mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
-  !   !   ! mnrlarea(moy) = calc_nr_leaf(  max_lai, mactnv_unitiabs(moy), solar%meanmppfd(moy) )
-  !   ! end do
-  !   ! avcmax = maxval( mvcmax(:) )
-  !   ! anrlarea = maxval( mnrlarea(:) )
-
-  !   ! write(0,*) 'mvcmax  ', mvcmax(:) * 1e3
-  !   ! write(0,*) 'anrlarea', anrlarea
-  !   ! stop
-
-  !   ! do pft=1,npft
-
-  !   !   ncw_leaf               = calc_ncw_leaf( anrlarea )
-  !   !   cleaf                  = ncw_leaf * n_molmass * r_ctostructn_leaf
-      
-  !   !   r_cton_leaf(pft,jpngr) = cleaf / ( (anrlarea+ncw_leaf) * n_molmass )
-  !   !   r_ntoc_leaf(pft,jpngr) = 1.0 / r_cton_leaf(pft,jpngr)
-      
-  !   !   lma(pft,jpngr)         = cleaf / c_content_of_biomass
-  !   !   sla(pft,jpngr)         = 1.0 / lma(pft,jpngr)
-
-  !   ! end do
-
-  ! end subroutine gettraits
-
-
-  ! function calc_nr_leaf( lai, mactnv_unitiabs, meanmppfd ) result( nr_leaf )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Calculates leaf-level metabolic N content per unit leaf area as a
-  !   ! function of Vcmax25.
-  !   !------------------------------------------------------------------
-  !   use _vegdynamics, only: get_fapar
-
-  !   ! arguments
-  !   real, intent(in) :: lai
-  !   real, intent(in) :: mactnv_unitiabs
-  !   real, intent(in) :: meanmppfd
-
-  !   ! function return variable
-  !   real, intent(out) :: nr_leaf
-
-  !   ! local variables
-  !   real :: fapar
-
-  !   fapar = get_fapar( lai )
-
-  !   ! Calculate leaf-scale Rubisco-N as a function of LAI and current LUE
-  !   nr_leaf = fapar * meanmppfd * mactnv_unitiabs / lai
-
-  ! end function calc_nr_leaf
-
-
   function calc_vcmax_canop( fapar, vcmax_unitiabs, meanmppfd ) result( vcmax )
     !//////////////////////////////////////////////////////////////////
     ! Calculates leaf-level metabolic N content per unit leaf area as a
@@ -561,33 +432,6 @@ contains
     vcmax = fapar * meanmppfd * vcmax_unitiabs
 
   end function calc_vcmax_canop
-
-
-  ! function calc_ncw_leaf( nr_leaf ) result( ncw_leaf )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Calculates leaf-level structural N content per unit leaf area as a
-  !   ! function of metabolic Narea.
-  !   !------------------------------------------------------------------
-  !   ! arguments
-  !   real, intent(in) :: nr_leaf
-
-  !   ! function return variable
-  !   real, intent(out) :: ncw_leaf
-
-  !   ncw_leaf = nr_leaf * r_n_cw_v + ncw_min
-
-  ! end function calc_ncw_leaf
-
-
-  subroutine initdaily_gpp()
-    !////////////////////////////////////////////////////////////////
-    ! Initialise daily variables with zero
-    !----------------------------------------------------------------
-    dgpp(:)    = 0.0
-    dtransp(:) = 0.0
-    drd(:)     = 0.0
-
-  end subroutine initdaily_gpp
 
 
   function pmodel( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method ) result( out_pmodel )
@@ -1328,11 +1172,22 @@ contains
   end function calc_viscosity_h2o
 
 
+  subroutine initdaily_gpp()
+    !////////////////////////////////////////////////////////////////
+    ! Initialise daily variables with zero
+    !----------------------------------------------------------------
+    dgpp(:)    = 0.0
+    dtransp(:) = 0.0
+    drd(:)     = 0.0
+
+  end subroutine initdaily_gpp
+
+
   subroutine initio_gpp()
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use _params_siml, only: runname, loutdgpp, loutdtransp
+    use _params_siml, only: runname, loutdgpp, loutdrd, loutdtransp
 
     ! local variables
     character(len=256) :: prefix
@@ -1349,6 +1204,12 @@ contains
       open(101,file=filnam,err=888,status='unknown')
     end if 
 
+    ! RD
+    if (loutdrd) then
+      filnam=trim(prefix)//'.d.rd.out'
+      open(135,file=filnam,err=888,status='unknown')
+    end if 
+
     ! TRANSPIRATION
     if (loutdtransp) then
       filnam=trim(prefix)//'.d.transp.out'
@@ -1362,6 +1223,18 @@ contains
     if (loutdgpp) then     ! monthly and daily output switch are identical
       filnam=trim(prefix)//'.m.gpp.out'
       open(151,file=filnam,err=888,status='unknown')
+    end if 
+
+    ! RD
+    if (loutdrd) then     ! monthly and daily output switch are identical
+      filnam=trim(prefix)//'.m.rd.out'
+      open(152,file=filnam,err=888,status='unknown')
+    end if 
+
+    ! TRANSP
+    if (loutdtransp) then     ! monthly and daily output switch are identical
+      filnam=trim(prefix)//'.m.transp.out'
+      open(153,file=filnam,err=888,status='unknown')
     end if 
 
     !----------------------------------------------------------------
@@ -1395,17 +1268,23 @@ contains
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
     use _params_core, only: npft, ndayyear, nmonth, maxgrid
-    use _params_siml, only: loutdgpp, loutdtransp
+    use _params_siml, only: loutdgpp, loutdrd, loutdtransp
 
     ! daily
     if (loutdgpp      ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
+    if (loutdrd       ) allocate( outdrd       (npft,ndayyear,maxgrid) )
     if (loutdtransp   ) allocate( outdtransp   (npft,ndayyear,maxgrid) )
     outdgpp(:,:,:)    = 0.0
+    outdrd(:,:,:)    = 0.0
     outdtransp(:,:,:) = 0.0
 
     ! monthly
     if (loutdgpp      ) allocate( outmgpp      (npft,nmonth,maxgrid) )
-    outmgpp(:,:,:) = 0.0
+    if (loutdrd       ) allocate( outmrd       (npft,nmonth,maxgrid) )
+    if (loutdtransp   ) allocate( outmtransp   (npft,nmonth,maxgrid) )
+    outmgpp(:,:,:)    = 0.0
+    outmrd(:,:,:)     = 0.0
+    outmtransp(:,:,:) = 0.0
 
     ! annual
     outagpp(:,:)   = 0.0
@@ -1424,7 +1303,7 @@ contains
     ! global just for this, but are collected inside the subroutine 
     ! where they are defined.
     !----------------------------------------------------------------
-    use _params_siml, only: loutdgpp, loutdtransp
+    use _params_siml, only: loutdgpp, loutdrd, loutdtransp
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -1437,14 +1316,17 @@ contains
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
     if (loutdgpp      ) outdgpp(:,doy,jpngr)       = dgpp(:)
+    if (loutdrd       ) outdrd(:,doy,jpngr)        = drd(:)
     if (loutdtransp   ) outdtransp(:,doy,jpngr)    = dtransp(:)
 
     !----------------------------------------------------------------
     ! MONTHLY SUM OVER DAILY VALUES
     ! Collect monthly output variables as sum of daily values
     !----------------------------------------------------------------
-    if (loutdgpp      ) outmgpp(:,moy,jpngr) = outmgpp(:,moy,jpngr) + dgpp(:)
-    
+    if (loutdgpp      ) outmgpp(:,moy,jpngr)    = outmgpp(:,moy,jpngr) + dgpp(:)
+    if (loutdrd       ) outmrd(:,moy,jpngr)     = outmrd(:,moy,jpngr)  + drd(:)
+    if (loutdrd       ) outmtransp(:,moy,jpngr) = outmtransp(:,moy,jpngr)  + dtransp(:)
+
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
@@ -1479,7 +1361,7 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_siml, only: outyear, loutdgpp, loutdtransp, daily_out_startyr, daily_out_endyr
+    use _params_siml, only: outyear, loutdrd, loutdgpp, loutdtransp, daily_out_startyr, daily_out_endyr
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -1505,6 +1387,7 @@ contains
         itime = real(outyear) + real(day-1)/real(ndayyear)
 
         if (loutdgpp   ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
+        if (loutdrd    ) write(135,999) itime, sum(outdrd(:,day,jpngr))
         if (loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
 
       end do
@@ -1518,6 +1401,8 @@ contains
         ! stop
 
         if (loutdgpp   ) write(151,999) itime, sum(outmgpp(:,moy,jpngr))
+        if (loutdrd    ) write(152,999) itime, sum(outmrd (:,moy,jpngr))
+        if (loutdtransp) write(153,999) itime, sum(outmtransp(:,moy,jpngr))
 
       end do
 
@@ -1540,6 +1425,102 @@ contains
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_gpp
+
+
+  ! subroutine gettraits( jpngr )
+  !   !//////////////////////////////////////////////////////////////////
+  !   ! Calculates leaf traits at the beginning of the year based on 
+  !   ! Vcmax25, assuming a constant ratio of leaf-C to leaf-structural N:
+  !   ! - metabolic Narea
+  !   ! - structural Narea
+  !   ! - leaf C:N 
+  !   ! - LMA, SLA
+  !   !------------------------------------------------------------------
+  !   use _params_modl, only: n_molmass, c_molmass, c_content_of_biomass
+  !   use _vars_core, only: sla, lma, r_cton_leaf, r_ntoc_leaf
+  !   use _waterbal, only: meanmppfd
+
+  !   ! arguments
+  !   integer, intent(in) :: jpngr 
+
+  !   ! local variables
+  !   integer :: pft, moy
+  !   real    :: max_lai
+  !   real    :: nr_leaf
+  !   real    :: ncw_leaf
+  !   real    :: cleaf
+
+  !   ! xxx try: assumue seasonal maximum LAI to determine leaf N beforehand
+  !   ! max_lai = 1.0
+
+  !   ! write(0,*) 'meanmppfd', meanmppfd
+
+  !   ! do moy=1,nmonth
+  !   !   mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
+  !   !   ! mnrlarea(moy) = calc_nr_leaf(  max_lai, mactnv_unitiabs(moy), solar%meanmppfd(moy) )
+  !   ! end do
+  !   ! avcmax = maxval( mvcmax(:) )
+  !   ! anrlarea = maxval( mnrlarea(:) )
+
+  !   ! write(0,*) 'mvcmax  ', mvcmax(:) * 1e3
+  !   ! write(0,*) 'anrlarea', anrlarea
+  !   ! stop
+
+  !   ! do pft=1,npft
+
+  !   !   ncw_leaf               = calc_ncw_leaf( anrlarea )
+  !   !   cleaf                  = ncw_leaf * n_molmass * r_ctostructn_leaf
+      
+  !   !   r_cton_leaf(pft,jpngr) = cleaf / ( (anrlarea+ncw_leaf) * n_molmass )
+  !   !   r_ntoc_leaf(pft,jpngr) = 1.0 / r_cton_leaf(pft,jpngr)
+      
+  !   !   lma(pft,jpngr)         = cleaf / c_content_of_biomass
+  !   !   sla(pft,jpngr)         = 1.0 / lma(pft,jpngr)
+
+  !   ! end do
+
+  ! end subroutine gettraits
+
+
+  ! function calc_nr_leaf( lai, mactnv_unitiabs, meanmppfd ) result( nr_leaf )
+  !   !//////////////////////////////////////////////////////////////////
+  !   ! Calculates leaf-level metabolic N content per unit leaf area as a
+  !   ! function of Vcmax25.
+  !   !------------------------------------------------------------------
+  !   use _vegdynamics, only: get_fapar
+
+  !   ! arguments
+  !   real, intent(in) :: lai
+  !   real, intent(in) :: mactnv_unitiabs
+  !   real, intent(in) :: meanmppfd
+
+  !   ! function return variable
+  !   real, intent(out) :: nr_leaf
+
+  !   ! local variables
+  !   real :: fapar
+
+  !   fapar = get_fapar( lai )
+
+  !   ! Calculate leaf-scale Rubisco-N as a function of LAI and current LUE
+  !   nr_leaf = fapar * meanmppfd * mactnv_unitiabs / lai
+
+  ! end function calc_nr_leaf
+
+  ! function calc_ncw_leaf( nr_leaf ) result( ncw_leaf )
+  !   !//////////////////////////////////////////////////////////////////
+  !   ! Calculates leaf-level structural N content per unit leaf area as a
+  !   ! function of metabolic Narea.
+  !   !------------------------------------------------------------------
+  !   ! arguments
+  !   real, intent(in) :: nr_leaf
+
+  !   ! function return variable
+  !   real, intent(out) :: ncw_leaf
+
+  !   ncw_leaf = nr_leaf * r_n_cw_v + ncw_min
+
+  ! end function calc_ncw_leaf
 
 
 end module _gpp
