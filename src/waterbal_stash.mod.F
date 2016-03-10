@@ -104,7 +104,7 @@ module _waterbal
   real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
 
   !----------------------------------------------------------------
-  ! MODULE-SPECIFIC VARIABLES
+  ! MODULE-SPECIFIC, PRIVATE VARIABLES
   !----------------------------------------------------------------
   ! Orbit parameters 
   type outtype_berger
@@ -1205,7 +1205,6 @@ contains
       allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
       allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
 
-      ! xxx remove their day-dimension
       outdwcont(:,:,:) = 0.0
       outdra(:,:)      = 0.0
       outdrn(:,:)      = 0.0

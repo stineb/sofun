@@ -73,6 +73,9 @@ module _gpp
   real, allocatable, dimension(:,:,:) :: outdgpp
   real, allocatable, dimension(:,:,:) :: outdtransp
 
+  ! monthly
+  real, allocatable, dimension(:,:,:) :: outmgpp
+
   ! annual
   real, dimension(npft,maxgrid) :: outagpp
   real, dimension(npft,maxgrid) :: outavcmax
@@ -219,14 +222,14 @@ contains
     ! local variables
     integer :: pft
 
-    ! Override interactively simulated fAPAR with data
-    if (fapar_prescr/=dummy) fapar_ind(pft,jpngr) = fapar_prescr
-
     !----------------------------------------------------------------
     ! CALCULATE PREDICTED GPP FROM P-model
     ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
     !----------------------------------------------------------------
     do pft=1,npft
+
+      ! Override interactively simulated fAPAR with data
+      if (fapar_prescr/=dummy) fapar_ind(pft,jpngr) = fapar_prescr
 
       if (fapar_ind(pft,jpngr)>0.0) then
 
@@ -268,7 +271,6 @@ contains
       end if 
 
     end do
-
 
     ! write(0,*) '---in gpp: '
     ! write(0,*) 'fapar_ind(pft,jpngr) ',fapar_ind
@@ -334,11 +336,16 @@ contains
 
     ! Run P-model for monthly averages and store monthly variables 
     ! per unit absorbed light (not corrected for soil moisture)
+
+    ! XXX PMODEL_TEST
+    write(0,*) 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
+
     do lu=1,nlu
       do moy=1,nmonth
 
         ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
-        out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
+        ! out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
+        out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
 
         ! Light use efficiency: (gpp - rd) per unit light absorbed
         mlue(moy)             = out_pmodel%lue
@@ -436,24 +443,24 @@ contains
   end function calc_dtransp
 
 
-  function get_fapar( lai ) result( fapar )
-    !////////////////////////////////////////////////////////////////
-    ! FOLIAGE PROJECTIVE COVER 
-    ! = Fraction of Absorbed Photosynthetically Active Radiation
-    ! Function returns fractional plant cover an individual
-    ! Eq. 7 in Sitch et al., 2003
-    !----------------------------------------------------------------
-    use _params_modl, only: kbeer
+  ! function get_fapar( lai ) result( fapar )
+  !   !////////////////////////////////////////////////////////////////
+  !   ! FOLIAGE PROJECTIVE COVER 
+  !   ! = Fraction of Absorbed Photosynthetically Active Radiation
+  !   ! Function returns fractional plant cover an individual
+  !   ! Eq. 7 in Sitch et al., 2003
+  !   !----------------------------------------------------------------
+  !   use _params_modl, only: kbeer
 
-    ! arguments
-    real, intent(in) :: lai
+  !   ! arguments
+  !   real, intent(in) :: lai
 
-    ! function return variable
-    real, intent(out) :: fapar
+  !   ! function return variable
+  !   real, intent(out) :: fapar
 
-    fapar = ( 1.0 - exp( -1.0 * kbeer * lai) )
+  !   fapar = ( 1.0 - exp( -1.0 * kbeer * lai) )
 
-  end function get_fapar
+  ! end function get_fapar
 
 
   ! subroutine gettraits( jpngr )
@@ -649,16 +656,25 @@ contains
     ! photorespiratory compensation point - Gamma-star (Pa)
     gs   = calc_gstar( tc )
 
+    ! ! XXX PMODEL_TEST: ok
+    ! write(0,*) 'gs ', gs
+
     ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
     fa   = calc_fa( cpalpha )
 
     ! Michaelis-Menten coef. (Pa)
     kmm  = calc_k( tc, patm )
 
+    ! ! XXX PMODEL_TEST: ok
+    ! write(0,*) 'kmm ', kmm
+
     ! viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
     ns      = calc_viscosity_h2o( tc, patm )  ! Pa s 
     ns25    = calc_viscosity_h2o( kTo, kPo )  ! Pa s 
     ns_star = ns / ns25                       ! (unitless)
+
+    ! ! XXX PMODEL_TEST: ok
+    ! write(0,*) 'ns ', ns
 
     select case (method)
 
@@ -691,6 +707,9 @@ contains
     n   = out_lue%n
     chi = out_lue%chi
 
+    ! ! XXX PMODEL_TEST: ok
+    ! write(0,*) 'chi ', chi
+
     !-----------------------------------------------------------------------
     ! Calculate function return variables
     !-----------------------------------------------------------------------
@@ -703,6 +722,9 @@ contains
 
     ! Light use efficiency (gpp per unit iabs)
     lue = kphio * fa * m 
+
+    ! ! XXX PMODEL_TEST: ok
+    ! write(0,*) 'lue ', lue
 
     ! leaf-internal CO2 partial pressure (Pa)
     ci = chi * ca
@@ -1333,6 +1355,14 @@ contains
       open(114,file=filnam,err=888,status='unknown')
     end if
 
+    !----------------------------------------------------------------
+    ! MONTHLY OUTPUT
+    !----------------------------------------------------------------
+    ! GPP
+    if (loutdgpp) then     ! monthly and daily output switch are identical
+      filnam=trim(prefix)//'.m.gpp.out'
+      open(151,file=filnam,err=888,status='unknown')
+    end if 
 
     !----------------------------------------------------------------
     ! ANNUAL OUTPUT
@@ -1364,12 +1394,20 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
-    use _params_core, only: npft, ndayyear, maxgrid
+    use _params_core, only: npft, ndayyear, nmonth, maxgrid
     use _params_siml, only: loutdgpp, loutdtransp
 
+    ! daily
     if (loutdgpp      ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
     if (loutdtransp   ) allocate( outdtransp   (npft,ndayyear,maxgrid) )
+    outdgpp(:,:,:)    = 0.0
+    outdtransp(:,:,:) = 0.0
 
+    ! monthly
+    if (loutdgpp      ) allocate( outmgpp      (npft,nmonth,maxgrid) )
+    outmgpp(:,:,:) = 0.0
+
+    ! annual
     outagpp(:,:)   = 0.0
     outavcmax(:,:) = 0.0
     outachi(:,:)   = 0.0
@@ -1401,6 +1439,12 @@ contains
     if (loutdgpp      ) outdgpp(:,doy,jpngr)       = dgpp(:)
     if (loutdtransp   ) outdtransp(:,doy,jpngr)    = dtransp(:)
 
+    !----------------------------------------------------------------
+    ! MONTHLY SUM OVER DAILY VALUES
+    ! Collect monthly output variables as sum of daily values
+    !----------------------------------------------------------------
+    if (loutdgpp      ) outmgpp(:,moy,jpngr) = outmgpp(:,moy,jpngr) + dgpp(:)
+    
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
@@ -1443,7 +1487,7 @@ contains
 
     ! local variables
     real :: itime
-    integer :: day, jpngr, mymonth
+    integer :: day, moy, jpngr
 
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii_gpp: think of something ...'
@@ -1464,6 +1508,19 @@ contains
         if (loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
 
       end do
+
+      do moy=1,nmonth
+
+        ! Define 'itime' as a decimal number corresponding to day in the year + year
+        itime = real(outyear) + real(moy-1)/real(nmonth)
+
+        ! write(0,*) 'outmgpp ', outmgpp
+        ! stop
+
+        if (loutdgpp   ) write(151,999) itime, sum(outmgpp(:,moy,jpngr))
+
+      end do
+
     end if
 
     !-------------------------------------------------------------------------

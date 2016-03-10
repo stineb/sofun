@@ -25,7 +25,7 @@ program main
   real                                     :: pco2
   real, dimension(ndayyear,maxgrid)        :: dndep_field
   real, dimension(nlu,maxgrid)             :: lu_area
-  real, dimension(nmonth,maxgrid)          :: fapar_field
+  real, dimension(nmonth,maxgrid)          :: mfapar_field
   type(paramtype_soil), dimension(maxgrid) :: params_soil_field
 
   ! xxx try
@@ -154,7 +154,7 @@ program main
     !----------------------------------------------------------------
     ! Get prescribed fAPAR
     !----------------------------------------------------------------
-    fapar_field(:,:) = getfapar( trim(runname), trim(sitename), out_steering%forcingyear )
+    mfapar_field(:,:) = getfapar( trim(runname), trim(sitename), out_steering%forcingyear )
 
     ! write(0,*) 'out_steering', out_steering
     ! ! xxx test
@@ -184,7 +184,7 @@ program main
       , dtemp_field, dprec_field &
       , dfsun_field, dvpd_field, dndep_field &
       , c_uptake &
-      , fapar_field &
+      , mfapar_field &
       ) 
 
   enddo

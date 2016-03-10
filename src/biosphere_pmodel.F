@@ -4,7 +4,7 @@ subroutine biosphere( &
   , dtemp_field, dprec_field &
   , dfsun_field, dvpd_field, dndep_field &
   , c_uptake &
-  , fapar_field &
+  , mfapar_field &
   ) 
 
   !////////////////////////////////////////////////////////////////
@@ -43,11 +43,13 @@ subroutine biosphere( &
   real, intent(out)                             :: c_uptake   ! annual net global C uptake by biosphere
 
   ! optional arguments
-  real, intent(in), dimension(nmonth)           :: fapar_field
+  real, intent(in), dimension(nmonth,maxgrid)   :: mfapar_field
 
   ! local variables
-  integer :: dm, mo, jpngr, day
+  integer :: dm, moy, jpngr, day
 
+  ! XXX PMODEL_TEST
+  write(0,*) 'WARNING: FAPAR = 1.00 USED IN PMODEL'
 
   !----------------------------------------------------------------
   ! INITIALISATIONS
@@ -115,12 +117,12 @@ subroutine biosphere( &
     ! LOOP THROUGH MONTHS
     !----------------------------------------------------------------
     day=0
-    do mo=1,nmonth
+    do moy=1,nmonth
 
       !----------------------------------------------------------------
       ! LOOP THROUGH DAYS
       !----------------------------------------------------------------
-      do dm=1,ndaymonth(mo)
+      do dm=1,ndaymonth(moy)
         day=day+1
 
         !----------------------------------------------------------------
@@ -128,7 +130,7 @@ subroutine biosphere( &
         !----------------------------------------------------------------
         call initdaily()
         call initdaily_waterbal()
-        call initdaily_gpp ()
+        call initdaily_gpp()
 
         !----------------------------------------------------------------
         ! get soil moisture, and runoff
@@ -141,23 +143,24 @@ subroutine biosphere( &
         ! calculate soil temperature
         !----------------------------------------------------------------
         ! write(0,*) 'calling soiltemp() ... '
-        call soiltemp( jpngr, mo, day, dtemp_field(:,jpngr), params_soil_field(jpngr) )
+        call soiltemp( jpngr, moy, day, dtemp_field(:,jpngr), params_soil_field(jpngr) )
         ! write(0,*) '... done'
 
         !----------------------------------------------------------------
         ! calculate GPP
         !----------------------------------------------------------------
         ! write(0,*) 'calling gpp() ... '
-        call gpp( jpngr, day, mo, fapar_field(mo) )
+        ! call gpp( jpngr, day, moy, mfapar_field(moy,jpngr) )
+        call gpp( jpngr, day, moy, 1.00 )
         ! write(0,*) '... done'
 
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
         ! write(0,*) 'calling getout_daily_waterbal() ... '
-        call getout_daily_waterbal( jpngr, mo, day )
-        call getout_daily_soiltemp( jpngr, mo, day )
-        call getout_daily_gpp( jpngr, mo, day )
+        call getout_daily_waterbal( jpngr, moy, day )
+        call getout_daily_soiltemp( jpngr, moy, day )
+        call getout_daily_gpp( jpngr, moy, day )
         ! write(0,*) '... done'
 
       end do
