@@ -136,6 +136,7 @@ subroutine biosphere( &
         ! get soil moisture, and runoff
         !----------------------------------------------------------------
         ! write(0,*) 'calling waterbal() ... '
+        ! write(0,*) 'with arguments ', jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr)
         call waterbal( jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr) )
         ! write(0,*) '... done'
 

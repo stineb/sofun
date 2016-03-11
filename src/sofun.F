@@ -32,39 +32,6 @@ program main
   integer :: day
 
   type( outtype_steering ) :: out_steering
-  ! type( outtype_climate )  :: out_climate
-
-  ! ! This is necessary because of keyword-specification of arguments to 'biosphere'
-  ! interface
-  !   subroutine biosphere( year, lon, lat, elv, lu_area, pco2 &
-  !     , dtemp_field, dprec_field, dfsun_field, dvpd_field, dndep_field &
-  !     , c_uptake &
-  !     , dgpp_data &
-  !     , fpc_grid_data &
-  !     )
-
-  !   ! required arguments
-  !   integer, intent(in)                   :: year       ! simulation year
-  !   real, intent(in), dimension(maxgrid)  :: lon        ! longitude vector/field (degrees E)              
-  !   real, intent(in), dimension(maxgrid)  :: lat        ! latitude vector/field (degrees N)             
-  !   real, intent(in), dimension(maxgrid)  :: elv        ! elevation (altitude) vector/field (m above sea level)                  
-  !   type(paramtype_soil), intent(in), dimension(maxgrid) :: params_soil
-  !   real, dimension(3)                    :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
-  !   real, intent(in)                      :: pco2
-  !   real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
-  !   real, intent(in), dimension(ndayyear,maxgrid) :: dprec_field
-  !   real, intent(in), dimension(ndayyear,maxgrid) :: dfsun_field
-  !   real, intent(in), dimension(ndayyear,maxgrid) :: dvpd_field
-  !   real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
-  !   real, intent(out)                     :: c_uptake   ! annual net global C uptake by biosphere
-  !   logical                               :: spinup
-
-  !   ! optional arguments
-  !   real, intent(in), dimension(ndayyear,npft), optional :: dgpp_data       ! for runs with prescribed GPP
-  !   real, intent(in), dimension(nlu,maxgrid), optional   :: fpc_grid_data   ! for runs with prescribed GPP
-
-  !   end subroutine biosphere
-  ! end interface
 
   !----------------------------------------------------------------
   ! READ RUNNAME FROM STANDARD INPUT
@@ -77,10 +44,6 @@ program main
 
   ! write simulation name to standard output (screen)
   write(0,*) '------------SOFUN : '//trim(runname)//'-------------'
-  !       write (*,200)
-  !200    format ('SIMULATION NAME: '$)
-  !      write (*,*) runname
-
 
   !----------------------------------------------------------------
   ! GET SIMULATION PARAMETERS FROM FILE <runname>.sofun.parameter
@@ -135,15 +98,6 @@ program main
     ! out_climate = getclimate_site( trim(runname), trim(sitename), out_steering%climateyear )
     call getclimate_site( trim(runname), trim(sitename), out_steering%climateyear )
 
-    ! if (year==1) then
-    !   ! write daily generated precpitpiation to file
-    !   open(1000,file='output/dprec.out',err=888,status='unknown')
-    !   do day=1,ndayyear
-    !     write(1000,777) real(day), dprec_field(day,1)
-    !   end do
-    !   close(1000)
-    ! end if
-
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
@@ -155,11 +109,6 @@ program main
     ! Get prescribed fAPAR
     !----------------------------------------------------------------
     mfapar_field(:,:) = getfapar( trim(runname), trim(sitename), out_steering%forcingyear )
-
-    ! write(0,*) 'out_steering', out_steering
-    ! ! xxx test
-    ! dndep_field(:) = dndep_field(:) * 0.4
-    ! dprec_field(100:250,1) = 0.0
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
@@ -175,6 +124,7 @@ program main
     ! write(0,*) 'dtemp ave', sum(dtemp_field(:,:))/ndayyear
     ! write(0,*) 'dfsun ave', sum(dfsun_field(:,:))/ndayyear
     ! write(0,*) 'dvpd ave', sum(dvpd_field(:,:))/ndayyear
+    ! write(0,*) 'mfapar_field', mfapar_field
     ! write(0,*) 'calling elvis ...'
     ! stop 'before calling biosphere()'
 

@@ -162,9 +162,9 @@ contains
       soilphys(lu)%sw = kCw * psoilphys(lu,jpngr)%wcont / kWm
 
       ! Calculate radiation and evaporation quantities
-      !print*,'calling evap for doy', doy, '...'
+      ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soilphys(lu)%sw
       evap(lu) = getevap( lat, doy, elv, sf, tc, soilphys(lu)%sw )
-      !print*,'... done'
+      ! print*,'... done'
 
       ! Update soil moisture
       psoilphys(lu,jpngr)%wcont = psoilphys(lu,jpngr)%wcont + pr + evap(lu)%cn - evap(lu)%aet
@@ -421,7 +421,7 @@ contains
     ! 3. Calculate distance factor (dr), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     dr = calc_dr( out_berger(doy)%nu )
-
+    
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 4. Calculate declination angle (delta), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -438,7 +438,7 @@ contains
     ! 6. Calculate the sunset hour angle (hs), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     hs = calc_hs( ru, rv )
-
+    
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 8. Calculate transmittivity (tau), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -454,7 +454,7 @@ contains
     ! 11. Calculate variable substitute (rw), W/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     rw = ( 1.0 - kalb_sw ) * tau * kGsc * dr
-
+    
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 12. Calculate net radiation cross-over hour angle (hn), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -474,7 +474,7 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 53, STASH 2.0 Documentation
     out_evap%rn = (86400.0/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
-
+    
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -495,7 +495,7 @@ contains
 
     ! Eq. 58, STASH 2.0 Documentation
     econ = s/(lv*pw*(s + g))
-
+    
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 16. Calculate daily condensation (out_evap%cn), mm
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -518,7 +518,7 @@ contains
     ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     rx = 1000.0*3600.0*(1.0+kw)*econ
-
+    
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 20. Calculate the intersection hour angle (hi), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -538,12 +538,16 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 81, STASH 2.0 Documentation
     out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
-
+    
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Ref? XXX
-    out_evap%cpa = out_evap%aet / out_evap%eet
+    if (out_evap%eet>0.0) then 
+      out_evap%cpa = out_evap%aet / out_evap%eet
+    else
+      out_evap%cpa = 1.26
+    end if
 
     !-------------------------------------------------------------   
     ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 

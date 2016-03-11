@@ -153,7 +153,7 @@ contains
     firstyeartrend       = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )
     nyeartrend           = getparint( 'run/'//runname//'.sofun.parameter', 'nyeartrend' )
     recycle              = getparint( 'run/'//runname//'.sofun.parameter', 'recycle' )
-    
+
     prescr_monthly_fapar = getparlogical( 'run/'//runname//'.sofun.parameter', 'prescr_monthly_fapar' )
     
     daily_out_startyr    = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_startyr' )

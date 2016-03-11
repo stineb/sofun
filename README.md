@@ -36,15 +36,15 @@ Written, developed and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
 
 # Usage
 ---------
-To compile the full model, do
-  
+To compile the full model, do 
+```bash
   make
-
+```
 Adjust Makefile and src/Makefile to use a different compiler.
 To run the program, do
-
+```bash
   echo RUNNAME | ./runsofun
-
+```
 Change 'RUNNAME' to any given simulation name. Parameter files containing 'RUNNAME' in their file name need to be adjusted accordingly (replacing the string 'RUNNAME' with your simulation name and adjusting parameter values.).
 
 Component models can be compiled and executed individually:

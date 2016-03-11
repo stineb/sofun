@@ -14,7 +14,7 @@ SPLASH_MODS=params_core.mod.F classdefs.mod.F sofunutils.mod.F params_siml.mod.F
 SPLASH_SOURCES=sofun.F biosphere_splash.F
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL:
-PMODEL_MODS=params_core.mod.F classdefs.mod.F sofunutils.mod.F params_siml.mod.F params_soil.mod.F params_site.mod.F gridvars_siterun.mod.F forcing_siterun.mod.F params_modl.mod.F vars_core.mod.F outvars.mod.F waterbal_stash.mod.F soiltemp_sitch.mod.F gpp_pmodel.mod.F
+PMODEL_MODS=params_core.mod.F classdefs.mod.F sofunutils.mod.F params_siml.mod.F params_soil.mod.F params_site.mod.F gridvars_siterun.mod.F forcing_siterun_pmodel.mod.F params_modl.mod.F vars_core.mod.F outvars.mod.F waterbal_stash.mod.F soiltemp_sitch.mod.F gpp_pmodel.mod.F
 PMODEL_SOURCES=sofun.F biosphere_pmodel.F
 
 # List of build dependencies (Makefile and include files):

@@ -21,19 +21,19 @@ contains
     !----------------------------------------------------------------
     use _sofunutils, only: getparreal, getparlogical, getparint
   
-    write(0,*) 'reading site parameter file ', 'siteparams/'//trim(sitename)//'.parameter ...'
+    write(0,*) 'reading site parameter file ', 'site_paramfils/'//trim(sitename)//'.parameter ...'
 
-    lon_site = getparreal( 'siteparams/'//trim(sitename)//'.parameter', 'longitude' )
-    lat_site = getparreal( 'siteparams/'//trim(sitename)//'.parameter', 'latitude' )
-    elv_site = getparreal( 'siteparams/'//trim(sitename)//'.parameter', 'altitude' )
+    lon_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'longitude' )
+    lat_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'latitude' )
+    elv_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'altitude' )
 
     ! order is important and must be equal to order in site parameter file
     ! as well as in getpar_modl()
-    lTeBS = getparlogical( 'siteparams/'//trim(sitename)//'.parameter', 'lTeBS' )
-    lGrC3 = getparlogical( 'siteparams/'//trim(sitename)//'.parameter', 'lGrC3' )
+    lTeBS = getparlogical( 'site_paramfils/'//trim(sitename)//'.parameter', 'lTeBS' )
+    lGrC3 = getparlogical( 'site_paramfils/'//trim(sitename)//'.parameter', 'lGrC3' )
 
     ! dimension length (maxgrid) is 1 for site-scale simulations
-    soilcode_field(1) = getparint( 'siteparams/'//trim(sitename)//'.parameter', 'soilcode' )
+    soilcode_field(1) = getparint( 'site_paramfils/'//trim(sitename)//'.parameter', 'soilcode' )
 
   end subroutine getpar_site
 
