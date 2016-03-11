@@ -48,8 +48,8 @@ subroutine biosphere( &
   ! local variables
   integer :: dm, moy, jpngr, day
 
-  ! XXX PMODEL_TEST
-  write(0,*) 'WARNING: FAPAR = 1.00 USED IN PMODEL'
+  ! ! XXX PMODEL_TEST
+  ! write(0,*) 'WARNING: FAPAR = 1.00 USED IN PMODEL'
 
   !----------------------------------------------------------------
   ! INITIALISATIONS
@@ -150,8 +150,8 @@ subroutine biosphere( &
         ! calculate GPP
         !----------------------------------------------------------------
         ! write(0,*) 'calling gpp() ... '
-        ! call gpp( jpngr, day, moy, mfapar_field(moy,jpngr) )
-        call gpp( jpngr, day, moy, 1.00 )
+        call gpp( jpngr, day, moy, mfapar_field(moy,jpngr) )
+        ! call gpp( jpngr, day, moy, 1.00 )
         ! write(0,*) '... done'
 
         !----------------------------------------------------------------

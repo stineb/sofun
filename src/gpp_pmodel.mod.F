@@ -205,14 +205,6 @@ contains
 
       if (fapar_ind(pft,jpngr)>0.0) then
 
-        ! xxx try: fix effective leaf area (=>fapar)
-        ! write(0,*) 'WARNING: fAPAR SET TO XXX in gpp SR'
-
-        ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-
-        ! xxx debug
-        ! xxx problem with allocation: always allocates all to leaves. => is C acquisition too slow? xxx 
-
         ! fapar_ind(pft,jpngr) = 1.0
         ! write(0,*) 'in SR gpp: fapar          ', fapar_ind(pft,jpngr) !OK!
         ! write(0,*) 'in SR gpp: doy, solar%dppfd(doy)', doy, solar%dppfd(doy) !OK!
@@ -309,15 +301,15 @@ contains
     ! Run P-model for monthly averages and store monthly variables 
     ! per unit absorbed light (not corrected for soil moisture)
 
-    ! XXX PMODEL_TEST
-    write(0,*) 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
+    ! ! XXX PMODEL_TEST
+    ! write(0,*) 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
 
     do lu=1,nlu
       do moy=1,nmonth
 
         ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
-        ! out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
-        out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
+        out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
+        ! out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
 
         ! Light use efficiency: (gpp - rd) per unit light absorbed
         mlue(moy)             = out_pmodel%lue
@@ -656,34 +648,6 @@ contains
     kphio  = getparreal( 'params/params_gpp_pmodel.dat', 'kphio' )
 
   end subroutine getpar_modl_gpp
-
-  ! function calc_n_rubisco_area( vcmax25 ) result( n_rubisco_area )
-  !   !-----------------------------------------------------------------------
-  !   ! Returns Rubisco N content per unit leaf area for a given Vcmax.
-  !   ! Reference: Harrison et al., 2009, Plant, Cell and Environment; Eq. 3
-  !   !-----------------------------------------------------------------------
-
-  !   ! argument
-  !   real, intent(in) :: vcmax25                      ! leaf level Vcmax  at 25 deg C, (mol CO2) m-2 s-1
-
-  !   ! function retrurn value
-  !   real, intent(out) :: n_rubisco_area              ! Rubisco N content per unit leaf area, (g N)(m-2 leaf)
-
-  !   ! local variables
-  !   real :: n_v                                      ! Rubisco N per unit Vcmax (xxx units xxx)
-
-  !   real, parameter :: mol_weight_rubisco = 5.5e5    ! molecular weight of Rubisco, (g R)(mol R)-1
-  !   real, parameter :: n_conc_rubisco     = 1.14e-2  ! N concentration in rubisco, (mol N)(g R)-1
-  !   real, parameter :: n_molmass       = 14.0067  ! molecular weight of N, (g N)(mol N)-1
-  !   real, parameter :: cat_turnover_per_site = 3.5   ! catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1
-  !   real, parameter :: cat_sites_per_mol_R   = 8.0   ! number of catalytic sites per mol R, (mol R sites)(mol R)-1
-
-  !   ! Metabolic N ratio
-  !   n_v = mol_weight_rubisco * n_conc_rubisco * n_molmass / ( cat_turnover_per_site * cat_sites_per_mol_R )
-
-  !   n_rubisco_area = vcmax25 * n_v
-
-  ! end function calc_n_rubisco_area
 
 
   function lue_approx( temp, vpd, elv, ca, gs ) result( out_lue )
@@ -1521,6 +1485,35 @@ contains
   !   ncw_leaf = nr_leaf * r_n_cw_v + ncw_min
 
   ! end function calc_ncw_leaf
+  
+
+  ! function calc_n_rubisco_area( vcmax25 ) result( n_rubisco_area )
+  !   !-----------------------------------------------------------------------
+  !   ! Returns Rubisco N content per unit leaf area for a given Vcmax.
+  !   ! Reference: Harrison et al., 2009, Plant, Cell and Environment; Eq. 3
+  !   !-----------------------------------------------------------------------
+
+  !   ! argument
+  !   real, intent(in) :: vcmax25                      ! leaf level Vcmax  at 25 deg C, (mol CO2) m-2 s-1
+
+  !   ! function retrurn value
+  !   real, intent(out) :: n_rubisco_area              ! Rubisco N content per unit leaf area, (g N)(m-2 leaf)
+
+  !   ! local variables
+  !   real :: n_v                                      ! Rubisco N per unit Vcmax (xxx units xxx)
+
+  !   real, parameter :: mol_weight_rubisco = 5.5e5    ! molecular weight of Rubisco, (g R)(mol R)-1
+  !   real, parameter :: n_conc_rubisco     = 1.14e-2  ! N concentration in rubisco, (mol N)(g R)-1
+  !   real, parameter :: n_molmass       = 14.0067  ! molecular weight of N, (g N)(mol N)-1
+  !   real, parameter :: cat_turnover_per_site = 3.5   ! catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1
+  !   real, parameter :: cat_sites_per_mol_R   = 8.0   ! number of catalytic sites per mol R, (mol R sites)(mol R)-1
+
+  !   ! Metabolic N ratio
+  !   n_v = mol_weight_rubisco * n_conc_rubisco * n_molmass / ( cat_turnover_per_site * cat_sites_per_mol_R )
+
+  !   n_rubisco_area = vcmax25 * n_v
+
+  ! end function calc_n_rubisco_area
 
 
 end module _gpp
