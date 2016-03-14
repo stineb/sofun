@@ -193,9 +193,6 @@ contains
       ! water-filled pore space
       soilphys(lu)%wscal = psoilphys(lu,jpngr)%wcont / kWm
 
-      ! water scalar (LPX-like)
-      ! xxx
-
     end do
 
   end subroutine waterbal

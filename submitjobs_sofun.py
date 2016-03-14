@@ -1,5 +1,4 @@
 import pandas
-from subprocess import call
 import os
 import os.path
 
@@ -10,17 +9,10 @@ import os.path
 simsuite = 'pmodel_test'
 
 ##--------------------------------------------------------------------
-## Link directories
-##--------------------------------------------------------------------
-call(['ln', '-svf', '../../input_' + simsuite + '_sofun/sitedata', 'input'])
-call(['ln', '-svf', '../input_' + simsuite + '_sofun/site_paramfils', '.'])
-call(['ln', '-svf', '../input_' + simsuite + '_sofun/run', '.'])
-
-##--------------------------------------------------------------------
 ## Compile
 ##--------------------------------------------------------------------
-if not os.path.exists( 'runpmodel' ):
-    if simsuite == 'fluxnet':
+if simsuite == 'fluxnet':
+    if not os.path.exists( 'runpmodel' ):
         call(['make', 'pmodel'])
 
 ##--------------------------------------------------------------------
@@ -42,5 +34,3 @@ sitenames = siteinfo['mysitename']
 for idx in sitenames:
   print 'submitting job for site ' + idx + '...'
   os.system( 'echo ' + idx + '| ./runpmodel' )
-
-

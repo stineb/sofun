@@ -13,7 +13,6 @@ program main
   use _forcing_siterun
   use _gridvars
   use _params_soil
-  ! use _vars_core
 
   implicit none
 
