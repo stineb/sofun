@@ -6,29 +6,29 @@
 #DEBUGFLAGS
 
 # List of source code files for standard (full) setup:
-MODS=params_core.mod.F classdefs.mod.F sofunutils.mod.F params_siml.mod.F params_soil.mod.F params_site.mod.F gridvars_siterun.mod.F forcing_siterun.mod.F params_modl.mod.F rates.mod.F vars_core.mod.F outvars.mod.F phenology_lpx.mod.F waterbal_stash.mod.F vegdynamics_fix.mod.F gpp_pmodel.mod.F nuptake_constexu.mod.F npp_lpj.mod.F findroot_fzeroin.mod.F allocation.mod.F turnover.mod.F littersom_lpj.mod.F ntransform_xuri.mod.F soiltemp_sitch.mod.F 
-SOURCES=sofun.F biosphere.F kill.F writeout_ascii.F 
+MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 params_modl.mod.f90 rates.mod.f90 vars_core.mod.f90 outvars.mod.f90 phenology_lpx.mod.f90 waterbal_stash.mod.f90 vegdynamics_fix.mod.f90 gpp_pmodel.mod.f90 nuptake_constexu.mod.f90 npp_lpj.mod.f90 findroot_fzeroin.mod.f90 allocation.mod.f90 turnover.mod.f90 littersom_lpj.mod.f90 ntransform_xuri.mod.f90 soiltemp_sitch.mod.f90 
+SOURCES=sofun.f90 biosphere.f90 kill.f90 writeout_ascii.f90 
 
 # List of source code files for reduced setup, executing only SPLASH:
-SPLASH_MODS=params_core.mod.F classdefs.mod.F sofunutils.mod.F params_siml.mod.F params_soil.mod.F params_site.mod.F gridvars_siterun.mod.F forcing_siterun.mod.F params_modl.mod.F vars_core.mod.F outvars.mod.F waterbal_stash.mod.F soiltemp_sitch.mod.F 
-SPLASH_SOURCES=sofun.F biosphere_splash.F
+SPLASH_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 params_modl.mod.f90 vars_core.mod.f90 outvars.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 
+SPLASH_SOURCES=sofun.f90 biosphere_splash.f90
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL:
-PMODEL_MODS=params_core.mod.F classdefs.mod.F sofunutils.mod.F params_siml.mod.F params_soil.mod.F params_site.mod.F gridvars_siterun.mod.F forcing_siterun_pmodel.mod.F params_modl.mod.F vars_core.mod.F outvars.mod.F waterbal_stash.mod.F soiltemp_sitch.mod.F gpp_pmodel.mod.F
-PMODEL_SOURCES=sofun.F biosphere_pmodel.F
+PMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 params_modl.mod.f90 vars_core.mod.f90 outvars.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 gpp_pmodel.mod.f90
+PMODEL_SOURCES=sofun.f90 biosphere_pmodel.f90
 
 # List of build dependencies (Makefile and include files):
 DEPEND=Makefile ../Makefile sofun_module_control.inc
 
 # Generate list of .o, .do files from SOURCES
-OBJS=$(SOURCES:.F=.o)
-MODOBJS=$(MODS:.F=.o)
-DEBUGOBJS=$(SOURCES:.F=.do)
-DEBUGMODOBJS=$(MODS:.F=.do)
-SPLASH_OBJS=$(SPLASH_SOURCES:.F=.o)
-SPLASH_MODOBJS=$(SPLASH_MODS:.F=.o)
-PMODEL_OBJS=$(PMODEL_SOURCES:.F=.o)
-PMODEL_MODOBJS=$(PMODEL_MODS:.F=.o)
+OBJS=$(SOURCES:.f90=.o)
+MODOBJS=$(MODS:.f90=.o)
+DEBUGOBJS=$(SOURCES:.f90=.do)
+DEBUGMODOBJS=$(MODS:.f90=.do)
+SPLASH_OBJS=$(SPLASH_SOURCES:.f90=.o)
+SPLASH_MODOBJS=$(SPLASH_MODS:.f90=.o)
+PMODEL_OBJS=$(PMODEL_SOURCES:.f90=.o)
+PMODEL_MODOBJS=$(PMODEL_MODS:.f90=.o)
 
 # Archive file names
 ARCHIVE=sofun.a
@@ -67,43 +67,43 @@ pmodel: $(PMODEL_MODOBJS) $(PMODEL_OBJS)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(PMODEL_MODOBJS) $(PMODEL_OBJS) 
 
-# default rules (.F -> .for -> .o/.do)
+# default rules (.f90 -> .f -> .o/.do)
 # ------------
-%.for: %.F $(DEPEND)
-	rm -f $*.for
-	$(FCOM) $(CPPFLAGS) $*.F > $*.for 
+%.f: %.f90 $(DEPEND)
+	rm -f $*.f
+	$(FCOM) $(CPPFLAGS) $*.f90 > $*.f 
 
-$(MODOBJS): %.o: %.for
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
+$(MODOBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
-$(OBJS): %.o: %.for
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
+$(OBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
-$(DEBUGOBJS): %.do: %.for
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.for
+$(DEBUGOBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
-$(DEBUGMODOBJS): %.do: %.for
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
+$(DEBUGMODOBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
-$(SPLASH_MODOBJS): %.o: %.for
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
+$(SPLASH_MODOBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
-$(SPLASH_OBJS): %.o: %.for
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
+$(SPLASH_OBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
-$(PMODEL_MODOBJS): %.o: %.for
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
+$(PMODEL_MODOBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
-$(PMODEL_OBJS): %.o: %.for
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.for
+$(PMODEL_OBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
-# don't delete the intermediate *.for files
-.SECONDARY: $(SOURCES:.F=.for) $(SPLASH_SOURCES:.F=.for) $(PMODEL_SOURCES:.F=.for)
+# don't delete the intermediate *.f files
+.SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f)
 
-# clean: remove .for, .o, .do, and .stb files
+# clean: remove .f, .o, .do, and .stb files
 .PHONY: clean
 clean:
-	-rm -f *.for *.o *.do *.stb *.mod
+	-rm -f *.f *.o *.do *.stb *.mod
 #	rm $(ARCHIVE)
 
 #EOF

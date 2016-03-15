@@ -10,8 +10,8 @@
 # gfor    - gfortran compiler
 # intel   - ifort compiler
 
-#PROFILE=pgf
-PROFILE=intel
+PROFILE=pgf
+# PROFILE=intel
 
 ##################
 ## pgf profile ##
@@ -20,7 +20,6 @@ ifeq ($(PROFILE),pgf)
 # Compiler and options
 FCOM=pgf95
 CPPFLAGS=-E
-# COMPFLAGS=-Mextend -Mfreeform
 COMPFLAGS=-Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
 DPCOMPFLAGS=-r8 -Mextend -Mfreeform  -Mdalign -Kieee -Ktrap=fp -O2
 #COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
