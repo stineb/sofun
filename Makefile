@@ -8,6 +8,7 @@
 ##################################
 # pgf     - PGF95 compiler
 # gfor    - gfortran compiler
+# intel   - ifort compiler
 
 #PROFILE=pgf
 PROFILE=intel
@@ -46,7 +47,6 @@ DEBUGFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2  ## no actual debug flags he
 # NETCDF_LIB = /usr/local/lib
 # LIBS = -L $(NETCDF_LIB) -lnetcdf
 endif
-
 
 ####################
 ## general config ##
