@@ -5,13 +5,13 @@ import os.path
 ##--------------------------------------------------------------------
 ## Simulation suite
 ##--------------------------------------------------------------------
-# simsuite = 'fluxnet'
-simsuite = 'pmodel_test'
+simsuite = 'fluxnet'
+# simsuite = 'pmodel_test'
 
 ##--------------------------------------------------------------------
 ## Compile
 ##--------------------------------------------------------------------
-if simsuite == 'fluxnet':
+if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
     if not os.path.exists( 'runpmodel' ):
         call(['make', 'pmodel'])
 
@@ -34,3 +34,7 @@ sitenames = siteinfo['mysitename']
 for idx in sitenames:
   print 'submitting job for site ' + idx + '...'
   os.system( 'echo ' + idx + '| ./runpmodel' )
+
+## test: CH-Oe1 only
+# print 'submitting job for site ' + 'CH-Oe1' + '...'
+# os.system( 'echo ' + 'CH-Oe1' + '| ./runpmodel' )

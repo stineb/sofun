@@ -10,6 +10,7 @@
 # gfor    - gfortran compiler
 
 PROFILE=pgf
+# PROFILE=intel
 
 ##################
 ## pgf profile ##
@@ -39,6 +40,23 @@ CPPFLAGS=-e
 COMPFLAGS=-ffixed-line-length-0 -fdefault-real-8 -ffree-form
 
 DEBUGFLAGS=-ffixed-line-length-0 -fdefault-real-8 -g -fbounds-check -Wall -fbacktrace -finit-real=nan -ffree-form
+
+
+# System libraries
+# NETCDF_INC = /usr/local/include
+# NETCDF_LIB = /usr/local/lib
+# LIBS = -L $(NETCDF_LIB) -lnetcdf
+endif
+
+#####################
+## intel profile ##
+#####################
+ifeq ($(PROFILE),intel)
+# Compiler and options
+FCOM=ifort
+CPPFLAGS=-e
+COMPFLAGS=-xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2
+# DEBUGFLAGS=-ffixed-line-length-0 -fdefault-real-8 -g -fbounds-check -Wall -fbacktrace -finit-real=nan -ffree-form
 
 
 # System libraries
