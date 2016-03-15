@@ -9,7 +9,8 @@
 # pgf     - PGF95 compiler
 # gfor    - gfortran compiler
 
-PROFILE=pgf
+#PROFILE=pgf
+PROFILE=intel
 
 ##################
 ## pgf profile ##
@@ -30,16 +31,15 @@ DPDEBUGFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=f
 endif
 
 #####################
-## gfor profile ##
+## intel profile ##
 #####################
-ifeq ($(PROFILE),gfor)
+ifeq ($(PROFILE),intel)
 # Compiler and options
-FCOM=gfortran
+FCOM=ifort
 CPPFLAGS=-e
-COMPFLAGS=-ffixed-line-length-0 -fdefault-real-8 -ffree-form
+COMPFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2
 
-DEBUGFLAGS=-ffixed-line-length-0 -fdefault-real-8 -g -fbounds-check -Wall -fbacktrace -finit-real=nan -ffree-form
-
+DEBUGFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2  ## no actual debug flags here
 
 # System libraries
 # NETCDF_INC = /usr/local/include
