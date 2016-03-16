@@ -139,7 +139,7 @@ module _gpp
   ! Function return variables as derived types
   type outtype_pmodel
     real :: gpp
-    real :: gs
+    real :: gstar
     real :: chi
     real :: vcmax
     real :: vcmax25
@@ -301,15 +301,16 @@ contains
     ! Run P-model for monthly averages and store monthly variables 
     ! per unit absorbed light (not corrected for soil moisture)
 
-    ! ! XXX PMODEL_TEST
-    ! write(0,*) 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
+    ! XXX PMODEL_TEST
+    write(0,*) 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
 
     do lu=1,nlu
       do moy=1,nmonth
 
         ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
-        out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
-        ! out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
+        ! out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
+        out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
+        ! out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "approx" )
 
         ! Light use efficiency: (gpp - rd) per unit light absorbed
         mlue(moy)             = out_pmodel%lue
@@ -450,7 +451,7 @@ contains
     real :: ca                       ! ambient CO2 partial pression (Pa)
     real :: ci                       ! leaf-internal CO2 partial pression, (Pa)
     real :: chi                      ! leaf-internal to ambient CO2 partial pression, ci/ca (unitless)
-    real :: gs                       ! photorespiratory compensation point - Gamma-star (Pa)
+    real :: gstar                    ! photorespiratory compensation point - Gamma-star (Pa)
     real :: fa                       ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
     real :: kmm                      ! Michaelis-Menten coefficient (Pa)
     real :: ns                       ! viscosity of H2O at ambient temperatures (Pa s)
@@ -490,10 +491,10 @@ contains
     ca   = co2_to_ca( co2, patm )
 
     ! photorespiratory compensation point - Gamma-star (Pa)
-    gs   = calc_gstar( tc )
+    gstar   = calc_gstar( tc )
 
     ! ! XXX PMODEL_TEST: ok
-    ! write(0,*) 'gs ', gs
+    ! write(0,*) 'gstar ', gstar
 
     ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
     fa   = calc_fa( cpalpha )
@@ -518,19 +519,19 @@ contains
         !-----------------------------------------------------------------------
         ! A. APPROXIMATIVE METHOD
         !-----------------------------------------------------------------------
-        out_lue = lue_approx( tc, vpd, elv, ca, gs )
-
+        out_lue = lue_approx( tc, vpd, elv, ca, gstar, ns, kmm )
+                  
       case ("simpl")
         !-----------------------------------------------------------------------
         ! B.1 SIMPLIFIED FORMULATION 
         !-----------------------------------------------------------------------
-        out_lue = lue_vpd_simpl( kmm, gs, ns, ca, vpd, beta  )
+        out_lue = lue_vpd_simpl( kmm, gstar, ns, ca, vpd, beta  )
 
       case ("full")
         !-----------------------------------------------------------------------
         ! B.2 FULL FORMULATION
         !-----------------------------------------------------------------------
-        out_lue = lue_vpd_full( kmm, gs, ns_star, ca, vpd, beta  )
+        out_lue = lue_vpd_full( kmm, gstar, ns_star, ca, vpd, beta  )
 
       case default
 
@@ -543,8 +544,8 @@ contains
     n   = out_lue%n
     chi = out_lue%chi
 
-    ! ! XXX PMODEL_TEST: ok
-    ! write(0,*) 'chi ', chi
+    ! XXX PMODEL_TEST: ok
+    write(0,*) 'chi ', chi
 
     !-----------------------------------------------------------------------
     ! Calculate function return variables
@@ -603,30 +604,30 @@ contains
     ! - E = 1.6 gs D
     ! - gs = A / (ca (1-chi))
     ! (- chi = ci / ca)
-    ! => E = (1.6 A D) / (ca - ci)
+    ! => E = f
     transp           = (1.6 * iabs * kphio * fa * m * vpd) / (ca - ci)   ! gpp = iabs * kphio * fa * m
     transp_unitfapar = (1.6 * ppfd * kphio * fa * m * vpd) / (ca - ci)
     transp_unitiabs  = (1.6 * 1.0  * kphio * fa * m * vpd) / (ca - ci)
 
     ! Construct derived type for output
-    out_pmodel%gpp               = gpp
-    out_pmodel%gs                = gs
-    out_pmodel%chi               = chi
-    out_pmodel%vcmax             = vcmax
-    out_pmodel%vcmax25           = vcmax25
-    out_pmodel%vcmax_unitfapar   = vcmax_unitfapar
-    out_pmodel%vcmax_unitiabs    = vcmax_unitiabs
-    out_pmodel%factor25_vcmax    = factor25_vcmax
-    out_pmodel%rd                = rd
-    out_pmodel%rd_unitfapar      = rd_unitfapar 
-    out_pmodel%rd_unitiabs       = rd_unitiabs 
-    out_pmodel%actnv             = actnv 
-    out_pmodel%actnv_unitfapar   = actnv_unitfapar 
-    out_pmodel%actnv_unitiabs    = actnv_unitiabs 
-    out_pmodel%lue               = lue
-    out_pmodel%transp            = transp          
-    out_pmodel%transp_unitfapar  = transp_unitfapar
-    out_pmodel%transp_unitiabs   = transp_unitiabs 
+    out_pmodel%gpp              = gpp
+    out_pmodel%gstar            = gstar
+    out_pmodel%chi              = chi
+    out_pmodel%vcmax            = vcmax
+    out_pmodel%vcmax25          = vcmax25
+    out_pmodel%vcmax_unitfapar  = vcmax_unitfapar
+    out_pmodel%vcmax_unitiabs   = vcmax_unitiabs
+    out_pmodel%factor25_vcmax   = factor25_vcmax
+    out_pmodel%rd               = rd
+    out_pmodel%rd_unitfapar     = rd_unitfapar 
+    out_pmodel%rd_unitiabs      = rd_unitiabs 
+    out_pmodel%actnv            = actnv 
+    out_pmodel%actnv_unitfapar  = actnv_unitfapar 
+    out_pmodel%actnv_unitiabs   = actnv_unitiabs 
+    out_pmodel%lue              = lue
+    out_pmodel%transp           = transp          
+    out_pmodel%transp_unitfapar = transp_unitfapar
+    out_pmodel%transp_unitiabs  = transp_unitiabs 
     
   end function pmodel
 
@@ -650,7 +651,7 @@ contains
   end subroutine getpar_modl_gpp
 
 
-  function lue_approx( temp, vpd, elv, ca, gs ) result( out_lue )
+  function lue_approx( temp, vpd, elv, ca, gstar, ns_star, kmm ) result( out_lue )
     !//////////////////////////////////////////////////////////////////
     ! Output:   list: 'm' (unitless), 'chi' (unitless)
     ! Returns list containing light use efficiency (m) and ci/ci ratio 
@@ -660,24 +661,30 @@ contains
     !------------------------------------------------------------------
 
     ! arguments
-    real, intent(in) :: temp   ! deg C, air temperature
-    real, intent(in) :: vpd    ! Pa, vapour pressure deficit
-    real, intent(in) :: elv    ! m, elevation above sea level
-    real, intent(in) :: ca     ! Pa, ambient CO2 partial pressure
-    real, intent(in) :: gs     ! Pa, photores. comp. point (Gamma-star)
+    real, intent(in) :: temp      ! deg C, air temperature
+    real, intent(in) :: vpd       ! Pa, vapour pressure deficit
+    real, intent(in) :: elv       ! m, elevation above sea level
+    real, intent(in) :: ca        ! Pa, ambient CO2 partial pressure
+    real, intent(in) :: gstar ! Pa, photores. comp. point (Gamma-star)
+    real, intent(in) :: ns_star   ! (unitless) viscosity correction factor for water
+    real, intent(in) :: kmm       ! Pa, Michaelis-Menten coeff.
 
     ! function return value
     type(outtype_lue) :: out_lue
 
     ! local variables
+    real :: beta_wh
     real :: whe                ! value of "Wang-Han Equation"
     real :: gamma
     real :: chi                ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio (unitless)
     real :: m
 
+    ! ! variable substitutes
+    ! real :: vdcg, vacg, vbkg, vsr
+
     ! Wang-Han Equation
     whe = exp( &
-      4.644 &
+      1.19 &
       + 0.0545 * ( temp - 25.0 ) &
       - 0.5 * log( vpd ) &   ! convert vpd from Pa to kPa 
       - 8.15e-5 * elv &      ! convert elv from m to km
@@ -687,18 +694,36 @@ contains
     chi = whe / ( 1.0 + whe )
 
     !  m
-    gamma = gs / ca
+    gamma = gstar / ca
     m = (chi - gamma) / (chi + 2 * gamma)
 
+    ! xxx try
+    ! ! beta derived from chi and xi (see Estimation_of_beta.pdf). Uses empirical chi
+    ! beta_wh = ( 1.6 * ns_star * vpd * ( chi * ca - gstar )**2 ) / ( ca**2 * ( chi - 1.0 )**2 * ( kmm + gstar ) )
+
+    ! ! Define variable substitutes:
+    ! vdcg = ca - gstar
+    ! vacg = ca + 2.0 * gstar
+    ! vbkg = beta_wh * (kmm + gstar)
+
+    ! ! Check for negatives:
+    ! if (vbkg > 0) then
+    !   vsr = sqrt( 1.6 * ns_star * vpd / vbkg )
+
+    !   ! Based on the m' formulation (see Regressing_LUE.pdf)
+    !   m = vdcg / ( vacg + 3.0 * gstar * vsr )
+    ! end if
+    ! xxx
+
     ! return derived type
-    out_lue%chi=chi
-    out_lue%m=m
-    out_lue%n=-9999
+    out_lue%chi = chi
+    out_lue%m = m
+    out_lue%n = -9999
   
   end function lue_approx
 
 
-  function lue_vpd_simpl( kmm, gs, ns_star, ca, vpd, beta ) result( out_lue )
+  function lue_vpd_simpl( kmm, gstar, ns_star, ca, vpd, beta ) result( out_lue )
     !//////////////////////////////////////////////////////////////////
     ! Output:   float, ratio of ci/ca (chi)
     ! Returns an estimate of leaf internal to ambient CO2
@@ -707,11 +732,11 @@ contains
 
     ! arguments
     real, intent(in) :: kmm       ! Pa, Michaelis-Menten coeff.
-    real, intent(in) :: gs        ! Pa, photores. comp. point (Gamma-star)
+    real, intent(in) :: gstar        ! Pa, photores. comp. point (Gamma-star)
     real, intent(in) :: ns_star   ! (unitless) viscosity correction factor for water
     real, intent(in) :: ca        ! Pa, ambient CO2 partial pressure
     real, intent(in) :: vpd       ! Pa, vapor pressure deficit
-    real, intent(in) :: beta      ! unit cost xxx
+    real, intent(in) :: beta      ! unit cost of carboxylation. fixed parameter.
 
     ! function return value
     type(outtype_lue) :: out_lue
@@ -730,10 +755,10 @@ contains
 
     ! light use efficiency (m)
     ! consistent with this, directly return light-use-efficiency (m)
-    m = ( xi * (ca - gs) - gs * sqrt( vpd ) ) / ( xi * (ca + 2.0 * gs) + 2.0 * gs * sqrt( vpd ) )
+    m = ( xi * (ca - gstar) - gstar * sqrt( vpd ) ) / ( xi * (ca + 2.0 * gstar) + 2.0 * gstar * sqrt( vpd ) )
 
     ! n 
-    gamma = gs / ca
+    gamma = gstar / ca
     kappa = kmm / ca
     n = (chi + kappa) / (chi + 2 * gamma)
 
@@ -745,7 +770,7 @@ contains
   end function lue_vpd_simpl
 
 
-  function lue_vpd_full( kmm, gs, ns_star, ca, vpd, beta ) result( out_lue )
+  function lue_vpd_full( kmm, gstar, ns_star, ca, vpd, beta ) result( out_lue )
     !//////////////////////////////////////////////////////////////////
     ! Output:   float, ratio of ci/ca (chi)
     ! Features: Returns an estimate of leaf internal to ambient CO2
@@ -754,11 +779,11 @@ contains
 
     ! arguments
     real, intent(in) :: kmm       ! Pa, Michaelis-Menten coeff.
-    real, intent(in) :: gs        ! Pa, photores. comp. point (Gamma-star)
+    real, intent(in) :: gstar        ! Pa, photores. comp. point (Gamma-star)
     real, intent(in) :: ns_star   ! (unitless) viscosity correction factor for water
     real, intent(in) :: ca        ! Pa, ambient CO2 partial pressure
     real, intent(in) :: vpd       ! Pa, vapor pressure deficit
-    real, intent(in) :: beta      ! unit cost xxx
+    real, intent(in) :: beta      ! unit cost of carboxylation. fixed parameter.
 
     ! function return value
     type(outtype_lue) :: out_lue
@@ -774,31 +799,33 @@ contains
     ! variable substitutes
     real :: vdcg, vacg, vbkg, vsr
 
+    ! beta = 1.6 * ns_star * vpd * (chi * ca - gstar) ** 2.0 / ( (kmm + gstar) * (ca ** 2.0) * (chi - 1.0) ** 2.0 )   ! see Estimation_of_beta.pdf
+
     ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
-    xi  = sqrt( (beta * ( kmm + gs ) ) / ( 1.6 * ns_star ) )     ! see Eq. 2 in 'Estimation_of_beta.pdf'
-    chi = gs / ca + ( 1.0 - gs / ca ) * xi / ( xi + sqrt(vpd) )  ! see Eq. 1 in 'Estimation_of_beta.pdf'
+    xi  = sqrt( (beta * ( kmm + gstar ) ) / ( 1.6 * ns_star ) )     ! see Eq. 2 in 'Estimation_of_beta.pdf'
+    chi = gstar / ca + ( 1.0 - gstar / ca ) * xi / ( xi + sqrt(vpd) )  ! see Eq. 1 in 'Estimation_of_beta.pdf'
 
     ! consistent with this, directly return light-use-efficiency (m)
     ! see Eq. 13 in 'Simplifying_LUE.pdf'
 
     ! light use efficiency (m)
-    ! m = (ca - gs)/(ca + 2.0 * gs + 3.0 * gs * sqrt( (1.6 * vpd) / (beta * (K + gs) / ns_star ) ) )
+    ! m = (ca - gstar)/(ca + 2.0 * gstar + 3.0 * gstar * sqrt( (1.6 * vpd) / (beta * (K + gstar) / ns_star ) ) )
 
     ! Define variable substitutes:
-    vdcg = ca - gs
-    vacg = ca + 2.0 * gs
-    vbkg = beta * (kmm + gs)
+    vdcg = ca - gstar
+    vacg = ca + 2.0 * gstar
+    vbkg = beta * (kmm + gstar)
 
     ! Check for negatives:
     if (vbkg > 0) then
       vsr = sqrt( 1.6 * ns_star * vpd / vbkg )
 
       ! Based on the m' formulation (see Regressing_LUE.pdf)
-      m = vdcg / ( vacg + 3.0 * gs * vsr )
+      m = vdcg / ( vacg + 3.0 * gstar * vsr )
     end if
 
     ! n 
-    gamma = gs / ca
+    gamma = gstar / ca
     kappa = kmm / ca
     n = (chi + kappa) / (chi + 2 * gamma)
 

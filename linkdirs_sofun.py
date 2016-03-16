@@ -5,8 +5,8 @@ import os.path
 ##--------------------------------------------------------------------
 ## Simulation suite
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet'
-# simsuite = 'pmodel_test'
+# simsuite = 'fluxnet'
+simsuite = 'pmodel_test'
 
 ##--------------------------------------------------------------------
 ## Link directories
