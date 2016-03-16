@@ -253,8 +253,7 @@ contains
     ! global just for this, but are collected inside the subroutine 
     ! where they are defined.
     !----------------------------------------------------------------
-    use _params_core, only: ndayyear
-    use _params_modl, only: npft, lu_category
+    use _params_core, only: ndayyear, npft
     use _vars_core, only: dnpp, dnup, pleaf, pninorg, proot, plabl, &
       plitt_bg, plitt_af, plitt_as, psoil_sl, psoil_fs, lai_ind, &
       narea_metabolic, narea_structural, r_cton_leaf, lma
@@ -310,8 +309,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use _params_core, only: ndayyear
-    use _params_modl, only: npft, lu_category
+    use _params_core, only: ndayyear, npft
     use _vars_core, only: pleaf, proot
 
     ! arguments

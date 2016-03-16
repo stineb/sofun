@@ -78,10 +78,20 @@ module _gpp
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
   !-----------------------------------------------------------------------
-  real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
-  real :: beta
-  real :: kphio        ! quantum efficiency (Long et al., 1993)
+  type paramstype_gpp
+    real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
+    real :: beta         ! Unit cost of carboxylation (dimensionless)
+  end type paramstype_gpp
 
+  type( paramstype_gpp ) :: params_glob_gpp
+
+  ! PFT-DEPENDENT PARAMETERS
+  type pftparamstype_gpp
+    real :: kphio        ! quantum efficiency (Long et al., 1993)  
+  end type pftparamstype_gpp
+
+  type( pftparamstype_gpp ), dimension(npft) :: params_pft_gpp
+ 
   !-----------------------------------------------------------------------
   ! Email from Tyler (10.3.2015):
   ! I was estimating values of β based on the Wang Han approximation equation 
@@ -124,16 +134,16 @@ module _gpp
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, PRIVATE VARIABLES
   !----------------------------------------------------------------
-  real, dimension(nmonth) :: mlue             ! Light use efficiency: (gpp - rd) per unit light absorbed
-  real, dimension(nmonth) :: mvcmax_unitiabs  ! Vcmax per unit fAPAR
-  real, dimension(nmonth) :: mactnv_unitiabs  ! conversion factor to get from APAR to Rubisco-N
-  real, dimension(nmonth) :: factor25         ! factor to convert from 25 deg-normalised to ambient T
-  real, dimension(nmonth) :: mrd_unitiabs     ! dark respiration per unit fAPAR (assuming fAPAR=1)
-  real, dimension(nmonth) :: mtransp_unitiabs ! transpiration per unit light absorbed [g H2O (mol photons)-1]
-  real, dimension(nmonth) :: mvcmax           ! Vcmax per unit ground area (mol m-2 s-1)
-  ! real, dimension(nmonth) :: mnrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]
-  real, dimension(nmonth) :: mchi             ! chi = ci/ca, leaf internal-to-ambient CO2 partial pressure
-  real, dimension(npft)   :: avcmax           ! Vcmax per unit ground area (mol m-2 s-1); annual value is maximum of monthly values
+  real, dimension(npft,nmonth) :: mlue             ! Light use efficiency: (gpp - rd) per unit light absorbed
+  real, dimension(npft,nmonth) :: mvcmax_unitiabs  ! Vcmax per unit fAPAR
+  real, dimension(npft,nmonth) :: mactnv_unitiabs  ! conversion factor to get from APAR to Rubisco-N
+  real, dimension(npft,nmonth) :: factor25         ! factor to convert from 25 deg-normalised to ambient T
+  real, dimension(npft,nmonth) :: mrd_unitiabs     ! dark respiration per unit fAPAR (assuming fAPAR=1)
+  real, dimension(npft,nmonth) :: mtransp_unitiabs ! transpiration per unit light absorbed [g H2O (mol photons)-1]
+  real, dimension(npft,nmonth) :: mvcmax           ! Vcmax per unit ground area (mol m-2 s-1)
+  ! real, dimension(npft,nmonth) :: mnrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]
+  real, dimension(npft,nmonth) :: mchi             ! chi = ci/ca, leaf internal-to-ambient CO2 partial pressure
+  real, dimension(npft)        :: avcmax           ! Vcmax per unit ground area (mol m-2 s-1); annual value is maximum of monthly values
   ! real                    :: anrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]; annual value is maximum of monthly values
 
   ! Function return variables as derived types
@@ -164,9 +174,7 @@ module _gpp
     real :: n
   end type outtype_lue
 
-
 contains
-
 
   subroutine gpp( jpngr, doy, moy, fapar_prescr )
     !//////////////////////////////////////////////////////////////////
@@ -208,22 +216,22 @@ contains
         ! fapar_ind(pft,jpngr) = 1.0
         ! write(0,*) 'in SR gpp: fapar          ', fapar_ind(pft,jpngr) !OK!
         ! write(0,*) 'in SR gpp: doy, solar%dppfd(doy)', doy, solar%dppfd(doy) !OK!
-        ! write(0,*) 'in SR gpp: moy, mlue(moy) ', moy, mlue(moy) !OK! 
-        ! dgpp(pft)    = calc_dgpp( fapar_ind(pft,jpngr), solar%dppfd(doy), mlue(moy) )
-        dgpp(pft)    = calc_dgpp( fapar_ind(pft,jpngr), solar%dppfd(doy), mlue(moy) )
+        ! write(0,*) 'in SR gpp: moy, mlue(pft,moy) ', moy, mlue(pft,moy) !OK! 
+        ! dgpp(pft)    = calc_dgpp( fapar_ind(pft,jpngr), solar%dppfd(doy), mlue(pft,moy) )
+        dgpp(pft)    = calc_dgpp( fapar_ind(pft,jpngr), solar%dppfd(doy), mlue(pft,moy) )
 
         ! Dark respiration
-        drd(pft)     = calc_drd( fapar_ind(pft,jpngr), solar%meanmppfd(moy), mrd_unitiabs(moy) )
-        ! drd(pft)     = calc_drd( 0.05, solar%meanmppfd(moy), mrd_unitiabs(moy) )
+        drd(pft)     = calc_drd( fapar_ind(pft,jpngr), solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
+        ! drd(pft)     = calc_drd( 0.05, solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
         ! write(0,*) 'doy, drd(pft)             ', doy, drd(pft)
 
         ! transpiration
-        dtransp(pft) = calc_dtransp( fapar_ind(pft,jpngr), solar%dppfd(doy), mtransp_unitiabs(moy) )
-        ! dtransp(pft) = calc_dtransp( 0.05, solar%dppfd(doy), mtransp_unitiabs(moy) )
+        dtransp(pft) = calc_dtransp( fapar_ind(pft,jpngr), solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
+        ! dtransp(pft) = calc_dtransp( 0.05, solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
 
         ! Vcmax
-        vcmax_canop(pft) = calc_vcmax_canop( fapar_ind(pft,jpngr), mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
-        ! mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
+        vcmax_canop(pft) = calc_vcmax_canop( fapar_ind(pft,jpngr), mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
+        ! mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
 
 
       else  
@@ -239,7 +247,7 @@ contains
     ! write(0,*) '---in gpp: '
     ! write(0,*) 'fapar_ind(pft,jpngr) ',fapar_ind
     ! write(0,*) 'solar%dppfd(doy) ',solar%dppfd(doy)
-    ! write(0,*) 'mlue(moy) ',mlue(moy)
+    ! write(0,*) 'mlue(pft,moy) ',mlue(pft,moy)
     ! write(0,*) 'solar%meanmppfd(moy) ',solar%meanmppfd(moy)
     ! write(0,*) 'mrd_unitiabs(moy) ',mrd_unitiabs(moy)
     ! write(0,*) 'dgpp(pft) ',dgpp
@@ -275,8 +283,7 @@ contains
     type(outtype_pmodel)    :: out_pmodel ! derived type for P-model output variable list
     real, dimension(nmonth) :: mtemp      ! monthly air temperature (deg C)
     real, dimension(nmonth) :: mvpd       ! monthly vapour pressure deficit (Pa)
-    integer                 :: moy
-    integer                 :: lu
+    integer                 :: moy, lu, pft
 
     ! Get monthly averages
     mtemp(:) = daily2monthly( dtemp(:), "mean" )
@@ -305,35 +312,41 @@ contains
     write(0,*) 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
 
     do lu=1,nlu
-      do moy=1,nmonth
 
-        ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
-        ! out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
-        out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
-        ! out_pmodel            = pmodel( -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "approx" )
+      if (lu>1) stop 'in GETLUE(): think of something about LU and PFTs!'
 
-        ! Light use efficiency: (gpp - rd) per unit light absorbed
-        mlue(moy)             = out_pmodel%lue
-        ! write(0,*) 'moy, mlue', moy, mlue(moy)
-        
-        ! Vcmax per unit absorbed light
-        mvcmax_unitiabs(moy)  = out_pmodel%vcmax_unitiabs
-        
-        ! conversion factor to get from absorbed light to Rubisco-N
-        mactnv_unitiabs(moy)  = out_pmodel%actnv_unitiabs
-        
-        ! factor to convert from 25 deg-normalised to ambient T
-        factor25(moy)         = out_pmodel%factor25_vcmax
-        
-        ! dark respiration per unit absorbed light
-        mrd_unitiabs(moy)     = out_pmodel%rd_unitiabs
+      do pft=1,npft
 
-        ! transpiration per unit 
-        mtransp_unitiabs(moy) = out_pmodel%transp_unitiabs
+        do moy=1,nmonth
 
-        ! ci:ca
-        mchi(moy)             = out_pmodel%chi
+          ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
+          out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
+          ! out_pmodel                = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
+          ! out_pmodel                = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "approx" )
 
+          ! Light use efficiency: (gpp - rd) per unit light absorbed
+          mlue(pft,moy)             = out_pmodel%lue
+          ! write(0,*) 'moy, mlue', moy, mlue(moy)
+          
+          ! Vcmax per unit absorbed light
+          mvcmax_unitiabs(pft,moy)  = out_pmodel%vcmax_unitiabs
+          
+          ! conversion factor to get from absorbed light to Rubisco-N
+          mactnv_unitiabs(pft,moy)  = out_pmodel%actnv_unitiabs
+          
+          ! factor to convert from 25 deg-normalised to ambient T
+          factor25(pft,moy)         = out_pmodel%factor25_vcmax
+          
+          ! dark respiration per unit absorbed light
+          mrd_unitiabs(pft,moy)     = out_pmodel%rd_unitiabs
+
+          ! transpiration per unit 
+          mtransp_unitiabs(pft,moy) = out_pmodel%transp_unitiabs
+
+          ! ci:ca
+          mchi(pft,moy)             = out_pmodel%chi
+
+        end do
       end do
     end do
 
@@ -353,25 +366,25 @@ contains
   end subroutine getlue
 
 
-  function calc_dgpp( fapar, dppfd, mlue ) result( dgpp )
+  function calc_dgpp( fapar, dppfd, my_mlue ) result( my_dgpp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: fapar
     real, intent(in) :: dppfd
-    real, intent(in) :: mlue
+    real, intent(in) :: my_mlue
 
     ! function return variable
-    real, intent(out) :: dgpp
+    real, intent(out) :: my_dgpp
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    dgpp = fapar * dppfd * mlue * c_molmass
+    my_dgpp = fapar * dppfd * my_mlue * c_molmass
 
   end function calc_dgpp
 
 
-  function calc_drd( fapar, meanmppfd, mrd_unitiabs ) result( drd )
+  function calc_drd( fapar, meanmppfd, my_mrd_unitiabs ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
@@ -379,67 +392,68 @@ contains
     ! arguments
     real, intent(in) :: fapar           ! fraction of absorbed PAR (unitless)
     real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
-    real, intent(in) :: mrd_unitiabs
+    real, intent(in) :: my_mrd_unitiabs
 
     ! function return variable
-    real, intent(out) :: drd
+    real, intent(out) :: my_drd
 
     ! Dark respiration takes place during night and day (24 hours)
-    drd = fapar * meanmppfd * mrd_unitiabs * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * meanmppfd * my_mrd_unitiabs * 60.0 * 60.0 * 24.0 * c_molmass
 
   end function calc_drd
 
 
-  function calc_dtransp( fapar, dppfd, transp_unitiabs ) result( dtransp )
+  function calc_dtransp( fapar, dppfd, my_transp_unitiabs ) result( my_dtransp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: fapar
     real, intent(in) :: dppfd
-    real, intent(in) :: transp_unitiabs
+    real, intent(in) :: my_transp_unitiabs
 
     ! function return variable
-    real, intent(out) :: dtransp
+    real, intent(out) :: my_dtransp
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    dtransp = fapar * dppfd * transp_unitiabs * h2o_molmass
+    my_dtransp = fapar * dppfd * my_transp_unitiabs * h2o_molmass
 
   end function calc_dtransp
 
 
-  function calc_vcmax_canop( fapar, vcmax_unitiabs, meanmppfd ) result( vcmax )
+  function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd ) result( my_vcmax )
     !//////////////////////////////////////////////////////////////////
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: fapar
-    real, intent(in) :: vcmax_unitiabs
+    real, intent(in) :: my_vcmax_unitiabs
     real, intent(in) :: meanmppfd
 
     ! function return variable
-    real, intent(out) :: vcmax
+    real, intent(out) :: my_vcmax
 
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-    vcmax = fapar * meanmppfd * vcmax_unitiabs
+    my_vcmax = fapar * meanmppfd * my_vcmax_unitiabs
 
   end function calc_vcmax_canop
 
 
-  function pmodel( fpar, ppfd, co2, tc, cpalpha, vpd, elv, method ) result( out_pmodel )
+  function pmodel( pft, fpar, ppfd, co2, tc, cpalpha, vpd, elv, method ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
     ! Output:   gpp (mol/m2/month)   : gross primary production
     !------------------------------------------------------------------
 
     ! arguments
-    real, intent(in) :: fpar         ! monthly fraction of absorbed photosynthetically active radiation (unitless) 
-    real, intent(in) :: ppfd         ! monthly photon flux density (mol/m2)
-    real, intent(in) :: co2          ! atmospheric CO2 concentration (ppm)
-    real, intent(in) :: tc           ! monthly air temperature (deg C)
-    real, intent(in) :: cpalpha      ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
-    real, intent(in) :: vpd          ! mean monthly vapor pressure (Pa) -- CRU data is in hPa
-    real, intent(in) :: elv          ! elevation above sea-level (m)
+    integer, intent(in) :: pft         
+    real, intent(in)    :: fpar         ! monthly fraction of absorbed photosynthetically active radiation (unitless) 
+    real, intent(in)    :: ppfd         ! monthly photon flux density (mol/m2)
+    real, intent(in)    :: co2          ! atmospheric CO2 concentration (ppm)
+    real, intent(in)    :: tc           ! monthly air temperature (deg C)
+    real, intent(in)    :: cpalpha      ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in)    :: vpd          ! mean monthly vapor pressure (Pa) -- CRU data is in hPa
+    real, intent(in)    :: elv          ! elevation above sea-level (m)
     character(len=*), intent(in) :: method
 
     ! function return value
@@ -451,6 +465,7 @@ contains
     real :: ca                       ! ambient CO2 partial pression (Pa)
     real :: ci                       ! leaf-internal CO2 partial pression, (Pa)
     real :: chi                      ! leaf-internal to ambient CO2 partial pression, ci/ca (unitless)
+    real :: gs                       ! stomatal conductance
     real :: gstar                    ! photorespiratory compensation point - Gamma-star (Pa)
     real :: fa                       ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
     real :: kmm                      ! Michaelis-Menten coefficient (Pa)
@@ -525,13 +540,13 @@ contains
         !-----------------------------------------------------------------------
         ! B.1 SIMPLIFIED FORMULATION 
         !-----------------------------------------------------------------------
-        out_lue = lue_vpd_simpl( kmm, gstar, ns, ca, vpd, beta  )
+        out_lue = lue_vpd_simpl( kmm, gstar, ns, ca, vpd )
 
       case ("full")
         !-----------------------------------------------------------------------
         ! B.2 FULL FORMULATION
         !-----------------------------------------------------------------------
-        out_lue = lue_vpd_full( kmm, gstar, ns_star, ca, vpd, beta  )
+        out_lue = lue_vpd_full( kmm, gstar, ns_star, ca, vpd )
 
       case default
 
@@ -544,8 +559,8 @@ contains
     n   = out_lue%n
     chi = out_lue%chi
 
-    ! XXX PMODEL_TEST: ok
-    write(0,*) 'chi ', chi
+    ! ! XXX PMODEL_TEST: ok
+    ! write(0,*) 'chi ', chi
 
     !-----------------------------------------------------------------------
     ! Calculate function return variables
@@ -555,10 +570,10 @@ contains
     ! efficiency, the absorbed PAR, the function of alpha (drought-reduction),
     ! and 'm'
     m   = calc_mprime( m )
-    gpp = iabs * kphio * fa * m  ! in mol m-2 s-1
+    gpp = iabs * params_pft_gpp(pft)%kphio * fa * m  ! in mol m-2 s-1
 
     ! Light use efficiency (gpp per unit iabs)
-    lue = kphio * fa * m 
+    lue = params_pft_gpp(pft)%kphio * fa * m 
 
     ! ! XXX PMODEL_TEST: ok
     ! write(0,*) 'lue ', lue
@@ -571,13 +586,13 @@ contains
 
     ! Vcmax per unit ground area is the product of the intrinsic quantum 
     ! efficiency, the absorbed PAR, and 'n'
-    vcmax = iabs * kphio * n
+    vcmax = iabs * params_pft_gpp(pft)%kphio * n
 
     ! Vcmax normalised per unit fAPAR (assuming fAPAR=1)
-    vcmax_unitfapar = ppfd * kphio * n 
+    vcmax_unitfapar = ppfd * params_pft_gpp(pft)%kphio * n 
 
     ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1)
-    vcmax_unitiabs = kphio * n 
+    vcmax_unitiabs = params_pft_gpp(pft)%kphio * n 
 
     ! Vcmax25 (vcmax normalized to 25 deg C)
     factor25_vcmax    = calc_vcmax25( 1.0, tc )
@@ -586,13 +601,13 @@ contains
     vcmax25_unitiabs  = factor25_vcmax * vcmax_unitiabs
 
     ! Dark respiration
-    rd = rd_to_vcmax * vcmax
+    rd = params_glob_gpp%rd_to_vcmax * vcmax
 
     ! Dark respiration per unit fAPAR (assuming fAPAR=1)
-    rd_unitfapar = rd_to_vcmax * vcmax_unitfapar
+    rd_unitfapar = params_glob_gpp%rd_to_vcmax * vcmax_unitfapar
 
     ! Dark respiration per unit absorbed PPFD (assuming iabs=1)
-    rd_unitiabs = rd_to_vcmax * vcmax_unitiabs
+    rd_unitiabs = params_glob_gpp%rd_to_vcmax * vcmax_unitiabs
 
     ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
     actnv = vcmax25 * n_v
@@ -605,9 +620,9 @@ contains
     ! - gs = A / (ca (1-chi))
     ! (- chi = ci / ca)
     ! => E = f
-    transp           = (1.6 * iabs * kphio * fa * m * vpd) / (ca - ci)   ! gpp = iabs * kphio * fa * m
-    transp_unitfapar = (1.6 * ppfd * kphio * fa * m * vpd) / (ca - ci)
-    transp_unitiabs  = (1.6 * 1.0  * kphio * fa * m * vpd) / (ca - ci)
+    transp           = (1.6 * iabs * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)   ! gpp = iabs * params_pft_gpp(pft)%kphio * fa * m
+    transp_unitfapar = (1.6 * ppfd * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
+    transp_unitiabs  = (1.6 * 1.0  * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
 
     ! Construct derived type for output
     out_pmodel%gpp              = gpp
@@ -638,17 +653,56 @@ contains
     ! from input file
     !----------------------------------------------------------------
     use _sofunutils, only: getparreal
+    use _params_site, only: lTeBS, lGrC3, lGrC4
 
-    ! xxx
-    beta  = getparreal( 'params/params_gpp_pmodel.dat', 'beta' )
+    ! local variables
+    integer :: pft
+
+    !----------------------------------------------------------------
+    ! PFT-independent parameters
+    !----------------------------------------------------------------
+    ! unit cost of carboxylation
+    params_glob_gpp%beta  = getparreal( 'params/params_gpp_pmodel.dat', 'beta' )
 
     ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
-    rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
+    params_glob_gpp%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
 
-    ! quantum efficiency (Long et al., 1993)
-    kphio  = getparreal( 'params/params_gpp_pmodel.dat', 'kphio' )
+    !----------------------------------------------------------------
+    ! PFT-dependent parameters
+    !----------------------------------------------------------------
+    pft = 0
+    if ( lTeBS ) then
+      pft = pft + 1
+      params_pft_gpp(pft) = getpftparams_gpp( 'TeBS' )
+    end if
+    if ( lGrC3 ) then
+      pft = pft + 1
+      params_pft_gpp(pft) = getpftparams_gpp( 'GrC3' )
+    end if
+    if ( lGrC4 ) then
+      pft = pft + 1
+      params_pft_gpp(pft) = getpftparams_gpp( 'GrC4' )
+    end if
 
   end subroutine getpar_modl_gpp
+
+
+  function getpftparams_gpp( pftname ) result( out_getpftpar )
+    !----------------------------------------------------------------
+    ! Read PFT parameters from respective file, given the PFT name
+    !----------------------------------------------------------------
+    use _sofunutils, only: getparreal
+
+    ! arguments
+    character(len=*) :: pftname
+
+    ! function return variable
+    type( pftparamstype_gpp ) out_getpftpar
+
+    ! leaf decay constant, read in as [years-1], central value: 0.0 yr-1 for deciduous plants
+    out_getpftpar%kphio = getparreal( trim('params/params_gpp_pft_'//pftname//'_pmodel.dat'), 'kphio' )
+
+  end function getpftparams_gpp
 
 
   function lue_approx( temp, vpd, elv, ca, gstar, ns_star, kmm ) result( out_lue )
@@ -673,7 +727,7 @@ contains
     type(outtype_lue) :: out_lue
 
     ! local variables
-    real :: beta_wh
+    ! real :: beta_wh
     real :: whe                ! value of "Wang-Han Equation"
     real :: gamma
     real :: chi                ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio (unitless)
@@ -723,7 +777,7 @@ contains
   end function lue_approx
 
 
-  function lue_vpd_simpl( kmm, gstar, ns_star, ca, vpd, beta ) result( out_lue )
+  function lue_vpd_simpl( kmm, gstar, ns_star, ca, vpd ) result( out_lue )
     !//////////////////////////////////////////////////////////////////
     ! Output:   float, ratio of ci/ca (chi)
     ! Returns an estimate of leaf internal to ambient CO2
@@ -736,7 +790,6 @@ contains
     real, intent(in) :: ns_star   ! (unitless) viscosity correction factor for water
     real, intent(in) :: ca        ! Pa, ambient CO2 partial pressure
     real, intent(in) :: vpd       ! Pa, vapor pressure deficit
-    real, intent(in) :: beta      ! unit cost of carboxylation. fixed parameter.
 
     ! function return value
     type(outtype_lue) :: out_lue
@@ -750,7 +803,7 @@ contains
     real :: n
 
     ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
-    xi  = sqrt( beta * kmm / (1.6 * ns_star))
+    xi  = sqrt( params_glob_gpp%beta * kmm / (1.6 * ns_star))
     chi = xi / (xi + sqrt(vpd))
 
     ! light use efficiency (m)
@@ -770,7 +823,7 @@ contains
   end function lue_vpd_simpl
 
 
-  function lue_vpd_full( kmm, gstar, ns_star, ca, vpd, beta ) result( out_lue )
+  function lue_vpd_full( kmm, gstar, ns_star, ca, vpd ) result( out_lue )
     !//////////////////////////////////////////////////////////////////
     ! Output:   float, ratio of ci/ca (chi)
     ! Features: Returns an estimate of leaf internal to ambient CO2
@@ -783,7 +836,6 @@ contains
     real, intent(in) :: ns_star   ! (unitless) viscosity correction factor for water
     real, intent(in) :: ca        ! Pa, ambient CO2 partial pressure
     real, intent(in) :: vpd       ! Pa, vapor pressure deficit
-    real, intent(in) :: beta      ! unit cost of carboxylation. fixed parameter.
 
     ! function return value
     type(outtype_lue) :: out_lue
@@ -802,7 +854,7 @@ contains
     ! beta = 1.6 * ns_star * vpd * (chi * ca - gstar) ** 2.0 / ( (kmm + gstar) * (ca ** 2.0) * (chi - 1.0) ** 2.0 )   ! see Estimation_of_beta.pdf
 
     ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
-    xi  = sqrt( (beta * ( kmm + gstar ) ) / ( 1.6 * ns_star ) )     ! see Eq. 2 in 'Estimation_of_beta.pdf'
+    xi  = sqrt( ( params_glob_gpp%beta * ( kmm + gstar ) ) / ( 1.6 * ns_star ) )     ! see Eq. 2 in 'Estimation_of_beta.pdf'
     chi = gstar / ca + ( 1.0 - gstar / ca ) * xi / ( xi + sqrt(vpd) )  ! see Eq. 1 in 'Estimation_of_beta.pdf'
 
     ! consistent with this, directly return light-use-efficiency (m)
@@ -814,7 +866,7 @@ contains
     ! Define variable substitutes:
     vdcg = ca - gstar
     vacg = ca + 2.0 * gstar
-    vbkg = beta * (kmm + gstar)
+    vbkg = params_glob_gpp%beta * (kmm + gstar)
 
     ! Check for negatives:
     if (vbkg > 0) then
@@ -1342,8 +1394,8 @@ contains
 
     ! outanrlarea(jpngr) = anrlarea
     outavcmax(:,jpngr)   = avcmax(:)
-    outachi(:,jpngr)     = sum( mchi(:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
-    outalue(:,jpngr)     = sum( mlue(:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+    outachi(:,jpngr)     = sum( mchi(1,:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+    outalue(:,jpngr)     = sum( mlue(1,:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
 
   end subroutine getout_annual_gpp
 

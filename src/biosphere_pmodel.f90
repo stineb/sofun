@@ -48,8 +48,8 @@ subroutine biosphere( &
   ! local variables
   integer :: dm, moy, jpngr, day
 
-  ! XXX PMODEL_TEST
-  write(0,*) 'WARNING: FAPAR = 1.00 USED IN PMODEL'
+  ! ! XXX PMODEL_TEST
+  ! write(0,*) 'WARNING: FAPAR = 1.00 USED IN PMODEL'
 
   !----------------------------------------------------------------
   ! INITIALISATIONS

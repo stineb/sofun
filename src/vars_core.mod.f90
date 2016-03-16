@@ -104,7 +104,7 @@ contains
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     use _classdefs
-    use _params_modl, only: tree
+    use _params_modl, only: params_pft
     use _params_core, only: npft, maxgrid
 
     ! local variables
@@ -156,7 +156,7 @@ contains
     height(:,:)    = 0.0
 
     do pft=1,npft
-      if (tree(pft)) then
+      if (params_pft%tree(pft)) then
         nind(pft,:)      = 0.0
         crownarea(pft,:) = 0.0
       else
@@ -178,7 +178,7 @@ contains
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     use _classdefs
-    use _params_modl, only: tree, grass
+    use _params_modl, only: params_pft
 
     integer, intent(in) :: pft
     integer, intent(in) :: jpngr
@@ -187,7 +187,7 @@ contains
     pleaf(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     proot(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-    if (tree(pft)) then
+    if (params_pft%tree(pft)) then
       psapw(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
       pwood(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     endif
@@ -197,7 +197,7 @@ contains
     lai_ind(pft,jpngr)   = 0.0
     fapar_ind(pft,jpngr)   = 0.0
     height(pft,jpngr)    = 0.0
-    if (tree(pft)) then
+    if (params_pft%tree(pft)) then
       nind(pft,jpngr)      = 0.0
       crownarea(pft,jpngr) = 0.0
     else

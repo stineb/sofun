@@ -6,7 +6,6 @@
 
 beta                                    244.033
 rd_to_vcmax                             0.015
-kphio                                   0.093
 
 #                                      |
 # write value *behind* this position:  |->

@@ -1,13 +1,10 @@
 ###############################################################
-# MODEL PARAMETERS
+# PMODEL PARAMETERS
 #--------------------------------------------------------------
 #                                      |
 # write value behind this position:    |->
 
-kbeer                                   0.500000
-f_nretain                               0.500000
-fpc_tree_max                            0.950000
-growtheff                               0.600000
+kphio                                   0.093
 
 #                                      |
 # write value *behind* this position:  |->

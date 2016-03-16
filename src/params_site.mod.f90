@@ -10,7 +10,7 @@ module _params_site
   implicit none
 
   real    :: lon_site, lat_site, elv_site
-  logical :: lTeBS, lGrC3
+  logical :: lTeBS, lGrC3, lGrC4
   integer, dimension(maxgrid) :: soilcode_field
 
 contains
@@ -31,6 +31,7 @@ contains
     ! as well as in getpar_modl()
     lTeBS = getparlogical( 'site_paramfils/'//trim(sitename)//'.parameter', 'lTeBS' )
     lGrC3 = getparlogical( 'site_paramfils/'//trim(sitename)//'.parameter', 'lGrC3' )
+    lGrC4 = getparlogical( 'site_paramfils/'//trim(sitename)//'.parameter', 'lGrC4' )
 
     ! dimension length (maxgrid) is 1 for site-scale simulations
     soilcode_field(1) = getparint( 'site_paramfils/'//trim(sitename)//'.parameter', 'soilcode' )
