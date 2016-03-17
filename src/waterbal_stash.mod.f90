@@ -1151,6 +1151,10 @@ contains
       filnam=trim(prefix)//'.d.dayl.out'
       open(261,file=filnam,err=888,status='unknown')
 
+      ! CPA: cramer-prentice alpha, unitless
+      filnam=trim(prefix)//'.d.cpa.out'
+      open(262,file=filnam,err=888,status='unknown')
+
     end if
 
     ! !----------------------------------------------------------------
@@ -1302,6 +1306,7 @@ contains
           write(259,999) itime, outdpet(day,jpngr)
           write(260,999) itime, outdaet(1,day,jpngr)
           write(261,999) itime, outdayl(day,jpngr)
+          write(262,999) itime, outdcpa(1,day,jpngr)
 
         end do
       end if

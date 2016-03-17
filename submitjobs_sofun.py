@@ -29,12 +29,12 @@ else:
 ##--------------------------------------------------------------------
 ## Loop over site names and submit job for each site
 ##--------------------------------------------------------------------
-# siteinfo = pandas.read_csv( filnam_siteinfo_csv )
-# sitenames = siteinfo['mysitename']
-# for idx in sitenames:
-#   print 'submitting job for site ' + idx + '...'
-#   os.system( 'echo ' + idx + '| ./runpmodel' )
+siteinfo = pandas.read_csv( filnam_siteinfo_csv )
+sitenames = siteinfo['mysitename']
+for idx in sitenames:
+  print 'submitting job for site ' + idx + '...'
+  os.system( 'echo ' + idx + '| ./runpmodel' )
 
-## test: CH-Oe1 only
-print 'submitting job for site ' + 'CH-Oe1' + '...'
-os.system( 'echo ' + 'CH-Oe1' + '| ./runpmodel' )
+# ## test: CH-Oe1 only
+# print 'submitting job for site ' + 'CH-Oe1' + '...'
+# os.system( 'echo ' + 'CH-Oe1' + '| ./runpmodel' )

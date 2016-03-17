@@ -269,6 +269,7 @@ contains
     ! possible.
     !------------------------------------------------------------------
     use _params_core, only: ndayyear, nlu
+    use _params_modl, only: params_pft
     use _sofunutils, only: daily2monthly
     use _waterbal, only: evap
 
@@ -320,9 +321,13 @@ contains
         do moy=1,nmonth
 
           ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
-          out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
-          ! out_pmodel                = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "full" )
-          ! out_pmodel                = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), 1.26, mvpd(moy), elv, "approx" )
+          if ( params_pft(pft)%c4grass ) then
+            ! C4: use infinite CO2
+            out_pmodel = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
+          else
+            ! C3
+            out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
+          end if
 
           ! Light use efficiency: (gpp - rd) per unit light absorbed
           mlue(pft,moy)             = out_pmodel%lue

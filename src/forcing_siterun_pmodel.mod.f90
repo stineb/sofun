@@ -60,7 +60,7 @@ contains
     !  Function reads this year's annual ndeposition and distributes it
     !  over days according to daily precipitation.
     !----------------------------------------------------------------
-    use _vars_core, only: dummy
+    use _params_core, only: dummy
 
     ! arguments
     character(len=*), intent(in) :: runname
