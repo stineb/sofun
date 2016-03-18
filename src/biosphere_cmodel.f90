@@ -18,10 +18,16 @@ subroutine biosphere( &
   use _params_core
   use _params_siml
   use _params_site
+  use _plant, only: initdaily_plant, initglobal_plant, initpft, getout_daily_plant, getpar_modl_plant, initoutput_plant, writeout_ascii_plant, initio_plant, getout_annual_plant
   use _soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
-  use _waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
   use _params_soil, only: paramtype_soil
-
+  use _waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
+  use _phenology, only: gettempphenology
+  use _gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, writeout_ascii_gpp
+  use _npp, only: npp
+  use _turnover, only: turnover
+  use _allocation, only: allocation_daily
+  
   implicit none
 
   ! arguments
@@ -58,19 +64,27 @@ subroutine biosphere( &
     ! read model parameters that may be varied for optimisation
     !----------------------------------------------------------------
     ! print*,'getting model parameters'
+    call getpar_modl_plant()
     call getpar_modl_waterbal()
+    call getpar_modl_gpp()
     ! call getpar_modl_soil()
 
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
+    call initglobal_plant()
     call initglobal_waterbal()
+    call initglobal_plant()
+    ! call initglobal_soil()
 
     !----------------------------------------------------------------
     ! Open input/output files
     !----------------------------------------------------------------
     call initio_waterbal()
     call initio_soiltemp()
+    call initio_gpp()
+    call initio_plant()
+    ! call initio_soil()
 
   endif 
 
@@ -79,6 +93,9 @@ subroutine biosphere( &
   !----------------------------------------------------------------
   call initoutput_waterbal()
   call initoutput_soiltemp()
+  call initoutput_gpp()
+  call initoutput_plant()
+  ! call initoutput_soil()
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
@@ -92,6 +109,20 @@ subroutine biosphere( &
     ! there is a daily loop within 'getsolar'!
     !----------------------------------------------------------------
     call getsolar_alldays( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
+
+    !----------------------------------------------------------------
+    ! Get monthly light use efficiency, and Rd per unit of light absorbed
+    ! Photosynthetic parameters acclimate at monthly time scale
+    ! This is not compatible with a daily biosphere-climate coupling. I.e., 
+    ! there is a monthly loop within 'getlue'!
+    !----------------------------------------------------------------
+    call getlue( jpngr, pco2, dtemp_field(:,jpngr), dvpd_field(:,jpngr), elv(jpngr) )
+
+    !----------------------------------------------------------------
+    ! get temperature-driven phenology (drought-driven phenology is 
+    ! calculated after waterbalance)
+    !----------------------------------------------------------------
+    call gettempphenology( jpngr, dtemp_field(:,jpngr) )
 
     !----------------------------------------------------------------
     ! LOOP THROUGH MONTHS
@@ -108,12 +139,16 @@ subroutine biosphere( &
         !----------------------------------------------------------------
         ! initialise daily updated variables 
         !----------------------------------------------------------------
+        call initdaily_plant()
         call initdaily_waterbal()
+        call initdaily_gpp()
+        call initdaily_plant()
 
         !----------------------------------------------------------------
         ! get soil moisture, and runoff
         !----------------------------------------------------------------
         ! write(0,*) 'calling waterbal() ... '
+        ! write(0,*) 'with arguments ', jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr)
         call waterbal( jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr) )
         ! write(0,*) '... done'
 
@@ -125,11 +160,54 @@ subroutine biosphere( &
         ! write(0,*) '... done'
 
         !----------------------------------------------------------------
+        ! calculate GPP
+        !----------------------------------------------------------------
+        ! write(0,*) 'calling gpp() ... '
+        call gpp( jpngr, day, moy, mfapar_field(moy,jpngr) )
+        ! call gpp( jpngr, day, moy, 1.00 )
+        ! write(0,*) '... done'
+
+        !----------------------------------------------------------------
+        ! substract autotrophic respiration to get NPP, remainder is added 
+        ! to labile pool (plabl)
+        !----------------------------------------------------------------
+        ! write(0,*) 'calling npp() ... '
+        call npp( jpngr, dtemp_field(day,jpngr), day )
+        ! write(0,*) '... done'
+
+        !----------------------------------------------------------------
+        ! allocation of labile pools to biomass
+        !----------------------------------------------------------------
+        ! write(0,*) 'calling allocation() ... '
+        call allocation_daily( jpngr, day, moy, dm )
+        ! write(0,*) '... done'
+
+        ! amount of NPP added to reproduction (xxx ignore at this point)
+        !call reproduction( jpngr )
+
+        !----------------------------------------------------------------
+        ! leaf, sapwood, and fine-root turnover
+        !----------------------------------------------------------------
+        ! write(0,*) 'calling turnover() ... '
+        call turnover( jpngr, day )
+        ! write(0,*) '... done'
+
+        ! !----------------------------------------------------------------
+        ! ! litter and soil decomposition and N mineralisation
+        ! !----------------------------------------------------------------
+        ! ! write(0,*) 'calling littersom() ... '
+        ! call littersom( jpngr, day )
+        ! ! write(0,*) '... done'
+
+        !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
-        ! write(0,*) 'calling getout_daily_waterbal() ... '
+        ! write(0,*) 'calling getout_daily_*() ... '
         call getout_daily_waterbal( jpngr, moy, day )
         call getout_daily_soiltemp( jpngr, moy, day )
+        call getout_daily_gpp( jpngr, moy, day )
+        call getout_daily_plant( jpngr, moy, day )
+        ! call getout_daily_soil( jpngr, moy, day )
         ! write(0,*) '... done'
 
       end do
@@ -141,6 +219,9 @@ subroutine biosphere( &
     !----------------------------------------------------------------
     call writeout_ascii_waterbal( year )
     call writeout_ascii_soiltemp( year )
+    call writeout_ascii_gpp( year )
+    call writeout_ascii_plant( year )
+    ! call writeout_ascii_soil( year )
 
   end do
 

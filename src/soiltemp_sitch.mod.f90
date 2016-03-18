@@ -208,16 +208,15 @@ contains
   end subroutine getout_daily_soiltemp
 
 
-  subroutine writeout_ascii_soiltemp( year, spinup )
+  subroutine writeout_ascii_soiltemp( year )
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE soiltemp-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use _params_core, only: ndayyear
-    use _params_siml, only: daily_out_startyr, daily_out_endyr, outyear, loutdtemp_soil
+    use _params_siml, only: spinup, daily_out_startyr, daily_out_endyr, outyear, loutdtemp_soil
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
-    logical, intent(in) :: spinup     ! true during spinup years
 
     ! Local variables
     real :: itime

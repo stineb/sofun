@@ -8,6 +8,9 @@ kbeer                                   0.500000
 f_nretain                               0.500000
 fpc_tree_max                            0.950000
 growtheff                               0.600000
+r_root                                  0.91300
+r_sapw                                  0.04400
+exurate                                 0.004000
 
 #                                      |
 # write value *behind* this position:  |->

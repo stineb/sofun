@@ -266,4 +266,3 @@ contains
 
 
 end module _vars_core
-

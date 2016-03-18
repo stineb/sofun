@@ -6,7 +6,7 @@
 #DEBUGFLAGS
 
 # List of source code files for standard (full) setup:
-MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 params_modl.mod.f90 rates.mod.f90 vars_core.mod.f90 outvars.mod.f90 phenology_lpx.mod.f90 waterbal_stash.mod.f90 vegdynamics_fix.mod.f90 gpp_pmodel.mod.f90 nuptake_constexu.mod.f90 npp_lpj.mod.f90 findroot_fzeroin.mod.f90 allocation.mod.f90 turnover.mod.f90 littersom_lpj.mod.f90 ntransform_xuri.mod.f90 soiltemp_sitch.mod.f90 
+MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 params_modl.mod.f90 rates.mod.f90 vars_core.mod.f90 outvars.mod.f90 phenology_lpx.mod.f90 waterbal_stash.mod.f90 vegdynamics_fix.mod.f90 gpp_pmodel.mod.f90 nuptake_constexu.mod.f90 npp_lpj.mod.f90 allocation.mod.f90 turnover.mod.f90 littersom_lpj.mod.f90 ntransform_xuri.mod.f90 soiltemp_sitch.mod.f90 
 SOURCES=sofun.f90 biosphere.f90 kill.f90 writeout_ascii.f90 
 
 # List of source code files for reduced setup, executing only SPLASH:
@@ -14,8 +14,12 @@ SPLASH_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml
 SPLASH_SOURCES=sofun.f90 biosphere_splash.f90
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL:
-PMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 params_modl.mod.f90 vars_core.mod.f90 outvars.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 gpp_pmodel.mod.f90
+PMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 plant_pmodel.mod.f90 gpp_pmodel.mod.f90 
 PMODEL_SOURCES=sofun.f90 biosphere_pmodel.f90
+
+# List of source code files for reduced setup, executing the C-only model:
+CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 plant_cmodel.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 npp_cmodel.mod.f90 turnover_cmodel.mod.f90 allocation_cmodel.mod.f90
+CMODEL_SOURCES=sofun.f90 biosphere_cmodel.f90
 
 # List of build dependencies (Makefile and include files):
 DEPEND=Makefile ../Makefile sofun_module_control.inc
@@ -29,6 +33,8 @@ SPLASH_OBJS=$(SPLASH_SOURCES:.f90=.o)
 SPLASH_MODOBJS=$(SPLASH_MODS:.f90=.o)
 PMODEL_OBJS=$(PMODEL_SOURCES:.f90=.o)
 PMODEL_MODOBJS=$(PMODEL_MODS:.f90=.o)
+CMODEL_OBJS=$(CMODEL_SOURCES:.f90=.o)
+CMODEL_MODOBJS=$(CMODEL_MODS:.f90=.o)
 
 # Archive file names
 ARCHIVE=sofun.a
@@ -67,6 +73,13 @@ pmodel: $(PMODEL_MODOBJS) $(PMODEL_OBJS)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(PMODEL_MODOBJS) $(PMODEL_OBJS) 
 
+# reduced model setup: C-model only
+cmodel: $(CMODEL_MODOBJS) $(CMODEL_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(CMODEL_MODOBJS) $(CMODEL_OBJS) 
+
 # default rules (.f90 -> .f -> .o/.do)
 # ------------
 %.f: %.f90 $(DEPEND)
@@ -97,8 +110,14 @@ $(PMODEL_MODOBJS): %.o: %.f
 $(PMODEL_OBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
+$(CMODEL_MODOBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
+$(CMODEL_OBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
 # don't delete the intermediate *.f files
-.SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f)
+.SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f) $(CMODEL_SOURCES:.f90=.f)
 
 # clean: remove .f, .o, .do, and .stb files
 .PHONY: clean

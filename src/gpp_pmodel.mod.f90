@@ -24,15 +24,19 @@ module _gpp
 
   private
   public dgpp, dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
-    initdaily_gpp, gpp, getlue, getout_daily_gpp, writeout_ascii_gpp
+    initdaily_gpp, gpp, getlue, getout_daily_gpp, writeout_ascii_gpp, mlue, &
+    mactnv_unitiabs, mrd_unitiabs
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
-  real, dimension(npft) :: dgpp            ! gross primary production [gC/m2/d]
-  real, dimension(npft) :: dtransp         ! daily transpiration [mm]
-  real, dimension(npft) :: drd             ! dark respiration [gC/m2/d]
-  real, dimension(npft) :: vcmax_canop     ! canopy-level Vcmax
+  real, dimension(npft)        :: dgpp             ! gross primary production [gC/m2/d]
+  real, dimension(npft)        :: dtransp          ! daily transpiration [mm]
+  real, dimension(npft)        :: drd              ! dark respiration [gC/m2/d]
+  real, dimension(npft)        :: vcmax_canop      ! canopy-level Vcmax
+  real, dimension(npft,nmonth) :: mlue             ! Light use efficiency: (gpp - rd) per unit light absorbed
+  real, dimension(npft,nmonth) :: mactnv_unitiabs  ! conversion factor to get from APAR to Rubisco-N
+  real, dimension(npft,nmonth) :: mrd_unitiabs     ! dark respiration per unit fAPAR (assuming fAPAR=1)
 
   !----------------------------------------------------------------
   ! Module-specific output variables
@@ -83,7 +87,7 @@ module _gpp
     real :: beta         ! Unit cost of carboxylation (dimensionless)
   end type paramstype_gpp
 
-  type( paramstype_gpp ) :: params_glob_gpp
+  type( paramstype_gpp ) :: params_gpp
 
   ! PFT-DEPENDENT PARAMETERS
   type pftparamstype_gpp
@@ -134,11 +138,8 @@ module _gpp
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, PRIVATE VARIABLES
   !----------------------------------------------------------------
-  real, dimension(npft,nmonth) :: mlue             ! Light use efficiency: (gpp - rd) per unit light absorbed
   real, dimension(npft,nmonth) :: mvcmax_unitiabs  ! Vcmax per unit fAPAR
-  real, dimension(npft,nmonth) :: mactnv_unitiabs  ! conversion factor to get from APAR to Rubisco-N
   real, dimension(npft,nmonth) :: factor25         ! factor to convert from 25 deg-normalised to ambient T
-  real, dimension(npft,nmonth) :: mrd_unitiabs     ! dark respiration per unit fAPAR (assuming fAPAR=1)
   real, dimension(npft,nmonth) :: mtransp_unitiabs ! transpiration per unit light absorbed [g H2O (mol photons)-1]
   real, dimension(npft,nmonth) :: mvcmax           ! Vcmax per unit ground area (mol m-2 s-1)
   ! real, dimension(npft,nmonth) :: mnrlarea         ! metabolic leaf Narea (active Rubisco-N) [gN/m2-leaf]
@@ -188,7 +189,7 @@ contains
     !
     !------------------------------------------------------------------
     use _params_core, only: dummy
-    use _vars_core, only: fapar_ind
+    use _plant, only: fapar_ind
     use _waterbal, only: solar
 
     ! arguments
@@ -269,7 +270,7 @@ contains
     ! possible.
     !------------------------------------------------------------------
     use _params_core, only: ndayyear, nlu
-    use _params_modl, only: params_pft
+    use _plant, only: params_pft_plant
     use _sofunutils, only: daily2monthly
     use _waterbal, only: evap
 
@@ -321,7 +322,7 @@ contains
         do moy=1,nmonth
 
           ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
-          if ( params_pft(pft)%c4grass ) then
+          if ( params_pft_plant(pft)%c4grass ) then
             ! C4: use infinite CO2
             out_pmodel = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
           else
@@ -606,13 +607,13 @@ contains
     vcmax25_unitiabs  = factor25_vcmax * vcmax_unitiabs
 
     ! Dark respiration
-    rd = params_glob_gpp%rd_to_vcmax * vcmax
+    rd = params_gpp%rd_to_vcmax * vcmax
 
     ! Dark respiration per unit fAPAR (assuming fAPAR=1)
-    rd_unitfapar = params_glob_gpp%rd_to_vcmax * vcmax_unitfapar
+    rd_unitfapar = params_gpp%rd_to_vcmax * vcmax_unitfapar
 
     ! Dark respiration per unit absorbed PPFD (assuming iabs=1)
-    rd_unitiabs = params_glob_gpp%rd_to_vcmax * vcmax_unitiabs
+    rd_unitiabs = params_gpp%rd_to_vcmax * vcmax_unitiabs
 
     ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
     actnv = vcmax25 * n_v
@@ -659,55 +660,35 @@ contains
     !----------------------------------------------------------------
     use _sofunutils, only: getparreal
     use _params_site, only: lTeBS, lGrC3, lGrC4
+    use _plant, only: params_pft_plant
 
     ! local variables
-    integer :: pft
+    integer     :: pft
 
     !----------------------------------------------------------------
     ! PFT-independent parameters
     !----------------------------------------------------------------
     ! unit cost of carboxylation
-    params_glob_gpp%beta  = getparreal( 'params/params_gpp_pmodel.dat', 'beta' )
+    params_gpp%beta  = getparreal( 'params/params_gpp_pmodel.dat', 'beta' )
 
     ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
-    params_glob_gpp%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
+    params_gpp%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
 
-    !----------------------------------------------------------------
-    ! PFT-dependent parameters
-    !----------------------------------------------------------------
-    pft = 0
-    if ( lTeBS ) then
-      pft = pft + 1
-      params_pft_gpp(pft) = getpftparams_gpp( 'TeBS' )
-    end if
-    if ( lGrC3 ) then
-      pft = pft + 1
-      params_pft_gpp(pft) = getpftparams_gpp( 'GrC3' )
-    end if
-    if ( lGrC4 ) then
-      pft = pft + 1
-      params_pft_gpp(pft) = getpftparams_gpp( 'GrC4' )
-    end if
+    do pft=1,npft
+
+      ! ! define PFT-extension used for parameter names in parameter file
+      ! write(char_pftcode, 999) params_pft_plant(pft)%pftcode
+
+      ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
+      params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
+
+    end do
+
+    return
+ 
+    999  format (I2.2)
 
   end subroutine getpar_modl_gpp
-
-
-  function getpftparams_gpp( pftname ) result( out_getpftpar )
-    !----------------------------------------------------------------
-    ! Read PFT parameters from respective file, given the PFT name
-    !----------------------------------------------------------------
-    use _sofunutils, only: getparreal
-
-    ! arguments
-    character(len=*) :: pftname
-
-    ! function return variable
-    type( pftparamstype_gpp ) out_getpftpar
-
-    ! leaf decay constant, read in as [years-1], central value: 0.0 yr-1 for deciduous plants
-    out_getpftpar%kphio = getparreal( trim('params/params_gpp_pft_'//pftname//'_pmodel.dat'), 'kphio' )
-
-  end function getpftparams_gpp
 
 
   function lue_approx( temp, vpd, elv, ca, gstar, ns_star, kmm ) result( out_lue )
@@ -808,7 +789,7 @@ contains
     real :: n
 
     ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
-    xi  = sqrt( params_glob_gpp%beta * kmm / (1.6 * ns_star))
+    xi  = sqrt( params_gpp%beta * kmm / (1.6 * ns_star))
     chi = xi / (xi + sqrt(vpd))
 
     ! light use efficiency (m)
@@ -859,7 +840,7 @@ contains
     ! beta = 1.6 * ns_star * vpd * (chi * ca - gstar) ** 2.0 / ( (kmm + gstar) * (ca ** 2.0) * (chi - 1.0) ** 2.0 )   ! see Estimation_of_beta.pdf
 
     ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
-    xi  = sqrt( ( params_glob_gpp%beta * ( kmm + gstar ) ) / ( 1.6 * ns_star ) )     ! see Eq. 2 in 'Estimation_of_beta.pdf'
+    xi  = sqrt( ( params_gpp%beta * ( kmm + gstar ) ) / ( 1.6 * ns_star ) )     ! see Eq. 2 in 'Estimation_of_beta.pdf'
     chi = gstar / ca + ( 1.0 - gstar / ca ) * xi / ( xi + sqrt(vpd) )  ! see Eq. 1 in 'Estimation_of_beta.pdf'
 
     ! consistent with this, directly return light-use-efficiency (m)
@@ -871,7 +852,7 @@ contains
     ! Define variable substitutes:
     vdcg = ca - gstar
     vacg = ca + 2.0 * gstar
-    vbkg = params_glob_gpp%beta * (kmm + gstar)
+    vbkg = params_gpp%beta * (kmm + gstar)
 
     ! Check for negatives:
     if (vbkg > 0) then
@@ -1405,15 +1386,15 @@ contains
   end subroutine getout_annual_gpp
 
 
-  subroutine writeout_ascii_gpp( year, spinup )
+  subroutine writeout_ascii_gpp( year )
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_siml, only: outyear, loutdrd, loutdgpp, loutdtransp, daily_out_startyr, daily_out_endyr
+    use _params_siml, only: spinup, outyear, loutdrd, loutdgpp, loutdtransp, &
+      daily_out_startyr, daily_out_endyr
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
-    logical, intent(in) :: spinup     ! true during spinup years
 
     ! local variables
     real :: itime
@@ -1484,7 +1465,7 @@ contains
   !   ! - leaf C:N 
   !   ! - LMA, SLA
   !   !------------------------------------------------------------------
-  !   use _params_modl, only: n_molmass, c_molmass, c_content_of_biomass
+  !   use _plant, only: n_molmass, c_molmass, c_content_of_biomass
   !   use _vars_core, only: sla, lma, r_cton_leaf, r_ntoc_leaf
   !   use _waterbal, only: meanmppfd
 

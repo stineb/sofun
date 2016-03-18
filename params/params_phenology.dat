@@ -4,9 +4,11 @@
 #                                      |
 # write value behind this position:    |->
 
-GDDBASE                                 5.0
-RAMP_PFT01                              0.0
-PHENTYPE_PFT01                          2.0
+gddbase                                 5.0
+ramp_pft_08                             0.0
+ramp_pft_09                             0.0
+phentype_GrC3                           2.0
+phentype_GrC4                           2.0
 
 #                                      |
 # write value *behind* this position:  |->

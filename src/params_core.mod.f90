@@ -32,6 +32,5 @@ module _params_core
   real, parameter :: h2o_molmass = 44.013        ! g H2O / mol H2O
   real, parameter :: c_content_of_biomass = 0.46 ! gC / g-dry mass
 
-
 end module _params_core
 

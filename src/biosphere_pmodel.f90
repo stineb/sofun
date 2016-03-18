@@ -18,8 +18,7 @@ subroutine biosphere( &
   use _params_core
   use _params_siml
   use _params_site
-  use _params_modl
-  use _vars_core, only: initannual, initdaily, initglobal, initpft
+  use _plant, only: getpar_modl_plant
   use _soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
   use _params_soil, only: paramtype_soil
   use _waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
@@ -61,14 +60,13 @@ subroutine biosphere( &
     ! read model parameters that may be varied for optimisation
     !----------------------------------------------------------------
     ! print*,'getting model parameters'
-    call getpar_modl()
+    call getpar_modl_plant()
     call getpar_modl_waterbal()
     call getpar_modl_gpp()
 
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
-    call initglobal()
     call initglobal_waterbal()
 
     !----------------------------------------------------------------
@@ -91,11 +89,6 @@ subroutine biosphere( &
   ! LOOP THROUGH GRIDCELLS
   !----------------------------------------------------------------
   do jpngr=1,maxgrid
-
-    !----------------------------------------------------------------
-    ! initialise annually updated variables
-    !----------------------------------------------------------------
-    call initannual()
 
     !----------------------------------------------------------------
     ! Get monthly light use efficiency, and Rd per unit of light absorbed
@@ -128,7 +121,6 @@ subroutine biosphere( &
         !----------------------------------------------------------------
         ! initialise daily updated variables 
         !----------------------------------------------------------------
-        call initdaily()
         call initdaily_waterbal()
         call initdaily_gpp()
 
@@ -171,9 +163,9 @@ subroutine biosphere( &
     !----------------------------------------------------------------
     ! Write to output
     !----------------------------------------------------------------
-    call writeout_ascii_waterbal( year, spinup )
-    call writeout_ascii_soiltemp( year, spinup )
-    call writeout_ascii_gpp( year, spinup )
+    call writeout_ascii_waterbal( year )
+    call writeout_ascii_soiltemp( year )
+    call writeout_ascii_gpp( year )
 
   end do
 

@@ -88,45 +88,6 @@ contains
   end subroutine estab_daily
 
 
-  subroutine update_foliage_vars( pft, jpngr )
-    !//////////////////////////////////////////////////////////////////
-    ! Updates PFT-specific state variables after change in LAI.
-    !------------------------------------------------------------------
-    use _vars_core, only: pleaf, lma, crownarea, lai_ind, nind, fapar_ind, fpc_grid
-
-    ! arguments
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
-
-    if (pleaf(pft,jpngr)%c%c12==0.0) then
-      lai_ind(pft,jpngr)  = 0.0
-      fapar_ind(pft,jpngr)  = 0.0
-      fpc_grid(pft,jpngr) = 0.0
-    else
-      ! This assumes that leaf canopy-average traits (LMA) do not change upon changes in LAI.
-      lai_ind(pft,jpngr) = pleaf(pft,jpngr)%c%c12 / ( lma(pft,jpngr) * crownarea(pft,jpngr) * nind(pft,jpngr) )
-      call update_fpc_grid( pft, jpngr )
-    end if
-
-  end subroutine update_foliage_vars
-
-
-  subroutine update_fpc_grid( pft, jpngr )
-    !//////////////////////////////////////////////////////////////////
-    ! Updates PFT-specific state variables after change in LAI.
-    !------------------------------------------------------------------
-    use _vars_core, only: lai_ind, fapar_ind, fpc_grid, crownarea, nind
-
-    ! arguments
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
-
-    fapar_ind(pft,jpngr) = get_fapar( lai_ind(pft,jpngr) )
-    fpc_grid(pft,jpngr)  = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fapar_ind(pft,jpngr) ) 
-
-  end subroutine update_fpc_grid
-
-
   subroutine add_sapl( pft, jpngr )
     !//////////////////////////////////////////////////////////////////
     ! 
@@ -155,45 +116,6 @@ contains
     ! proot(pft,jpngr)%n%n14 = croot_sapl * r_ntoc_root(pft)
 
   end subroutine add_sapl
-
-
-  function get_fpc_grid( crownarea, nind, fapar_ind ) result( fpc_grid )
-    !////////////////////////////////////////////////////////////////
-    ! FRACTIONAL PLANT COVERAGE
-    ! Function returns total fractional plant cover of a PFT
-    ! Eq. 8 in Sitch et al., 2003
-    !----------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: crownarea
-    real, intent(in) :: nind
-    real, intent(in) :: fapar_ind
-
-    ! function return variable
-    real, intent(out) :: fpc_grid
-
-    fpc_grid = crownarea * nind * fapar_ind
-
-  end function get_fpc_grid
-
-
-  function get_fapar( lai ) result( fapar )
-    !////////////////////////////////////////////////////////////////
-    ! FOLIAGE PROJECTIVE COVER 
-    ! = Fraction of Absorbed Photosynthetically Active Radiation
-    ! Function returns fractional plant cover an individual
-    ! Eq. 7 in Sitch et al., 2003
-    !----------------------------------------------------------------
-    use _params_modl, only: kbeer
-
-    ! arguments
-    real, intent(in) :: lai
-
-    ! function return variable
-    real, intent(out) :: fapar
-
-    fapar = ( 1.0 - exp( -1.0 * kbeer * lai) )
-
-  end function get_fapar
 
 
 end module _vegdynamics

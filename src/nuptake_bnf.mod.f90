@@ -463,9 +463,6 @@ contains
     !----------------------------------------------------------------
     use _sofunutils, only: getparreal
 
-    ! C exudation rate per unit root mass
-    exurate = getparreal( 'params/params_nuptake_constexu.dat', 'exurate' )
-
     ! uptake efficiency for equation
     ! dCexu/dNup = K / (N0 - Nup); K=1/eff_nup
     eff_nup = getparreal( 'params/params_nuptake_constexu.dat', 'eff_nup' )

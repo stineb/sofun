@@ -69,6 +69,7 @@ endif
 EXE        = runsofun
 SPLASH_EXE = runsplash
 PMODEL_EXE = runpmodel
+CMODEL_EXE = runcmodel
 
 ARCHIVES= ./src/sofun.a
 # ARLPJ= ./lpj/lpj.a (archive names when compiling with different option)
@@ -109,10 +110,15 @@ pmodel:
 	 $(MAKE) pmodel -C src
 	 $(FCOM) -o $(PMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
 
+# reduced model setup: only SPLASH and PMODEL
+cmodel: 
+	 $(MAKE) cmodel -C src
+	 $(FCOM) -o $(CMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
+
 # clean: remove exe and .o and .do files
 .PHONY: clean
 clean:
-	-rm $(EXE) $(SPLASH_EXE) $(PMODEL_EXE)
+	-rm $(EXE) $(SPLASH_EXE) $(PMODEL_EXE) $(CMODEL_EXE)
 	$(MAKE) clean -C src
 # include libraries when necessary
 #	$(MAKE) clean -C lpj/cdfcode

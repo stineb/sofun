@@ -6,6 +6,7 @@
 
 r_root                                  0.91300
 r_sapw                                  0.04400
+r_cexp                                  0.004000
 
 #                                      |
 # write value *behind* this position:  |->

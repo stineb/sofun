@@ -1260,17 +1260,16 @@ contains
   end subroutine getout_daily_waterbal
 
 
-  subroutine writeout_ascii_waterbal( year, spinup )
+  subroutine writeout_ascii_waterbal( year )
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use _params_core, only: ndayyear, nmonth
-    use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
+    use _params_siml, only: spinup, firstyeartrend, spinupyears, daily_out_startyr, &
       daily_out_endyr, outyear
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
-    logical, intent(in) :: spinup     ! true during spinup years
 
     ! Local variables
     real :: itime

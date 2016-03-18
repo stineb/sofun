@@ -4,13 +4,6 @@ module _phenology
   ! Adopted from LPX-Bern
   ! Contains the "main" subroutine 'gettempphenology and phenology' and all 
   ! necessary subroutines for handling input/output. 
-  ! Every module that implements 'tempphenology' must contain 
-  ! this list of subroutines (names that way).
-  !   - tempphenology
-  !   - getpar_modl_tempphenology
-  ! Required module-independent model state variables (necessarily 
-  ! updated by 'waterbal') are:
-  !   - (none)
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
@@ -18,16 +11,39 @@ module _phenology
   
   implicit none
 
-  ! PHENOLOGY PARAMETERS
-  real                  :: GDDBASE ! GDD base, for PFT11-14, a T0 is chosen to be 0deg C (Prentice et al. 1992, J.o.Biogeography), pftpar(pft,33) in LPX
-  real, dimension(npft) :: RAMP    ! summergreen phenology RAMP, GDD requirement to grow full leaf canopy
+  private
+  public gettempphenology, sprout, shedleaves, params_pft_pheno
 
-  logical, dimension(npft) :: summergreen, evergreen, raingreen  ! phenology type
-
-  ! MODULE-SPECIFIC VARIABLES
-  real, dimension(ndayyear,npft) :: dtphen   ! daily temperature-driven phenology (=dphen_t in LPX)
-  logical, dimension(ndayyear,npft) :: sprout   ! boolean whether PFT is present
+  !----------------------------------------------------------------
+  ! Public, module-specific state variables
+  !----------------------------------------------------------------
+  real, dimension(ndayyear,npft)    :: dtphen       ! daily temperature-driven phenology (=dphen_t in LPX)
+  logical, dimension(ndayyear,npft) :: sprout       ! boolean whether PFT is present
   logical, dimension(ndayyear,npft) :: shedleaves   ! boolean whether PFT is present
+
+
+  !----------------------------------------------------------------
+  ! Module-specific output variables
+  !----------------------------------------------------------------
+
+
+  !----------------------------------------------------------------
+  ! Parameters
+  !----------------------------------------------------------------
+  type paramstype_pheno
+    real :: gddbase ! GDD base, for PFT11-14, a T0 is chosen to be 0deg C (Prentice et al. 1992, J.o.Biogeography), pftpar(pft,33) in LPX
+  end type paramstype_pheno
+
+  type( paramstype_pheno ) :: params_pheno
+
+  type pftparamstype_pheno
+    real    :: ramp    ! summergreen phenology ramp, GDD requirement to grow full leaf canopy
+    logical :: evergreen
+    logical :: summergreen
+    logical :: raingreen  
+  end type pftparamstype_pheno
+
+  type( pftparamstype_pheno ), dimension(npft) :: params_pft_pheno
 
 
 contains
@@ -37,7 +53,7 @@ contains
     ! Defines dtphen, the temperature-driven phenology
     !----------------------------------------------------------
     use _params_core, only: ndayyear, maxgrid, nmonth, middaymonth
-    use _params_modl, only: tree
+    use _plant, only: params_pft_plant
     use _sofunutils, only: daily2monthly, monthly2daily
 
     ! arguments
@@ -82,10 +98,10 @@ contains
     do pft=1,npft
       !----------------------------------------------------------
       ! Find day of leaf abscission ('firstday') at end of summer
-      ! i.e. when daily temperature falls below GDDBASE.
+      ! i.e. when daily temperature falls below gddbase.
       !----------------------------------------------------------
       firstday=midsummer+1
-      do while (dtemp_int(firstday)>=GDDBASE .and. firstday/=midsummer)
+      do while (dtemp_int(firstday)>=params_pheno%gddbase .and. firstday/=midsummer)
         firstday=firstday+1
         if (firstday>ndayyear) firstday=1
       enddo
@@ -94,10 +110,10 @@ contains
       ! write(0,*) dtemp_int
       ! write(0,*) 'midsummer', midsummer
       ! write(0,*) 'firstday', firstday
-      ! write(0,*) 'summergreen', summergreen
-      ! write(0,*) 'GDDBASE', GDDBASE
+      ! write(0,*) 'summergreen', params_pft_pheno%summergreen
+      ! write(0,*) 'params_pheno%gddbase', params_pheno%gddbase
 
-      if (summergreen(pft)) then
+      if (params_pft_pheno(pft)%summergreen) then
         !----------------------------------------------------------
         ! summergreen TAXA
         !----------------------------------------------------------
@@ -108,10 +124,10 @@ contains
           day=firstday+1
           if (day>ndayyear) day=1
           do while (day/=firstday)
-            if (dtemp_int(day)>GDDBASE) then ! growing day
-              gdd = gdd + dtemp_int(day) - GDDBASE
-              if (RAMP(pft)>0.0) then
-                dtphen(day,pft) = min( gdd / RAMP(pft), 1.0 )
+            if (dtemp_int(day)>params_pheno%gddbase) then ! growing day
+              gdd = gdd + dtemp_int(day) - params_pheno%gddbase
+              if (params_pft_pheno%ramp(pft)>0.0) then
+                dtphen(day,pft) = min( gdd / params_pft_pheno%ramp(pft), 1.0 )
               else
                 dtphen(day,pft) = 1.0
               endif
@@ -125,7 +141,7 @@ contains
           ! stop
         endif
         
-        if (tree(pft)) then
+        if (params_pft_plant(pft)%tree) then
           !----------------------------------------------------------
           ! TREES
           !----------------------------------------------------------
@@ -173,7 +189,7 @@ contains
     do day=1,ndayyear
       do pft=1,npft
 
-        if (summergreen(pft)) then
+        if (params_pft_pheno(pft)%summergreen) then
           !----------------------------------------------------------
           ! temperature-driven phenology summergreen
           !----------------------------------------------------------
@@ -224,37 +240,32 @@ contains
   end subroutine gettempphenology
 
 
-  subroutine getpar_phenology( )
+  subroutine getpar_phenology()
     !////////////////////////////////////////////////////////////////
     ! Subroutine reads nuptake module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
     use _sofunutils, only: getparreal
+    use _plant, only: params_pft_plant
 
     ! local variables
-    character*2           :: char_pftno
-    real, dimension(npft) :: PHENTYPE
-    integer               :: pft
-
-    ! initialise
+    real        :: phentype
+    integer     :: pft
 
     ! growing degree days base (usually 5 deg C)
-    GDDBASE = getparreal( 'params/params_phenology.dat', 'GDDBASE' )
+    params_pheno%gddbase = getparreal( 'params/params_phenology.dat', 'gddbase' )
 
     do pft=1,npft
 
-      ! define PFT-extension used for parameter names in parameter file
-      write(char_pftno, 999) pft
-
-      ! RAMP slope for phenology (1 for grasses: immediate phenology turning on)
-      RAMP(pft) = getparreal( 'params/params_phenology.dat', trim('RAMP_PFT')//char_pftno )
+      ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
+      params_pft_pheno(pft)%ramp = getparreal( 'params/params_phenology.dat', 'ramp_pft_'//params_pft_plant(pft)%pftname )
 
       ! phenology type
-      PHENTYPE(pft) = getparreal( 'params/params_phenology.dat', trim('PHENTYPE_PFT')//char_pftno )
+      phentype = getparreal( 'params/params_phenology.dat', 'phentype_pft_'//params_pft_plant(pft)%pftname )
 
-      if (PHENTYPE(pft)==1.0) evergreen(pft)   = .true.
-      if (PHENTYPE(pft)==2.0) summergreen(pft) = .true.
-      if (PHENTYPE(pft)==3.0) raingreen(pft)   = .true.
+      if (phentype==1.0) params_pft_pheno(pft)%evergreen   = .true.
+      if (phentype==2.0) params_pft_pheno(pft)%summergreen = .true.
+      if (phentype==3.0) params_pft_pheno(pft)%raingreen   = .true.
 
     end do
  
