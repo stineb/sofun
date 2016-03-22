@@ -60,6 +60,9 @@ The separation between the main program 'sofun' and the subroutine 'biosphere' i
 
 Non-module-specific subroutines are defined in .F files while all module-specific subroutines are specified in their respective modlue (.mod.F). 
 
+## Coding philosophy
+- Functions are strictly self-contained: public variables are updated within functions
+- Subroutines are used to update public variables
 
 ## State variables
 

@@ -61,15 +61,22 @@ contains
     integer :: lu
     real    :: ftemp_air
     real    :: ftemp_soil
-    real    :: dresp_maint = 0.0    ! daily total maintenance respiration
 
-    ! write(0,*) '---- in npp:'
+    ! print*, '---- in npp:'
 
     !-------------------------------------------------------------------------
     ! PFT LOOP
     !-------------------------------------------------------------------------
     do pft=1,npft
-      if (ispresent(pft,jpngr)) then
+
+      if ( ispresent(pft,jpngr) ) then
+
+        ! print*, '---------------in NPP'
+        ! print*, 'drd ',drd(pft)
+        ! print*, 'dgpp(pft) ',dgpp(pft)
+        ! print*, 'dnpp(pft) ',dnpp(pft)
+        ! print*, 'dcex(pft) ',dcex(pft)
+        ! print*, 'plabl(pft,jpngr) ',plabl(pft,jpngr)
 
         lu = params_pft_plant(pft)%lu_category
         
@@ -88,12 +95,6 @@ contains
           drsapw(pft) = calc_resp_maint( psapw(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_sapw )
         endif
         
-        ! daily total maintenance repsiration
-        dresp_maint = drleaf(pft) + drroot(pft)
-        if (params_pft_plant(pft)%tree) then
-          dresp_maint = dresp_maint + drsapw(pft)
-        endif
-
         !/////////////////////////////////////////////////////////////////////////
         ! DAILY NPP 
         ! NPP is the sum of C available for growth and for N uptake 
@@ -102,16 +103,15 @@ contains
         ! trophic respiration is immediate, it makes thus no sense to calculate 
         ! full isotopic effects of gross exchange _fluxes.
         !-------------------------------------------------------------------------
-        drauto(pft) = dresp_maint
-        dnpp(pft)   = carbon( dgpp(pft) - drauto(pft) )
+        dnpp(pft)   = carbon( dgpp(pft) - drgrow(pft) - drleaf(pft) - drroot(pft) )
 
         if ( dnpp(pft)%c12 < 0.0 ) then
-          write(0,*) 'pft ',pft
-          write(0,*) 'drd ',drd(pft)
-          write(0,*) 'drroot',drroot(pft)
-          write(0,*) 'dgpp ',dgpp(pft)
-          write(0,*) 'dnpp ',dnpp(pft)
-          write(0,*) 'NPP: dnpp negative'
+          print*, 'pft    ',pft
+          print*, 'drleaf ',drleaf(pft)
+          print*, 'drroot ',drroot(pft)
+          print*, 'dgpp   ',dgpp(pft)
+          print*, 'dnpp   ',dnpp(pft)
+          print*, 'NPP: dnpp negative'
           stop
         end if
 
@@ -123,7 +123,7 @@ contains
         ! PFT loop has to be closed above to get total NPP over all PFTs in each 
         ! LU. 
         !-------------------------------------------------------------------------
-        dnup(pft) = nitrogen(0.0) ! XXX WILL BE DETERMINED IN ALLOCATION
+        ! dnup(pft) = nitrogen(0.0) ! XXX WILL BE DETERMINED IN ALLOCATION
         dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 )      
 
         ! ! SR nuptake calculates dcex and dnup (incl. dnup_act, dnup_pas, ...)
@@ -139,15 +139,15 @@ contains
         !-------------------------------------------------------------------------
         call orgcp( orgpool( cminus( dnpp(pft), carbon(dcex(pft)) ), dnup(pft) ), plabl(pft,jpngr) )
 
-        ! write(0,*) '---------------in NPP'
-        ! write(0,*) 'dclabl ',cminus( dnpp(pft), carbon(dcex(pft)))
-        ! write(0,*) 'drd ',drd(pft)
-        ! write(0,*) 'drroot',drroot(pft)
-        ! write(0,*) 'dgpp(pft) ',dgpp(pft)
-        ! write(0,*) 'dnpp(pft) ',dnpp(pft)
-        ! write(0,*) 'dcex(pft) ',dcex(pft)
-        ! write(0,*) 'dnup(pft) ',dnup(pft)
-        ! write(0,*) 'plabl(pft,jpngr) ',plabl(pft,jpngr)
+        ! print*, '---------------in NPP'
+        ! print*, 'plabl  ', plabl(pft,jpngr)
+        ! print*, 'drd    ', drd(pft)
+        ! print*, 'drroot ',drroot(pft)
+        ! print*, 'dgpp(pft) ',dgpp(pft)
+        ! print*, 'dnpp(pft) ',dnpp(pft)
+        ! print*, 'dnup(pft) ',dnup(pft)
+        ! print*, 'dcex(pft) ',dcex(pft)
+        ! if (doy==39) stop
 
         ! !-------------------------------------------------------------------------
         ! ! Leaves are shed in (annual) grasses (=end of vegetation period) when 
@@ -162,10 +162,18 @@ contains
         !   end if
         ! end if
 
+      else
+
+        dnpp(pft)   = carbon(0.0)
+        drleaf(pft) = 0.0
+        drroot(pft) = 0.0
+        drsapw(pft) = 0.0
+        dcex(pft)   = 0.0
+
       endif
     end do
 
-    ! write(0,*) '---- finished npp'
+    ! print*, '---- finished npp'
 
   end subroutine npp
 

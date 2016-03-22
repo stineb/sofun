@@ -30,10 +30,17 @@ else:
 ## Loop over site names and submit job for each site
 ##--------------------------------------------------------------------
 siteinfo = pandas.read_csv( filnam_siteinfo_csv )
-sitenames = siteinfo['mysitename']
-for idx in sitenames:
-  print 'submitting job for site ' + idx + '...'
-  os.system( 'echo ' + idx + '| ./runpmodel' )
+for index, row in siteinfo.iterrows():
+    if row['classid'] == 'GRA':
+        print 'submitting job for site ' + row['mysitename'] + '...'
+        os.system( 'echo ' + row['mysitename'] + '| ./runpmodel' )
+
+
+
+# sitenames = siteinfo['mysitename']
+# for idx in sitenames:
+  # print 'submitting job for site ' + idx + '...'
+  # os.system( 'echo ' + idx + '| ./runpmodel' )
 
 # ## test: CH-Oe1 only
 # print 'submitting job for site ' + 'CH-Oe1' + '...'

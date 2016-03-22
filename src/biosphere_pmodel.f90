@@ -48,7 +48,7 @@ subroutine biosphere( &
   integer :: dm, moy, jpngr, day
 
   ! ! XXX PMODEL_TEST
-  ! write(0,*) 'WARNING: FAPAR = 1.00 USED IN PMODEL'
+  ! print* 'WARNING: FAPAR = 1.00 USED IN PMODEL'
 
   !----------------------------------------------------------------
   ! INITIALISATIONS
@@ -127,34 +127,34 @@ subroutine biosphere( &
         !----------------------------------------------------------------
         ! get soil moisture, and runoff
         !----------------------------------------------------------------
-        ! write(0,*) 'calling waterbal() ... '
-        ! write(0,*) 'with arguments ', jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr)
+        ! print* 'calling waterbal() ... '
+        ! print* 'with arguments ', jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr)
         call waterbal( jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr) )
-        ! write(0,*) '... done'
+        ! print* '... done'
 
         !----------------------------------------------------------------
         ! calculate soil temperature
         !----------------------------------------------------------------
-        ! write(0,*) 'calling soiltemp() ... '
+        ! print* 'calling soiltemp() ... '
         call soiltemp( jpngr, moy, day, dtemp_field(:,jpngr), params_soil_field(jpngr) )
-        ! write(0,*) '... done'
+        ! print* '... done'
 
         !----------------------------------------------------------------
         ! calculate GPP
         !----------------------------------------------------------------
-        ! write(0,*) 'calling gpp() ... '
+        ! print* 'calling gpp() ... '
         call gpp( jpngr, day, moy, mfapar_field(moy,jpngr) )
         ! call gpp( jpngr, day, moy, 1.00 )
-        ! write(0,*) '... done'
+        ! print* '... done'
 
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
-        ! write(0,*) 'calling getout_daily_waterbal() ... '
+        ! print* 'calling getout_daily_waterbal() ... '
         call getout_daily_waterbal( jpngr, moy, day )
         call getout_daily_soiltemp( jpngr, moy, day )
         call getout_daily_gpp( jpngr, moy, day )
-        ! write(0,*) '... done'
+        ! print* '... done'
 
       end do
 

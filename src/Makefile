@@ -18,7 +18,7 @@ PMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml
 PMODEL_SOURCES=sofun.f90 biosphere_pmodel.f90
 
 # List of source code files for reduced setup, executing the C-only model:
-CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 plant_cmodel.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 npp_cmodel.mod.f90 turnover_cmodel.mod.f90 allocation_cmodel.mod.f90
+CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 plant_cmodel.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 npp_cmodel.mod.f90 turnover_cmodel.mod.f90 allocation_cmodel.mod.f90 vegdynamics_fix.mod.f90
 CMODEL_SOURCES=sofun.f90 biosphere_cmodel.f90
 
 # List of build dependencies (Makefile and include files):

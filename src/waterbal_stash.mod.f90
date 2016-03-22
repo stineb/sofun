@@ -113,6 +113,8 @@ module _waterbal
     real :: lambda
   end type outtype_berger
 
+  type( outtype_berger ), dimension(ndayyear) :: out_berger    ! stores output of function berger_tls
+
   ! Radiation variables. aet, sw, and cpa are affected by soil moisture.
   type evaptype
     real :: rn         ! daily net radiation (J/m2)
@@ -126,8 +128,7 @@ module _waterbal
   end type evaptype
 
   ! SPLASH state variables
-  type( outtype_berger ), dimension(ndayyear)   :: out_berger    ! stores output of function berger_tls
-  type( evaptype )      , dimension(nlu)        :: evap
+  type( evaptype ) , dimension(nlu) :: evap
 
 
 contains
@@ -232,7 +233,7 @@ contains
     real, intent(in), dimension(ndayyear) :: sf            ! fraction of sunshine hours 
 
     ! function return variable
-    type( solartype ) :: out_solar
+    type( solartype ), intent(out) :: out_solar
 
     ! local variables
     integer            :: doy
@@ -395,7 +396,7 @@ contains
     real,    intent(in) :: sw  ! evaporative supply rate, mm/hr
 
     ! function return variable
-    type( evaptype )  :: out_evap
+    type( evaptype ), intent(out)  :: out_evap
 
     ! local variables
     real :: dr                           ! distance factor
@@ -601,13 +602,13 @@ contains
     ! Calculates distance factor (dr), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! arguments
-    real :: nu
+    real, intent(in) :: nu
 
     ! local variables
     real :: rho
 
     ! function return variable
-    real :: dr
+    real, intent(out) :: dr
 
     ! Berger et al. (1993)
     rho = (1.0 - ke**2)/(1.0 + ke * dgcos( nu ))        
@@ -621,10 +622,10 @@ contains
     ! Calculates declination angle (delta), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! arguments
-    real :: lambda
+    real, intent(in) :: lambda
 
     ! function return variable
-    real :: delta
+    real, intent(out) :: delta
 
     ! Woolf (1968)
     delta = asin( dgsin( lambda ) * dgsin( keps ) )   ! xxx use asin with single-precision compilation
@@ -638,13 +639,14 @@ contains
     ! Calculates variable substitutes (u and v), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! arguments
-    real :: delta, lat
+    real, intent(in) :: delta
+    real, intent(in) :: lat
 
     ! local variables
     real :: ru, rv
 
     ! function return variable
-    real, dimension(2) :: out_ru_rv
+    real, dimension(2), intent(out) :: out_ru_rv
 
     ru = dgsin(delta) * dgsin(lat)
     rv = dgcos(delta) * dgcos(lat)
@@ -660,10 +662,10 @@ contains
     ! Calculates the sunset hour angle (hs), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! arguments
-    real :: ru, rv
+    real, intent(in) :: ru, rv
 
     ! function return variable
-    real :: hs
+    real, intent(out) :: hs
 
     ! Note: u/v == tan(delta)*tan(lat)
     ! Eq. 3.22, Stine & Geyer (2001)
@@ -685,14 +687,14 @@ contains
     ! Calculates transmittivity (tau), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! arguments
-    real :: sf     ! sunshine fraction
-    real :: elv    ! elevation
+    real, intent(in) :: sf     ! sunshine fraction
+    real, intent(in) :: elv    ! elevation
 
     ! local variables
     real :: tau_o
 
     ! function return variable
-    real :: tau
+    real, intent(out) :: tau
 
     ! Eq. 11, Linacre (1968)
     tau_o = (kc + kd*sf)
@@ -780,7 +782,7 @@ contains
 
   ! xxx put these functions into a 'contain' within calling SR?
 
-  function dgcos( x )
+  function dgcos( x ) result( dgcos_out )
     !----------------------------------------------------------------   
     ! Calculates the cosine of an angle given in degrees. Equal to 
     ! 'dsin' in Python version.
@@ -791,15 +793,15 @@ contains
     real, intent(in) :: x  ! angle, degrees (0-360)
 
     ! function return value
-    real, intent(out) :: dgcos ! cosine value of x when x is in degrees
+    real, intent(out) :: dgcos_out ! cosine value of x when x is in degrees
 
     !dgcos = dcos(x*pi/180.0)
-    dgcos = cos(x*pi/180.0)  ! xxx use cos with single-precision compilation
+    dgcos_out = cos(x*pi/180.0)  ! xxx use cos with single-precision compilation
 
   end function dgcos
 
 
-  function dgsin( x )
+  function dgsin( x ) result( dgsin_out )
     !----------------------------------------------------------------   
     ! Calculates the sinus of an angle given in degrees. Equal to 
     ! 'dsin' in Python version.
@@ -810,15 +812,15 @@ contains
     real, intent(in) :: x  ! angle, degrees (0-360)
 
     ! function return value
-    real, intent(out) :: dgsin ! sinus value of x when x is in degrees
+    real, intent(out) :: dgsin_out ! sinus value of x when x is in degrees
 
-    !dgsin = dsin(x*pi/180.0)
-    dgsin = sin(x*pi/180.0)   ! xxx use cos with single-precision compilation
+    !dgsin_out = dsin(x*pi/180.0)
+    dgsin_out = sin(x*pi/180.0)   ! xxx use cos with single-precision compilation
 
   end function dgsin
 
 
-  function degrees( x )
+  function degrees( x ) result( degrees_out )
     !----------------------------------------------------------------   
     ! Returns corresponding degrees if x is given in radians
     !----------------------------------------------------------------   
@@ -828,14 +830,14 @@ contains
     real, intent(in) :: x  ! angle, radians
 
     ! function return value
-    real, intent(out) :: degrees
+    real, intent(out) :: degrees_out
 
-    degrees = x*180.0/pi
+    degrees_out = x*180.0/pi
 
   end function degrees
 
 
-  function radians( x )
+  function radians( x ) result( radians_out )
     !----------------------------------------------------------------   
     ! Returns corresponding radians if x is given in degrees
     !----------------------------------------------------------------   
@@ -845,9 +847,9 @@ contains
     real, intent(in) :: x  ! angle, radians
 
     ! function return value
-    real, intent(out) :: radians
+    real, intent(out) :: radians_out
 
-    radians = x*pi/180.0
+    radians_out = x*pi/180.0
 
   end function radians
 
@@ -863,7 +865,7 @@ contains
     integer, intent(in) :: day   ! day of the year
 
     ! function return value
-    type(outtype_berger) :: out_berger  ! stores output of function berger_tls
+    type(outtype_berger), intent(out) :: out_berger  ! stores output of function berger_tls
 
     ! local variables
     real :: anm, ranm, anv, ranv

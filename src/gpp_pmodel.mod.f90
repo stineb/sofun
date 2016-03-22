@@ -189,8 +189,8 @@ contains
     !
     !------------------------------------------------------------------
     use _params_core, only: dummy
-    use _plant, only: fapar_ind
-    use _waterbal, only: solar
+    use _plant, only: canopy, params_pft_plant, ispresent
+    use _waterbal, only: solar, evap
 
     ! arguments
     integer, intent(in) :: jpngr     ! gridcell number
@@ -202,6 +202,7 @@ contains
 
     ! local variables
     integer :: pft
+    integer :: lu
 
     !----------------------------------------------------------------
     ! CALCULATE PREDICTED GPP FROM P-model
@@ -209,53 +210,59 @@ contains
     !----------------------------------------------------------------
     do pft=1,npft
 
+      lu = params_pft_plant(pft)%lu_category
+
       ! Override interactively simulated fAPAR with data
-      if (fapar_prescr/=dummy) fapar_ind(pft,jpngr) = fapar_prescr
+      if (fapar_prescr/=dummy) canopy(pft)%fapar_ind = fapar_prescr
 
-      if (fapar_ind(pft,jpngr)>0.0) then
+      if ( canopy(pft)%fapar_ind>0.0 ) then
 
-        ! fapar_ind(pft,jpngr) = 1.0
-        ! write(0,*) 'in SR gpp: fapar          ', fapar_ind(pft,jpngr) !OK!
-        ! write(0,*) 'in SR gpp: doy, solar%dppfd(doy)', doy, solar%dppfd(doy) !OK!
-        ! write(0,*) 'in SR gpp: moy, mlue(pft,moy) ', moy, mlue(pft,moy) !OK! 
-        ! dgpp(pft)    = calc_dgpp( fapar_ind(pft,jpngr), solar%dppfd(doy), mlue(pft,moy) )
-        dgpp(pft)    = calc_dgpp( fapar_ind(pft,jpngr), solar%dppfd(doy), mlue(pft,moy) )
+        ! print*, 'in SR gpp: fapar          ', canopy(pft)%fapar_ind !OK!
+        ! print*, 'in SR gpp: doy, solar%dppfd(doy)', doy, solar%dppfd(doy) !OK!
+        ! print*, 'in SR gpp: moy, mlue(pft,moy) ', moy, mlue(pft,moy) !OK! 
+        ! print*, 'in SR gpp: evap(lu)%cpa ', evap(lu)%cpa
+        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy) )
+        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), evap(lu)%cpa )
 
         ! Dark respiration
-        drd(pft)     = calc_drd( fapar_ind(pft,jpngr), solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
+        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), evap(lu)%cpa )
         ! drd(pft)     = calc_drd( 0.05, solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
-        ! write(0,*) 'doy, drd(pft)             ', doy, drd(pft)
+        ! print*, 'doy, drd(pft)             ', doy, drd(pft)
 
         ! transpiration
-        dtransp(pft) = calc_dtransp( fapar_ind(pft,jpngr), solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
+        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), evap(lu)%cpa )
         ! dtransp(pft) = calc_dtransp( 0.05, solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
 
         ! Vcmax
-        vcmax_canop(pft) = calc_vcmax_canop( fapar_ind(pft,jpngr), mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
+        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), evap(lu)%cpa )
         ! mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
 
+        ! print*, 'dgpp(pft)', dgpp(pft)
+        ! print*, 'drd(pft)', drd(pft)
+        ! stop
 
       else  
 
-        dgpp(pft)    = 0.0
-        drd(pft)     = 0.0
-        dtransp(pft) = 0.0
+        dgpp(pft)        = 0.0
+        drd(pft)         = 0.0
+        dtransp(pft)     = 0.0
+        vcmax_canop(pft) = 0.0
 
       end if 
 
     end do
 
-    ! write(0,*) '---in gpp: '
-    ! write(0,*) 'fapar_ind(pft,jpngr) ',fapar_ind
-    ! write(0,*) 'solar%dppfd(doy) ',solar%dppfd(doy)
-    ! write(0,*) 'mlue(pft,moy) ',mlue(pft,moy)
-    ! write(0,*) 'solar%meanmppfd(moy) ',solar%meanmppfd(moy)
-    ! write(0,*) 'mrd_unitiabs(moy) ',mrd_unitiabs(moy)
-    ! write(0,*) 'dgpp(pft) ',dgpp
-    ! write(0,*) 'drd(pft)  ',drd
+    ! print*, '---in gpp: '
+    ! print*, 'fapar_ind(pft,jpngr) ',fapar_ind
+    ! print*, 'solar%dppfd(doy) ',solar%dppfd(doy)
+    ! print*, 'mlue(pft,moy) ',mlue(pft,moy)
+    ! print*, 'solar%meanmppfd(moy) ',solar%meanmppfd(moy)
+    ! print*, 'mrd_unitiabs(moy) ',mrd_unitiabs(moy)
+    ! print*, 'dgpp(pft) ',dgpp
+    ! print*, 'drd(pft)  ',drd
 
-    ! write(0,*) 'dgpp', dgpp
-    ! write(0,*) 'sum(dppfd)',sum(dppfd)
+    ! print*, 'dgpp', dgpp
+    ! print*, 'sum(dppfd)',sum(dppfd)
     ! stop
 
   end subroutine gpp
@@ -272,7 +279,6 @@ contains
     use _params_core, only: ndayyear, nlu
     use _plant, only: params_pft_plant
     use _sofunutils, only: daily2monthly
-    use _waterbal, only: evap
 
     ! arguments
     integer, intent(in)                   :: jpngr    ! gridcell number
@@ -292,26 +298,26 @@ contains
     mvpd(:)  = daily2monthly( dvpd(:), "mean" )
 
     ! xxx try out: -- THIS WORKS PERFECTLY -- 
-    ! write(0,*) 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
+    ! print*, 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
     ! co2   = 376.0
     ! elv   = 450.0
     ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
     ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
     ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
 
-    ! write(0,*) 'co2'
-    ! write(0,*) co2
-    ! write(0,*) 'mtemp'
-    ! write(0,*) mtemp
-    ! write(0,*) 'mvpd'
-    ! write(0,*) mvpd
+    ! print*, 'co2'
+    ! print*, co2
+    ! print*, 'mtemp'
+    ! print*, mtemp
+    ! print*, 'mvpd'
+    ! print*, mvpd
     ! stop
 
     ! Run P-model for monthly averages and store monthly variables 
     ! per unit absorbed light (not corrected for soil moisture)
 
-    ! XXX PMODEL_TEST
-    write(0,*) 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
+    ! ! XXX PMODEL_TEST
+    ! print*, 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
 
     do lu=1,nlu
 
@@ -324,15 +330,14 @@ contains
           ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
           if ( params_pft_plant(pft)%c4grass ) then
             ! C4: use infinite CO2
-            out_pmodel = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
+            out_pmodel = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "full" )
           else
             ! C3
-            out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), evap(lu)%cpa, mvpd(moy), elv, "full" )
+            out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "full" )
           end if
 
           ! Light use efficiency: (gpp - rd) per unit light absorbed
           mlue(pft,moy)             = out_pmodel%lue
-          ! write(0,*) 'moy, mlue', moy, mlue(moy)
           
           ! Vcmax per unit absorbed light
           mvcmax_unitiabs(pft,moy)  = out_pmodel%vcmax_unitiabs
@@ -357,22 +362,22 @@ contains
     end do
 
     ! xxx debug
-    ! write(0,*) 'mtemp', mtemp
-    ! write(0,*) 'mvpd', mvpd
-    ! write(0,*) 'co2', co2
-    ! write(0,*) 'elv', elv
-    ! write(0,*) 'mlue', mlue
-    ! write(0,*) 'mvcmax_unitiabs', mvcmax_unitiabs
-    ! write(0,*) 'mactnv_unitiabs', mactnv_unitiabs
-    ! write(0,*) 'factor25', factor25
-    ! write(0,*) 'mrd_unitiabs', mrd_unitiabs
-    ! write(0,*) 'mchi', mchi
-    ! stop
+    ! print*, 'mtemp', mtemp
+    ! print*, 'mvpd', mvpd
+    ! print*, 'co2', co2
+    ! print*, 'elv', elv
+    ! print*, 'mlue', mlue
+    ! print*, 'mvcmax_unitiabs', mvcmax_unitiabs
+    ! print*, 'mactnv_unitiabs', mactnv_unitiabs
+    ! print*, 'factor25', factor25
+    ! print*, 'mrd_unitiabs', mrd_unitiabs
+    ! print*, 'mchi', mchi
+    ! stop 'do beni'
 
   end subroutine getlue
 
 
-  function calc_dgpp( fapar, dppfd, my_mlue ) result( my_dgpp )
+  function calc_dgpp( fapar, dppfd, my_mlue, cpalpha ) result( my_dgpp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
@@ -380,17 +385,23 @@ contains
     real, intent(in) :: fapar
     real, intent(in) :: dppfd
     real, intent(in) :: my_mlue
+    real, intent(in) :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
     real, intent(out) :: my_dgpp
 
+    ! local variables
+    real :: fa
+
+    fa = calc_fa( cpalpha )
+
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dgpp = fapar * dppfd * my_mlue * c_molmass
+    my_dgpp = fapar * dppfd * fa * my_mlue * c_molmass
 
   end function calc_dgpp
 
 
-  function calc_drd( fapar, meanmppfd, my_mrd_unitiabs ) result( my_drd )
+  function calc_drd( fapar, meanmppfd, my_mrd_unitiabs, cpalpha ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
@@ -399,17 +410,23 @@ contains
     real, intent(in) :: fapar           ! fraction of absorbed PAR (unitless)
     real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
     real, intent(in) :: my_mrd_unitiabs
+    real, intent(in) :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
     real, intent(out) :: my_drd
 
+    ! local variables
+    real :: fa
+
+    fa = calc_fa( cpalpha )
+
     ! Dark respiration takes place during night and day (24 hours)
-    my_drd = fapar * meanmppfd * my_mrd_unitiabs * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * meanmppfd * fa * my_mrd_unitiabs * 60.0 * 60.0 * 24.0 * c_molmass
 
   end function calc_drd
 
 
-  function calc_dtransp( fapar, dppfd, my_transp_unitiabs ) result( my_dtransp )
+  function calc_dtransp( fapar, dppfd, my_transp_unitiabs, cpalpha ) result( my_dtransp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
@@ -417,17 +434,23 @@ contains
     real, intent(in) :: fapar
     real, intent(in) :: dppfd
     real, intent(in) :: my_transp_unitiabs
+    real, intent(in) :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
     real, intent(out) :: my_dtransp
 
+    ! local variables
+    real :: fa
+
+    fa = calc_fa( cpalpha )
+
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dtransp = fapar * dppfd * my_transp_unitiabs * h2o_molmass
+    my_dtransp = fapar * dppfd * fa * my_transp_unitiabs * h2o_molmass
 
   end function calc_dtransp
 
 
-  function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd ) result( my_vcmax )
+  function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd, cpalpha ) result( my_vcmax )
     !//////////////////////////////////////////////////////////////////
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
@@ -436,31 +459,36 @@ contains
     real, intent(in) :: fapar
     real, intent(in) :: my_vcmax_unitiabs
     real, intent(in) :: meanmppfd
+    real, intent(in) :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
     real, intent(out) :: my_vcmax
 
+    ! local variables
+    real :: fa
+
+    fa = calc_fa( cpalpha )
+
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-    my_vcmax = fapar * meanmppfd * my_vcmax_unitiabs
+    my_vcmax = fapar * meanmppfd * fa * my_vcmax_unitiabs
 
   end function calc_vcmax_canop
 
 
-  function pmodel( pft, fpar, ppfd, co2, tc, cpalpha, vpd, elv, method ) result( out_pmodel )
+  function pmodel( pft, fpar, ppfd, co2, tc, vpd, elv, method, cpalpha ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
     ! Output:   gpp (mol/m2/month)   : gross primary production
-    !------------------------------------------------------------------
-
+    !------------------------------------------------------------------, evap(lu)%cpa
     ! arguments
     integer, intent(in) :: pft         
     real, intent(in)    :: fpar         ! monthly fraction of absorbed photosynthetically active radiation (unitless) 
     real, intent(in)    :: ppfd         ! monthly photon flux density (mol/m2)
     real, intent(in)    :: co2          ! atmospheric CO2 concentration (ppm)
     real, intent(in)    :: tc           ! monthly air temperature (deg C)
-    real, intent(in)    :: cpalpha      ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
     real, intent(in)    :: vpd          ! mean monthly vapor pressure (Pa) -- CRU data is in hPa
     real, intent(in)    :: elv          ! elevation above sea-level (m)
     character(len=*), intent(in) :: method
+    real, intent(in), optional   :: cpalpha      ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return value
     type(outtype_pmodel), intent(out) :: out_pmodel
@@ -509,22 +537,26 @@ contains
     patm = calc_patm( elv )
 
     ! ambient CO2 partial pression (Pa)
-    ca   = co2_to_ca( co2, patm )
+    ca = co2_to_ca( co2, patm )
 
     ! photorespiratory compensation point - Gamma-star (Pa)
-    gstar   = calc_gstar( tc )
+    gstar = calc_gstar( tc )
 
     ! ! XXX PMODEL_TEST: ok
-    ! write(0,*) 'gstar ', gstar
+    ! print*, 'gstar ', gstar
 
     ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
-    fa   = calc_fa( cpalpha )
+    if (present(cpalpha)) then
+      fa = calc_fa( cpalpha )
+    else
+      fa = 1.0
+    end if
 
     ! Michaelis-Menten coef. (Pa)
     kmm  = calc_k( tc, patm )
 
     ! ! XXX PMODEL_TEST: ok
-    ! write(0,*) 'kmm ', kmm
+    ! print*, 'kmm ', kmm
 
     ! viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
     ns      = calc_viscosity_h2o( tc, patm )  ! Pa s 
@@ -532,7 +564,7 @@ contains
     ns_star = ns / ns25                       ! (unitless)
 
     ! ! XXX PMODEL_TEST: ok
-    ! write(0,*) 'ns ', ns
+    ! print*, 'ns ', ns
 
     select case (method)
 
@@ -566,7 +598,7 @@ contains
     chi = out_lue%chi
 
     ! ! XXX PMODEL_TEST: ok
-    ! write(0,*) 'chi ', chi
+    ! print*, 'chi ', chi
 
     !-----------------------------------------------------------------------
     ! Calculate function return variables
@@ -582,7 +614,7 @@ contains
     lue = params_pft_gpp(pft)%kphio * fa * m 
 
     ! ! XXX PMODEL_TEST: ok
-    ! write(0,*) 'lue ', lue
+    ! print*, 'lue ', lue
 
     ! leaf-internal CO2 partial pressure (Pa)
     ci = chi * ca
@@ -663,7 +695,7 @@ contains
     use _plant, only: params_pft_plant
 
     ! local variables
-    integer     :: pft
+    integer :: pft
 
     !----------------------------------------------------------------
     ! PFT-independent parameters
@@ -680,6 +712,7 @@ contains
       ! write(char_pftcode, 999) params_pft_plant(pft)%pftcode
 
       ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
+      print*, 'params_pft_plant(pft)%pftname ', params_pft_plant(pft)%pftname
       params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
 
     end do
@@ -710,7 +743,7 @@ contains
     real, intent(in) :: kmm       ! Pa, Michaelis-Menten coeff.
 
     ! function return value
-    type(outtype_lue) :: out_lue
+    type(outtype_lue), intent(out) :: out_lue
 
     ! local variables
     ! real :: beta_wh
@@ -778,7 +811,7 @@ contains
     real, intent(in) :: vpd       ! Pa, vapor pressure deficit
 
     ! function return value
-    type(outtype_lue) :: out_lue
+    type(outtype_lue), intent(out) :: out_lue
 
     ! local variables
     real :: xi
@@ -824,7 +857,7 @@ contains
     real, intent(in) :: vpd       ! Pa, vapor pressure deficit
 
     ! function return value
-    type(outtype_lue) :: out_lue
+    type(outtype_lue), intent(out) :: out_lue
 
     ! local variables
     real :: chi                   ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio (unitless)
@@ -1153,7 +1186,7 @@ contains
     integer :: i, j                         ! counter variables
 
     ! function return variable
-    real :: viscosity_h2o
+    real, intent(out) :: viscosity_h2o
 
     ! Get the density of water, kg/m**3
     rho = calc_density_h2o(tc, patm)
@@ -1426,7 +1459,7 @@ contains
         ! Define 'itime' as a decimal number corresponding to day in the year + year
         itime = real(outyear) + real(moy-1)/real(nmonth)
 
-        ! write(0,*) 'outmgpp ', outmgpp
+        ! print*, 'outmgpp ', outmgpp
         ! stop
 
         if (loutdgpp   ) write(151,999) itime, sum(outmgpp(:,moy,jpngr))
@@ -1482,7 +1515,7 @@ contains
   !   ! xxx try: assumue seasonal maximum LAI to determine leaf N beforehand
   !   ! max_lai = 1.0
 
-  !   ! write(0,*) 'meanmppfd', meanmppfd
+  !   ! print*, 'meanmppfd', meanmppfd
 
   !   ! do moy=1,nmonth
   !   !   mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
@@ -1491,8 +1524,8 @@ contains
   !   ! avcmax = maxval( mvcmax(:) )
   !   ! anrlarea = maxval( mnrlarea(:) )
 
-  !   ! write(0,*) 'mvcmax  ', mvcmax(:) * 1e3
-  !   ! write(0,*) 'anrlarea', anrlarea
+  !   ! print*, 'mvcmax  ', mvcmax(:) * 1e3
+  !   ! print*, 'anrlarea', anrlarea
   !   ! stop
 
   !   ! do pft=1,npft

@@ -4,118 +4,107 @@ module _vegdynamics
 
   use _params_core
 
-  ! logical, dimension(npft,maxgrid) :: ispresent   ! boolean whether PFT is present
-  ! real, dimension(npft,maxgrid)    :: fpc_grid    ! area fraction within gridcell occupied by PFT
-  ! real, dimension(npft,maxgrid)    :: nind        ! number of individuals [1/m2]
-
-  ! real, dimension(npft,maxgrid)    :: height      ! tree height (m)
-  ! real, dimension(npft,maxgrid)    :: crownarea   ! individual's tree crown area
-
   implicit none
+
+  private
+  public vegdynamics
 
 contains
 
-  subroutine estab_daily( jpngr, doy )
+  subroutine vegdynamics( jpngr, doy )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level metabolic N content per unit leaf area as a
-    ! function of Vcmax25.
+    ! Updates canopy and stand variables and calls 'estab_daily' to 
+    ! simulate establishment of new individuals
     !------------------------------------------------------------------
     use _params_core, only: npft
-    use _phenology, only: dtphen, summergreen, sprout
-    use _vars_core, only: pleaf, proot, lai_ind, fapar_ind, &
-      fpc_grid, ispresent, crownarea, nind, initpft
+    use _phenology, only: dtphen, sprout, params_pft_pheno
 
     ! xxx debug
-    use _classdefs
+    use _plant, only: ispresent
 
     ! arguments
-    integer, intent(in)               :: jpngr
-    integer, intent(in)               :: doy
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: doy
 
     ! local variables
-    ! logical, save :: firstcall = .true.
     integer :: pft
 
 
     do pft=1,npft
 
-      if (summergreen(pft)) then
-        !----------------------------------------------------------
-        ! GRASSES, summergreen
-        !----------------------------------------------------------
+      ! print*, 'xxx try: do nothing in vegdynamics'
 
-        if ( sprout(doy,pft) ) then
-          !----------------------------------------------------------
-          ! beginning of season
-          !----------------------------------------------------------
-          write(0,*) 'starting to grow on day ',doy
-          call initpft( pft, jpngr )
-          call add_sapl( pft, jpngr )
+      ! if (params_pft_pheno(pft)%summergreen) then
+      !   !----------------------------------------------------------
+      !   ! GRASSES, summergreen
+      !   !----------------------------------------------------------
 
-          ! ! xxx debug
-          ! call update_fpc_grid( pft, jpngr )
-          ! write(0,*) 'pft   ',pft
-          ! write(0,*) 'jpngr   ',jpngr
-          ! write(0,*) 'pleaf(pft,jpngr) ',pleaf(pft,jpngr)
-          ! write(0,*) 'proot(pft,jpngr) ',proot(pft,jpngr)
-          ! write(0,*) 'fapar_ind  ', fapar_ind(pft,jpngr)
-          ! write(0,*) 'fpc_grid ', fpc_grid(pft,jpngr)
-          ! stop
+      !   if ( sprout(doy,pft) ) then
+      !     !----------------------------------------------------------
+      !     ! beginning of season
+      !     !----------------------------------------------------------
+      !     print*, 'starting to grow on day ',doy
+      !     call estab_daily( pft, jpngr, doy )
 
-        end if
+      ! else
 
-        ! !----------------------------------------------------------
-        ! ! Update fpc_grid (and fapar_ind)
-        ! !----------------------------------------------------------
-        ! call update_fpc_grid( pft, jpngr )
+      !   stop 'estab_daily not implemented for non-summergreen'
 
-        ! write(0,*) 'C:N of pleaf     ',cton(pleaf(pft,jpngr), 0.0 )
-        ! write(0,*) 'C:N of proot     ',cton(proot(pft,jpngr), 0.0 )
+      ! end if
 
-        ! write(0,*) 'in vegdynamics: lai_ind(pft,jpngr) ',lai_ind(pft,jpngr)
-        ! write(0,*) 'in vegdynamics: crownarea(pft,jpngr)   ',crownarea(pft,jpngr)
-        ! write(0,*) 'in vegdynamics: fapar_ind(pft,jpngr) ',fapar_ind(pft,jpngr)
-        ! write(0,*) 'fpc_grid(pft,jpngr)',fpc_grid(pft,jpngr)
-
-      else
-
-        stop 'estab_daily not implemented for trees'
-
-      end if
+      ! ! ! Update canopy state variables
+      ! ! canopy = get_canopy( lai_ind(pft,jpngr) )
 
     end do
+
+  end subroutine vegdynamics
+
+
+  subroutine estab_daily( pft, jpngr, doy )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates leaf-level metabolic N content per unit leaf area as a
+    ! function of Vcmax25.
+    !------------------------------------------------------------------
+    use _plant, only: initpft, params_pft_plant, ispresent, nind
+
+    ! arguments
+    integer, intent(in) :: pft
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: doy
+
+    ! initialise all pools of this PFT with zero
+    call initpft( pft, jpngr )
+
+    ! add C (and N) to labile pool (available for allocation)
+    call add_seed( pft, jpngr )
+    
+    ! set other state variables: 'ispresent' and 'nind'
+    ispresent(pft,jpngr) = .true.
+
+    if (params_pft_plant(pft)%grass) then
+      nind(pft,jpngr) = 1.0
+    else
+      stop 'estab_daily not implemented for trees'
+    end if
+
 
   end subroutine estab_daily
 
 
-  subroutine add_sapl( pft, jpngr )
+  subroutine add_seed( pft, jpngr )
     !//////////////////////////////////////////////////////////////////
-    ! 
+    ! To initialise plant pools, add "sapling" mass
     !------------------------------------------------------------------
     use _classdefs
-    use _vars_core, only: plabl
+    use _plant, only: plabl, seed, dnpp
 
     ! arguments
     integer, intent(in) :: pft
     integer, intent(in) :: jpngr
 
-    ! local variables
-    real, parameter :: clabl_sapl = 5.0
-    real, parameter :: nlabl_sapl = 0.12
-    ! real, parameter :: nlabl_sapl = 0.5
-    ! real, parameter :: cleaf_sapl = 5.0
-    ! real, parameter :: croot_sapl = 1.0
+    plabl(pft,jpngr) = seed
 
-    plabl(pft,jpngr)%c%c12 = clabl_sapl
-    plabl(pft,jpngr)%n%n14 = nlabl_sapl
-
-    ! pleaf(pft,jpngr)%c%c12 = cleaf_sapl
-    ! proot(pft,jpngr)%c%c12 = croot_sapl
-
-    ! pleaf(pft,jpngr)%n%n14 = cleaf_sapl * r_ntoc_leaf(pft,jpngr)
-    ! proot(pft,jpngr)%n%n14 = croot_sapl * r_ntoc_root(pft)
-
-  end subroutine add_sapl
+  end subroutine add_seed
 
 
 end module _vegdynamics

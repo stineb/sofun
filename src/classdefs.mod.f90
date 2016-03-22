@@ -6,7 +6,14 @@ module _classdefs
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
+
   implicit none
+
+  private
+  public carbon, nitrogen, orgpool, orgcp, orgcpRec, orgsub, orgmv, &
+    orgmvRec, orginit, cmv, cmvRec, ccp, ccpRec, csub, cinit, nmv,  &
+    nmvRec, ncp, ncpRec, nsub, ninit, orgfrac, cfrac, nfrac, orgplus, &
+    cplus, nplus, orgminus, cminus, nminus, cton, ntoc
 
   ! Minimum precision
   real, parameter :: epsilon = 1.0e-5 
@@ -26,24 +33,6 @@ module _classdefs
    type(nitrogen) :: n
   end type orgpool
 
-  !! Plants, contain leaves and roots
-  !type plantclass
-   !type(orgpool) :: lm ! leafmass
-   !type(orgpool) :: rm ! rootmass
-  !end type plantclass
-
-  ! Soil, contains a pool with fast and slow turnover
-  !type soilclass
-   !type(orgpool) :: fs ! fast
-   !type(orgpool) :: sl ! slow
-  !end type soilclass
-
-  ! Litter, contains ...
-  !type litterclass
-   !type(orgpool) :: af ! above-ground fast
-   !type(orgpool) :: as ! above-ground slow
-   !type(orgpool) :: bg ! below-ground
-  !end type litterclass
 
 contains
 !=========================LOW-LEVEL================================

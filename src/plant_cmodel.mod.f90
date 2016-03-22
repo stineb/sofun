@@ -8,18 +8,18 @@ module _plant
 
   private
   public pleaf, proot, psapw, plabl, pexud, plitt_af, plitt_as, plitt_bg, &
-    dnpp, drauto, drleaf, drroot, drsapw, dcex, r_cton_leaf, r_ntoc_leaf, &
-    lma, sla, narea, narea_metabolic, narea_structural, nmass, lai_ind,   &
-    fapar_ind, ispresent, fpc_grid, nind, height, crownarea, dnup,        &
+    dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy,       &
+    lai_ind,      &
+    ispresent, fpc_grid, nind, dnup,        &
     params_pft_plant, params_plant, initglobal_plant, initpft,            &
     initdaily_plant, outdnpp, outdnup, outdCleaf, outdCroot, outdClabl,   &
     outdNlabl, outdClitt, outdNlitt, outdCsoil, outdNsoil, outdlai,       &
     dnarea_mb, dnarea_cw, dlma, dcton_lm, outanpp, outanup, outaCveg,     &
     outaCveg2lit, outaNveg2lit, outaNinorg, outanarea_mb, outanarea_cw,   &
-    outalai, outalma, outacton_lm, update_fpc_grid, get_fapar,            &
+    outalai, outalma, outacton_lm, get_fapar,            &
     initoutput_plant, initio_plant, getout_daily_plant,                   &
     getout_annual_plant, writeout_ascii_plant, getpar_modl_plant,         &
-    update_foliage_vars
+    leaftraits_type, canopy_type, canopy, get_canopy, seed
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -39,33 +39,48 @@ module _plant
 
   ! fluxes
   type(carbon), dimension(npft)          :: dnpp             ! net primary production [gC/m2/d]
-  real, dimension(npft)                  :: drauto           ! autotrophic respiration (growth+maintenance resp. of all compartments), no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
+  real, dimension(npft)                  :: drgrow           ! growth respiration (growth+maintenance resp. of all compartments), no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
   real, dimension(npft)                  :: drleaf           ! leaf maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
   real, dimension(npft)                  :: drroot           ! root maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
   real, dimension(npft)                  :: drsapw           ! sapwood maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
-  real, dimension(npft)                  :: drgrow   ! growth respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
   real, dimension(npft)                  :: dcex             ! labile C exudation for N uptake, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
 
   type(nitrogen), dimension(npft)        :: dnup             ! daily N uptake [gN/m2/d]
 
-  ! plant-specific state variables
-  real, dimension(npft,maxgrid)          :: r_cton_leaf      ! leaf C:N ratio [gC/gN] 
-  real, dimension(npft,maxgrid)          :: r_ntoc_leaf      ! leaf N:C ratio [gN/gC]
-  real, dimension(npft,maxgrid)          :: lma, sla         ! leaf mass per area [gC/m2], specific leaf area [m2/gC]. C, NOT DRY-MASS!
-  real, dimension(npft)                  :: narea            ! g N m-2-leaf
-  real, dimension(npft)                  :: narea_metabolic  ! g N m-2-leaf
-  real, dimension(npft)                  :: narea_structural ! g N m-2-leaf
-  real, dimension(npft)                  :: nmass            ! g N / g-dry mass
+  ! Leaf traits
+  type leaftraits_type
+    real :: narea               ! g N m-2-leaf
+    real :: narea_metabolic     ! g N m-2-leaf
+    real :: narea_structural    ! g N m-2-leaf
+    real :: lma                 ! leaf mass per area [gC/m2]. C, NOT DRY-MASS!
+    real :: sla                 ! specific leaf area [m2/gC]. C, NOT DRY-MASS!
+    real :: nmass               ! g N / g-dry mass
+    real :: r_cton_leaf         ! leaf C:N ratio [gC/gN] 
+    real :: r_ntoc_leaf         ! leaf N:C ratio [gN/gC]
+  end type leaftraits_type
+
+  type( leaftraits_type ), dimension(npft) :: leaftraits
+
+  ! Canopy state variables (does not include LAI!)
+  type canopy_type
+    real :: fapar_ind
+    ! real :: height              ! tree height (m)
+    ! real :: crownarea           ! individual's tree crown area
+  end type canopy_type
+
+  type( canopy_type ), dimension(npft)   :: canopy
+
 
   real, dimension(npft,maxgrid)          :: lai_ind
-  real, dimension(npft,maxgrid)          :: fapar_ind
-
   logical, dimension(npft,maxgrid)       :: ispresent        ! boolean whether PFT is present
   real, dimension(npft,maxgrid)          :: fpc_grid         ! area fraction within gridcell occupied by PFT
   real, dimension(npft,maxgrid)          :: nind             ! number of individuals [1/m2]
 
-  real, dimension(npft,maxgrid)          :: height           ! tree height (m)
-  real, dimension(npft,maxgrid)          :: crownarea        ! individual's tree crown area
+  !-----------------------------------------------------------------------
+  ! Fixed parameters
+  !-----------------------------------------------------------------------
+  type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.0) )
+  ! type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.12) )
 
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
@@ -220,7 +235,7 @@ contains
     use _sofunutils, only: getparreal
 
     ! arguments
-    character(len=*) :: pftname
+    character(len=*), intent(in) :: pftname
 
     ! local variables
     real :: lu_category_prov    ! land use category associated with PFT (provisional)
@@ -228,7 +243,7 @@ contains
     real :: code_nfixer
 
     ! function return variable
-    type( params_pft_plant_type ) :: out_getpftparams
+    type( params_pft_plant_type ), intent(out) :: out_getpftparams
 
     ! standard PFT name
     out_getpftparams%pftname = pftname
@@ -268,6 +283,10 @@ contains
     ! root decay constant [days], read in as [years-1], central value: 1.04 (Shan et al., 1993; see Li et al., 2014)
     out_getpftparams%k_decay_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_root' ) / ndayyear 
 
+    ! root C:N and N:C ratio (gC/gN and gN/gC)
+    out_getpftparams%r_cton_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'r_cton_root' )
+    out_getpftparams%r_ntoc_root = 1.0 / out_getpftparams%r_cton_root
+
   end function getpftparams
 
 
@@ -288,45 +307,18 @@ contains
     ! derive which PFTs are present from fpc_grid (which is prescribed)
     !-----------------------------------------------------------------------------
     do jpngr=1,maxgrid
-
       do pft=1,npft
-
-        if (fpc_grid(pft,jpngr)>0.0) then
-          ispresent(pft,jpngr) = .true.
-        else
-          ispresent(pft,jpngr) = .false.
-        end if
-
         call initpft( pft, jpngr )
-
       end do
-
     end do
  
-    ! initialise all _pools with zero
+    ! initialise all PFT-specific non-plant pools with zero (not done in 'initpft')
     pexud(:,:)    = carbon(0.0)                           ! exudates in soil, carbon pool [gC/m2]
 
     plitt_af(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! above-ground fine   litter, organic pool [gC/m2 and gN/m2]
     plitt_as(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! above-ground coarse litter, organic pool [gC/m2 and gN/m2]
     plitt_bg(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! below-ground fine   litter, organic pool [gC/m2 and gN/m2]
 
-    ! initialise other properties
-    lai_ind(:,:)   = 0.0
-    fapar_ind(:,:) = 0.0
-    height(:,:)    = 0.0
-
-    do pft=1,npft
-      if (params_pft_plant(pft)%tree) then
-        nind(pft,:)      = 0.0
-        crownarea(pft,:) = 0.0
-      else
-        nind(pft,:)      = 1.0
-        crownarea(pft,:) = 1.0
-      end if
-    end do
-
-    lma(:,:) = 0.0
-    sla(:,:) = 0.0
 
   end subroutine initglobal_plant
 
@@ -343,24 +335,38 @@ contains
     ! initialise all _pools with zero
     pleaf(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     proot(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-    plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+    
+    if (params_pft_plant(pft)%grass) then
+      ! xxx try: for grass add seed only at initialisation
+      plabl(pft,jpngr) = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
+      ispresent(pft,jpngr) = .true.
+      nind(pft,jpngr) = 1.0
+    else
+      stop 'in initpft: not implemented for trees'
+    end if
+
     if (params_pft_plant(pft)%tree) then
       psapw(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
       pwood(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     endif
 
     ! initialise other properties
-    fpc_grid(pft,jpngr)  = 0.0
     lai_ind(pft,jpngr)   = 0.0
-    fapar_ind(pft,jpngr) = 0.0
-    height(pft,jpngr)    = 0.0
-    if (params_pft_plant(pft)%tree) then
-      nind(pft,jpngr)      = 0.0
-      crownarea(pft,jpngr) = 0.0
-    else
-      nind(pft,jpngr)      = 1.0
-      crownarea(pft,jpngr) = 1.0
-    endif
+
+    ! Leaf traits
+    leaftraits(:)%narea            = 0.0
+    leaftraits(:)%narea_metabolic  = 0.0
+    leaftraits(:)%narea_structural = 0.0
+    leaftraits(:)%lma              = 0.0
+    leaftraits(:)%sla              = 0.0
+    leaftraits(:)%nmass            = 0.0
+    leaftraits(:)%r_cton_leaf      = 0.0
+    leaftraits(:)%r_ntoc_leaf      = 0.0
+
+    ! canopy variables
+    canopy(:)%fapar_ind = 0.0
+    ! canopy(:)%height    = 0.0
+    ! canopy(:)%crownarea = 0.0
 
   end subroutine initpft
 
@@ -372,66 +378,81 @@ contains
 
     dnpp(:)   = carbon(0.0)
     dcex(:)   = 0.0
-    drauto(:) = 0.0
+    dnup(:)   = nitrogen(0.0)
+    drgrow(:) = 0.0
     drleaf(:) = 0.0
     drroot(:) = 0.0
-    drgrow(:) = 0.0
+    drsapw(:) = 0.0
 
   end subroutine initdaily_plant
 
 
-  subroutine update_foliage_vars( pft, jpngr )
+  ! subroutine update_foliage_vars( pft, jpngr )
+  !   !//////////////////////////////////////////////////////////////////
+  !   ! Updates PFT-specific state variables after change in LAI.
+  !   !------------------------------------------------------------------
+  !   ! arguments
+  !   integer, intent(in) :: pft
+  !   integer, intent(in) :: jpngr
+
+  !   if (pleaf(pft,jpngr)%c%c12==0.0) then
+  !     lai_ind(pft,jpngr)  = 0.0
+  !     fapar_ind(pft,jpngr)  = 0.0
+  !     fpc_grid(pft,jpngr) = 0.0
+  !   else
+  !     ! This assumes that leaf canopy-average traits (LMA) do not change upon changes in LAI.
+  !     lai_ind(pft,jpngr) = pleaf(pft,jpngr)%c%c12 / ( leaftraits(pft)%lma * crownarea(pft,jpngr) * nind(pft,jpngr) )
+  !     call update_fpc_grid( pft, jpngr )
+  !   end if
+
+  ! end subroutine update_foliage_vars
+
+
+  function get_canopy( lai ) result( out_canopy )
     !//////////////////////////////////////////////////////////////////
-    ! Updates PFT-specific state variables after change in LAI.
+    ! Returs canopy variables as a function of LAI
     !------------------------------------------------------------------
     ! arguments
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
+    real, intent(in) :: lai
 
-    if (pleaf(pft,jpngr)%c%c12==0.0) then
-      lai_ind(pft,jpngr)  = 0.0
-      fapar_ind(pft,jpngr)  = 0.0
-      fpc_grid(pft,jpngr) = 0.0
-    else
-      ! This assumes that leaf canopy-average traits (LMA) do not change upon changes in LAI.
-      lai_ind(pft,jpngr) = pleaf(pft,jpngr)%c%c12 / ( lma(pft,jpngr) * crownarea(pft,jpngr) * nind(pft,jpngr) )
-      call update_fpc_grid( pft, jpngr )
-    end if
+    ! function return value
+    type( canopy_type ), intent(out) :: out_canopy
 
-  end subroutine update_foliage_vars
+    out_canopy%fapar_ind = get_fapar( lai )
 
+  end function get_canopy
 
-  subroutine update_fpc_grid( pft, jpngr )
-    !//////////////////////////////////////////////////////////////////
-    ! Updates PFT-specific state variables after change in LAI.
-    !------------------------------------------------------------------
-    ! arguments
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
+  ! subroutine update_fpc_grid( pft, jpngr )
+  !   !//////////////////////////////////////////////////////////////////
+  !   ! Updates PFT-specific state variables after change in LAI.
+  !   !------------------------------------------------------------------
+  !   ! arguments
+  !   integer, intent(in) :: pft
+  !   integer, intent(in) :: jpngr
 
-    fapar_ind(pft,jpngr) = get_fapar( lai_ind(pft,jpngr) )
-    fpc_grid(pft,jpngr)  = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fapar_ind(pft,jpngr) ) 
+  !   fapar_ind(pft,jpngr) = get_fapar( lai_ind(pft,jpngr) )
+  !   fpc_grid(pft,jpngr)  = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fapar_ind(pft,jpngr) ) 
 
-  end subroutine update_fpc_grid
+  ! end subroutine update_fpc_grid
 
 
-  function get_fpc_grid( crownarea, nind, fapar_ind ) result( fpc_grid )
-    !////////////////////////////////////////////////////////////////
-    ! FRACTIONAL PLANT COVERAGE
-    ! Function returns total fractional plant cover of a PFT
-    ! Eq. 8 in Sitch et al., 2003
-    !----------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: crownarea
-    real, intent(in) :: nind
-    real, intent(in) :: fapar_ind
+  ! function get_fpc_grid( crownarea, nind, fapar_ind ) result( fpc_grid )
+  !   !////////////////////////////////////////////////////////////////
+  !   ! FRACTIONAL PLANT COVERAGE
+  !   ! Function returns total fractional plant cover of a PFT
+  !   ! Eq. 8 in Sitch et al., 2003
+  !   !----------------------------------------------------------------
+  !   ! arguments
+  !   real, intent(in) :: crownarea
+  !   real, intent(in) :: nind
+  !   real, intent(in) :: fapar_ind
 
-    ! function return variable
-    real, intent(out) :: fpc_grid
+  !   ! function return variable
+  !   real, intent(out) :: fpc_grid
 
-    fpc_grid = crownarea * nind * fapar_ind
+  !   fpc_grid = crownarea * nind * fapar_ind
 
-  end function get_fpc_grid
+  ! end function get_fpc_grid
 
 
   function get_fapar( lai ) result( fapar )
@@ -687,10 +708,10 @@ contains
     if (loutdNlitt    ) outdNlitt(:,doy,jpngr)     = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
     if (loutdlai      ) outdlai(:,doy,jpngr)       = lai_ind(:,jpngr)
     
-    dnarea_mb(:,doy)           = narea_metabolic(:)  
-    dnarea_cw(:,doy)           = narea_structural(:)
-    dcton_lm(:,doy)            = r_cton_leaf(:,jpngr)
-    dlma(:,doy)                = lma(:,jpngr)
+    dnarea_mb(:,doy)           = leaftraits(:)%narea_metabolic
+    dnarea_cw(:,doy)           = leaftraits(:)%narea_structural
+    dcton_lm(:,doy)            = leaftraits(:)%r_cton_leaf
+    dlma(:,doy)                = leaftraits(:)%lma
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES

@@ -59,16 +59,6 @@ module _allocation
     real :: maxnv
   end type statetype_mustbe_zero_for_lai
 
-  type leaftraits_type
-    real :: narea
-    real :: narea_metabolic
-    real :: narea_structural
-    real :: lma
-    real :: nmass
-    real :: r_cton_leaf
-    real :: r_ntoc_leaf
-  end type leaftraits_type
-
   ! states area global within module (instead of being passed on as arguments)
   type(statetype_mustbe_zero_for_lai) :: state_mustbe_zero_for_lai
 
@@ -85,12 +75,13 @@ contains
     ! Finds optimal shoot:root growth ratio to balance C:N stoichiometry
     ! of a grass (no wood allocation).
     !------------------------------------------------------------------
-    use _plant, only: params_plant, params_pft_plant, &
-      pleaf, proot, plabl, r_cton_leaf, &
-      r_ntoc_leaf, crownarea, drauto, dnpp, lai_ind, nind, fapar_ind, fpc_grid, &
-      narea, narea_metabolic, narea_structural, lma, nmass, update_fpc_grid
+    use _classdefs
+    use _plant, only: params_plant, params_pft_plant, pleaf, proot, &
+      plabl, drgrow, dnup, lai_ind, nind, canopy, leaftraits, &
+      get_canopy
     use _waterbal, only: solar
     use _gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
+    use _phenology, only: dtphen
     use _findroot_fzeroin
 
     ! arguments
@@ -104,8 +95,6 @@ contains
     integer :: pft
     integer :: usemoy
     integer :: usedoy
-    real    :: dclabl
-    real    :: dnlabl
     logical :: cont          ! true if allocation to leaves (roots) is not 100% and not 0%
     real    :: max_dc
     real    :: min_dc
@@ -116,13 +105,9 @@ contains
     integer, parameter :: nmax = 100
 
     type(outtype_zeroin)  :: out_zeroin
-    type(leaftraits_type) :: traits
 
     integer, save      :: invocation = 0             ! internally counted simulation year
     integer, parameter :: spinupyr_phaseinit_2 = 1   ! this is unnecessary: might as well do flexible allocation right from the start.
-
-    ! xxx debug
-    real    :: test
 
     abserr=100.0*XMACHEPS !*10e5
     relerr=1000.0*XMACHEPS !*10e5
@@ -132,8 +117,8 @@ contains
     ! allocation only after year 'spinupyr_phaseinit_2'.
     !-------------------------------------------------------------------------
     if (doy==1) then
-      invocation = invocation + 1
-      ! write(0,*) 'WARNING: FIXED ALLOCATION'
+      ! invocation = invocation + 1
+      ! print*, 'WARNING: FIXED ALLOCATION'
     end if
 
     do pft=1,npft
@@ -142,24 +127,35 @@ contains
 
       if (params_pft_plant(pft)%grass) then
 
-        ! write(0,*) '--- allocation_daily, doy:',doy
-        ! write(0,*) 'plabl(lu,jpngr)', plabl
-        ! write(0,*) 'cleaf          ', pleaf(pft,jpngr)%c%c12
-        ! write(0,*) 'croot          ', proot(pft,jpngr)%c%c12
-        ! write(0,*) 'C:N in leaves  ', cton( pleaf(pft,jpngr), default=0.0 )
+        ! print*, '--- allocation_daily, doy:',doy
+        ! print*, 'doy, plabl  ', doy, plabl(pft,jpngr)
+        ! print*, 'doy, dtphen ', dtphen(:,pft)
+        ! stop 'do beni'
+
+        ! print*, 'cleaf          ', pleaf(pft,jpngr)%c%c12
+        ! print*, 'croot          ', proot(pft,jpngr)%c%c12
+        ! print*, 'C:N in leaves  ', cton( pleaf(pft,jpngr), default=0.0 )
+
 
         if ( plabl(pft,jpngr)%c%c12>0.0 ) then
+
+          ! !------------------------------------------------------------------
+          ! ! C-only model specific: dynamics of labile N pool are not simulated
+          ! ! but just used to close the budget
+          ! !------------------------------------------------------------------
+          ! if (plabl(pft,jpngr)%n%n14/=0.0) stop 'labile N pool should be zero before allocation'
+
           !------------------------------------------------------------------
           ! Prescribe constant root:shoot ratio (in terms of C mass).
           ! Calculate maximum C allocatable based on current labile pool size.
           ! Maximum is the lower of all labile C and the C to be matched by 
           ! all labile N, discounted by the yield factor.
           !------------------------------------------------------------------
-          if (pleaf(pft,jpngr)%c%c12==0.0) then
-            ! initial guess based on Taylor approximation of Cleaf and Nleaf function around cleaf=0
-            r_cton_leaf(pft,jpngr) = get_rcton_init( solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
-            r_ntoc_leaf(pft,jpngr) = 1.0 / r_cton_leaf(pft,jpngr)
-          end if
+          ! if (pleaf(pft,jpngr)%c%c12==0.0) then
+          !   ! initial guess based on Taylor approximation of Cleaf and Nleaf function around cleaf=0
+          !   r_cton_leaf(pft,jpngr) = get_rcton_init( solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+          !   r_ntoc_leaf(pft,jpngr) = 1.0 / r_cton_leaf(pft,jpngr)
+          ! end if
           max_dc = params_plant%growtheff * plabl(pft,jpngr)%c%c12
 
           !-------------------------------------------------------------------
@@ -168,6 +164,10 @@ contains
           ! allocation to leaves is prescribed
           dcleaf(pft) = max_dc * frac_shoot
 
+          ! print*, 'allocation: A plabl(pft,jpngr)    ', plabl(pft,jpngr)
+          ! print*, 'allocation: A pleaf(pft,jpngr)    ', pleaf(pft,jpngr)
+
+          ! given dcleaf, calculate new LAI and derive new canopy N and dnleaf
           call allocate_leaf( &
             dcleaf(pft), &
             pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
@@ -176,23 +176,21 @@ contains
             lai_ind(pft,jpngr), dnleaf(pft) &
             )
 
+          ! print*, 'allocation: B plabl(pft,jpngr)    ', plabl(pft,jpngr)
+          ! print*, 'allocation: B pleaf(pft,jpngr)    ', pleaf(pft,jpngr)
+          ! stop 
+
           !-------------------------------------------------------------------  
           ! Update leaf traits
           !-------------------------------------------------------------------  
-          traits                      = get_leaftraits( lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
-          narea(pft)                  = traits%narea
-          narea_metabolic(pft)        = traits%narea_metabolic
-          narea_structural(pft)       = traits%narea_structural
-          lma(pft,jpngr)              = traits%lma
-          nmass(pft)                  = traits%nmass
-
-          r_cton_leaf(pft,jpngr)      = traits%r_cton_leaf
-          r_ntoc_leaf(pft,jpngr)      = traits%r_ntoc_leaf
+          leaftraits(pft) = get_leaftraits( lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
 
           !-------------------------------------------------------------------  
           ! Update fpc_grid and fapar_ind (not lai_ind)
           !-------------------------------------------------------------------  
-          call update_fpc_grid( pft, jpngr )
+          canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
+
+          ! call update_fpc_grid( pft, jpngr )
 
           !-------------------------------------------------------------------
           ! ROOT ALLOCATION
@@ -202,15 +200,61 @@ contains
             plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
             pft, dcroot(pft), dnroot(pft) &
             )
-        
+
+          ! print*, 'allocation: C plabl(pft,jpngr)    ', plabl(pft,jpngr)
+          ! print*, 'allocation: C proot(pft,jpngr)    ', proot(pft,jpngr)
+          ! print*, '-----'
+
           !-------------------------------------------------------------------
-          ! GROWTH RESPIRATION
+          ! GROWTH RESPIRATION, NPP
           !-------------------------------------------------------------------
           ! add growth respiration to autotrophic respiration and substract from NPP
           ! (note that NPP is added to plabl in and growth resp. is implicitly removed
           ! from plabl above)
-          drauto(pft)   = drauto(pft)     + ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) )
-          dnpp(pft)%c12 = dnpp(pft)%c12   - ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) 
+          drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+
+          !-------------------------------------------------------------------
+          ! N UPTAKE 
+          ! C-only model specific: (implied) N uptake is calculated from allo-
+          ! cation to leaves and roots and their respective C:N ratios. 
+          ! Equals negative of plabl (should be zero before allocation), 
+          ! = N allocated, not satisfied by retained N.
+          !-------------------------------------------------------------------
+          if (plabl(pft,jpngr)%n%n14<0.0) then
+            ! ascribe missing N to uptake 
+            dnup(pft) = nitrogen( -1.0 * plabl(pft,jpngr)%n%n14 )
+            plabl(pft,jpngr)%n = nitrogen( 0.0 )
+          else
+            ! retention has satisfied demand from allocation
+            dnup(pft) = nitrogen( 0.0 )
+          end if
+
+
+          ! print*, 'after allocation on day ', doy
+          ! print*, 'dcleaf(pft)         ', dcleaf(pft)
+          ! print*, 'dcroot(pft)         ', dcroot(pft)
+
+          ! print*, 'pleaf(pft,jpngr)    ', pleaf(pft,jpngr)
+          ! print*, 'plabl(pft,jpngr)    ', plabl(pft,jpngr)
+          ! print*, 'proot(pft,jpngr)    ', proot(pft,jpngr)
+
+          ! print*, 'fapar               ', canopy(pft)%fapar_ind 
+
+          ! print*, 'drgrow(pft)  ', drgrow(pft)
+          ! print*, 'dnup(pft)    ', dnup(pft)
+          ! print*, 'leaf C:N     ', cton( pleaf(pft,jpngr) )
+          ! print*, 'root C:N     ', cton( proot(pft,jpngr) )
+          ! if (doy==39) stop
+
+          ! ! set other state variables: 'ispresent' and 'nind'
+          ! ispresent(pft,jpngr) = .true.
+
+          ! if (params_pft_plant(pft)%grass) then
+          !   nind(pft,jpngr) = 1.0
+          ! else
+          !   stop 'estab_daily not implemented for trees'
+          ! end if
+
 
         else
 
@@ -219,7 +263,7 @@ contains
           dnleaf(pft) = 0.0
           dnroot(pft) = 0.0
 
-          ! write(0,*) 'not growing ...'
+          ! print*, 'not growing ...'
 
         end if
 
@@ -234,9 +278,9 @@ contains
     ! if (doy==39) stop 'on day 39'
 
     ! test_calloc = test_calloc + dcleaf + dcroot
-    ! write(0,*) 'test_calloc', test_calloc
+    ! print*, 'test_calloc', test_calloc
     
-    ! write(0,*) '--- END allocation_daily:'
+    ! print*, '--- END allocation_daily:'
 
   end subroutine allocation_daily
 
@@ -264,24 +308,24 @@ contains
 
     ! local variables
     real :: nleaf0
-    real :: dclabl
+    real :: dclabl, dnlabl
 
     ! find LAI, given new leaf mass. This is necessary to get leaf-N as 
     ! a function of LAI.
     if (mydcleaf>0.0) then
 
-      ! write(0,*) 'cleaf before ', cleaf 
+      ! print*, 'cleaf before ', cleaf 
       cleaf  = cleaf + mydcleaf
-      ! write(0,*) 'mydcleaf     ', mydcleaf 
+      ! print*, 'mydcleaf     ', mydcleaf 
 
-      ! write(0,*) 'cleaf = 0.5', get_lai( 0.5  , meanmppfd(:), nv(:) )
-      ! write(0,*) 'cleaf = 100', get_lai( 100.0, meanmppfd(:), nv(:))
+      ! print*, 'cleaf = 0.5', get_lai( 0.5  , meanmppfd(:), nv(:) )
+      ! print*, 'cleaf = 100', get_lai( 100.0, meanmppfd(:), nv(:))
       ! stop
 
       ! Calculate LAI as a function of leaf C
       lai = get_lai( cleaf, meanmppfd(:), nv(:) )
-      ! write(0,*) 'in allocate_leaf: cleaf, lai :', cleaf, lai
-      ! write(0,*) 'mydcleaf ', mydcleaf 
+      ! print*, 'in allocate_leaf: cleaf, lai :', cleaf, lai
+      ! print*, 'mydcleaf ', mydcleaf 
       ! ! stop
 
       ! calculate canopy-level leaf N as a function of LAI
@@ -289,15 +333,17 @@ contains
       nleaf    = get_canopy_leaf_n( lai, meanmppfd(:), nv(:) )
       mydnleaf = nleaf - nleaf0
       ! if (mydnleaf>0.0) then
-      !   write(0,*) 'mydcleaf/dnleaf ', mydcleaf/mydnleaf 
+      !   print*, 'mydcleaf/dnleaf ', mydcleaf/mydnleaf 
       ! end if
 
       ! subtract from labile pool, making sure pool does not get negative
       dclabl = min( clabl, 1.0 / params_plant%growtheff * mydcleaf )
+      dnlabl = mydnleaf
       if ( (dclabl - clabl) > 1e-8 ) stop 'trying to remove too much from labile pool: leaf C'
       clabl  = clabl - dclabl
+      nlabl  = nlabl - dnlabl
 
-      ! write(0,*) 'params_pft_plant(pft)%r_ntoc_root  ', params_pft_plant(pft)%r_ntoc_root
+      ! write(0,*) 'r_ntoc_root(pft)  ', r_ntoc_root(pft)
 
     else
 
@@ -325,6 +371,7 @@ contains
 
     ! local variables
     real :: dclabl
+    real :: dnlabl
 
     if (clabl>0.0) then
       ! use remainder for allocation to roots
@@ -332,9 +379,19 @@ contains
       mydnroot = mydcroot * params_pft_plant(pft)%r_ntoc_root
 
       dclabl = min( clabl, 1.0 / params_plant%growtheff * mydcroot )
+      dnlabl = mydnroot
       if ( (dclabl - clabl) > 1e-8 ) stop 'trying to remove too much from labile pool: root C'
       clabl  = clabl - dclabl
+      nlabl  = nlabl - dnlabl
 
+      ! dclabl = min( plabl(pft,jpngr)%c%c12, 1.0 / growtheff * dcleaf(pft) )
+      ! dnlabl = min( plabl(pft,jpngr)%n%n14, dnleaf(pft) )
+
+      ! plabl(pft,jpngr)%c%c12 = plabl(pft,jpngr)%c%c12 - dclabl
+      ! plabl(pft,jpngr)%n%n14 = plabl(pft,jpngr)%n%n14 - dnlabl
+
+      ! write(0,*) 'mydcroot ', mydcroot 
+      ! write(0,*) 'mydnroot ', mydnroot 
       if (mydcroot<0.0) stop 'root allocation neg.: C'
       if (mydnroot<0.0) stop 'root allocation neg.: N'
 
@@ -342,17 +399,17 @@ contains
       nroot = nroot + mydnroot
 
       ! if (present(verbose)) then
-      !   write(0,*) 'after presumed allocation:'
-      !   write(0,*) 'clabl', clabl ! OK
-      !   write(0,*) 'nlabl', nlabl ! OK
-      !   ! write(0,*) 'mydcleaf', mydcleaf
-      !   ! write(0,*) 'mydcroot', mydcroot
-      !   ! write(0,*) 'mydnleaf', mydnleaf
-      !   ! write(0,*) 'mydnroot', mydnroot
+      !   print*, 'after presumed allocation:'
+      !   print*, 'clabl', clabl ! OK
+      !   print*, 'nlabl', nlabl ! OK
+      !   ! print*, 'mydcleaf', mydcleaf
+      !   ! print*, 'mydcroot', mydcroot
+      !   ! print*, 'mydnleaf', mydnleaf
+      !   ! print*, 'mydnroot', mydnroot
 
-      !   ! write(0,*) 'after presumed allocation:'
-      !   ! write(0,*) 'B cleaf', cleaf
-      !   ! write(0,*) 'B root', root
+      !   ! print*, 'after presumed allocation:'
+      !   ! print*, 'B cleaf', cleaf
+      !   ! print*, 'B root', root
       ! end if
     end if
 
@@ -400,11 +457,11 @@ contains
       ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
       ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
       maxnv = maxval( meanmppfd(:) * nv(:) )
-      ! write(0,*) 'maxnv ', maxnv
+      ! print*, 'maxnv ', maxnv
       ! stop
 
-      ! write(0,*) 'what is LAI for Cleaf=', cleaf
-      ! write(0,*) 'maxnv ', maxnv
+      ! print*, 'what is LAI for Cleaf=', cleaf
+      ! print*, 'maxnv ', maxnv
 
       ! Update state. This derived-type variable is "global" within this module
       state_mustbe_zero_for_lai%cleaf = cleaf
@@ -414,37 +471,37 @@ contains
       lower = 0.0 ! uninformed lower bound
       upper = 1.0 / ( c_molmass * params_alloc%ncw_min * params_alloc%r_ctostructn_leaf ) * cleaf
       ! upper = 20.0
-      ! write(0,*) 'upper ', upper
+      ! print*, 'upper ', upper
 
-      ! write(0,*) 'lower =', lower
+      ! print*, 'lower =', lower
       ! test = mustbe_zero_for_lai( lower ) 
-      ! write(0,*) '=> test =', test
+      ! print*, '=> test =', test
 
-      ! write(0,*) 'upper =', upper
+      ! print*, 'upper =', upper
       ! test = mustbe_zero_for_lai( upper ) 
-      ! write(0,*) '=> test =', test
+      ! print*, '=> test =', test
 
       ! call function zeroin to find root (value of LAI for which evaluation expression is zero)
       abserr=100.0*XMACHEPS !*10e5
       relerr=1000.0*XMACHEPS !*10e5
 
-      ! write(0,*) 'abserr', abserr
-      ! write(0,*) 'relerr', relerr
+      ! print*, 'abserr', abserr
+      ! print*, 'relerr', relerr
       ! stop 'here'
 
-      ! write(0,*) '*** finding root of mustbe_zero_for_lai ***'
+      ! print*, '*** finding root of mustbe_zero_for_lai ***'
       out_zeroin = zeroin( mustbe_zero_for_lai, abserr, relerr, nmax, lower, upper )
       if ( out_zeroin%error /= 0 ) then
         lai = 0.0
-        write(0,*) 'error code', out_zeroin%error
+        print*, 'error code', out_zeroin%error
         stop 'zeroin for mustbe_zero_for_lai() failed'
       else
         lai = out_zeroin%root
       end if
 
-      ! write(0,*) 'out_zeroin', out_zeroin
-      ! write(0,*) 'cleaf', cleaf
-      ! write(0,*) 'lai', lai
+      ! print*, 'out_zeroin', out_zeroin
+      ! print*, 'cleaf', cleaf
+      ! print*, 'lai', lai
       ! stop
     
     else
@@ -482,24 +539,24 @@ contains
     real :: mycleaf
     real :: mymaxnv
 
-    ! write(0,*) '--- in mustbe_zero_for_lai with mydcleaf=', mylai
+    ! print*, '--- in mustbe_zero_for_lai with mydcleaf=', mylai
 
     ! Read from updated state. This derived-type variable is "global" within this module
     mycleaf = state_mustbe_zero_for_lai%cleaf
     mymaxnv = state_mustbe_zero_for_lai%maxnv
 
-    ! write(0,*) '----------'
-    ! write(0,*) 'inside mustbe_zero_for_lai: '
-    ! write(0,*) 'mylai', mylai
-    ! write(0,*) 'mycleaf', mycleaf
-    ! write(0,*) 'mymaxnv', mymaxnv
+    ! print*, '----------'
+    ! print*, 'inside mustbe_zero_for_lai: '
+    ! print*, 'mylai', mylai
+    ! print*, 'mycleaf', mycleaf
+    ! print*, 'mymaxnv', mymaxnv
 
     ! mustbe_zero = cleaf / ( c_molmass * params_alloc%r_ctostructn_leaf ) - meanmppfd * nv * ( 1.0 - exp( -1.0 * kbeer * mylai ) ) * params_alloc%r_n_cw_v - mylai * params_alloc%ncw_min
     ! mustbe_zero = cleaf / ( c_molmass * params_alloc%r_ctostructn_leaf ) - maxnv * ( 1.0 - exp( -1.0 * kbeer * mylai ) ) * params_alloc%r_n_cw_v - mylai * params_alloc%ncw_min
     mustbe_zero = mycleaf / ( c_molmass * params_alloc%r_ctostructn_leaf ) - mymaxnv * get_fapar( mylai ) * params_alloc%r_n_cw_v - mylai * params_alloc%ncw_min
 
-    ! write(0,*) 'mustbe_zero                           ', mustbe_zero
-    ! write(0,*) '-------------'
+    ! print*, 'mustbe_zero                           ', mustbe_zero
+    ! print*, '-------------'
 
 
   end function mustbe_zero_for_lai
@@ -542,7 +599,7 @@ contains
   end function get_rcton_init
 
 
-  function get_canopy_leaf_n_metabolic( mylai, meanmppfd, nv ) result( mynleaf_metabolic )
+  function get_leaf_n_metabolic_canopy( mylai, meanmppfd, nv ) result( mynleaf_metabolic )
     !////////////////////////////////////////////////////////////////
     ! Calculates initial guess based on Taylor approximation of 
     ! LAI * n_metabolic = nv * Iabs
@@ -571,10 +628,10 @@ contains
 
     mynleaf_metabolic = maxnv * get_fapar( mylai )
 
-  end function get_canopy_leaf_n_metabolic
+  end function get_leaf_n_metabolic_canopy
 
 
-  function get_canopy_leaf_n_structural( mylai, mynleaf_metabolic ) result( mynleaf_structural )
+  function get_leaf_n_structural_canopy( mylai, mynleaf_metabolic ) result( mynleaf_structural )
     !////////////////////////////////////////////////////////////////
     ! Calculates initial guess based on Taylor approximation of 
     ! LAI * n_structural = nv * Iabs
@@ -591,15 +648,15 @@ contains
 
     mynleaf_structural = mynleaf_metabolic * params_alloc%r_n_cw_v + mylai * params_alloc%ncw_min
 
-    ! write(0,*) '--- in get_canopy_leaf_n_structural'
-    ! write(0,*) 'mylai ', mylai
-    ! write(0,*) 'mynleaf_metabolic ', mynleaf_metabolic
-    ! write(0,*) 'params_alloc%r_n_cw_v ', params_alloc%r_n_cw_v
-    ! write(0,*) 'params_alloc%ncw_min ', params_alloc%ncw_min
-    ! write(0,*) 'mynleaf_structural ', mynleaf_structural
-    ! write(0,*) '-------------------------------'
+    ! print*, '--- in get_leaf_n_structural_canopy'
+    ! print*, 'mylai ', mylai
+    ! print*, 'mynleaf_metabolic ', mynleaf_metabolic
+    ! print*, 'params_alloc%r_n_cw_v ', params_alloc%r_n_cw_v
+    ! print*, 'params_alloc%ncw_min ', params_alloc%ncw_min
+    ! print*, 'mynleaf_structural ', mynleaf_structural
+    ! print*, '-------------------------------'
 
-  end function get_canopy_leaf_n_structural
+  end function get_leaf_n_structural_canopy
 
 
   function get_canopy_leaf_n( mylai, meanmppfd, nv ) result( mynleaf )
@@ -626,22 +683,22 @@ contains
     real :: nleaf_metabolic   ! mol N m-2
     real :: nleaf_structural  ! mol N m-2
 
-    nleaf_metabolic  = get_canopy_leaf_n_metabolic(  mylai, meanmppfd, nv )
-    nleaf_structural = get_canopy_leaf_n_structural( mylai, nleaf_metabolic )
+    nleaf_metabolic  = get_leaf_n_metabolic_canopy(  mylai, meanmppfd, nv )
+    nleaf_structural = get_leaf_n_structural_canopy( mylai, nleaf_metabolic )
     mynleaf          = n_molmass * ( nleaf_metabolic + nleaf_structural )
 
-    ! write(0,*) '--- in get_canopy_leaf_n'
-    ! write(0,*) 'nleaf_metabolic ', nleaf_metabolic
-    ! write(0,*) 'nleaf_structural ', nleaf_structural
-    ! write(0,*) 'mynleaf ', mynleaf
-    ! write(0,*) '-------------------------------'
+    ! print*, '--- in get_canopy_leaf_n'
+    ! print*, 'nleaf_metabolic ', nleaf_metabolic
+    ! print*, 'nleaf_structural ', nleaf_structural
+    ! print*, 'mynleaf ', mynleaf
+    ! print*, '-------------------------------'
 
     ! mynleaf = n_molmass * ( maxnv * get_fapar( mylai ) * ( 1.0 + params_alloc%r_n_cw_v ) + mylai * params_alloc%ncw_min )
 
   end function get_canopy_leaf_n
 
 
-  function get_leaftraits( mylai, meanmppfd, nv ) result( traits )
+  function get_leaftraits( mylai, meanmppfd, nv ) result( out_traits )
     !////////////////////////////////////////////////////////////////
     ! Calculates leaf traits based on (predicted) metabolic Narea and
     ! (prescribed) parameters that relate structural to metabolic
@@ -651,7 +708,7 @@ contains
     ! Carea            = c * Narea_structural
     !----------------------------------------------------------------
     use _params_core, only: c_content_of_biomass
-    use _plant, only: get_fapar
+    use _plant, only: leaftraits_type
 
     ! arguments
     real, intent(in)                    :: mylai
@@ -659,33 +716,33 @@ contains
     real, dimension(nmonth), intent(in) :: nv
 
     ! function return variable
-    type(leaftraits_type) :: traits
+    type( leaftraits_type ), intent(out) :: out_traits
 
     ! local variables
     real :: mynarea_metabolic_canop   ! mol N m-2-ground
     real :: mynarea_structural_canop  ! mol N m-2-ground
 
-    mynarea_metabolic_canop  = get_canopy_leaf_n_metabolic(  mylai, meanmppfd(:), nv(:) )     ! mol N m-2-ground    
-    mynarea_structural_canop = get_canopy_leaf_n_structural( mylai, mynarea_metabolic_canop ) ! mol N m-2-ground
+    mynarea_metabolic_canop  = get_leaf_n_metabolic_canopy(  mylai, meanmppfd(:), nv(:) )     ! mol N m-2-ground    
+    mynarea_structural_canop = get_leaf_n_structural_canopy( mylai, mynarea_metabolic_canop ) ! mol N m-2-ground
     
-    traits%narea_metabolic  = n_molmass * mynarea_metabolic_canop / mylai   ! g N m-2-leaf
-    traits%narea_structural = n_molmass * mynarea_structural_canop / mylai  ! g N m-2-leaf
-    traits%narea            = n_molmass * ( mynarea_metabolic_canop + mynarea_structural_canop ) / mylai ! g N m-2-leaf
-    traits%lma              = c_molmass * params_alloc%r_ctostructn_leaf * mynarea_structural_canop / mylai 
-    traits%nmass            = traits%narea / ( traits%lma / c_content_of_biomass )
-    traits%r_cton_leaf      = traits%lma / traits%narea
-    traits%r_ntoc_leaf      = 1.0 / traits%r_cton_leaf
+    out_traits%narea_metabolic  = n_molmass * mynarea_metabolic_canop / mylai   ! g N m-2-leaf
+    out_traits%narea_structural = n_molmass * mynarea_structural_canop / mylai  ! g N m-2-leaf
+    out_traits%narea            = n_molmass * ( mynarea_metabolic_canop + mynarea_structural_canop ) / mylai ! g N m-2-leaf
+    out_traits%lma              = c_molmass * params_alloc%r_ctostructn_leaf * mynarea_structural_canop / mylai 
+    out_traits%nmass            = out_traits%narea / ( out_traits%lma / c_content_of_biomass )
+    out_traits%r_cton_leaf      = out_traits%lma / out_traits%narea
+    out_traits%r_ntoc_leaf      = 1.0 / out_traits%r_cton_leaf
 
-    ! write(0,*) '--- in get_leaftraits'
-    ! write(0,*) 'mylai                  ', mylai
-    ! write(0,*) 'traits%narea_metabolic ', traits%narea_metabolic 
-    ! write(0,*) 'traits%narea_structural', traits%narea_structural
-    ! write(0,*) 'traits%narea           ', traits%narea           
-    ! write(0,*) 'traits%lma             ', traits%lma             
-    ! write(0,*) 'traits%nmass           ', traits%nmass           
-    ! write(0,*) 'traits%r_cton_leaf     ', traits%r_cton_leaf     
-    ! write(0,*) 'traits%r_ntoc_leaf     ', traits%r_ntoc_leaf     
-    ! write(0,*) '-------------------------------'
+    ! print*, '--- in get_leaftraits'
+    ! print*, 'mylai                  ', mylai
+    ! print*, 'traits%narea_metabolic ', traits%narea_metabolic 
+    ! print*, 'traits%narea_structural', traits%narea_structural
+    ! print*, 'traits%narea           ', traits%narea           
+    ! print*, 'traits%lma             ', traits%lma             
+    ! print*, 'traits%nmass           ', traits%nmass           
+    ! print*, 'traits%r_cton_leaf     ', traits%r_cton_leaf     
+    ! print*, 'traits%r_ntoc_leaf     ', traits%r_ntoc_leaf     
+    ! print*, '-------------------------------'
     ! stop 
 
   end function get_leaftraits
@@ -740,7 +797,7 @@ contains
     outaCalcrm(:,:) = 0.0
     outaNalcrm(:,:) = 0.0
 
-    ! write(0,*) 'initialising outaCalloc',outaCalloc
+    ! print*, 'initialising outaCalloc',outaCalloc
 
   end subroutine initoutput_allocation
 
@@ -759,7 +816,7 @@ contains
     outaCalcrm(:,jpngr) = outaCalcrm(:,jpngr) + dcroot(:) 
     outaNalcrm(:,jpngr) = outaNalcrm(:,jpngr) + dnroot(:)
 
-    ! write(0,*) 'collecting outaCalloc',outaCalloc
+    ! print*, 'collecting outaCalloc',outaCalloc
 
   end subroutine getout_daily_allocation
 
@@ -789,7 +846,7 @@ contains
     !-------------------------------------------------------------------------
     itime = real(year) + real(firstyeartrend) - real(spinupyears)
 
-    ! write(0,*) 'writing time, outaCalloc',itime, sum(outaCalloc(:,jpngr))
+    ! print*, 'writing time, outaCalloc',itime, sum(outaCalloc(:,jpngr))
 
     write(350,999) itime, sum(outaCalclm(:,jpngr))
     write(351,999) itime, sum(outaNalclm(:,jpngr))

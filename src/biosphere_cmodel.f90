@@ -22,12 +22,16 @@ subroutine biosphere( &
   use _soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
   use _params_soil, only: paramtype_soil
   use _waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
-  use _phenology, only: gettempphenology
+  use _phenology, only: gettempphenology, getpar_modl_phenology
   use _gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, writeout_ascii_gpp
   use _npp, only: npp
   use _turnover, only: turnover
   use _allocation, only: allocation_daily
+  use _vegdynamics, only: vegdynamics
   
+  ! xxx debug
+  use _plant, only: ispresent
+
   implicit none
 
   ! arguments
@@ -52,7 +56,7 @@ subroutine biosphere( &
   integer :: dm, moy, jpngr, day
 
   ! ! XXX PMODEL_TEST
-  ! write(0,*) 'WARNING: FAPAR = 1.00 USED IN PMODEL'
+  ! print*, 'WARNING: FAPAR = 1.00 USED IN PMODEL'
 
   !----------------------------------------------------------------
   ! INITIALISATIONS
@@ -67,6 +71,7 @@ subroutine biosphere( &
     call getpar_modl_plant()
     call getpar_modl_waterbal()
     call getpar_modl_gpp()
+    call getpar_modl_phenology()
     ! call getpar_modl_soil()
 
     !----------------------------------------------------------------
@@ -74,7 +79,6 @@ subroutine biosphere( &
     !----------------------------------------------------------------
     call initglobal_plant()
     call initglobal_waterbal()
-    call initglobal_plant()
     ! call initglobal_soil()
 
     !----------------------------------------------------------------
@@ -147,40 +151,41 @@ subroutine biosphere( &
         !----------------------------------------------------------------
         ! get soil moisture, and runoff
         !----------------------------------------------------------------
-        ! write(0,*) 'calling waterbal() ... '
-        ! write(0,*) 'with arguments ', jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr)
+        ! print*, 'calling waterbal() ... '
+        ! print*, 'with arguments ', jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr)
         call waterbal( jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr) )
-        ! write(0,*) '... done'
+        ! print*, '... done'
 
         !----------------------------------------------------------------
         ! calculate soil temperature
         !----------------------------------------------------------------
-        ! write(0,*) 'calling soiltemp() ... '
+        ! print*, 'calling soiltemp() ... '
         call soiltemp( jpngr, moy, day, dtemp_field(:,jpngr), params_soil_field(jpngr) )
-        ! write(0,*) '... done'
+        ! print*, '... done'
+
+        !----------------------------------------------------------------
+        ! update canopy and stand variables and simulate daily 
+        ! establishment / sprouting
+        !----------------------------------------------------------------
+        ! print*, 'calling vegdynamics() ... '
+        call vegdynamics( jpngr, day ) 
+        ! print*, '... done'
 
         !----------------------------------------------------------------
         ! calculate GPP
         !----------------------------------------------------------------
-        ! write(0,*) 'calling gpp() ... '
+        ! print*, 'calling gpp() ... '
         call gpp( jpngr, day, moy, mfapar_field(moy,jpngr) )
         ! call gpp( jpngr, day, moy, 1.00 )
-        ! write(0,*) '... done'
+        ! print*, '... done'
 
         !----------------------------------------------------------------
         ! substract autotrophic respiration to get NPP, remainder is added 
         ! to labile pool (plabl)
         !----------------------------------------------------------------
-        ! write(0,*) 'calling npp() ... '
+        ! print*, 'calling npp() ... '
         call npp( jpngr, dtemp_field(day,jpngr), day )
-        ! write(0,*) '... done'
-
-        !----------------------------------------------------------------
-        ! allocation of labile pools to biomass
-        !----------------------------------------------------------------
-        ! write(0,*) 'calling allocation() ... '
-        call allocation_daily( jpngr, day, moy, dm )
-        ! write(0,*) '... done'
+        ! print*, '... done'
 
         ! amount of NPP added to reproduction (xxx ignore at this point)
         !call reproduction( jpngr )
@@ -188,27 +193,34 @@ subroutine biosphere( &
         !----------------------------------------------------------------
         ! leaf, sapwood, and fine-root turnover
         !----------------------------------------------------------------
-        ! write(0,*) 'calling turnover() ... '
+        ! print*, 'calling turnover() ... '
         call turnover( jpngr, day )
-        ! write(0,*) '... done'
+        ! print*, '... done'
+
+        !----------------------------------------------------------------
+        ! allocation of labile pools to biomass
+        !----------------------------------------------------------------
+        ! print*, 'calling allocation() ... '
+        call allocation_daily( jpngr, day, moy, dm )
+        ! print*, '... done'
 
         ! !----------------------------------------------------------------
         ! ! litter and soil decomposition and N mineralisation
         ! !----------------------------------------------------------------
-        ! ! write(0,*) 'calling littersom() ... '
+        ! ! print*, 'calling littersom() ... '
         ! call littersom( jpngr, day )
-        ! ! write(0,*) '... done'
+        ! ! print*, '... done'
 
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
-        ! write(0,*) 'calling getout_daily_*() ... '
+        ! print*, 'calling getout_daily_*() ... '
         call getout_daily_waterbal( jpngr, moy, day )
         call getout_daily_soiltemp( jpngr, moy, day )
         call getout_daily_gpp( jpngr, moy, day )
         call getout_daily_plant( jpngr, moy, day )
         ! call getout_daily_soil( jpngr, moy, day )
-        ! write(0,*) '... done'
+        ! print*, '... done'
 
       end do
 

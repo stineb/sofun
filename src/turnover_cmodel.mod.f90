@@ -55,7 +55,11 @@ contains
     do pft=1,npft
 
       if (ispresent(pft,jpngr)) then
-
+    
+        ! print*,'to A plabl(pft,jpngr): ', plabl(pft,jpngr)
+        ! print*,'params_pft_plant(pft)%grass ', params_pft_plant(pft)%grass
+        ! print*,'params_pft_pheno(pft)%summergreen', params_pft_pheno(pft)%summergreen
+        ! print*,'shedleaves(doy,pft)', shedleaves(doy,pft)
         !--------------------------------------------------------------
         ! Get turnover fractions
         ! Turnover-rates are reciprocals of tissue longevity
@@ -63,29 +67,43 @@ contains
         ! assuming no continuous leaf turnover
         !--------------------------------------------------------------
         if (params_pft_plant(pft)%grass) then
-          if (params_pft_pheno(pft)%summergreen) then
-            if (shedleaves(doy,pft)) then
-              ! write(0,*) 'end of season: labile C, labile N', plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14
-              dleaf = 1.0
-              droot = 1.0
-              dlabl = 1.0
-              dsapw = 1.0
-              ! write(0,*) 'complete die-off on day', doy
-            else
-              dleaf = params_pft_plant(pft)%k_decay_leaf
-              droot = params_pft_plant(pft)%k_decay_root
-              dlabl = 0.0
-              dsapw = 0.0
-            end if
-          else
-            dleaf = params_pft_plant(pft)%k_decay_leaf
-            droot = params_pft_plant(pft)%k_decay_root
-            dlabl = 0.0
-            dsapw = 0.0
-          end if   
+
+          ! grasses have continuous turnover
+          dleaf = params_pft_plant(pft)%k_decay_leaf
+          droot = params_pft_plant(pft)%k_decay_root
+          dlabl = 0.0
+          dsapw = 0.0
+
         else
-          stop 'turnover only implemented for grasses'        
-        end if
+
+          ! if (params_pft_pheno(pft)%summergreen) then
+          !   if (shedleaves(doy,pft)) then
+          !     ! print*, 'end of season: labile C, labile N', plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14
+          !     ! stop 'do beni'
+          !     ! dleaf = 1.0
+          !     ! droot = 1.0
+          !     dlabl = 1.0
+          !     dsapw = 1.0
+          !     ! print*, 'complete die-off on day', doy
+          !   else
+          !     dleaf = params_pft_plant(pft)%k_decay_leaf
+          !     droot = params_pft_plant(pft)%k_decay_root
+          !     dlabl = 0.0
+          !     dsapw = 0.0
+          !   end if
+          ! else
+          !   dleaf = params_pft_plant(pft)%k_decay_leaf
+          !   droot = params_pft_plant(pft)%k_decay_root
+          !   dlabl = 0.0
+          !   dsapw = 0.0
+          ! end if   
+
+        endif
+
+        ! print*,'dleaf ', dleaf
+        ! print*,'droot ', droot
+        ! print*,'dsapw ', dsapw
+        ! print*,'dlabl ', dlabl
 
         !--------------------------------------------------------------
         ! Calculate biomass turnover in this year 
@@ -99,15 +117,17 @@ contains
 
         ! ! add labile C and N to litter as well
         ! if (dlabl>0.0) then
-        !   write(0,*) 'TURNOVER: WARNING LABILE C AND N ARE SET TO ZERO WITHOUT MASS CONSERVATION'
+        !   print*, 'TURNOVER: WARNING LABILE C AND N ARE SET TO ZERO WITHOUT MASS CONSERVATION'
         !   lb_turn%c%c12 = 0.0
         !   lb_turn%n%n14 = 0.0
         !   ! call cmvRec( lb_turn%c, lb_turn%c, plitt_bg(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
         !   ! call nmvRec( lb_turn%n, lb_turn%n, plitt_bg(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
-        !   ! write(0,*) 'end of growing season-plabl:', plabl
-        !   ! write(0,*) 'moving C and N to exudates and ninorg:', lb_turn
+        !   ! print*, 'end of growing season-plabl:', plabl
+        !   ! print*, 'moving C and N to exudates and ninorg:', lb_turn
         ! end if
 
+      ! print*,'to B plabl(pft,jpngr): ', plabl(pft,jpngr)
+      
       endif                   !present
     enddo                     !pft
 
@@ -118,7 +138,7 @@ contains
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction dleaf for leaf pool
     !------------------------------------------------------------------
-    use _plant, only: update_foliage_vars
+    ! use _plant, only: update_foliage_vars
 
     ! arguments
     real, intent(in)    :: dleaf
@@ -143,11 +163,11 @@ contains
     ! rest goes to litter
     call nmvRec( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
 
-    !--------------------------------------------------------------
-    ! Update foliage-related state variables (lai_ind, fpc_grid, and fapar_ind)
-    ! This assumes that leaf canopy-average traits do not change upon changes in LAI.
-    !--------------------------------------------------------------
-    call update_foliage_vars( pft, jpngr )
+    ! !--------------------------------------------------------------
+    ! ! Update foliage-related state variables (lai_ind, fpc_grid, and fapar_ind)
+    ! ! This assumes that leaf canopy-average traits do not change upon changes in LAI.
+    ! !--------------------------------------------------------------
+    ! call update_foliage_vars( pft, jpngr )
 
   end subroutine turnover_leaf
 
