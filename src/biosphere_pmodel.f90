@@ -91,20 +91,20 @@ subroutine biosphere( &
   do jpngr=1,maxgrid
 
     !----------------------------------------------------------------
-    ! Get monthly light use efficiency, and Rd per unit of light absorbed
-    ! Photosynthetic parameters acclimate at monthly time scale
-    ! This is not compatible with a daily biosphere-climate coupling. I.e., 
-    ! there is a monthly loop within 'getlue'!
-    !----------------------------------------------------------------
-    call getlue( jpngr, pco2, dtemp_field(:,jpngr), dvpd_field(:,jpngr), elv(jpngr) )
-
-    !----------------------------------------------------------------
     ! Get radiation based on daily temperature, sunshine fraction, and 
     ! elevation.
     ! This is not compatible with a daily biosphere-climate coupling. I.e., 
     ! there is a daily loop within 'getsolar'!
     !----------------------------------------------------------------
     call getsolar_alldays( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
+
+    !----------------------------------------------------------------
+    ! Get monthly light use efficiency, and Rd per unit of light absorbed
+    ! Photosynthetic parameters acclimate at monthly time scale
+    ! This is not compatible with a daily biosphere-climate coupling. I.e., 
+    ! there is a monthly loop within 'getlue'!
+    !----------------------------------------------------------------
+    call getlue( jpngr, pco2, dtemp_field(:,jpngr), dvpd_field(:,jpngr), elv(jpngr) )
 
     !----------------------------------------------------------------
     ! LOOP THROUGH MONTHS

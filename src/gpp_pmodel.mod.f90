@@ -204,6 +204,9 @@ contains
     integer :: pft
     integer :: lu
 
+    ! ! XXX PMODEL_TEST
+    ! if (doy==1) print*, 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
+
     !----------------------------------------------------------------
     ! CALCULATE PREDICTED GPP FROM P-model
     ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
@@ -217,29 +220,21 @@ contains
 
       if ( canopy(pft)%fapar_ind>0.0 ) then
 
-        ! print*, 'in SR gpp: fapar          ', canopy(pft)%fapar_ind !OK!
-        ! print*, 'in SR gpp: doy, solar%dppfd(doy)', doy, solar%dppfd(doy) !OK!
-        ! print*, 'in SR gpp: moy, mlue(pft,moy) ', moy, mlue(pft,moy) !OK! 
-        ! print*, 'in SR gpp: evap(lu)%cpa ', evap(lu)%cpa
-        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy) )
+        ! GPP
         dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), evap(lu)%cpa )
+        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy) )
 
         ! Dark respiration
         drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), evap(lu)%cpa )
-        ! drd(pft)     = calc_drd( 0.05, solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
-        ! print*, 'doy, drd(pft)             ', doy, drd(pft)
+        ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
 
         ! transpiration
         dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), evap(lu)%cpa )
-        ! dtransp(pft) = calc_dtransp( 0.05, solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
+        ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
 
         ! Vcmax
         vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), evap(lu)%cpa )
-        ! mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
-
-        ! print*, 'dgpp(pft)', dgpp(pft)
-        ! print*, 'drd(pft)', drd(pft)
-        ! stop
+        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
 
       else  
 
@@ -317,7 +312,7 @@ contains
     ! per unit absorbed light (not corrected for soil moisture)
 
     ! ! XXX PMODEL_TEST
-    ! print*, 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
+    ! print*, 'WARNING: ONLY C3 PHOTOSYNTHESIS USED IN PMODEL'
 
     do lu=1,nlu
 
@@ -327,7 +322,9 @@ contains
 
         do moy=1,nmonth
 
-          ! Execute P-model not declaring fAPAR and PPFD, and cpalpha=1.26
+          ! ! XXX PMODEL_TEST
+          ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "full" )
+
           if ( params_pft_plant(pft)%c4grass ) then
             ! C4: use infinite CO2
             out_pmodel = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "full" )
@@ -385,7 +382,7 @@ contains
     real, intent(in) :: fapar
     real, intent(in) :: dppfd
     real, intent(in) :: my_mlue
-    real, intent(in) :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
     real, intent(out) :: my_dgpp
@@ -393,7 +390,11 @@ contains
     ! local variables
     real :: fa
 
-    fa = calc_fa( cpalpha )
+    if (present(cpalpha)) then
+      fa = calc_fa( cpalpha )
+    else
+      fa = 1.0
+    end if
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
     my_dgpp = fapar * dppfd * fa * my_mlue * c_molmass
@@ -410,7 +411,7 @@ contains
     real, intent(in) :: fapar           ! fraction of absorbed PAR (unitless)
     real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
     real, intent(in) :: my_mrd_unitiabs
-    real, intent(in) :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
     real, intent(out) :: my_drd
@@ -418,7 +419,11 @@ contains
     ! local variables
     real :: fa
 
-    fa = calc_fa( cpalpha )
+    if (present(cpalpha)) then
+      fa = calc_fa( cpalpha )
+    else
+      fa = 1.0
+    end if
 
     ! Dark respiration takes place during night and day (24 hours)
     my_drd = fapar * meanmppfd * fa * my_mrd_unitiabs * 60.0 * 60.0 * 24.0 * c_molmass
@@ -434,7 +439,7 @@ contains
     real, intent(in) :: fapar
     real, intent(in) :: dppfd
     real, intent(in) :: my_transp_unitiabs
-    real, intent(in) :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
     real, intent(out) :: my_dtransp
@@ -442,7 +447,11 @@ contains
     ! local variables
     real :: fa
 
-    fa = calc_fa( cpalpha )
+    if (present(cpalpha)) then
+      fa = calc_fa( cpalpha )
+    else
+      fa = 1.0
+    end if
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
     my_dtransp = fapar * dppfd * fa * my_transp_unitiabs * h2o_molmass
@@ -459,7 +468,7 @@ contains
     real, intent(in) :: fapar
     real, intent(in) :: my_vcmax_unitiabs
     real, intent(in) :: meanmppfd
-    real, intent(in) :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
     real, intent(out) :: my_vcmax
@@ -467,7 +476,11 @@ contains
     ! local variables
     real :: fa
 
-    fa = calc_fa( cpalpha )
+    if (present(cpalpha)) then
+      fa = calc_fa( cpalpha )
+    else
+      fa = 1.0
+    end if
 
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
     my_vcmax = fapar * meanmppfd * fa * my_vcmax_unitiabs
@@ -1266,57 +1279,57 @@ contains
       open(101,file=filnam,err=888,status='unknown')
     end if 
 
-    ! RD
-    if (loutdrd) then
-      filnam=trim(prefix)//'.d.rd.out'
-      open(135,file=filnam,err=888,status='unknown')
-    end if 
+    ! ! RD
+    ! if (loutdrd) then
+    !   filnam=trim(prefix)//'.d.rd.out'
+    !   open(135,file=filnam,err=888,status='unknown')
+    ! end if 
 
-    ! TRANSPIRATION
-    if (loutdtransp) then
-      filnam=trim(prefix)//'.d.transp.out'
-      open(114,file=filnam,err=888,status='unknown')
-    end if
+    ! ! TRANSPIRATION
+    ! if (loutdtransp) then
+    !   filnam=trim(prefix)//'.d.transp.out'
+    !   open(114,file=filnam,err=888,status='unknown')
+    ! end if
 
-    !----------------------------------------------------------------
-    ! MONTHLY OUTPUT
-    !----------------------------------------------------------------
-    ! GPP
-    if (loutdgpp) then     ! monthly and daily output switch are identical
-      filnam=trim(prefix)//'.m.gpp.out'
-      open(151,file=filnam,err=888,status='unknown')
-    end if 
+    ! !----------------------------------------------------------------
+    ! ! MONTHLY OUTPUT
+    ! !----------------------------------------------------------------
+    ! ! GPP
+    ! if (loutdgpp) then     ! monthly and daily output switch are identical
+    !   filnam=trim(prefix)//'.m.gpp.out'
+    !   open(151,file=filnam,err=888,status='unknown')
+    ! end if 
 
-    ! RD
-    if (loutdrd) then     ! monthly and daily output switch are identical
-      filnam=trim(prefix)//'.m.rd.out'
-      open(152,file=filnam,err=888,status='unknown')
-    end if 
+    ! ! RD
+    ! if (loutdrd) then     ! monthly and daily output switch are identical
+    !   filnam=trim(prefix)//'.m.rd.out'
+    !   open(152,file=filnam,err=888,status='unknown')
+    ! end if 
 
-    ! TRANSP
-    if (loutdtransp) then     ! monthly and daily output switch are identical
-      filnam=trim(prefix)//'.m.transp.out'
-      open(153,file=filnam,err=888,status='unknown')
-    end if 
+    ! ! TRANSP
+    ! if (loutdtransp) then     ! monthly and daily output switch are identical
+    !   filnam=trim(prefix)//'.m.transp.out'
+    !   open(153,file=filnam,err=888,status='unknown')
+    ! end if 
 
-    !----------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    !----------------------------------------------------------------
-    ! GPP 
-    filnam=trim(prefix)//'.a.gpp.out'
-    open(310,file=filnam,err=888,status='unknown')
+    ! !----------------------------------------------------------------
+    ! ! ANNUAL OUTPUT
+    ! !----------------------------------------------------------------
+    ! ! GPP 
+    ! filnam=trim(prefix)//'.a.gpp.out'
+    ! open(310,file=filnam,err=888,status='unknown')
 
-    ! VCMAX (annual maximum) (mol m-2 s-1)
-    filnam=trim(prefix)//'.a.vcmax.out'
-    open(323,file=filnam,err=888,status='unknown')
+    ! ! VCMAX (annual maximum) (mol m-2 s-1)
+    ! filnam=trim(prefix)//'.a.vcmax.out'
+    ! open(323,file=filnam,err=888,status='unknown')
 
-    ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
-    filnam=trim(prefix)//'.a.chi.out'
-    open(652,file=filnam,err=888,status='unknown')
+    ! ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
+    ! filnam=trim(prefix)//'.a.chi.out'
+    ! open(652,file=filnam,err=888,status='unknown')
 
-    ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
-    filnam=trim(prefix)//'.a.lue.out'
-    open(653,file=filnam,err=888,status='unknown')
+    ! ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
+    ! filnam=trim(prefix)//'.a.lue.out'
+    ! open(653,file=filnam,err=888,status='unknown')
 
     return
 
@@ -1449,38 +1462,38 @@ contains
         itime = real(outyear) + real(day-1)/real(ndayyear)
 
         if (loutdgpp   ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
-        if (loutdrd    ) write(135,999) itime, sum(outdrd(:,day,jpngr))
-        if (loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
+        ! if (loutdrd    ) write(135,999) itime, sum(outdrd(:,day,jpngr))
+        ! if (loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
 
       end do
 
-      do moy=1,nmonth
+      ! do moy=1,nmonth
 
-        ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(outyear) + real(moy-1)/real(nmonth)
+      !   ! Define 'itime' as a decimal number corresponding to day in the year + year
+      !   itime = real(outyear) + real(moy-1)/real(nmonth)
 
-        ! print*, 'outmgpp ', outmgpp
-        ! stop
+      !   ! print*, 'outmgpp ', outmgpp
+      !   ! stop
 
-        if (loutdgpp   ) write(151,999) itime, sum(outmgpp(:,moy,jpngr))
-        if (loutdrd    ) write(152,999) itime, sum(outmrd (:,moy,jpngr))
-        if (loutdtransp) write(153,999) itime, sum(outmtransp(:,moy,jpngr))
+      !   if (loutdgpp   ) write(151,999) itime, sum(outmgpp(:,moy,jpngr))
+      !   if (loutdrd    ) write(152,999) itime, sum(outmrd (:,moy,jpngr))
+      !   if (loutdtransp) write(153,999) itime, sum(outmtransp(:,moy,jpngr))
 
-      end do
+      ! end do
 
     end if
 
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    itime = real(outyear)
+    ! !-------------------------------------------------------------------------
+    ! ! ANNUAL OUTPUT
+    ! ! Write annual value, summed over all PFTs / LUs
+    ! ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+    ! !-------------------------------------------------------------------------
+    ! itime = real(outyear)
 
-    write(310,999) itime, sum(outagpp(:,jpngr))
-    write(651,999) itime, sum(outavcmax(:,jpngr))
-    write(652,999) itime, sum(outachi(:,jpngr))
-    write(653,999) itime, sum(outalue(:,jpngr))
+    ! write(310,999) itime, sum(outagpp(:,jpngr))
+    ! write(651,999) itime, sum(outavcmax(:,jpngr))
+    ! write(652,999) itime, sum(outachi(:,jpngr))
+    ! write(653,999) itime, sum(outalue(:,jpngr))
 
     return
     

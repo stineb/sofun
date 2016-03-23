@@ -123,8 +123,10 @@ subroutine biosphere( &
     call getlue( jpngr, pco2, dtemp_field(:,jpngr), dvpd_field(:,jpngr), elv(jpngr) )
 
     !----------------------------------------------------------------
-    ! get temperature-driven phenology (drought-driven phenology is 
-    ! calculated after waterbalance)
+    ! Get radiation based on daily temperature, sunshine fraction, and 
+    ! elevation.
+    ! This is not compatible with a daily biosphere-climate coupling. I.e., 
+    ! there is a daily loop within 'getsolar'!
     !----------------------------------------------------------------
     call gettempphenology( jpngr, dtemp_field(:,jpngr) )
 

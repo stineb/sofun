@@ -1,19 +1,28 @@
 import pandas
 import os
 import os.path
+from subprocess import call
 
 ##--------------------------------------------------------------------
 ## Simulation suite
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet'
+simsuite = 'fluxnet_cmodel'
 # simsuite = 'pmodel_test'
 
 ##--------------------------------------------------------------------
 ## Compile
 ##--------------------------------------------------------------------
 if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
-    if not os.path.exists( 'runpmodel' ):
-        call(['make', 'pmodel'])
+    exe = 'runpmodel'
+    compiling_opt = 'pmodel'
+elif simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test':
+    exe = 'runcmodel'
+    compiling_opt = 'cmodel'
+else:
+    print 'simsuite not valid'
+
+if not os.path.exists( exe ):
+    call(['make', compiling_opt])
 
 ##--------------------------------------------------------------------
 ## Get site names
@@ -22,26 +31,16 @@ filnam_siteinfo_csv = '../input_' + simsuite + '_sofun/siteinfo_' + simsuite + '
 
 if os.path.exists( filnam_siteinfo_csv ):
     print 'reading site information file ...'
-    siteinfo_sub_dens = pandas.read_csv( '../input_' + simsuite + '_sofun/siteinfo_' + simsuite + '_sofun.csv' )
+    siteinfo = pandas.read_csv( filnam_siteinfo_csv )
 else:
     print 'site info file does not exist: ' + filnam_siteinfo_csv
     
 ##--------------------------------------------------------------------
 ## Loop over site names and submit job for each site
 ##--------------------------------------------------------------------
-siteinfo = pandas.read_csv( filnam_siteinfo_csv )
 for index, row in siteinfo.iterrows():
+    # print 'submitting job for site ' + row['mysitename'] + '...'
+    # os.system( 'echo ' + row['mysitename'] + '| ./' + exe )
     if row['classid'] == 'GRA':
         print 'submitting job for site ' + row['mysitename'] + '...'
-        os.system( 'echo ' + row['mysitename'] + '| ./runpmodel' )
-
-
-
-# sitenames = siteinfo['mysitename']
-# for idx in sitenames:
-  # print 'submitting job for site ' + idx + '...'
-  # os.system( 'echo ' + idx + '| ./runpmodel' )
-
-# ## test: CH-Oe1 only
-# print 'submitting job for site ' + 'CH-Oe1' + '...'
-# os.system( 'echo ' + 'CH-Oe1' + '| ./runpmodel' )
+        os.system( 'echo ' + row['mysitename'] + '| ./' + exe )
