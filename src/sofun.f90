@@ -48,7 +48,7 @@ program main
   ! GET SIMULATION PARAMETERS FROM FILE <runname>.sofun.parameter
   ! SR getpar_siml is defined in _params_siml.mod.F
   !----------------------------------------------------------------
-  call getpar_siml(trim(runname))
+  call getpar_siml( trim(runname) )
 
   !----------------------------------------------------------------
   ! GET SITE PARAMETERS AND INPUT DATA
@@ -56,13 +56,13 @@ program main
   ! SR getpar_site is defined in _params_site.mod.F. 
   ! 'sitename' is global variable
   !----------------------------------------------------------------
-  call getpar_site
+  call getpar_site()
 
   !----------------------------------------------------------------
   ! GET GRID INFORMATION
   ! longitude, latitude, elevation
   !----------------------------------------------------------------
-  call getgrid
+  call getgrid()
 
   ! Get soil parameters (if not defined in <sitename>.parameter)
   !call getsoilpar
@@ -91,11 +91,9 @@ program main
     endif
 
     !----------------------------------------------------------------
-    ! Get external (environmental) forcing for all simulation years
-    ! xxx move this into annual loop
+    ! Get external (environmental) forcing
     !----------------------------------------------------------------
-    ! out_climate = getclimate_site( trim(runname), trim(sitename), out_steering%climateyear )
-    call getclimate_site( trim(runname), trim(sitename), out_steering%climateyear )
+    climate_field = getclimate_site( trim(runname), trim(sitename), out_steering%climateyear )
 
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
@@ -103,6 +101,7 @@ program main
     pco2             = getco2( trim(runname), trim(sitename), out_steering%forcingyear )
     dndep_field(:,:) = getndep( trim(runname), trim(sitename), out_steering%forcingyear )
     lu_area(:,:)     = getlanduse( trim(runname), out_steering%forcingyear )
+    ! pft_field(:)     = getpft( trim(sitename), out_steering%forcingyear )
 
     !----------------------------------------------------------------
     ! Get prescribed fAPAR
@@ -128,10 +127,11 @@ program main
     ! stop 'before calling biosphere()'
 
     call biosphere( &
-      year, lon, lat, elv &
-      , params_soil_field, lu_area, pco2 &
-      , dtemp_field, dprec_field &
-      , dfsun_field, dvpd_field, dndep_field &
+      year, lon(:), lat(:), elv(:) &
+      , params_soil_field(:), lu_area(:), pco2 &
+      , climate_field%dtemp(:,:), climate_field%dprec(:,:) &
+      , climate_field%dfsun(:,:), climate_field%dvpd(:,:) &
+      , dndep_field(:,:) &
       , c_uptake &
       , mfapar_field &
       ) 

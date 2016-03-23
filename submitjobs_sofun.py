@@ -6,7 +6,8 @@ from subprocess import call
 ##--------------------------------------------------------------------
 ## Simulation suite
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet_cmodel'
+simsuite = 'fluxnet'
+# simsuite = 'fluxnet_cmodel'
 # simsuite = 'pmodel_test'
 
 ##--------------------------------------------------------------------
@@ -39,8 +40,8 @@ else:
 ## Loop over site names and submit job for each site
 ##--------------------------------------------------------------------
 for index, row in siteinfo.iterrows():
-    # print 'submitting job for site ' + row['mysitename'] + '...'
-    # os.system( 'echo ' + row['mysitename'] + '| ./' + exe )
-    if row['classid'] == 'GRA':
-        print 'submitting job for site ' + row['mysitename'] + '...'
-        os.system( 'echo ' + row['mysitename'] + '| ./' + exe )
+    print 'submitting job for site ' + row['mysitename'] + '...'
+    os.system( 'echo ' + row['mysitename'] + '| ./' + exe )
+    # if row['classid'] == 'GRA':
+    #     print 'submitting job for site ' + row['mysitename'] + '...'
+    #     os.system( 'echo ' + row['mysitename'] + '| ./' + exe )

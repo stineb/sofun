@@ -221,20 +221,20 @@ contains
       if ( canopy(pft)%fapar_ind>0.0 ) then
 
         ! GPP
-        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), evap(lu)%cpa )
-        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy) )
+        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), evap(lu)%cpa )
+        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy) )
 
         ! Dark respiration
-        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), evap(lu)%cpa )
-        ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
+        ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), evap(lu)%cpa )
+        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
 
         ! transpiration
-        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), evap(lu)%cpa )
-        ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
+        ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), evap(lu)%cpa )
+        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
 
         ! Vcmax
-        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), evap(lu)%cpa )
-        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
+        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), evap(lu)%cpa )
+        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
 
       else  
 
@@ -323,14 +323,14 @@ contains
         do moy=1,nmonth
 
           ! ! XXX PMODEL_TEST
-          ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "full" )
+          ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
 
           if ( params_pft_plant(pft)%c4grass ) then
-            ! C4: use infinite CO2
-            out_pmodel = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "full" )
+            ! C4: use infinite CO2 for ci
+            out_pmodel = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
           else
             ! C3
-            out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "full" )
+            out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
           end if
 
           ! Light use efficiency: (gpp - rd) per unit light absorbed
@@ -587,17 +587,23 @@ contains
         !-----------------------------------------------------------------------
         out_lue = lue_approx( tc, vpd, elv, ca, gstar, ns, kmm )
                   
-      case ("simpl")
+      case ("C3_simpl")
         !-----------------------------------------------------------------------
         ! B.1 SIMPLIFIED FORMULATION 
         !-----------------------------------------------------------------------
-        out_lue = lue_vpd_simpl( kmm, gstar, ns, ca, vpd )
+        out_lue = lue_vpd_c3_simpl( kmm, gstar, ns, ca, vpd )
 
-      case ("full")
+      case ("C3_full")
         !-----------------------------------------------------------------------
         ! B.2 FULL FORMULATION
         !-----------------------------------------------------------------------
-        out_lue = lue_vpd_full( kmm, gstar, ns_star, ca, vpd )
+        out_lue = lue_vpd_c3_full( kmm, gstar, ns_star, ca, vpd )
+
+      case ("C4")
+        !-----------------------------------------------------------------------
+        ! B.2 FULL FORMULATION
+        !-----------------------------------------------------------------------
+        out_lue = lue_c4()
 
       case default
 
@@ -611,6 +617,10 @@ contains
     chi = out_lue%chi
 
     ! ! XXX PMODEL_TEST: ok
+    ! print*, 'm ', m
+    ! stop
+
+    ! ! XXX PMODEL_TEST: ok
     ! print*, 'chi ', chi
 
     !-----------------------------------------------------------------------
@@ -621,6 +631,7 @@ contains
     ! efficiency, the absorbed PAR, the function of alpha (drought-reduction),
     ! and 'm'
     m   = calc_mprime( m )
+
     gpp = iabs * params_pft_gpp(pft)%kphio * fa * m  ! in mol m-2 s-1
 
     ! Light use efficiency (gpp per unit iabs)
@@ -809,7 +820,7 @@ contains
   end function lue_approx
 
 
-  function lue_vpd_simpl( kmm, gstar, ns_star, ca, vpd ) result( out_lue )
+  function lue_vpd_c3_simpl( kmm, gstar, ns_star, ca, vpd ) result( out_lue )
     !//////////////////////////////////////////////////////////////////
     ! Output:   float, ratio of ci/ca (chi)
     ! Returns an estimate of leaf internal to ambient CO2
@@ -852,10 +863,10 @@ contains
     out_lue%m=m
     out_lue%n=n
       
-  end function lue_vpd_simpl
+  end function lue_vpd_c3_simpl
 
 
-  function lue_vpd_full( kmm, gstar, ns_star, ca, vpd ) result( out_lue )
+  function lue_vpd_c3_full( kmm, gstar, ns_star, ca, vpd ) result( out_lue )
     !//////////////////////////////////////////////////////////////////
     ! Output:   float, ratio of ci/ca (chi)
     ! Features: Returns an estimate of leaf internal to ambient CO2
@@ -918,7 +929,26 @@ contains
     out_lue%m=m
     out_lue%n=n
   
-  end function lue_vpd_full
+  end function lue_vpd_c3_full
+
+
+  function lue_c4() result( out_lue )
+    !//////////////////////////////////////////////////////////////////
+    ! Output:   float, ratio of ci/ca (chi)
+    ! Features: Returns an estimate of leaf internal to ambient CO2
+    !           partial pressure following the "simple formulation".
+    !-----------------------------------------------------------------------
+    use _params_core, only: dummy
+
+    ! function return value
+    type(outtype_lue), intent(out) :: out_lue
+
+    ! return derived type
+    out_lue%chi=dummy
+    out_lue%m=1
+    out_lue%n=1
+  
+  end function lue_c4
 
 
   function calc_mprime( m ) result( mprime )

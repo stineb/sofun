@@ -11,6 +11,7 @@ module _params_site
 
   real    :: lon_site, lat_site, elv_site
   logical :: lTeBS, lGrC3, lGrC4
+  ! logical :: lcultfile
   integer, dimension(maxgrid) :: soilcode_field
 
 contains
@@ -20,6 +21,8 @@ contains
     !  SR reads site-specific parameters from <sitename>.parameter
     !----------------------------------------------------------------
     use _sofunutils, only: getparreal, getparlogical, getparint
+
+    ! local variables
   
     write(0,*) 'reading site parameter file ', 'site_paramfils/'//trim(sitename)//'.parameter ...'
 
@@ -35,6 +38,11 @@ contains
 
     ! dimension length (maxgrid) is 1 for site-scale simulations
     soilcode_field(1) = getparint( 'site_paramfils/'//trim(sitename)//'.parameter', 'soilcode' )
+
+    ! ! For C4 grasses, check if cultivar file is available for this site
+    ! if (lGrC4) then
+    !   inquire( file='site_paramfils/site_cultivars/site_cultivars_'//trim(sitename)//'.txt', exist=lcultfile )  
+    ! end if
 
   end subroutine getpar_site
 
