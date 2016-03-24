@@ -270,7 +270,6 @@ contains
     do pft=1,npft
 
       ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
-      ! print*, 'params_pft_plant(pft)%pftname ', params_pft_plant(pft)%pftname
       params_pft_pheno(pft)%ramp = getparreal( 'params/params_phenology.dat', 'ramp_pft_'//params_pft_plant(pft)%pftname )
 
       ! phenology type

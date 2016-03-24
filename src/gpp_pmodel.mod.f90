@@ -221,20 +221,20 @@ contains
       if ( canopy(pft)%fapar_ind>0.0 ) then
 
         ! GPP
-        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), evap(lu)%cpa )
-        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy) )
+        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), evap(lu)%cpa )
+        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy) )
 
         ! Dark respiration
-        ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), evap(lu)%cpa )
-        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
+        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), evap(lu)%cpa )
+        ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
 
         ! transpiration
-        ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), evap(lu)%cpa )
-        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
+        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), evap(lu)%cpa )
+        ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
 
         ! Vcmax
-        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), evap(lu)%cpa )
-        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
+        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), evap(lu)%cpa )
+        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
 
       else  
 
@@ -736,9 +736,7 @@ contains
       ! write(char_pftcode, 999) params_pft_plant(pft)%pftcode
 
       ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
-      print*, 'params_pft_plant(pft)%pftname ', params_pft_plant(pft)%pftname
       params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
-
     end do
 
     return

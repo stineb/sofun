@@ -1,5 +1,14 @@
 subroutine getpar_modl
   !////////////////////////////////////////////////////////////////
+  
+
+
+
+  !             XXXXXXXXX DISCONTINUED XXXXXXXXX
+
+
+
+
   !  Subroutine reads model parameters from input file.
   !  It was necessary to separate this SR from module _params_modl
   !  because this SR uses module _waterbal, which also uses

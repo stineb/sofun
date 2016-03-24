@@ -1,5 +1,17 @@
 module _vars_core
   !////////////////////////////////////////////////////////////////
+
+
+
+
+  !  XXX DISCONTINUED XXX
+
+
+
+
+
+
+  
   ! MANDATORY (MODULE-INDEPENDENT) VARIABLES
   ! *not* output variables.
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker

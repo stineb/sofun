@@ -1,5 +1,14 @@
 subroutine writeout_ascii( year, dtemp )
   !/////////////////////////////////////////////////////////////////////////
+
+
+
+  ! XXXX DISCONTINUED XXXX
+
+
+
+
+  
   ! Write daily ASCII output
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk

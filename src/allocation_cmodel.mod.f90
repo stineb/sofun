@@ -330,7 +330,7 @@ contains
 
       ! calculate canopy-level leaf N as a function of LAI
       nleaf0   = nleaf      
-      nleaf    = get_canopy_leaf_n( lai, meanmppfd(:), nv(:) )
+      nleaf    = get_leaf_n_canopy( lai, meanmppfd(:), nv(:) )
       mydnleaf = nleaf - nleaf0
       ! if (mydnleaf>0.0) then
       !   print*, 'mydcleaf/dnleaf ', mydcleaf/mydnleaf 
@@ -659,7 +659,7 @@ contains
   end function get_leaf_n_structural_canopy
 
 
-  function get_canopy_leaf_n( mylai, meanmppfd, nv ) result( mynleaf )
+  function get_leaf_n_canopy( mylai, meanmppfd, nv ) result( mynleaf )
     !////////////////////////////////////////////////////////////////
     ! Calculates initial guess based on Taylor approximation of 
     ! Cleaf and Nleaf function around cleaf=0.
@@ -687,7 +687,7 @@ contains
     nleaf_structural = get_leaf_n_structural_canopy( mylai, nleaf_metabolic )
     mynleaf          = n_molmass * ( nleaf_metabolic + nleaf_structural )
 
-    ! print*, '--- in get_canopy_leaf_n'
+    ! print*, '--- in get_leaf_n_canopy'
     ! print*, 'nleaf_metabolic ', nleaf_metabolic
     ! print*, 'nleaf_structural ', nleaf_structural
     ! print*, 'mynleaf ', mynleaf
@@ -695,7 +695,7 @@ contains
 
     ! mynleaf = n_molmass * ( maxnv * get_fapar( mylai ) * ( 1.0 + params_alloc%r_n_cw_v ) + mylai * params_alloc%ncw_min )
 
-  end function get_canopy_leaf_n
+  end function get_leaf_n_canopy
 
 
   function get_leaftraits( mylai, meanmppfd, nv ) result( out_traits )

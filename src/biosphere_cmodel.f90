@@ -30,7 +30,7 @@ subroutine biosphere( &
   use _vegdynamics, only: vegdynamics
   
   ! xxx debug
-  use _plant, only: ispresent
+  use _plant, only: ispresent, canopy
 
   implicit none
 
@@ -67,39 +67,46 @@ subroutine biosphere( &
     ! GET MODEL PARAMETERS
     ! read model parameters that may be varied for optimisation
     !----------------------------------------------------------------
-    ! print*,'getting model parameters'
+    ! print*,'getting model parameters ...'
     call getpar_modl_plant()
     call getpar_modl_waterbal()
     call getpar_modl_gpp()
     call getpar_modl_phenology()
     ! call getpar_modl_soil()
+    ! print*,'... done'
 
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
+    ! print*,'initialising variables ...'
     call initglobal_plant()
     call initglobal_waterbal()
     ! call initglobal_soil()
+    ! print*,'... done'
 
     !----------------------------------------------------------------
     ! Open input/output files
     !----------------------------------------------------------------
+    ! print*,'initialising IO ...'
     call initio_waterbal()
     call initio_soiltemp()
     call initio_gpp()
     call initio_plant()
     ! call initio_soil()
+    ! print*,'... done'
 
   endif 
 
   !----------------------------------------------------------------
   ! Initialise output variables for this year
   !----------------------------------------------------------------
+  ! print*,'initialising output variables ...'
   call initoutput_waterbal()
   call initoutput_soiltemp()
   call initoutput_gpp()
   call initoutput_plant()
   ! call initoutput_soil()
+  ! print*,'... done'
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
@@ -154,7 +161,6 @@ subroutine biosphere( &
         ! get soil moisture, and runoff
         !----------------------------------------------------------------
         ! print*, 'calling waterbal() ... '
-        ! print*, 'with arguments ', jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr)
         call waterbal( jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr) )
         ! print*, '... done'
 

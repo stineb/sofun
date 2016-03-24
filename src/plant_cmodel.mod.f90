@@ -14,6 +14,7 @@ module _plant
     params_pft_plant, params_plant, initglobal_plant, initpft,            &
     initdaily_plant, outdnpp, outdnup, outdCleaf, outdCroot, outdClabl,   &
     outdNlabl, outdClitt, outdNlitt, outdCsoil, outdNsoil, outdlai,       &
+    outdfapar,                                                            &
     dnarea_mb, dnarea_cw, dlma, dcton_lm, outanpp, outanup, outaCveg,     &
     outaCveg2lit, outaNveg2lit, outaNinorg, outanarea_mb, outanarea_cw,   &
     outalai, outalma, outacton_lm, get_fapar,            &
@@ -71,10 +72,10 @@ module _plant
   type( canopy_type ), dimension(npft)   :: canopy
 
 
-  real, dimension(npft,maxgrid)          :: lai_ind
-  logical, dimension(npft,maxgrid)       :: ispresent        ! boolean whether PFT is present
-  real, dimension(npft,maxgrid)          :: fpc_grid         ! area fraction within gridcell occupied by PFT
-  real, dimension(npft,maxgrid)          :: nind             ! number of individuals [1/m2]
+  real, dimension(npft,maxgrid)    :: lai_ind
+  logical, dimension(npft,maxgrid) :: ispresent        ! boolean whether PFT is present
+  real, dimension(npft,maxgrid)    :: fpc_grid         ! area fraction within gridcell occupied by PFT
+  real, dimension(npft,maxgrid)    :: nind             ! number of individuals [1/m2]
 
   !-----------------------------------------------------------------------
   ! Fixed parameters
@@ -132,6 +133,7 @@ module _plant
   real, allocatable, dimension(:,:,:) :: outdCsoil
   real, allocatable, dimension(:,:,:) :: outdNsoil
   real, allocatable, dimension(:,:,:) :: outdlai
+  real, allocatable, dimension(:,:,:) :: outdfapar
 
   ! These are stored as dayly variables for annual output
   ! at day of year when LAI is at its maximum.
@@ -152,11 +154,6 @@ module _plant
   real, dimension(npft,maxgrid) :: outalai
   real, dimension(npft,maxgrid) :: outalma
   real, dimension(npft,maxgrid) :: outacton_lm
-
-  !----------------------------------------------------------------
-  ! MODULE-SPECIFIC, PRIVATE VARIABLES
-  !----------------------------------------------------------------
-  ! xxx may move many of the public ones here
 
 
 contains
@@ -387,27 +384,6 @@ contains
   end subroutine initdaily_plant
 
 
-  ! subroutine update_foliage_vars( pft, jpngr )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Updates PFT-specific state variables after change in LAI.
-  !   !------------------------------------------------------------------
-  !   ! arguments
-  !   integer, intent(in) :: pft
-  !   integer, intent(in) :: jpngr
-
-  !   if (pleaf(pft,jpngr)%c%c12==0.0) then
-  !     lai_ind(pft,jpngr)  = 0.0
-  !     fapar_ind(pft,jpngr)  = 0.0
-  !     fpc_grid(pft,jpngr) = 0.0
-  !   else
-  !     ! This assumes that leaf canopy-average traits (LMA) do not change upon changes in LAI.
-  !     lai_ind(pft,jpngr) = pleaf(pft,jpngr)%c%c12 / ( leaftraits(pft)%lma * crownarea(pft,jpngr) * nind(pft,jpngr) )
-  !     call update_fpc_grid( pft, jpngr )
-  !   end if
-
-  ! end subroutine update_foliage_vars
-
-
   function get_canopy( lai ) result( out_canopy )
     !//////////////////////////////////////////////////////////////////
     ! Returs canopy variables as a function of LAI
@@ -421,38 +397,6 @@ contains
     out_canopy%fapar_ind = get_fapar( lai )
 
   end function get_canopy
-
-  ! subroutine update_fpc_grid( pft, jpngr )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Updates PFT-specific state variables after change in LAI.
-  !   !------------------------------------------------------------------
-  !   ! arguments
-  !   integer, intent(in) :: pft
-  !   integer, intent(in) :: jpngr
-
-  !   fapar_ind(pft,jpngr) = get_fapar( lai_ind(pft,jpngr) )
-  !   fpc_grid(pft,jpngr)  = get_fpc_grid( crownarea(pft,jpngr), nind(pft,jpngr), fapar_ind(pft,jpngr) ) 
-
-  ! end subroutine update_fpc_grid
-
-
-  ! function get_fpc_grid( crownarea, nind, fapar_ind ) result( fpc_grid )
-  !   !////////////////////////////////////////////////////////////////
-  !   ! FRACTIONAL PLANT COVERAGE
-  !   ! Function returns total fractional plant cover of a PFT
-  !   ! Eq. 8 in Sitch et al., 2003
-  !   !----------------------------------------------------------------
-  !   ! arguments
-  !   real, intent(in) :: crownarea
-  !   real, intent(in) :: nind
-  !   real, intent(in) :: fapar_ind
-
-  !   ! function return variable
-  !   real, intent(out) :: fpc_grid
-
-  !   fpc_grid = crownarea * nind * fapar_ind
-
-  ! end function get_fpc_grid
 
 
   function get_fapar( lai ) result( fapar )
@@ -490,7 +434,8 @@ contains
       , loutdNlitt     &
       , loutdCsoil     &
       , loutdNsoil     &
-      , loutdlai
+      , loutdlai       &
+      , loutdfapar
 
     if (loutdnpp      ) allocate( outdnpp      (npft,ndayyear,maxgrid) )
     if (loutdnup      ) allocate( outdnup      (npft,ndayyear,maxgrid) )
@@ -503,6 +448,20 @@ contains
     if (loutdCsoil    ) allocate( outdCsoil    (nlu,ndayyear,maxgrid)  )
     if (loutdNsoil    ) allocate( outdNsoil    (nlu,ndayyear,maxgrid)  )
     if (loutdlai      ) allocate( outdlai      (npft,ndayyear,maxgrid) )
+    if (loutdfapar    ) allocate( outdfapar    (npft,ndayyear,maxgrid) )
+
+    outdnpp  (:,:,:) = 0.0
+    outdnup  (:,:,:) = 0.0
+    outdCleaf(:,:,:) = 0.0
+    outdCroot(:,:,:) = 0.0
+    outdClabl(:,:,:) = 0.0
+    outdNlabl(:,:,:) = 0.0
+    outdClitt(:,:,:) = 0.0
+    outdNlitt(:,:,:) = 0.0
+    outdCsoil(:,:,:) = 0.0
+    outdNsoil(:,:,:) = 0.0
+    outdlai  (:,:,:) = 0.0
+    outdfapar(:,:,:) = 0.0
 
     ! annual output variables
     outanpp(:,:)        = 0.0
@@ -536,7 +495,9 @@ contains
       , loutdNlitt     &
       , loutdCsoil     &
       , loutdNsoil     &
-      , loutdlai
+      , loutdlai       &
+      , loutdfapar
+
     use _params_siml, only: runname
 
     ! local variables
@@ -604,6 +565,12 @@ contains
     if (loutdlai      ) then
       filnam=trim(prefix)//'.d.lai.out'
       open(121,file=filnam,err=999,status='unknown')
+    end if
+
+    ! FAPAR
+    if (loutdfapar    ) then
+      filnam=trim(prefix)//'.d.fapar.out'
+      open(122,file=filnam,err=999,status='unknown')
     end if
 
     !////////////////////////////////////////////////////////////////
@@ -682,7 +649,8 @@ contains
       , loutdNlitt     &
       , loutdCsoil     &
       , loutdNsoil     &
-      , loutdlai
+      , loutdlai       &
+      , loutdfapar
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -707,6 +675,7 @@ contains
     if (loutdClitt    ) outdClitt(:,doy,jpngr)     = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
     if (loutdNlitt    ) outdNlitt(:,doy,jpngr)     = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
     if (loutdlai      ) outdlai(:,doy,jpngr)       = lai_ind(:,jpngr)
+    if (loutdfapar    ) outdfapar(:,doy,jpngr)     = canopy(:)%fapar_ind
     
     dnarea_mb(:,doy)           = leaftraits(:)%narea_metabolic
     dnarea_cw(:,doy)           = leaftraits(:)%narea_structural
@@ -785,7 +754,8 @@ contains
       , loutdNlitt     &
       , loutdCsoil     &
       , loutdNsoil     &
-      , loutdlai
+      , loutdlai       &
+      , loutdfapar
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -833,6 +803,7 @@ contains
         if (loutdNlabl    ) write(115,999) itime, sum(outdNlabl(:,day,jpngr))
         if (loutdNlitt    ) write(119,999) itime, sum(outdNlitt(:,day,jpngr))
         if (loutdlai      ) write(121,999) itime, sum(outdlai(:,day,jpngr))
+        if (loutdfapar    ) write(122,999) itime, sum(outdfapar(:,day,jpngr))
           
       end do
     end if

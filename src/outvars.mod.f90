@@ -1,5 +1,15 @@
 module _outvars
 !////////////////////////////////////////////////////////////////
+
+
+
+
+! XXXXXXX DISCONTINUED XXXXXX
+
+
+
+
+
 !  Module contains all daily variables. These variables have no 
 !  spatial dimension. At the end of the daily loop, values may be 
 !  copied to spatial arrays.

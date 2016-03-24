@@ -46,6 +46,7 @@ module _params_siml
   logical :: loutdCsoil     
   logical :: loutdNsoil     
   logical :: loutdlai       
+  logical :: loutdfapar
   logical :: loutdninorg    
   logical :: loutdtemp_soil 
 
@@ -180,6 +181,7 @@ contains
     loutdCsoil     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCsoil' )
     loutdNsoil     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNsoil' )
     loutdlai       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdlai' )
+    loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
     loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
 

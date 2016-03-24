@@ -1,5 +1,17 @@
 module _npp
   !////////////////////////////////////////////////////////////////
+
+
+
+
+  !   XXX DISCONTINUED XXX
+
+
+
+
+
+  
+
   ! NPP_LPJ MODULE
   ! Contains the "main" subroutine 'npp' and all necessary 
   ! subroutines for handling input/output. 
