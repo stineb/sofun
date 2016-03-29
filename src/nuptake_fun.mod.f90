@@ -1,4 +1,4 @@
-module _nuptake
+module md_nuptake
   !////////////////////////////////////////////////////////////////
   ! FUN NITROGEN UPTAKE MODULE
   ! Contains the "main" subroutine 'nuptake' and all necessary 
@@ -21,7 +21,7 @@ module _nuptake
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: ndayyear, nmonth, nlu, npft, maxgrid
+  use md_params_core, only: ndayyear, nmonth, nlu, npft, maxgrid
 
   implicit none
 
@@ -64,15 +64,15 @@ contains
     ! supplied to the roots/nodules to satisfy this constraint.
     ! Adopted from Fischer et al., 2010 by Beni Stocker, July 2012
     !-----------------------------------------------------------------
-    use _classdefs
-    use _params_core
-    use _params_siml, only: spinup
-    use _params_modl, only: lu_category, cton_pro, nfixer
-    use _vars_core, only: dnpp, dnup, dcex
-    use _waterbal, only: daet  ! xxx make 'daet' a required global variable?
-    use _vars_core, only: nind, ispresent, fpc_grid
-    use _vars_core, only: pninorg, plabl, proot, dwtot
-    use _vars_core, only: dtemp_soil
+    use md_classdefs
+    use md_params_core
+    use md_params_siml, only: spinup
+    use md_params_modl, only: lu_category, cton_pro, nfixer
+    use md_vars_core, only: dnpp, dnup, dcex
+    use md_waterbal, only: daet  ! xxx make 'daet' a required global variable?
+    use md_vars_core, only: nind, ispresent, fpc_grid
+    use md_vars_core, only: pninorg, plabl, proot, dwtot
+    use md_vars_core, only: dtemp_soil
     
     ! ARGUMENTS
     integer, intent(in) :: jpngr, pft
@@ -519,7 +519,7 @@ contains
       ! Cost of active inorganic N uptake by exudation of labile C. 
       ! From Fisher er al., 2010.
       !--------------------------------------------------------------------------      
-      use _params_modl
+      use md_params_modl
 
       ! arguments
       real, intent(in) :: avail_ninorg
@@ -549,7 +549,7 @@ contains
       ! after Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
       ! (value from Gutschik 1981)
       !--------------------------------------------------------------------------      
-      use _params_modl
+      use md_params_modl
 
       real, intent(in) :: soiltemp
       real :: fun_cost_fix                 ! function return variable
@@ -734,8 +734,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_core, only: ndayyear, nmonth, npft
-    use _params_siml, only: firstyeartrend, spinupyears
+    use md_params_core, only: ndayyear, nmonth, npft
+    use md_params_siml, only: firstyeartrend, spinupyears
 
     ! Arguments
     integer, intent(in) :: year       ! simulation year
@@ -980,4 +980,4 @@ contains
 
 
 
-end module _nuptake
+end module md_nuptake

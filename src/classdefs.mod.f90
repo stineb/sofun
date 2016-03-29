@@ -1,4 +1,4 @@
-module _classdefs
+module md_classdefs
   !////////////////////////////////////////////////////////////////
   !  Module contains Fortran 90 derived-type declarations to define
   !  objects
@@ -769,4 +769,4 @@ contains
 
   end function ntoc
 
-end module _classdefs
+end module md_classdefs

@@ -1,4 +1,4 @@
-module _nuptake
+module md_nuptake
   !////////////////////////////////////////////////////////////////
   ! FUN NITROGEN UPTAKE MODULE
   ! Contains the "main" subroutine 'nuptake' and all necessary 
@@ -21,8 +21,8 @@ module _nuptake
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: ndayyear, nmonth, nlu, npft, maxgrid
-  use _classdefs
+  use md_params_core, only: ndayyear, nmonth, nlu, npft, maxgrid
+  use md_classdefs
 
   implicit none
 
@@ -68,9 +68,9 @@ contains
     ! This model calculates first the passive uptake of N via the 
     ! transpiration stream.
     !-----------------------------------------------------------------
-    use _classdefs
-    use _params_modl, only: lu_category
-    use _vars_core, only: dcex, pninorg, plabl, proot, dcex, dnup, &
+    use md_classdefs
+    use md_params_modl, only: lu_category
+    use md_vars_core, only: dcex, pninorg, plabl, proot, dcex, dnup, &
           dtransp, fpc_grid, pleaf
 
     ! arguments
@@ -320,7 +320,7 @@ contains
     ! after Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
     ! (value from Gutschik 1981)
     !--------------------------------------------------------------------------      
-    use _params_modl
+    use md_params_modl
 
     real, intent(in) :: soiltemp
     real :: fun_cost_fix                 ! function return variable
@@ -346,7 +346,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use _params_siml, only: runname
+    use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
@@ -405,7 +405,7 @@ contains
     ! Subroutine reads nuptake module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    use _sofunutils, only: getparreal
+    use md_sofunutils, only: getparreal
 
     ! C exudation rate per unit root mass
     exurate = getparreal( 'params/params_nuptake_constexu.dat', 'exurate' )
@@ -457,7 +457,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use _vars_core, only: dcex 
+    use md_vars_core, only: dcex 
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -490,8 +490,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_core, only: ndayyear, npft, nlu
-    use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
+    use md_params_core, only: ndayyear, npft, nlu
+    use md_params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
       daily_out_endyr, outyear
 
     ! arguments
@@ -783,4 +783,4 @@ contains
   !******************************************************************************
 
 
-end module _nuptake
+end module md_nuptake

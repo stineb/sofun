@@ -1,4 +1,4 @@
-module _npp
+module md_npp
   !////////////////////////////////////////////////////////////////
 
 
@@ -53,17 +53,17 @@ contains
     ! ('rsoil'). This implies that growth respiration is "paid" also on exu-
     ! dates. 
     !-------------------------------------------------------------------------
-    use _classdefs
-    use _params_core, only: npft, ndayyear
-    use _params_modl, only: lu_category, tree, grass
-    use _rates
-    use _vars_core, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, dcex, dnup
-    use _vars_core, only: nind, ispresent
-    use _vars_core, only: proot, psapw, pexud, plabl
-    use _nuptake, only: nuptake
-    use _vars_core, only: psoilphys
-    use _gpp, only: drd
-    use _phenology, only: summergreen, shedleaves
+    use md_classdefs
+    use md_params_core, only: npft, ndayyear
+    use md_params_modl, only: lu_category, tree, grass
+    use md_rates
+    use md_vars_core, only: dgpp, dnpp, drauto, drleaf, drroot, drsapw, dcex, dnup
+    use md_vars_core, only: nind, ispresent
+    use md_vars_core, only: proot, psapw, pexud, plabl
+    use md_nuptake, only: nuptake
+    use md_vars_core, only: psoilphys
+    use md_gpp, only: drd
+    use md_phenology, only: summergreen, shedleaves
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -228,8 +228,8 @@ contains
     ! Subroutine reads nuptake module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    use _params_core, only: ndayyear
-    use _sofunutils, only: getparreal
+    use md_params_core, only: ndayyear
+    use md_sofunutils, only: getparreal
 
     ! Fine-root specific respiration rate (gC gC-1 year-1)
     ! Central value: 0.913 year-1 (Yan and Zhao (2007); see Li et al., 2014)
@@ -248,4 +248,4 @@ contains
 
   end subroutine getpar_modl_npp
 
-end module _npp
+end module md_npp

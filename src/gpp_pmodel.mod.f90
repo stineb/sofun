@@ -1,4 +1,4 @@
-module _gpp
+module md_gpp
   !////////////////////////////////////////////////////////////////
   ! P-MODEL GPP MODULE
   ! Contains P model functions adopted from GePiSaT
@@ -18,7 +18,7 @@ module _gpp
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: nmonth, npft, c_molmass, h2o_molmass, maxgrid, ndayyear
+  use md_params_core, only: nmonth, npft, c_molmass, h2o_molmass, maxgrid, ndayyear
 
   implicit none
 
@@ -188,9 +188,9 @@ contains
     ! - gpp (gC/m2/d)   : gross primary production
     !
     !------------------------------------------------------------------
-    use _params_core, only: dummy
-    use _plant, only: canopy, params_pft_plant, ispresent
-    use _waterbal, only: solar, evap
+    use md_params_core, only: dummy
+    use md_plant, only: canopy, params_pft_plant, ispresent
+    use md_waterbal, only: solar, evap
 
     ! arguments
     integer, intent(in) :: jpngr     ! gridcell number
@@ -272,9 +272,9 @@ contains
     ! input variables need to be known beforehand => no daily coupling
     ! possible.
     !------------------------------------------------------------------
-    use _params_core, only: ndayyear, nlu
-    use _plant, only: params_pft_plant
-    use _sofunutils, only: daily2monthly
+    use md_params_core, only: ndayyear, nlu
+    use md_plant, only: params_pft_plant
+    use md_sofunutils, only: daily2monthly
 
     ! arguments
     integer, intent(in)                   :: jpngr    ! gridcell number
@@ -719,9 +719,9 @@ contains
     ! Subroutine reads waterbalance module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    use _sofunutils, only: getparreal
-    use _params_site, only: lTeBS, lGrC3, lGrC4
-    use _plant, only: params_pft_plant
+    use md_sofunutils, only: getparreal
+    use md_params_site, only: lTeBS, lGrC3, lGrC4
+    use md_plant, only: params_pft_plant
 
     ! local variables
     integer :: pft
@@ -941,7 +941,7 @@ contains
     ! Features: Returns an estimate of leaf internal to ambient CO2
     !           partial pressure following the "simple formulation".
     !-----------------------------------------------------------------------
-    use _params_core, only: dummy
+    use md_params_core, only: dummy
 
     ! function return value
     type(outtype_lue), intent(out) :: out_lue
@@ -1332,7 +1332,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use _params_siml, only: runname, loutdgpp, loutdrd, loutdtransp
+    use md_params_siml, only: runname, loutdgpp, loutdrd, loutdtransp
 
     ! local variables
     character(len=256) :: prefix
@@ -1412,8 +1412,8 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
-    use _params_core, only: npft, ndayyear, nmonth, maxgrid
-    use _params_siml, only: loutdgpp, loutdrd, loutdtransp
+    use md_params_core, only: npft, ndayyear, nmonth, maxgrid
+    use md_params_siml, only: loutdgpp, loutdrd, loutdtransp
 
     ! daily
     if (loutdgpp      ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
@@ -1448,7 +1448,7 @@ contains
     ! global just for this, but are collected inside the subroutine 
     ! where they are defined.
     !----------------------------------------------------------------
-    use _params_siml, only: loutdgpp, loutdrd, loutdtransp
+    use md_params_siml, only: loutdgpp, loutdrd, loutdtransp
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -1489,7 +1489,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use _waterbal, only: solar
+    use md_waterbal, only: solar
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -1506,7 +1506,7 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_siml, only: spinup, outyear, loutdrd, loutdgpp, loutdtransp, &
+    use md_params_siml, only: spinup, outyear, loutdrd, loutdgpp, loutdtransp, &
       daily_out_startyr, daily_out_endyr
 
     ! arguments
@@ -1572,4 +1572,4 @@ contains
   end subroutine writeout_ascii_gpp
 
 
-end module _gpp
+end module md_gpp

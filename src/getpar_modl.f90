@@ -10,20 +10,20 @@ subroutine getpar_modl
 
 
   !  Subroutine reads model parameters from input file.
-  !  It was necessary to separate this SR from module _params_modl
-  !  because this SR uses module _waterbal, which also uses
+  !  It was necessary to separate this SR from module md_params_modl
+  !  because this SR uses module md_waterbal, which also uses
   !  _params_modl.
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_modl
-  use _waterbal, only: getpar_modl_waterbal
-  use _nuptake, only: getpar_modl_nuptake
-  use _npp, only: getpar_modl_npp
-  use _phenology, only: getpar_phenology
-  use _ntransform, only: getpar_modl_ntransform
-  use _littersom, only: getpar_modl_littersom
-  use _sofunutils, only: getparreal
+  use md_params_modl
+  use md_waterbal, only: getpar_modl_waterbal
+  use md_nuptake, only: getpar_modl_nuptake
+  use md_npp, only: getpar_modl_npp
+  use md_phenology, only: getpar_phenology
+  use md_ntransform, only: getpar_modl_ntransform
+  use md_littersom, only: getpar_modl_littersom
+  use md_sofunutils, only: getparreal
 
   implicit none
 

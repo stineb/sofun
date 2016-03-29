@@ -1,4 +1,4 @@
-module _params_soil
+module md_params_soil
   !////////////////////////////////////////////////////////////////
   ! Module containing soil parameters and functions to read them
   !----------------------------------------------------------------
@@ -24,7 +24,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Function returns array containing all soil parameter values
     !----------------------------------------------------------------
-    use _params_core, only: maxgrid
+    use md_params_core, only: maxgrid
 
     ! arguments
     integer, dimension(maxgrid), intent(in) :: soilcode_field
@@ -46,7 +46,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Function returns soil parameter values given soil code
     !----------------------------------------------------------------
-    use _sofunutils, only: getparreal
+    use md_sofunutils, only: getparreal
 
     ! arguments
     integer, intent(in) :: soilcode
@@ -76,7 +76,7 @@ contains
 
   end function getsoil
 
-end module _params_soil
+end module md_params_soil
 
    
 !       do jpngr = 1,maxgrid

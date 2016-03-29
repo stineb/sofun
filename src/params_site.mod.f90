@@ -1,11 +1,11 @@
-module _params_site
+module md_params_site
   !////////////////////////////////////////////////////////////////
   !  Module contains site-specific parameters read by getpar_site
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_siml, only: sitename
-  use _params_core, only: maxgrid
+  use md_params_siml, only: sitename
+  use md_params_core, only: maxgrid
 
   implicit none
 
@@ -20,7 +20,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR reads site-specific parameters from <sitename>.parameter
     !----------------------------------------------------------------
-    use _sofunutils, only: getparreal, getparlogical, getparint
+    use md_sofunutils, only: getparreal, getparlogical, getparint
 
     ! local variables
   
@@ -46,4 +46,4 @@ contains
 
   end subroutine getpar_site
 
-end module _params_site
+end module md_params_site

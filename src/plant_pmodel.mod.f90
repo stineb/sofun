@@ -1,4 +1,4 @@
-module _plant
+module md_plant
   !////////////////////////////////////////////////////////////////
   !  Module contains (constrainable) model parameters.
   !  Model parameters adopted here are from LPX C3 grass PFT
@@ -7,7 +7,7 @@ module _plant
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core
+  use md_params_core
 
   implicit none
 
@@ -60,14 +60,14 @@ contains
   subroutine getpar_modl_plant()
     !////////////////////////////////////////////////////////////////
     !  Subroutine reads model parameters from input file.
-    !  It was necessary to separate this SR from module _plant
-    !  because this SR uses module _waterbal, which also uses
+    !  It was necessary to separate this SR from module md_plant
+    !  because this SR uses module md_waterbal, which also uses
     !  _plant.
     ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------    
-    use _sofunutils, only: getparreal
-    use _params_site, only: lTeBS, lGrC3, lGrC4
+    use md_sofunutils, only: getparreal
+    use md_params_site, only: lTeBS, lGrC3, lGrC4
 
     ! local variables
     integer :: pft
@@ -100,7 +100,7 @@ contains
     !----------------------------------------------------------------
     ! Read PFT parameters from respective file, given the PFT name
     !----------------------------------------------------------------
-    use _sofunutils, only: getparreal
+    use md_sofunutils, only: getparreal
 
     ! arguments
     character(len=*) :: pftname
@@ -145,4 +145,4 @@ contains
 
   end function getpftparams
 
-end module _plant
+end module md_plant

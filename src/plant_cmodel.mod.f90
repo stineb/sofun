@@ -1,8 +1,8 @@
-module _plant
+module md_plant
   !////////////////////////////////////////////////////////////////
   !----------------------------------------------------------------
-  use _classdefs
-  use _params_core, only: nlu, npft, maxgrid, ndayyear, lunat
+  use md_classdefs
+  use md_params_core, only: nlu, npft, maxgrid, ndayyear, lunat
 
   implicit none
 
@@ -161,14 +161,14 @@ contains
   subroutine getpar_modl_plant()
     !////////////////////////////////////////////////////////////////
     !  Subroutine reads model parameters from input file.
-    !  It was necessary to separate this SR from module _plant
-    !  because this SR uses module _waterbal, which also uses
+    !  It was necessary to separate this SR from module md_plant
+    !  because this SR uses module md_waterbal, which also uses
     !  _plant.
     ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------    
-    use _sofunutils, only: getparreal
-    use _params_site, only: lTeBS, lGrC3, lGrC4
+    use md_sofunutils, only: getparreal
+    use md_params_site, only: lTeBS, lGrC3, lGrC4
 
     ! local variables
     integer :: pft
@@ -229,7 +229,7 @@ contains
     !----------------------------------------------------------------
     ! Read PFT parameters from respective file, given the PFT name
     !----------------------------------------------------------------
-    use _sofunutils, only: getparreal
+    use md_sofunutils, only: getparreal
 
     ! arguments
     character(len=*), intent(in) :: pftname
@@ -294,7 +294,7 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use _params_core, only: npft, maxgrid
+    use md_params_core, only: npft, maxgrid
 
     ! local variables
     integer :: pft
@@ -422,7 +422,7 @@ contains
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
-    use _params_siml, only: & 
+    use md_params_siml, only: & 
         loutdgpp       &
       , loutdnpp       &
       , loutdnup       &
@@ -483,7 +483,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Opens input/output files.
     !----------------------------------------------------------------
-    use _params_siml, only: & 
+    use md_params_siml, only: & 
         loutdgpp       &
       , loutdnpp       &
       , loutdnup       &
@@ -498,7 +498,7 @@ contains
       , loutdlai       &
       , loutdfapar
 
-    use _params_siml, only: runname
+    use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
@@ -636,8 +636,8 @@ contains
     ! global just for this, but are collected inside the subroutine 
     ! where they are defined.
     !----------------------------------------------------------------
-    use _params_core, only: ndayyear, npft
-    use _params_siml, only: & 
+    use md_params_core, only: ndayyear, npft
+    use md_params_siml, only: & 
         loutdgpp       &
       , loutdnpp       &
       , loutdnup       &
@@ -696,7 +696,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use _params_core, only: ndayyear, npft
+    use md_params_core, only: ndayyear, npft
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -739,10 +739,10 @@ contains
     ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
     ! contact: b.stocker@imperial.ac.uk
     !-------------------------------------------------------------------------
-    use _params_siml, only: spinup, daily_out_startyr, &
+    use md_params_siml, only: spinup, daily_out_startyr, &
       daily_out_endyr, outyear
-    use _params_core, only: ndayyear
-    use _params_siml, only: & 
+    use md_params_core, only: ndayyear
+    use md_params_siml, only: & 
         loutdgpp       &
       , loutdnpp       &
       , loutdnup       &
@@ -833,4 +833,4 @@ contains
 
   end subroutine writeout_ascii_plant
 
-end module _plant
+end module md_plant

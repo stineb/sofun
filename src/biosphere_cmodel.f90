@@ -15,22 +15,22 @@ subroutine biosphere( &
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core
-  use _params_siml
-  use _params_site
-  use _plant, only: initdaily_plant, initglobal_plant, initpft, getout_daily_plant, getpar_modl_plant, initoutput_plant, writeout_ascii_plant, initio_plant, getout_annual_plant
-  use _soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
-  use _params_soil, only: paramtype_soil
-  use _waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
-  use _phenology, only: gettempphenology, getpar_modl_phenology
-  use _gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, writeout_ascii_gpp
-  use _npp, only: npp
-  use _turnover, only: turnover
-  use _allocation, only: allocation_daily
-  use _vegdynamics, only: vegdynamics
+  use md_params_core
+  use md_params_siml
+  use md_params_site
+  use md_plant, only: initdaily_plant, initglobal_plant, initpft, getout_daily_plant, getpar_modl_plant, initoutput_plant, writeout_ascii_plant, initio_plant, getout_annual_plant
+  use md_soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
+  use md_params_soil, only: paramtype_soil
+  use md_waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
+  use md_phenology, only: gettempphenology, getpar_modl_phenology
+  use md_gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, writeout_ascii_gpp
+  use md_npp, only: npp
+  use md_turnover, only: turnover
+  use md_allocation, only: allocation_daily
+  use md_vegdynamics, only: vegdynamics
   
   ! xxx debug
-  use _plant, only: ispresent, canopy
+  use md_plant, only: ispresent, canopy
 
   implicit none
 

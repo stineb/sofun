@@ -1,4 +1,4 @@
-module _littersom
+module md_littersom
   !////////////////////////////////////////////////////////////////
   ! LPJ LITTERSOM MODULE
   ! Contains the "main" subroutine 'littersom' and all necessary 
@@ -18,7 +18,7 @@ module _littersom
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: npft, maxgrid, nlu, ndayyear
+  use md_params_core, only: npft, maxgrid, nlu, ndayyear
 
   implicit none
   ! private 
@@ -72,13 +72,13 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use _params_core, only: npft, maxgrid, nmonth, nlu, ndayyear, &
+    use md_params_core, only: npft, maxgrid, nmonth, nlu, ndayyear, &
       pft_start, pft_end
-    use _params_modl, only: islu, cton_soil
-    use _params_siml, only: spinup, recycle
-    use _classdefs
-    use _rates
-    use _vars_core, only: drsoil, drhet, psoilphys, soilphys, ddoc, pexud, &
+    use md_params_modl, only: islu, cton_soil
+    use md_params_siml, only: spinup, recycle
+    use md_classdefs
+    use md_rates
+    use md_vars_core, only: drsoil, drhet, psoilphys, soilphys, ddoc, pexud, &
       plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, pninorg
 
     ! ARGUMENTS
@@ -621,7 +621,7 @@ contains
     ! Subroutine reads littersom module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    use _sofunutils, only: getparreal
+    use md_sofunutils, only: getparreal
 
     ! above-ground fast (foliage and roots) litter decay rate [1/d] 
     klitt_af10 = getparreal( 'params/params_littersom_lpj.dat', 'klitt_af10' ) / ndayyear
@@ -660,7 +660,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use _params_siml, only: runname
+    use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
@@ -766,7 +766,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use _vars_core, only: plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl
+    use md_vars_core, only: plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -781,8 +781,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE littersom-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_core, only: ndayyear, nmonth
-    use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
+    use md_params_core, only: ndayyear, nmonth
+    use md_params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
       daily_out_endyr, outyear
 
     ! arguments
@@ -841,4 +841,4 @@ contains
 
   end subroutine writeout_ascii_littersom
 
-end module _littersom
+end module md_littersom

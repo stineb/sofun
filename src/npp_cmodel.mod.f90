@@ -1,4 +1,4 @@
-module _npp
+module md_npp
   !////////////////////////////////////////////////////////////////
   ! NPP_LPJ MODULE
   ! Contains the "main" subroutine 'npp' and all necessary 
@@ -21,8 +21,8 @@ module _npp
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _classdefs
-  use _plant
+  use md_classdefs
+  use md_plant
 
   implicit none
 
@@ -43,11 +43,11 @@ contains
     ! ('rsoil'). This implies that growth respiration is "paid" also on exu-
     ! dates. 
     !-------------------------------------------------------------------------
-    use _params_core, only: npft, ndayyear
-    use _sofunutils, only: ftemp
-    use _soiltemp, only: dtemp_soil
-    use _gpp, only: dgpp, drd
-    use _phenology, only: shedleaves
+    use md_params_core, only: npft, ndayyear
+    use md_sofunutils, only: ftemp
+    use md_soiltemp, only: dtemp_soil
+    use md_gpp, only: dgpp, drd
+    use md_phenology, only: shedleaves
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -213,4 +213,4 @@ contains
 
   end function calc_cexu
 
-end module _npp
+end module md_npp

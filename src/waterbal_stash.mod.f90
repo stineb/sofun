@@ -1,4 +1,4 @@
-module _waterbal
+module md_waterbal
   !////////////////////////////////////////////////////////////////
   ! STASH WATERBALANCE MODULE
   ! Contains the "main" subroutine 'waterbal' and all necessary 
@@ -21,8 +21,8 @@ module _waterbal
   ! contact: b.stocker@imperial.ac.uk
   ! ...
   !----------------------------------------------------------------
-  use _params_core, only: ndayyear, nmonth, nlu, maxgrid
-  use _params_siml, only: loutwaterbal
+  use md_params_core, only: ndayyear, nmonth, nlu, maxgrid
+  use md_params_siml, only: loutwaterbal
 
   implicit none
 
@@ -137,7 +137,7 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
-    use _params_core, only: ndayyear, ndaymonth, nlu
+    use md_params_core, only: ndayyear, ndaymonth, nlu
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -224,8 +224,8 @@ contains
     ! - daily extraterrestrial solar radiation (dra), J/m^2
     ! - daily PPFD (dppfd), mol/m^2
     !-------------------------------------------------------------------------  
-    use _params_core, only: ndayyear, pi
-    use _sofunutils, only: daily2monthly
+    use md_params_core, only: ndayyear, pi
+    use md_sofunutils, only: daily2monthly
 
     ! arguments
     real, intent(in)                      :: lat           ! latitude, degrees
@@ -385,7 +385,7 @@ contains
     ! - daily AET (out_evap%aet), mm
     ! - daily condensation (out_evap%cn), mm
     !-------------------------------------------------------------------------  
-    use _params_core, only: ndayyear, pi
+    use md_params_core, only: ndayyear, pi
 
     ! arguments
     real,    intent(in) :: lat           ! latitude, degrees
@@ -710,7 +710,7 @@ contains
     ! Subroutine reads waterbalance module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    use _sofunutils, only: getparreal
+    use md_sofunutils, only: getparreal
 
     ! constant for dRnl (Monteith & Unsworth, 1990)
     kA       = getparreal( 'params/params_waterbal_stash.dat', 'kA' )
@@ -787,7 +787,7 @@ contains
     ! Calculates the cosine of an angle given in degrees. Equal to 
     ! 'dsin' in Python version.
     !----------------------------------------------------------------   
-    use _params_core, only: pi
+    use md_params_core, only: pi
 
     ! arguments
     real, intent(in) :: x  ! angle, degrees (0-360)
@@ -806,7 +806,7 @@ contains
     ! Calculates the sinus of an angle given in degrees. Equal to 
     ! 'dsin' in Python version.
     !----------------------------------------------------------------   
-    use _params_core, only: pi
+    use md_params_core, only: pi
 
     ! arguments
     real, intent(in) :: x  ! angle, degrees (0-360)
@@ -824,7 +824,7 @@ contains
     !----------------------------------------------------------------   
     ! Returns corresponding degrees if x is given in radians
     !----------------------------------------------------------------   
-    use _params_core, only: pi
+    use md_params_core, only: pi
 
     ! arguments
     real, intent(in) :: x  ! angle, radians
@@ -841,7 +841,7 @@ contains
     !----------------------------------------------------------------   
     ! Returns corresponding radians if x is given in degrees
     !----------------------------------------------------------------   
-    use _params_core, only: pi
+    use md_params_core, only: pi
 
     ! arguments
     real, intent(in) :: x  ! angle, radians
@@ -1095,7 +1095,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use _params_siml, only: runname
+    use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
@@ -1266,8 +1266,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_core, only: ndayyear, nmonth
-    use _params_siml, only: spinup, firstyeartrend, spinupyears, daily_out_startyr, &
+    use md_params_core, only: ndayyear, nmonth
+    use md_params_siml, only: spinup, firstyeartrend, spinupyears, daily_out_startyr, &
       daily_out_endyr, outyear
 
     ! arguments
@@ -1320,4 +1320,4 @@ contains
   end subroutine writeout_ascii_waterbal
 
 
-end module _waterbal
+end module md_waterbal

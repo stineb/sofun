@@ -1,4 +1,4 @@
-module _allocation
+module md_allocation
   !////////////////////////////////////////////////////////////////
   ! ALLOCATION MODULE
   ! Contains the "main" subroutine 'allocation_daily' and all 
@@ -10,9 +10,8 @@ module _allocation
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _classdefs
-
-  use _params_core, only: npft, nlu, maxgrid, ndaymonth, ndayyear, &
+  use md_classdefs
+  use md_params_core, only: npft, nlu, maxgrid, ndaymonth, ndayyear, &
     c_molmass, n_molmass, nmonth
 
   implicit none
@@ -75,14 +74,14 @@ contains
     ! Finds optimal shoot:root growth ratio to balance C:N stoichiometry
     ! of a grass (no wood allocation).
     !------------------------------------------------------------------
-    use _classdefs
-    use _plant, only: params_plant, params_pft_plant, pleaf, proot, &
+    use md_classdefs
+    use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
       plabl, drgrow, dnup, lai_ind, nind, canopy, leaftraits, &
       get_canopy
-    use _waterbal, only: solar
-    use _gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
-    use _phenology, only: dtphen
-    use _findroot_fzeroin
+    use md_waterbal, only: solar
+    use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
+    use md_phenology, only: dtphen
+    use md_findroot_fzeroin
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -294,8 +293,8 @@ contains
     ! - calculate canopy-level foliage N as a function of LAI 
     ! - reduce labile pool by C and N increments
     !-------------------------------------------------------------------
-    use _classdefs
-    use _plant, only: params_plant
+    use md_classdefs
+    use md_plant, only: params_plant
 
     ! arguments
     real, intent(in)                    :: mydcleaf
@@ -359,8 +358,8 @@ contains
     !-------------------------------------------------------------------
     ! ROOT ALLOCATION
     !-------------------------------------------------------------------
-    use _classdefs
-    use _plant, only: params_plant, params_pft_plant
+    use md_classdefs
+    use md_plant, only: params_plant, params_pft_plant
 
     ! arguments
     real, intent(inout)         :: croot, nroot
@@ -425,8 +424,8 @@ contains
     ! Cleaf / ( Mc * c ) - ( I0 * ( 1 - exp( -kL ) * nv * b + L * a ) ) = 0
     ! This is implemented in function 'mustbe_zero_for_lai()'.
     !----------------------------------------------------------------
-    ! use _params_core, only: nmonth
-    use _findroot_fzeroin
+    ! use md_params_core, only: nmonth
+    use md_findroot_fzeroin
 
     ! arguments 
     real, intent(in)                    :: cleaf
@@ -527,7 +526,7 @@ contains
     ! ==> LAI = f(Cleaf) leads to inhomogenous equation. Therefore apply root finding algorithm so that:
     ! 0 = cleaf / ( c_molmass * params_alloc%r_ctostructn_leaf ) - meanmppfd * ( 1.0 - exp( -1.0 * kbeer * mylai ) ) * nv * params_alloc%r_n_cw_v - mylai * params_alloc%ncw_min
     !---------------------------------------------------------
-    use _plant, only: params_plant, get_fapar
+    use md_plant, only: params_plant, get_fapar
 
     ! arguments
     real, intent(in) :: mylai
@@ -573,8 +572,8 @@ contains
     ! ==> Nleaf ~= LAI * n_molmass * ( meanmppfd * kbeer * nv * (params_alloc%r_n_cw_v + 1) + params_alloc%ncw_min )
     ! r_cton = Cleaf / Nleaf
     !----------------------------------------------------------------
-    ! use _params_core, only: nmonth
-    use _plant, only: params_plant
+    ! use md_params_core, only: nmonth
+    use md_plant, only: params_plant
 
     ! arguments
     real, dimension(nmonth), intent(in) :: meanmppfd
@@ -605,8 +604,8 @@ contains
     ! LAI * n_metabolic = nv * Iabs
     ! Iabs = meanmppfd * (1-exp(-kbeer*LAI))
     !----------------------------------------------------------------
-    ! use _params_core, only: nmonth
-    use _plant, only: get_fapar
+    ! use md_params_core, only: nmonth
+    use md_plant, only: get_fapar
 
     ! arguments
     real, intent(in)                    :: mylai
@@ -637,7 +636,7 @@ contains
     ! LAI * n_structural = nv * Iabs
     ! Iabs = meanmppfd * (1-exp(-kbeer*LAI))
     !----------------------------------------------------------------
-    ! use _params_core, only: nmonth
+    ! use md_params_core, only: nmonth
 
     ! arguments
     real, intent(in) :: mylai
@@ -669,7 +668,7 @@ contains
     ! LAI * n_cellwall = LAI * (params_alloc%ncw_min + params_alloc%r_n_cw_v * n_metabolic)
     ! ==> Nleaf = n_molmass * [ meanmppfd * (1-exp(-kbeer*LAI)) * nv * (params_alloc%r_n_cw_v + 1) + LAI * params_alloc%ncw_min ]
     !----------------------------------------------------------------
-    ! use _params_core, only: nmonth
+    ! use md_params_core, only: nmonth
 
     ! arguments
     real, intent(in)                    :: mylai
@@ -707,8 +706,8 @@ contains
     ! Narea_structural = a + b * Narea_metabolic
     ! Carea            = c * Narea_structural
     !----------------------------------------------------------------
-    use _params_core, only: c_content_of_biomass
-    use _plant, only: leaftraits_type
+    use md_params_core, only: c_content_of_biomass
+    use md_plant, only: leaftraits_type
 
     ! arguments
     real, intent(in)                    :: mylai
@@ -752,7 +751,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use _params_siml, only: runname
+    use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
@@ -825,7 +824,7 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_siml, only: firstyeartrend, spinupyears
+    use md_params_siml, only: firstyeartrend, spinupyears
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -859,4 +858,4 @@ contains
 
   end subroutine writeout_ascii_allocation
 
-end module _allocation
+end module md_allocation

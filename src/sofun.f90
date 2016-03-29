@@ -7,12 +7,12 @@ program main
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
-  use _params_core
-  use _params_siml
-  use _params_site
-  use _forcing_siterun
-  use _gridvars
-  use _params_soil
+  use md_params_core
+  use md_params_siml
+  use md_params_site
+  use md_forcing_siterun
+  use md_gridvars
+  use md_params_soil
 
   implicit none
 

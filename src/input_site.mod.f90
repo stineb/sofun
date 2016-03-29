@@ -6,7 +6,7 @@ module input_site
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
-  use _params_core, only: npft, maxgrid
+  use md_params_core, only: npft, maxgrid
 
   implicit none
 
@@ -27,10 +27,10 @@ contains
     !  (per default) calculated online
     ! This is not appropriate here as its only for one year
     !----------------------------------------------------------------
-    use _params_siml, only: nyeartrend, sitename
-    use _forcing_siterun, only: read1year_daily  ! xxx put all reading functions/subroutines into a single module
-    use _sofunutils, only: getparreal  ! xxx put all reading functions/subroutines into a single module
-    use _params_core, only: ndayyear
+    use md_params_siml, only: nyeartrend, sitename
+    use md_forcing_siterun, only: read1year_daily  ! xxx put all reading functions/subroutines into a single module
+    use md_sofunutils, only: getparreal  ! xxx put all reading functions/subroutines into a single module
+    use md_params_core, only: ndayyear
 
     ! local variables
     integer :: day, mo, dm, pft, yr

@@ -1,4 +1,4 @@
-module _soiltemp
+module md_soiltemp
   !////////////////////////////////////////////////////////////////
   ! SITCH SOILTEMP MODULE
   ! Contains the "main" subroutine 'soiltemp' and all necessary 
@@ -20,7 +20,7 @@ module _soiltemp
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: nlu, maxgrid
+  use md_params_core, only: nlu, maxgrid
 
   implicit none
 
@@ -40,11 +40,11 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates soil temperature based on.
     !-------------------------------------------------------------------------
-    use _params_core, only: ndayyear, nlu, maxgrid, ndaymonth, pi
-    use _params_siml, only: init
-    use _sofunutils, only: running, daily2monthly
-    use _waterbal, only: soilphys
-    use _params_soil, only: paramtype_soil
+    use md_params_core, only: ndayyear, nlu, maxgrid, ndaymonth, pi
+    use md_params_siml, only: init
+    use md_sofunutils, only: running, daily2monthly
+    use md_waterbal, only: soilphys
+    use md_params_soil, only: paramtype_soil
 
 
     ! arguments
@@ -159,7 +159,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use _params_siml, only: runname, loutdtemp_soil
+    use md_params_siml, only: runname, loutdtemp_soil
 
     ! local variables
     character(len=256) :: prefix
@@ -184,8 +184,8 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises soiltemp-specific output variables
     !----------------------------------------------------------------
-    use _params_core, only: ndayyear
-    use _params_siml, only: runname, loutdtemp_soil
+    use md_params_core, only: ndayyear
+    use md_params_siml, only: runname, loutdtemp_soil
 
     if (loutdtemp_soil) allocate( outdtemp_soil(nlu,ndayyear,maxgrid)  )
 
@@ -196,7 +196,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use _params_siml, only: loutdtemp_soil
+    use md_params_siml, only: loutdtemp_soil
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -212,8 +212,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE soiltemp-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_core, only: ndayyear
-    use _params_siml, only: spinup, daily_out_startyr, daily_out_endyr, outyear, loutdtemp_soil
+    use md_params_core, only: ndayyear
+    use md_params_siml, only: spinup, daily_out_startyr, daily_out_endyr, outyear, loutdtemp_soil
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -251,4 +251,4 @@ contains
   end subroutine writeout_ascii_soiltemp
 
 
-end module _soiltemp
+end module md_soiltemp

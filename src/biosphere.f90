@@ -15,44 +15,44 @@ subroutine biosphere( &
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core
-  use _params_siml
-  use _params_site
-  use _params_modl
-  use _vars_core, only: initannual, initdaily, initglobal, initpft, solar
-  use _outvars, only: initio, getout_annual, getout_daily, initoutput
-  use _soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
-  use _phenology, only: gettempphenology, getpar_phenology  !, phenology
-  use _vegdynamics, only: estab_daily
-  use _gpp, only: gpp, getlue, initdaily_gpp, writeout_ascii_gpp, getout_annual_gpp, initio_gpp, initoutput_gpp
-  use _npp, only: npp, getpar_modl_npp
-  use _allocation, only: allocation_daily, initio_allocation, initoutput_allocation, getout_daily_allocation, writeout_ascii_allocation
-  use _turnover, only: turnover
-  use _waterbal, only: waterbal, getsolar_alldays, outdcpa, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal
-  use _nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake, getpar_modl_nuptake
-  use _ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform, getpar_modl_ntransform
-  use _littersom, only: littersom, initio_littersom, initoutput_littersom, getout_annual_littersom, getpar_modl_littersom !, getout_daily_littersom
-  use _params_soil, only: paramtype_soil
+  use md_params_core
+  use md_params_siml
+  use md_params_site
+  use md_params_modl
+  use md_vars_core, only: initannual, initdaily, initglobal, initpft, solar
+  use md_outvars, only: initio, getout_annual, getout_daily, initoutput
+  use md_soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
+  use md_phenology, only: gettempphenology, getpar_phenology  !, phenology
+  use md_vegdynamics, only: estab_daily
+  use md_gpp, only: gpp, getlue, initdaily_gpp, writeout_ascii_gpp, getout_annual_gpp, initio_gpp, initoutput_gpp
+  use md_npp, only: npp, getpar_modl_npp
+  use md_allocation, only: allocation_daily, initio_allocation, initoutput_allocation, getout_daily_allocation, writeout_ascii_allocation
+  use md_turnover, only: turnover
+  use md_waterbal, only: waterbal, getsolar_alldays, outdcpa, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal
+  use md_nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake, getpar_modl_nuptake
+  use md_ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform, getpar_modl_ntransform
+  use md_littersom, only: littersom, initio_littersom, initoutput_littersom, getout_annual_littersom, getpar_modl_littersom !, getout_daily_littersom
+  use md_params_soil, only: paramtype_soil
 
-  use _waterbal, only: writeout_ascii_waterbal
+  use md_waterbal, only: writeout_ascii_waterbal
 
   ! xxx try
-  ! use _waterbal, only: getpar_modl_waterbal
-  ! use _nuptake, only: getpar_modl_nuptake
-  ! use _npp, only: getpar_modl_npp
-  ! use _phenology, only: getpar_phenology
-  ! use _ntransform, only: getpar_modl_ntransform
-  ! use _littersom, only: getpar_modl_littersom
-  ! use _sofunutils, only: getparreal
+  ! use md_waterbal, only: getpar_modl_waterbal
+  ! use md_nuptake, only: getpar_modl_nuptake
+  ! use md_npp, only: getpar_modl_npp
+  ! use md_phenology, only: getpar_phenology
+  ! use md_ntransform, only: getpar_modl_ntransform
+  ! use md_littersom, only: getpar_modl_littersom
+  ! use md_sofunutils, only: getparreal
 
 
-  ! use _nuptake, only: writeout_ascii_nuptake
-  ! use _littersom, only: writeout_ascii_littersom
+  ! use md_nuptake, only: writeout_ascii_nuptake
+  ! use md_littersom, only: writeout_ascii_littersom
 
   ! xxx debug
-  ! use _vars_core
-  ! use _vegdynamics
-  ! use _vars_core
+  ! use md_vars_core
+  ! use md_vegdynamics
+  ! use md_vars_core
 
   implicit none
 

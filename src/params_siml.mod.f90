@@ -1,10 +1,10 @@
-module _params_siml
+module md_params_siml
   !////////////////////////////////////////////////////////////////
   !  Module contains simulation parameters read in by getpar_siml
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _sofunutils, only: getparint, getparstring, getparlogical
+  use md_sofunutils, only: getparint, getparstring, getparlogical
 
   implicit none
 
@@ -190,5 +190,5 @@ contains
 
   end subroutine getpar_siml
 
-end module _params_siml
+end module md_params_siml
 

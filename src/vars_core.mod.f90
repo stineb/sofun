@@ -1,4 +1,4 @@
-module _vars_core
+module md_vars_core
   !////////////////////////////////////////////////////////////////
 
 
@@ -17,8 +17,8 @@ module _vars_core
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core
-  use _classdefs
+  use md_params_core
+  use md_classdefs
 
   implicit none
 
@@ -115,9 +115,9 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use _classdefs
-    use _params_modl, only: params_pft
-    use _params_core, only: npft, maxgrid
+    use md_classdefs
+    use md_params_modl, only: params_pft
+    use md_params_core, only: npft, maxgrid
 
     ! local variables
     integer :: pft
@@ -189,8 +189,8 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use _classdefs
-    use _params_modl, only: params_pft
+    use md_classdefs
+    use md_params_modl, only: params_pft
 
     integer, intent(in) :: pft
     integer, intent(in) :: jpngr
@@ -236,7 +236,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises all annually updated variables with zero.
     !----------------------------------------------------------------
-    use _classdefs
+    use md_classdefs
 
     aestab(:) = orgpool(carbon(0.0),nitrogen(0.0))
 
@@ -247,7 +247,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     !----------------------------------------------------------------
-    use _classdefs
+    use md_classdefs
 
     dnpp(:)        = carbon(0.0)
     drsoil(:)      = carbon(0.0)
@@ -277,4 +277,4 @@ contains
   end subroutine initdaily
 
 
-end module _vars_core
+end module md_vars_core

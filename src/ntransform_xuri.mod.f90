@@ -1,4 +1,4 @@
-module _ntransform
+module md_ntransform
   !////////////////////////////////////////////////////////////////
   ! INORGANIC NITROGEN DYNAMICS MODULE AFTER XURI & PRENTICE 2008
   ! Contains the "main" subroutine 'ntransform' and all necessary 
@@ -18,8 +18,8 @@ module _ntransform
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: nlu, maxgrid, ndayyear
-  use _params_siml, only: loutntransform
+  use md_params_core, only: nlu, maxgrid, ndayyear
+  use md_params_siml, only: loutntransform
 
   implicit none
 
@@ -74,8 +74,8 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use _rates
-    use _vars_core, only: pninorg, psoilphys, soilphys, ddoc
+    use md_rates
+    use md_vars_core, only: pninorg, psoilphys, soilphys, ddoc
 
     ! XXX beni: this is wrong: dw1 is only plant available water. 
     ! should be water-filled pore space = ( (porosity - ice) - (total fluid water volume) ) / dz
@@ -373,7 +373,7 @@ contains
     ! Subroutine reads waterbalance module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    use _sofunutils, only: getparreal
+    use md_sofunutils, only: getparreal
 
     ! maximum nitrification rate
     MAXNITR = getparreal( 'params/params_ntransform_xuri.dat', 'MAXNITR' )
@@ -418,7 +418,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use _params_siml, only: runname
+    use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
@@ -540,8 +540,8 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_core, only: npft
-    use _params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
+    use md_params_core, only: npft
+    use md_params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
       daily_out_endyr, outyear
 
     ! arguments
@@ -600,4 +600,4 @@ contains
   end subroutine writeout_ascii_ntransform
 
 
-end module _ntransform
+end module md_ntransform

@@ -1,8 +1,8 @@
-module _vegdynamics
+module md_vegdynamics
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
 
-  use _params_core
+  use md_params_core
 
   implicit none
 
@@ -16,11 +16,11 @@ contains
     ! Updates canopy and stand variables and calls 'estab_daily' to 
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
-    use _params_core, only: npft
-    use _phenology, only: dtphen, sprout, params_pft_pheno
+    use md_params_core, only: npft
+    use md_phenology, only: dtphen, sprout, params_pft_pheno
 
     ! xxx debug
-    use _plant, only: ispresent
+    use md_plant, only: ispresent
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -65,7 +65,7 @@ contains
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
     !------------------------------------------------------------------
-    use _plant, only: initpft, params_pft_plant, ispresent, nind
+    use md_plant, only: initpft, params_pft_plant, ispresent, nind
 
     ! arguments
     integer, intent(in) :: pft
@@ -95,8 +95,8 @@ contains
     !//////////////////////////////////////////////////////////////////
     ! To initialise plant pools, add "sapling" mass
     !------------------------------------------------------------------
-    use _classdefs
-    use _plant, only: plabl, seed, dnpp
+    use md_classdefs
+    use md_plant, only: plabl, seed, dnpp
 
     ! arguments
     integer, intent(in) :: pft
@@ -107,4 +107,4 @@ contains
   end subroutine add_seed
 
 
-end module _vegdynamics
+end module md_vegdynamics

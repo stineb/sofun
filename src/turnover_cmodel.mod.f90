@@ -1,4 +1,4 @@
-module _turnover
+module md_turnover
   !////////////////////////////////////////////////////////////////
   ! NPP_LPJ MODULE
   ! Contains the "main" subroutine 'npp' and all necessary 
@@ -21,8 +21,8 @@ module _turnover
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _classdefs
-  use _plant
+  use md_classdefs
+  use md_plant
     
   implicit none
 
@@ -36,9 +36,9 @@ contains
     !  Annual vegetation biomass turnover, called at the end of the
     !  year.
     !----------------------------------------------------------------
-    use _classdefs
-    use _phenology, only: shedleaves, params_pft_pheno
-    use _params_core, only: npft
+    use md_classdefs
+    use md_phenology, only: shedleaves, params_pft_pheno
+    use md_params_core, only: npft
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -138,7 +138,7 @@ contains
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction dleaf for leaf pool
     !------------------------------------------------------------------
-    ! use _plant, only: update_foliage_vars
+    ! use md_plant, only: update_foliage_vars
 
     ! arguments
     real, intent(in)    :: dleaf
@@ -176,7 +176,7 @@ contains
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction droot for root pool
     !------------------------------------------------------------------
-    use _classdefs
+    use md_classdefs
 
     ! arguments
     real, intent(in)    :: droot
@@ -266,4 +266,4 @@ contains
 
   end subroutine turnover_sapw
 
-end module _turnover
+end module md_turnover

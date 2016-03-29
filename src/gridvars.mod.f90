@@ -9,7 +9,7 @@ module gridvars_siterun
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core
+  use md_params_core
 
   implicit none
 
@@ -23,7 +23,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Defines grid variables
     !----------------------------------------------------------------
-    use _params_site, only: lon_site, lat_site, elv_site
+    use md_params_site, only: lon_site, lat_site, elv_site
 
     implicit none
 

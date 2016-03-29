@@ -1,4 +1,4 @@
-module _forcing_siterun
+module md_forcing_siterun
   !////////////////////////////////////////////////////////////////
   ! Module contains forcing variables (climate, co2, ...), and
   ! subroutines used to read forcing input files for a specific year
@@ -9,10 +9,10 @@ module _forcing_siterun
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu
-  use _sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
+  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu
+  use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
-  use _params_siml, only: const_co2, firstyeartrend, co2_forcing_file, &
+  use md_params_siml, only: const_co2, firstyeartrend, co2_forcing_file, &
     input_dir, const_ndep, ndep_noy_forcing_file, ndep_nhx_forcing_file, &
     prescr_monthly_fapar
 
@@ -85,7 +85,7 @@ contains
     ! Function reads this year's annual ndeposition and distributes it
     !  over days according to daily precipitation.
     !----------------------------------------------------------------
-    use _params_core, only: dummy
+    use md_params_core, only: dummy
 
     ! arguments
     character(len=*), intent(in) :: runname
@@ -104,8 +104,8 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
-    use _params_siml, only: prescr_monthly_fapar
-    use _params_core, only: dummy
+    use md_params_siml, only: prescr_monthly_fapar
+    use md_params_core, only: dummy
 
     ! arguments
     character(len=*), intent(in) :: runname
@@ -297,7 +297,7 @@ contains
   !   ! Function reads a file that contains 365 lines, each line for
   !   ! a daily value. 
   !   !----------------------------------------------------------------
-  !   use _params_core, only: ndayyear
+  !   use md_params_core, only: ndayyear
   !   implicit none
 
   !   ! arguments
@@ -328,7 +328,7 @@ contains
   !   ! Function reads a file that contains 365 lines, each line for
   !   ! a daily value. 
   !   !----------------------------------------------------------------
-  !   use _params_core, only: nmonth
+  !   use md_params_core, only: nmonth
   !   implicit none
 
   !   ! arguments
@@ -548,5 +548,5 @@ contains
 
   ! end function getvalreal_STANDARD
 
-end module _forcing_siterun
+end module md_forcing_siterun
 

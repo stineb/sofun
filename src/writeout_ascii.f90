@@ -13,14 +13,14 @@ subroutine writeout_ascii( year, dtemp )
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !-------------------------------------------------------------------------
-  use _params_siml, only: spinup, daily_out_startyr, &
+  use md_params_siml, only: spinup, daily_out_startyr, &
     daily_out_endyr, outyear
-  use _params_core, only: ndayyear
-  use _params_modl, only: lu_category
-  use _outvars
-  use _nuptake, only: writeout_ascii_nuptake
-  use _littersom, only: writeout_ascii_littersom
-  use _params_siml, only: & 
+  use md_params_core, only: ndayyear
+  use md_params_modl, only: lu_category
+  use md_outvars
+  use md_nuptake, only: writeout_ascii_nuptake
+  use md_littersom, only: writeout_ascii_littersom
+  use md_params_siml, only: & 
       loutdgpp       &
     , loutdtransp    &
     , loutdnpp       &

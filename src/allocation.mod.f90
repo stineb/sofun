@@ -1,4 +1,4 @@
-module _allocation
+module md_allocation
   !////////////////////////////////////////////////////////////////
   ! ALLOCATION MODULE
   ! Contains the "main" subroutine 'allocation_daily' and all 
@@ -10,9 +10,9 @@ module _allocation
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: npft, nlu, maxgrid, ndaymonth, ndayyear, &
+  use md_params_core, only: npft, nlu, maxgrid, ndaymonth, ndayyear, &
     c_molmass, n_molmass, nmonth
-  use _classdefs
+  use md_classdefs
 
   implicit none
 
@@ -91,14 +91,14 @@ contains
     ! Finds optimal shoot:root growth ratio to balance C:N stoichiometry
     ! of a grass (no wood allocation).
     !------------------------------------------------------------------
-    use _params_modl, only: r_cton_root, r_ntoc_root, growtheff, grass, &
+    use md_params_modl, only: r_cton_root, r_ntoc_root, growtheff, grass, &
       lu_category
-    use _vars_core, only: pleaf, proot, plabl, pninorg, r_cton_leaf, &
+    use md_vars_core, only: pleaf, proot, plabl, pninorg, r_cton_leaf, &
       r_ntoc_leaf, crownarea, drauto, dnpp, lai_ind, nind, fapar_ind, fpc_grid, &
       narea, narea_metabolic, narea_structural, lma, nmass, psoilphys, solar
-    use _gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
-    use _vegdynamics, only: update_fpc_grid
-    use _findroot_fzeroin
+    use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
+    use md_vegdynamics, only: update_fpc_grid
+    use md_findroot_fzeroin
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -569,14 +569,14 @@ contains
     ! versus whole-plant C:N ratio after allocation. Optimal 
     ! allocation is where the two are equal. 
     !---------------------------------------------------------
-    use _classdefs, only: orgpool, nitrogen
-    use _params_modl, only: growtheff, k_decay_leaf, k_decay_root,&
+    use md_classdefs, only: orgpool, nitrogen
+    use md_params_modl, only: growtheff, k_decay_leaf, k_decay_root,&
      r_cton_root, r_ntoc_root
-    use _gpp, only: calc_dgpp, calc_drd
-    use _nuptake, only: calc_dnup, outtype_calc_dnup, calc_cexu
-    use _npp, only: calc_resp_maint, r_root
-    use _vegdynamics, only: get_fapar, get_fpc_grid
-    use _findroot_fzeroin
+    use md_gpp, only: calc_dgpp, calc_drd
+    use md_nuptake, only: calc_dnup, outtype_calc_dnup, calc_cexu
+    use md_npp, only: calc_resp_maint, r_root
+    use md_vegdynamics, only: get_fapar, get_fpc_grid
+    use md_findroot_fzeroin
 
     ! arguments
     real, intent(in)              :: mydcleaf
@@ -817,9 +817,9 @@ contains
     ! - calculate canopy-level foliage N as a function of LAI 
     ! - reduce labile pool by C and N increments
     !-------------------------------------------------------------------
-    use _classdefs
-    ! use _params_core, only: nmonth
-    use _params_modl, only: growtheff
+    use md_classdefs
+    ! use md_params_core, only: nmonth
+    use md_params_modl, only: growtheff
 
     ! arguments
     real, intent(in)                    :: mydcleaf
@@ -886,9 +886,9 @@ contains
     !-------------------------------------------------------------------
     ! ROOT ALLOCATION
     !-------------------------------------------------------------------
-    use _classdefs
-    ! use _params_core, only: nmonth
-    use _params_modl, only: growtheff, r_cton_root, r_ntoc_root
+    use md_classdefs
+    ! use md_params_core, only: nmonth
+    use md_params_modl, only: growtheff, r_cton_root, r_ntoc_root
 
     ! arguments
     real, intent(inout)         :: croot, nroot
@@ -956,8 +956,8 @@ contains
     ! Cleaf / ( Mc * c ) - ( I0 * ( 1 - exp( -kL ) * nv * b + L * a ) ) = 0
     ! This is implemented in function 'mustbe_zero_for_lai()'.
     !----------------------------------------------------------------
-    ! use _params_core, only: nmonth
-    use _findroot_fzeroin
+    ! use md_params_core, only: nmonth
+    use md_findroot_fzeroin
 
     ! arguments 
     real, intent(in)                    :: cleaf
@@ -1058,8 +1058,8 @@ contains
     ! ==> LAI = f(Cleaf) leads to inhomogenous equation. Therefore apply root finding algorithm so that:
     ! 0 = cleaf / ( c_molmass * r_ctostructn_leaf ) - meanmppfd * ( 1.0 - exp( -1.0 * kbeer * mylai ) ) * nv * r_n_cw_v - mylai * ncw_min
     !---------------------------------------------------------
-    use _params_modl, only: kbeer
-    use _vegdynamics, only: get_fapar
+    use md_params_modl, only: kbeer
+    use md_vegdynamics, only: get_fapar
 
     ! arguments
     real, intent(in) :: mylai
@@ -1105,8 +1105,8 @@ contains
     ! ==> Nleaf ~= LAI * n_molmass * ( meanmppfd * kbeer * nv * (r_n_cw_v + 1) + ncw_min )
     ! r_cton = Cleaf / Nleaf
     !----------------------------------------------------------------
-    ! use _params_core, only: nmonth
-    use _params_modl, only: kbeer
+    ! use md_params_core, only: nmonth
+    use md_params_modl, only: kbeer
 
     ! arguments
     real, dimension(nmonth), intent(in) :: meanmppfd
@@ -1137,8 +1137,8 @@ contains
     ! LAI * n_metabolic = nv * Iabs
     ! Iabs = meanmppfd * (1-exp(-kbeer*LAI))
     !----------------------------------------------------------------
-    ! use _params_core, only: nmonth
-    use _vegdynamics, only: get_fapar
+    ! use md_params_core, only: nmonth
+    use md_vegdynamics, only: get_fapar
 
     ! arguments
     real, intent(in)                    :: mylai
@@ -1169,7 +1169,7 @@ contains
     ! LAI * n_structural = nv * Iabs
     ! Iabs = meanmppfd * (1-exp(-kbeer*LAI))
     !----------------------------------------------------------------
-    ! use _params_core, only: nmonth
+    ! use md_params_core, only: nmonth
 
     ! arguments
     real, intent(in) :: mylai
@@ -1201,7 +1201,7 @@ contains
     ! LAI * n_cellwall = LAI * (ncw_min + r_n_cw_v * n_metabolic)
     ! ==> Nleaf = n_molmass * [ meanmppfd * (1-exp(-kbeer*LAI)) * nv * (r_n_cw_v + 1) + LAI * ncw_min ]
     !----------------------------------------------------------------
-    ! use _params_core, only: nmonth
+    ! use md_params_core, only: nmonth
 
     ! arguments
     real, intent(in)                    :: mylai
@@ -1239,8 +1239,8 @@ contains
     ! Narea_structural = a + b * Narea_metabolic
     ! Carea            = c * Narea_structural
     !----------------------------------------------------------------
-    use _params_core, only: c_content_of_biomass
-    use _vegdynamics, only: get_fapar
+    use md_params_core, only: c_content_of_biomass
+    use md_vegdynamics, only: get_fapar
 
     ! arguments
     real, intent(in)                    :: mylai
@@ -1284,7 +1284,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use _params_siml, only: runname
+    use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
@@ -1324,7 +1324,7 @@ contains
   !   ! Subroutine reads nuptake module-specific parameters 
   !   ! from input file
   !   !----------------------------------------------------------------
-  !   use _sofunutils, only: getreal
+  !   use md_sofunutils, only: getreal
 
   ! end subroutine getpar_modl_allocation
 
@@ -1367,7 +1367,7 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use _params_siml, only: firstyeartrend, spinupyears
+    use md_params_siml, only: firstyeartrend, spinupyears
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -1401,4 +1401,4 @@ contains
 
   end subroutine writeout_ascii_allocation
 
-end module _allocation
+end module md_allocation

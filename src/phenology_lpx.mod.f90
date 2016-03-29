@@ -1,4 +1,4 @@
-module _phenology
+module md_phenology
   !////////////////////////////////////////////////////////////////
   ! TEMPERATURE-DRIVEN PHENOLOGY 
   ! Adopted from LPX-Bern
@@ -7,7 +7,7 @@ module _phenology
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use _params_core, only: npft, ndayyear
+  use md_params_core, only: npft, ndayyear
   
   implicit none
 
@@ -53,9 +53,9 @@ contains
     !//////////////////////////////////////////////////////////
     ! Defines dtphen, the temperature-driven phenology
     !----------------------------------------------------------
-    use _params_core, only: ndayyear, maxgrid, nmonth, middaymonth
-    use _plant, only: params_pft_plant
-    use _sofunutils, only: daily2monthly, monthly2daily
+    use md_params_core, only: ndayyear, maxgrid, nmonth, middaymonth
+    use md_plant, only: params_pft_plant
+    use md_sofunutils, only: daily2monthly, monthly2daily
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -257,8 +257,8 @@ contains
     ! Subroutine reads nuptake module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    use _sofunutils, only: getparreal
-    use _plant, only: params_pft_plant
+    use md_sofunutils, only: getparreal
+    use md_plant, only: params_pft_plant
 
     ! local variables
     real        :: phentype
@@ -288,7 +288,7 @@ contains
   end subroutine getpar_modl_phenology
 
 
-end module _phenology
+end module md_phenology
 
 
 

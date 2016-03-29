@@ -1,4 +1,4 @@
-module _turnover
+module md_turnover
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
 
@@ -11,14 +11,14 @@ contains
     !  Annual vegetation biomass turnover, called at the end of the
     !  year.
     !----------------------------------------------------------------
-    use _classdefs
-    use _params_modl, only: lu_category, tree, grass, &
+    use md_classdefs
+    use md_params_modl, only: lu_category, tree, grass, &
       k_decay_leaf, k_decay_sapw, k_decay_root, npft
-    use _phenology, only: summergreen, shedleaves
-    use _vars_core, only: plabl, ispresent
+    use md_phenology, only: summergreen, shedleaves
+    use md_vars_core, only: plabl, ispresent
 
     ! xxx debug
-    use _vars_core, only: lai_ind, pleaf, lma, crownarea, nind
+    use md_vars_core, only: lai_ind, pleaf, lma, crownarea, nind
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -103,11 +103,11 @@ contains
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction dleaf for leaf pool
     !------------------------------------------------------------------
-    use _classdefs
-    use _vars_core, only: pleaf, nind, plitt_af, plitt_bg, plabl
-    use _params_modl, only: F_NRETAIN
-    use _outvars, only: outaCveg2lit, outaNveg2lit
-    use _vegdynamics, only: update_foliage_vars
+    use md_classdefs
+    use md_vars_core, only: pleaf, nind, plitt_af, plitt_bg, plabl
+    use md_params_modl, only: F_NRETAIN
+    use md_outvars, only: outaCveg2lit, outaNveg2lit
+    use md_vegdynamics, only: update_foliage_vars
 
     ! arguments
     real, intent(in)    :: dleaf
@@ -147,10 +147,10 @@ contains
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction droot for root pool
     !------------------------------------------------------------------
-    use _classdefs
-    use _vars_core, only: proot, nind, plitt_af, plitt_bg, plabl
-    use _params_modl, only: F_NRETAIN
-    use _outvars, only: outaCveg2lit, outaNveg2lit
+    use md_classdefs
+    use md_vars_core, only: proot, nind, plitt_af, plitt_bg, plabl
+    use md_params_modl, only: F_NRETAIN
+    use md_outvars, only: outaCveg2lit, outaNveg2lit
 
     ! arguments
     real, intent(in)    :: droot
@@ -184,9 +184,9 @@ contains
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction dlabl for labl pool
     !------------------------------------------------------------------
-    use _classdefs
-    use _vars_core, only: plabl, nind, plitt_af, plitt_bg
-    use _outvars, only: outaCveg2lit, outaNveg2lit
+    use md_classdefs
+    use md_vars_core, only: plabl, nind, plitt_af, plitt_bg
+    use md_outvars, only: outaCveg2lit, outaNveg2lit
 
     ! arguments
     real, intent(in)    :: dlabl
@@ -214,10 +214,10 @@ contains
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction dsapw for sapw pool
     !------------------------------------------------------------------
-    use _classdefs
-    use _vars_core, only: psapw, nind, plitt_af, plitt_bg, plabl
-    use _params_modl, only: F_NRETAIN
-    use _outvars, only: outaCveg2lit, outaNveg2lit
+    use md_classdefs
+    use md_vars_core, only: psapw, nind, plitt_af, plitt_bg, plabl
+    use md_params_modl, only: F_NRETAIN
+    use md_outvars, only: outaCveg2lit, outaNveg2lit
 
     ! arguments
     real, intent(in)    :: dsapw
@@ -251,4 +251,4 @@ contains
 
   end subroutine turnover_sapw
 
-end module _turnover
+end module md_turnover

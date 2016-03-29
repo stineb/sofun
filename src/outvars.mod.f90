@@ -1,4 +1,4 @@
-module _outvars
+module md_outvars
 !////////////////////////////////////////////////////////////////
 
 
@@ -16,9 +16,9 @@ module _outvars
 ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
 ! contact: b.stocker@imperial.ac.uk
 !----------------------------------------------------------------
-  use _params_core
-  use _classdefs
-  use _params_siml, only: & 
+  use md_params_core
+  use md_classdefs
+  use md_params_siml, only: & 
       loutdnpp       &
     , loutdnup       &
     , loutdCleaf     &
@@ -113,7 +113,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Opens input/output files.
     !----------------------------------------------------------------
-    use _params_siml, only: runname
+    use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
@@ -263,8 +263,8 @@ contains
     ! global just for this, but are collected inside the subroutine 
     ! where they are defined.
     !----------------------------------------------------------------
-    use _params_core, only: ndayyear, npft
-    use _vars_core, only: dnpp, dnup, pleaf, pninorg, proot, plabl, &
+    use md_params_core, only: ndayyear, npft
+    use md_vars_core, only: dnpp, dnup, pleaf, pninorg, proot, plabl, &
       plitt_bg, plitt_af, plitt_as, psoil_sl, psoil_fs, lai_ind, &
       narea_metabolic, narea_structural, r_cton_leaf, lma
 
@@ -319,8 +319,8 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use _params_core, only: ndayyear, npft
-    use _vars_core, only: pleaf, proot
+    use md_params_core, only: ndayyear, npft
+    use md_vars_core, only: pleaf, proot
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -358,4 +358,4 @@ contains
   end subroutine getout_annual
 
 
-end module _outvars
+end module md_outvars

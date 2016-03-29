@@ -1,4 +1,4 @@
-module _findroot_fzeroin
+module md_findroot_fzeroin
   !************************************************************************
   !*                                                                      *
   !* Compute a zero of a continuous real valued function with the         *
@@ -307,7 +307,7 @@ contains
 
   end function 
 
-end module _findroot_fzeroin
+end module md_findroot_fzeroin
 
 !XXXXXXXXXXX old code below XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
@@ -509,4 +509,4 @@ end module _findroot_fzeroin
 
 !   end function zeroin
 
-! end module _findroot_fzeroin
+! end module md_findroot_fzeroin

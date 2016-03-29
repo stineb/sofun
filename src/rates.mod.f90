@@ -1,4 +1,4 @@
-module _rates
+module md_rates
   !////////////////////////////////////////////////////////////////
   !  Module containing temperature and moisture response functions.
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
@@ -97,5 +97,5 @@ contains
   end function fmoist
 
 
-end module _rates
+end module md_rates
 
