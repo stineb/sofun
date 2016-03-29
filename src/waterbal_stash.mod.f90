@@ -1198,20 +1198,21 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
+    use md_params_siml, only: init
 
     if (loutwaterbal) then
 
-      allocate( outdwcont (nlu,ndayyear,maxgrid) ) ! daily soil moisture, mm
-      allocate( outdra (ndayyear,maxgrid)     ) ! daily solar irradiation, J/m2
-      allocate( outdrn (ndayyear,maxgrid)     ) ! daily net radiation, J/m2
-      allocate( outdppfd (ndayyear,maxgrid)   ) ! daily PPFD, mol/m2
-      allocate( outdayl(ndayyear,maxgrid)     ) ! daily day length, h
-      allocate( outdcn (ndayyear,maxgrid)     ) ! daily condensation water, mm
-      allocate( outdro (nlu,ndayyear,maxgrid) ) ! daily runoff, mm
-      allocate( outdeet(ndayyear,maxgrid)     ) ! daily equilibrium ET, mm
-      allocate( outdpet(ndayyear,maxgrid)     ) ! daily potential ET, mm
-      allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
-      allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
+      if (init) allocate( outdwcont (nlu,ndayyear,maxgrid) ) ! daily soil moisture, mm
+      if (init) allocate( outdra (ndayyear,maxgrid)     ) ! daily solar irradiation, J/m2
+      if (init) allocate( outdrn (ndayyear,maxgrid)     ) ! daily net radiation, J/m2
+      if (init) allocate( outdppfd (ndayyear,maxgrid)   ) ! daily PPFD, mol/m2
+      if (init) allocate( outdayl(ndayyear,maxgrid)     ) ! daily day length, h
+      if (init) allocate( outdcn (ndayyear,maxgrid)     ) ! daily condensation water, mm
+      if (init) allocate( outdro (nlu,ndayyear,maxgrid) ) ! daily runoff, mm
+      if (init) allocate( outdeet(ndayyear,maxgrid)     ) ! daily equilibrium ET, mm
+      if (init) allocate( outdpet(ndayyear,maxgrid)     ) ! daily potential ET, mm
+      if (init) allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
+      if (init) allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
 
       outdwcont(:,:,:) = 0.0
       outdra(:,:)      = 0.0

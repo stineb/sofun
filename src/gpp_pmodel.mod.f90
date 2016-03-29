@@ -1413,20 +1413,20 @@ contains
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
     use md_params_core, only: npft, ndayyear, nmonth, maxgrid
-    use md_params_siml, only: loutdgpp, loutdrd, loutdtransp
+    use md_params_siml, only: loutdgpp, loutdrd, loutdtransp, init
 
     ! daily
-    if (loutdgpp      ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
-    if (loutdrd       ) allocate( outdrd       (npft,ndayyear,maxgrid) )
-    if (loutdtransp   ) allocate( outdtransp   (npft,ndayyear,maxgrid) )
+    if (init .and. loutdgpp      ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
+    if (init .and. loutdrd       ) allocate( outdrd       (npft,ndayyear,maxgrid) )
+    if (init .and. loutdtransp   ) allocate( outdtransp   (npft,ndayyear,maxgrid) )
     outdgpp(:,:,:)    = 0.0
     outdrd(:,:,:)    = 0.0
     outdtransp(:,:,:) = 0.0
 
     ! monthly
-    if (loutdgpp      ) allocate( outmgpp      (npft,nmonth,maxgrid) )
-    if (loutdrd       ) allocate( outmrd       (npft,nmonth,maxgrid) )
-    if (loutdtransp   ) allocate( outmtransp   (npft,nmonth,maxgrid) )
+    if (init .and. loutdgpp      ) allocate( outmgpp      (npft,nmonth,maxgrid) )
+    if (init .and. loutdrd       ) allocate( outmrd       (npft,nmonth,maxgrid) )
+    if (init .and. loutdtransp   ) allocate( outmtransp   (npft,nmonth,maxgrid) )
     outmgpp(:,:,:)    = 0.0
     outmrd(:,:,:)     = 0.0
     outmtransp(:,:,:) = 0.0

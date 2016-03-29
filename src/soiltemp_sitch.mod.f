@@ -1,45 +1,46 @@
+# 1 "soiltemp_sitch.mod.f90"
 module md_soiltemp
-  !////////////////////////////////////////////////////////////////
-  ! SITCH SOILTEMP MODULE
-  ! Contains the "main" subroutine 'soiltemp' and all necessary 
-  ! subroutines for handling input/output. 
-  ! Every module that implements 'soiltemp' must contain this list 
-  ! of subroutines (names that way), in order to be exchangeable
-  ! with this module:
-  !   - getpar_modl_soiltemp
-  !   - initio_soiltemp
-  !   - initoutput_soiltemp
-  !   - getout_daily_soiltemp
-  !   - getout_monthly_soiltemp
-  !   - writeout_ascii_soiltemp
-  !   - soiltemp
-  ! Required module-independent model state variables (necessarily 
-  ! updated by 'waterbal') are:
-  !   - soil moisture ('dwtot')
-  !   - soil temperature ('soiltemp')
-  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
-  ! contact: b.stocker@imperial.ac.uk
-  !----------------------------------------------------------------
+!////////////////////////////////////////////////////////////////
+! SITCH SOILTEMP MODULE
+! Contains the "main" subroutine 'soiltemp' and all necessary
+! subroutines for handling input/output.
+! Every module that implements 'soiltemp' must contain this list
+! of subroutines (names that way), in order to be exchangeable
+! with this module:
+!   - getpar_modl_soiltemp
+!   - initio_soiltemp
+!   - initoutput_soiltemp
+!   - getout_daily_soiltemp
+!   - getout_monthly_soiltemp
+!   - writeout_ascii_soiltemp
+!   - soiltemp
+! Required module-independent model state variables (necessarily
+! updated by 'waterbal') are:
+!   - soil moisture ('dwtot')
+!   - soil temperature ('soiltemp')
+! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
+! contact: b.stocker@imperial.ac.uk
+!----------------------------------------------------------------
   use md_params_core, only: nlu, maxgrid
 
   implicit none
 
-  !----------------------------------------------------------------
-  ! Module-specific state variables
-  !----------------------------------------------------------------
+!----------------------------------------------------------------
+! Module-specific state variables
+!----------------------------------------------------------------
   real, dimension(nlu,maxgrid) :: dtemp_soil          ! soil temperature [deg C]
 
-  !----------------------------------------------------------------
-  ! Module-specific daily output variables
-  !----------------------------------------------------------------
+!----------------------------------------------------------------
+! Module-specific daily output variables
+!----------------------------------------------------------------
   real, allocatable, dimension(:,:,:) :: outdtemp_soil
 
 contains
 
   subroutine soiltemp( jpngr, moy, day, dtemp, params_soil ) 
-    !/////////////////////////////////////////////////////////////////////////
-    ! Calculates soil temperature based on.
-    !-------------------------------------------------------------------------
+!/////////////////////////////////////////////////////////////////////////
+! Calculates soil temperature based on.
+!-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, nlu, maxgrid, ndaymonth, pi
     use md_params_siml, only: init
     use md_sofunutils, only: running, daily2monthly
@@ -47,20 +48,20 @@ contains
     use md_params_soil, only: paramtype_soil
 
 
-    ! arguments
+! arguments
     integer, intent(in)                   :: jpngr
     integer, intent(in)                   :: moy
     integer, intent(in)                   :: day                            ! current day of year
     real, dimension(ndayyear), intent(in) :: dtemp        ! daily temperature (deg C)
     type( paramtype_soil ), intent(in)    :: params_soil
 
-    ! local variables
+! local variables
     real, dimension(ndayyear,maxgrid), save     :: dtemp_pvy    ! daily temperature of previous year (deg C)
-    real, dimension(nlu,ndayyear,maxgrid), save :: wscal_pvy ! daily Cramer-Prentice-Alpha of previous year (unitless) 
+    real, dimension(nlu,ndayyear,maxgrid), save :: wscal_pvy ! daily Cramer-Prentice-Alpha of previous year (unitless)
     real, dimension(nlu,ndayyear), save         :: wscal_alldays
 
-    !real, dimension(ndayyear), save :: dtemp_buf        ! daily temperature vector containing values of the present day and the preceeding 364 days. Updated daily. (deg C)
-    !real, dimension(ndayyear), save :: dwtot_buf        ! daily soil moisture content, containing values of the present day and the preceeding 364 days. Updated daily
+!real, dimension(ndayyear), save :: dtemp_buf        ! daily temperature vector containing values of the present day and the preceeding 364 days. Updated daily. (deg C)
+!real, dimension(ndayyear), save :: dwtot_buf        ! daily soil moisture content, containing values of the present day and the preceeding 364 days. Updated daily
 
     integer :: pm ,ppm, lu
 
@@ -70,7 +71,7 @@ contains
     real :: alag, amp, lag, lagtemp
 
 
-    ! in first year, use this years air temperature (available for all days in this year)
+! in first year, use this years air temperature (available for all days in this year)
     if ( init .and. day==1 ) then
       dtemp_pvy(:,jpngr) = dtemp(:)
     end if
@@ -79,11 +80,11 @@ contains
 
     avetemp = running( dtemp, day, ndayyear, ndayyear, "mean", dtemp_pvy(:,jpngr) ) 
 
-    ! get monthly mean temperature vector from daily vector
-    !mtemp     = daily2monthly( dtemp,     "mean" )
-    !mtemp_pvy = daily2monthly( dtemp_pvy, "mean" )
+! get monthly mean temperature vector from daily vector
+!mtemp     = daily2monthly( dtemp,     "mean" )
+!mtemp_pvy = daily2monthly( dtemp_pvy, "mean" )
 
-    ! get average temperature of the preceeding N days in month (30/31/28 days)
+! get average temperature of the preceeding N days in month (30/31/28 days)
     if (moy==1) then
       pm = 12
       ppm = 11
@@ -99,52 +100,52 @@ contains
 
 
     do lu=1,nlu
-      !-------------------------------------------------------------------------
-      ! recalculate running mean of previous 12 month's temperature and soil moisture
-      ! avetemp stores running mean temperature of previous 12 months.
-      ! meanw1 stores running mean soil moisture in layer 1 of previous 12 months 
-      !-------------------------------------------------------------------------
+!-------------------------------------------------------------------------
+! recalculate running mean of previous 12 month's temperature and soil moisture
+! avetemp stores running mean temperature of previous 12 months.
+! meanw1 stores running mean soil moisture in layer 1 of previous 12 months
+!-------------------------------------------------------------------------
       if (init) then
         meanw1  = running( wscal_alldays(lu,:), day, ndayyear, ndayyear, "mean"  )
       else
         meanw1  = running( wscal_alldays(lu,:), day, ndayyear, ndayyear, "mean", wscal_pvy(lu,:,jpngr)  )
       end if
 
-      ! In case of zero soil water, return with soil temp = air temp
+! In case of zero soil water, return with soil temp = air temp
       if (meanw1==0.0) then
         dtemp_soil(lu,jpngr) = dtemp(day)
         return
       endif
           
-      ! Interpolate thermal diffusivity function against soil water content
+! Interpolate thermal diffusivity function against soil water content
       if (meanw1<0.15) then
         diffus = ( params_soil%thdiff_whc15 - params_soil%thdiff_wp ) / 0.15 * meanw1 + params_soil%thdiff_wp
       else
         diffus = ( params_soil%thdiff_fc - params_soil%thdiff_whc15 ) / 0.85 * ( meanw1 - 0.15 ) + params_soil%thdiff_whc15
       endif
           
-      ! Convert diffusivity from mm2/s to m2/month
-      ! multiplication by 1e-6 (-> m2/s) * 2.628e6 (s/month)  =  2.628
+! Convert diffusivity from mm2/s to m2/month
+! multiplication by 1e-6 (-> m2/s) * 2.628e6 (s/month)  =  2.628
       diffus = diffus * 2.628
           
-      ! Calculate amplitude fraction and lag at soil depth 0.25 m
+! Calculate amplitude fraction and lag at soil depth 0.25 m
       alag = 0.25 / sqrt( 12.0 * diffus / pi )
       amp  = exp(-alag)
       lag  = alag * ( 6.0 / pi )                                 !convert lag from angular units to months
           
-      ! Calculate monthly soil temperatures for this year.  For each month,
-      ! calculate average air temp for preceding 12 months (including this one)
+! Calculate monthly soil temperatures for this year.  For each month,
+! calculate average air temp for preceding 12 months (including this one)
           
-      ! Estimate air temperature "lag" months ago by linear interpolation
-      ! between air temperatures for this and last month
+! Estimate air temperature "lag" months ago by linear interpolation
+! between air temperatures for this and last month
       lagtemp = ( tempthismonth - templastmonth ) * ( 1.0 - lag ) + templastmonth
           
-      ! Adjust amplitude of lagged air temp to give estimated soil temp
+! Adjust amplitude of lagged air temp to give estimated soil temp
       dtemp_soil(lu,jpngr) = avetemp + amp * ( lagtemp - avetemp )
 
     end do
 
-    ! save temperature for next year
+! save temperature for next year
     if (day==ndayyear) then
       dtemp_pvy(:,jpngr) = dtemp(:)
       wscal_pvy(:,:,jpngr) = wscal_alldays(:,:)
@@ -156,18 +157,18 @@ contains
 
 
   subroutine initio_soiltemp()
-    !////////////////////////////////////////////////////////////////
-    ! OPEN ASCII OUTPUT FILES FOR OUTPUT
-    !----------------------------------------------------------------
+!////////////////////////////////////////////////////////////////
+! OPEN ASCII OUTPUT FILES FOR OUTPUT
+!----------------------------------------------------------------
     use md_params_siml, only: runname, loutdtemp_soil
 
-    ! local variables
+! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
 
     prefix = "./output/"//trim(runname)
 
-    ! soil temperature
+! soil temperature
     if (loutdtemp_soil) then
       filnam=trim(prefix)//'.d.soiltemp.out'
       open(109,file=filnam,err=999,status='unknown')
@@ -181,9 +182,9 @@ contains
 
 
   subroutine initoutput_soiltemp()
-    !////////////////////////////////////////////////////////////////
-    !  Initialises soiltemp-specific output variables
-    !----------------------------------------------------------------
+!////////////////////////////////////////////////////////////////
+!  Initialises soiltemp-specific output variables
+!----------------------------------------------------------------
     use md_params_core, only: ndayyear
     use md_params_siml, only: runname, loutdtemp_soil, init
 
@@ -193,12 +194,12 @@ contains
 
 
   subroutine getout_daily_soiltemp( jpngr, moy, doy )
-    !////////////////////////////////////////////////////////////////
-    !  SR called daily to sum up output variables.
-    !----------------------------------------------------------------
+!////////////////////////////////////////////////////////////////
+!  SR called daily to sum up output variables.
+!----------------------------------------------------------------
     use md_params_siml, only: loutdtemp_soil
 
-    ! arguments
+! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy    
     integer, intent(in) :: doy    
@@ -209,32 +210,32 @@ contains
 
 
   subroutine writeout_ascii_soiltemp( year )
-    !/////////////////////////////////////////////////////////////////////////
-    ! WRITE soiltemp-SPECIFIC VARIABLES TO OUTPUT
-    !-------------------------------------------------------------------------
+!/////////////////////////////////////////////////////////////////////////
+! WRITE soiltemp-SPECIFIC VARIABLES TO OUTPUT
+!-------------------------------------------------------------------------
     use md_params_core, only: ndayyear
     use md_params_siml, only: spinup, daily_out_startyr, daily_out_endyr, outyear, loutdtemp_soil
 
-    ! arguments
+! arguments
     integer, intent(in) :: year       ! simulation year
 
-    ! Local variables
+! Local variables
     real :: itime
     integer :: doy, jpngr
     
-    ! xxx implement this: sum over gridcells? single output per gridcell?
+! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii_soiltemp: think of something ...'
     jpngr = 1
 
-    !-------------------------------------------------------------------------
-    ! DAILY OUTPUT
-    !-------------------------------------------------------------------------
+!-------------------------------------------------------------------------
+! DAILY OUTPUT
+!-------------------------------------------------------------------------
     if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
 
-      ! Write daily output only during transient simulation
+! Write daily output only during transient simulation
       do doy=1,ndayyear
 
-        ! Define 'itime' as a decimal number corresponding to day in the year + year
+! Define 'itime' as a decimal number corresponding to day in the year + year
         itime = real(outyear) + real(doy-1)/real(ndayyear)
 
         if (nlu>1) stop 'writeout_ascii_soiltemp: write out lu-area weighted sum'
