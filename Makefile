@@ -10,13 +10,13 @@
 # gfor    - gfortran compiler
 # intel   - ifort compiler
 
-PROFILE=pgf
-# PROFILE=intel
+#PROFILE=pgi
+ PROFILE=intel
 
 ##################
 ## pgf profile ##
 ##################
-ifeq ($(PROFILE),pgf)
+ifeq ($(PROFILE),pgi)
 # Compiler and options
 FCOM=pgf95
 CPPFLAGS=-E
