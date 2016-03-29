@@ -387,7 +387,7 @@ contains
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
-    real, intent(out) :: my_dgpp
+    real :: my_dgpp
 
     ! local variables
     real :: fa
@@ -417,7 +417,7 @@ contains
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
-    real, intent(out) :: my_drd
+    real :: my_drd
 
     ! local variables
     real :: fa
@@ -446,7 +446,7 @@ contains
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
-    real, intent(out) :: my_dtransp
+    real :: my_dtransp
 
     ! local variables
     real :: fa
@@ -476,7 +476,7 @@ contains
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
-    real, intent(out) :: my_vcmax
+    real :: my_vcmax
 
     ! local variables
     real :: fa
@@ -509,7 +509,7 @@ contains
     real, intent(in), optional   :: cpalpha      ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return value
-    type(outtype_pmodel), intent(out) :: out_pmodel
+    type(outtype_pmodel) :: out_pmodel
 
     ! local variables
     real :: iabs                     ! absorbed photosynthetically active radiation (mol/m2)
@@ -770,7 +770,7 @@ contains
     real, intent(in) :: kmm       ! Pa, Michaelis-Menten coeff.
 
     ! function return value
-    type(outtype_lue), intent(out) :: out_lue
+    type(outtype_lue) :: out_lue
 
     ! local variables
     ! real :: beta_wh
@@ -838,7 +838,7 @@ contains
     real, intent(in) :: vpd       ! Pa, vapor pressure deficit
 
     ! function return value
-    type(outtype_lue), intent(out) :: out_lue
+    type(outtype_lue) :: out_lue
 
     ! local variables
     real :: xi
@@ -884,7 +884,7 @@ contains
     real, intent(in) :: vpd       ! Pa, vapor pressure deficit
 
     ! function return value
-    type(outtype_lue), intent(out) :: out_lue
+    type(outtype_lue) :: out_lue
 
     ! local variables
     real :: chi                   ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio (unitless)
@@ -944,7 +944,7 @@ contains
     use md_params_core, only: dummy
 
     ! function return value
-    type(outtype_lue), intent(out) :: out_lue
+    type(outtype_lue) :: out_lue
 
     ! return derived type
     out_lue%chi=dummy
@@ -967,7 +967,7 @@ contains
     real, parameter :: kc = 0.41          ! Jmax cost coefficient
 
     ! function return variable
-    real, intent(out) :: mprime
+    real :: mprime
 
     ! square of m-prime (mpi)
     mprime = m**2 - kc**(2.0/3.0) * (m**(4.0/3.0))
@@ -988,7 +988,7 @@ contains
     real, intent(in) :: cpalpha
 
     ! function return variable
-    real, intent(out) :: fa
+    real :: fa
 
     fa = ( cpalpha / 1.26 )**(0.25)
     
@@ -1005,7 +1005,7 @@ contains
     real, intent(in) :: patm    ! monthly atm. pressure, Pa
 
     ! function return variable
-    real, intent(out) :: ca ! ambient CO2 in units of Pa
+    real :: ca ! ambient CO2 in units of Pa
 
     ca = ( 1.e-6 ) * co2 * patm         ! Pa, atms. CO2
       
@@ -1022,7 +1022,7 @@ contains
     real, intent(in) :: patm      ! monthly atm. pressure, Pa
 
     ! function return variable
-    real, intent(out) :: co2
+    real :: co2
 
     co2   = ca * ( 1.e6 ) / patm
     
@@ -1052,7 +1052,7 @@ contains
     real :: kc, ko, po
 
     ! function return variable
-    real, intent(out) :: k               ! temperature & pressure dependent Michaelis-Menten coefficient, K (Pa).
+    real :: k               ! temperature & pressure dependent Michaelis-Menten coefficient, K (Pa).
 
     kc = kc25 * exp( dhac * (tc - 25.0)/(298.15 * kR * (tc + 273.15)) ) 
     ko = ko25 * exp( dhao * (tc - 25.0)/(298.15 * kR * (tc + 273.15)) ) 
@@ -1082,7 +1082,7 @@ contains
     real :: tk                         ! air temperature (Kelvin)
 
     ! function return variable
-    real, intent(out) :: gstar   ! gamma-star (Pa)
+    real :: gstar   ! gamma-star (Pa)
 
     !! conversion to temperature in Kelvin
     tk = tc + 273.15
@@ -1110,7 +1110,7 @@ contains
     real :: tk                         ! air temperature (Kelvin)
 
     ! function return variable
-    real, intent(out) :: vcmax25  ! Vcmax at 25 deg C 
+    real :: vcmax25  ! Vcmax at 25 deg C 
 
     !! conversion to temperature in Kelvin
     tk = tc + 273.15
@@ -1142,7 +1142,7 @@ contains
     real, parameter :: kMa = 0.028963 ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
 
     ! function return variable
-    real, intent(out) :: patm    ! atmospheric pressure at elevation 'elv', Pa 
+    real :: patm    ! atmospheric pressure at elevation 'elv', Pa 
 
     ! Convert elevation to pressure, Pa:
     patm = kPo*(1.0 - kL*elv/kTo)**(kG*kMa/(kR*kL))
@@ -1166,7 +1166,7 @@ contains
     real :: my_lambda, po, vinf, pbar, vau
 
     ! function return variable
-    real, intent(out) :: density_h2o  ! density of water, kg/m**3
+    real :: density_h2o  ! density of water, kg/m**3
 
     ! Calculate lambda, (bar cm**3)/g:
     my_lambda = 1788.316 + &
@@ -1227,12 +1227,12 @@ contains
 
     real, dimension(7,6) :: h_array
     real :: rho                             ! density of water kg/m**3
-    real, tbar, tbarx, tbar2, tbar3, rbar, mu0, mu1, ctbar, mu_bar, &
+    real :: tbar, tbarx, tbar2, tbar3, rbar, mu0, mu1, ctbar, mu_bar, &
       coef1, coef2
     integer :: i, j                         ! counter variables
 
     ! function return variable
-    real, intent(out) :: viscosity_h2o
+    real :: viscosity_h2o
 
     ! Get the density of water, kg/m**3
     rho = calc_density_h2o(tc, patm)
@@ -1289,7 +1289,7 @@ contains
     real, intent(in) :: dtemp
 
     ! function return variable
-    real, intent(out) :: ftemp
+    real :: ftemp
 
     ftemp = max( 0.0, min( 1.0, dtemp / 10.0 ) )
 
@@ -1305,7 +1305,7 @@ contains
     real, intent(in) :: dtemp
 
     ! function return variable
-    real, intent(out) :: ftemp
+    real :: ftemp
 
 
     ftemp = max(  0.0, &

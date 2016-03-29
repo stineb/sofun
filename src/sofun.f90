@@ -128,7 +128,7 @@ program main
 
     call biosphere( &
       year, lon(:), lat(:), elv(:) &
-      , params_soil_field(:), lu_area(:), pco2 &
+      , params_soil_field(:), lu_area(:,:), pco2 &
       , climate_field%dtemp(:,:), climate_field%dprec(:,:) &
       , climate_field%dfsun(:,:), climate_field%dvpd(:,:) &
       , dndep_field(:,:) &

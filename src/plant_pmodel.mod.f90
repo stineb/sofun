@@ -26,7 +26,7 @@ module md_plant
 
 
   ! This is not used interactively, therefore always true
-  real, dimension(npft,maxgrid), parameter :: ispresent = .true.
+  logical, dimension(npft,maxgrid), parameter :: ispresent = .true.
 
   !-----------------------------------------------------------------------
   ! Parameters. Runtime read-in

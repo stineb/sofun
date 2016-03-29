@@ -233,7 +233,7 @@ contains
     real, intent(in), dimension(ndayyear) :: sf            ! fraction of sunshine hours 
 
     ! function return variable
-    type( solartype ), intent(out) :: out_solar
+    type( solartype ) :: out_solar
 
     ! local variables
     integer            :: doy
@@ -396,7 +396,7 @@ contains
     real,    intent(in) :: sw  ! evaporative supply rate, mm/hr
 
     ! function return variable
-    type( evaptype ), intent(out)  :: out_evap
+    type( evaptype )  :: out_evap
 
     ! local variables
     real :: dr                           ! distance factor
@@ -608,7 +608,7 @@ contains
     real :: rho
 
     ! function return variable
-    real, intent(out) :: dr
+    real :: dr
 
     ! Berger et al. (1993)
     rho = (1.0 - ke**2)/(1.0 + ke * dgcos( nu ))        
@@ -625,7 +625,7 @@ contains
     real, intent(in) :: lambda
 
     ! function return variable
-    real, intent(out) :: delta
+    real :: delta
 
     ! Woolf (1968)
     delta = asin( dgsin( lambda ) * dgsin( keps ) )   ! xxx use asin with single-precision compilation
@@ -646,7 +646,7 @@ contains
     real :: ru, rv
 
     ! function return variable
-    real, dimension(2), intent(out) :: out_ru_rv
+    real, dimension(2) :: out_ru_rv
 
     ru = dgsin(delta) * dgsin(lat)
     rv = dgcos(delta) * dgcos(lat)
@@ -665,7 +665,7 @@ contains
     real, intent(in) :: ru, rv
 
     ! function return variable
-    real, intent(out) :: hs
+    real :: hs
 
     ! Note: u/v == tan(delta)*tan(lat)
     ! Eq. 3.22, Stine & Geyer (2001)
@@ -694,7 +694,7 @@ contains
     real :: tau_o
 
     ! function return variable
-    real, intent(out) :: tau
+    real :: tau
 
     ! Eq. 11, Linacre (1968)
     tau_o = (kc + kd*sf)
@@ -793,7 +793,7 @@ contains
     real, intent(in) :: x  ! angle, degrees (0-360)
 
     ! function return value
-    real, intent(out) :: dgcos_out ! cosine value of x when x is in degrees
+    real :: dgcos_out ! cosine value of x when x is in degrees
 
     !dgcos = dcos(x*pi/180.0)
     dgcos_out = cos(x*pi/180.0)  ! xxx use cos with single-precision compilation
@@ -812,7 +812,7 @@ contains
     real, intent(in) :: x  ! angle, degrees (0-360)
 
     ! function return value
-    real, intent(out) :: dgsin_out ! sinus value of x when x is in degrees
+    real :: dgsin_out ! sinus value of x when x is in degrees
 
     !dgsin_out = dsin(x*pi/180.0)
     dgsin_out = sin(x*pi/180.0)   ! xxx use cos with single-precision compilation
@@ -830,7 +830,7 @@ contains
     real, intent(in) :: x  ! angle, radians
 
     ! function return value
-    real, intent(out) :: degrees_out
+    real :: degrees_out
 
     degrees_out = x*180.0/pi
 
@@ -847,7 +847,7 @@ contains
     real, intent(in) :: x  ! angle, radians
 
     ! function return value
-    real, intent(out) :: radians_out
+    real :: radians_out
 
     radians_out = x*pi/180.0
 
@@ -865,7 +865,7 @@ contains
     integer, intent(in) :: day   ! day of the year
 
     ! function return value
-    type(outtype_berger), intent(out) :: out_berger  ! stores output of function berger_tls
+    type(outtype_berger) :: out_berger  ! stores output of function berger_tls
 
     ! local variables
     real :: anm, ranm, anv, ranv

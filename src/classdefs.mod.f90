@@ -434,7 +434,7 @@ contains
 
   !--------------------------FUNCTIONS--------------------------------
 
-  function orgfrac( frac, from ) return( out_orgfrac )
+  function orgfrac( frac, from ) result( out_orgfrac )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable of type 'orgpool' and size
     !  of a fraction 'frac' of source pool ('from')
@@ -445,7 +445,7 @@ contains
     type(orgpool), intent(in) :: from
 
     ! function return variable
-    type(orgpool), intent(out) :: out_orgfrac
+    type(orgpool) :: out_orgfrac
 
     out_orgfrac%c%c12 = frac * from%c%c12
     out_orgfrac%n%n14 = frac * from%n%n14
@@ -453,7 +453,7 @@ contains
   end function orgfrac
 
 
-  function cfrac( frac, from ) return( out_cfrac )
+  function cfrac( frac, from ) result( out_cfrac )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable of type 'carbon' and size
     !  of a fraction 'frac' of source pool ('from')
@@ -464,14 +464,14 @@ contains
     type(carbon), intent(in) :: from
 
     ! function return variable
-    type(carbon), intent(out) :: out_cfrac
+    type(carbon) :: out_cfrac
 
     out_cfrac%c12 = frac * from%c12
 
   end function cfrac
 
 
-  function nfrac( frac, from ) return( out_nfrac )
+  function nfrac( frac, from ) result( out_nfrac )
    !////////////////////////////////////////////////////////////////
    !  Generic function to return variable of type 'nitrogen' and size
    !  of a fraction 'frac' of source pool ('from')
@@ -482,14 +482,14 @@ contains
    type(nitrogen), intent(in) :: from
    
    ! function return variable
-   type(nitrogen), intent(out) :: out_nfrac
+   type(nitrogen) :: out_nfrac
 
    out_nfrac%n14 = frac * from%n14
 
   end function nfrac
 
 
-  function orgplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 ) return( out_orgplus )
+  function orgplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 ) result( out_orgplus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable sum of two pools of type 
     !  'orgpool'. Sum is of type 'orgpool' as well.
@@ -508,7 +508,7 @@ contains
     type(orgpool), intent(in),optional :: pool10
 
     ! function return variable
-    type(orgpool), intent(out) :: out_orgplus
+    type(orgpool) :: out_orgplus
 
     out_orgplus%c = cplus(pool1%c,pool2%c)
     out_orgplus%n = nplus(pool1%n,pool2%n)
@@ -550,7 +550,7 @@ contains
   end function orgplus
 
 
-  function cplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 ) return( out_cplus )
+  function cplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 ) result( out_cplus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable sum of two pools of type 
     !  'carbon'. Sum is of type 'carbon' as well.
@@ -569,7 +569,7 @@ contains
     type(carbon), intent(in), optional :: pool10
 
     ! function return variable
-    type(carbon), intent(out) :: out_cplus
+    type(carbon) :: out_cplus
 
     out_cplus%c12 = pool1%c12 + pool2%c12
 
@@ -601,7 +601,7 @@ contains
   end function cplus
 
 
-  function nplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 ) return( out_nplus )
+  function nplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 ) result( out_nplus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable sum of two pools of type 
     !  'nitrogen'. Sum is of type 'nitrogen' as well.
@@ -620,7 +620,7 @@ contains
     type(nitrogen), intent(in), optional :: pool10
 
     ! function return variable
-    type(nitrogen), intent(out) :: out_nplus
+    type(nitrogen) :: out_nplus
 
     out_nplus%n14 = pool1%n14 + pool2%n14
 
@@ -652,7 +652,7 @@ contains
   end function nplus
 
 
-  function orgminus( pool1, pool2 ) return( out_orgminus )
+  function orgminus( pool1, pool2 ) result( out_orgminus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable difference of two pools of 
     !  type 'orgpool'. Sum is of type 'orgpool' as well.
@@ -663,7 +663,7 @@ contains
     type(orgpool), intent(in) :: pool2
 
     ! function return variable
-    type(orgpool), intent(out) :: out_orgminus
+    type(orgpool) :: out_orgminus
 
     out_orgminus%c = cminus( pool1%c, pool2%c )
     out_orgminus%n = nminus( pool1%n, pool2%n )
@@ -671,7 +671,7 @@ contains
   end function orgminus
 
 
-  function cminus( pool1, pool2 ) return( out_cminus )
+  function cminus( pool1, pool2 ) result( out_cminus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable difference of two pools of 
     !  type 'carbon'. Sum is of type 'carbon' as well.
@@ -681,14 +681,14 @@ contains
     type(carbon), intent(in) :: pool2
 
     ! function return variable
-    type(carbon), intent(out) :: out_cminus
+    type(carbon) :: out_cminus
 
     out_cminus%c12 = pool1%c12 - pool2%c12
 
   end function cminus
 
 
-  function nminus( pool1, pool2 ) return( out_nminus )
+  function nminus( pool1, pool2 ) result( out_nminus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable difference of two pools of 
     !  type 'carbon'. Sum is of type 'carbon' as well.
@@ -698,14 +698,14 @@ contains
     type(nitrogen), intent(in) :: pool2
 
     ! function return variable
-    type(nitrogen), intent(out) :: out_nminus
+    type(nitrogen) :: out_nminus
 
     out_nminus%n14 = pool1%n14 - pool2%n14
 
   end function nminus
 
 
-  function cton( pool, default ) return( out_cton )
+  function cton( pool, default ) result( out_cton )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return the C:N ratio of an organic pool.
     !----------------------------------------------------------------
@@ -714,7 +714,7 @@ contains
     real, intent(in), optional :: default
 
     ! function return variable
-    real, intent(out) :: out_cton
+    real :: out_cton
 
     if (present(default)) then
       if (pool%n%n14==0.0) then
@@ -737,7 +737,7 @@ contains
   end function cton
 
 
-  function ntoc( pool, default ) return( out_ntoc )
+  function ntoc( pool, default ) result( out_ntoc )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return the N:C ratio of an organic pool.
     !  This is equal to the inverse of the 'cton' function.

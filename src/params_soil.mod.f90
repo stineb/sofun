@@ -33,7 +33,7 @@ contains
     integer :: jpngr
 
     ! function return variable
-    type(paramtype_soil), dimension(maxgrid), intent(out) :: params_soil_field
+    type(paramtype_soil), dimension(maxgrid) :: params_soil_field
 
     do jpngr=1,maxgrid
       params_soil_field(jpngr) = getsoil( soilcode_field(jpngr) )
@@ -55,7 +55,7 @@ contains
     character(len=2) :: soilcode_char
 
     ! function return variable
-    type(paramtype_soil), intent(out) :: params_soil
+    type(paramtype_soil) :: params_soil
 
     write( soilcode_char, 999 ) soilcode
 

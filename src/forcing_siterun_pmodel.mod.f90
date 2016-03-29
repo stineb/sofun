@@ -65,7 +65,7 @@ contains
     integer, intent(in) :: forcingyear
 
     ! function return variable
-    real, intent(out) :: pco2
+    real :: pco2
 
     ! local variables 
     integer :: readyear
@@ -113,7 +113,7 @@ contains
     integer, intent(in) :: forcingyear
 
     ! function return variable
-    real, dimension(nmonth,maxgrid), intent(out) :: fapar_field
+    real, dimension(nmonth,maxgrid) :: fapar_field
 
     ! local variables 
     integer :: jpngr
@@ -273,7 +273,7 @@ contains
     real :: my_tc
 
     ! function return variable
-    real, intent(out) :: vpd       !  mean monthly vapor pressure deficit, Pa
+    real :: vpd       !  mean monthly vapor pressure deficit, Pa
 
     if ( present(tmin) .and. present(tmax) ) then
       my_tc = 0.5 * (tmin + tmax)

@@ -30,7 +30,7 @@ contains
     real, dimension(lenval) :: valbuf
 
     ! function return variable
-    real, intent(out) :: runningval
+    real :: runningval
 
     !print*,'day, lenper ',inow, lenper
 
@@ -80,7 +80,7 @@ contains
     character(len=*), intent(in) :: method
 
     ! function return variable
-    real, dimension(nmonth), intent(out) :: mval
+    real, dimension(nmonth) :: mval
 
     ! local variables
     integer :: moy
@@ -115,7 +115,7 @@ contains
 
     ! arguments
     real, dimension(nmonth), intent(in)     :: mval_prec  ! monthly precipitation totals
-    real, dimension(nmonth), intent(in)     :: mval_wet   ! monthly number of wet days
+    real, dimension(nmonth)                 :: mval_wet   ! monthly number of wet days
     real, dimension(ndayyear,2), intent(in) :: prdaily_random ! random number seed
 
     ! local vars
@@ -133,7 +133,7 @@ contains
     real, dimension(nmonth) :: mprecip       !acc. monthly generated precipitation
 
     ! function return variable
-    real, dimension(ndayyear), intent(out) :: dval_prec
+    real, dimension(ndayyear) :: dval_prec
 
     doy = 0
     prob = 0.0
@@ -558,7 +558,7 @@ contains
     read1year_daily = dval
 
     return
-    600 format (F9.7)
+    600 format (F10.7)
     888 write(0,*) 'READ1YEAR_DAILY: error opening file '//trim(filename)//'. Abort. '
     stop
 
@@ -589,7 +589,7 @@ contains
     read1year_monthly = mval
 
     return
-    600 format (F9.7)
+    600 format (F10.7)
     888 write(0,*) 'READ1YEAR_MONTHLY: error opening file ./input/'//trim(filename)//'. Abort. '
     stop
 
@@ -767,15 +767,15 @@ contains
 
     valreal = inval1
 
-    100     format (I4,I3,I3,F9.7,F9.7)
-    200     format (I4,I3,F9.7,F9.7)
-    300     format (I4,F9.7,F9.7)
-    400     format (I3,I3,F9.7,F9.7)
-    500     format (I3,F9.7,F9.7)
-    600     format (F9.7,F9.7)
-    700     format (I4,I4,F9.7,F9.7)
-    800     format (I4,F9.7,F9.7)
-    900     format (30d16.8,F9.7,F9.7)
+    100     format (I4,I3,I3,F10.7,F10.7)
+    200     format (I4,I3,F10.7,F10.7)
+    300     format (I4,F10.7,F10.7)
+    400     format (I3,I3,F10.7,F10.7)
+    500     format (I3,F10.7,F10.7)
+    600     format (F10.7,F10.7)
+    700     format (I4,I4,F10.7,F10.7)
+    800     format (I4,F10.7,F10.7)
+    900     format (30d16.8,F10.7,F10.7)
 
     close(20)
 
@@ -797,7 +797,7 @@ contains
     character(len=*), intent(in) :: filename, paraname
 
     ! function return value
-    real, intent(out) :: paravalue
+    real :: paravalue
 
     ! local variables
     integer :: filehandle
@@ -837,7 +837,7 @@ contains
     character(len=*), intent(in) :: filename, paraname 
      
     ! function return variable    
-    integer, intent(out) :: paravalue
+    integer :: paravalue
 
     ! local variables
     integer :: filehandle
@@ -878,7 +878,7 @@ contains
     ! arguments
     character(len=*), intent(in) :: filename, paraname
     ! function return variable
-    logical, intent(out) :: paravalue
+    logical :: paravalue
 
     ! local variables
     integer :: filehandle
@@ -915,7 +915,7 @@ contains
     ! "Low-level" function for reading parameter values from text file
     !----------------------------------------------------------------
     character(len=*), intent(in) :: filename, paraname
-    character(len=*), intent(out) :: paravalue
+    character(len=*) :: paravalue
 
     integer :: filehandle,i
     character(len=40) :: readname
@@ -957,7 +957,7 @@ contains
     ! "Low-level" function for reading parameter values from text file
     !----------------------------------------------------------------
     character(len=*), intent(in) :: filename, paraname
-    character(len=1), intent(out) :: paravalue
+    character(len=1) :: paravalue
 
     integer :: filehandle
     character(len=40) :: readname, readvalue
