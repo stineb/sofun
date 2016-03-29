@@ -36,10 +36,9 @@ endif
 ifeq ($(PROFILE),intel)
 # Compiler and options
 FCOM=ifort
-CPPFLAGS=-e
-COMPFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2
-
-DEBUGFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2  ## no actual debug flags here
+CPPFLAGS=-e -fpp --preprocess_only -E
+COMPFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source ##-r8 -i4 -align -pc64 -fp-model strict 
+DEBUGFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -warn all -implicitnone -g -traceback -fpe0 -fpstkchk -CU
 
 # System libraries
 # NETCDF_INC = /usr/local/include

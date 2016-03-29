@@ -434,7 +434,7 @@ contains
 
   !--------------------------FUNCTIONS--------------------------------
 
-  function orgfrac( frac, from )
+  function orgfrac( frac, from ) return( out_orgfrac )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable of type 'orgpool' and size
     !  of a fraction 'frac' of source pool ('from')
@@ -445,15 +445,15 @@ contains
     type(orgpool), intent(in) :: from
 
     ! function return variable
-    type(orgpool), intent(out) :: orgfrac
+    type(orgpool), intent(out) :: out_orgfrac
 
-    orgfrac%c%c12 = frac * from%c%c12
-    orgfrac%n%n14 = frac * from%n%n14
+    out_orgfrac%c%c12 = frac * from%c%c12
+    out_orgfrac%n%n14 = frac * from%n%n14
 
   end function orgfrac
 
 
-  function cfrac( frac, from )
+  function cfrac( frac, from ) return( out_cfrac )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable of type 'carbon' and size
     !  of a fraction 'frac' of source pool ('from')
@@ -464,14 +464,14 @@ contains
     type(carbon), intent(in) :: from
 
     ! function return variable
-    type(carbon), intent(out) :: cfrac
+    type(carbon), intent(out) :: out_cfrac
 
-    cfrac%c12 = frac * from%c12
+    out_cfrac%c12 = frac * from%c12
 
   end function cfrac
 
 
-  function nfrac( frac, from )
+  function nfrac( frac, from ) return( out_nfrac )
    !////////////////////////////////////////////////////////////////
    !  Generic function to return variable of type 'nitrogen' and size
    !  of a fraction 'frac' of source pool ('from')
@@ -482,14 +482,14 @@ contains
    type(nitrogen), intent(in) :: from
    
    ! function return variable
-   type(nitrogen), intent(out) :: nfrac
+   type(nitrogen), intent(out) :: out_nfrac
 
-   nfrac%n14 = frac * from%n14
+   out_nfrac%n14 = frac * from%n14
 
   end function nfrac
 
 
-  function orgplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 )
+  function orgplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 ) return( out_orgplus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable sum of two pools of type 
     !  'orgpool'. Sum is of type 'orgpool' as well.
@@ -508,35 +508,35 @@ contains
     type(orgpool), intent(in),optional :: pool10
 
     ! function return variable
-    type(orgpool), intent(out) :: orgplus
+    type(orgpool), intent(out) :: out_orgplus
 
-    orgplus%c = cplus(pool1%c,pool2%c)
-    orgplus%n = nplus(pool1%n,pool2%n)
+    out_orgplus%c = cplus(pool1%c,pool2%c)
+    out_orgplus%n = nplus(pool1%n,pool2%n)
 
     if (present(pool3)) then
-      orgplus%c = cplus(orgplus%c,pool3%c)
-      orgplus%n = nplus(orgplus%n,pool3%n)
+      out_orgplus%c = cplus(out_orgplus%c,pool3%c)
+      out_orgplus%n = nplus(out_orgplus%n,pool3%n)
       if (present(pool4)) then
-        orgplus%c = cplus(orgplus%c,pool4%c)
-        orgplus%n = nplus(orgplus%n,pool4%n)
+        out_orgplus%c = cplus(out_orgplus%c,pool4%c)
+        out_orgplus%n = nplus(out_orgplus%n,pool4%n)
         if (present(pool5)) then
-          orgplus%c = cplus(orgplus%c,pool5%c)
-          orgplus%n = nplus(orgplus%n,pool5%n)
+          out_orgplus%c = cplus(out_orgplus%c,pool5%c)
+          out_orgplus%n = nplus(out_orgplus%n,pool5%n)
           if (present(pool6)) then
-            orgplus%c = cplus(orgplus%c,pool6%c)
-            orgplus%n = nplus(orgplus%n,pool6%n)
+            out_orgplus%c = cplus(out_orgplus%c,pool6%c)
+            out_orgplus%n = nplus(out_orgplus%n,pool6%n)
             if (present(pool7)) then
-              orgplus%c = cplus(orgplus%c,pool7%c)
-              orgplus%n = nplus(orgplus%n,pool7%n)
+              out_orgplus%c = cplus(out_orgplus%c,pool7%c)
+              out_orgplus%n = nplus(out_orgplus%n,pool7%n)
               if (present(pool8)) then
-                orgplus%c = cplus(orgplus%c,pool8%c)
-                orgplus%n = nplus(orgplus%n,pool8%n)
+                out_orgplus%c = cplus(out_orgplus%c,pool8%c)
+                out_orgplus%n = nplus(out_orgplus%n,pool8%n)
                 if (present(pool9)) then
-                  orgplus%c = cplus(orgplus%c,pool9%c)
-                  orgplus%n = nplus(orgplus%n,pool9%n)
+                  out_orgplus%c = cplus(out_orgplus%c,pool9%c)
+                  out_orgplus%n = nplus(out_orgplus%n,pool9%n)
                   if (present(pool10)) then
-                    orgplus%c = cplus(orgplus%c,pool10%c)
-                    orgplus%n = nplus(orgplus%n,pool10%n)
+                    out_orgplus%c = cplus(out_orgplus%c,pool10%c)
+                    out_orgplus%n = nplus(out_orgplus%n,pool10%n)
                   end if
                 end if
               end if
@@ -550,7 +550,7 @@ contains
   end function orgplus
 
 
-  function cplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 )
+  function cplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 ) return( out_cplus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable sum of two pools of type 
     !  'carbon'. Sum is of type 'carbon' as well.
@@ -569,26 +569,26 @@ contains
     type(carbon), intent(in), optional :: pool10
 
     ! function return variable
-    type(carbon), intent(out) :: cplus
+    type(carbon), intent(out) :: out_cplus
 
-    cplus%c12 = pool1%c12 + pool2%c12
+    out_cplus%c12 = pool1%c12 + pool2%c12
 
     if (present(pool3)) then
-      cplus%c12 = cplus%c12 + pool3%c12
+      out_cplus%c12 = out_cplus%c12 + pool3%c12
       if (present(pool4)) then
-        cplus%c12 = cplus%c12 + pool4%c12
+        out_cplus%c12 = out_cplus%c12 + pool4%c12
         if (present(pool5)) then
-          cplus%c12 = cplus%c12 + pool5%c12
+          out_cplus%c12 = out_cplus%c12 + pool5%c12
           if (present(pool6)) then
-            cplus%c12 = cplus%c12 + pool6%c12
+            out_cplus%c12 = out_cplus%c12 + pool6%c12
             if (present(pool7)) then
-              cplus%c12 = cplus%c12 + pool7%c12
+              out_cplus%c12 = out_cplus%c12 + pool7%c12
               if (present(pool8)) then
-                cplus%c12 = cplus%c12 + pool8%c12
+                out_cplus%c12 = out_cplus%c12 + pool8%c12
                 if (present(pool9)) then
-                  cplus%c12 = cplus%c12 + pool9%c12
+                  out_cplus%c12 = out_cplus%c12 + pool9%c12
                   if (present(pool10)) then
-                    cplus%c12 = cplus%c12 + pool10%c12
+                    out_cplus%c12 = out_cplus%c12 + pool10%c12
                   end if
                 end if
               end if
@@ -601,7 +601,7 @@ contains
   end function cplus
 
 
-  function nplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 )
+  function nplus( pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9, pool10 ) return( out_nplus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable sum of two pools of type 
     !  'nitrogen'. Sum is of type 'nitrogen' as well.
@@ -620,26 +620,26 @@ contains
     type(nitrogen), intent(in), optional :: pool10
 
     ! function return variable
-    type(nitrogen), intent(out) :: nplus
+    type(nitrogen), intent(out) :: out_nplus
 
-    nplus%n14 = pool1%n14 + pool2%n14
+    out_nplus%n14 = pool1%n14 + pool2%n14
 
     if (present(pool3)) then
-      nplus%n14 = nplus%n14 + pool3%n14
+      out_nplus%n14 = out_nplus%n14 + pool3%n14
       if (present(pool4)) then
-        nplus%n14 = nplus%n14 + pool4%n14
+        out_nplus%n14 = out_nplus%n14 + pool4%n14
         if (present(pool5)) then
-          nplus%n14 = nplus%n14 + pool5%n14
+          out_nplus%n14 = out_nplus%n14 + pool5%n14
           if (present(pool6)) then
-            nplus%n14 = nplus%n14 + pool6%n14
+            out_nplus%n14 = out_nplus%n14 + pool6%n14
             if (present(pool7)) then
-              nplus%n14 = nplus%n14 + pool7%n14
+              out_nplus%n14 = out_nplus%n14 + pool7%n14
               if (present(pool8)) then
-                nplus%n14 = nplus%n14 + pool8%n14
+                out_nplus%n14 = out_nplus%n14 + pool8%n14
                 if (present(pool9)) then
-                  nplus%n14 = nplus%n14 + pool9%n14
+                  out_nplus%n14 = out_nplus%n14 + pool9%n14
                   if (present(pool10)) then
-                    nplus%n14 = nplus%n14 + pool10%n14
+                    out_nplus%n14 = out_nplus%n14 + pool10%n14
                   end if
                 end if
               end if
@@ -652,7 +652,7 @@ contains
   end function nplus
 
 
-  function orgminus( pool1, pool2 )
+  function orgminus( pool1, pool2 ) return( out_orgminus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable difference of two pools of 
     !  type 'orgpool'. Sum is of type 'orgpool' as well.
@@ -663,15 +663,15 @@ contains
     type(orgpool), intent(in) :: pool2
 
     ! function return variable
-    type(orgpool), intent(out) :: orgminus
+    type(orgpool), intent(out) :: out_orgminus
 
-    orgminus%c = cminus( pool1%c, pool2%c )
-    orgminus%n = nminus( pool1%n, pool2%n )
+    out_orgminus%c = cminus( pool1%c, pool2%c )
+    out_orgminus%n = nminus( pool1%n, pool2%n )
 
   end function orgminus
 
 
-  function cminus( pool1, pool2 )
+  function cminus( pool1, pool2 ) return( out_cminus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable difference of two pools of 
     !  type 'carbon'. Sum is of type 'carbon' as well.
@@ -681,14 +681,14 @@ contains
     type(carbon), intent(in) :: pool2
 
     ! function return variable
-    type(carbon), intent(out) :: cminus
+    type(carbon), intent(out) :: out_cminus
 
-    cminus%c12 = pool1%c12 - pool2%c12
+    out_cminus%c12 = pool1%c12 - pool2%c12
 
   end function cminus
 
 
-  function nminus( pool1, pool2 )
+  function nminus( pool1, pool2 ) return( out_nminus )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return variable difference of two pools of 
     !  type 'carbon'. Sum is of type 'carbon' as well.
@@ -698,14 +698,14 @@ contains
     type(nitrogen), intent(in) :: pool2
 
     ! function return variable
-    type(nitrogen), intent(out) :: nminus
+    type(nitrogen), intent(out) :: out_nminus
 
-    nminus%n14 = pool1%n14 - pool2%n14
+    out_nminus%n14 = pool1%n14 - pool2%n14
 
   end function nminus
 
 
-  function cton( pool, default )
+  function cton( pool, default ) return( out_cton )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return the C:N ratio of an organic pool.
     !----------------------------------------------------------------
@@ -714,13 +714,13 @@ contains
     real, intent(in), optional :: default
 
     ! function return variable
-    real, intent(out) :: cton
+    real, intent(out) :: out_cton
 
     if (present(default)) then
       if (pool%n%n14==0.0) then
-        cton = default
+        out_cton = default
       else
-        cton = pool%c%c12 / pool%n%n14
+        out_cton = pool%c%c12 / pool%n%n14
       end if
     else
 #if _check_sanity
@@ -731,13 +731,13 @@ contains
       stop 'in CTON: C and/or N is negative'
     endif
 #endif
-    cton = pool%c%c12 / pool%n%n14
+    out_cton = pool%c%c12 / pool%n%n14
     end if
 
   end function cton
 
 
-  function ntoc( pool, default )
+  function ntoc( pool, default ) return( out_ntoc )
     !////////////////////////////////////////////////////////////////
     !  Generic function to return the N:C ratio of an organic pool.
     !  This is equal to the inverse of the 'cton' function.
@@ -747,13 +747,13 @@ contains
     real, intent(in), optional :: default
 
     ! function return variable
-    real :: ntoc
+    real :: out_ntoc
 
     if (present(default)) then
       if (pool%c%c12==0.0) then
-        ntoc = default
+        out_ntoc = default
       else
-        ntoc = pool%n%n14 / pool%c%c12
+        out_ntoc = pool%n%n14 / pool%c%c12
       end if
     else
 #if _check_sanity
@@ -764,7 +764,7 @@ contains
         stop 'in NTOC: C and/or N is negative'
       endif
 #endif
-      ntoc = pool%n%n14 / pool%c%c12
+      out_ntoc = pool%n%n14 / pool%c%c12
     end if
 
   end function ntoc
