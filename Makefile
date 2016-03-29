@@ -10,8 +10,8 @@
 # gfor    - gfortran compiler
 # intel   - ifort compiler
 
-PROFILE=pgi
- # PROFILE=intel
+#PROFILE=pgi
+PROFILE=intel
 
 ##################
 ## pgf profile ##
@@ -37,8 +37,8 @@ ifeq ($(PROFILE),intel)
 # Compiler and options
 FCOM=ifort
 CPPFLAGS=-e -fpp --preprocess_only -E
-COMPFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source ##-r8 -i4 -align -pc64 -fp-model strict 
-DEBUGFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -warn all -implicitnone -g -traceback -fpe0 -fpstkchk -CU
+COMPFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -free ##-r8 -i4 -align -pc64 -fp-model strict 
+DEBUGFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -free -warn all -implicitnone -g -traceback -fpe0 -fpstkchk -CU
 
 # System libraries
 # NETCDF_INC = /usr/local/include
