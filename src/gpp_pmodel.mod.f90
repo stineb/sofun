@@ -177,7 +177,7 @@ module _gpp
 
 contains
 
-  subroutine gpp( jpngr, doy, moy, fapar_prescr )
+  subroutine gpp( jpngr, doy, moy, dtemp, fapar_prescr )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -196,8 +196,9 @@ contains
     integer, intent(in) :: jpngr     ! gridcell number
     integer, intent(in) :: doy       ! day of year and month of year
     integer, intent(in) :: moy       ! month of year and month of year
+    real,    intent(in) :: dtemp     ! this day's air temperature
 
-    ! optional arguments (may be dummy)
+    ! arguments (may be dummy)
     real, intent(in) :: fapar_prescr
 
     ! local variables
@@ -221,19 +222,19 @@ contains
       if ( canopy(pft)%fapar_ind>0.0 ) then
 
         ! GPP
-        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), evap(lu)%cpa )
+        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), dtemp, evap(lu)%cpa )
         ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy) )
 
         ! Dark respiration
-        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), evap(lu)%cpa )
+        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), dtemp, evap(lu)%cpa )
         ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
 
         ! transpiration
-        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), evap(lu)%cpa )
+        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), dtemp, evap(lu)%cpa )
         ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
 
         ! Vcmax
-        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), evap(lu)%cpa )
+        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), dtemp, evap(lu)%cpa )
         ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
 
       else  
@@ -374,7 +375,7 @@ contains
   end subroutine getlue
 
 
-  function calc_dgpp( fapar, dppfd, my_mlue, cpalpha ) result( my_dgpp )
+  function calc_dgpp( fapar, dppfd, my_mlue, dtemp, cpalpha ) result( my_dgpp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
@@ -382,6 +383,7 @@ contains
     real, intent(in) :: fapar
     real, intent(in) :: dppfd
     real, intent(in) :: my_mlue
+    real, intent(in) :: dtemp              ! this day's air temperature
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
@@ -397,12 +399,12 @@ contains
     end if
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dgpp = fapar * dppfd * fa * my_mlue * c_molmass
+    my_dgpp = fapar * dppfd * fa * my_mlue * ramp_gpp_lotemp( dtemp ) * c_molmass
 
   end function calc_dgpp
 
 
-  function calc_drd( fapar, meanmppfd, my_mrd_unitiabs, cpalpha ) result( my_drd )
+  function calc_drd( fapar, meanmppfd, my_mrd_unitiabs, dtemp, cpalpha ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
@@ -411,6 +413,7 @@ contains
     real, intent(in) :: fapar           ! fraction of absorbed PAR (unitless)
     real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
     real, intent(in) :: my_mrd_unitiabs
+    real, intent(in) :: dtemp              ! this day's air temperature
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
@@ -426,12 +429,12 @@ contains
     end if
 
     ! Dark respiration takes place during night and day (24 hours)
-    my_drd = fapar * meanmppfd * fa * my_mrd_unitiabs * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * meanmppfd * fa * my_mrd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
 
   end function calc_drd
 
 
-  function calc_dtransp( fapar, dppfd, my_transp_unitiabs, cpalpha ) result( my_dtransp )
+  function calc_dtransp( fapar, dppfd, my_transp_unitiabs, dtemp, cpalpha ) result( my_dtransp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
@@ -439,6 +442,7 @@ contains
     real, intent(in) :: fapar
     real, intent(in) :: dppfd
     real, intent(in) :: my_transp_unitiabs
+    real, intent(in) :: dtemp              ! this day's air temperature
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
@@ -454,12 +458,12 @@ contains
     end if
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dtransp = fapar * dppfd * fa * my_transp_unitiabs * h2o_molmass
+    my_dtransp = fapar * dppfd * fa * my_transp_unitiabs * ramp_gpp_lotemp( dtemp ) * h2o_molmass
 
   end function calc_dtransp
 
 
-  function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd, cpalpha ) result( my_vcmax )
+  function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd, dtemp, cpalpha ) result( my_vcmax )
     !//////////////////////////////////////////////////////////////////
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
@@ -468,6 +472,7 @@ contains
     real, intent(in) :: fapar
     real, intent(in) :: my_vcmax_unitiabs
     real, intent(in) :: meanmppfd
+    real, intent(in) :: dtemp              ! this day's air temperature
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
@@ -483,7 +488,7 @@ contains
     end if
 
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-    my_vcmax = fapar * meanmppfd * fa * my_vcmax_unitiabs
+    my_vcmax = fapar * meanmppfd * fa * ramp_gpp_lotemp( dtemp ) * my_vcmax_unitiabs
 
   end function calc_vcmax_canop
 
@@ -1275,6 +1280,43 @@ contains
   end function calc_viscosity_h2o
 
 
+  function ramp_gpp_lotemp( dtemp ) result( ftemp )
+    !////////////////////////////////////////////////////////////////
+    ! Simple temperature inihibtion function for photosynthesis
+    ! 0 at 0 deg C, 1 at 10 deg C
+    !----------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: dtemp
+
+    ! function return variable
+    real, intent(out) :: ftemp
+
+    ftemp = max( 0.0, min( 1.0, dtemp / 10.0 ) )
+
+  end function ramp_gpp_lotemp
+
+
+  function sigm_gpp_lotemp( dtemp ) result( ftemp )
+    !////////////////////////////////////////////////////////////////
+    ! Simple temperature inihibtion function for photosynthesis
+    ! 0 at 0 deg C, 1 at 10 deg C
+    !----------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: dtemp
+
+    ! function return variable
+    real, intent(out) :: ftemp
+
+
+    ftemp = max(  0.0, &
+                  min(  1.0, &
+                        ( ( ( 1.0 / ( 1.0 + exp( -0.7 * dtemp ) ) ) - 0.5 ) * 2.0 ) &
+                      ) &
+                ) 
+
+  end function sigm_gpp_lotemp
+
+
   subroutine initdaily_gpp()
     !////////////////////////////////////////////////////////////////
     ! Initialise daily variables with zero
@@ -1528,131 +1570,6 @@ contains
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_gpp
-
-
-  ! subroutine gettraits( jpngr )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Calculates leaf traits at the beginning of the year based on 
-  !   ! Vcmax25, assuming a constant ratio of leaf-C to leaf-structural N:
-  !   ! - metabolic Narea
-  !   ! - structural Narea
-  !   ! - leaf C:N 
-  !   ! - LMA, SLA
-  !   !------------------------------------------------------------------
-  !   use _plant, only: n_molmass, c_molmass, c_content_of_biomass
-  !   use _vars_core, only: sla, lma, r_cton_leaf, r_ntoc_leaf
-  !   use _waterbal, only: meanmppfd
-
-  !   ! arguments
-  !   integer, intent(in) :: jpngr 
-
-  !   ! local variables
-  !   integer :: pft, moy
-  !   real    :: max_lai
-  !   real    :: nr_leaf
-  !   real    :: ncw_leaf
-  !   real    :: cleaf
-
-  !   ! xxx try: assumue seasonal maximum LAI to determine leaf N beforehand
-  !   ! max_lai = 1.0
-
-  !   ! print*, 'meanmppfd', meanmppfd
-
-  !   ! do moy=1,nmonth
-  !   !   mvcmax(moy)   = calc_vcmax(    max_lai, mvcmax_unitiabs(moy), solar%meanmppfd(moy) )
-  !   !   ! mnrlarea(moy) = calc_nr_leaf(  max_lai, mactnv_unitiabs(moy), solar%meanmppfd(moy) )
-  !   ! end do
-  !   ! avcmax = maxval( mvcmax(:) )
-  !   ! anrlarea = maxval( mnrlarea(:) )
-
-  !   ! print*, 'mvcmax  ', mvcmax(:) * 1e3
-  !   ! print*, 'anrlarea', anrlarea
-  !   ! stop
-
-  !   ! do pft=1,npft
-
-  !   !   ncw_leaf               = calc_ncw_leaf( anrlarea )
-  !   !   cleaf                  = ncw_leaf * n_molmass * r_ctostructn_leaf
-      
-  !   !   r_cton_leaf(pft,jpngr) = cleaf / ( (anrlarea+ncw_leaf) * n_molmass )
-  !   !   r_ntoc_leaf(pft,jpngr) = 1.0 / r_cton_leaf(pft,jpngr)
-      
-  !   !   lma(pft,jpngr)         = cleaf / c_content_of_biomass
-  !   !   sla(pft,jpngr)         = 1.0 / lma(pft,jpngr)
-
-  !   ! end do
-
-  ! end subroutine gettraits
-
-
-  ! function calc_nr_leaf( lai, mactnv_unitiabs, meanmppfd ) result( nr_leaf )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Calculates leaf-level metabolic N content per unit leaf area as a
-  !   ! function of Vcmax25.
-  !   !------------------------------------------------------------------
-  !   use _vegdynamics, only: get_fapar
-
-  !   ! arguments
-  !   real, intent(in) :: lai
-  !   real, intent(in) :: mactnv_unitiabs
-  !   real, intent(in) :: meanmppfd
-
-  !   ! function return variable
-  !   real, intent(out) :: nr_leaf
-
-  !   ! local variables
-  !   real :: fapar
-
-  !   fapar = get_fapar( lai )
-
-  !   ! Calculate leaf-scale Rubisco-N as a function of LAI and current LUE
-  !   nr_leaf = fapar * meanmppfd * mactnv_unitiabs / lai
-
-  ! end function calc_nr_leaf
-
-  ! function calc_ncw_leaf( nr_leaf ) result( ncw_leaf )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Calculates leaf-level structural N content per unit leaf area as a
-  !   ! function of metabolic Narea.
-  !   !------------------------------------------------------------------
-  !   ! arguments
-  !   real, intent(in) :: nr_leaf
-
-  !   ! function return variable
-  !   real, intent(out) :: ncw_leaf
-
-  !   ncw_leaf = nr_leaf * r_n_cw_v + ncw_min
-
-  ! end function calc_ncw_leaf
-  
-
-  ! function calc_n_rubisco_area( vcmax25 ) result( n_rubisco_area )
-  !   !-----------------------------------------------------------------------
-  !   ! Returns Rubisco N content per unit leaf area for a given Vcmax.
-  !   ! Reference: Harrison et al., 2009, Plant, Cell and Environment; Eq. 3
-  !   !-----------------------------------------------------------------------
-
-  !   ! argument
-  !   real, intent(in) :: vcmax25                      ! leaf level Vcmax  at 25 deg C, (mol CO2) m-2 s-1
-
-  !   ! function retrurn value
-  !   real, intent(out) :: n_rubisco_area              ! Rubisco N content per unit leaf area, (g N)(m-2 leaf)
-
-  !   ! local variables
-  !   real :: n_v                                      ! Rubisco N per unit Vcmax (xxx units xxx)
-
-  !   real, parameter :: mol_weight_rubisco = 5.5e5    ! molecular weight of Rubisco, (g R)(mol R)-1
-  !   real, parameter :: n_conc_rubisco     = 1.14e-2  ! N concentration in rubisco, (mol N)(g R)-1
-  !   real, parameter :: n_molmass       = 14.0067  ! molecular weight of N, (g N)(mol N)-1
-  !   real, parameter :: cat_turnover_per_site = 3.5   ! catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1
-  !   real, parameter :: cat_sites_per_mol_R   = 8.0   ! number of catalytic sites per mol R, (mol R sites)(mol R)-1
-
-  !   ! Metabolic N ratio
-  !   n_v = mol_weight_rubisco * n_conc_rubisco * n_molmass / ( cat_turnover_per_site * cat_sites_per_mol_R )
-
-  !   n_rubisco_area = vcmax25 * n_v
-
-  ! end function calc_n_rubisco_area
 
 
 end module _gpp

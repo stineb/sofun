@@ -5,8 +5,8 @@ import os.path
 ##--------------------------------------------------------------------
 ## Simulation suite
 ##--------------------------------------------------------------------
-# simsuite = 'fluxnet'
-simsuite = 'fluxnet_cmodel'
+simsuite = 'fluxnet'
+# simsuite = 'fluxnet_cmodel'
 # simsuite = 'pmodel_test'
 # simsuite = 'cmodel_test'
 

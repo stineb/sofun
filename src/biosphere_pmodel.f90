@@ -143,7 +143,7 @@ subroutine biosphere( &
         ! calculate GPP
         !----------------------------------------------------------------
         ! print* 'calling gpp() ... '
-        call gpp( jpngr, day, moy, mfapar_field(moy,jpngr) )
+        call gpp( jpngr, day, moy, dtemp_field(day,jpngr), mfapar_field(moy,jpngr) )
         ! call gpp( jpngr, day, moy, 1.00 )
         ! print* '... done'
 
