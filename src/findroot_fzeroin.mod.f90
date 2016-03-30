@@ -122,7 +122,7 @@ contains
     integer :: fehler             ! error code of this function              
 
     ! function return variable
-    type(outtype_zeroin), intent(out) :: out_zeroin
+    type(outtype_zeroin) :: out_zeroin
 
     ! stop relerr
     ! write(0,*) 'A'

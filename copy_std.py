@@ -1,6 +1,4 @@
 from subprocess import call
-import os
-import os.path
 
 ##--------------------------------------------------------------------
 ## Copy standard files (*_std). Standard files are part of the 

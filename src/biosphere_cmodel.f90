@@ -245,5 +245,8 @@ subroutine biosphere( &
 
   end do
 
+  ! xxx insignificant
+  c_uptake = 0.0
+
 end subroutine biosphere
 

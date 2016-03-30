@@ -583,7 +583,7 @@ contains
     logical, intent(in), optional :: verbose
 
     ! function return variable
-    real, intent(out) :: eval
+    real :: eval
 
     ! local variables
     real                    :: dclabl, dnlabl 
@@ -976,7 +976,7 @@ contains
     real :: test
 
     ! function return value
-    real, intent(out) :: lai
+    real :: lai
 
     ! local variables
     real :: maxnv
@@ -1065,7 +1065,7 @@ contains
     real, intent(in) :: mylai
 
     ! function return value
-    real, intent(out) :: mustbe_zero
+    real :: mustbe_zero
 
     ! local variables
     real :: mycleaf
@@ -1113,7 +1113,7 @@ contains
     real, dimension(nmonth), intent(in) :: nv
 
     ! function return variable
-    real, intent(out) :: rcton
+    real :: rcton
 
     ! local variables
     real :: maxnv
@@ -1146,7 +1146,7 @@ contains
     real, dimension(nmonth), intent(in) :: nv
 
     ! function return variable
-    real, intent(out) :: mynleaf_metabolic  ! mol N 
+    real :: mynleaf_metabolic  ! mol N 
 
     ! local variables
     real :: maxnv
@@ -1176,7 +1176,7 @@ contains
     real, intent(in) :: mynleaf_metabolic
 
     ! function return variable
-    real, intent(out) :: mynleaf_structural  ! mol N 
+    real :: mynleaf_structural  ! mol N 
 
     mynleaf_structural = mynleaf_metabolic * r_n_cw_v + mylai * ncw_min
 
@@ -1209,7 +1209,7 @@ contains
     real, dimension(nmonth), intent(in) :: nv
 
     ! function return variable
-    real, intent(out) :: mynleaf ! g N
+    real :: mynleaf ! g N
 
     ! local variables
     real :: nleaf_metabolic   ! mol N m-2

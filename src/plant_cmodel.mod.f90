@@ -20,7 +20,7 @@ module md_plant
     outalai, outalma, outacton_lm, get_fapar,            &
     initoutput_plant, initio_plant, getout_daily_plant,                   &
     getout_annual_plant, writeout_ascii_plant, getpar_modl_plant,         &
-    leaftraits_type, canopy_type, canopy, get_canopy, seed
+    leaftraits_type, canopy_type, get_canopy, seed
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -240,7 +240,7 @@ contains
     real :: code_nfixer
 
     ! function return variable
-    type( params_pft_plant_type ), intent(out) :: out_getpftparams
+    type( params_pft_plant_type ) :: out_getpftparams
 
     ! standard PFT name
     out_getpftparams%pftname = pftname
@@ -392,7 +392,7 @@ contains
     real, intent(in) :: lai
 
     ! function return value
-    type( canopy_type ), intent(out) :: out_canopy
+    type( canopy_type ) :: out_canopy
 
     out_canopy%fapar_ind = get_fapar( lai )
 
@@ -410,7 +410,7 @@ contains
     real, intent(in) :: lai
 
     ! function return variable
-    real, intent(out) :: fapar
+    real :: fapar
 
     fapar = ( 1.0 - exp( -1.0 * params_plant%kbeer * lai) )
 

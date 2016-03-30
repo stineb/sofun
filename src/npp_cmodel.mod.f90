@@ -203,7 +203,7 @@ contains
     real, intent(in)  :: croot
 
     ! function return variable
-    real, intent(out) :: cexu
+    real :: cexu
 
     cexu = params_plant%exurate * croot
 
