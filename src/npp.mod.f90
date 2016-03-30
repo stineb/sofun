@@ -27,7 +27,7 @@ module md_npp
   implicit none
 
   private
-  public npp
+  public npp, calc_cexu, calc_resp_maint
 
 contains
 
