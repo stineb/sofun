@@ -44,7 +44,6 @@ contains
     ! dates. 
     !-------------------------------------------------------------------------
     use md_params_core, only: npft, ndayyear
-    use md_sofunutils, only: ftemp
     use md_soiltemp, only: dtemp_soil
     use md_gpp, only: dgpp, drd
     use md_phenology, only: shedleaves
@@ -59,8 +58,6 @@ contains
     ! local variables
     integer :: pft
     integer :: lu
-    real    :: ftemp_air
-    real    :: ftemp_soil
 
     ! print*, '---- in npp:'
 
@@ -80,21 +77,17 @@ contains
 
         lu = params_pft_plant(pft)%lu_category
         
-        ! reference temperature: 10°C
-        ftemp_air  = ftemp( dtemp, "lloyd_and_taylor" )
-        ftemp_soil = ftemp( dtemp_soil(lu,jpngr) , "lloyd_and_taylor" )
-
         !/////////////////////////////////////////////////////////////////////////
         ! MAINTENANCE RESPIRATION
         ! use function 'resp_main'
         !-------------------------------------------------------------------------
         ! fine roots should have a higher repsiration coefficient than other tissues (Franklin et al., 2007).
         drleaf(pft) = drd(pft)  ! leaf respiration is given by dark respiration as calculated in P-model.       
-        drroot(pft) = calc_resp_maint( proot(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_root )
+        drroot(pft) = calc_resp_maint( proot(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_root, dtemp )
         if (params_pft_plant(pft)%tree) then
-          drsapw(pft) = calc_resp_maint( psapw(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_sapw )
+          drsapw(pft) = calc_resp_maint( psapw(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_sapw, dtemp )
         endif
-        
+                
         !/////////////////////////////////////////////////////////////////////////
         ! DAILY NPP 
         ! NPP is the sum of C available for growth and for N uptake 
@@ -178,22 +171,25 @@ contains
   end subroutine npp
 
 
-  function calc_resp_maint( cmass, rresp, ftemp ) result( resp_maint )
+  function calc_resp_maint( cmass, rresp, dtemp ) result( resp_maint )
     !////////////////////////////////////////////////////////////////
     ! Returns maintenance respiration
     !----------------------------------------------------------------
+    use md_sofunutils, only: ftemp
+    use md_gpp, only: ramp_gpp_lotemp     ! same ramp as for GPP 
+
     ! arguments
     real, intent(in)           :: cmass   ! N mass per unit area [gN/m2]
     real, intent(in)           :: rresp   ! respiration coefficient [gC gC-1 d-1]
-    real, intent(in), optional :: ftemp   ! temperature modifier
+    real, intent(in), optional :: dtemp   ! temperature (soil or air, deg C)
 
     ! function return variable
     real :: resp_maint                    ! return value: maintenance respiration [gC/m2]
 
-    if (present(ftemp)) then
-      resp_maint = cmass * rresp * ftemp
+    if (present(dtemp)) then
+      resp_maint = cmass * rresp * ftemp( dtemp, "lloyd_and_taylor" ) * ramp_gpp_lotemp( dtemp )
     else
-      resp_maint = cmass * rresp
+      resp_maint = cmass * rresp * ramp_gpp_lotemp( dtemp )
     end if
 
   end function calc_resp_maint

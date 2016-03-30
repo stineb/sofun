@@ -25,7 +25,7 @@ module md_gpp
   private
   public dgpp, dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
     initdaily_gpp, gpp, getlue, getout_daily_gpp, writeout_ascii_gpp, mlue, &
-    mactnv_unitiabs, mrd_unitiabs
+    mactnv_unitiabs, mrd_unitiabs, ramp_gpp_lotemp
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -1291,7 +1291,8 @@ contains
     ! function return variable
     real :: ftemp
 
-    ftemp = max( 0.0, min( 1.0, dtemp / 10.0 ) )
+    ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
+    ftemp = max( 0.0, min( 1.0, dtemp / 12.0 ) )
 
   end function ramp_gpp_lotemp
 
@@ -1416,17 +1417,17 @@ contains
     use md_params_siml, only: loutdgpp, loutdrd, loutdtransp, init
 
     ! daily
-    if (init .and. loutdgpp      ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
-    if (init .and. loutdrd       ) allocate( outdrd       (npft,ndayyear,maxgrid) )
-    if (init .and. loutdtransp   ) allocate( outdtransp   (npft,ndayyear,maxgrid) )
+    if (init.and.loutdgpp   ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
+    if (init.and.loutdrd    ) allocate( outdrd       (npft,ndayyear,maxgrid) )
+    if (init.and.loutdtransp) allocate( outdtransp   (npft,ndayyear,maxgrid) )
     outdgpp(:,:,:)    = 0.0
     outdrd(:,:,:)    = 0.0
     outdtransp(:,:,:) = 0.0
 
     ! monthly
-    if (init .and. loutdgpp      ) allocate( outmgpp      (npft,nmonth,maxgrid) )
-    if (init .and. loutdrd       ) allocate( outmrd       (npft,nmonth,maxgrid) )
-    if (init .and. loutdtransp   ) allocate( outmtransp   (npft,nmonth,maxgrid) )
+    if (init.and.loutdgpp   ) allocate( outmgpp      (npft,nmonth,maxgrid) )
+    if (init.and.loutdrd    ) allocate( outmrd       (npft,nmonth,maxgrid) )
+    if (init.and.loutdtransp) allocate( outmtransp   (npft,nmonth,maxgrid) )
     outmgpp(:,:,:)    = 0.0
     outmrd(:,:,:)     = 0.0
     outmtransp(:,:,:) = 0.0
@@ -1460,17 +1461,17 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (loutdgpp      ) outdgpp(:,doy,jpngr)       = dgpp(:)
-    if (loutdrd       ) outdrd(:,doy,jpngr)        = drd(:)
-    if (loutdtransp   ) outdtransp(:,doy,jpngr)    = dtransp(:)
+    if (loutdgpp   ) outdgpp(:,doy,jpngr)       = dgpp(:)
+    if (loutdrd    ) outdrd(:,doy,jpngr)        = drd(:)
+    if (loutdtransp) outdtransp(:,doy,jpngr)    = dtransp(:)
 
     !----------------------------------------------------------------
     ! MONTHLY SUM OVER DAILY VALUES
     ! Collect monthly output variables as sum of daily values
     !----------------------------------------------------------------
-    if (loutdgpp      ) outmgpp(:,moy,jpngr)    = outmgpp(:,moy,jpngr) + dgpp(:)
-    if (loutdrd       ) outmrd(:,moy,jpngr)     = outmrd(:,moy,jpngr)  + drd(:)
-    if (loutdrd       ) outmtransp(:,moy,jpngr) = outmtransp(:,moy,jpngr)  + dtransp(:)
+    if (loutdgpp   ) outmgpp(:,moy,jpngr)    = outmgpp(:,moy,jpngr) + dgpp(:)
+    if (loutdrd    ) outmrd(:,moy,jpngr)     = outmrd(:,moy,jpngr)  + drd(:)
+    if (loutdrd    ) outmtransp(:,moy,jpngr) = outmtransp(:,moy,jpngr)  + dtransp(:)
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
