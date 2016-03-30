@@ -465,6 +465,7 @@ contains
             ! if (doy>250) stop 'do beni, end of year'
 
           else
+
             !------------------------------------------------------------------
             ! Prescribe constant root:shoot ratio (in terms of C mass).
             ! Calculate maximum C allocatable based on current labile pool size.

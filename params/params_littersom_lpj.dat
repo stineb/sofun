@@ -13,6 +13,7 @@ ksoil_sl10                              7.0e-04
 ntoc_crit1                              0.45
 ntoc_crit2                              0.76
 cton_microb                             10.0
+cton_soil                               9.77
 fastfrac                                0.985
 
 #                                      |

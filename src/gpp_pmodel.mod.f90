@@ -25,7 +25,7 @@ module md_gpp
   private
   public dgpp, dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
     initdaily_gpp, gpp, getlue, getout_daily_gpp, writeout_ascii_gpp, mlue, &
-    mactnv_unitiabs, mrd_unitiabs, ramp_gpp_lotemp
+    mactnv_unitiabs, mrd_unitiabs, ramp_gpp_lotemp, calc_dgpp, calc_drd
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables

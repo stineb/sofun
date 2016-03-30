@@ -24,6 +24,10 @@ module md_soiltemp
 
   implicit none
 
+  private
+  public dtemp_soil, soiltemp, initio_soiltemp, initoutput_soiltemp, &
+    getout_daily_soiltemp, writeout_ascii_soiltemp
+
   !----------------------------------------------------------------
   ! Module-specific state variables
   !----------------------------------------------------------------

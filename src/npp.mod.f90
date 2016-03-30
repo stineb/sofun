@@ -130,7 +130,7 @@ contains
         ! NPP available for growth first enters the labile pool ('plabl ').
         ! XXX Allocation is called here without "paying"  growth respir.?
         !-------------------------------------------------------------------------
-        call orgcp( orgpool( cminus( dnpp(pft), carbon(dcex(pft)) ), dnup(pft) ), plabl(pft,jpngr) )
+        call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
 
         ! print*, '---------------in NPP'
         ! print*, 'plabl  ', plabl(pft,jpngr)
@@ -175,7 +175,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Returns maintenance respiration
     !----------------------------------------------------------------
-    use md_sofunutils, only: ftemp
+    use md_rates, only: ftemp
     use md_gpp, only: ramp_gpp_lotemp     ! same ramp as for GPP 
 
     ! arguments

@@ -6,6 +6,8 @@ module md_rates
   !----------------------------------------------------------------
   implicit none
 
+  private
+  public ftemp, fmoist
 
 contains
 
@@ -13,7 +15,6 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Temperature response function
     !----------------------------------------------------------------
-
     ! arguments
     real, intent(in)             :: temp ! temperature [in Degrees Celsius]
     character(len=*), intent(in) :: method
@@ -68,7 +69,6 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Temperature response function
     !----------------------------------------------------------------
-
     ! arguments
     real, intent(in)             :: moist ! temperature [in Degrees Celsius]
     character(len=*), intent(in) :: method

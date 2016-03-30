@@ -37,14 +37,13 @@ module md_params_siml
   logical :: loutdtransp    
   logical :: loutdnpp       
   logical :: loutdnup       
+  logical :: loutdcex       
   logical :: loutdCleaf     
   logical :: loutdCroot     
   logical :: loutdClabl     
   logical :: loutdNlabl     
   logical :: loutdClitt     
   logical :: loutdNlitt     
-  logical :: loutdCsoil     
-  logical :: loutdNsoil     
   logical :: loutdlai       
   logical :: loutdfapar
   logical :: loutdninorg    
@@ -52,7 +51,8 @@ module md_params_siml
 
   logical :: loutntransform
   logical :: loutwaterbal  
-
+  logical :: loutlittersom
+  logical :: loutnuptake
 
   type outtype_steering
     integer :: forcingyear     ! year AD for which forcings are read in (=firstyeartrend during spinup)
@@ -172,14 +172,13 @@ contains
     loutdtransp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtransp' )
     loutdnpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnpp' )
     loutdnup       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnup' )
+    loutdcex       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdcex' )
     loutdCleaf     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCleaf' )
     loutdCroot     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCroot' )
     loutdClabl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdClabl' )
     loutdNlabl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNlabl' )
     loutdClitt     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdClitt' )
     loutdNlitt     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNlitt' )
-    loutdCsoil     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCsoil' )
-    loutdNsoil     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNsoil' )
     loutdlai       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdlai' )
     loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
@@ -187,6 +186,8 @@ contains
 
     loutntransform = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutntransform') 
     loutwaterbal   = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal')
+    loutlittersom  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlittersom' )
+    loutnuptake    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnuptake' )
 
   end subroutine getpar_siml
 

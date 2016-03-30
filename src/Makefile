@@ -18,8 +18,12 @@ PMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml
 PMODEL_SOURCES=sofun.f90 biosphere_pmodel.f90
 
 # List of source code files for reduced setup, executing the C-only model:
-CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 plant_cmodel.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 npp_cmodel.mod.f90 turnover_cmodel.mod.f90 allocation_cmodel.mod.f90 vegdynamics_fix.mod.f90
+CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 rates.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 plant.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 npp_cmodel.mod.f90 turnover_cmodel.mod.f90 allocation_cmodel.mod.f90 vegdynamics_fix.mod.f90
 CMODEL_SOURCES=sofun.f90 biosphere_cmodel.f90
+
+# List of source code files for reduced setup, executing the full CN-only model:
+CNMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 rates.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 plant.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 npp_cnmodel.mod.f90 turnover_cnmodel.mod.f90 vegdynamics_fix.mod.f90 ntransform_xuri.mod.f90 littersom_lpj.mod.f90 nuptake_constexu.mod.f90 allocation_cnmodel.mod.f90
+CNMODEL_SOURCES=sofun.f90 biosphere_cnmodel.f90
 
 # List of build dependencies (Makefile and include files):
 DEPEND=Makefile ../Makefile sofun_module_control.inc
@@ -35,6 +39,8 @@ PMODEL_OBJS=$(PMODEL_SOURCES:.f90=.o)
 PMODEL_MODOBJS=$(PMODEL_MODS:.f90=.o)
 CMODEL_OBJS=$(CMODEL_SOURCES:.f90=.o)
 CMODEL_MODOBJS=$(CMODEL_MODS:.f90=.o)
+CNMODEL_OBJS=$(CNMODEL_SOURCES:.f90=.o)
+CNMODEL_MODOBJS=$(CNMODEL_MODS:.f90=.o)
 
 # Archive file names
 ARCHIVE=sofun.a
@@ -80,6 +86,13 @@ cmodel: $(CMODEL_MODOBJS) $(CMODEL_OBJS)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(CMODEL_MODOBJS) $(CMODEL_OBJS) 
 
+# full model setup: CN-model
+cnmodel: $(CNMODEL_MODOBJS) $(CNMODEL_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(CNMODEL_MODOBJS) $(CNMODEL_OBJS) 
+
 # default rules (.f90 -> .f -> .o/.do)
 # ------------
 %.f: %.f90 $(DEPEND)
@@ -116,8 +129,14 @@ $(CMODEL_MODOBJS): %.o: %.f
 $(CMODEL_OBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
+$(CNMODEL_MODOBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
+$(CNMODEL_OBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
 # don't delete the intermediate *.f files
-.SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f) $(CMODEL_SOURCES:.f90=.f)
+.SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f) $(CMODEL_SOURCES:.f90=.f) $(CNMODEL_SOURCES:.f90=.f)
 
 # clean: remove .f, .o, .do, and .stb files
 .PHONY: clean

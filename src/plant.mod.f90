@@ -1,5 +1,6 @@
 module md_plant
   !////////////////////////////////////////////////////////////////
+  ! Holds all PFT-specific pools, fluxes, and IO-handling prodecures
   !----------------------------------------------------------------
   use md_classdefs
   use md_params_core, only: nlu, npft, maxgrid, ndayyear, lunat
@@ -124,6 +125,7 @@ module md_plant
   ! daily
   real, allocatable, dimension(:,:,:) :: outdnpp
   real, allocatable, dimension(:,:,:) :: outdnup
+  real, allocatable, dimension(:,:,:) :: outdcex
   real, allocatable, dimension(:,:,:) :: outdCleaf
   real, allocatable, dimension(:,:,:) :: outdCroot
   real, allocatable, dimension(:,:,:) :: outdClabl
@@ -145,6 +147,7 @@ module md_plant
   ! annual
   real, dimension(npft,maxgrid) :: outanpp
   real, dimension(npft,maxgrid) :: outanup
+  real, dimension(npft,maxgrid) :: outacex
   real, dimension(npft,maxgrid) :: outaCveg
   real, dimension(npft,maxgrid) :: outaCveg2lit
   real, dimension(npft,maxgrid) :: outaNveg2lit
@@ -422,44 +425,41 @@ contains
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
-    use md_params_siml, only: & 
-        loutdgpp       &
+    use md_params_siml, only: init &
+      , loutdgpp       &
       , loutdnpp       &
       , loutdnup       &
+      , loutdcex       &
       , loutdCleaf     &
       , loutdCroot     &
       , loutdClabl     &
       , loutdNlabl     &
       , loutdClitt     &
       , loutdNlitt     &
-      , loutdCsoil     &
-      , loutdNsoil     &
       , loutdlai       &
       , loutdfapar
 
-    if (loutdnpp      ) allocate( outdnpp      (npft,ndayyear,maxgrid) )
-    if (loutdnup      ) allocate( outdnup      (npft,ndayyear,maxgrid) )
-    if (loutdCleaf    ) allocate( outdCleaf    (npft,ndayyear,maxgrid) )
-    if (loutdCroot    ) allocate( outdCroot    (npft,ndayyear,maxgrid) )
-    if (loutdClabl    ) allocate( outdClabl    (npft,ndayyear,maxgrid) )
-    if (loutdNlabl    ) allocate( outdNlabl    (npft,ndayyear,maxgrid) )
-    if (loutdClitt    ) allocate( outdClitt    (npft,ndayyear,maxgrid) )
-    if (loutdNlitt    ) allocate( outdNlitt    (npft,ndayyear,maxgrid) )
-    if (loutdCsoil    ) allocate( outdCsoil    (nlu,ndayyear,maxgrid)  )
-    if (loutdNsoil    ) allocate( outdNsoil    (nlu,ndayyear,maxgrid)  )
-    if (loutdlai      ) allocate( outdlai      (npft,ndayyear,maxgrid) )
-    if (loutdfapar    ) allocate( outdfapar    (npft,ndayyear,maxgrid) )
+    if (init.and.loutdnpp  ) allocate( outdnpp      (npft,ndayyear,maxgrid) )
+    if (init.and.loutdnup  ) allocate( outdnup      (npft,ndayyear,maxgrid) )
+    if (init.and.loutdcex  ) allocate( outdcex      (npft,ndayyear,maxgrid) )
+    if (init.and.loutdCleaf) allocate( outdCleaf    (npft,ndayyear,maxgrid) )
+    if (init.and.loutdCroot) allocate( outdCroot    (npft,ndayyear,maxgrid) )
+    if (init.and.loutdClabl) allocate( outdClabl    (npft,ndayyear,maxgrid) )
+    if (init.and.loutdNlabl) allocate( outdNlabl    (npft,ndayyear,maxgrid) )
+    if (init.and.loutdClitt) allocate( outdClitt    (npft,ndayyear,maxgrid) )
+    if (init.and.loutdNlitt) allocate( outdNlitt    (npft,ndayyear,maxgrid) )
+    if (init.and.loutdlai  ) allocate( outdlai      (npft,ndayyear,maxgrid) )
+    if (init.and.loutdfapar) allocate( outdfapar    (npft,ndayyear,maxgrid) )
 
     outdnpp  (:,:,:) = 0.0
     outdnup  (:,:,:) = 0.0
+    outdcex  (:,:,:) = 0.0
     outdCleaf(:,:,:) = 0.0
     outdCroot(:,:,:) = 0.0
     outdClabl(:,:,:) = 0.0
     outdNlabl(:,:,:) = 0.0
     outdClitt(:,:,:) = 0.0
     outdNlitt(:,:,:) = 0.0
-    outdCsoil(:,:,:) = 0.0
-    outdNsoil(:,:,:) = 0.0
     outdlai  (:,:,:) = 0.0
     outdfapar(:,:,:) = 0.0
 
@@ -487,14 +487,13 @@ contains
         loutdgpp       &
       , loutdnpp       &
       , loutdnup       &
+      , loutdcex       &
       , loutdCleaf     &
       , loutdCroot     &
       , loutdClabl     &
       , loutdNlabl     &
       , loutdClitt     &
       , loutdNlitt     &
-      , loutdCsoil     &
-      , loutdNsoil     &
       , loutdlai       &
       , loutdfapar
 
@@ -525,6 +524,12 @@ contains
     if (loutdnup      ) then
       filnam=trim(prefix)//'.d.nup.out'
       open(104,file=filnam,err=999,status='unknown')
+    end if
+
+    ! C EXUDATION
+    if (loutdcex      ) then
+      filnam=trim(prefix)//'.d.cex.out'
+      open(105,file=filnam,err=999,status='unknown')
     end if
 
     ! ! AIR TEMPERATURE
@@ -601,6 +606,10 @@ contains
     filnam=trim(prefix)//'.a.nup.out'
     open(317,file=filnam,err=999,status='unknown')
 
+    ! C EXUDATION
+    filnam=trim(prefix)//'.a.cex.out'
+    open(405,file=filnam,err=999,status='unknown')
+
     ! LAI (ANNUAL MAXIMUM)
     filnam=trim(prefix)//'.a.lai.out'
     open(318,file=filnam,err=999,status='unknown')
@@ -641,14 +650,13 @@ contains
         loutdgpp       &
       , loutdnpp       &
       , loutdnup       &
+      , loutdcex       &
       , loutdCleaf     &
       , loutdCroot     &
       , loutdClabl     &
       , loutdNlabl     &
       , loutdClitt     &
       , loutdNlitt     &
-      , loutdCsoil     &
-      , loutdNsoil     &
       , loutdlai       &
       , loutdfapar
 
@@ -667,6 +675,7 @@ contains
     !----------------------------------------------------------------
     if (loutdnpp      ) outdnpp(:,doy,jpngr)       = dnpp(:)%c12
     if (loutdnup      ) outdnup(:,doy,jpngr)       = dnup(:)%n14
+    if (loutdcex      ) outdcex(:,doy,jpngr)       = dcex(:)
     if (loutdCleaf    ) outdCleaf(:,doy,jpngr)     = pleaf(:,jpngr)%c%c12
     if (loutdCroot    ) outdCroot(:,doy,jpngr)     = proot(:,jpngr)%c%c12
     if (loutdClabl    ) outdClabl(:,doy,jpngr)     = plabl(:,jpngr)%c%c12
@@ -688,6 +697,7 @@ contains
     !----------------------------------------------------------------
     outanpp(:,jpngr)    = outanpp(:,jpngr) + dnpp(:)%c12
     outanup(:,jpngr)    = outanup(:,jpngr) + dnup(:)%n14
+    outacex(:,jpngr)    = outacex(:,jpngr) + dcex(:)
 
   end subroutine getout_daily_plant
 
@@ -746,14 +756,13 @@ contains
         loutdgpp       &
       , loutdnpp       &
       , loutdnup       &
+      , loutdcex       &
       , loutdCleaf     &
       , loutdCroot     &
       , loutdClabl     &
       , loutdNlabl     &
       , loutdClitt     &
       , loutdNlitt     &
-      , loutdCsoil     &
-      , loutdNsoil     &
       , loutdlai       &
       , loutdfapar
 
@@ -797,6 +806,7 @@ contains
         if (loutdnpp      ) write(102,999) itime, sum(outdnpp(:,day,jpngr))
         if (loutdCleaf    ) write(103,999) itime, sum(outdCleaf(:,day,jpngr))
         if (loutdnup      ) write(104,999) itime, sum(outdnup(:,day,jpngr))
+        if (loutdcex      ) write(105,999) itime, sum(outdcex(:,day,jpngr))
         if (loutdCroot    ) write(111,999) itime, sum(outdCroot(:,day,jpngr))
         if (loutdClabl    ) write(112,999) itime, sum(outdClabl(:,day,jpngr))
         if (loutdClitt    ) write(113,999) itime, sum(outdClitt(:,day,jpngr))
@@ -821,6 +831,7 @@ contains
     write(312,999) itime, sum(outaCveg(:,jpngr))
     write(316,999) itime, sum(outaninorg(:,jpngr))
     write(317,999) itime, sum(outanup(:,jpngr))
+    write(317,999) itime, sum(outacex(:,jpngr))
     write(318,999) itime, sum(outalai(:,jpngr))
     write(319,999) itime, sum(outanarea_mb(:,jpngr))
     write(320,999) itime, sum(outanarea_cw(:,jpngr))

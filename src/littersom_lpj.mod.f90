@@ -5,53 +5,63 @@ module md_littersom
   ! subroutines for handling input/output. 
   ! Every module that implements 'littersom' must contain this list 
   ! of subroutines (names that way).
-  !   - getpar_modl_littersom
-  !   - initio_littersom
-  !   - initoutput_littersom
-  !   - getout_daily_littersom
-  !   - getout_monthly_littersom
-  !   - writeout_ascii_littersom
-  !   - littersom
   ! Required module-independent model state variables (necessarily 
   ! updated by 'littersom') are:
   !   - xxx
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
+  use md_classdefs
   use md_params_core, only: npft, maxgrid, nlu, ndayyear
 
   implicit none
-  ! private 
-  ! public getpar_modl_littersom, initio_littersom, initoutput_littersom, &
-  !  getout_daily_littersom, getout_monthly_littersom, writeout_ascii_littersom, &
-  !  littersom
+  
+  private 
+  public getpar_modl_littersom, initio_littersom, initoutput_littersom, &
+   getout_annual_littersom, writeout_ascii_littersom, &
+   littersom, initdaily_littersom, initglobal_littersom
+
+  !----------------------------------------------------------------
+  ! Public, module-specific state variables
+  !----------------------------------------------------------------
+  ! pools
+  type(orgpool), dimension(nlu,maxgrid)  :: psoil_sl        ! soil organic matter, fast turnover [gC/m2]
+  type(orgpool), dimension(nlu,maxgrid)  :: psoil_fs        ! soil organic matter, slow turnover [gC/m2]
+
+  ! fluxes
+  type(carbon), dimension(npft) :: drsoil   ! soil respiration (only from exudates decomp.) [gC/m2/d]
+  type(carbon), dimension(nlu)  :: drhet    ! heterotrophic respiration [gC/m2/d]
+
+  !-----------------------------------------------------------------------
+  ! Uncertain (unknown) parameters. Runtime read-in
+  !-----------------------------------------------------------------------
+  type params_littersom_type
+    real :: klitt_af10        ! above-ground fast (leaf) litter decay rate [1/d]
+    real :: klitt_as10        ! above-ground slow (woody) litter decay rate [1/d] 
+    real :: klitt_bg10        ! below-ground (root) litter decay rate [1/d] 
+    real :: kexu10            ! exudates decay rate [1/d]
+    real :: ksoil_fs10        ! fast soil pool decay rate [1/d]
+    real :: ksoil_sl10        ! slow soil pool decay rate [1/d]
+    real :: ntoc_crit1        ! factor for "Manzoni Equation" (XPXXX) [1]
+    real :: ntoc_crit2        ! exponent for "Manzoni Equation" (XPXXX) [1]
+    real :: cton_microb       ! C:N ratio of microbial biomass [1]
+    real :: cton_soil         ! C:N ratio of SOM - xxx try: abandon this and use cton_microb
+    real :: fastfrac          ! fraction of litter input to fast soil pool [1]
+  end type params_littersom_type
+
+  type( params_littersom_type ) :: params_littersom
 
 
-  ! LITTERSOM PARAMETERS
-  ! read from file, therefore not declared as parameter
-  real :: klitt_af10        !  1 above-ground fast (leaf) litter decay rate [1/d]
-  real :: klitt_as10        !  2 above-ground slow (woody) litter decay rate [1/d] 
-  real :: klitt_bg10        !  3 below-ground (root) litter decay rate [1/d] 
-  real :: kexu10            !  4 exudates decay rate [1/d]
-  real :: ksoil_fs10        !  5 fast soil pool decay rate [1/d]
-  real :: ksoil_sl10        !  6 slow soil pool decay rate [1/d]
-  real :: ntoc_crit1        !  7 factor for "Manzoni Equation" (XPXXX) [1]
-  real :: ntoc_crit2        !  8 exponent for "Manzoni Equation" (XPXXX) [1]
-  real :: cton_microb       !  9 C:N ratio of microbial biomass [1]
-  real :: fastfrac          ! 10 fraction of litter input to fast soil pool [1]
+  !----------------------------------------------------------------
+  ! Module-specific output variables
+  !----------------------------------------------------------------
+  ! daily
+  real, allocatable, dimension(:,:,:) :: outdnetmin
+  real, allocatable, dimension(:,:,:) :: outdnetmin_soil
+  real, allocatable, dimension(:,:,:) :: outdnetmin_litt
+  real, allocatable, dimension(:,:,:) :: outdnfixfree  ! N fixation by free-living organisms [gN/m2/d]
 
-
-  ! MODULE-SPECIFIC VARIABLES
-  ! These are not required outside module 'littersom', but are used in different SRs of this module
-  ! real :: xxx                    ! xxx
-
-  ! DAILY OUTPUT VARIABLES
-  ! xxx add jpngr dim
-  real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin
-  real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin_soil
-  real, dimension(nlu,ndayyear,maxgrid)  :: outdnetmin_litt
-  real, dimension(nlu,ndayyear,maxgrid)  :: outdnfixfree  ! N fixation by free-living organisms [gN/m2/d]
-
+  ! annual
   real, dimension(npft,maxgrid) :: outaClitt
   real, dimension(nlu,maxgrid)  :: outaCsoil
   real, dimension(nlu,maxgrid)  :: outanreq      ! N required from litter -> soil transfer [gN/m2/d]
@@ -74,18 +84,19 @@ contains
     !----------------------------------------------------------------
     use md_params_core, only: npft, maxgrid, nmonth, nlu, ndayyear, &
       pft_start, pft_end
-    use md_params_modl, only: islu, cton_soil
     use md_params_siml, only: spinup, recycle
     use md_classdefs
-    use md_rates
-    use md_vars_core, only: drsoil, drhet, psoilphys, soilphys, ddoc, pexud, &
-      plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl, pninorg
+    use md_rates, only: ftemp, fmoist
+    use md_plant, only: params_pft_plant, plitt_af, plitt_as, plitt_bg, pexud
+    use md_waterbal, only: soilphys
+    use md_soiltemp, only: dtemp_soil
+    use md_ntransform, only: pninorg
 
-    ! ARGUMENTS
+    ! arguments
     integer, intent(in) :: jpngr                    ! grid cell number
     integer, intent(in) :: doy                      ! day of year
 
-    ! LOCAL VARIABLES
+    ! local variables
     integer :: lu                                   ! counter variable for landuse class
     integer :: pft                                  ! counter variable for PFT number
 
@@ -152,18 +163,6 @@ contains
     !-------------------------------------------------------------------------
     if (doy==1) invocation = invocation + 1
 
-
-    ! ! xxx try
-    ! ! initialise _pools with non-zero values
-    ! ! here example gridcell 9.5 E, 47.5 N
-    ! write(0,*) 'LITTERSOM: litter and soil pool size set manually'
-    ! psoil_fs(:,:) = orgpool( carbon(400.0), nitrogen(400.0/cton_soil(1)) )
-    ! psoil_sl(:,:) = orgpool( carbon(1500.0), nitrogen(1500.0/cton_soil(1)) )
-    ! plitt_as(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
-    ! plitt_af(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
-    ! plitt_bg(:,:) = orgpool( carbon(50.0), nitrogen(1.0) )
-
-
     ! initialise 
     if (invocation==1 .and. doy==1) then
       mean_insoil_fs(:,:) = 0.0
@@ -210,7 +209,7 @@ contains
       ! (4) delta_c = c0*(1.00-exp(-k))
       !-------------------------------------------------------------------------
       do pft=1,npft
-        if (islu(pft,lu)) then
+        if (params_pft_plant(pft)%islu(lu)) then
             
           !-------------------------------------------------------------------------
           ! LITTER TEMPERATURE AND MOISTURE MODIFIER
@@ -219,10 +218,10 @@ contains
           ! Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
           !-------------------------------------------------------------------------
           ! define decomposition _rates for current soil temperature and moisture 
-          klitt_af(lu) = klitt_af10 * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
-          klitt_as(lu) = klitt_as10 * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
-          klitt_bg(lu) = klitt_bg10 * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
-          kexu(lu)     = kexu10     * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_af(lu) = params_littersom%klitt_af10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_as(lu) = params_littersom%klitt_as10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_bg(lu) = params_littersom%klitt_bg10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          kexu(lu)     = params_littersom%kexu10     * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
 
         end if
       end do
@@ -233,8 +232,8 @@ contains
       ! Moisture: Foley, 1995; Fang and Moncrieff, 1999; Gerten et al., 2004;
       !           Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
       !-------------------------------------------------------------------------
-      ksoil_fs(lu) = ksoil_fs10 * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
-      ksoil_sl(lu) = ksoil_sl10 * ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
+      ksoil_fs(lu) = params_littersom%ksoil_fs10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
+      ksoil_sl(lu) = params_littersom%ksoil_sl10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
 
       !-------------------------------------------------------------------------
       ! Initialisation of decomposing pool 
@@ -249,7 +248,7 @@ contains
       ! All goes to daily updated litter decomposition pool
       !----------------------------------------------------------------
       do pft=1,npft
-        if (islu(pft,lu)) then
+        if (params_pft_plant(pft)%islu(lu)) then
                         
           dlitt_af = orgfrac( 1.0 - exp( -klitt_af(lu)), plitt_af(pft,jpngr) )
           dlitt_as = orgfrac( 1.0 - exp( -klitt_as(lu)), plitt_as(pft,jpngr) )
@@ -269,12 +268,14 @@ contains
       !----------------------------------------------------------------
       if ( dlitt%c%c12 > 0.0 ) then
 
-        cton_soil_local = sum( cton_soil(pft_start(lu):pft_end(lu)) &
-          * ( dlitt_af(pft_start(lu):pft_end(lu))%c%c12  &
-            + dlitt_as(pft_start(lu):pft_end(lu))%c%c12  &
-            + dlitt_bg(pft_start(lu):pft_end(lu))%c%c12 ) ) / dlitt%c%c12
+        cton_soil_local = params_littersom%cton_soil
         ntoc_soil_local = 1.0 / cton_soil_local
 
+        ! cton_soil_local = sum( params_littersom%cton_soil(pft_start(lu):pft_end(lu)) &
+        !   * ( dlitt_af(pft_start(lu):pft_end(lu))%c%c12  &
+        !     + dlitt_as(pft_start(lu):pft_end(lu))%c%c12  &
+        !     + dlitt_bg(pft_start(lu):pft_end(lu))%c%c12 ) ) / dlitt%c%c12
+        
         ! write(0,*) 'a eff',eff
         ! write(0,*) 'a cton_soil',cton_soil
         ! write(0,*) 'a dlitt%c%c12',dlitt%c%c12
@@ -289,7 +290,7 @@ contains
         ! critical C:N ratio for net mineralisation is a function of C:N
         ! ratio of decomposing litter. Eq. 9 in Xu-Ri & Prentice, 2014
         !----------------------------------------------------------------
-        ntoc_crit = ntoc_crit1 * ntoc( dlitt, default=0.0 ) ** ntoc_crit2  ! = rCR
+        ntoc_crit = params_littersom%ntoc_crit1 * ntoc( dlitt, default=0.0 ) ** params_littersom%ntoc_crit2  ! = rCR
         eff = ntoc_crit * cton_soil_local
 
         !////////////////////////////////////////////////////////////////
@@ -305,8 +306,8 @@ contains
         ntoc_save_sl = ntoc( psoil_sl(lu,jpngr), default=0.0 )
 
         ! move fraction 'eff' of C from litter to soil
-        call ccp( cfrac( eff*fastfrac      , dlitt%c ), psoil_fs(lu,jpngr)%c )
-        call ccp( cfrac( eff*(1.0-fastfrac), dlitt%c ), psoil_sl(lu,jpngr)%c )
+        call ccp( cfrac( eff*params_littersom%fastfrac      , dlitt%c ), psoil_fs(lu,jpngr)%c )
+        call ccp( cfrac( eff*(1.0-params_littersom%fastfrac), dlitt%c ), psoil_sl(lu,jpngr)%c )
 
         ! move fraction '(1-eff)' of C to heterotrophic respiration
         call ccp( cfrac( (1.0-eff), dlitt%c ), drhet(lu) )
@@ -314,8 +315,8 @@ contains
         ! get average litter -> soil flux for analytical soil C equilibration
         if ( spinup .and. invocation > ( spinupyr_soilequil_1 - recycle ) .and. invocation < spinupyr_soilequil_1 &
           .or. spinup .and. invocation > ( spinupyr_soilequil_2 - recycle ) .and. invocation < spinupyr_soilequil_2) then
-          mean_insoil_fs(lu,jpngr) = mean_insoil_fs(lu,jpngr) + eff * fastfrac * dlitt%c%c12
-          mean_insoil_sl(lu,jpngr) = mean_insoil_sl(lu,jpngr) + eff * (1.0-fastfrac) * dlitt%c%c12
+          mean_insoil_fs(lu,jpngr) = mean_insoil_fs(lu,jpngr) + eff * params_littersom%fastfrac * dlitt%c%c12
+          mean_insoil_sl(lu,jpngr) = mean_insoil_sl(lu,jpngr) + eff * (1.0-params_littersom%fastfrac) * dlitt%c%c12
         end if
 
 
@@ -436,8 +437,8 @@ contains
         ! write(0,*) 'c pninorg(lu,jpngr)%n14',pninorg
 
         ! Nreq_S (= dlitt - netmin) remains in the system: 
-        call ncp( nfrac( fastfrac      , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
-        call ncp( nfrac( (1.0-fastfrac), nitrogen(Nreq_S) ), psoil_sl(lu,jpngr)%n )
+        call ncp( nfrac( params_littersom%fastfrac      , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
+        call ncp( nfrac( (1.0-params_littersom%fastfrac), nitrogen(Nreq_S) ), psoil_sl(lu,jpngr)%n )
 
         ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
         ! Warning: This may not strictly conserve mass!
@@ -448,14 +449,14 @@ contains
           psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_save_sl
         end if
 
-        if ( abs( cton(psoil_fs(lu,jpngr)) - cton_soil(1) ) > 1e-5 ) stop 'B fs: C:N not ok'
-        if ( abs( cton(psoil_sl(lu,jpngr)) - cton_soil(1) ) > 1e-5 ) stop 'B sl: C:N not ok'
+        if ( abs( cton(psoil_fs(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) stop 'B fs: C:N not ok'
+        if ( abs( cton(psoil_sl(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) stop 'B sl: C:N not ok'
 
         ! OUTPUT COLLECTION
         outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
           
         ! C:N ratio of soil influx
-        if ( abs( dlitt%c%c12 * eff / Nreq_S - cton_soil(1) ) > 1e-5 ) stop 'imprecision'
+        if ( abs( dlitt%c%c12 * eff / Nreq_S - params_littersom%cton_soil ) > 1e-5 ) stop 'imprecision'
 
       end if
 
@@ -470,7 +471,7 @@ contains
       ! free-living bacteria is driven by exudates availability.
       !----------------------------------------------------------------                
       do pft=1,npft
-        if (islu(pft,lu)) then
+        if (params_pft_plant(pft)%islu(lu)) then
 
           dexu = cfrac( 1.0-exp(-kexu(lu)), pexud(pft,jpngr) )
           call cmv( dexu, pexud(pft,jpngr), drsoil(pft) )
@@ -573,9 +574,10 @@ contains
       outaCdsoil(lu,jpngr)          = outaCdsoil(lu,jpngr)     + dsoil_fs%c%c12 + dsoil_sl%c%c12
       outaNdsoil(lu,jpngr)          = outaNdsoil(lu,jpngr)     + dsoil_fs%n%n14 + dsoil_sl%n%n14
 
-      ! Record monthly (daily) soil turnover flux (labile carbon availability)
-      !----------------------------------------------------------------
-      ddoc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
+      ! ! Record monthly (daily) soil turnover flux (labile carbon availability)
+      ! ! xxx try: replace this with exudates pool 
+      ! !----------------------------------------------------------------
+      ! ddoc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
 
       !----------------------------------------------------------------
       ! XXX debug: add constant N fixation 0.5 gN/m2/yr)
@@ -624,43 +626,67 @@ contains
     use md_sofunutils, only: getparreal
 
     ! above-ground fast (foliage and roots) litter decay rate [1/d] 
-    klitt_af10 = getparreal( 'params/params_littersom_lpj.dat', 'klitt_af10' ) / ndayyear
+    params_littersom%klitt_af10 = getparreal( 'params/params_littersom_lpj.dat', 'klitt_af10' ) / ndayyear
 
     ! above-ground slow (woody) litter decay rate [1/d] 
-    klitt_as10 = getparreal( 'params/params_littersom_lpj.dat', 'klitt_as10' ) / ndayyear
+    params_littersom%klitt_as10 = getparreal( 'params/params_littersom_lpj.dat', 'klitt_as10' ) / ndayyear
 
     ! below-ground (root) litter decay rate [1/d] 
-    klitt_bg10 = getparreal( 'params/params_littersom_lpj.dat', 'klitt_bg10' ) / ndayyear
+    params_littersom%klitt_bg10 = getparreal( 'params/params_littersom_lpj.dat', 'klitt_bg10' ) / ndayyear
 
     ! exudates decay rate [1/d]
-    kexu10 = getparreal( 'params/params_littersom_lpj.dat', 'kexu10' ) / ndayyear
+    params_littersom%kexu10 = getparreal( 'params/params_littersom_lpj.dat', 'kexu10' ) / ndayyear
 
     ! fast soil pool decay rate [1/d]
-    ksoil_fs10 = getparreal( 'params/params_littersom_lpj.dat', 'ksoil_fs10' ) / ndayyear
+    params_littersom%ksoil_fs10 = getparreal( 'params/params_littersom_lpj.dat', 'ksoil_fs10' ) / ndayyear
 
     ! slow soil pool decay rate [1/d]
-    ksoil_sl10 = getparreal( 'params/params_littersom_lpj.dat', 'ksoil_sl10' ) / ndayyear
+    params_littersom%ksoil_sl10 = getparreal( 'params/params_littersom_lpj.dat', 'ksoil_sl10' ) / ndayyear
 
     ! factor for "Manzoni Equation" (XPXXX) [1]
-    ntoc_crit1 = getparreal( 'params/params_littersom_lpj.dat', 'ntoc_crit1' ) 
+    params_littersom%ntoc_crit1 = getparreal( 'params/params_littersom_lpj.dat', 'ntoc_crit1' ) 
  
     ! exponent for "Manzoni Equation" (XPXXX) [1]
-    ntoc_crit2 = getparreal( 'params/params_littersom_lpj.dat', 'ntoc_crit2' ) 
+    params_littersom%ntoc_crit2 = getparreal( 'params/params_littersom_lpj.dat', 'ntoc_crit2' ) 
  
     ! C:N ratio of microbial biomass [1]
-    cton_microb = getparreal( 'params/params_littersom_lpj.dat', 'cton_microb' ) 
+    params_littersom%cton_microb = getparreal( 'params/params_littersom_lpj.dat', 'cton_microb' ) 
+ 
+    ! C:N ratio of SOM - xxx try: abandon this and use cton_microb instead
+    params_littersom%cton_soil = getparreal( 'params/params_littersom_lpj.dat', 'cton_soil' ) 
  
     ! fraction of litter input to fast soil pool [1]
-    fastfrac = getparreal( 'params/params_littersom_lpj.dat', 'fastfrac' ) 
+    params_littersom%fastfrac = getparreal( 'params/params_littersom_lpj.dat', 'fastfrac' ) 
 
   end subroutine getpar_modl_littersom
 
 
-  subroutine initio_littersom( )
+  subroutine initglobal_littersom()
+    !////////////////////////////////////////////////////////////////
+    !  Initialisation of all pools on all gridcells at the beginning
+    !  of the simulation.
+    !----------------------------------------------------------------
+    psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))  
+    psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))  
+
+  end subroutine initglobal_littersom
+
+
+  subroutine initdaily_littersom()
+    !////////////////////////////////////////////////////////////////
+    ! Initialises all daily variables with zero.
+    !----------------------------------------------------------------
+    drhet(:)  = carbon(0.0)
+    drsoil(:) = carbon(0.0)
+
+  end subroutine initdaily_littersom
+
+
+  subroutine initio_littersom()
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_params_siml, only: runname
+    use md_params_siml, only: runname, loutlittersom
 
     ! local variables
     character(len=256) :: prefix
@@ -671,69 +697,65 @@ contains
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------
+    if (loutlittersom) then
 
-    ! NET N MINERALISATION
-    filnam=trim(prefix)//'.d.netmin.out'
-    open(106,file=filnam,err=999,status='unknown')
+      ! NET N MINERALISATION
+      filnam=trim(prefix)//'.d.netmin.out'
+      open(106,file=filnam,err=999,status='unknown')
 
-    ! BIOLOGICAL NITROGEN FIXATION OF FREE-LIVING  ORGANISMS
-    filnam=trim(prefix)//'.d.nfixfree.out'
-    open(108,file=filnam,err=999,status='unknown')
+      ! BIOLOGICAL NITROGEN FIXATION OF FREE-LIVING  ORGANISMS
+      filnam=trim(prefix)//'.d.nfixfree.out'
+      open(108,file=filnam,err=999,status='unknown')
 
-    ! NET LITTER N MINERALISATION
-    filnam=trim(prefix)//'.d.netmin_litt.out'
-    open(116,file=filnam,err=999,status='unknown')
+      ! NET LITTER N MINERALISATION
+      filnam=trim(prefix)//'.d.netmin_litt.out'
+      open(116,file=filnam,err=999,status='unknown')
 
-    ! NET SOIL N MINERALISATION
-    filnam=trim(prefix)//'.d.netmin_soil.out'
-    open(117,file=filnam,err=999,status='unknown')
+      ! NET SOIL N MINERALISATION
+      filnam=trim(prefix)//'.d.netmin_soil.out'
+      open(117,file=filnam,err=999,status='unknown')
 
+      !----------------------------------------------------------------
+      ! ANNUAL OUTPUT
+      !----------------------------------------------------------------
+      ! LITTER C
+      filnam=trim(prefix)//'.a.clitt.out'
+      open(301,file=filnam,err=999,status='unknown')
 
-    !----------------------------------------------------------------
-    ! MONTHLY OUTPUT
-    !----------------------------------------------------------------
+      ! SOIL C
+      filnam=trim(prefix)//'.a.csoil.out'
+      open(302,file=filnam,err=999,status='unknown')
 
+      ! N REQUIRED FOR LITTER -> SOIL TRANSFER
+      filnam=trim(prefix)//'.a.nreq.out'
+      open(304,file=filnam,err=999,status='unknown')
 
-    !----------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    !----------------------------------------------------------------
+      ! C LITTER -> SOIL TRANSFER
+      filnam=trim(prefix)//'.a.clit2soil.out'
+      open(305,file=filnam,err=999,status='unknown')
 
-    ! LITTER C
-    filnam=trim(prefix)//'.a.clitt.out'
-    open(301,file=filnam,err=999,status='unknown')
+      ! N LITTER -> SOIL TRANSFER
+      filnam=trim(prefix)//'.a.nlit2soil.out'
+      open(306,file=filnam,err=999,status='unknown')
 
-    ! SOIL C
-    filnam=trim(prefix)//'.a.csoil.out'
-    open(302,file=filnam,err=999,status='unknown')
+      ! C MINERALISATION FROM SOIL DECOMPOSITION
+      filnam=trim(prefix)//'.a.cdsoil.out'
+      open(313,file=filnam,err=999,status='unknown')
 
-    ! N REQUIRED FOR LITTER -> SOIL TRANSFER
-    filnam=trim(prefix)//'.a.nreq.out'
-    open(304,file=filnam,err=999,status='unknown')
+      ! N MINERALISATION FROM SOIL DECOMPOSITION
+      filnam=trim(prefix)//'.a.ndsoil.out'
+      open(314,file=filnam,err=999,status='unknown')
 
-    ! C LITTER -> SOIL TRANSFER
-    filnam=trim(prefix)//'.a.clit2soil.out'
-    open(305,file=filnam,err=999,status='unknown')
+      ! N IMMOBILISATION FROM LITTER DECOMPOSITION
+      filnam=trim(prefix)//'.a.nimmo.out'
+      open(315,file=filnam,err=999,status='unknown')
 
-    ! N LITTER -> SOIL TRANSFER
-    filnam=trim(prefix)//'.a.nlit2soil.out'
-    open(306,file=filnam,err=999,status='unknown')
-
-    ! C MINERALISATION FROM SOIL DECOMPOSITION
-    filnam=trim(prefix)//'.a.cdsoil.out'
-    open(313,file=filnam,err=999,status='unknown')
-
-    ! N MINERALISATION FROM SOIL DECOMPOSITION
-    filnam=trim(prefix)//'.a.ndsoil.out'
-    open(314,file=filnam,err=999,status='unknown')
-
-    ! N IMMOBILISATION FROM LITTER DECOMPOSITION
-    filnam=trim(prefix)//'.a.nimmo.out'
-    open(315,file=filnam,err=999,status='unknown')
+    end if
 
     return
 
-  888  stop 'INITIO_littersom: error opening output files'
-  999  stop 'INITIO: error opening output files'
+    888  stop 'INITIO_littersom: error opening output files'
+    999  stop 'INITIO: error opening output files'
 
   end subroutine initio_littersom
 
@@ -742,22 +764,30 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises littersomance-specific output variables
     !----------------------------------------------------------------
+    use md_params_siml, only: init, loutlittersom
 
-    ! xxx remove their day-dimension
-    outaClitt(:,:)         = 0.0
-    outaCsoil(:,:)         = 0.0
-    outanreq(:,:)          = 0.0
-    outaClit2soil(:,:)     = 0.0
-    outaNlit2soil(:,:)     = 0.0
-    outaNdsoil(:,:)        = 0.0
-    outaCdsoil(:,:)        = 0.0
-    outaNimmo(:,:)         = 0.0
+    if (loutlittersom) then
+  
+      if (init) allocate( outdnetmin(nlu,ndayyear,maxgrid)      )
+      if (init) allocate( outdnetmin_soil(nlu,ndayyear,maxgrid) )
+      if (init) allocate( outdnetmin_litt(nlu,ndayyear,maxgrid) )
+      if (init) allocate( outdnfixfree(nlu,ndayyear,maxgrid)    )
+
+      outdnetmin(:,:,:)      = 0.0
+      outdnetmin_soil(:,:,:) = 0.0
+      outdnetmin_litt(:,:,:) = 0.0
+      outdnfixfree(:,:,:)    = 0.0
+
+      outaClitt(:,:)         = 0.0
+      outaCsoil(:,:)         = 0.0
+      outanreq(:,:)          = 0.0
+      outaClit2soil(:,:)     = 0.0
+      outaNlit2soil(:,:)     = 0.0
+      outaNdsoil(:,:)        = 0.0
+      outaCdsoil(:,:)        = 0.0
+      outaNimmo(:,:)         = 0.0
     
-    outdnetmin(:,:,:)      = 0.0
-    outdnetmin_soil(:,:,:) = 0.0
-    outdnetmin_litt(:,:,:) = 0.0
-    outdnfixfree(:,:,:)    = 0.0
-
+    end if
 
   end subroutine initoutput_littersom
 
@@ -766,13 +796,16 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use md_vars_core, only: plitt_af, plitt_as, plitt_bg, psoil_fs, psoil_sl
+    use md_params_siml, only: loutlittersom
+    use md_plant, only: plitt_af, plitt_as, plitt_bg
 
     ! arguments
     integer, intent(in) :: jpngr
 
-    outaClitt(:,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
-    outaCsoil(:,jpngr) = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
+    if (loutlittersom) then
+      outaClitt(:,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
+      outaCsoil(:,jpngr) = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
+    end if
 
   end subroutine getout_annual_littersom
 
@@ -783,7 +816,7 @@ contains
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, nmonth
     use md_params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
-      daily_out_endyr, outyear
+      daily_out_endyr, outyear, loutlittersom
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -796,7 +829,6 @@ contains
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii: think of something ...'
     jpngr = 1
-
 
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
@@ -811,10 +843,10 @@ contains
         if (nlu>1) stop 'writeout_ascii_littersom: write out lu-area weighted sum'
 
         ! xxx lu-area weighted sum if nlu>0
-        write(106,999) itime, sum(outdnetmin(:,day,jpngr))
-        write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
-        write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))
-        write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
+        if (loutlittersom) write(106,999) itime, sum(outdnetmin(:,day,jpngr))
+        if (loutlittersom) write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
+        if (loutlittersom) write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))
+        if (loutlittersom) write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
 
       end do
     end if
@@ -826,14 +858,14 @@ contains
     !-------------------------------------------------------------------------
     itime = real(year) + real(firstyeartrend) - real(spinupyears)
 
-    write(301,999) itime, sum(outaClitt(:,jpngr))
-    write(302,999) itime, sum(outaCsoil(:,jpngr))
-    write(304,999) itime, sum(outanreq(:,jpngr))
-    write(305,999) itime, sum(outaClit2soil(:,jpngr))
-    write(306,999) itime, sum(outaNlit2soil(:,jpngr))
-    write(313,999) itime, sum(outaCdsoil(:,jpngr))
-    write(314,999) itime, sum(outaNdsoil(:,jpngr))
-    write(315,999) itime, sum(outaNimmo(:,jpngr))
+    if (loutlittersom) write(301,999) itime, sum(outaClitt(:,jpngr))
+    if (loutlittersom) write(302,999) itime, sum(outaCsoil(:,jpngr))
+    if (loutlittersom) write(304,999) itime, sum(outanreq(:,jpngr))
+    if (loutlittersom) write(305,999) itime, sum(outaClit2soil(:,jpngr))
+    if (loutlittersom) write(306,999) itime, sum(outaNlit2soil(:,jpngr))
+    if (loutlittersom) write(313,999) itime, sum(outaCdsoil(:,jpngr))
+    if (loutlittersom) write(314,999) itime, sum(outaNdsoil(:,jpngr))
+    if (loutlittersom) write(315,999) itime, sum(outaNimmo(:,jpngr))
 
     return
     

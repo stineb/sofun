@@ -3,37 +3,42 @@ module md_ntransform
   ! INORGANIC NITROGEN DYNAMICS MODULE AFTER XURI & PRENTICE 2008
   ! Contains the "main" subroutine 'ntransform' and all necessary 
   ! subroutines for handling input/output. 
-  ! Every module that implements 'ntransform' must contain this list 
-  ! of subroutines (names that way).
-  !   - getpar_modl_ntransform
-  !   - initio_ntransform
-  !   - initoutput_ntransform
-  !   - getout_daily_ntransform
-  !   - getout_monthly_ntransform
-  !   - writeout_ascii_ntransform
-  !   - ntransform
-  ! Required module-independent model state variables (necessarily 
-  ! updated by 'ntransform') are:
-  !   - inorganic N pool, sum of NO3 and NH4 ('pninorg')
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
+  use md_classdefs
   use md_params_core, only: nlu, maxgrid, ndayyear
-  use md_params_siml, only: loutntransform
 
   implicit none
 
-  ! NTRANSFORM PARAMETERS
-  ! read from file, therefore not declared as parameter
-  real :: MAXNITR                           ! maximum nitrification rate
-  real :: NON                               ! maximum NO from nitrification (day-1)
-  real :: N2ON                              ! maximum N2O from nitrification (day-1)
-  real :: KN                                ! Michaelis-Menten coefficient [gN/m2]. Use this value if soil represents top 100 cm 
-  real :: KDOC                              ! Michaelis-Menten coefficient [gC/m2]. Use this value if soil represents top 100 cm 
-  real :: DOCMAX                            ! DOCMAX
-  real :: DNITR2N2O                         ! Fraction of denitrification lost as N2O. Range of possible values: 0.002 - 0.047 (Xu-Ri and Prentice, 2008)
+  private 
+  public pninorg, ntransform, getpar_modl_ntransform, init_global_ntransform, initdaily_ntransform, &
+    initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform
 
-  ! MODULE-SPECIFIC VARIABLES
+  !----------------------------------------------------------------
+  ! Public, module-specific state variables
+  !----------------------------------------------------------------
+  ! pools
+  type( nitrogen ), dimension(nlu,maxgrid) :: pninorg         ! total inorganic N pool (sum of NO3 and NH4) [gC/m2]
+
+  !-----------------------------------------------------------------------
+  ! Uncertain (unknown) parameters. Runtime read-in
+  !-----------------------------------------------------------------------
+  type params_ntransform_type
+    real :: maxnitr                           ! maximum nitrification rate
+    real :: non                               ! maximum NO from nitrification (day-1)
+    real :: n2on                              ! maximum N2O from nitrification (day-1)
+    real :: kn                                ! Michaelis-Menten coefficient [gN/m2]. Use this value if soil represents top 100 cm 
+    real :: kdoc                              ! Michaelis-Menten coefficient [gC/m2]. Use this value if soil represents top 100 cm 
+    real :: docmax                            ! docmax
+    real :: dnitr2n2o                         ! Fraction of denitrification lost as N2O. Range of possible values: 0.002 - 0.047 (Xu-Ri and Prentice, 2008)
+  end type params_ntransform_type
+
+  type( params_ntransform_type ) :: params_ntransform
+
+  !----------------------------------------------------------------
+  ! Module-internal (private) variables
+  !----------------------------------------------------------------
   real, dimension(nlu)  :: dn2o             ! soil N2O emissions [gN/m2/d]
   real, dimension(nlu)  :: dn2              ! soil N2 emissions [gN/m2/d]
   real, dimension(nlu)  :: dno              ! soil NO emissions [gN/m2/d]
@@ -50,7 +55,9 @@ module md_ntransform
   real, dimension(nlu,maxgrid), save :: no2              ! NO2 [gN/m2]
   real, dimension(nlu,maxgrid), save :: fno3             ! fraction: no3/(no3+nh4)
 
-  ! OUTPUT VARIABLES
+  !----------------------------------------------------------------
+  ! Module-specific output variables
+  !----------------------------------------------------------------
   ! daily
   real, allocatable, dimension(:,:,:) :: outdnloss     ! daily total N loss (gaseous+leacing) (gN/m2/d)
   real, allocatable, dimension(:,:,:) :: outddenitr    ! daily amount of N denitrified (gN/m2/d)
@@ -74,10 +81,13 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
+    use md_params_core, only: pft_start, pft_end
     use md_rates
-    use md_vars_core, only: pninorg, psoilphys, soilphys, ddoc
+    use md_waterbal, only: soilphys, psoilphys
+    use md_soiltemp, only: dtemp_soil
+    use md_plant, only: pexud
 
-    ! XXX beni: this is wrong: dw1 is only plant available water. 
+    ! XXX try: this is wrong: dw1 is only plant available water. 
     ! should be water-filled pore space = ( (porosity - ice) - (total fluid water volume) ) / dz
 
     ! arguments
@@ -88,25 +98,25 @@ contains
     real, intent(in)    :: aprec                           ! annual total precipitation [mm/d]
     
     ! local variables
-    integer       :: lu                                             ! gridcell unit counter variable
+    integer    :: lu                                             ! gridcell unit counter variable
     
-    real, save    :: ph_soil
-    real, save    :: nh3max
+    real, save :: ph_soil
+    real, save :: nh3max
     
-    real          :: dnmax                                          ! labile carbon availability modifier
-    real          :: ftemp_ninorg                                   ! temperature modifier
+    real       :: dnmax                                          ! labile carbon availability modifier
+    real       :: ftemp_ninorg                                   ! temperature modifier
     
-    real          :: no3_inc, n2o_inc, no_inc, no2_inc, n2_inc      ! temporary variables
-    real          :: tmp                                            ! temporary variable
+    real       :: no3_inc, n2o_inc, no_inc, no2_inc, n2_inc      ! temporary variables
+    real       :: tmp                                            ! temporary variable
     
-    real          :: nh4      ! ammonium [gN/m2]
-    real          :: no3      ! nitrate [gN/m2]
+    real       :: nh4      ! ammonium [gN/m2]
+    real       :: no3      ! nitrate [gN/m2]
     
-    real          :: nh4_w, no3_w, no2_w                            ! anaerobic _pools
-    real          :: nh4_d, no3_d, no2_d                            ! aerobic _pools
-    real          :: doc_w, no, n2o, n2                             ! anaerobic _pools
+    real       :: nh4_w, no3_w, no2_w                            ! anaerobic _pools
+    real       :: nh4_d, no3_d, no2_d                            ! aerobic _pools
+    real       :: doc_w, no, n2o, n2                             ! anaerobic _pools
     
-    real          :: doc_d                                          ! aerobic _pools
+    real       :: doc_d                                          ! aerobic _pools
 
     !///////////////////////////////////////////////////////////////////////
     ! INITIALIZATION 
@@ -158,7 +168,7 @@ contains
       ! must rather be wtot_up which includes water below permanent wilting point (see waterbalance.F).
       !------------------------------------------------------------------
       ! reference temperature: 25°C
-      ftemp_ninorg = min( 1.0, ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor", ref_temp=25.0 ) )   
+      ftemp_ninorg = min( 1.0, ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=25.0 ) )   
 
 
       !///////////////////////////////////////////////////////////////////////
@@ -193,7 +203,7 @@ contains
       no3_w = soilphys(lu)%wscal / 3.3 * no3
       no2_w = soilphys(lu)%wscal / 3.3 * no2(lu,jpngr)
 
-      doc_w = ddoc(lu) * soilphys(lu)%wscal / 3.3
+      doc_w = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * soilphys(lu)%wscal / 3.3
       
       ! write(0,*) 'mo, dm, ddoc(lu) ', mo, dm, ddoc(lu)
 
@@ -203,18 +213,18 @@ contains
       no3_d = ( 1.0 - soilphys(lu)%wscal / 3.3 ) * no3
       no2_d = ( 1.0 - soilphys(lu)%wscal / 3.3 ) * no2(lu,jpngr)
 
-      doc_d = ddoc(lu) * ( 1.0 - soilphys(lu)%wscal / 3.3 )
+      doc_d = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * ( 1.0 - soilphys(lu)%wscal / 3.3 )
 
     
       !///////////////////////////////////////////////////////////////////////
       ! NITRIFICATION in aerobic microsites (ntransform.cpp:123)
       !------------------------------------------------------------------
-      ftemp_ninorg = max( min( (((70.0-psoilphys(lu,jpngr)%temp)/(70.0-38.0))**12.0) * exp(12.0*(psoilphys(lu,jpngr)%temp-38.0)/(70.0-38.0)), 1.0), 0.0)
+      ftemp_ninorg = max( min( (((70.0-dtemp_soil(lu,jpngr))/(70.0-38.0))**12.0) * exp(12.0*(dtemp_soil(lu,jpngr)-38.0)/(70.0-38.0)), 1.0), 0.0)
 
       
       ! gross nitrification rate (Eq.1, Tab.8, XP08)
       !------------------------------------------------------------------
-      no3_inc    = MAXNITR * ftemp_ninorg * nh4_d
+      no3_inc    = params_ntransform%maxnitr * ftemp_ninorg * nh4_d
       dnitr(lu)  = no3_inc
       nh4_d      = nh4_d - no3_inc   
       dnloss(lu) = dnloss(lu) + no3_inc
@@ -222,7 +232,7 @@ contains
       
       ! NO from nitrification (Eq.3, Tab.8, XP08)
       !------------------------------------------------------------------
-      no_inc         = NON * no3_inc
+      no_inc         = params_ntransform%non * no3_inc
       no3_inc        = no3_inc - no_inc
       
       no_d(lu,jpngr) = no_d(lu,jpngr) + no_inc
@@ -230,7 +240,7 @@ contains
       
       ! N2O from nitrification (Eq.4, Tab.8, XP08)
       !------------------------------------------------------------------
-      n2o_inc         = N2ON * no3_inc
+      n2o_inc         = params_ntransform%n2on * no3_inc
       no3_inc         = no3_inc - n2o_inc
       
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr) + n2o_inc
@@ -242,19 +252,19 @@ contains
       ! DENITRIFICATION (ntransform.cpp:177) in anaerobic microsites
       !------------------------------------------------------------------
       ! reference temperature: 22°C
-      ftemp_ninorg = ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor", ref_temp=22.0 )
+      ftemp_ninorg = ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=22.0 )
 
       
       ! Effect of labile carbon availability on denitrification (Eq.2, Tab.9, XP08)
       ! doc is last year's doc because it is only available at the end of the month
       ! while this SR is calculated daily, even when _dailymode==0.
       !------------------------------------------------------------------
-      dnmax = DOCMAX * doc_w / ( KDOC + doc_w )                     ! dnmax < 1 for all doc_w 
+      dnmax = params_ntransform%docmax * doc_w / ( params_ntransform%kdoc + doc_w )                     ! dnmax < 1 for all doc_w 
 
       
       ! Denitrification ratio, NO3->NO2 (Eq.3, Tab.9, XP08)
       !------------------------------------------------------------------
-      no2_inc     = min( dnmax * ftemp_ninorg * no3_w / ( KN + no3_w ) * 1000.0, no3_w )
+      no2_inc     = min( dnmax * ftemp_ninorg * no3_w / ( params_ntransform%kn + no3_w ) * 1000.0, no3_w )
       if (no2_inc>no3_w) stop 'no2_inc > no3_w'
       
       no3_w       = no3_w - no2_inc
@@ -265,7 +275,7 @@ contains
       
       ! Transformation NO2->N2 (Eq.4., Tab.9, XP08)
       !------------------------------------------------------------------
-      n2_inc = min( dnmax * ftemp_ninorg * no2_w / ( KN + no2_w ) * 1000.0, no2_w )
+      n2_inc = min( dnmax * ftemp_ninorg * no2_w / ( params_ntransform%kn + no2_w ) * 1000.0, no2_w )
       if (n2_inc>no2_w) stop 'n2_inc > no2_w'
 
       no2_w = no2_w - n2_inc
@@ -275,9 +285,9 @@ contains
       !------------------------------------------------------------------
       ! n2o_inc = 0.018d0*ftemp_ninorg*(1.01d0-0.21d0*soilphys(lu)%wscal)*n2_inc  !Colin says 0.018 was used here. Code I got had 0.015
       ! Factor reduced from 1.8% to 1.2% to get ~6.5 TgN/yr N2O emissions
-      ! n2o_inc = DNITR2N2O*ftemp_ninorg*(1.01-0.21*soilphys(lu)%wscal)*n2_inc
+      ! n2o_inc = dnitr2n2o*ftemp_ninorg*(1.01-0.21*soilphys(lu)%wscal)*n2_inc
       ! XXX try: Changed this to from 0.21 to 1.0 in order to get plausible results
-      n2o_inc = DNITR2N2O * ftemp_ninorg * ( 1.01 - 0.8 * soilphys(lu)%wscal ) * n2_inc
+      n2o_inc = params_ntransform%dnitr2n2o * ftemp_ninorg * ( 1.01 - 0.8 * soilphys(lu)%wscal ) * n2_inc
       n2_inc  = n2_inc - n2o_inc
       
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr) + n2o_inc
@@ -331,7 +341,7 @@ contains
       ! Diffusion of NO, N2O and N2 from the soil (ntransform.cpp:281)
       !------------------------------------------------------------------
       ! reference temperature: 25°C. Corresponds to Eq.1, Tab.10, Xu-Ri & Prentice, 2008
-      ftemp_ninorg = min( 1.0, ftemp( psoilphys(lu,jpngr)%temp, "lloyd_and_taylor", ref_temp=25.0 ))
+      ftemp_ninorg = min( 1.0, ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=25.0 ))
 
       ! Nitrification _fluxes
       !------------------------------------------------------------------
@@ -376,34 +386,38 @@ contains
     use md_sofunutils, only: getparreal
 
     ! maximum nitrification rate
-    MAXNITR = getparreal( 'params/params_ntransform_xuri.dat', 'MAXNITR' )
+    params_ntransform%maxnitr = getparreal( 'params/params_ntransform_xuri.dat', 'maxnitr' )
 
     ! maximum NO from nitrification (day-1)
-    NON = getparreal( 'params/params_ntransform_xuri.dat', 'NON' )
+    params_ntransform%non = getparreal( 'params/params_ntransform_xuri.dat', 'non' )
 
     ! maximum N2O from nitrification (day-1)
-    N2ON = getparreal( 'params/params_ntransform_xuri.dat', 'N2ON' )
+    params_ntransform%n2on = getparreal( 'params/params_ntransform_xuri.dat', 'n2on' )
 
     ! Michaelis-Menten coefficient [gN/m2]. Use this value if soil represents top 100 cm 
-    KN = getparreal( 'params/params_ntransform_xuri.dat', 'KN' )
+    params_ntransform%kn = getparreal( 'params/params_ntransform_xuri.dat', 'kn' )
 
     ! Michaelis-Menten coefficient [gC/m2]. Use this value if soil represents top 100 cm 
-    KDOC = getparreal( 'params/params_ntransform_xuri.dat', 'KDOC' )
+    params_ntransform%kdoc = getparreal( 'params/params_ntransform_xuri.dat', 'kdoc' )
 
-    ! DOCMAX
-    DOCMAX = getparreal( 'params/params_ntransform_xuri.dat', 'DOCMAX' )
+    ! docmax
+    params_ntransform%docmax = getparreal( 'params/params_ntransform_xuri.dat', 'docmax' )
 
     ! Fraction of denitrification lost as N2O. Range of possible values: 0.002 - 0.047 (Xu-Ri and Prentice, 2008)
-    DNITR2N2O = getparreal( 'params/params_ntransform_xuri.dat', 'DNITR2N2O' )
+    params_ntransform%dnitr2n2o = getparreal( 'params/params_ntransform_xuri.dat', 'dnitr2n2o' )
 
   end subroutine getpar_modl_ntransform
 
   
   subroutine init_global_ntransform()
     !////////////////////////////////////////////////////////////////
-    ! Subroutine initialises pool variables, specific for this module
+    ! Subroutine initialises pool variables
     !----------------------------------------------------------------
-    no2(:,:)      = 1.0  ! xxx try
+    ! public variables
+    pninorg(:,:)  = nitrogen(10.0)  ! start from non-zero to allow growth
+
+    ! module-specific variables
+    no2(:,:)      = 0.0
     fno3(:,:)     = 0.0
     no_w(:,:)     = 0.0
     no_d(:,:)     = 0.0
@@ -414,11 +428,27 @@ contains
   end subroutine init_global_ntransform
 
 
+  subroutine initdaily_ntransform()
+    !////////////////////////////////////////////////////////////////
+    ! Initialises all daily variables with zero.
+    !----------------------------------------------------------------
+    dn2o   (:) = 0.0
+    dn2    (:) = 0.0
+    dno    (:) = 0.0
+    dnloss (:) = 0.0
+    ddenitr(:) = 0.0
+    dnitr  (:) = 0.0
+    dnvol  (:) = 0.0
+    dnleach(:) = 0.0
+
+  end subroutine initdaily_ntransform
+
+
   subroutine initio_ntransform()
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_params_siml, only: runname
+    use md_params_siml, only: runname, loutntransform
 
     ! local variables
     character(len=256) :: prefix
@@ -479,15 +509,16 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
+    use md_params_siml, only: init, loutntransform
 
     if (loutntransform) then
 
-      allocate( outdnloss ( nlu,ndayyear,maxgrid ) ) ! daily total N loss (gaseous+leacing) (gN/m2/d)
-      allocate( outddenitr( nlu,ndayyear,maxgrid ) ) ! daily amount of N denitrified (gN/m2/d)
-      allocate( outdnitr  ( nlu,ndayyear,maxgrid ) ) ! daily amount of N nitrified (gN/m2/d)
-      allocate( outdnvol  ( nlu,ndayyear,maxgrid ) ) ! daily amount of N volatilised (gN/m2/d)
-      allocate( outdnleach( nlu,ndayyear,maxgrid ) ) ! daily amount of N leached (gN/m2/d)
-      allocate( outdn2o   ( nlu,ndayyear,maxgrid ) ) ! daily N2O emitted (gN/m2/d)
+      if (init) allocate( outdnloss ( nlu,ndayyear,maxgrid ) ) ! daily total N loss (gaseous+leacing) (gN/m2/d)
+      if (init) allocate( outddenitr( nlu,ndayyear,maxgrid ) ) ! daily amount of N denitrified (gN/m2/d)
+      if (init) allocate( outdnitr  ( nlu,ndayyear,maxgrid ) ) ! daily amount of N nitrified (gN/m2/d)
+      if (init) allocate( outdnvol  ( nlu,ndayyear,maxgrid ) ) ! daily amount of N volatilised (gN/m2/d)
+      if (init) allocate( outdnleach( nlu,ndayyear,maxgrid ) ) ! daily amount of N leached (gN/m2/d)
+      if (init) allocate( outdn2o   ( nlu,ndayyear,maxgrid ) ) ! daily N2O emitted (gN/m2/d)
 
       outdnloss(:,:,:)  = 0.0
       outddenitr(:,:,:) = 0.0
@@ -508,6 +539,8 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
+    use md_params_siml, only: loutntransform
+
     ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy    
@@ -536,17 +569,16 @@ contains
   end subroutine getout_daily_ntransform
 
 
-  subroutine writeout_ascii_ntransform( year, spinup )
+  subroutine writeout_ascii_ntransform( year )
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_params_core, only: npft
     use md_params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
-      daily_out_endyr, outyear
+      daily_out_endyr, outyear, spinup, loutntransform
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
-    logical, intent(in) :: spinup     ! true during spinup years
 
     ! local variables
     real :: itime
