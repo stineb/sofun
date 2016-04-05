@@ -48,7 +48,7 @@ module md_allocation
 
   type( paramstype_alloc ) :: params_alloc
 
-  real, parameter :: frac_shoot = 0.5
+  real, parameter :: r_shoot_root = 1.0
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, PRIVATE VARIABLES
@@ -101,6 +101,7 @@ contains
     real    :: relerr
     real    :: nleaf0
     real    :: lai0, lai1
+    real    :: tmp
     integer, parameter :: nmax = 100
 
     type(outtype_zeroin)  :: out_zeroin
@@ -160,8 +161,11 @@ contains
           !-------------------------------------------------------------------
           ! LEAF ALLOCATION
           !-------------------------------------------------------------------
-          ! allocation to leaves is prescribed
-          dcleaf(pft) = max_dc * frac_shoot
+          ! maintain constant shoot:root ratio. 'tmp' is provisional leaf C allocation
+          tmp = ( r_shoot_root * ( proot(pft,jpngr)%c%c12 + max_dc ) - pleaf(pft,jpngr)%c%c12 ) / ( r_shoot_root + 1.0 )
+          if (tmp>max_dc) tmp = max_dc
+          if (tmp<0.0)    tmp = 0.0
+          dcleaf(pft) = tmp
 
           ! print*, 'allocation: A plabl(pft,jpngr)    ', plabl(pft,jpngr)
           ! print*, 'allocation: A pleaf(pft,jpngr)    ', pleaf(pft,jpngr)
@@ -199,6 +203,13 @@ contains
             plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
             pft, dcroot(pft), dnroot(pft) &
             )
+
+          ! print*,' dcleaf      ', dcleaf(pft)
+          ! print*,' plabl       ', plabl(pft,jpngr)
+          ! print*,' pleaf       ', pleaf(pft,jpngr)%c%c12
+          ! print*,' proot       ', proot(pft,jpngr)%c%c12
+          ! print*,' pleaf:proot ', pleaf(pft,jpngr)%c%c12 / proot(pft,jpngr)%c%c12
+          ! stop 
 
           ! print*, 'allocation: C plabl(pft,jpngr)    ', plabl(pft,jpngr)
           ! print*, 'allocation: C proot(pft,jpngr)    ', proot(pft,jpngr)
