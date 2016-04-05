@@ -33,14 +33,26 @@ OBJS=$(SOURCES:.f90=.o)
 MODOBJS=$(MODS:.f90=.o)
 DEBUGOBJS=$(SOURCES:.f90=.do)
 DEBUGMODOBJS=$(MODS:.f90=.do)
+
 SPLASH_OBJS=$(SPLASH_SOURCES:.f90=.o)
 SPLASH_MODOBJS=$(SPLASH_MODS:.f90=.o)
+DBGSPLASH_OBJS=$(SPLASH_SOURCES:.f90=.do)
+DBGSPLASH_MODOBJS=$(SPLASH_MODS:.f90=.do)
+
 PMODEL_OBJS=$(PMODEL_SOURCES:.f90=.o)
 PMODEL_MODOBJS=$(PMODEL_MODS:.f90=.o)
+DBGPMODEL_OBJS=$(PMODEL_SOURCES:.f90=.do)
+DBGPMODEL_MODOBJS=$(PMODEL_MODS:.f90=.do)
+
 CMODEL_OBJS=$(CMODEL_SOURCES:.f90=.o)
 CMODEL_MODOBJS=$(CMODEL_MODS:.f90=.o)
+DBGCMODEL_OBJS=$(CMODEL_SOURCES:.f90=.do)
+DBGCMODEL_MODOBJS=$(CMODEL_MODS:.f90=.do)
+
 CNMODEL_OBJS=$(CNMODEL_SOURCES:.f90=.o)
 CNMODEL_MODOBJS=$(CNMODEL_MODS:.f90=.o)
+DBGCNMODEL_OBJS=$(CNMODEL_SOURCES:.f90=.do)
+DBGCNMODEL_MODOBJS=$(CNMODEL_MODS:.f90=.do)
 
 # Archive file names
 ARCHIVE=sofun.a
@@ -72,12 +84,26 @@ splash: $(SPLASH_MODOBJS) $(SPLASH_OBJS)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(SPLASH_MODOBJS) $(SPLASH_OBJS) 
 
+# reduced model setup: only SPLASH
+dbgsplash: $(DBGSPLASH_MODOBJS) $(DBGSPLASH_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(DBGSPLASH_MODOBJS) $(DBGSPLASH_OBJS) 
+
 # reduced model setup: only SPLASH and PMODEL
 pmodel: $(PMODEL_MODOBJS) $(PMODEL_OBJS)
 	# $(MAKE) -C cdfcode
 	-rm $(ARCHIVE)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(PMODEL_MODOBJS) $(PMODEL_OBJS) 
+
+# reduced model setup: only SPLASH and PMODEL
+dbgpmodel: $(DBGPMODEL_MODOBJS) $DBG(PMODEL_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(DBGPMODEL_MODOBJS) $DBG(PMODEL_OBJS) 
 
 # reduced model setup: C-model only
 cmodel: $(CMODEL_MODOBJS) $(CMODEL_OBJS)
@@ -86,12 +112,26 @@ cmodel: $(CMODEL_MODOBJS) $(CMODEL_OBJS)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(CMODEL_MODOBJS) $(CMODEL_OBJS) 
 
+# reduced model setup: C-model only
+dbgcmodel: $(DGBCMODEL_MODOBJS) $(DGBCMODEL_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(DGBCMODEL_MODOBJS) $(DGBCMODEL_OBJS) 
+
 # full model setup: CN-model
 cnmodel: $(CNMODEL_MODOBJS) $(CNMODEL_OBJS)
 	# $(MAKE) -C cdfcode
 	-rm $(ARCHIVE)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(CNMODEL_MODOBJS) $(CNMODEL_OBJS) 
+
+# full model setup: CN-model
+dbgcnmodel: $(DBGCNMODEL_MODOBJS) $(DBGCNMODEL_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(DBGCNMODEL_MODOBJS) $(DBGCNMODEL_OBJS) 
 
 # default rules (.f90 -> .f -> .o/.do)
 # ------------
@@ -109,7 +149,7 @@ $(DEBUGOBJS): %.do: %.f
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
 $(DEBUGMODOBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
 $(SPLASH_MODOBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
@@ -117,11 +157,23 @@ $(SPLASH_MODOBJS): %.o: %.f
 $(SPLASH_OBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
+$(DGBSPLASH_MODOBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+
+$(DGBSPLASH_OBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+
 $(PMODEL_MODOBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
 $(PMODEL_OBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
+$(DBGPMODEL_MODOBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+
+$(DBGPMODEL_OBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
 $(CMODEL_MODOBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
@@ -129,11 +181,23 @@ $(CMODEL_MODOBJS): %.o: %.f
 $(CMODEL_OBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
+$(DGBCMODEL_MODOBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+
+$(DGBCMODEL_OBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+
 $(CNMODEL_MODOBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
 $(CNMODEL_OBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
+$(DBGCNMODEL_MODOBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+
+$(DBGCNMODEL_OBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
 # don't delete the intermediate *.f files
 .SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f) $(CMODEL_SOURCES:.f90=.f) $(CNMODEL_SOURCES:.f90=.f)

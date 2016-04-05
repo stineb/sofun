@@ -274,6 +274,7 @@ subroutine biosphere( &
     !----------------------------------------------------------------
     ! collect annually updated output variables
     !----------------------------------------------------------------
+    call getout_annual_plant( jpngr )
     call getout_annual_littersom( jpngr )
 
     !----------------------------------------------------------------

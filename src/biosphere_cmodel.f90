@@ -29,9 +29,6 @@ subroutine biosphere( &
   use md_allocation, only: allocation_daily
   use md_vegdynamics, only: vegdynamics
   
-  ! xxx debug
-  use md_plant, only: ispresent, canopy
-
   implicit none
 
   ! arguments
@@ -72,7 +69,6 @@ subroutine biosphere( &
     call getpar_modl_waterbal()
     call getpar_modl_gpp()
     call getpar_modl_phenology()
-    ! call getpar_modl_soil()
     ! print*,'... done'
 
     !----------------------------------------------------------------
@@ -81,7 +77,6 @@ subroutine biosphere( &
     ! print*,'initialising variables ...'
     call initglobal_plant()
     call initglobal_waterbal()
-    ! call initglobal_soil()
     ! print*,'... done'
 
     !----------------------------------------------------------------
@@ -92,7 +87,6 @@ subroutine biosphere( &
     call initio_soiltemp()
     call initio_gpp()
     call initio_plant()
-    ! call initio_soil()
     ! print*,'... done'
 
   endif 
@@ -105,7 +99,6 @@ subroutine biosphere( &
   call initoutput_soiltemp()
   call initoutput_gpp()
   call initoutput_plant()
-  ! call initoutput_soil()
   ! print*,'... done'
 
   !----------------------------------------------------------------
@@ -229,12 +222,16 @@ subroutine biosphere( &
         call getout_daily_soiltemp( jpngr, moy, day )
         call getout_daily_gpp( jpngr, moy, day )
         call getout_daily_plant( jpngr, moy, day )
-        ! call getout_daily_soil( jpngr, moy, day )
         ! print*, '... done'
 
       end do
 
     end do
+
+    !----------------------------------------------------------------
+    ! collect annual output
+    !----------------------------------------------------------------
+    call getout_annual_plant( jpngr )
 
     !----------------------------------------------------------------
     ! Write to output
@@ -243,7 +240,6 @@ subroutine biosphere( &
     call writeout_ascii_soiltemp( year )
     call writeout_ascii_gpp( year )
     call writeout_ascii_plant( year )
-    ! call writeout_ascii_soil( year )
 
   end do
 

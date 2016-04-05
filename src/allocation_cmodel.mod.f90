@@ -179,6 +179,8 @@ contains
             lai_ind(pft,jpngr), dnleaf(pft) &
             )
 
+          ! print*, 'doy, pleaf, lai_ind ', doy, pleaf(pft,jpngr)%c%c12, lai_ind(pft,jpngr)
+
           ! print*, 'allocation: B plabl(pft,jpngr)    ', plabl(pft,jpngr)
           ! print*, 'allocation: B pleaf(pft,jpngr)    ', pleaf(pft,jpngr)
           ! stop 
@@ -268,6 +270,20 @@ contains
 
 
         else
+          !-------------------------------------------------------------------  
+          ! Update LAI
+          !-------------------------------------------------------------------  
+          lai_ind(pft,jpngr) = get_lai( pleaf(pft,jpngr)%c%c12, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+
+          !-------------------------------------------------------------------  
+          ! Update leaf traits
+          !-------------------------------------------------------------------  
+          leaftraits(pft) = get_leaftraits( lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+
+          !-------------------------------------------------------------------  
+          ! Update fpc_grid and fapar_ind (not lai_ind)
+          !-------------------------------------------------------------------  
+          canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
 
           dcleaf(pft) = 0.0
           dcroot(pft) = 0.0

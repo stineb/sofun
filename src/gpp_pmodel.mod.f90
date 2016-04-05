@@ -1356,57 +1356,57 @@ contains
       open(101,file=filnam,err=888,status='unknown')
     end if 
 
-    ! ! RD
-    ! if (loutdrd) then
-    !   filnam=trim(prefix)//'.d.rd.out'
-    !   open(135,file=filnam,err=888,status='unknown')
-    ! end if 
+    ! RD
+    if (loutdrd) then
+      filnam=trim(prefix)//'.d.rd.out'
+      open(135,file=filnam,err=888,status='unknown')
+    end if 
 
-    ! ! TRANSPIRATION
-    ! if (loutdtransp) then
-    !   filnam=trim(prefix)//'.d.transp.out'
-    !   open(114,file=filnam,err=888,status='unknown')
-    ! end if
+    ! TRANSPIRATION
+    if (loutdtransp) then
+      filnam=trim(prefix)//'.d.transp.out'
+      open(114,file=filnam,err=888,status='unknown')
+    end if
 
-    ! !----------------------------------------------------------------
-    ! ! MONTHLY OUTPUT
-    ! !----------------------------------------------------------------
-    ! ! GPP
-    ! if (loutdgpp) then     ! monthly and daily output switch are identical
-    !   filnam=trim(prefix)//'.m.gpp.out'
-    !   open(151,file=filnam,err=888,status='unknown')
-    ! end if 
+    !----------------------------------------------------------------
+    ! MONTHLY OUTPUT
+    !----------------------------------------------------------------
+    ! GPP
+    if (loutdgpp) then     ! monthly and daily output switch are identical
+      filnam=trim(prefix)//'.m.gpp.out'
+      open(151,file=filnam,err=888,status='unknown')
+    end if 
 
-    ! ! RD
-    ! if (loutdrd) then     ! monthly and daily output switch are identical
-    !   filnam=trim(prefix)//'.m.rd.out'
-    !   open(152,file=filnam,err=888,status='unknown')
-    ! end if 
+    ! RD
+    if (loutdrd) then     ! monthly and daily output switch are identical
+      filnam=trim(prefix)//'.m.rd.out'
+      open(152,file=filnam,err=888,status='unknown')
+    end if 
 
-    ! ! TRANSP
-    ! if (loutdtransp) then     ! monthly and daily output switch are identical
-    !   filnam=trim(prefix)//'.m.transp.out'
-    !   open(153,file=filnam,err=888,status='unknown')
-    ! end if 
+    ! TRANSP
+    if (loutdtransp) then     ! monthly and daily output switch are identical
+      filnam=trim(prefix)//'.m.transp.out'
+      open(153,file=filnam,err=888,status='unknown')
+    end if 
 
-    ! !----------------------------------------------------------------
-    ! ! ANNUAL OUTPUT
-    ! !----------------------------------------------------------------
-    ! ! GPP 
-    ! filnam=trim(prefix)//'.a.gpp.out'
-    ! open(310,file=filnam,err=888,status='unknown')
+    !----------------------------------------------------------------
+    ! ANNUAL OUTPUT
+    !----------------------------------------------------------------
+    ! GPP 
+    filnam=trim(prefix)//'.a.gpp.out'
+    open(310,file=filnam,err=888,status='unknown')
 
-    ! ! VCMAX (annual maximum) (mol m-2 s-1)
-    ! filnam=trim(prefix)//'.a.vcmax.out'
-    ! open(323,file=filnam,err=888,status='unknown')
+    ! VCMAX (annual maximum) (mol m-2 s-1)
+    filnam=trim(prefix)//'.a.vcmax.out'
+    open(323,file=filnam,err=888,status='unknown')
 
-    ! ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
-    ! filnam=trim(prefix)//'.a.chi.out'
-    ! open(652,file=filnam,err=888,status='unknown')
+    ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
+    filnam=trim(prefix)//'.a.chi.out'
+    open(652,file=filnam,err=888,status='unknown')
 
-    ! ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
-    ! filnam=trim(prefix)//'.a.lue.out'
-    ! open(653,file=filnam,err=888,status='unknown')
+    ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
+    filnam=trim(prefix)//'.a.lue.out'
+    open(653,file=filnam,err=888,status='unknown')
 
     return
 
@@ -1539,38 +1539,24 @@ contains
         itime = real(outyear) + real(day-1)/real(ndayyear)
 
         if (loutdgpp   ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
-        ! if (loutdrd    ) write(135,999) itime, sum(outdrd(:,day,jpngr))
-        ! if (loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
+        if (loutdrd    ) write(135,999) itime, sum(outdrd(:,day,jpngr))
+        if (loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
 
       end do
 
-      ! do moy=1,nmonth
-
-      !   ! Define 'itime' as a decimal number corresponding to day in the year + year
-      !   itime = real(outyear) + real(moy-1)/real(nmonth)
-
-      !   ! print*, 'outmgpp ', outmgpp
-      !   ! stop
-
-      !   if (loutdgpp   ) write(151,999) itime, sum(outmgpp(:,moy,jpngr))
-      !   if (loutdrd    ) write(152,999) itime, sum(outmrd (:,moy,jpngr))
-      !   if (loutdtransp) write(153,999) itime, sum(outmtransp(:,moy,jpngr))
-
-      ! end do
-
     end if
 
-    ! !-------------------------------------------------------------------------
-    ! ! ANNUAL OUTPUT
-    ! ! Write annual value, summed over all PFTs / LUs
-    ! ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    ! !-------------------------------------------------------------------------
-    ! itime = real(outyear)
+    !-------------------------------------------------------------------------
+    ! ANNUAL OUTPUT
+    ! Write annual value, summed over all PFTs / LUs
+    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+    !-------------------------------------------------------------------------
+    itime = real(outyear)
 
-    ! write(310,999) itime, sum(outagpp(:,jpngr))
-    ! write(651,999) itime, sum(outavcmax(:,jpngr))
-    ! write(652,999) itime, sum(outachi(:,jpngr))
-    ! write(653,999) itime, sum(outalue(:,jpngr))
+    write(310,999) itime, sum(outagpp(:,jpngr))
+    write(651,999) itime, sum(outavcmax(:,jpngr))
+    write(652,999) itime, sum(outachi(:,jpngr))
+    write(653,999) itime, sum(outalue(:,jpngr))
 
     return
     

@@ -351,7 +351,7 @@ contains
     endif
 
     ! initialise other properties
-    lai_ind(pft,jpngr)   = 0.0
+    lai_ind(pft,jpngr) = 0.0
 
     ! Leaf traits
     leaftraits(:)%narea            = 0.0
