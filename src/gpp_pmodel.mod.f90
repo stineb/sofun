@@ -284,13 +284,24 @@ contains
     real, intent(in)                      :: elv      ! elevation above sea level (m)
 
     ! local variables
-    type(outtype_pmodel)    :: out_pmodel ! derived type for P-model output variable list
-    real, dimension(nmonth) :: mtemp      ! monthly air temperature (deg C)
-    real, dimension(nmonth) :: mvpd       ! monthly vapour pressure deficit (Pa)
-    integer                 :: moy, lu, pft
+    type(outtype_pmodel)      :: out_pmodel ! derived type for P-model output variable list
+    real, dimension(ndayyear) :: mydtemp
+    real, dimension(nmonth)   :: mtemp      ! monthly air temperature (deg C)
+    real, dimension(nmonth)   :: mvpd       ! monthly vapour pressure deficit (Pa)
+    integer                   :: moy, lu, pft
+    integer                   :: doy
+
+    ! locally used daily temperature (may be different from globally used one)
+    mydtemp(:) = dtemp(:)
+
+    ! ! xxx try
+    ! write(0,*) 'WARNING IN GETLUE: CAPPED DAILY TEMPERATURE AT 25 DEG C.'
+    ! do doy=1,ndayyear
+    !   mydtemp(doy) = min( mydtemp(doy), 25.0 )
+    ! end do
 
     ! Get monthly averages
-    mtemp(:) = daily2monthly( dtemp(:), "mean" )
+    mtemp(:) = daily2monthly( mydtemp(:), "mean" )
     mvpd(:)  = daily2monthly( dvpd(:), "mean" )
 
     ! xxx try out: -- THIS WORKS PERFECTLY -- 
@@ -493,7 +504,7 @@ contains
   end function calc_vcmax_canop
 
 
-  function pmodel( pft, fpar, ppfd, co2, tc, vpd, elv, method, cpalpha ) result( out_pmodel )
+  function pmodel( pft, fpar, ppfd, co2, tc, vpd, elv, method ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
     ! Output:   gpp (mol/m2/month)   : gross primary production
     !------------------------------------------------------------------, evap(lu)%cpa
@@ -506,7 +517,6 @@ contains
     real, intent(in)    :: vpd          ! mean monthly vapor pressure (Pa) -- CRU data is in hPa
     real, intent(in)    :: elv          ! elevation above sea-level (m)
     character(len=*), intent(in) :: method
-    real, intent(in), optional   :: cpalpha      ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return value
     type(outtype_pmodel) :: out_pmodel
@@ -562,13 +572,6 @@ contains
 
     ! ! XXX PMODEL_TEST: ok
     ! print*, 'gstar ', gstar
-
-    ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
-    if (present(cpalpha)) then
-      fa = calc_fa( cpalpha )
-    else
-      fa = 1.0
-    end if
 
     ! Michaelis-Menten coef. (Pa)
     kmm  = calc_k( tc, patm )
@@ -637,10 +640,10 @@ contains
     ! and 'm'
     m   = calc_mprime( m )
 
-    gpp = iabs * params_pft_gpp(pft)%kphio * fa * m  ! in mol m-2 s-1
+    gpp = iabs * params_pft_gpp(pft)%kphio * m  ! in mol m-2 s-1
 
     ! Light use efficiency (gpp per unit iabs)
-    lue = params_pft_gpp(pft)%kphio * fa * m 
+    lue = params_pft_gpp(pft)%kphio * m 
 
     ! ! XXX PMODEL_TEST: ok
     ! print*, 'lue ', lue
@@ -1293,6 +1296,9 @@ contains
 
     ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
     ftemp = max( 0.0, min( 1.0, dtemp / 12.0 ) )
+
+    ! ! xxx try: no temperature inhibition
+    ! ftemp = 1.0
 
   end function ramp_gpp_lotemp
 

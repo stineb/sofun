@@ -31,7 +31,6 @@ module md_nuptake
     initoutput_nuptake, getout_daily_nuptake, writeout_ascii_nuptake, &
     calc_dnup, outtype_calc_dnup
 
-
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
@@ -57,6 +56,11 @@ module md_nuptake
   real, dimension(npft) :: dnup_fix         ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
   real, dimension(npft) :: dnup_ret         ! daily N uptake [gN/m2/d]
 
+  type outtype_calc_dnup
+    real :: act
+    real :: fix
+  end type outtype_calc_dnup
+
   !----------------------------------------------------------------
   ! Module-specific output variables
   !----------------------------------------------------------------
@@ -67,10 +71,6 @@ module md_nuptake
   real, allocatable, dimension(:,:,:) :: outdnup_fix
   real, allocatable, dimension(:,:,:) :: outdnup_ret
 
-  type outtype_calc_dnup
-    real :: act
-    real :: fix
-  end type outtype_calc_dnup
 
 contains
 
@@ -95,7 +95,7 @@ contains
     real    :: ninorg_conc                         ! inorganic N concentration (gN/gH2O)
     real    :: n_uptake_pass                       ! (gN)
     real    :: n_uptake_retrans
-    real    :: dNacq_active
+    real    :: dNacq_act
     real    :: dNacq_fix
     real    :: dmean_cost
 

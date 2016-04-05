@@ -26,41 +26,56 @@ module md_nuptake
 
   implicit none
 
-  ! MODULE-SPECIFIC PARAMETERS
-  real :: exurate           ! C exudation rate per unit root mass
-  real :: eff_nup           ! uptake efficiency for equation
-  real :: MINIMUMCOSTFIX    ! minimum cost of N fixation (at optimal temperature)
-  real :: FIXOPTIMUM        ! optimum temperature for N fixation
-  real :: FIXWIDTH          ! shape parameter for width of N fixation cost function
+  private
+  public nuptake, getpar_modl_nuptake, initdaily_nuptake, initio_nuptake, &
+    initoutput_nuptake, getout_daily_nuptake, writeout_ascii_nuptake, &
+    calc_dnup, outtype_calc_dnup
 
-  ! MODULE-SPECIFIC VARIABLES
-  ! These are not required outside module STASH, but are used in different SRs of this module
+  !----------------------------------------------------------------
+  ! Public, module-specific state variables
+  !----------------------------------------------------------------
+
+  !-----------------------------------------------------------------------
+  ! Uncertain (unknown) parameters. Runtime read-in
+  !-----------------------------------------------------------------------
+  type params_nuptake_type
+    real :: eff_nup           ! uptake efficiency for equation
+    real :: minimumcostfix    ! minimum cost of N fixation (at optimal temperature)
+    real :: fixoptimum        ! optimum temperature for N fixation
+    real :: fixwidth          ! shape parameter for width of N fixation cost function
+  end type params_nuptake_type
+
+  type( params_nuptake_type ) :: params_nuptake
+
+  !----------------------------------------------------------------
+  ! module-specific (private) variables
+  !----------------------------------------------------------------
   real, dimension(npft) :: dccost           ! daily mean C cost of N uptake [gC/gN] 
   real, dimension(npft) :: dnup_pas         ! daily passive N uptake [gN/m2/d]
   real, dimension(npft) :: dnup_act         ! daily active N uptake [gN/m2/d]  
   real, dimension(npft) :: dnup_fix         ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
   real, dimension(npft) :: dnup_ret         ! daily N uptake [gN/m2/d]
 
-  ! OUTPUT VARIABLES
-  ! daily
-  real, dimension(npft,ndayyear,maxgrid) :: outdccost   ! daily mean C cost of N uptake (gC/gN) 
-  real, dimension(npft,ndayyear,maxgrid) :: outdnup_pas
-  real, dimension(npft,ndayyear,maxgrid) :: outdnup_act
-  real, dimension(npft,ndayyear,maxgrid) :: outdnup_fix
-  real, dimension(npft,ndayyear,maxgrid) :: outdnup_ret
-  real, dimension(npft,ndayyear,maxgrid) :: outdcex
-
-  ! annual
-  real, dimension(npft,maxgrid) :: outacex
-
   type outtype_calc_dnup
-    real :: dnup_act
-    real :: dnup_fix
+    real :: act
+    real :: fix
   end type outtype_calc_dnup
+
+  !----------------------------------------------------------------
+  ! Module-specific output variables
+  !----------------------------------------------------------------
+  ! daily
+  real, allocatable, dimension(:,:,:) :: outdccost   ! daily mean C cost of N uptake (gC/gN) 
+  real, allocatable, dimension(:,:,:) :: outdnup_pas
+  real, allocatable, dimension(:,:,:) :: outdnup_act
+  real, allocatable, dimension(:,:,:) :: outdnup_fix
+  real, allocatable, dimension(:,:,:) :: outdnup_ret
+
 
 contains
 
-  subroutine nuptake( jpngr, pft )
+
+  subroutine nuptake( jpngr )
     !/////////////////////////////////////////////////////////////////
     ! SUBROUTINE NUPTAKE ASSUMING CONSTANT EXUDATION PER UNIT ROOT MASS
     !-----------------------------------------------------------------
@@ -68,188 +83,131 @@ contains
     ! transpiration stream.
     !-----------------------------------------------------------------
     use md_classdefs
-    use md_params_modl, only: lu_category
-    use md_vars_core, only: psoilphys, dcex, pninorg, plabl, proot, &
-      dnup, dtransp, daet, fpc_grid, pleaf
+    use md_plant, only: dcex, dnup, params_pft_plant, ispresent, plabl
+    use md_ntransform, only: pninorg
 
     ! arguments
-    integer, intent(in) :: jpngr, pft
+    integer, intent(in) :: jpngr
 
     ! local variables
-    integer :: lu
+    integer :: lu, pft
     real    :: avail_ninorg                        ! available inorganic N in soil layer (gN/m2)
     real    :: ninorg_conc                         ! inorganic N concentration (gN/gH2O)
     real    :: n_uptake_pass                       ! (gN)
     real    :: n_uptake_retrans
     real    :: dNacq_act
     real    :: dNacq_fix
-    real    :: dCexu    
-    real    :: dCacq_fix
     real    :: dmean_cost
 
-    ! type(outtype_calc_dnup) :: out_calc_dnup
-    real, dimension(2) :: out_calc_dnup
+    type( outtype_calc_dnup ) :: out_calc_dnup
 
     ! xxx debug
     real :: test_eff_bnf
     real :: test_eff_act
 
-    lu = lu_category(pft)
+    !-------------------------------------------------------------------------
+    ! PFT LOOP
+    !-------------------------------------------------------------------------
+    do pft=1,npft
 
-    ! xxx think about this: order in which PFTs get access to Ninorg matters!
-    
-    ! write(0,*) '---- in nuptake:'
+      if ( ispresent(pft,jpngr) ) then
 
-    ! xxx try: 
-    ! write(0,*) 'NUPTAKE: pninorg pool size set manually'
-    ! pninorg%n14 = 0.01
+        lu = params_pft_plant(pft)%lu_category
 
-    if ( proot(pft,jpngr)%c%c12 == 0.0 ) then
+        ! ! xxx try:
+        ! dtransp = daet(lu_category(pft)) * fpc_grid(pft,jpngr)
 
-      ! write(0,*) 'no roots'
+        !//////////////////////////////////////////////////////////////////////////
+        ! INITIALIZATION
+        !-------------------------------------------------------------------------
+        n_uptake_pass = 0.0
+        
+        dNacq_act = 0.0                          ! active uptake, sum over sub-timesteps
+        dNacq_fix = 0.0                          ! N fixation, sum over sub-timesteps
+        dCexu     = 0.0
 
-      ! no roots => no N uptake, no C exudation
-      n_uptake_pass    = 0.0
-      dNacq_act        = 0.0
-      dNacq_fix        = 0.0
-      n_uptake_retrans = 0.0
-
-    else
-
-      ! ! xxx try:
-      ! dtransp = daet(lu_category(pft)) * fpc_grid(pft,jpngr)
-
-      !//////////////////////////////////////////////////////////////////////////
-      ! INITIALIZATION
-      !-------------------------------------------------------------------------
-      n_uptake_pass = 0.0
-      
-      dNacq_act = 0.0                          ! active uptake, sum over sub-timesteps
-      dNacq_fix = 0.0                          ! N fixation, sum over sub-timesteps
-      dCexu     = 0.0
-      dCacq_fix = 0.0
-
-      ! write(0,*) 'lu, jpngr',lu, jpngr
-      ! write(0,*) 'pninorg(lu,jpngr)%n14',pninorg(lu,jpngr)%n14
-      ! write(0,*) 'dwtot(lu,jpngr)      ',dwtot(lu,jpngr)
-
-      ! ninorg_conc   = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-      ! avail_ninorg  = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-
-      ! write(0,*) 'avail_ninorg',avail_ninorg
-      ! write(0,*) 'ninorg_conc ',ninorg_conc 
-      ! stop
-
-      !//////////////////////////////////////////////////////////////////////////
-      ! USE STORED N (RETRANSLOCATION)
-      !--------------------------------------------------------------------------
-      ! As opposed to original FUN model, in which N is retranslocated at a
-      ! variable cost during leaf fall (turnover), a fraction of N is retained here
-      ! from turnover. It is stored at the end of the last year and available to
-      ! cover N demand during next year.
-      ! Just reduce the demand by amount retranslocated, not the labile N pool itself
-      !--------------------------------------------------------------------------
-      ! xxx debug
-      ! n_uptake_retrans = min( n_demand, plabl(pft,jpngr)%n%n14 )
-      ! n_demand_remaining = n_demand_remaining - n_uptake_retrans
+        if ( dcex(pft)>0.0 ) then
+          !//////////////////////////////////////////////////////////////////////////
+          ! USE STORED N (RETRANSLOCATION)
+          !--------------------------------------------------------------------------
+          ! As opposed to original FUN model, in which N is retranslocated at a
+          ! variable cost during leaf fall (turnover), a fraction of N is retained here
+          ! from turnover. It is stored at the end of the last year and available to
+          ! cover N demand during next year.
+          ! Just reduce the demand by amount retranslocated, not the labile N pool itself
+          !--------------------------------------------------------------------------
+          ! xxx debug
+          ! n_uptake_retrans = min( n_demand, plabl(pft,jpngr)%n%n14 )
+          ! n_demand_remaining = n_demand_remaining - n_uptake_retrans
 
 
-      ! !//////////////////////////////////////////////////////////////////////////
-      ! ! PASSIVE UPTAKE
-      ! ! No active control on passive uptake - always occurrs even if the unmet N
-      ! ! demand is zero.
-      ! !--------------------------------------------------------------------------
-      ! n_uptake_pass = ninorg_conc * dtransp(pft) / 1000.0     ! [dtransp] = g H2O; [ninorg_conc] = g N / (mm H2O) = g N / (kg H2O)
-      ! n_uptake_pass = min( n_uptake_pass, avail_ninorg )
+          ! !//////////////////////////////////////////////////////////////////////////
+          ! ! PASSIVE UPTAKE
+          ! ! No active control on passive uptake - always occurrs even if the unmet N
+          ! ! demand is zero.
+          ! !--------------------------------------------------------------------------
+          ! n_uptake_pass = ninorg_conc * dtransp(pft) / 1000.0     ! [dtransp] = g H2O; [ninorg_conc] = g N / (mm H2O) = g N / (kg H2O)
+          ! n_uptake_pass = min( n_uptake_pass, avail_ninorg )
 
-      ! write(0,*) 'n_uptake_pass ',n_uptake_pass 
+          ! write(0,*) 'n_uptake_pass ',n_uptake_pass 
 
-      ! Update
-      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - n_uptake_pass
-      ! avail_ninorg          = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-      ! ninorg_conc           = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+          ! Update
+          pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - n_uptake_pass
+          ! avail_ninorg          = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
+          ! ninorg_conc           = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
 
-      ! write(0,*) 'avail_ninorg',avail_ninorg
-      ! write(0,*) 'ninorg_conc ',ninorg_conc 
+          ! write(0,*) 'avail_ninorg',avail_ninorg
+          ! write(0,*) 'ninorg_conc ',ninorg_conc 
 
-      !//////////////////////////////////////////////////////////////////////////
-      ! ACTIVE UPTAKE
-      ! Active N uptake is a function of initial N available and C exuded
-      !--------------------------------------------------------------------------         
-      dCexu = calc_cexu( proot(pft,jpngr)%c%c12, pleaf(pft,jpngr)%c%c12  )
+          !//////////////////////////////////////////////////////////////////////////
+          ! ACTIVE UPTAKE
+          ! Active N uptake is a function of initial N available and C exuded
+          !--------------------------------------------------------------------------
+          out_calc_dnup = calc_dnup( dcex(pft), pninorg(lu,jpngr)%n14 )
 
-      out_calc_dnup = calc_dnup( dCexu, pninorg(lu,jpngr)%n14, psoilphys(lu,jpngr)%temp )
-      dNacq_act     = out_calc_dnup(1)
-      dNacq_fix     = out_calc_dnup(2)
+          ! write(0,*) 'dcex(pft)      ', dcex(pft)      
+          ! write(0,*) 'in SR nuptake: dcex(pft)            ',dcex(pft)      
+          ! write(0,*) 'in SR nuptake: dNacq_act          ',dNacq_act 
+          ! write(0,*) 'in SR nuptake: pninorg(lu,jpngr)%n14 ',pninorg(lu,jpngr)%n14 
 
-      ! dNacq_act     = out_calc_dnup%dnup_act
-      ! dNacq_fix     = out_calc_dnup%dnup_fix
+          if ((out_calc_dnup%act+out_calc_dnup%fix)>0.0) then
+            dmean_cost = dcex(pft)  / (out_calc_dnup%act+out_calc_dnup%fix)
+          else
+            dmean_cost = 9999.0
+          end if
 
-      ! write(0,*) 'dCexu     ', dCexu     
-      ! write(0,*) 'in SR nuptake: dCexu           ',dCexu     
-      ! write(0,*) 'in SR nuptake: dNacq_act          ',dNacq_act 
-      ! write(0,*) 'in SR nuptake: pninorg(lu,jpngr)%n14 ',pninorg(lu,jpngr)%n14 
+          ! Update
+          pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - out_calc_dnup%act
 
-      dcex(pft) = dcex(pft) + dCexu    
-      if ((dNacq_act+dNacq_fix)>0.0) then
-        dmean_cost = dCexu / (dNacq_act+dNacq_fix)
-      else
-        dmean_cost = 9999.0
-      end if
+        end if
 
-      ! Update
-      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - dNacq_act
+        !--------------------------------------------------------------------------
+        ! Update N-uptake of this PFT. N-retranslocation is not considered
+        ! N-uptake.
+        !--------------------------------------------------------------------------
+        ! daily
+        dnup(pft)%n14 = n_uptake_pass + out_calc_dnup%act + out_calc_dnup%fix  ! n_uptake_retrans is not considered uptake
+        dnup_pas(pft) = n_uptake_pass
+        dnup_act(pft) = out_calc_dnup%act                   
+        dnup_fix(pft) = out_calc_dnup%fix  
+        dnup_ret(pft) = n_uptake_retrans
+        if (dnup(pft)%n14>0.0) then
+          dccost(pft) = dmean_cost       
+        else
+          dccost(pft) = 0.0
+        endif
 
-    end if
+        !--------------------------------------------------------------------------
+        ! N acquisition to labile pool
+        !--------------------------------------------------------------------------
+        call ncp( dnup(pft), plabl(pft,jpngr)%n )
 
-    ! ! xxx debug
-    ! ! get efficiency of BNF 
-    ! if (dNacq_fix>0.0) then
-    !   test_eff_bnf = 1.0 / fun_cost_fix( psoilphys(lu,jpngr)%temp )
-    !   test_eff_act = eff_nup * pninorg(lu,jpngr)%n14
-    !   write(0,*) 'dNacq_act    ', dNacq_act
-    !   write(0,*) 'dNacq_fix    ', dNacq_fix
-    !   write(0,*) 'test_eff_bnf ', test_eff_bnf
-    !   write(0,*) 'test_eff_act ', test_eff_act
-    !   ! stop
-    ! end if
+      end if 
 
-    !--------------------------------------------------------------------------
-    ! Update N-uptake of this PFT. N-retranslocation is not considered
-    ! N-uptake.
-    !--------------------------------------------------------------------------
-    ! daily
-    dnup(pft)%n14 = n_uptake_pass + dNacq_act + dNacq_fix  ! n_uptake_retrans is not considered uptake
-    dnup_pas(pft) = n_uptake_pass
-    dnup_act(pft) = dNacq_act                   
-    dnup_fix(pft) = dNacq_fix  
-    dnup_ret(pft) = n_uptake_retrans
-    if (dnup(pft)%n14>0.0) then
-      dccost(pft) = dmean_cost       
-    else
-      dccost(pft) = 0.0
-    endif
-
+    end do
     ! write(0,*) '---- finished nuptake'
 
   end subroutine nuptake
-
-
-  function calc_cexu( croot, cleaf ) result( cexu )
-    !/////////////////////////////////////////////////////////////////
-    !-----------------------------------------------------------------
-    ! arguments
-    real, intent(in)           :: croot
-    real, intent(in), optional :: cleaf
-
-    ! function return variable
-    real, intent(out) :: cexu
-
-    cexu = exurate * croot
-    ! cexu = 2.0 * exurate * max( 0.0, croot - 0.5 * cleaf )
-    ! cexu = exurate * croot / ( croot + 0.5 * cleaf ) + exurate * 0.02
-
-  end function calc_cexu
 
 
   function calc_dnup( cexu, n0, soiltemp ) result( out_dnup )
@@ -259,13 +217,12 @@ contains
     ! => Nup(Cexu) = N0 * ( 1.0 - exp( - eff_nup * cexu ) )
     !-----------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: cexu      ! C exuded (gC/m2/d)
-    real, intent(in)           :: n0        ! initial available N (gN/m2)
-    real, intent(in), optional :: soiltemp  ! soil temperature (deg C)
+    real, intent(in) :: cexu      ! C exuded (gC/m2/d)
+    real, intent(in) :: n0        ! initial available N (gN/m2)
+    real, intent(in) :: soiltemp  ! soil temperature (deg C)
 
     ! function return variable
-    ! type(outtype_calc_dnup) :: out_dnup
-    real, dimension(2), intent(out) :: out_dnup
+    type( outtype_calc_dnup ) :: out_calc_dnup
 
     ! local variables
     real :: mydnup_act
@@ -304,29 +261,39 @@ contains
       !-----------------------------------------------------------------
       ! N uptake via BNF
       !-----------------------------------------------------------------
-      mydnup_fix = cexu_bnf * eff_bnf
+      out_calc_dnup%fix = cexu_bnf * eff_bnf
 
       !-----------------------------------------------------------------
       ! N uptake via active uptake
       !-----------------------------------------------------------------
-      mydnup_act = n0 * ( 1.0 - exp( - eff_nup * cexu_act ) )
+      out_calc_dnup%act = n0 * ( 1.0 - exp( - eff_nup * cexu_act ) )
 
     else
 
-      mydnup_fix = 0.0
-      mydnup_act = n0 * ( 1.0 - exp( - eff_nup * cexu ) )
+      out_calc_dnup%fix = 0.0
+      out_calc_dnup%act = n0 * ( 1.0 - exp( - eff_nup * cexu ) )
 
     end if
-
-    out_dnup(1) = mydnup_act
-    out_dnup(2) = mydnup_fix
-
-    ! out_dnup%dnup_act = mydnup_act
-    ! out_dnup%dnup_fix = mydnup_fix
 
 
   end function calc_dnup
 
+
+  function fun_cost_fix( soiltemp )
+    !////////////////////////////////////////////////////////////////
+    ! Cost of symbiotic N fixation is the inverse of nitrogenase activity
+    ! after Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
+    ! (value from Gutschik 1981)
+    !---------------------------------------------------------------- 
+    use md_params_modl
+
+    real, intent(in) :: soiltemp
+    real :: fun_cost_fix                 ! function return variable
+
+    fun_cost_fix = MINIMUMCOSTFIX + exp((soiltemp-FIXOPTIMUM)**2/(2*FIXWIDTH**2))    ! inverse gauss function  (take WARMEST layer)
+
+  end function fucost_fix
+  
 
   ! function calc_avail_ninorg( ninorg, wtot ) result( avail_ninorg )
   !   !//////////////////////////////////////////////////////////////////////////
@@ -369,22 +336,6 @@ contains
 
   ! end function calc_conc_ninorg
 
-
-  function fun_cost_fix( soiltemp )
-    !******************************************************************************
-    ! Cost of symbiotic N fixation is the inverse of nitrogenase activity
-    ! after Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
-    ! (value from Gutschik 1981)
-    !--------------------------------------------------------------------------      
-    use md_params_modl
-
-    real, intent(in) :: soiltemp
-    real :: fun_cost_fix                 ! function return variable
-
-    fun_cost_fix = MINIMUMCOSTFIX + exp((soiltemp-FIXOPTIMUM)**2/(2*FIXWIDTH**2))    ! inverse gauss function  (take WARMEST layer)
-
-  end function fun_cost_fix
-  
 
   subroutine initdaily_nuptake()
     !////////////////////////////////////////////////////////////////
@@ -465,48 +416,110 @@ contains
 
     ! uptake efficiency for equation
     ! dCexu/dNup = K / (N0 - Nup); K=1/eff_nup
-    eff_nup = getparreal( 'params/params_nuptake_constexu.dat', 'eff_nup' )
+    params_nuptake%eff_nup = getparreal( 'params/params_nuptake_constexu.dat', 'eff_nup' )
 
     ! shape parameter of cost function of N fixation 
-    ! Below parameters (MINIMUMCOSTFIX, FIXOPTIMUM, FIXWIDTH ) are based on 
+    ! Below parameters (minimumcostfix, fixoptimum, fixwidth ) are based on 
     ! the assumption that the cost of symbiotic N fixation is the 
     ! inverse of nitrogenase activity. 
     ! After Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
     ! (value from Gutschik 1981)
-    MINIMUMCOSTFIX = getparreal( 'params/params_nuptake_constexu.dat', 'MINIMUMCOSTFIX' )
+    params_nuptake%minimumcostfix = getparreal( 'params/params_nuptake_constexu.dat', 'minimumcostfix' )
 
     ! shape parameter of cost function of N fixation 
-    FIXOPTIMUM = getparreal( 'params/params_nuptake_constexu.dat', 'FIXOPTIMUM' )
+    params_nuptake%fixoptimum = getparreal( 'params/params_nuptake_constexu.dat', 'fixoptimum' )
  
     ! shape parameter of cost function of N fixation 
-    FIXWIDTH = getparreal( 'params/params_nuptake_constexu.dat', 'FIXWIDTH' )
+    params_nuptake%fixwidth = getparreal( 'params/params_nuptake_constexu.dat', 'fixwidth' )
 
 
   end subroutine getpar_modl_nuptake
 
+
+  subroutine initdaily_nuptake()
+    !////////////////////////////////////////////////////////////////
+    ! Initialise daily variables with zero
+    !----------------------------------------------------------------
+    dnup_pas(:) = 0.0
+    dnup_act(:) = 0.0
+    dnup_fix(:) = 0.0
+    dnup_ret(:) = 0.0
+
+  end subroutine initdaily_nuptake
+
+
+  subroutine initio_nuptake()
+    !////////////////////////////////////////////////////////////////
+    ! OPEN ASCII OUTPUT FILES FOR OUTPUT
+    !----------------------------------------------------------------
+    use md_params_siml, only: runname, loutnuptake
+
+    ! local variables
+    character(len=256) :: prefix
+    character(len=256) :: filnam
+
+    prefix = "./output/"//trim(runname)
+
+    if (loutnuptake) then
+      !----------------------------------------------------------------
+      ! DAILY OUTPUT
+      !----------------------------------------------------------------
+      ! MEAN DAILY C COST OF N UPTAKE (gC/gN)
+      filnam=trim(prefix)//'.d.ccost.out'
+      open(400,file=filnam,err=888,status='unknown')
+
+      ! PASSIVE N UPTAKE (gN)
+      filnam=trim(prefix)//'.d.nup_pas.out'
+      open(401,file=filnam,err=888,status='unknown')
+
+      ! ACTIVE N UPTAKE (gN)
+      filnam=trim(prefix)//'.d.nup_act.out'
+      open(402,file=filnam,err=888,status='unknown')
+
+      ! SYMBIOTIC BNF (gN)
+      filnam=trim(prefix)//'.d.nup_fix.out'
+      open(403,file=filnam,err=888,status='unknown')
+
+      ! RETRANSLOCATED N FROM LABILE POOL TO SATISFY DEMAND (gN)
+      filnam=trim(prefix)//'.d.nup_ret.out'
+      open(404,file=filnam,err=888,status='unknown')
+
+    end if
+
+    return
+
+    888  stop 'INITIO_NUPTAKE: error opening output files'
+
+  end subroutine initio_nuptake
 
 
   subroutine initoutput_nuptake
     !////////////////////////////////////////////////////////////////
     !  Initialises nuptake-specific output variables
     !----------------------------------------------------------------
+    use md_params_siml, only: init, loutnuptake
 
-    ! xxx remove their day-dimension
-    outdccost(:,:,:)   = 0.0
-    outdnup_pas(:,:,:) = 0.0
-    outdnup_act(:,:,:) = 0.0
-    outdnup_fix(:,:,:) = 0.0
-    outdnup_ret(:,:,:) = 0.0
-    outdcex(:,:,:)     = 0.0
+    if (loutnuptake) then
 
-    outacex(:,:)       = 0.0
+      if (init) allocate( outdccost   (npft,ndayyear,maxgrid) ) ! daily mean C cost of N uptake (gC/gN) 
+      if (init) allocate( outdnup_pas (npft,ndayyear,maxgrid) )
+      if (init) allocate( outdnup_act (npft,ndayyear,maxgrid) )
+      if (init) allocate( outdnup_fix (npft,ndayyear,maxgrid) )
+      if (init) allocate( outdnup_ret (npft,ndayyear,maxgrid) )
 
+      outdccost  (:,:,:) = 0.0 ! daily mean C cost of N uptake (gC/gN) 
+      outdnup_pas(:,:,:) = 0.0
+      outdnup_act(:,:,:) = 0.0
+      outdnup_fix(:,:,:) = 0.0
+      outdnup_ret(:,:,:) = 0.0
+
+    end if
 
   end subroutine initoutput_nuptake
 
 
 
-  subroutine getout_daily_nuptake( jpngr, moy, doy )
+  subroutine getout_daily_nuptake( jmoy, doy )
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
@@ -539,7 +552,7 @@ contains
   end subroutine getout_daily_nuptake
 
 
-  subroutine writeout_ascii_nuptake( year, spinup )
+  subroutine writeout_ascii_nuptake( year )
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
@@ -549,64 +562,41 @@ contains
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
-    logical, intent(in) :: spinup     ! true during spinup years
 
     ! local variables
     real :: itime
-    integer :: myday, myjpngr
-
-    real :: myoutdccost
-    real :: myoutdnup_pas
-    real :: myoutdnup_act
-    real :: myoutdnup_fix
-    real :: myoutdnup_ret
+    integer :: day, jpngr
 
     ! xxx implement this: sum over gridcells? single output per gridcell?
-    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
-    myjpngr = 1
-
+    if (maxgrid>1) stop 'writeout_ascii_nuptake: think of something ...'
+    jpngr = 1
 
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     ! Write daily value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
-      ! Write daily output only during transient simulation
-      do myday=1,ndayyear
+    if (loutnuptake) then
+      if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+        ! Write daily output only during transient simulation
+        do day=1,ndayyear
 
-        ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(myday-1)/real(ndayyear)
+          ! Define 'itime' as a decimal number corresponding to day in the year + year
+          itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
 
-        if (nlu>1) stop 'writeout_ascii_nuptake: write out lu-area weighted sum'
-        if (npft>1) stop 'writeout_ascii_nuptake: think of something for ccost output'
+          if (nlu>1) stop 'writeout_ascii_nuptake: write out lu-area weighted sum'
+          if (npft>1) stop 'writeout_ascii_nuptake: think of something for ccost output'
 
-        ! xxx lu-area weighted sum if npft>0
-        myoutdccost   = sum(outdccost(:,myday,myjpngr))
-        myoutdccost   = myoutdccost / real(npft)
-        myoutdnup_pas = sum(outdnup_pas(:,myday,myjpngr))
-        myoutdnup_act = sum(outdnup_act(:,myday,myjpngr))
-        myoutdnup_fix = sum(outdnup_fix(:,myday,myjpngr))
-        myoutdnup_ret = sum(outdnup_ret(:,myday,myjpngr))
+          ! xxx lu-area weighted sum if npft>0
+          write(400,999) itime, sum(outdccost(:,day,jpngr)) / real(npft) 
+          write(401,999) itime, sum(outdnup_pas(:,day,jpngr))
+          write(402,999) itime, sum(outdnup_act(:,day,jpngr))
+          write(403,999) itime, sum(outdnup_fix(:,day,jpngr))
+          write(404,999) itime, sum(outdnup_ret(:,day,jpngr))
 
-        write(105,999) itime, sum(outdcex(:,myday,myjpngr))
-        write(400,999) itime, myoutdccost
-        write(401,999) itime, myoutdnup_pas
-        write(402,999) itime, myoutdnup_act
-        write(403,999) itime, myoutdnup_fix
-        write(404,999) itime, myoutdnup_ret
-
-      end do
+        end do
+      end if
     end if
-
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    itime = real(year) + real(firstyeartrend) - real(spinupyears)
-
-    write(405,999) itime, sum(outacex(:,myjpngr))
 
     return
     

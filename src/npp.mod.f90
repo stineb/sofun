@@ -95,8 +95,9 @@ contains
         ! is diverted to a pool and re-emission to atmosphere gets delayed. Auto-
         ! trophic respiration is immediate, it makes thus no sense to calculate 
         ! full isotopic effects of gross exchange _fluxes.
+        ! Growth respiration ('drgrow') is deduced from 'dnpp' in allocation SR.
         !-------------------------------------------------------------------------
-        dnpp(pft)   = carbon( dgpp(pft) - drgrow(pft) - drleaf(pft) - drroot(pft) )
+        dnpp(pft)   = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
 
         if ( dnpp(pft)%c12 < 0.0 ) then
           print*, 'pft    ',pft
@@ -186,11 +187,10 @@ contains
     ! function return variable
     real :: resp_maint                    ! return value: maintenance respiration [gC/m2]
 
-    if (present(dtemp)) then
-      resp_maint = cmass * rresp * ftemp( dtemp, "lloyd_and_taylor" ) * ramp_gpp_lotemp( dtemp )
-    else
-      resp_maint = cmass * rresp * ramp_gpp_lotemp( dtemp )
-    end if
+    resp_maint = cmass * rresp * ramp_gpp_lotemp( dtemp )
+
+    ! LPX-like temperature dependeneo of respiration rates
+    ! resp_maint = cmass * rresp * ftemp( dtemp, "lloyd_and_taylor" ) * ramp_gpp_lotemp( dtemp )
 
   end function calc_resp_maint
 

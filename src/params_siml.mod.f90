@@ -189,6 +189,8 @@ contains
     loutlittersom  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlittersom' )
     loutnuptake    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnuptake' )
 
+    write(0,*) "... done"
+
   end subroutine getpar_siml
 
 end module md_params_siml

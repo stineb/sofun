@@ -47,8 +47,9 @@ subroutine biosphere( &
   ! local variables
   integer :: dm, moy, jpngr, day
 
-  ! ! XXX PMODEL_TEST
+  ! XXX PMODEL_TEST
   ! print* 'WARNING: FAPAR = 1.00 USED IN PMODEL'
+  write(0,*) 'WARNING IN BIOSPHERE: CAPPED DAILY TEMPERATURE AT 25 DEG C.'
 
   !----------------------------------------------------------------
   ! INITIALISATIONS
@@ -143,6 +144,8 @@ subroutine biosphere( &
         ! calculate GPP
         !----------------------------------------------------------------
         ! print* 'calling gpp() ... '
+        ! if (dtemp_field(day,jpngr).gt.25.0) print*,'dtemp = ', dtemp_field(day,jpngr)
+        ! call gpp( jpngr, day, moy, min( 25.0, dtemp_field(day,jpngr) ), mfapar_field(moy,jpngr) )
         call gpp( jpngr, day, moy, dtemp_field(day,jpngr), mfapar_field(moy,jpngr) )
         ! call gpp( jpngr, day, moy, 1.00 )
         ! print* '... done'

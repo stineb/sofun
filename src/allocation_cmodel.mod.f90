@@ -77,7 +77,7 @@ contains
     use md_classdefs
     use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
       plabl, drgrow, dnup, lai_ind, nind, canopy, leaftraits, &
-      get_canopy
+      get_canopy, dnpp
     use md_waterbal, only: solar
     use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
     use md_phenology, only: dtphen
@@ -210,7 +210,8 @@ contains
           ! add growth respiration to autotrophic respiration and substract from NPP
           ! (note that NPP is added to plabl in and growth resp. is implicitly removed
           ! from plabl above)
-          drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+          drgrow(pft) = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+          dnpp(pft)   = cminus( dnpp(pft), carbon(drgrow(pft)) )
 
           !-------------------------------------------------------------------
           ! N UPTAKE 
@@ -284,7 +285,7 @@ contains
   end subroutine allocation_daily
 
 
-  subroutine allocate_leaf( mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd,    nv,    lai,   mydnleaf )
+  subroutine allocate_leaf( mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd, nv, lai, mydnleaf )
     !///////////////////////////////////////////////////////////////////
     ! LEAF ALLOCATION
     ! Sequence of steps:
@@ -303,7 +304,7 @@ contains
     real, dimension(nmonth), intent(in) :: meanmppfd
     real, dimension(nmonth), intent(in) :: nv
     real, intent(out)                   :: lai
-    real, optional, intent(out)         :: mydnleaf
+    real, intent(out)                   :: mydnleaf
 
     ! local variables
     real :: nleaf0
@@ -336,7 +337,7 @@ contains
       ! end if
 
       ! subtract from labile pool, making sure pool does not get negative
-      dclabl = min( clabl, 1.0 / params_plant%growtheff * mydcleaf )
+      dclabl = min( clabl, 1.0 / params_plant%growtheff * mydcleaf )  ! is equivalent to rgrow + mydcleaf
       dnlabl = mydnleaf
       if ( (dclabl - clabl) > 1e-8 ) stop 'trying to remove too much from labile pool: leaf C'
       clabl  = clabl - dclabl
@@ -377,7 +378,7 @@ contains
       mydcroot = params_plant%growtheff * clabl
       mydnroot = mydcroot * params_pft_plant(pft)%r_ntoc_root
 
-      dclabl = min( clabl, 1.0 / params_plant%growtheff * mydcroot )
+      dclabl = min( clabl, 1.0 / params_plant%growtheff * mydcroot )  ! is equivalent to rgrow + mydcroot
       dnlabl = mydnroot
       if ( (dclabl - clabl) > 1e-8 ) stop 'trying to remove too much from labile pool: root C'
       clabl  = clabl - dclabl
@@ -410,6 +411,12 @@ contains
       !   ! print*, 'B cleaf', cleaf
       !   ! print*, 'B root', root
       ! end if
+
+    else
+
+      mydcroot = 0.0
+      mydnroot = 0.0
+
     end if
 
   end subroutine allocate_root
