@@ -16,7 +16,8 @@ module md_plant
     initdaily_plant, outdnpp, outdnup, outdCleaf, outdCroot, outdClabl,   &
     outdNlabl, outdClitt, outdNlitt, outdCsoil, outdNsoil, outdlai,       &
     outdfapar,                                                            &
-    dnarea_mb, dnarea_cw, dlma, dcton_lm, outanpp, outanup, outaCveg,     &
+    dnarea_mb, dnarea_cw, dlma, dcton_lm, outanpp, outanup, outacleaf,    &
+    outacroot, &
     outaCveg2lit, outaNveg2lit, outaNinorg, outanarea_mb, outanarea_cw,   &
     outalai, outalma, outacton_lm, get_fapar,            &
     initoutput_plant, initio_plant, getout_daily_plant,                   &
@@ -148,7 +149,6 @@ module md_plant
   real, dimension(npft,maxgrid) :: outanpp
   real, dimension(npft,maxgrid) :: outanup
   real, dimension(npft,maxgrid) :: outacex
-  real, dimension(npft,maxgrid) :: outaCveg
   real, dimension(npft,maxgrid) :: outaCveg2lit
   real, dimension(npft,maxgrid) :: outaNveg2lit
   real, dimension(nlu, maxgrid) :: outaNinorg
@@ -157,7 +157,8 @@ module md_plant
   real, dimension(npft,maxgrid) :: outalai
   real, dimension(npft,maxgrid) :: outalma
   real, dimension(npft,maxgrid) :: outacton_lm
-
+  real, dimension(npft,maxgrid) :: outacroot
+  real, dimension(npft,maxgrid) :: outacleaf
 
 contains
 
@@ -466,7 +467,6 @@ contains
     ! annual output variables
     outanpp(:,:)        = 0.0
     outanup(:,:)        = 0.0
-    outaCveg(:,:)       = 0.0
     outaCveg2lit(:,:)   = 0.0
     outaNveg2lit(:,:)   = 0.0
     outaninorg(:,:)     = 0.0
@@ -475,6 +475,8 @@ contains
     outalai     (:,:)   = 0.0
     outalma     (:,:)   = 0.0
     outacton_lm (:,:)   = 0.0
+    outacleaf(:,:)      = 0.0
+    outacroot(:,:)      = 0.0
 
   end subroutine initoutput_plant
 
@@ -594,9 +596,13 @@ contains
     filnam=trim(prefix)//'.a.npp.out'
     open(311,file=filnam,err=999,status='unknown')
 
-    ! VEG C
-    filnam=trim(prefix)//'.a.cveg.out'
+    ! LEAF C
+    filnam=trim(prefix)//'.a.cleaf.out'
     open(312,file=filnam,err=999,status='unknown')
+
+    ! ROOT C
+    filnam=trim(prefix)//'.a.croot.out'
+    open(324,file=filnam,err=999,status='unknown')
 
     ! INORGANIC N (mean over days)
     filnam=trim(prefix)//'.a.ninorg.out'
@@ -726,7 +732,8 @@ contains
         end if
       end do
 
-      outaCveg    (pft,jpngr) = outdCleaf(pft,maxdoy(pft),jpngr) + outdCroot(pft,maxdoy(pft),jpngr) 
+      outacleaf   (pft,jpngr) = outdCleaf(pft,maxdoy(pft),jpngr)
+      outacroot   (pft,jpngr) = outdCroot(pft,maxdoy(pft),jpngr) 
       outanarea_mb(pft,jpngr) = dnarea_mb(pft,maxdoy(pft))
       outanarea_cw(pft,jpngr) = dnarea_cw(pft,maxdoy(pft))
       outalai     (pft,jpngr) = outdlai(pft,maxdoy(pft),jpngr)
@@ -828,7 +835,8 @@ contains
     write(307,999) itime, sum(outaCveg2lit(:,jpngr))
     write(308,999) itime, sum(outaNveg2lit(:,jpngr))
     write(311,999) itime, sum(outanpp(:,jpngr))
-    write(312,999) itime, sum(outaCveg(:,jpngr))
+    write(312,999) itime, sum(outacleaf(:,jpngr))
+    write(324,999) itime, sum(outacroot(:,jpngr))
     write(316,999) itime, sum(outaninorg(:,jpngr))
     write(317,999) itime, sum(outanup(:,jpngr))
     write(317,999) itime, sum(outacex(:,jpngr))

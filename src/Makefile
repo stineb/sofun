@@ -113,11 +113,11 @@ cmodel: $(CMODEL_MODOBJS) $(CMODEL_OBJS)
 	ar r $(ARCHIVE) $(CMODEL_MODOBJS) $(CMODEL_OBJS) 
 
 # reduced model setup: C-model only
-dbgcmodel: $(DGBCMODEL_MODOBJS) $(DGBCMODEL_OBJS)
+dbgcmodel: $(DBGCMODEL_MODOBJS) $(DBGCMODEL_OBJS) 
 	# $(MAKE) -C cdfcode
 	-rm $(ARCHIVE)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
-	ar r $(ARCHIVE) $(DGBCMODEL_MODOBJS) $(DGBCMODEL_OBJS) 
+	ar r $(ARCHIVE) $(DBGCMODEL_MODOBJS) $(DBGCMODEL_OBJS) 
 
 # full model setup: CN-model
 cnmodel: $(CNMODEL_MODOBJS) $(CNMODEL_OBJS)
@@ -157,10 +157,10 @@ $(SPLASH_MODOBJS): %.o: %.f
 $(SPLASH_OBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
-$(DGBSPLASH_MODOBJS): %.do: %.f
+$(DBGSPLASH_MODOBJS): %.do: %.f
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
-$(DGBSPLASH_OBJS): %.do: %.f
+$(DBGSPLASH_OBJS): %.do: %.f
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
 $(PMODEL_MODOBJS): %.o: %.f
@@ -181,10 +181,10 @@ $(CMODEL_MODOBJS): %.o: %.f
 $(CMODEL_OBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
-$(DGBCMODEL_MODOBJS): %.do: %.f
+$(DBGCMODEL_MODOBJS): %.do: %.f
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
-$(DGBCMODEL_OBJS): %.do: %.f
+$(DBGCMODEL_OBJS): %.do: %.f
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
 $(CNMODEL_MODOBJS): %.o: %.f

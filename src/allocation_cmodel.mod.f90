@@ -43,7 +43,7 @@ module md_allocation
     ! real, parameter    :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
     real :: r_n_cw_v          = 0.1       ! slope in the relationship of non-metabolic versus metabolic N per leaf area
     real :: ncw_min           = 0.1       ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
-    real :: r_ctostructn_leaf = 40        ! constant ratio of C to structural N
+    real :: r_ctostructn_leaf = 30        ! constant ratio of C to structural N
   end type paramstype_alloc
 
   type( paramstype_alloc ) :: params_alloc
@@ -761,7 +761,7 @@ contains
     out_traits%narea_metabolic  = n_molmass * mynarea_metabolic_canop / mylai   ! g N m-2-leaf
     out_traits%narea_structural = n_molmass * mynarea_structural_canop / mylai  ! g N m-2-leaf
     out_traits%narea            = n_molmass * ( mynarea_metabolic_canop + mynarea_structural_canop ) / mylai ! g N m-2-leaf
-    out_traits%lma              = c_molmass * params_alloc%r_ctostructn_leaf * mynarea_structural_canop / mylai 
+    out_traits%lma              = c_molmass * params_alloc%r_ctostructn_leaf * mynarea_structural_canop / mylai ! g C m-2-leaf
     out_traits%nmass            = out_traits%narea / ( out_traits%lma / c_content_of_biomass )
     out_traits%r_cton_leaf      = out_traits%lma / out_traits%narea
     out_traits%r_ntoc_leaf      = 1.0 / out_traits%r_cton_leaf
