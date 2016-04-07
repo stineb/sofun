@@ -7,8 +7,8 @@ module md_turnover
   ! of subroutines (names that way).
   !   - npp
   !   - getpar_modl_npp
-  !   - ((interface%steering%init))io_npp
-  !   - ((interface%steering%init))output_npp
+  !   - initio_npp
+  !   - initoutput_npp
   !   - getout_daily_npp
   !   - getout_monthly_npp
   !   - writeout_ascii_npp
@@ -52,7 +52,11 @@ contains
     real :: droot
     real :: dlabl
 
+
     do pft=1,npft
+
+      if (plabl(pft,jpngr)%c%c12<0.0) stop 'before turnover labile C is neg.'
+      if (plabl(pft,jpngr)%n%n14<0.0) stop 'before turnover labile N is neg.'
 
       if (ispresent(pft,jpngr)) then
     
@@ -128,6 +132,9 @@ contains
 
       ! print*,'to B plabl(pft,jpngr): ', plabl(pft,jpngr)
       
+        if (plabl(pft,jpngr)%c%c12<0.0) stop 'after turnover labile C is neg.'
+        if (plabl(pft,jpngr)%n%n14<0.0) stop 'after turnover labile N is neg.'
+
       endif                   !present
     enddo                     !pft
 

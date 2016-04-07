@@ -176,8 +176,8 @@ contains
     
     out_getpar_siml%prescr_monthly_fapar = getparlogical( 'run/'//runname//'.sofun.parameter', 'prescr_monthly_fapar' )
     
-    out_getpar_siml%daily_out_startyr    = getparint( 'run/'//runname//'.sofun.parameter', 'interface%params_siml%daily_out_startyr' )
-    out_getpar_siml%daily_out_endyr      = getparint( 'run/'//runname//'.sofun.parameter', 'interface%params_siml%daily_out_endyr' )
+    out_getpar_siml%daily_out_startyr    = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_startyr' )
+    out_getpar_siml%daily_out_endyr      = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_endyr' )
 
     if (out_getpar_siml%do_spinup) then
       out_getpar_siml%runyears = out_getpar_siml%nyeartrend + out_getpar_siml%spinupyears
@@ -201,7 +201,7 @@ contains
     out_getpar_siml%loutdlai       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdlai' )
     out_getpar_siml%loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     out_getpar_siml%loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
-    out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'interface%params_siml%loutdtemp_soil' )
+    out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
 
     out_getpar_siml%loutntransform = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutntransform') 
     out_getpar_siml%loutwaterbal   = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal')

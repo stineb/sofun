@@ -109,6 +109,10 @@ contains
     else  
       readyear = forcingyear
     end if
+
+    ! xxx try
+    readyear = min( readyear, 2009 )
+
     ! andep = getvalreal( trim(input_dir)//trim(ndep_forcing_file), readyear )
     andep_noy = getvalreal( 'sitedata/ndep/'//trim(sitename)//'/'//trim(ndep_noy_forcing_file), readyear )
     andep_nhx = getvalreal( 'sitedata/ndep/'//trim(sitename)//'/'//trim(ndep_nhx_forcing_file), readyear )
@@ -261,7 +265,7 @@ contains
   end function getclimate_site
 
 
-  function getlanduse( runname, sitename, forcingyear ) result( out_landuse )
+  function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file ) result( out_landuse )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual landuse state
     !----------------------------------------------------------------
@@ -269,28 +273,47 @@ contains
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
+    character(len=*), intent(in) :: do_grharvest_forcing_file
 
     ! local variables
     integer :: doy
     real, dimension(ndayyear) :: tmp
     character(len=4) :: landuseyear_char
+    character(len=245) :: filnam
 
     ! function return variable
     type( landuse_type ) :: out_landuse
 
+    logical :: file_exists
+
     ! xxx dummy
     out_landuse%lu_area(lunat) = 1.0
 
-    ! create 4-digit string for year  
-    write(landuseyear_char,999) forcingyear
+    ! xxx try
+    if (forcingyear<1993) then
+      ! create 4-digit string for year  
+      write(landuseyear_char,999) 1993
+    else if (forcingyear>2002) then
+      write(landuseyear_char,999) 2002
+    else
+      ! create 4-digit string for year  
+      write(landuseyear_char,999) forcingyear
+    end if
 
-    tmp = read1year_daily('sitedata/landuse/'// &
-      trim(sitename)//'/'//landuseyear_char//   &
-      '/'//'do_grharvest_forcing_file_'//       &
-      trim(sitename)//'_'//landuseyear_char//'.txt')
+    filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
 
-    print*, 'tmp ', tmp
-    stop
+    ! ! if there is no grass/crop harvest file available, assume it's not harvested (set 'tmp' to zero)
+    ! inquire( file='./input/'//trim(filnam), exist=file_exists )
+    ! if ( file_exists ) then
+    !   tmp(:) = read1year_daily( trim(filnam) )
+    !   print*,tmp
+    !   stop 'above: harvest'
+    ! else
+    !   tmp(:) = 0.0
+    ! end if
+
+    ! xxx try
+    tmp(:) = read1year_daily( trim(filnam) )
 
     do doy=1,ndayyear
       if (tmp(doy)==1.0) then
@@ -299,8 +322,6 @@ contains
         out_landuse%do_grharvest(doy) = .false.
       end if
     end do
-
-    stop
 
     return
     999  format (I4.4)

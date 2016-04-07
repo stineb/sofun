@@ -75,6 +75,9 @@ contains
         ! print*, 'dcex(pft) ',dcex(pft)
         ! print*, 'plabl(pft,jpngr) ',plabl(pft,jpngr)
 
+        if (plabl(pft,jpngr)%c%c12<0.0) stop 'before npp labile C is neg.'
+        if (plabl(pft,jpngr)%n%n14<0.0) stop 'before npp labile N is neg.'
+
         lu = params_pft_plant(pft)%lu_category
         
         !/////////////////////////////////////////////////////////////////////////
@@ -120,6 +123,19 @@ contains
         ! dnup(pft) = nitrogen(0.0) ! XXX WILL BE DETERMINED IN ALLOCATION
         dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 )      
 
+        print*,'proot(pft,jpngr)%c%c12', proot(pft,jpngr)%c%c12
+
+        if ( dnpp(pft)%c12 - dcex(pft) < 0.0 ) then
+          print*, 'pft    ',pft
+          print*, 'drleaf ',drleaf(pft)
+          print*, 'drroot ',drroot(pft)
+          print*, 'dgpp   ',dgpp(pft)
+          print*, 'dnpp   ',dnpp(pft)
+          print*, 'dcex   ',dcex(pft)
+          print*, 'NPP-CEX negative'
+          stop
+        end if
+
         ! ! SR nuptake calculates dcex and dnup (incl. dnup_act, dnup_pas, ...)
         ! call nuptake( jpngr, pft )
 
@@ -155,6 +171,9 @@ contains
         !     stop 'labile C negative'
         !   end if
         ! end if
+
+          if (plabl(pft,jpngr)%c%c12<0.0) stop 'after npp labile C is neg.'
+          if (plabl(pft,jpngr)%n%n14<0.0) stop 'after npp labile N is neg.'
 
       else
 

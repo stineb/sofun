@@ -19,6 +19,7 @@ subroutine biosphere( c_uptake )
   use md_turnover, only: turnover
   use md_allocation, only: allocation_daily
   use md_vegdynamics, only: vegdynamics
+  use md_landuse, only: grharvest
   
   implicit none
 
@@ -200,6 +201,13 @@ subroutine biosphere( c_uptake )
         !----------------------------------------------------------------
         ! print*, 'calling turnover() ... '
         call turnover( jpngr, day )
+        ! print*, '... done'
+
+        !----------------------------------------------------------------
+        ! grass / crop harvest
+        !----------------------------------------------------------------
+        ! print*, 'calling allocation() ... '
+        call grharvest( jpngr, day )
         ! print*, '... done'
 
         !----------------------------------------------------------------

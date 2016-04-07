@@ -99,6 +99,10 @@ contains
     type(orgpool), intent(in) :: amount
     type(orgpool), intent(inout) :: from
 
+    ! print*, 'ORGSUB'
+    ! print*,'amount ', amount
+    ! print*,'from   ', from  
+
 #if _check_sanity
     if ( amount%c%c12>from%c%c12+epsilon) then
       stop 'in ORGSUB: attempting to remove C amount > from-pool'
@@ -110,7 +114,6 @@ contains
       stop 'in ORGSUB: N in from-pool negative'
     endif
 #endif
-
 
     call csub( amount%c,from%c)
     call nsub( amount%n,from%n)
@@ -130,11 +133,16 @@ contains
     type(orgpool), intent(inout) :: to
     real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
+    ! print*, 'ORGMV'
+    ! print*,'amount ', amount
+    ! print*,'from   ', from  
+    ! print*,'to     ', to    
+
     if ( present( scale ) ) then
-      call orgcp(orgfrac(scale,amount),to) 
+      call orgcp( orgfrac(scale,amount), to ) 
       call orgsub( amount, from )       
     else
-      call orgcp( amount, to)
+      call orgcp( amount, to )
       call orgsub( amount, from )
     endif  
 

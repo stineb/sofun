@@ -116,7 +116,8 @@ program main
     interface%landuse(:) = getlanduse( &
                                       trim(runname), &
                                       trim(interface%params_siml%sitename), &
-                                      interface%steering%forcingyear &
+                                      interface%steering%forcingyear, &
+                                      interface%params_siml%do_grharvest_forcing_file &
                                       )
     ! pft_field(:)     = getpft( trim(interface%params_siml%sitename), interface%steering%forcingyear )
 
