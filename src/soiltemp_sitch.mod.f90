@@ -40,23 +40,20 @@ module md_soiltemp
 
 contains
 
-  subroutine soiltemp( jpngr, moy, day, dtemp, params_soil ) 
+  subroutine soiltemp( jpngr, moy, day, dtemp ) 
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates soil temperature based on.
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, nlu, maxgrid, ndaymonth, pi
-    use md_params_siml, only: init
     use md_sofunutils, only: running, daily2monthly
     use md_waterbal, only: soilphys
-    use md_params_soil, only: paramtype_soil
-
+    use md_interface
 
     ! arguments
     integer, intent(in)                   :: jpngr
     integer, intent(in)                   :: moy
     integer, intent(in)                   :: day                            ! current day of year
     real, dimension(ndayyear), intent(in) :: dtemp        ! daily temperature (deg C)
-    type( paramtype_soil ), intent(in)    :: params_soil
 
     ! local variables
     real, dimension(ndayyear,maxgrid), save     :: dtemp_pvy    ! daily temperature of previous year (deg C)
@@ -75,7 +72,7 @@ contains
 
 
     ! in first year, use this years air temperature (available for all days in this year)
-    if ( init .and. day==1 ) then
+    if ( interface%steering%init .and. day==1 ) then
       dtemp_pvy(:,jpngr) = dtemp(:)
     end if
 
@@ -108,7 +105,7 @@ contains
       ! avetemp stores running mean temperature of previous 12 months.
       ! meanw1 stores running mean soil moisture in layer 1 of previous 12 months 
       !-------------------------------------------------------------------------
-      if (init) then
+      if (interface%steering%init) then
         meanw1  = running( wscal_alldays(lu,:), day, ndayyear, ndayyear, "mean"  )
       else
         meanw1  = running( wscal_alldays(lu,:), day, ndayyear, ndayyear, "mean", wscal_pvy(lu,:,jpngr)  )
@@ -122,9 +119,9 @@ contains
           
       ! Interpolate thermal diffusivity function against soil water content
       if (meanw1<0.15) then
-        diffus = ( params_soil%thdiff_whc15 - params_soil%thdiff_wp ) / 0.15 * meanw1 + params_soil%thdiff_wp
+        diffus = ( interface%soilparams(jpngr)%thdiff_whc15 - interface%soilparams(jpngr)%thdiff_wp ) / 0.15 * meanw1 + interface%soilparams(jpngr)%thdiff_wp
       else
-        diffus = ( params_soil%thdiff_fc - params_soil%thdiff_whc15 ) / 0.85 * ( meanw1 - 0.15 ) + params_soil%thdiff_whc15
+        diffus = ( interface%soilparams(jpngr)%thdiff_fc - interface%soilparams(jpngr)%thdiff_whc15 ) / 0.85 * ( meanw1 - 0.15 ) + interface%soilparams(jpngr)%thdiff_whc15
       endif
           
       ! Convert diffusivity from mm2/s to m2/month
@@ -163,16 +160,16 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_params_siml, only: runname, loutdtemp_soil
+    use md_interface
 
     ! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
 
-    prefix = "./output/"//trim(runname)
+    prefix = "./output/"//trim(interface%params_siml%runname)
 
     ! soil temperature
-    if (loutdtemp_soil) then
+    if (interface%params_siml%loutdtemp_soil) then
       filnam=trim(prefix)//'.d.soiltemp.out'
       open(109,file=filnam,err=999,status='unknown')
     end if
@@ -189,9 +186,10 @@ contains
     !  Initialises soiltemp-specific output variables
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear
-    use md_params_siml, only: runname, loutdtemp_soil, init
+    use md_interface
 
-    if (init .and. loutdtemp_soil) allocate( outdtemp_soil(nlu,ndayyear,maxgrid)  )
+    if (interface%steering%init .and. interface%params_siml%loutdtemp_soil) &
+      allocate( outdtemp_soil(nlu,ndayyear,maxgrid)  )
 
   end subroutine initoutput_soiltemp
 
@@ -200,14 +198,14 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use md_params_siml, only: loutdtemp_soil
+    use md_interface
 
     ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy    
     integer, intent(in) :: doy    
 
-    if (loutdtemp_soil) outdtemp_soil(:,doy,jpngr) = dtemp_soil(:,jpngr)
+    if (interface%params_siml%loutdtemp_soil) outdtemp_soil(:,doy,jpngr) = dtemp_soil(:,jpngr)
 
   end subroutine getout_daily_soiltemp
 
@@ -217,7 +215,7 @@ contains
     ! WRITE soiltemp-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear
-    use md_params_siml, only: spinup, daily_out_startyr, daily_out_endyr, outyear, loutdtemp_soil
+    use md_interface
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -233,17 +231,18 @@ contains
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
-    if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+    if ( .not. interface%steering%spinup .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       ! Write daily output only during transient simulation
       do doy=1,ndayyear
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(outyear) + real(doy-1)/real(ndayyear)
+        itime = real(interface%steering%outyear) + real(doy-1)/real(ndayyear)
 
         if (nlu>1) stop 'writeout_ascii_soiltemp: write out lu-area weighted sum'
 
-        if (loutdtemp_soil) write(109,999) itime, sum(outdtemp_soil(:,doy,jpngr))
+        if (interface%params_siml%loutdtemp_soil) write(109,999) itime, sum(outdtemp_soil(:,doy,jpngr))
 
       end do
     end if

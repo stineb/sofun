@@ -67,7 +67,7 @@ contains
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------    
     use md_sofunutils, only: getparreal
-    use md_params_site, only: lTeBS, lGrC3, lGrC4
+    use md_interface
 
     ! local variables
     integer :: pft
@@ -79,15 +79,15 @@ contains
     ! important: Keep this order of reading PFT parameters fixed.
     !----------------------------------------------------------------
     pft = 0
-    if ( lTeBS ) then
+    if ( interface%params_site%lTeBS ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'TeBS' )
     end if 
-    if ( lGrC3 ) then
+    if ( interface%params_site%lGrC3 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GrC3' )
     end if
-    if ( lGrC4 ) then
+    if ( interface%params_site%lGrC4 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GrC4' )
     end if
@@ -103,7 +103,7 @@ contains
     use md_sofunutils, only: getparreal
 
     ! arguments
-    character(len=*) :: pftname
+    character(len=*), intent(in) :: pftname
 
     ! local variables
     real :: lu_category_prov    ! land use category associated with PFT (provisional)

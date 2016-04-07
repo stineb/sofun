@@ -22,7 +22,7 @@ module md_waterbal
   ! ...
   !----------------------------------------------------------------
   use md_params_core, only: ndayyear, nmonth, nlu, maxgrid
-  use md_params_siml, only: loutwaterbal
+  ! use md_params_siml, only: interface%params_siml%loutwaterbal
 
   implicit none
 
@@ -1091,23 +1091,22 @@ contains
   end subroutine initglobal_waterbal
 
 
-  subroutine initio_waterbal( )
+  subroutine initio_waterbal()
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_params_siml, only: runname
+    use md_interface
 
     ! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
 
-    prefix = "./output/"//trim(runname)
-
+    prefix = "./output/"//trim(interface%params_siml%runname)
 
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------
-    if (loutwaterbal) then
+    if (interface%params_siml%loutwaterbal) then
 
       ! RA: daily solar irradiation, J/m2
       filnam=trim(prefix)//'.d.ra.out'
@@ -1194,25 +1193,25 @@ contains
   end subroutine initio_waterbal
 
 
-  subroutine initoutput_waterbal
+  subroutine initoutput_waterbal()
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
-    use md_params_siml, only: init
+    use md_interface
 
-    if (loutwaterbal) then
+    if (interface%params_siml%loutwaterbal) then
 
-      if (init) allocate( outdwcont (nlu,ndayyear,maxgrid) ) ! daily soil moisture, mm
-      if (init) allocate( outdra (ndayyear,maxgrid)     ) ! daily solar irradiation, J/m2
-      if (init) allocate( outdrn (ndayyear,maxgrid)     ) ! daily net radiation, J/m2
-      if (init) allocate( outdppfd (ndayyear,maxgrid)   ) ! daily PPFD, mol/m2
-      if (init) allocate( outdayl(ndayyear,maxgrid)     ) ! daily day length, h
-      if (init) allocate( outdcn (ndayyear,maxgrid)     ) ! daily condensation water, mm
-      if (init) allocate( outdro (nlu,ndayyear,maxgrid) ) ! daily runoff, mm
-      if (init) allocate( outdeet(ndayyear,maxgrid)     ) ! daily equilibrium ET, mm
-      if (init) allocate( outdpet(ndayyear,maxgrid)     ) ! daily potential ET, mm
-      if (init) allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
-      if (init) allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
+      if (interface%steering%init) allocate( outdwcont (nlu,ndayyear,maxgrid) ) ! daily soil moisture, mm
+      if (interface%steering%init) allocate( outdra (ndayyear,maxgrid)     ) ! daily solar irradiation, J/m2
+      if (interface%steering%init) allocate( outdrn (ndayyear,maxgrid)     ) ! daily net radiation, J/m2
+      if (interface%steering%init) allocate( outdppfd (ndayyear,maxgrid)   ) ! daily PPFD, mol/m2
+      if (interface%steering%init) allocate( outdayl(ndayyear,maxgrid)     ) ! daily day length, h
+      if (interface%steering%init) allocate( outdcn (ndayyear,maxgrid)     ) ! daily condensation water, mm
+      if (interface%steering%init) allocate( outdro (nlu,ndayyear,maxgrid) ) ! daily runoff, mm
+      if (interface%steering%init) allocate( outdeet(ndayyear,maxgrid)     ) ! daily equilibrium ET, mm
+      if (interface%steering%init) allocate( outdpet(ndayyear,maxgrid)     ) ! daily potential ET, mm
+      if (interface%steering%init) allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
+      if (interface%steering%init) allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
 
       outdwcont(:,:,:) = 0.0
       outdra(:,:)      = 0.0
@@ -1235,6 +1234,8 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
+    use md_interface
+
     ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy    
@@ -1242,7 +1243,7 @@ contains
 
     ! Save the daily totals:
     ! xxx add lu-dimension and jpngr-dimension
-    if (loutwaterbal) then
+    if (interface%params_siml%loutwaterbal) then
 
       outdra(doy,jpngr)     = solar%dra(doy)
       outdppfd(doy,jpngr)   = solar%dppfd(doy)
@@ -1268,8 +1269,9 @@ contains
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, nmonth
-    use md_params_siml, only: spinup, firstyeartrend, spinupyears, daily_out_startyr, &
-      daily_out_endyr, outyear
+    use md_interface
+    ! use md_params_siml, only: spinup, firstyeartrend, spinupyears, interface%params_siml%daily_out_startyr, &
+    !   interface%params_siml%daily_out_endyr, outyear
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -1285,15 +1287,17 @@ contains
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
-    if (loutwaterbal) then
+    if (interface%params_siml%loutwaterbal) then
 
-      if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+      if ( .not. interface%steering%spinup &
+        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
         ! Write daily output only during transient simulation
         do day=1,ndayyear
 
           ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(outyear) + real(day-1)/real(ndayyear)
+          itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
 
           if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
 

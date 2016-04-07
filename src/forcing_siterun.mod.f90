@@ -1,7 +1,8 @@
 module md_forcing_siterun
   !////////////////////////////////////////////////////////////////
   ! Module contains forcing variables (climate, co2, ...), and
-  ! subroutines used to read forcing input files.
+  ! subroutines used to read forcing input files for a specific year
+  ! ('forcingyear'), specifically for site scale simulations.
   ! This module is only used on the level of 'sofun', but not
   ! within 'biosphere', as these variables are passed on to 'biosphere'
   ! as arguments.
@@ -11,26 +12,33 @@ module md_forcing_siterun
   use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
-  use md_params_siml, only: const_co2, firstyeartrend, co2_forcing_file, &
-    input_dir, const_ndep, ndep_noy_forcing_file, ndep_nhx_forcing_file, &
-    prescr_monthly_fapar
 
   implicit none
 
-  ! real, dimension(ndayyear,maxgrid) :: dtemp_field, dprec_field, &
-  !   dfsun_field, dvpd_field
+  private
+  public getco2, getndep, ndep_type, getfapar, getclimate_site, getlanduse, landuse_type, climate_type
 
-  real, dimension(ndayyear,maxgrid) :: dtemp_field
-  real, dimension(ndayyear,maxgrid) :: dprec_field
-  real, dimension(ndayyear,maxgrid) :: dfsun_field
-  real, dimension(ndayyear,maxgrid) :: dvpd_field
+  type climate_type
+    real, dimension(ndayyear) :: dtemp
+    real, dimension(ndayyear) :: dprec
+    real, dimension(ndayyear) :: dfsun
+    real, dimension(ndayyear) :: dvpd
+  end type climate_type
 
-  ! type outtype_climate
-  ! end type
+  type landuse_type
+    real, dimension(nlu)         :: lu_area
+    logical, dimension(ndayyear) :: do_grharvest
+  end type landuse_type
+
+  type ndep_type
+    real, dimension(ndayyear) :: dnoy
+    real, dimension(ndayyear) :: dnhx
+    real, dimension(ndayyear) :: dtot
+  end type ndep_type
 
 contains
 
-  function getco2( runname, sitename, forcingyear ) result( pco2 )
+  function getco2( runname, sitename, forcingyear, const_co2, firstyeartrend, co2_forcing_file ) result( pco2 )
     !////////////////////////////////////////////////////////////////
     !  Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
@@ -38,6 +46,9 @@ contains
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: forcingyear
+    logical, intent(in) :: const_co2
+    integer, intent(in) :: firstyeartrend
+    character(len=*), intent(in) :: co2_forcing_file
 
     ! function return variable
     real, intent(out) :: pco2
@@ -55,18 +66,34 @@ contains
   end function getco2
 
 
-  function getndep( runname, sitename, forcingyear ) result( dndep_field )
+  function getndep( &
+    runname, &
+    sitename, &
+    forcingyear, &
+    firstyeartrend, &
+    const_ndep, &
+    ndep_noy_forcing_file, &
+    ndep_nhx_forcing_file, &
+    climate &
+    ) result( out_getndep )
     !////////////////////////////////////////////////////////////////
-    !  Function reads this year's annual ndeposition and distributes it
+    ! Function reads this year's annual ndeposition and distributes it
     !  over days according to daily precipitation.
     !----------------------------------------------------------------
+    use md_params_core, only: dummy
+
     ! arguments
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
+    integer, intent(in) :: firstyeartrend
+    logical, intent(in) :: const_ndep
+    character(len=*), intent(in) :: ndep_noy_forcing_file
+    character(len=*), intent(in) :: ndep_nhx_forcing_file
+    type( climate_type ), dimension(maxgrid), intent(in) :: climate
 
     ! function return variable
-    real, dimension(ndayyear,maxgrid) :: dndep_field
+    type( ndep_type ), dimension(maxgrid) :: out_getndep 
 
     ! local variables
     real                      :: andep_noy
@@ -86,32 +113,31 @@ contains
     andep_noy = getvalreal( 'sitedata/ndep/'//trim(sitename)//'/'//trim(ndep_noy_forcing_file), readyear )
     andep_nhx = getvalreal( 'sitedata/ndep/'//trim(sitename)//'/'//trim(ndep_nhx_forcing_file), readyear )
 
-    
     ! Distribute annual Ndep to days by daily precipitation
     do jpngr=1,maxgrid
-      dprec_rel(:)         = dprec_field(:,jpngr)/sum(dprec_field(:,jpngr))
-      dndep_noy(:)         = andep_noy * dprec_rel(:)
-      dndep_nhx(:)         = andep_nhx * dprec_rel(:)
-      dndep_field(:,jpngr) = dndep_nhx(:) + dndep_noy(:)
+      dprec_rel(:)               = climate(jpngr)%dprec(:)/sum(climate(jpngr)%dprec(:))
+      out_getndep(jpngr)%dnoy(:) = andep_noy * dprec_rel(:)
+      out_getndep(jpngr)%dnhx(:) = andep_nhx * dprec_rel(:)
+      out_getndep(jpngr)%dtot(:) = out_getndep(jpngr)%dnoy(:) + out_getndep(jpngr)%dnhx(:)
     end do
 
   end function getndep
 
 
-  function getfapar( runname, sitename, forcingyear ) result( fapar_field )
+  function getfapar( runname, sitename, forcingyear, prescr_monthly_fapar ) result( fapar_field )
     !////////////////////////////////////////////////////////////////
-    !  Function reads this year's atmospheric CO2 from input
+    ! Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
-    use md_params_siml, only: prescr_monthly_fapar
     use md_params_core, only: dummy
 
     ! arguments
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: forcingyear
+    logical, intent(in) :: prescr_monthly_fapar
 
     ! function return variable
-    real, dimension(nmonth,maxgrid), intent(out) :: fapar_field
+    real, dimension(nmonth,maxgrid) :: fapar_field
 
     ! local variables 
     integer :: jpngr
@@ -134,7 +160,7 @@ contains
   end function getfapar
 
 
-  subroutine getclimate_site( runname, sitename, climateyear ) result ( out_climate )
+  function getclimate_site( runname, sitename, climateyear ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     !  SR reads this year's daily temperature and precipitation.
     !----------------------------------------------------------------    
@@ -145,33 +171,29 @@ contains
 
     ! local variables
     integer :: day, mo, dm, yr
-    ! real, dimension(nmonth) :: mtemp, mfsun, mvapr, mvpd
+    integer :: jpngr = 1
     real, dimension(ndayyear) :: dvapr
     character(len=4) :: climateyear_char
 
-    ! xxx used in combination with weather generator
-    ! real :: harvest1, harvest2
-    ! real, dimension(ndayyear,2) :: prdaily_random
-
-    ! ! function return variable
-    ! type( outtype_climate )  :: out_climate
-
-    ! PRESCRIBED DAILY CLIMATE (TEMP, PREC, FSUN) FOR ONE YEAR
-    ! xxx deal with jpngr dimension only when using NetCDF
+    ! function return variable
+    type( climate_type ), dimension(maxgrid) :: out_climate
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
     write(0,*) 'prescribe daily climate (temp, prec, fsun, vpd) for ', trim(sitename), ' yr ', climateyear_char,'...'
     
-    dtemp_field(:,1) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt')
-    dprec_field(:,1) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt')
-    dfsun_field(:,1) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')
-    dvapr(:)         = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dvapr_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    jpngr = 1
+
+    out_climate(jpngr)%dtemp(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    out_climate(jpngr)%dprec(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    out_climate(jpngr)%dfsun(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    
+    dvapr(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dvapr_'//trim(sitename)//'_'//climateyear_char//'.txt')
 
     ! calculate daily VPD based on daily vapour pressure and temperature data
     do day=1,ndayyear
-      dvpd_field(day,1) = calc_vpd( dtemp_field(day,1), dvapr(day) )
+      out_climate(jpngr)%dvpd(day) = calc_vpd( out_climate(jpngr)%dtemp(day), dvapr(day) )
     end do
 
     ! ! xxx alternatively, if no daily values are available, use weather generator for precip
@@ -236,53 +258,52 @@ contains
     return
     999  format (I4.4)
 
-  end subroutine getclimate_site
+  end function getclimate_site
 
 
-  !subroutine getclimate( day, jpngr, dtemp, dprec, dfsun )
-  !  !////////////////////////////////////////////////////////////////
-  !  !  SR reads this year's daily temperature and precipitation.
-  !  !----------------------------------------------------------------
-  !  use md_params_core
-  !  implicit none
-
-!  ! ! arguments
-  !  integer, intent(in) :: day     
-  !  integer, intent(in) :: jpngr     
-  !  real, intent(out) :: dtemp, dprec, dfsun
-
-!  !  do yr=1,nyeartrend
-  !    day=0
-  !    do mo=1,nmonth
-  !      do dm=1,ndaymonth(mo)
-  !        day=day+1
-  !        do pft=1,npft
-  !          dtemp = dtemp_field(day,jpngr)
-  !          dprec = dprec_field(day,jpngr)
-  !          dfsun = dfsun_field(day,jpngr)
-  !        end do
-  !      end do
-  !    enddo
-  !  enddo
-  !  write(0,*) '... done'
-
-!  !  return
-
-!  !end subroutine getclimate
-
-
-  function getlanduse( runname, forcingyear ) result( lu_area )
+  function getlanduse( runname, sitename, forcingyear ) result( out_landuse )
     !////////////////////////////////////////////////////////////////
-    !  Function reads this year's annual landuse state
+    ! Function reads this year's annual landuse state
     !----------------------------------------------------------------
     ! arguments
-    character(len=*), intent(in)      :: runname
-    integer, intent(in)               :: forcingyear
+    character(len=*), intent(in) :: runname
+    character(len=*), intent(in) :: sitename
+    integer, intent(in)          :: forcingyear
+
+    ! local variables
+    integer :: doy
+    real, dimension(ndayyear) :: tmp
+    character(len=4) :: landuseyear_char
 
     ! function return variable
-    real, dimension(nlu,maxgrid)      :: lu_area
+    type( landuse_type ) :: out_landuse
 
-    lu_area(lunat,:) = 1.0
+    ! xxx dummy
+    out_landuse%lu_area(lunat) = 1.0
+
+    ! create 4-digit string for year  
+    write(landuseyear_char,999) forcingyear
+
+    tmp = read1year_daily('sitedata/landuse/'// &
+      trim(sitename)//'/'//landuseyear_char//   &
+      '/'//'do_grharvest_forcing_file_'//       &
+      trim(sitename)//'_'//landuseyear_char//'.txt')
+
+    print*, 'tmp ', tmp
+    stop
+
+    do doy=1,ndayyear
+      if (tmp(doy)==1.0) then
+        out_landuse%do_grharvest(doy) = .true.
+      else
+        out_landuse%do_grharvest(doy) = .false.
+      end if
+    end do
+
+    stop
+
+    return
+    999  format (I4.4)
 
   end function getlanduse
 
@@ -309,7 +330,7 @@ contains
     real :: my_tc
 
     ! function return variable
-    real, intent(out) :: vpd       !  mean monthly vapor pressure deficit, Pa
+    real :: vpd       !  mean monthly vapor pressure deficit, Pa
 
     if ( present(tmin) .and. present(tmax) ) then
       my_tc = 0.5 * (tmin + tmax)
@@ -392,7 +413,7 @@ contains
 
   ! function getvalreal( filename, realyear, day, dm, mo )
   !   !////////////////////////////////////////////////////////////////
-  !   !  Function reads one (annual) value corresponding to the given 
+  !   ! Function reads one (annual) value corresponding to the given 
   !   !  year from a time series ascii file. 
   !   !----------------------------------------------------------------
 
@@ -453,7 +474,7 @@ contains
   ! function getvalreal_STANDARD( filename, realyear, mo, dm, day, realyear_decimal )
   !   !////////////////////////////////////////////////////////////////
   !   !  SR reads one (annual) value corresponding to the given year 
-  !   !  from a time series ascii file. File has to be located in 
+  !   ! from a time series ascii file. File has to be located in 
   !   !  ./input/ and has to contain only rows formatted like
   !   !  '2002  1  1 0.496632 0.054053', which represents 
   !   !  'YYYY MM DM      GPP GPP err.'. DM is the day within the month.

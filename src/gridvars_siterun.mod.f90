@@ -1,4 +1,4 @@
-module md_gridvars
+module md_grid
   !////////////////////////////////////////////////////////////////
   ! Module contains global variables defining the model grid.
   ! A module 'gridvars_*' must contain the following subroutines:
@@ -13,29 +13,35 @@ module md_gridvars
 
   implicit none
 
-  real, dimension(maxgrid)  :: lon        ! longitude vector/field (degrees E)              
-  real, dimension(maxgrid)  :: lat        ! latitude vector/field (degrees N)             
-  real, dimension(maxgrid)  :: elv        ! elevation vector/field (m above sea level)                  
+  private
+  public gridtype, getgrid
+
+  type gridtype
+    real :: lon
+    real :: lat
+    real :: elv
+  end type gridtype
 
 contains
 
-  subroutine getgrid
+  function getgrid( sitename ) result( out_grid )
     !////////////////////////////////////////////////////////////////
     ! Defines grid variables
     !----------------------------------------------------------------
-    use md_params_site, only: lon_site, lat_site, elv_site
+    use md_sofunutils, only: getparreal
 
-    implicit none
+    ! arguments
+    character(len=*) :: sitename
+
+    type( gridtype ), dimension(maxgrid) :: out_grid
 
     ! xxx try. otherwise loop over sites and allocate values for each 
     ! site into vectors containing all sites
-    lon(1) = lon_site
-    lat(1) = lat_site
-    elv(1) = elv_site
+    out_grid(:)%lon = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'longitude' )
+    out_grid(:)%lat = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'latitude' )
+    out_grid(:)%elv = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'altitude' )
 
-    return
+  end function getgrid
 
-  end subroutine getgrid
-
-end module md_gridvars
+end module md_grid
 

@@ -7,8 +7,8 @@ module md_nuptake
   ! of subroutines (names that way).
   !   - nuptake
   !   - getpar_modl_nuptake
-  !   - initio_nuptake
-  !   - initoutput_nuptake
+  !   - ((interface%steering%init))io_nuptake
+  !   - ((interface%steering%init))output_nuptake
   !   - getout_daily_nuptake
   !   - getout_monthly_nuptake
   !   - writeout_ascii_nuptake
@@ -589,7 +589,7 @@ contains
   end subroutine nuptake
 
 
-  subroutine initdaily_nuptake
+  subroutine ((interface%steering%init))daily_nuptake
     !////////////////////////////////////////////////////////////////
     ! Initialise daily variables with zero
     !----------------------------------------------------------------
@@ -599,10 +599,10 @@ contains
     dnup_fix(:)    = 0.0
     dnup_ret(:)    = 0.0
 
-  end subroutine initdaily_nuptake
+  end subroutine ((interface%steering%init))daily_nuptake
 
 
-  subroutine initio_nuptake( prefix )
+  subroutine ((interface%steering%init))io_nuptake( prefix )
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
@@ -642,7 +642,7 @@ contains
 
     888  stop 'INITIO_NUPTAKE: error opening output files'
 
-  end subroutine initio_nuptake
+  end subroutine ((interface%steering%init))io_nuptake
 
 
 
@@ -692,7 +692,7 @@ contains
 
 
 
-  subroutine initoutput_nuptake
+  subroutine ((interface%steering%init))output_nuptake
     !////////////////////////////////////////////////////////////////
     !  Initialises nuptake-specific output variables
     !----------------------------------------------------------------
@@ -702,7 +702,7 @@ contains
 
     return
 
-  end subroutine initoutput_nuptake
+  end subroutine ((interface%steering%init))output_nuptake
 
 
 

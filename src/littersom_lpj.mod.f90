@@ -84,7 +84,7 @@ contains
     !----------------------------------------------------------------
     use md_params_core, only: npft, maxgrid, nmonth, nlu, ndayyear, &
       pft_start, pft_end
-    use md_params_siml, only: spinup, recycle
+    use md_interface
     use md_classdefs
     use md_rates, only: ftemp, fmoist
     use md_plant, only: params_pft_plant, plitt_af, plitt_as, plitt_bg, pexud
@@ -313,8 +313,8 @@ contains
         call ccp( cfrac( (1.0-eff), dlitt%c ), drhet(lu) )
 
         ! get average litter -> soil flux for analytical soil C equilibration
-        if ( spinup .and. invocation > ( spinupyr_soilequil_1 - recycle ) .and. invocation < spinupyr_soilequil_1 &
-          .or. spinup .and. invocation > ( spinupyr_soilequil_2 - recycle ) .and. invocation < spinupyr_soilequil_2) then
+        if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation < spinupyr_soilequil_1 &
+          .or. interface%steering%spinup .and. invocation > ( spinupyr_soilequil_2 - interface%params_siml%recycle ) .and. invocation < spinupyr_soilequil_2) then
           mean_insoil_fs(lu,jpngr) = mean_insoil_fs(lu,jpngr) + eff * params_littersom%fastfrac * dlitt%c%c12
           mean_insoil_sl(lu,jpngr) = mean_insoil_sl(lu,jpngr) + eff * (1.0-params_littersom%fastfrac) * dlitt%c%c12
         end if
@@ -549,15 +549,15 @@ contains
       ! <<<<<<<<<<<      
 
       ! get average litter -> soil flux for analytical soil C equilibration
-      if ( spinup .and. invocation > ( spinupyr_soilequil_1 - recycle ) .and. invocation<spinupyr_soilequil_1 &
-        .or. spinup .and. invocation > ( spinupyr_soilequil_2 - recycle ) .and. invocation<spinupyr_soilequil_2 ) then
+      if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation<spinupyr_soilequil_1 &
+        .or. interface%steering%spinup .and. invocation > ( spinupyr_soilequil_2 - interface%params_siml%recycle ) .and. invocation<spinupyr_soilequil_2 ) then
         mean_ksoil_fs(lu,jpngr) = mean_ksoil_fs(lu,jpngr) + ksoil_fs(lu)
         mean_ksoil_sl(lu,jpngr) = mean_ksoil_sl(lu,jpngr) + ksoil_sl(lu)
       end if
 
       ! analytical soil C equilibration
-      if ( spinup .and. invocation==spinupyr_soilequil_1 .and. doy==ndayyear &
-        .or. spinup .and. invocation==spinupyr_soilequil_2 .and. doy==ndayyear ) then
+      if ( interface%steering%spinup .and. invocation==spinupyr_soilequil_1 .and. doy==ndayyear &
+        .or. interface%steering%spinup .and. invocation==spinupyr_soilequil_2 .and. doy==ndayyear ) then
         psoil_fs(lu,jpngr)%c%c12 = mean_insoil_fs(lu,jpngr) / mean_ksoil_fs(lu,jpngr)
         psoil_sl(lu,jpngr)%c%c12 = mean_insoil_sl(lu,jpngr) / mean_ksoil_sl(lu,jpngr)
         psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_save_fs
@@ -686,18 +686,18 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_params_siml, only: runname, loutlittersom
+    use md_interface
 
     ! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
 
-    prefix = "./output/"//trim(runname)
+    prefix = "./output/"//trim(interface%params_siml%runname)
 
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------
-    if (loutlittersom) then
+    if (interface%params_siml%loutlittersom) then
 
       ! NET N MINERALISATION
       filnam=trim(prefix)//'.d.netmin.out'
@@ -764,14 +764,14 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises littersomance-specific output variables
     !----------------------------------------------------------------
-    use md_params_siml, only: init, loutlittersom
+    use md_interface
 
-    if (loutlittersom) then
+    if (interface%params_siml%loutlittersom) then
   
-      if (init) allocate( outdnetmin(nlu,ndayyear,maxgrid)      )
-      if (init) allocate( outdnetmin_soil(nlu,ndayyear,maxgrid) )
-      if (init) allocate( outdnetmin_litt(nlu,ndayyear,maxgrid) )
-      if (init) allocate( outdnfixfree(nlu,ndayyear,maxgrid)    )
+      if (interface%steering%init) allocate( outdnetmin(nlu,ndayyear,maxgrid)      )
+      if (interface%steering%init) allocate( outdnetmin_soil(nlu,ndayyear,maxgrid) )
+      if (interface%steering%init) allocate( outdnetmin_litt(nlu,ndayyear,maxgrid) )
+      if (interface%steering%init) allocate( outdnfixfree(nlu,ndayyear,maxgrid)    )
 
       outdnetmin(:,:,:)      = 0.0
       outdnetmin_soil(:,:,:) = 0.0
@@ -796,13 +796,13 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use md_params_siml, only: loutlittersom
+    use md_interface
     use md_plant, only: plitt_af, plitt_as, plitt_bg
 
     ! arguments
     integer, intent(in) :: jpngr
 
-    if (loutlittersom) then
+    if (interface%params_siml%loutlittersom) then
       outaClitt(:,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
       outaCsoil(:,jpngr) = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
     end if
@@ -810,17 +810,15 @@ contains
   end subroutine getout_annual_littersom
 
 
-  subroutine writeout_ascii_littersom( year, spinup )
+  subroutine writeout_ascii_littersom( year )
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE littersom-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, nmonth
-    use md_params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
-      daily_out_endyr, outyear, loutlittersom
+    use md_interface
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
-    logical, intent(in) :: spinup     ! true during spinup years
 
     ! Local variables
     real :: itime
@@ -833,20 +831,22 @@ contains
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
-    if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+    if ( .not. interface%steering%spinup &
+      .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
       ! Write daily output only during transient simulation
       do day=1,ndayyear
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
+        itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears) + real(day-1)/real(ndayyear)
 
         if (nlu>1) stop 'writeout_ascii_littersom: write out lu-area weighted sum'
 
         ! xxx lu-area weighted sum if nlu>0
-        if (loutlittersom) write(106,999) itime, sum(outdnetmin(:,day,jpngr))
-        if (loutlittersom) write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
-        if (loutlittersom) write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))
-        if (loutlittersom) write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
+        if (interface%params_siml%loutlittersom) write(106,999) itime, sum(outdnetmin(:,day,jpngr))
+        if (interface%params_siml%loutlittersom) write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
+        if (interface%params_siml%loutlittersom) write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))
+        if (interface%params_siml%loutlittersom) write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
 
       end do
     end if
@@ -856,16 +856,16 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(year) + real(firstyeartrend) - real(spinupyears)
+    itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
 
-    if (loutlittersom) write(301,999) itime, sum(outaClitt(:,jpngr))
-    if (loutlittersom) write(302,999) itime, sum(outaCsoil(:,jpngr))
-    if (loutlittersom) write(304,999) itime, sum(outanreq(:,jpngr))
-    if (loutlittersom) write(305,999) itime, sum(outaClit2soil(:,jpngr))
-    if (loutlittersom) write(306,999) itime, sum(outaNlit2soil(:,jpngr))
-    if (loutlittersom) write(313,999) itime, sum(outaCdsoil(:,jpngr))
-    if (loutlittersom) write(314,999) itime, sum(outaNdsoil(:,jpngr))
-    if (loutlittersom) write(315,999) itime, sum(outaNimmo(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(301,999) itime, sum(outaClitt(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(302,999) itime, sum(outaCsoil(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(304,999) itime, sum(outanreq(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(305,999) itime, sum(outaClit2soil(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(306,999) itime, sum(outaNlit2soil(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(313,999) itime, sum(outaCdsoil(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(314,999) itime, sum(outaNdsoil(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(315,999) itime, sum(outaNimmo(:,jpngr))
 
     return
     

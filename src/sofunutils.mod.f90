@@ -387,7 +387,7 @@ contains
           lastmonthtemp = mval(nmonth)     ! Dec mean temperature
         end if
 
-        doy = 0                      ! initialisation of this years days
+        doy = 0                      ! ((interface%steering%init))ialisation of this years days
         
         do moy=1,nmonth
           dtold = dt

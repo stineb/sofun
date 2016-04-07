@@ -244,7 +244,7 @@ contains
 
     ! arguments
     logical, intent(in) :: grass
-    real, intent(in) :: lai0                        ! sapling (or grass on initialisation) LAI (=lai_sapl)
+    real, intent(in) :: lai0                        ! sapling (or grass on ((interface%steering%init))ialisation) LAI (=lai_sapl)
     real, intent(in) :: sla                         ! specific leaf area [m2/gC]
     real, intent(in) :: latosa                      ! ratio of leaf area to sapwood cross-sectional area (Shinozaki et al 1964a,b) (m2 * m-2)
     real, intent(in) :: reinickerp                  ! Reinicker-p for geometry

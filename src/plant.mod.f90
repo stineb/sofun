@@ -1,7 +1,7 @@
 module md_plant
   !////////////////////////////////////////////////////////////////
   ! Holds all PFT-specific pools, fluxes, and IO-handling prodecures
-  !----------------------------------------------------------------
+  ! --------------------------------------------------------------
   use md_classdefs
   use md_params_core, only: nlu, npft, maxgrid, ndayyear, lunat
 
@@ -172,7 +172,7 @@ contains
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------    
     use md_sofunutils, only: getparreal
-    use md_params_site, only: lTeBS, lGrC3, lGrC4
+    use md_interface
 
     ! local variables
     integer :: pft
@@ -212,15 +212,15 @@ contains
     ! important: Keep this order of reading PFT parameters fixed.
     !----------------------------------------------------------------
     pft = 0
-    if ( lTeBS ) then
+    if ( interface%params_site%lTeBS ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'TeBS' )
     end if 
-    if ( lGrC3 ) then
+    if ( interface%params_site%lGrC3 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GrC3' )
     end if
-    if ( lGrC4 ) then
+    if ( interface%params_site%lGrC4 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GrC4' )
     end if
@@ -426,31 +426,32 @@ contains
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
-    use md_params_siml, only: init &
-      , loutdgpp       &
-      , loutdnpp       &
-      , loutdnup       &
-      , loutdcex       &
-      , loutdCleaf     &
-      , loutdCroot     &
-      , loutdClabl     &
-      , loutdNlabl     &
-      , loutdClitt     &
-      , loutdNlitt     &
-      , loutdlai       &
-      , loutdfapar
+    ! use md_params_siml, only: init &
+    !   , interface%params_siml%loutdgpp       &
+    !   , interface%params_siml%loutdnpp       &
+    !   , interface%params_siml%loutdnup       &
+    !   , interface%params_siml%loutdcex       &
+    !   , interface%params_siml%loutdCleaf     &
+    !   , interface%params_siml%loutdCroot     &
+    !   , interface%params_siml%loutdClabl     &
+    !   , interface%params_siml%loutdNlabl     &
+    !   , interface%params_siml%loutdClitt     &
+    !   , interface%params_siml%loutdNlitt     &
+    !   , interface%params_siml%loutdlai       &
+    !   , interface%params_siml%loutdfapar
+    use md_interface
 
-    if (init.and.loutdnpp  ) allocate( outdnpp      (npft,ndayyear,maxgrid) )
-    if (init.and.loutdnup  ) allocate( outdnup      (npft,ndayyear,maxgrid) )
-    if (init.and.loutdcex  ) allocate( outdcex      (npft,ndayyear,maxgrid) )
-    if (init.and.loutdCleaf) allocate( outdCleaf    (npft,ndayyear,maxgrid) )
-    if (init.and.loutdCroot) allocate( outdCroot    (npft,ndayyear,maxgrid) )
-    if (init.and.loutdClabl) allocate( outdClabl    (npft,ndayyear,maxgrid) )
-    if (init.and.loutdNlabl) allocate( outdNlabl    (npft,ndayyear,maxgrid) )
-    if (init.and.loutdClitt) allocate( outdClitt    (npft,ndayyear,maxgrid) )
-    if (init.and.loutdNlitt) allocate( outdNlitt    (npft,ndayyear,maxgrid) )
-    if (init.and.loutdlai  ) allocate( outdlai      (npft,ndayyear,maxgrid) )
-    if (init.and.loutdfapar) allocate( outdfapar    (npft,ndayyear,maxgrid) )
+    if (interface%steering%init .and. interface%params_siml%loutdnpp  ) allocate( outdnpp      (npft,ndayyear,maxgrid) )
+    if (interface%steering%init .and. interface%params_siml%loutdnup  ) allocate( outdnup      (npft,ndayyear,maxgrid) )
+    if (interface%steering%init .and. interface%params_siml%loutdcex  ) allocate( outdcex      (npft,ndayyear,maxgrid) )
+    if (interface%steering%init)                                        allocate( outdCleaf    (npft,ndayyear,maxgrid) )
+    if (interface%steering%init)                                        allocate( outdCroot    (npft,ndayyear,maxgrid) )
+    if (interface%steering%init .and. interface%params_siml%loutdClabl) allocate( outdClabl    (npft,ndayyear,maxgrid) )
+    if (interface%steering%init .and. interface%params_siml%loutdNlabl) allocate( outdNlabl    (npft,ndayyear,maxgrid) )
+    if (interface%steering%init .and. interface%params_siml%loutdClitt) allocate( outdClitt    (npft,ndayyear,maxgrid) )
+    if (interface%steering%init .and. interface%params_siml%loutdNlitt) allocate( outdNlitt    (npft,ndayyear,maxgrid) )
+    if (interface%steering%init .and. interface%params_siml%loutdlai  ) allocate( outdlai      (npft,ndayyear,maxgrid) )
+    if (interface%steering%init .and. interface%params_siml%loutdfapar) allocate( outdfapar    (npft,ndayyear,maxgrid) )
 
     outdnpp  (:,:,:) = 0.0
     outdnup  (:,:,:) = 0.0
@@ -485,51 +486,51 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Opens input/output files.
     !----------------------------------------------------------------
-    use md_params_siml, only: & 
-        loutdgpp       &
-      , loutdnpp       &
-      , loutdnup       &
-      , loutdcex       &
-      , loutdCleaf     &
-      , loutdCroot     &
-      , loutdClabl     &
-      , loutdNlabl     &
-      , loutdClitt     &
-      , loutdNlitt     &
-      , loutdlai       &
-      , loutdfapar
-
-    use md_params_siml, only: runname
+    ! use md_params_siml, only: & 
+    !     interface%params_siml%loutdgpp       &
+    !   , interface%params_siml%loutdnpp       &
+    !   , interface%params_siml%loutdnup       &
+    !   , interface%params_siml%loutdcex       &
+    !   , interface%params_siml%loutdCleaf     &
+    !   , interface%params_siml%loutdCroot     &
+    !   , interface%params_siml%loutdClabl     &
+    !   , interface%params_siml%loutdNlabl     &
+    !   , interface%params_siml%loutdClitt     &
+    !   , interface%params_siml%loutdNlitt     &
+    !   , interface%params_siml%loutdlai       &
+    !   , interface%params_siml%loutdfapar
+    use md_interface
+    ! use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
 
-    prefix = "./output/"//trim(runname)
+    prefix = "./output/"//trim(interface%params_siml%runname)
 
     !////////////////////////////////////////////////////////////////
     ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
     !----------------------------------------------------------------
     ! NPP
-    if (loutdnpp) then 
+    if (interface%params_siml%loutdnpp) then 
       filnam=trim(prefix)//'.d.npp.out'
       open(102,file=filnam,err=999,status='unknown')
     end if
 
     ! LEAF C
-    if (loutdCleaf    ) then
+    if (interface%params_siml%loutdCleaf    ) then
       filnam=trim(prefix)//'.d.cleaf.out'
       open(103,file=filnam,err=999,status='unknown')
     end if 
 
     ! N UPTAKE
-    if (loutdnup      ) then
+    if (interface%params_siml%loutdnup      ) then
       filnam=trim(prefix)//'.d.nup.out'
       open(104,file=filnam,err=999,status='unknown')
     end if
 
     ! C EXUDATION
-    if (loutdcex      ) then
+    if (interface%params_siml%loutdcex      ) then
       filnam=trim(prefix)//'.d.cex.out'
       open(105,file=filnam,err=999,status='unknown')
     end if
@@ -539,43 +540,43 @@ contains
     ! open(110,file=filnam,err=999,status='unknown')
 
     ! ROOT C
-    if (loutdCroot    ) then
+    if (interface%params_siml%loutdCroot    ) then
       filnam=trim(prefix)//'.d.croot.out'
       open(111,file=filnam,err=999,status='unknown')
     end if
 
     ! LABILE C
-    if (loutdClabl    ) then
+    if (interface%params_siml%loutdClabl    ) then
       filnam=trim(prefix)//'.d.clabl.out'
       open(112,file=filnam,err=999,status='unknown')
     end if
 
     ! LITTER C
-    if (loutdClitt    ) then
+    if (interface%params_siml%loutdClitt    ) then
       filnam=trim(prefix)//'.d.clitt.out'
       open(113,file=filnam,err=999,status='unknown')
     end if
 
     ! ! LABILE N
-    ! if (loutdNlabl    ) then
+    ! if (interface%params_siml%loutdNlabl    ) then
     !   filnam=trim(prefix)//'.d.nlabl.out'
     !   open(115,file=filnam,err=999,status='unknown')
     ! end if
 
     ! LITTER N
-    if (loutdNlitt    ) then
+    if (interface%params_siml%loutdNlitt    ) then
       filnam=trim(prefix)//'.d.nlitt.out'
       open(119,file=filnam,err=999,status='unknown')
     end if
 
     ! LAI
-    if (loutdlai      ) then
+    if (interface%params_siml%loutdlai      ) then
       filnam=trim(prefix)//'.d.lai.out'
       open(121,file=filnam,err=999,status='unknown')
     end if
 
     ! FAPAR
-    if (loutdfapar    ) then
+    if (interface%params_siml%loutdfapar    ) then
       filnam=trim(prefix)//'.d.fapar.out'
       open(122,file=filnam,err=999,status='unknown')
     end if
@@ -652,19 +653,20 @@ contains
     ! where they are defined.
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
-    use md_params_siml, only: & 
-        loutdgpp       &
-      , loutdnpp       &
-      , loutdnup       &
-      , loutdcex       &
-      , loutdCleaf     &
-      , loutdCroot     &
-      , loutdClabl     &
-      , loutdNlabl     &
-      , loutdClitt     &
-      , loutdNlitt     &
-      , loutdlai       &
-      , loutdfapar
+    use md_interface
+    ! use md_params_siml, only: & 
+    !     interface%params_siml%loutdgpp       &
+    !   , interface%params_siml%loutdnpp       &
+    !   , interface%params_siml%loutdnup       &
+    !   , interface%params_siml%loutdcex       &
+    !   , interface%params_siml%loutdCleaf     &
+    !   , interface%params_siml%loutdCroot     &
+    !   , interface%params_siml%loutdClabl     &
+    !   , interface%params_siml%loutdNlabl     &
+    !   , interface%params_siml%loutdClitt     &
+    !   , interface%params_siml%loutdNlitt     &
+    !   , interface%params_siml%loutdlai       &
+    !   , interface%params_siml%loutdfapar
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -679,18 +681,18 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (loutdnpp      ) outdnpp(:,doy,jpngr)       = dnpp(:)%c12
-    if (loutdnup      ) outdnup(:,doy,jpngr)       = dnup(:)%n14
-    if (loutdcex      ) outdcex(:,doy,jpngr)       = dcex(:)
-    if (loutdCleaf    ) outdCleaf(:,doy,jpngr)     = pleaf(:,jpngr)%c%c12
-    if (loutdCroot    ) outdCroot(:,doy,jpngr)     = proot(:,jpngr)%c%c12
-    if (loutdClabl    ) outdClabl(:,doy,jpngr)     = plabl(:,jpngr)%c%c12
+    if (interface%params_siml%loutdnpp   ) outdnpp(:,doy,jpngr)   = dnpp(:)%c12
+    if (interface%params_siml%loutdnup   ) outdnup(:,doy,jpngr)   = dnup(:)%n14
+    if (interface%params_siml%loutdcex   ) outdcex(:,doy,jpngr)   = dcex(:)
+    if (interface%params_siml%loutdCleaf ) outdCleaf(:,doy,jpngr) = pleaf(:,jpngr)%c%c12
+    if (interface%params_siml%loutdCroot ) outdCroot(:,doy,jpngr) = proot(:,jpngr)%c%c12
+    if (interface%params_siml%loutdClabl ) outdClabl(:,doy,jpngr) = plabl(:,jpngr)%c%c12
 
-    if (loutdNlabl    ) outdNlabl(:,doy,jpngr)     = plabl(:,jpngr)%n%n14
-    if (loutdClitt    ) outdClitt(:,doy,jpngr)     = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
-    if (loutdNlitt    ) outdNlitt(:,doy,jpngr)     = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
-    if (loutdlai      ) outdlai(:,doy,jpngr)       = lai_ind(:,jpngr)
-    if (loutdfapar    ) outdfapar(:,doy,jpngr)     = canopy(:)%fapar_ind
+    if (interface%params_siml%loutdNlabl ) outdNlabl(:,doy,jpngr) = plabl(:,jpngr)%n%n14
+    if (interface%params_siml%loutdClitt ) outdClitt(:,doy,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
+    if (interface%params_siml%loutdNlitt ) outdNlitt(:,doy,jpngr) = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
+    if (interface%params_siml%loutdlai   ) outdlai(:,doy,jpngr)   = lai_ind(:,jpngr)
+    if (interface%params_siml%loutdfapar ) outdfapar(:,doy,jpngr) = canopy(:)%fapar_ind
     
     dnarea_mb(:,doy)           = leaftraits(:)%narea_metabolic
     dnarea_cw(:,doy)           = leaftraits(:)%narea_structural
@@ -718,34 +720,39 @@ contains
     integer, intent(in) :: jpngr
 
     ! local variables
-    integer                  :: pft
-    integer                  :: doy
-    integer, dimension(npft) :: maxdoy
+    integer :: pft
+    integer :: doy
+    integer :: maxdoy
+    real    :: maxlai
     ! intrinsic                :: maxloc
 
     ! Output annual value at day of peak LAI
     do pft=1,npft
-      maxdoy(pft)=1
+
+      maxdoy = 1
+      maxlai = outdlai(pft,1,jpngr)
       do doy=2,ndayyear
-        if ( outdlai(pft,doy,jpngr) > outdlai(pft,(doy-1),jpngr) ) then
-          maxdoy(pft) = doy
+        if ( outdlai(pft,doy,jpngr) > maxlai ) then
+          maxlai = outdlai(pft,doy,jpngr)
+          maxdoy = doy
         end if
       end do
 
-      outacleaf   (pft,jpngr) = outdCleaf(pft,maxdoy(pft),jpngr)
-      outacroot   (pft,jpngr) = outdCroot(pft,maxdoy(pft),jpngr) 
-      outanarea_mb(pft,jpngr) = dnarea_mb(pft,maxdoy(pft))
-      outanarea_cw(pft,jpngr) = dnarea_cw(pft,maxdoy(pft))
-      outalai     (pft,jpngr) = outdlai(pft,maxdoy(pft),jpngr)
-      outalma     (pft,jpngr) = dlma(pft,maxdoy(pft))
-      outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy(pft))
+      outacleaf   (pft,jpngr) = outdCleaf(pft,maxdoy,jpngr)
+      outacroot   (pft,jpngr) = outdCroot(pft,maxdoy,jpngr) 
+      outanarea_mb(pft,jpngr) = dnarea_mb(pft,maxdoy)
+      outanarea_cw(pft,jpngr) = dnarea_cw(pft,maxdoy)
+      outalai     (pft,jpngr) = maxlai
+      outalma     (pft,jpngr) = dlma(pft,maxdoy)
+      outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy)
+
     end do
 
-    open(unit=666,file='cton_vs_lai.log',status='unknown')
-    do doy=1,ndayyear
-      write(666,*) outdlai(1,doy,1), ",", dcton_lm(1,doy)
-    end do
-    close(unit=666)
+    ! open(unit=666,file='cton_vs_lai.log',status='unknown')
+    ! do doy=1,ndayyear
+    !   write(666,*) outdlai(1,doy,1), ",", dcton_lm(1,doy)
+    ! end do
+    ! close(unit=666)
 
   end subroutine getout_annual_plant
 
@@ -756,22 +763,10 @@ contains
     ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
     ! contact: b.stocker@imperial.ac.uk
     !-------------------------------------------------------------------------
-    use md_params_siml, only: spinup, daily_out_startyr, &
-      daily_out_endyr, outyear
+    ! use md_params_siml, only: spinup, interface%params_siml%daily_out_startyr, &
+    !   interface%params_siml%daily_out_endyr, outyear
     use md_params_core, only: ndayyear
-    use md_params_siml, only: & 
-        loutdgpp       &
-      , loutdnpp       &
-      , loutdnup       &
-      , loutdcex       &
-      , loutdCleaf     &
-      , loutdCroot     &
-      , loutdClabl     &
-      , loutdNlabl     &
-      , loutdClitt     &
-      , loutdNlitt     &
-      , loutdlai       &
-      , loutdfapar
+    use md_interface
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -802,25 +797,27 @@ contains
     ! Write daily value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+    if ( .not. interface%steering%spinup &
+      .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       ! Write daily output only during transient simulation
       do day=1,ndayyear
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(outyear) + real(day-1)/real(ndayyear)
+        itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
         
-        if (loutdnpp      ) write(102,999) itime, sum(outdnpp(:,day,jpngr))
-        if (loutdCleaf    ) write(103,999) itime, sum(outdCleaf(:,day,jpngr))
-        if (loutdnup      ) write(104,999) itime, sum(outdnup(:,day,jpngr))
-        if (loutdcex      ) write(105,999) itime, sum(outdcex(:,day,jpngr))
-        if (loutdCroot    ) write(111,999) itime, sum(outdCroot(:,day,jpngr))
-        if (loutdClabl    ) write(112,999) itime, sum(outdClabl(:,day,jpngr))
-        if (loutdClitt    ) write(113,999) itime, sum(outdClitt(:,day,jpngr))
-        if (loutdNlabl    ) write(115,999) itime, sum(outdNlabl(:,day,jpngr))
-        if (loutdNlitt    ) write(119,999) itime, sum(outdNlitt(:,day,jpngr))
-        if (loutdlai      ) write(121,999) itime, sum(outdlai(:,day,jpngr))
-        if (loutdfapar    ) write(122,999) itime, sum(outdfapar(:,day,jpngr))
+        if (interface%params_siml%loutdnpp      ) write(102,999) itime, sum(outdnpp(:,day,jpngr))
+        if (interface%params_siml%loutdCleaf    ) write(103,999) itime, sum(outdCleaf(:,day,jpngr))
+        if (interface%params_siml%loutdnup      ) write(104,999) itime, sum(outdnup(:,day,jpngr))
+        if (interface%params_siml%loutdcex      ) write(105,999) itime, sum(outdcex(:,day,jpngr))
+        if (interface%params_siml%loutdCroot    ) write(111,999) itime, sum(outdCroot(:,day,jpngr))
+        if (interface%params_siml%loutdClabl    ) write(112,999) itime, sum(outdClabl(:,day,jpngr))
+        if (interface%params_siml%loutdClitt    ) write(113,999) itime, sum(outdClitt(:,day,jpngr))
+        if (interface%params_siml%loutdNlabl    ) write(115,999) itime, sum(outdNlabl(:,day,jpngr))
+        if (interface%params_siml%loutdNlitt    ) write(119,999) itime, sum(outdNlitt(:,day,jpngr))
+        if (interface%params_siml%loutdlai      ) write(121,999) itime, sum(outdlai(:,day,jpngr))
+        if (interface%params_siml%loutdfapar    ) write(122,999) itime, sum(outdfapar(:,day,jpngr))
           
       end do
     end if
@@ -830,7 +827,7 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(outyear)
+    itime = real(interface%steering%outyear)
 
     write(307,999) itime, sum(outaCveg2lit(:,jpngr))
     write(308,999) itime, sum(outaNveg2lit(:,jpngr))

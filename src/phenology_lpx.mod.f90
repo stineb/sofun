@@ -69,7 +69,7 @@ contains
     real, dimension(ndayyear)       :: dtemp_int   ! daily temperature as linearly interpolated from monthly temperature
     logical, save :: firstcall = .true.
 
-    ! initialise
+    ! ((interface%steering%init))ialise
     dtphen(:,:)     = 0.0
     ! sprout(:,:)     = .false.
     ! shedleaves(:,:) = .false.

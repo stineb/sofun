@@ -723,7 +723,6 @@ contains
     ! from input file
     !----------------------------------------------------------------
     use md_sofunutils, only: getparreal
-    use md_params_site, only: lTeBS, lGrC3, lGrC4
     use md_plant, only: params_pft_plant
 
     ! local variables
@@ -1339,31 +1338,31 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_params_siml, only: runname, loutdgpp, loutdrd, loutdtransp
+    use md_interface
 
     ! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
 
-    prefix = "./output/"//trim(runname)
+    prefix = "./output/"//trim(interface%params_siml%runname)
 
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------
     ! GPP
-    if (loutdgpp) then
+    if (interface%params_siml%loutdgpp) then
       filnam=trim(prefix)//'.d.gpp.out'
       open(101,file=filnam,err=888,status='unknown')
     end if 
 
     ! RD
-    if (loutdrd) then
+    if (interface%params_siml%loutdrd) then
       filnam=trim(prefix)//'.d.rd.out'
       open(135,file=filnam,err=888,status='unknown')
     end if 
 
     ! TRANSPIRATION
-    if (loutdtransp) then
+    if (interface%params_siml%loutdtransp) then
       filnam=trim(prefix)//'.d.transp.out'
       open(114,file=filnam,err=888,status='unknown')
     end if
@@ -1372,19 +1371,19 @@ contains
     ! MONTHLY OUTPUT
     !----------------------------------------------------------------
     ! GPP
-    if (loutdgpp) then     ! monthly and daily output switch are identical
+    if (interface%params_siml%loutdgpp) then     ! monthly and daily output switch are identical
       filnam=trim(prefix)//'.m.gpp.out'
       open(151,file=filnam,err=888,status='unknown')
     end if 
 
     ! RD
-    if (loutdrd) then     ! monthly and daily output switch are identical
+    if (interface%params_siml%loutdrd) then     ! monthly and daily output switch are identical
       filnam=trim(prefix)//'.m.rd.out'
       open(152,file=filnam,err=888,status='unknown')
     end if 
 
     ! TRANSP
-    if (loutdtransp) then     ! monthly and daily output switch are identical
+    if (interface%params_siml%loutdtransp) then     ! monthly and daily output switch are identical
       filnam=trim(prefix)//'.m.transp.out'
       open(153,file=filnam,err=888,status='unknown')
     end if 
@@ -1420,20 +1419,20 @@ contains
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
     use md_params_core, only: npft, ndayyear, nmonth, maxgrid
-    use md_params_siml, only: loutdgpp, loutdrd, loutdtransp, init
+    use md_interface
 
     ! daily
-    if (init.and.loutdgpp   ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
-    if (init.and.loutdrd    ) allocate( outdrd       (npft,ndayyear,maxgrid) )
-    if (init.and.loutdtransp) allocate( outdtransp   (npft,ndayyear,maxgrid) )
+    if (interface%steering%init.and.interface%params_siml%loutdgpp   ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
+    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd       (npft,ndayyear,maxgrid) )
+    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp   (npft,ndayyear,maxgrid) )
     outdgpp(:,:,:)    = 0.0
     outdrd(:,:,:)    = 0.0
     outdtransp(:,:,:) = 0.0
 
     ! monthly
-    if (init.and.loutdgpp   ) allocate( outmgpp      (npft,nmonth,maxgrid) )
-    if (init.and.loutdrd    ) allocate( outmrd       (npft,nmonth,maxgrid) )
-    if (init.and.loutdtransp) allocate( outmtransp   (npft,nmonth,maxgrid) )
+    if (interface%steering%init.and.interface%params_siml%loutdgpp   ) allocate( outmgpp      (npft,nmonth,maxgrid) )
+    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outmrd       (npft,nmonth,maxgrid) )
+    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outmtransp   (npft,nmonth,maxgrid) )
     outmgpp(:,:,:)    = 0.0
     outmrd(:,:,:)     = 0.0
     outmtransp(:,:,:) = 0.0
@@ -1455,7 +1454,7 @@ contains
     ! global just for this, but are collected inside the subroutine 
     ! where they are defined.
     !----------------------------------------------------------------
-    use md_params_siml, only: loutdgpp, loutdrd, loutdtransp
+    use md_interface
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -1467,17 +1466,17 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (loutdgpp   ) outdgpp(:,doy,jpngr)       = dgpp(:)
-    if (loutdrd    ) outdrd(:,doy,jpngr)        = drd(:)
-    if (loutdtransp) outdtransp(:,doy,jpngr)    = dtransp(:)
+    if (interface%params_siml%loutdgpp   ) outdgpp(:,doy,jpngr)       = dgpp(:)
+    if (interface%params_siml%loutdrd    ) outdrd(:,doy,jpngr)        = drd(:)
+    if (interface%params_siml%loutdtransp) outdtransp(:,doy,jpngr)    = dtransp(:)
 
     !----------------------------------------------------------------
     ! MONTHLY SUM OVER DAILY VALUES
     ! Collect monthly output variables as sum of daily values
     !----------------------------------------------------------------
-    if (loutdgpp   ) outmgpp(:,moy,jpngr)    = outmgpp(:,moy,jpngr) + dgpp(:)
-    if (loutdrd    ) outmrd(:,moy,jpngr)     = outmrd(:,moy,jpngr)  + drd(:)
-    if (loutdrd    ) outmtransp(:,moy,jpngr) = outmtransp(:,moy,jpngr)  + dtransp(:)
+    if (interface%params_siml%loutdgpp   ) outmgpp(:,moy,jpngr)    = outmgpp(:,moy,jpngr) + dgpp(:)
+    if (interface%params_siml%loutdrd    ) outmrd(:,moy,jpngr)     = outmrd(:,moy,jpngr)  + drd(:)
+    if (interface%params_siml%loutdrd    ) outmtransp(:,moy,jpngr) = outmtransp(:,moy,jpngr)  + dtransp(:)
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
@@ -1513,8 +1512,7 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use md_params_siml, only: spinup, outyear, loutdrd, loutdgpp, loutdtransp, &
-      daily_out_startyr, daily_out_endyr
+    use md_interface
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -1530,17 +1528,18 @@ contains
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
-    if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+    if ( .not. interface%steering%spinup .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       ! Write daily output only during transient simulation
       do day=1,ndayyear
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(outyear) + real(day-1)/real(ndayyear)
+        itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
 
-        if (loutdgpp   ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
-        if (loutdrd    ) write(135,999) itime, sum(outdrd(:,day,jpngr))
-        if (loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
+        if (interface%params_siml%loutdgpp   ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
+        if (interface%params_siml%loutdrd    ) write(135,999) itime, sum(outdrd(:,day,jpngr))
+        if (interface%params_siml%loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
 
       end do
 
@@ -1551,7 +1550,7 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(outyear)
+    itime = real(interface%steering%outyear)
 
     write(310,999) itime, sum(outagpp(:,jpngr))
     write(651,999) itime, sum(outavcmax(:,jpngr))

@@ -1,12 +1,4 @@
-subroutine biosphere( &
-  year, lon, lat, elv &
-  , params_soil_field, lu_area, pco2 &
-  , dtemp_field, dprec_field &
-  , dfsun_field, dvpd_field, dndep_field &
-  , c_uptake &
-  , mfapar_field &
-  ) 
-
+subroutine biosphere( c_uptake )
   !////////////////////////////////////////////////////////////////
   ! Subroutine BIOSPHERE calculates net ecosystem exchange (nee)
   ! in response to environmental boundary conditions (atmospheric 
@@ -15,9 +7,8 @@ subroutine biosphere( &
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
+  use md_interface
   use md_params_core
-  use md_params_siml
-  use md_params_site
   use md_plant, only: getpar_modl_plant
   use md_soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
   use md_params_soil, only: paramtype_soil
@@ -26,23 +17,8 @@ subroutine biosphere( &
 
   implicit none
 
-  ! arguments
-  integer, intent(in)                           :: year       ! simulation year
-  real, intent(in), dimension(maxgrid)          :: lon        ! longitude vector/field (degrees E)              
-  real, intent(in), dimension(maxgrid)          :: lat        ! latitude vector/field (degrees N)             
-  real, intent(in), dimension(maxgrid)          :: elv        ! elevation (altitude) vector/field (m above sea level)                  
-  type(paramtype_soil), intent(in), dimension(maxgrid) :: params_soil_field
-  real, dimension(3)                            :: lu_area    ! array of cropland/pasture/built-up, to be "translated" into 'lu_area' inside 'getlanduse'
-  real, intent(in)                              :: pco2
-  real, intent(in), dimension(ndayyear,maxgrid) :: dtemp_field
-  real, intent(in), dimension(ndayyear,maxgrid) :: dprec_field
-  real, intent(in), dimension(ndayyear,maxgrid) :: dfsun_field
-  real, intent(in), dimension(ndayyear,maxgrid) :: dvpd_field
-  real, intent(in), dimension(ndayyear,maxgrid) :: dndep_field
-  real, intent(out)                             :: c_uptake   ! annual net global C uptake by biosphere
-
-  ! optional arguments
-  real, intent(in), dimension(nmonth,maxgrid)   :: mfapar_field
+  ! return variable
+  real, intent(out) :: c_uptake   ! annual net global C uptake by biosphere (gC/yr)
 
   ! local variables
   integer :: dm, moy, jpngr, day
@@ -54,7 +30,7 @@ subroutine biosphere( &
   !----------------------------------------------------------------
   ! INITIALISATIONS
   !----------------------------------------------------------------
-  if (init) then
+  if (interface%steering%init) then
 
     !----------------------------------------------------------------
     ! GET MODEL PARAMETERS
@@ -97,7 +73,11 @@ subroutine biosphere( &
     ! This is not compatible with a daily biosphere-climate coupling. I.e., 
     ! there is a daily loop within 'getsolar'!
     !----------------------------------------------------------------
-    call getsolar_alldays( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
+    call getsolar_alldays( &
+      interface%grid(jpngr)%lat, & 
+      interface%grid(jpngr)%elv, & 
+      interface%climate(jpngr)%dfsun(:) & 
+      )
 
     !----------------------------------------------------------------
     ! Get monthly light use efficiency, and Rd per unit of light absorbed
@@ -105,7 +85,13 @@ subroutine biosphere( &
     ! This is not compatible with a daily biosphere-climate coupling. I.e., 
     ! there is a monthly loop within 'getlue'!
     !----------------------------------------------------------------
-    call getlue( jpngr, pco2, dtemp_field(:,jpngr), dvpd_field(:,jpngr), elv(jpngr) )
+    call getlue( &
+      jpngr, & 
+      interface%pco2, & 
+      interface%climate(jpngr)%dtemp(:), & 
+      interface%climate(jpngr)%dvpd(:), & 
+      interface%grid(jpngr)%elv & 
+      )
 
     !----------------------------------------------------------------
     ! LOOP THROUGH MONTHS
@@ -128,17 +114,28 @@ subroutine biosphere( &
         !----------------------------------------------------------------
         ! get soil moisture, and runoff
         !----------------------------------------------------------------
-        ! print* 'calling waterbal() ... '
-        ! print* 'with arguments ', jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr)
-        call waterbal( jpngr, day, lat(jpngr), elv(jpngr), dprec_field(day,jpngr), dtemp_field(day,jpngr), dfsun_field(day,jpngr) )
-        ! print* '... done'
+        ! print*, 'calling waterbal() ... '
+        call waterbal( &
+          jpngr, day, & 
+          interface%grid(jpngr)%lat, & 
+          interface%grid(jpngr)%elv, & 
+          interface%climate(jpngr)%dprec(day), & 
+          interface%climate(jpngr)%dtemp(day), & 
+          interface%climate(jpngr)%dfsun(day)  &
+          )
+        ! print*, '... done'
 
         !----------------------------------------------------------------
         ! calculate soil temperature
         !----------------------------------------------------------------
-        ! print* 'calling soiltemp() ... '
-        call soiltemp( jpngr, moy, day, dtemp_field(:,jpngr), params_soil_field(jpngr) )
-        ! print* '... done'
+        ! print*, 'calling soiltemp() ... '
+        call soiltemp( &
+                      jpngr, & 
+                      moy, & 
+                      day, & 
+                      interface%climate(jpngr)%dtemp(:) &
+                      )
+        ! print*, '... done'
 
         !----------------------------------------------------------------
         ! calculate GPP
@@ -146,7 +143,11 @@ subroutine biosphere( &
         ! print* 'calling gpp() ... '
         ! if (dtemp_field(day,jpngr).gt.25.0) print*,'dtemp = ', dtemp_field(day,jpngr)
         ! call gpp( jpngr, day, moy, min( 25.0, dtemp_field(day,jpngr) ), mfapar_field(moy,jpngr) )
-        call gpp( jpngr, day, moy, dtemp_field(day,jpngr), mfapar_field(moy,jpngr) )
+        call gpp( &
+          jpngr, day, moy, & 
+          interface%climate(jpngr)%dtemp(day), & 
+          interface%mfapar_field(moy,jpngr) & 
+          )
         ! call gpp( jpngr, day, moy, 1.00 )
         ! print* '... done'
 
@@ -166,9 +167,11 @@ subroutine biosphere( &
     !----------------------------------------------------------------
     ! Write to output
     !----------------------------------------------------------------
-    call writeout_ascii_waterbal( year )
-    call writeout_ascii_soiltemp( year )
-    call writeout_ascii_gpp( year )
+    ! print*, 'calling writeout_ascii_() ... '
+    call writeout_ascii_waterbal( interface%steering%year )
+    call writeout_ascii_soiltemp( interface%steering%year )
+    call writeout_ascii_gpp( interface%steering%year )
+    ! print*, '... done'
 
   end do
 

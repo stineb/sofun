@@ -9,7 +9,6 @@ module md_params_core
 
   integer, parameter :: ndayyear = 365           ! number of days in a year
   integer, parameter :: nmonth = 12              ! number of months in a year
-  integer, parameter :: maxlen_runname = 30      ! maximum length of runname (arbitrary)
   integer, parameter :: maxgrid = 1              ! number of spatial gridcells (dummy dimension for later code extension)
   integer, parameter :: nbucket = 2              ! number of buckets for soil water model
   integer, parameter :: npft = 1                 ! number of PFTs

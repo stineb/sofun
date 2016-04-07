@@ -18,8 +18,8 @@ subroutine biosphere( &
   use md_params_core
   use md_params_siml
   use md_params_site
-  use md_soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
-  use md_waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
+  use md_soiltemp, only: soiltemp, ((interface%steering%init))output_soiltemp, ((interface%steering%init))io_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
+  use md_waterbal, only: waterbal, getsolar_alldays, ((interface%steering%init))daily_waterbal, ((interface%steering%init))global_waterbal, ((interface%steering%init))io_waterbal, getout_daily_waterbal, ((interface%steering%init))output_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
   use md_params_soil, only: paramtype_soil
 
   implicit none
@@ -51,7 +51,7 @@ subroutine biosphere( &
   !----------------------------------------------------------------
   ! INITIALISATIONS
   !----------------------------------------------------------------
-  if (init) then
+  if (((interface%steering%init))) then
 
     !----------------------------------------------------------------
     ! GET MODEL PARAMETERS
@@ -64,21 +64,21 @@ subroutine biosphere( &
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
-    call initglobal_waterbal()
+    call ((interface%steering%init))global_waterbal()
 
     !----------------------------------------------------------------
     ! Open input/output files
     !----------------------------------------------------------------
-    call initio_waterbal()
-    call initio_soiltemp()
+    call ((interface%steering%init))io_waterbal()
+    call ((interface%steering%init))io_soiltemp()
 
   endif 
 
   !----------------------------------------------------------------
   ! Initialise output variables for this year
   !----------------------------------------------------------------
-  call initoutput_waterbal()
-  call initoutput_soiltemp()
+  call ((interface%steering%init))output_waterbal()
+  call ((interface%steering%init))output_soiltemp()
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
@@ -106,9 +106,9 @@ subroutine biosphere( &
         day=day+1
 
         !----------------------------------------------------------------
-        ! initialise daily updated variables 
+        ! ((interface%steering%init))ialise daily updated variables 
         !----------------------------------------------------------------
-        call initdaily_waterbal()
+        call ((interface%steering%init))daily_waterbal()
 
         !----------------------------------------------------------------
         ! get soil moisture, and runoff

@@ -19,19 +19,19 @@ subroutine biosphere( &
   use md_params_siml
   use md_params_site
   use md_params_modl
-  use md_vars_core, only: initannual, initdaily, initglobal, initpft, solar
-  use md_outvars, only: initio, getout_annual, getout_daily, initoutput
-  use md_soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
+  use md_vars_core, only: ((interface%steering%init))annual, ((interface%steering%init))daily, ((interface%steering%init))global, ((interface%steering%init))pft, solar
+  use md_outvars, only: ((interface%steering%init))io, getout_annual, getout_daily, ((interface%steering%init))output
+  use md_soiltemp, only: soiltemp, ((interface%steering%init))output_soiltemp, ((interface%steering%init))io_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
   use md_phenology, only: gettempphenology, getpar_phenology  !, phenology
   use md_vegdynamics, only: estab_daily
-  use md_gpp, only: gpp, getlue, initdaily_gpp, writeout_ascii_gpp, getout_annual_gpp, initio_gpp, initoutput_gpp
+  use md_gpp, only: gpp, getlue, ((interface%steering%init))daily_gpp, writeout_ascii_gpp, getout_annual_gpp, ((interface%steering%init))io_gpp, ((interface%steering%init))output_gpp
   use md_npp, only: npp, getpar_modl_npp
-  use md_allocation, only: allocation_daily, initio_allocation, initoutput_allocation, getout_daily_allocation, writeout_ascii_allocation
+  use md_allocation, only: allocation_daily, ((interface%steering%init))io_allocation, ((interface%steering%init))output_allocation, getout_daily_allocation, writeout_ascii_allocation
   use md_turnover, only: turnover
-  use md_waterbal, only: waterbal, getsolar_alldays, outdcpa, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal
-  use md_nuptake, only: initdaily_nuptake, initio_nuptake, getout_daily_nuptake, initoutput_nuptake, getpar_modl_nuptake
-  use md_ntransform, only: ntransform, init_global_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform, getpar_modl_ntransform
-  use md_littersom, only: littersom, initio_littersom, initoutput_littersom, getout_annual_littersom, getpar_modl_littersom !, getout_daily_littersom
+  use md_waterbal, only: waterbal, getsolar_alldays, outdcpa, ((interface%steering%init))io_waterbal, getout_daily_waterbal, ((interface%steering%init))output_waterbal, getpar_modl_waterbal
+  use md_nuptake, only: ((interface%steering%init))daily_nuptake, ((interface%steering%init))io_nuptake, getout_daily_nuptake, ((interface%steering%init))output_nuptake, getpar_modl_nuptake
+  use md_ntransform, only: ntransform, ((interface%steering%init))_global_ntransform, ((interface%steering%init))io_ntransform, ((interface%steering%init))output_ntransform, getout_daily_ntransform, writeout_ascii_ntransform, getpar_modl_ntransform
+  use md_littersom, only: littersom, ((interface%steering%init))io_littersom, ((interface%steering%init))output_littersom, getout_annual_littersom, getpar_modl_littersom !, getout_daily_littersom
   use md_params_soil, only: paramtype_soil
 
   use md_waterbal, only: writeout_ascii_waterbal
@@ -117,7 +117,7 @@ subroutine biosphere( &
   !----------------------------------------------------------------
   ! INITIALISATIONS
   !----------------------------------------------------------------
-  if (init) then
+  if (((interface%steering%init))) then
 
     !----------------------------------------------------------------
     ! GET MODEL PARAMETERS
@@ -135,20 +135,20 @@ subroutine biosphere( &
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
-    call initglobal()
-    call init_global_ntransform()
+    call ((interface%steering%init))global()
+    call ((interface%steering%init))_global_ntransform()
 
     !----------------------------------------------------------------
     ! Open input/output files
     !----------------------------------------------------------------
-    call initio()
-    call initio_waterbal()
-    call initio_soiltemp()
-    call initio_gpp()
-    call initio_nuptake()
-    call initio_ntransform()
-    call initio_littersom()
-    call initio_allocation()
+    call ((interface%steering%init))io()
+    call ((interface%steering%init))io_waterbal()
+    call ((interface%steering%init))io_soiltemp()
+    call ((interface%steering%init))io_gpp()
+    call ((interface%steering%init))io_nuptake()
+    call ((interface%steering%init))io_ntransform()
+    call ((interface%steering%init))io_littersom()
+    call ((interface%steering%init))io_allocation()
 
   endif 
 
@@ -156,14 +156,14 @@ subroutine biosphere( &
   !----------------------------------------------------------------
   ! Initialise output variables for this year
   !----------------------------------------------------------------
-  call initoutput()
-  call initoutput_waterbal()
-  call initoutput_soiltemp()
-  call initoutput_gpp()
-  call initoutput_nuptake()
-  call initoutput_ntransform()
-  call initoutput_littersom()
-  call initoutput_allocation()
+  call ((interface%steering%init))output()
+  call ((interface%steering%init))output_waterbal()
+  call ((interface%steering%init))output_soiltemp()
+  call ((interface%steering%init))output_gpp()
+  call ((interface%steering%init))output_nuptake()
+  call ((interface%steering%init))output_ntransform()
+  call ((interface%steering%init))output_littersom()
+  call ((interface%steering%init))output_allocation()
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
@@ -171,9 +171,9 @@ subroutine biosphere( &
   do jpngr=1,maxgrid
 
     !----------------------------------------------------------------
-    ! initialise annually updated variables
+    ! ((interface%steering%init))ialise annually updated variables
     !----------------------------------------------------------------
-    call initannual
+    call ((interface%steering%init))annual
 
     !call snow
 
@@ -230,11 +230,11 @@ subroutine biosphere( &
         write(0,*) 'DAY ',day
 
         !----------------------------------------------------------------
-        ! initialise daily updated variables 
+        ! ((interface%steering%init))ialise daily updated variables 
         !----------------------------------------------------------------
-        call initdaily()
-        call initdaily_nuptake()
-        call initdaily_gpp()
+        call ((interface%steering%init))daily()
+        call ((interface%steering%init))daily_nuptake()
+        call ((interface%steering%init))daily_gpp()
 
         !----------------------------------------------------------------
         ! get soil moisture, and runoff

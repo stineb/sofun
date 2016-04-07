@@ -448,18 +448,18 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_params_siml, only: runname, loutntransform
+    use md_interface
 
     ! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
 
-    prefix = "./output/"//trim(runname)
+    prefix = "./output/"//trim(interface%params_siml%runname)
 
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------
-    if (loutntransform) then
+    if (interface%params_siml%loutntransform) then
 
       ! DAILY TOTAL N LOSS (gN/m2/d)
       filnam=trim(prefix)//'.d.nloss.out'
@@ -509,16 +509,16 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
-    use md_params_siml, only: init, loutntransform
+    use md_interface
 
-    if (loutntransform) then
+    if (interface%params_siml%loutntransform) then
 
-      if (init) allocate( outdnloss ( nlu,ndayyear,maxgrid ) ) ! daily total N loss (gaseous+leacing) (gN/m2/d)
-      if (init) allocate( outddenitr( nlu,ndayyear,maxgrid ) ) ! daily amount of N denitrified (gN/m2/d)
-      if (init) allocate( outdnitr  ( nlu,ndayyear,maxgrid ) ) ! daily amount of N nitrified (gN/m2/d)
-      if (init) allocate( outdnvol  ( nlu,ndayyear,maxgrid ) ) ! daily amount of N volatilised (gN/m2/d)
-      if (init) allocate( outdnleach( nlu,ndayyear,maxgrid ) ) ! daily amount of N leached (gN/m2/d)
-      if (init) allocate( outdn2o   ( nlu,ndayyear,maxgrid ) ) ! daily N2O emitted (gN/m2/d)
+      if (interface%steering%init) allocate( outdnloss ( nlu,ndayyear,maxgrid ) ) ! daily total N loss (gaseous+leacing) (gN/m2/d)
+      if (interface%steering%init) allocate( outddenitr( nlu,ndayyear,maxgrid ) ) ! daily amount of N denitrified (gN/m2/d)
+      if (interface%steering%init) allocate( outdnitr  ( nlu,ndayyear,maxgrid ) ) ! daily amount of N nitrified (gN/m2/d)
+      if (interface%steering%init) allocate( outdnvol  ( nlu,ndayyear,maxgrid ) ) ! daily amount of N volatilised (gN/m2/d)
+      if (interface%steering%init) allocate( outdnleach( nlu,ndayyear,maxgrid ) ) ! daily amount of N leached (gN/m2/d)
+      if (interface%steering%init) allocate( outdn2o   ( nlu,ndayyear,maxgrid ) ) ! daily N2O emitted (gN/m2/d)
 
       outdnloss(:,:,:)  = 0.0
       outddenitr(:,:,:) = 0.0
@@ -539,7 +539,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use md_params_siml, only: loutntransform
+    use md_interface
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -550,7 +550,7 @@ contains
     ! DAILY
     ! Collect daily output variables
     !----------------------------------------------------------------
-    if (loutntransform) then
+    if (interface%params_siml%loutntransform) then
       outdnloss(:,doy,jpngr)  = dnloss(:)
       outddenitr(:,doy,jpngr) = ddenitr(:)
       outdnitr(:,doy,jpngr)   = dnitr(:)
@@ -574,8 +574,7 @@ contains
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_params_core, only: npft
-    use md_params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
-      daily_out_endyr, outyear, spinup, loutntransform
+    use md_interface
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -591,13 +590,15 @@ contains
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
-    if (loutntransform) then
-      if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+    if (interface%params_siml%loutntransform) then
+      if ( .not. interface%steering%spinup &
+        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
         ! Write daily output only during transient simulation
         do myday=1,ndayyear
 
           ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(myday-1)/real(ndayyear)
+          itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears) + real(myday-1)/real(ndayyear)
 
           if (nlu>1) stop 'writeout_ascii_ntransform: write out lu-area weighted sum'
           if (npft>1) stop 'writeout_ascii_ntransform: think of something for ccost output'
@@ -618,7 +619,7 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(year) + real(firstyeartrend) - real(spinupyears)
+    itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
 
     write(550,999) itime, sum(outanloss(:,myjpngr))
     write(551,999) itime, sum(outan2o(:,myjpngr))

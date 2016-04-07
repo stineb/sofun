@@ -7,8 +7,8 @@ module md_nuptake
   ! of subroutines (names that way).
   !   - nuptake
   !   - getpar_modl_nuptake
-  !   - initio_nuptake
-  !   - initoutput_nuptake
+  !   - ((interface%steering%init))io_nuptake
+  !   - ((interface%steering%init))output_nuptake
   !   - getout_daily_nuptake
   !   - getout_monthly_nuptake
   !   - writeout_ascii_nuptake
@@ -27,8 +27,8 @@ module md_nuptake
   implicit none
 
   private
-  public nuptake, getpar_modl_nuptake, initdaily_nuptake, initio_nuptake, &
-    initoutput_nuptake, getout_daily_nuptake, writeout_ascii_nuptake, &
+  public nuptake, getpar_modl_nuptake, ((interface%steering%init))daily_nuptake, ((interface%steering%init))io_nuptake, &
+    ((interface%steering%init))output_nuptake, getout_daily_nuptake, writeout_ascii_nuptake, &
     calc_dnup, outtype_calc_dnup
 
   !----------------------------------------------------------------
@@ -161,7 +161,7 @@ contains
 
           !//////////////////////////////////////////////////////////////////////////
           ! ACTIVE UPTAKE
-          ! Active N uptake is a function of initial N available and C exuded
+          ! Active N uptake is a function of ((interface%steering%init))ial N available and C exuded
           !--------------------------------------------------------------------------
           out_calc_dnup = calc_dnup( dcex(pft), pninorg(lu,jpngr)%n14 )
 
@@ -218,7 +218,7 @@ contains
     !-----------------------------------------------------------------
     ! arguments
     real, intent(in) :: cexu      ! C exuded (gC/m2/d)
-    real, intent(in) :: n0        ! initial available N (gN/m2)
+    real, intent(in) :: n0        ! ((interface%steering%init))ial available N (gN/m2)
     real, intent(in) :: soiltemp  ! soil temperature (deg C)
 
     ! function return variable
@@ -337,7 +337,7 @@ contains
   ! end function calc_conc_ninorg
 
 
-  subroutine initdaily_nuptake()
+  subroutine ((interface%steering%init))daily_nuptake()
     !////////////////////////////////////////////////////////////////
     ! Initialise daily variables with zero
     !----------------------------------------------------------------
@@ -346,10 +346,10 @@ contains
     dnup_fix(:)    = 0.0
     dnup_ret(:)    = 0.0
 
-  end subroutine initdaily_nuptake
+  end subroutine ((interface%steering%init))daily_nuptake
 
 
-  subroutine initio_nuptake()
+  subroutine ((interface%steering%init))io_nuptake()
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
@@ -403,7 +403,7 @@ contains
 
     888  stop 'INITIO_NUPTAKE: error opening output files'
 
-  end subroutine initio_nuptake
+  end subroutine ((interface%steering%init))io_nuptake
 
 
 
@@ -436,7 +436,7 @@ contains
   end subroutine getpar_modl_nuptake
 
 
-  subroutine initdaily_nuptake()
+  subroutine ((interface%steering%init))daily_nuptake()
     !////////////////////////////////////////////////////////////////
     ! Initialise daily variables with zero
     !----------------------------------------------------------------
@@ -445,10 +445,10 @@ contains
     dnup_fix(:) = 0.0
     dnup_ret(:) = 0.0
 
-  end subroutine initdaily_nuptake
+  end subroutine ((interface%steering%init))daily_nuptake
 
 
-  subroutine initio_nuptake()
+  subroutine ((interface%steering%init))io_nuptake()
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
@@ -490,22 +490,22 @@ contains
 
     888  stop 'INITIO_NUPTAKE: error opening output files'
 
-  end subroutine initio_nuptake
+  end subroutine ((interface%steering%init))io_nuptake
 
 
-  subroutine initoutput_nuptake
+  subroutine ((interface%steering%init))output_nuptake
     !////////////////////////////////////////////////////////////////
     !  Initialises nuptake-specific output variables
     !----------------------------------------------------------------
-    use md_params_siml, only: init, loutnuptake
+    use md_params_siml, only: ((interface%steering%init)), loutnuptake
 
     if (loutnuptake) then
 
-      if (init) allocate( outdccost   (npft,ndayyear,maxgrid) ) ! daily mean C cost of N uptake (gC/gN) 
-      if (init) allocate( outdnup_pas (npft,ndayyear,maxgrid) )
-      if (init) allocate( outdnup_act (npft,ndayyear,maxgrid) )
-      if (init) allocate( outdnup_fix (npft,ndayyear,maxgrid) )
-      if (init) allocate( outdnup_ret (npft,ndayyear,maxgrid) )
+      if (((interface%steering%init))) allocate( outdccost   (npft,ndayyear,maxgrid) ) ! daily mean C cost of N uptake (gC/gN) 
+      if (((interface%steering%init))) allocate( outdnup_pas (npft,ndayyear,maxgrid) )
+      if (((interface%steering%init))) allocate( outdnup_act (npft,ndayyear,maxgrid) )
+      if (((interface%steering%init))) allocate( outdnup_fix (npft,ndayyear,maxgrid) )
+      if (((interface%steering%init))) allocate( outdnup_ret (npft,ndayyear,maxgrid) )
 
       outdccost  (:,:,:) = 0.0 ! daily mean C cost of N uptake (gC/gN) 
       outdnup_pas(:,:,:) = 0.0
@@ -515,7 +515,7 @@ contains
 
     end if
 
-  end subroutine initoutput_nuptake
+  end subroutine ((interface%steering%init))output_nuptake
 
 
 
@@ -557,8 +557,8 @@ contains
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, npft, nlu
-    use md_params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
-      daily_out_endyr, outyear
+    use md_params_siml, only: firstyeartrend, spinupyears, interface%params_siml%daily_out_startyr, &
+      interface%params_siml%daily_out_endyr, outyear
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -577,7 +577,7 @@ contains
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
     if (loutnuptake) then
-      if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+      if ( .not. spinup .and. outyear>=interface%params_siml%daily_out_startyr .and. outyear<=interface%params_siml%daily_out_endyr ) then
         ! Write daily output only during transient simulation
         do day=1,ndayyear
 

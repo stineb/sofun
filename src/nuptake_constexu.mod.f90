@@ -333,15 +333,15 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_params_siml, only: runname, loutnuptake
+    use md_interface
 
     ! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
 
-    prefix = "./output/"//trim(runname)
+    prefix = "./output/"//trim(interface%params_siml%runname)
 
-    if (loutnuptake) then
+    if (interface%params_siml%loutnuptake) then
       !----------------------------------------------------------------
       ! DAILY OUTPUT
       !----------------------------------------------------------------
@@ -378,15 +378,15 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises nuptake-specific output variables
     !----------------------------------------------------------------
-    use md_params_siml, only: init, loutnuptake
+    use md_interface
 
-    if (loutnuptake) then
+    if (interface%params_siml%loutnuptake) then
 
-      if (init) allocate( outdccost   (npft,ndayyear,maxgrid) ) ! daily mean C cost of N uptake (gC/gN) 
-      if (init) allocate( outdnup_pas (npft,ndayyear,maxgrid) )
-      if (init) allocate( outdnup_act (npft,ndayyear,maxgrid) )
-      if (init) allocate( outdnup_fix (npft,ndayyear,maxgrid) )
-      if (init) allocate( outdnup_ret (npft,ndayyear,maxgrid) )
+      if (interface%steering%init) allocate( outdccost   (npft,ndayyear,maxgrid) ) ! daily mean C cost of N uptake (gC/gN) 
+      if (interface%steering%init) allocate( outdnup_pas (npft,ndayyear,maxgrid) )
+      if (interface%steering%init) allocate( outdnup_act (npft,ndayyear,maxgrid) )
+      if (interface%steering%init) allocate( outdnup_fix (npft,ndayyear,maxgrid) )
+      if (interface%steering%init) allocate( outdnup_ret (npft,ndayyear,maxgrid) )
 
       outdccost  (:,:,:) = 0.0 ! daily mean C cost of N uptake (gC/gN) 
       outdnup_pas(:,:,:) = 0.0
@@ -403,7 +403,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use md_params_siml, only: init, loutnuptake
+    use md_interface
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -414,7 +414,7 @@ contains
     ! DAILY
     ! Collect daily output variables
     !----------------------------------------------------------------
-    if (loutnuptake) then
+    if (interface%params_siml%loutnuptake) then
       outdccost  (:,doy,jpngr) = dccost(:)
       outdnup_pas(:,doy,jpngr) = dnup_pas(:)
       outdnup_act(:,doy,jpngr) = dnup_act(:)
@@ -430,8 +430,7 @@ contains
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, npft, nlu
-    use md_params_siml, only: firstyeartrend, spinupyears, daily_out_startyr, &
-      daily_out_endyr, outyear, spinup, loutnuptake
+    use md_interface
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -449,13 +448,16 @@ contains
     ! Write daily value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    if (loutnuptake) then
-      if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+    if (interface%params_siml%loutnuptake) then
+      if ( .not. interface%steering%spinup &
+        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
         ! Write daily output only during transient simulation
         do day=1,ndayyear
 
           ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
+          itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears) + real(day-1)/real(ndayyear)
 
           if (nlu>1) stop 'writeout_ascii_nuptake: write out lu-area weighted sum'
           if (npft>1) stop 'writeout_ascii_nuptake: think of something for ccost output'

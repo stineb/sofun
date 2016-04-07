@@ -31,7 +31,7 @@ module md_outvars
     , loutdNsoil     &
     , loutdlai       &
     , loutdninorg    &
-    , loutdtemp_soil
+    , interface%params_siml%loutdtemp_soil
 
   implicit none
 
@@ -75,7 +75,7 @@ module md_outvars
 
 contains
 
-  subroutine initoutput()
+  subroutine ((interface%steering%init))output()
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
@@ -106,10 +106,10 @@ contains
     outalma     (:,:)   = 0.0
     outacton_lm (:,:)   = 0.0
 
-  end subroutine initoutput
+  end subroutine ((interface%steering%init))output
 
 
-  subroutine initio()
+  subroutine ((interface%steering%init))io()
     !////////////////////////////////////////////////////////////////
     ! Opens input/output files.
     !----------------------------------------------------------------
@@ -252,7 +252,7 @@ contains
 
     999  stop 'INITIO: error opening output files'
 
-  end subroutine initio
+  end subroutine ((interface%steering%init))io
 
 
   subroutine getout_daily( jpngr, moy, doy )

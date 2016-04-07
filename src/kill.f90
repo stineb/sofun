@@ -30,6 +30,6 @@ subroutine killpft( pft, jpngr )
     call orgmvRec( pwood(pft,jpngr), pwood(pft,jpngr) , plitt_as(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr), nind(pft,jpngr) )
   end if
 
-  call initpft(pft,jpngr)
+  call ((interface%steering%init))pft(pft,jpngr)
 
 end subroutine killpft

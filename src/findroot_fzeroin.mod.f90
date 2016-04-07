@@ -136,7 +136,7 @@ contains
     ! relerr=1.2000001e-13
     ! stop relerr
 
-    ! ------------------ initialize variables -----------------------------
+    ! ------------------ ((interface%steering%init))ialize variables -----------------------------
     c      = ZERO
     d      = ZERO
     e      = ZERO
@@ -338,7 +338,7 @@ end module md_findroot_fzeroin
 !     integer :: fanz
 !     integer :: rc
 
-!     ! ------------------ initialize variables -----------------------------
+!     ! ------------------ ((interface%steering%init))ialize variables -----------------------------
 !     a = x1
 !     b = x2
 

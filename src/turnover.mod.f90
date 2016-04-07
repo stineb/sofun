@@ -7,8 +7,8 @@ module md_turnover
   ! of subroutines (names that way).
   !   - npp
   !   - getpar_modl_npp
-  !   - initio_npp
-  !   - initoutput_npp
+  !   - ((interface%steering%init))io_npp
+  !   - ((interface%steering%init))output_npp
   !   - getout_daily_npp
   !   - getout_monthly_npp
   !   - writeout_ascii_npp

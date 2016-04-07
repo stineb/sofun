@@ -4,6 +4,9 @@ module md_params_soil
   !----------------------------------------------------------------
   implicit none
 
+  private
+  public paramtype_soil, getsoil_field
+
   type paramtype_soil
     real :: perc_k1     
     real :: whc_eff     
@@ -20,14 +23,14 @@ module md_params_soil
 
 contains
 
-  function getsoil_field( soilcode_field ) result( params_soil_field )
+  function getsoil_field( soilcode ) result( params_soil_field )
     !////////////////////////////////////////////////////////////////
     ! Function returns array containing all soil parameter values
     !----------------------------------------------------------------
     use md_params_core, only: maxgrid
 
     ! arguments
-    integer, dimension(maxgrid), intent(in) :: soilcode_field
+    integer, intent(in) :: soilcode
 
     ! local variables
     integer :: jpngr
@@ -35,8 +38,10 @@ contains
     ! function return variable
     type(paramtype_soil), dimension(maxgrid) :: params_soil_field
 
+    if (maxgrid>1) stop 'in getsoil_field: think of something'
+
     do jpngr=1,maxgrid
-      params_soil_field(jpngr) = getsoil( soilcode_field(jpngr) )
+      params_soil_field(jpngr) = getsoil( soilcode )
     end do
 
   end function getsoil_field

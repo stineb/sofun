@@ -1135,13 +1135,13 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_params_siml, only: runname
+    use md_interface
 
     ! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
 
-    prefix = "./output/"//trim(runname)
+    prefix = "./output/"//trim(interface%params_siml%runname)
 
     !////////////////////////////////////////////////////////////////
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
@@ -1208,7 +1208,7 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
-    use md_params_siml, only: firstyeartrend, spinupyears, spinup
+    use md_interface
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -1226,7 +1226,7 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(year) + real(firstyeartrend) - real(spinupyears)
+    itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
 
     ! print*, 'writing time, outaCalloc',itime, sum(outaCalloc(:,jpngr))
 

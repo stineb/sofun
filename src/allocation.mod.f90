@@ -131,7 +131,7 @@ contains
     type(leaftraits_type) :: traits
 
     integer, save      :: invocation = 0             ! internally counted simulation year
-    integer, parameter :: spinupyr_phaseinit_2 = 1   ! this is unnecessary: might as well do flexible allocation right from the start.
+    integer, parameter :: spinupyr_phase((interface%steering%init))_2 = 1   ! this is unnecessary: might as well do flexible allocation right from the start.
     logical            :: flexalloc
     real, parameter    :: frac_shoot = 0.5
 
@@ -140,13 +140,13 @@ contains
 
     !-------------------------------------------------------------------------
     ! Count number of calls (one for each simulation year) and allow flexible
-    ! allocation only after year 'spinupyr_phaseinit_2'.
+    ! allocation only after year 'spinupyr_phase((interface%steering%init))_2'.
     !-------------------------------------------------------------------------
     if (doy==1) then
       invocation = invocation + 1
       ! write(0,*) 'WARNING: FIXED ALLOCATION'
     end if
-    ! if ( invocation > spinupyr_phaseinit_2 ) then
+    ! if ( invocation > spinupyr_phase((interface%steering%init))_2 ) then
     !   flexalloc = .true.
     ! else
     !   flexalloc = .false.
@@ -219,12 +219,12 @@ contains
             ! discounted by the yield factor.
             !------------------------------------------------------------------
             if (pleaf(pft,jpngr)%c%c12==0.0) then
-              write(0,*) 'Calculating initial C:N ratio'
-              ! initial guess based on Taylor approximation of Cleaf and Nleaf function around cleaf=0
-              r_cton_leaf(pft,jpngr) = get_rcton_init( solar%meanmppfd(:), mactnv_unitiabs(:) )
+              write(0,*) 'Calculating ((interface%steering%init))ial C:N ratio'
+              ! ((interface%steering%init))ial guess based on Taylor approximation of Cleaf and Nleaf function around cleaf=0
+              r_cton_leaf(pft,jpngr) = get_rcton_((interface%steering%init))( solar%meanmppfd(:), mactnv_unitiabs(:) )
               write(0,*) 'solar%meanmppfd(:)      ', solar%meanmppfd(:)  
               write(0,*) 'mactnv_unitiabs(:)', mactnv_unitiabs(:)  
-              write(0,*) 'initial guess: r_cton_leaf(pft,jpngr) ', r_cton_leaf(pft,jpngr)  
+              write(0,*) '((interface%steering%init))ial guess: r_cton_leaf(pft,jpngr) ', r_cton_leaf(pft,jpngr)  
               stop
             end if
             max_dcleaf_n_constraint = plabl(pft,jpngr)%n%n14 * r_cton_leaf(pft,jpngr)
@@ -473,8 +473,8 @@ contains
             ! all labile N, discounted by the yield factor.
             !------------------------------------------------------------------
             if (pleaf(pft,jpngr)%c%c12.eq.0.0) then
-              ! initial guess based on Taylor approximation of Cleaf and Nleaf function around cleaf=0
-              r_cton_leaf(pft,jpngr) = get_rcton_init( solar%meanmppfd(:), mactnv_unitiabs(:) )
+              ! ((interface%steering%init))ial guess based on Taylor approximation of Cleaf and Nleaf function around cleaf=0
+              r_cton_leaf(pft,jpngr) = get_rcton_((interface%steering%init))( solar%meanmppfd(:), mactnv_unitiabs(:) )
               r_ntoc_leaf(pft,jpngr) = 1.0 / r_cton_leaf(pft,jpngr)
             end if
             max_dc              = growtheff * plabl(pft,jpngr)%c%c12
@@ -999,7 +999,7 @@ contains
       state_mustbe_zero_for_lai%cleaf = cleaf
       state_mustbe_zero_for_lai%maxnv = maxnv
 
-      ! Calculate initial guess for LAI (always larger than actual LAI)
+      ! Calculate ((interface%steering%init))ial guess for LAI (always larger than actual LAI)
       lower = 0.0 ! uninformed lower bound
       upper = 1.0 / ( c_molmass * ncw_min * r_ctostructn_leaf ) * cleaf
       ! upper = 20.0
@@ -1095,9 +1095,9 @@ contains
   end function mustbe_zero_for_lai
 
 
-  function get_rcton_init( meanmppfd, nv ) result( rcton )
+  function get_rcton_((interface%steering%init))( meanmppfd, nv ) result( rcton )
     !////////////////////////////////////////////////////////////////
-    ! Calculates initial guess based on Taylor approximation of 
+    ! Calculates ((interface%steering%init))ial guess based on Taylor approximation of 
     ! Cleaf and Nleaf function around cleaf=0.
     ! Cleaf = c_molmass * r_ctostructn_leaf * [ meanmppfd * (1-exp(-kbeer*LAI)) * nv * r_n_cw_v + LAI * ncw_min ]
     ! Nleaf = n_molmass * [ meanmppfd * (1-exp(-kbeer*LAI)) * nv * (r_n_cw_v + 1) + LAI * ncw_min ]
@@ -1129,12 +1129,12 @@ contains
 
     ! rcton = ( c_molmass * r_ctostructn_leaf * ( meanmppfd * kbeer * nv * r_n_cw_v + ncw_min )) / ( n_molmass * ( meanmppfd * kbeer * nv * (r_n_cw_v + 1) + ncw_min ) )
 
-  end function get_rcton_init
+  end function get_rcton_((interface%steering%init))
 
 
   function get_canopy_leaf_n_metabolic( mylai, meanmppfd, nv ) result( mynleaf_metabolic )
     !////////////////////////////////////////////////////////////////
-    ! Calculates initial guess based on Taylor approximation of 
+    ! Calculates ((interface%steering%init))ial guess based on Taylor approximation of 
     ! LAI * n_metabolic = nv * Iabs
     ! Iabs = meanmppfd * (1-exp(-kbeer*LAI))
     !----------------------------------------------------------------
@@ -1166,7 +1166,7 @@ contains
 
   function get_canopy_leaf_n_structural( mylai, mynleaf_metabolic ) result( mynleaf_structural )
     !////////////////////////////////////////////////////////////////
-    ! Calculates initial guess based on Taylor approximation of 
+    ! Calculates ((interface%steering%init))ial guess based on Taylor approximation of 
     ! LAI * n_structural = nv * Iabs
     ! Iabs = meanmppfd * (1-exp(-kbeer*LAI))
     !----------------------------------------------------------------
@@ -1194,7 +1194,7 @@ contains
 
   function get_canopy_leaf_n( mylai, meanmppfd, nv ) result( mynleaf )
     !////////////////////////////////////////////////////////////////
-    ! Calculates initial guess based on Taylor approximation of 
+    ! Calculates ((interface%steering%init))ial guess based on Taylor approximation of 
     ! Cleaf and Nleaf function around cleaf=0.
     ! Nleaf = LAI * (n_metabolic + n_cellwall) * n_molmass
     ! LAI * n_metabolic = nv * Iabs
@@ -1281,7 +1281,7 @@ contains
   end function get_leaftraits
 
 
-  subroutine initio_allocation( )
+  subroutine ((interface%steering%init))io_allocation( )
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
@@ -1317,7 +1317,7 @@ contains
 
     999  stop 'INITIO_ALLOCATION: error opening output files'
 
-  end subroutine initio_allocation
+  end subroutine ((interface%steering%init))io_allocation
 
 
   ! subroutine getpar_modl_allocation()
@@ -1330,7 +1330,7 @@ contains
   ! end subroutine getpar_modl_allocation
 
 
-  subroutine initoutput_allocation()
+  subroutine ((interface%steering%init))output_allocation()
     !////////////////////////////////////////////////////////////////
     !  Initialises nuptake-specific output variables
     !----------------------------------------------------------------
@@ -1340,9 +1340,9 @@ contains
     outaCalcrm(:,:) = 0.0
     outaNalcrm(:,:) = 0.0
 
-    ! write(0,*) 'initialising outaCalloc',outaCalloc
+    ! write(0,*) '((interface%steering%init))ialising outaCalloc',outaCalloc
 
-  end subroutine initoutput_allocation
+  end subroutine ((interface%steering%init))output_allocation
 
 
   subroutine getout_daily_allocation( jpngr, moy, doy )

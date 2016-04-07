@@ -7,30 +7,23 @@ program main
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
 #include "sofun_module_control.inc"
-  use md_params_core
-  use md_params_siml
-  use md_params_site
-  use md_forcing_siterun
-  use md_gridvars
-  use md_params_soil
+  use md_interface
+  use md_params_siml, only: getpar_siml, getsteering
+  use md_params_site, only: getpar_site
+  use md_grid, only: getgrid
+  use md_params_soil, only: getsoil_field
+  use md_forcing_siterun, only: getclimate_site, getndep, getfapar, getclimate_site, getlanduse, getco2
 
   implicit none
 
-  integer :: year
+  integer :: yr
+  real    :: c_uptake     ! annual net global C uptake by biosphere
+  character(len=245) :: runname
 
-  real :: c_uptake     ! annual net global C uptake by biosphere
-
-  ! local variables
-  real                                     :: pco2
-  real, dimension(ndayyear,maxgrid)        :: dndep_field
-  real, dimension(nlu,maxgrid)             :: lu_area
-  real, dimension(nmonth,maxgrid)          :: mfapar_field
-  type(paramtype_soil), dimension(maxgrid) :: params_soil_field
+  integer, parameter :: maxlen_runname = 30      ! maximum length of runname (arbitrary)
 
   ! xxx try
   integer :: day
-
-  type( outtype_steering ) :: out_steering
 
   !----------------------------------------------------------------
   ! READ RUNNAME FROM STANDARD INPUT
@@ -48,7 +41,7 @@ program main
   ! GET SIMULATION PARAMETERS FROM FILE <runname>.sofun.parameter
   ! SR getpar_siml is defined in _params_siml.mod.F
   !----------------------------------------------------------------
-  call getpar_siml( trim(runname) )
+  interface%params_siml = getpar_siml( trim(runname) )
 
   !----------------------------------------------------------------
   ! GET SITE PARAMETERS AND INPUT DATA
@@ -56,13 +49,13 @@ program main
   ! SR getpar_site is defined in _params_site.mod.F. 
   ! 'sitename' is global variable
   !----------------------------------------------------------------
-  call getpar_site()
+  interface%params_site = getpar_site( trim(interface%params_siml%sitename) )
 
   !----------------------------------------------------------------
   ! GET GRID INFORMATION
   ! longitude, latitude, elevation
   !----------------------------------------------------------------
-  call getgrid()
+  interface%grid(:) = getgrid( trim(interface%params_siml%sitename) )
 
   ! Get soil parameters (if not defined in <sitename>.parameter)
   !call getsoilpar
@@ -73,68 +66,81 @@ program main
   !----------------------------------------------------------------
   ! GET SOIL PARAMETERS
   !----------------------------------------------------------------
-  params_soil_field(:) = getsoil_field( soilcode_field(:) )
+  interface%soilparams(:) = getsoil_field( interface%params_site%soilcode )
 
   ! LOOP THROUGH YEARS
   write(0,*) '------------START OF SIMULATION-------------'
 
-  do year=1,runyears
+  do yr=1,interface%params_siml%runyears
 
     !----------------------------------------------------------------
     ! Define simulations "steering" variables (forcingyear, etc.)
     !----------------------------------------------------------------
     ! print*,'getting steering'
-    out_steering = getsteering( year )
+    interface%steering = getsteering( yr, interface%params_siml )
 
-    if (year == spinupyears+1 ) then
+    if (yr == interface%params_siml%spinupyears+1 ) then
       write(0,*) '-----------TRANSIENT SIMULATION-------------'
     endif
 
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
-    climate_field = getclimate_site( trim(runname), trim(sitename), out_steering%climateyear )
+    interface%climate(:) = getclimate_site( &
+                                          trim(runname), &
+                                          trim(interface%params_siml%sitename), &
+                                          interface%steering%climateyear &
+                                          )
 
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
-    pco2             = getco2( trim(runname), trim(sitename), out_steering%forcingyear )
-    dndep_field(:,:) = getndep( trim(runname), trim(sitename), out_steering%forcingyear )
-    lu_area(:,:)     = getlanduse( trim(runname), out_steering%forcingyear )
-    ! pft_field(:)     = getpft( trim(sitename), out_steering%forcingyear )
+    interface%pco2 = getco2( &
+                            trim(runname), &
+                            trim(interface%params_siml%sitename), &
+                            interface%steering%forcingyear, &
+                            interface%params_siml%const_co2, &
+                            interface%params_siml%firstyeartrend,&
+                            interface%params_siml%co2_forcing_file&
+                            )
+    interface%ndep_field(:) = getndep( &
+                                      trim(runname), &
+                                      trim(interface%params_siml%sitename), &
+                                      interface%steering%forcingyear, &
+                                      interface%params_siml%firstyeartrend, &
+                                      interface%params_siml%const_ndep, &
+                                      interface%params_siml%ndep_noy_forcing_file, &
+                                      interface%params_siml%ndep_nhx_forcing_file, &
+                                      interface%climate(:)&
+                                      )
+    interface%landuse(:) = getlanduse( &
+                                      trim(runname), &
+                                      trim(interface%params_siml%sitename), &
+                                      interface%steering%forcingyear &
+                                      )
+    ! pft_field(:)     = getpft( trim(interface%params_siml%sitename), interface%steering%forcingyear )
 
     !----------------------------------------------------------------
     ! Get prescribed fAPAR
     !----------------------------------------------------------------
-    mfapar_field(:,:) = getfapar( trim(runname), trim(sitename), out_steering%forcingyear )
+    interface%mfapar_field(:,:) = getfapar( &
+                                          trim(runname), &
+                                          trim(interface%params_siml%sitename), &
+                                          interface%steering%forcingyear, &
+                                          interface%params_siml%prescr_monthly_fapar &
+                                          )
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
     ! containing data for each day of this year.
     !----------------------------------------------------------------
-    write(0,100) 'sim. year, year AD, pco2', year, out_steering%forcingyear, pco2
+    write(0,100) 'sim. year, year AD, pco2', yr, interface%steering%forcingyear, interface%pco2
 
-    ! write(0,*) 'lon, lat, elv', lon, lat, elv
-
-    ! write(0,*) 'params_soil_field', params_soil_field(:)
-    ! write(0,*) 'andep', sum(dndep_field(:,:))
-    ! write(0,*) 'aprec', sum(dprec_field(:,:))
-    ! write(0,*) 'dtemp ave', sum(dtemp_field(:,:))/ndayyear
-    ! write(0,*) 'dfsun ave', sum(dfsun_field(:,:))/ndayyear
-    ! write(0,*) 'dvpd ave', sum(dvpd_field(:,:))/ndayyear
-    ! write(0,*) 'mfapar_field', mfapar_field
-    ! write(0,*) 'calling elvis ...'
-    ! stop 'before calling biosphere()'
-
-    call biosphere( &
-      year, lon(:), lat(:), elv(:) &
-      , params_soil_field(:), lu_area(:,:), pco2 &
-      , climate_field%dtemp(:,:), climate_field%dprec(:,:) &
-      , climate_field%dfsun(:,:), climate_field%dvpd(:,:) &
-      , dndep_field(:,:) &
-      , c_uptake &
-      , mfapar_field &
-      ) 
+    !================================================================
+    !================================================================
+    call biosphere( c_uptake ) 
+    !================================================================
+    !================================================================
 
   enddo
 

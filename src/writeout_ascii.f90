@@ -13,8 +13,8 @@ subroutine writeout_ascii( year, dtemp )
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !-------------------------------------------------------------------------
-  use md_params_siml, only: spinup, daily_out_startyr, &
-    daily_out_endyr, outyear
+  use md_params_siml, only: spinup, interface%params_siml%daily_out_startyr, &
+    interface%params_siml%daily_out_endyr, outyear
   use md_params_core, only: ndayyear
   use md_params_modl, only: lu_category
   use md_outvars
@@ -66,7 +66,7 @@ subroutine writeout_ascii( year, dtemp )
   ! Write daily value, summed over all PFTs / LUs
   ! xxx implement taking sum over PFTs (and gridcells) in this land use category
   !-------------------------------------------------------------------------
-  if ( .not. spinup .and. outyear>=daily_out_startyr .and. outyear<=daily_out_endyr ) then
+  if ( .not. spinup .and. outyear>=interface%params_siml%daily_out_startyr .and. outyear<=interface%params_siml%daily_out_endyr ) then
 
     ! Write daily output only during transient simulation
     do day=1,ndayyear
