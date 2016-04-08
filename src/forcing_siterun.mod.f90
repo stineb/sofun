@@ -66,16 +66,7 @@ contains
   end function getco2
 
 
-  function getndep( &
-    runname, &
-    sitename, &
-    forcingyear, &
-    firstyeartrend, &
-    const_ndep, &
-    ndep_noy_forcing_file, &
-    ndep_nhx_forcing_file, &
-    climate &
-    ) result( out_getndep )
+  function getndep( runname, sitename, forcingyear, firstyeartrend, const_ndep, ndep_noy_forcing_file, ndep_nhx_forcing_file, climate ) result( out_getndep )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual ndeposition and distributes it
     !  over days according to daily precipitation.
@@ -277,6 +268,7 @@ contains
 
     ! local variables
     integer :: doy
+    integer :: findyear
     real, dimension(ndayyear) :: tmp
     character(len=4) :: landuseyear_char
     character(len=245) :: filnam
@@ -289,32 +281,35 @@ contains
     ! xxx dummy
     out_landuse%lu_area(lunat) = 1.0
 
-    ! xxx try
-    if (forcingyear<1993) then
-      ! create 4-digit string for year  
-      write(landuseyear_char,999) 1993
-    else if (forcingyear>2002) then
+    ! get harvest data for forcing year
+    if (forcingyear>2002) then
       write(landuseyear_char,999) 2002
     else
       ! create 4-digit string for year  
       write(landuseyear_char,999) forcingyear
     end if
-
     filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
+    inquire( file='./input/'//trim(filnam), exist=file_exists )
+    
+    if ( file_exists ) then
+      ! found data file
+      write(0,*) 'GETLANDUSE: harvest data for year ', forcingyear
+      tmp(:) = read1year_daily( trim(filnam) )
+    
+    else
+      ! find first year with data available
+      findyear = forcingyear
+      do while ( .not. file_exists )
+        findyear = findyear + 1
+        write(landuseyear_char,999) findyear
+        filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
+        inquire( file='./input/'//trim(filnam), exist=file_exists )
+        if ( file_exists ) tmp(:) = read1year_daily( trim(filnam) )
+      end do   
+      write(0,*) 'GETLANDUSE: found harvest data for first year  ', findyear
+    end if
 
-    ! ! if there is no grass/crop harvest file available, assume it's not harvested (set 'tmp' to zero)
-    ! inquire( file='./input/'//trim(filnam), exist=file_exists )
-    ! if ( file_exists ) then
-    !   tmp(:) = read1year_daily( trim(filnam) )
-    !   print*,tmp
-    !   stop 'above: harvest'
-    ! else
-    !   tmp(:) = 0.0
-    ! end if
-
-    ! xxx try
-    tmp(:) = read1year_daily( trim(filnam) )
-
+    ! translate zeros and ones to boolean
     do doy=1,ndayyear
       if (tmp(doy)==1.0) then
         out_landuse%do_grharvest(doy) = .true.

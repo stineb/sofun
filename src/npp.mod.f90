@@ -121,9 +121,9 @@ contains
         ! LU. 
         !-------------------------------------------------------------------------
         ! dnup(pft) = nitrogen(0.0) ! XXX WILL BE DETERMINED IN ALLOCATION
-        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 )      
+        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12, plabl(pft,jpngr)%c%c12, dtemp )      
 
-        print*,'proot(pft,jpngr)%c%c12', proot(pft,jpngr)%c%c12
+        print*,'leaf, root ', pleaf(pft,jpngr)%c%c12, proot(pft,jpngr)%c%c12
 
         if ( dnpp(pft)%c12 - dcex(pft) < 0.0 ) then
           print*, 'pft    ',pft
@@ -214,17 +214,23 @@ contains
   end function calc_resp_maint
 
 
-  function calc_cexu( croot ) result( cexu )
+  function calc_cexu( croot, clabl, dtemp ) result( cexu )
     !/////////////////////////////////////////////////////////////////
     ! Constant exudation rate
     !-----------------------------------------------------------------
+    use md_gpp, only: ramp_gpp_lotemp     ! same ramp as for GPP 
+
     ! arguments
-    real, intent(in)  :: croot
+    real, intent(in)           :: croot
+    real, intent(in)           :: clabl
+    real, intent(in), optional :: dtemp   ! temperature (soil or air, deg C)
 
     ! function return variable
     real :: cexu
 
-    cexu = params_plant%exurate * croot
+    cexu = min( clabl, params_plant%exurate * croot * ramp_gpp_lotemp( dtemp ) )
+
+    ! if (cexu>clabl) stop 'exuding more than available'
 
   end function calc_cexu
 
