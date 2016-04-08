@@ -681,6 +681,9 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
+    ! print*,'dcex(:) ',dcex(:)
+    
+
     if (interface%params_siml%loutdnpp   ) outdnpp(:,doy,jpngr)   = dnpp(:)%c12
     if (interface%params_siml%loutdnup   ) outdnup(:,doy,jpngr)   = dnup(:)%n14
     if (interface%params_siml%loutdcex   ) outdcex(:,doy,jpngr)   = dcex(:)

@@ -8,7 +8,8 @@ module md_landuse
   implicit none
 
   private
-  public grharvest
+  public grharvest, initoutput_landuse, initio_landuse, getout_annual_landuse, &
+    writeout_ascii_landuse
 
   !----------------------------------------------------------------
   ! Private, module-specific state variables
@@ -95,5 +96,106 @@ contains
     end do
 
   end subroutine grharvest
+
+
+  subroutine initoutput_landuse()
+    !////////////////////////////////////////////////////////////////
+    ! Initialises all daily variables with zero.
+    ! Called at the beginning of each year by 'biosphere'.
+    !----------------------------------------------------------------
+    ! annual output variables
+    outacharv(:,:) = 0.0
+    outanharv(:,:) = 0.0
+
+  end subroutine initoutput_landuse
+
+
+  subroutine initio_landuse()
+    !////////////////////////////////////////////////////////////////
+    ! Opens input/output files.
+    !----------------------------------------------------------------
+    use md_interface
+    ! use md_params_siml, only: runname
+
+    ! local variables
+    character(len=256) :: prefix
+    character(len=256) :: filnam
+
+    prefix = "./output/"//trim(interface%params_siml%runname)
+
+    !////////////////////////////////////////////////////////////////
+    ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
+    !----------------------------------------------------------------
+
+    ! HARVESTED C
+    filnam=trim(prefix)//'.a.charv.out'
+    open(360,file=filnam,err=999,status='unknown')
+
+    ! HARVESTED N
+    filnam=trim(prefix)//'.a.nharv.out'
+    open(361,file=filnam,err=999,status='unknown')
+
+    return
+
+    999  stop 'INITIO_LANDUSE: error opening output files'
+
+  end subroutine initio_landuse
+
+
+  subroutine getout_annual_landuse( jpngr )
+    !////////////////////////////////////////////////////////////////
+    !  SR called once a year to gather annual output variables.
+    !----------------------------------------------------------------
+    use md_params_core, only: ndayyear, npft
+
+    ! arguments
+    integer, intent(in) :: jpngr
+
+    ! Output annual value at day of peak LAI
+    outacharv(:,:) = mharv(:,:)%c%c12
+    outanharv(:,:) = mharv(:,:)%n%n14
+
+  end subroutine getout_annual_landuse
+
+
+  subroutine writeout_ascii_landuse( year )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Write daily ASCII output
+    ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
+    ! contact: b.stocker@imperial.ac.uk
+    !-------------------------------------------------------------------------
+    ! use md_params_siml, only: spinup, interface%params_siml%daily_out_startyr, &
+    !   interface%params_siml%daily_out_endyr, outyear
+    use md_params_core, only: ndayyear, nlu
+    use md_interface
+
+    ! arguments
+    integer, intent(in) :: year       ! simulation year
+
+    ! local variables
+    real :: itime
+    integer :: day, moy, jpngr
+
+    ! xxx implement this: sum over gridcells? single output per gridcell?
+    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
+    jpngr = 1
+
+    if (nlu>1) stop 'Output only for one LU category implemented.'
+
+    !-------------------------------------------------------------------------
+    ! ANNUAL OUTPUT
+    ! Write annual value, summed over all PFTs / LUs
+    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+    !-------------------------------------------------------------------------
+    itime = real(interface%steering%outyear)
+
+    write(360,999) itime, sum(outacharv(:,jpngr))
+    write(361,999) itime, sum(outanharv(:,jpngr))
+
+    return
+
+  999     format (F20.8,F20.8)
+
+  end subroutine writeout_ascii_landuse
 
 end module md_landuse

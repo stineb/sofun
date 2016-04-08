@@ -20,7 +20,7 @@ program main
   real    :: c_uptake     ! annual net global C uptake by biosphere
   character(len=245) :: runname
 
-  integer, parameter :: maxlen_runname = 30      ! maximum length of runname (arbitrary)
+  integer, parameter :: maxlen_runname = 50      ! maximum length of runname (arbitrary)
 
   ! xxx try
   integer :: day

@@ -19,7 +19,8 @@ subroutine biosphere( c_uptake )
   use md_turnover, only: turnover
   use md_allocation, only: allocation_daily
   use md_vegdynamics, only: vegdynamics
-  use md_landuse, only: grharvest
+  use md_landuse, only: grharvest, initoutput_landuse, initio_landuse, getout_annual_landuse, &
+    writeout_ascii_landuse
   
   implicit none
 
@@ -64,6 +65,7 @@ subroutine biosphere( c_uptake )
     call initio_soiltemp()
     call initio_gpp()
     call initio_plant()
+    call initio_landuse()
     ! print*,'... done'
 
   endif 
@@ -76,6 +78,7 @@ subroutine biosphere( c_uptake )
   call initoutput_soiltemp()
   call initoutput_gpp()
   call initoutput_plant()
+  call initoutput_landuse()
   ! print*,'... done'
 
   !----------------------------------------------------------------
@@ -243,6 +246,7 @@ subroutine biosphere( c_uptake )
     !----------------------------------------------------------------
     ! print*, 'calling getout_annual() ... '
     call getout_annual_plant( jpngr )
+    call getout_annual_landuse( jpngr )
     ! print*, '... done'
 
     !----------------------------------------------------------------
@@ -253,6 +257,7 @@ subroutine biosphere( c_uptake )
     call writeout_ascii_soiltemp( interface%steering%year )
     call writeout_ascii_gpp( interface%steering%year )
     call writeout_ascii_plant( interface%steering%year )
+    call writeout_ascii_landuse( interface%steering%year )
     ! print*, '... done'
 
   end do

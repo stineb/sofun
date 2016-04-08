@@ -121,9 +121,11 @@ contains
         ! LU. 
         !-------------------------------------------------------------------------
         ! dnup(pft) = nitrogen(0.0) ! XXX WILL BE DETERMINED IN ALLOCATION
-        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12, plabl(pft,jpngr)%c%c12, dtemp )      
-
-        print*,'leaf, root ', pleaf(pft,jpngr)%c%c12, proot(pft,jpngr)%c%c12
+        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12, dnpp(pft)%c12, dtemp )     
+        ! print*,'dcex(:) ',dcex(:)
+        ! print*,'croot' , proot(pft,jpngr)%c%c12
+        ! print*,'clabl' , plabl(pft,jpngr)%c%c12
+ 
 
         if ( dnpp(pft)%c12 - dcex(pft) < 0.0 ) then
           print*, 'pft    ',pft
@@ -214,7 +216,7 @@ contains
   end function calc_resp_maint
 
 
-  function calc_cexu( croot, clabl, dtemp ) result( cexu )
+  function calc_cexu( croot, avl, dtemp ) result( cexu )
     !/////////////////////////////////////////////////////////////////
     ! Constant exudation rate
     !-----------------------------------------------------------------
@@ -222,15 +224,15 @@ contains
 
     ! arguments
     real, intent(in)           :: croot
-    real, intent(in)           :: clabl
+    real, intent(in)           :: avl
     real, intent(in), optional :: dtemp   ! temperature (soil or air, deg C)
 
     ! function return variable
     real :: cexu
 
-    cexu = min( clabl, params_plant%exurate * croot * ramp_gpp_lotemp( dtemp ) )
+    cexu = min( avl, params_plant%exurate * croot * ramp_gpp_lotemp( dtemp ) )
 
-    ! if (cexu>clabl) stop 'exuding more than available'
+    ! if (cexu>avl) stop 'exuding more than available'
 
   end function calc_cexu
 
