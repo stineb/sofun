@@ -58,6 +58,7 @@ contains
     ! local variables
     integer :: pft
     integer :: lu
+    type( carbon ) :: tmp
 
     ! print*, '---- in npp:'
 
@@ -102,15 +103,15 @@ contains
         !-------------------------------------------------------------------------
         dnpp(pft)   = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
 
-        if ( dnpp(pft)%c12 < 0.0 ) then
-          print*, 'pft    ',pft
-          print*, 'drleaf ',drleaf(pft)
-          print*, 'drroot ',drroot(pft)
-          print*, 'dgpp   ',dgpp(pft)
-          print*, 'dnpp   ',dnpp(pft)
-          print*, 'NPP: dnpp negative'
-          stop
-        end if
+        ! if ( dnpp(pft)%c12 < 0.0 ) then
+        !   print*, 'pft    ',pft
+        !   print*, 'drleaf ',drleaf(pft)
+        !   print*, 'drroot ',drroot(pft)
+        !   print*, 'dgpp   ',dgpp(pft)
+        !   print*, 'dnpp   ',dnpp(pft)
+        !   print*, 'NPP: dnpp negative'
+        !   stop
+        ! end if
 
         !/////////////////////////////////////////////////////////////////////////
         ! EXUDATION FOR N UPTAKE
@@ -121,13 +122,14 @@ contains
         ! LU. 
         !-------------------------------------------------------------------------
         ! dnup(pft) = nitrogen(0.0) ! XXX WILL BE DETERMINED IN ALLOCATION
-        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12, dnpp(pft)%c12, dtemp )     
+        tmp = cplus( dnpp(pft), plabl(pft,jpngr)%c )
+        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12, tmp%c12 , dtemp )     
         ! print*,'dcex(:) ',dcex(:)
         ! print*,'croot' , proot(pft,jpngr)%c%c12
         ! print*,'clabl' , plabl(pft,jpngr)%c%c12
  
 
-        if ( dnpp(pft)%c12 - dcex(pft) < 0.0 ) then
+        if ( tmp%c12 - dcex(pft) < 0.0 ) then
           print*, 'pft    ',pft
           print*, 'drleaf ',drleaf(pft)
           print*, 'drroot ',drroot(pft)

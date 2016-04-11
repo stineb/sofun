@@ -48,7 +48,7 @@ contains
     ! real, parameter :: dlabl = 0.25
 
     ! xxx try
-    real, parameter :: min_cleaf_left = 50.0
+    real, parameter :: min_cleaf_left = 28.0
     real :: dleaf
     real :: dlabl
 

@@ -7,9 +7,9 @@
 lu_category_prov                        1.00000
 code_growthform                         3.00000
 code_nfixer                             0.00000
-k_decay_leaf                            6.00000
+k_decay_leaf                            2.50000
 k_decay_sapw                            9999999
-k_decay_root                            6.00000
+k_decay_root                            0.70000
 cton_soil                               9.77000
 reinickerp                              1.60000
 wooddens                                0.00000

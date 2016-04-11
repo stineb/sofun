@@ -39,16 +39,19 @@ module md_allocation
   type paramstype_alloc
     ! Parameters determining the relationship of structural N and C to metabolic N
     ! From regressing Narea to metabolic Narea in Hikosaka data
-    ! real, parameter    :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
-    ! real, parameter    :: ncw_min = 0.056               ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
-    real :: r_n_cw_v          = 0.1       ! slope in the relationship of non-metabolic versus metabolic N per leaf area
-    real :: ncw_min           = 0.1       ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
-    real :: r_ctostructn_leaf = 30        ! constant ratio of C to structural N
+    ! real :: r_n_cw_v = 1.23223            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
+    real :: ncw_min  = 0.056              ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
+
+    real :: r_n_cw_v = 0.4            ! slope in the relationship of non-metabolic versus metabolic N per leaf area
+    ! real :: ncw_min           = 0.1       ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
+    
+    real :: r_ctostructn_leaf = 50        ! constant ratio of C to structural N
+  
   end type paramstype_alloc
 
   type( paramstype_alloc ) :: params_alloc
 
-  real, parameter :: r_shoot_root = 1.0
+  real, parameter :: r_shoot_root = 0.6
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, PRIVATE VARIABLES
