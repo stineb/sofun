@@ -12,7 +12,7 @@ module md_ntransform
   implicit none
 
   private 
-  public pninorg, ntransform, getpar_modl_ntransform, init_global_ntransform, initdaily_ntransform, &
+  public pninorg, ntransform, getpar_modl_ntransform, initglobal_ntransform, initdaily_ntransform, &
     initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform
 
   !----------------------------------------------------------------
@@ -409,12 +409,12 @@ contains
   end subroutine getpar_modl_ntransform
 
   
-  subroutine init_global_ntransform()
+  subroutine initglobal_ntransform()
     !////////////////////////////////////////////////////////////////
     ! Subroutine initialises pool variables
     !----------------------------------------------------------------
     ! public variables
-    pninorg(:,:)  = nitrogen(10.0)  ! start from non-zero to allow growth
+    pninorg(:,:)  = nitrogen(100.0)  ! start from non-zero to allow growth
 
     ! module-specific variables
     no2(:,:)      = 0.0
@@ -425,7 +425,7 @@ contains
     n2o_d(:,:)    = 0.0
     n2_w(:,:)     = 0.0
 
-  end subroutine init_global_ntransform
+  end subroutine initglobal_ntransform
 
 
   subroutine initdaily_ntransform()

@@ -58,7 +58,7 @@ contains
     ! local variables
     integer :: pft
     integer :: lu
-    type( carbon ) :: tmp
+    real :: avl
 
     ! print*, '---- in npp:'
 
@@ -103,15 +103,16 @@ contains
         !-------------------------------------------------------------------------
         dnpp(pft)   = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
 
-        ! if ( dnpp(pft)%c12 < 0.0 ) then
-        !   print*, 'pft    ',pft
-        !   print*, 'drleaf ',drleaf(pft)
-        !   print*, 'drroot ',drroot(pft)
-        !   print*, 'dgpp   ',dgpp(pft)
-        !   print*, 'dnpp   ',dnpp(pft)
-        !   print*, 'NPP: dnpp negative'
-        !   stop
-        ! end if
+        if ( dnpp(pft)%c12 < 0.0 ) then
+          print*, 'pft    ',pft
+          print*, 'doy    ',doy
+          print*, 'drleaf ',drleaf(pft)
+          print*, 'drroot ',drroot(pft)
+          print*, 'dgpp   ',dgpp(pft)
+          print*, 'dnpp   ',dnpp(pft)
+          print*, 'NPP: dnpp negative'
+          stop
+        end if
 
         !/////////////////////////////////////////////////////////////////////////
         ! EXUDATION FOR N UPTAKE
@@ -122,23 +123,24 @@ contains
         ! LU. 
         !-------------------------------------------------------------------------
         ! dnup(pft) = nitrogen(0.0) ! XXX WILL BE DETERMINED IN ALLOCATION
-        tmp = cplus( dnpp(pft), plabl(pft,jpngr)%c )
-        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12, tmp%c12 , dtemp )     
-        ! print*,'dcex(:) ',dcex(:)
+        avl = dnpp(pft)%c12 + plabl(pft,jpngr)%c%c12
+        if (avl<0.0) stop 'neg. avl'
+        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12, avl , dtemp )     
+
         ! print*,'croot' , proot(pft,jpngr)%c%c12
         ! print*,'clabl' , plabl(pft,jpngr)%c%c12
  
 
-        if ( tmp%c12 - dcex(pft) < 0.0 ) then
-          print*, 'pft    ',pft
-          print*, 'drleaf ',drleaf(pft)
-          print*, 'drroot ',drroot(pft)
-          print*, 'dgpp   ',dgpp(pft)
-          print*, 'dnpp   ',dnpp(pft)
-          print*, 'dcex   ',dcex(pft)
-          print*, 'NPP-CEX negative'
-          stop
-        end if
+        ! if ( avl - dcex(pft) < 0.0 ) then
+        !   print*, 'pft    ',pft
+        !   print*, 'drleaf ',drleaf(pft)
+        !   print*, 'drroot ',drroot(pft)
+        !   print*, 'dgpp   ',dgpp(pft)
+        !   print*, 'dnpp   ',dnpp(pft)
+        !   print*, 'dcex   ',dcex(pft)
+        !   print*, 'NPP-CEX negative'
+        !   stop
+        ! end if
 
         ! ! SR nuptake calculates dcex and dnup (incl. dnup_act, dnup_pas, ...)
         ! call nuptake( jpngr, pft )
@@ -176,8 +178,8 @@ contains
         !   end if
         ! end if
 
-          if (plabl(pft,jpngr)%c%c12<0.0) stop 'after npp labile C is neg.'
-          if (plabl(pft,jpngr)%n%n14<0.0) stop 'after npp labile N is neg.'
+        if (plabl(pft,jpngr)%c%c12<0.0) stop 'after npp labile C is neg.'
+        if (plabl(pft,jpngr)%n%n14<0.0) stop 'after npp labile N is neg.'
 
       else
 
@@ -232,7 +234,11 @@ contains
     ! function return variable
     real :: cexu
 
-    cexu = min( avl, params_plant%exurate * croot * ramp_gpp_lotemp( dtemp ) )
+    if (avl<=0.0) then
+      cexu = 0.0
+    else
+      cexu = min( avl, params_plant%exurate * croot * ramp_gpp_lotemp( dtemp ) )
+    end if
 
     ! if (cexu>avl) stop 'exuding more than available'
 

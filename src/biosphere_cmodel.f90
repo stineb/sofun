@@ -20,8 +20,14 @@ subroutine biosphere( c_uptake )
   use md_allocation, only: allocation_daily
   use md_vegdynamics, only: vegdynamics
   use md_landuse, only: grharvest, initoutput_landuse, initio_landuse, getout_annual_landuse, &
-    writeout_ascii_landuse
+    writeout_ascii_landuse, initglobal_landuse, init_mharv
   
+  ! xxx verbose
+  use md_plant
+  use md_gpp
+  use md_classdefs
+  use md_landuse
+
   implicit none
 
   ! return variable
@@ -29,6 +35,12 @@ subroutine biosphere( c_uptake )
 
   ! local variables
   integer :: dm, moy, jpngr, day
+
+  ! xxx verbose
+  logical, parameter :: verbose = .true.
+  real            :: cbal1, cbal2
+  type( orgpool ) :: orgtmp1, orgtmp2, orgbal1, orgbal2
+  real :: eps = 9.999e-11
 
   ! ! XXX PMODEL_TEST
   ! print*, 'WARNING: FAPAR = 1.00 USED IN PMODEL'
@@ -55,6 +67,7 @@ subroutine biosphere( c_uptake )
     ! print*,'initialising variables ...'
     call initglobal_plant()
     call initglobal_waterbal()
+    call initglobal_landuse()
     ! print*,'... done'
 
     !----------------------------------------------------------------
@@ -135,6 +148,7 @@ subroutine biosphere( c_uptake )
         !----------------------------------------------------------------
         ! initialise daily updated variables 
         !----------------------------------------------------------------
+        if (day==1) call init_mharv(jpngr) ! xxx try
         call initdaily_plant()
         call initdaily_waterbal()
         call initdaily_gpp()
@@ -177,7 +191,9 @@ subroutine biosphere( c_uptake )
         !----------------------------------------------------------------
         ! calculate GPP
         !----------------------------------------------------------------
-        ! print*, 'calling gpp() ... '
+        if (verbose) print*, 'calling gpp() ... '
+        if (verbose) print*, '              with state variables:'
+        if (verbose) print*, '              fapar = ', canopy(:)%fapar_ind
         ! write(0,*) 'WARNING IN BIOSPHERE: CAPPED DAILY TEMPERATURE AT 25 DEG C.'
         ! if (interface%climate(jpngr)%dtemp(day).gt.25.0) print*,'dtemp = ', interface%climate(jpngr)%dtemp(day)
         ! call gpp( jpngr, day, moy, min( 25.0, interface%climate(jpngr)%dtemp(day) ), mfapar_field(moy,jpngr) )
@@ -186,39 +202,125 @@ subroutine biosphere( c_uptake )
           interface%climate(jpngr)%dtemp(day), & 
           interface%mfapar_field(moy,jpngr) & 
           )
-        ! print*, '... done'
+        if (verbose) print*, '              ==> returned: '
+        if (verbose) print*, '              dgpp  = ', dgpp(:)
+        if (verbose) print*, '... done'
 
         !----------------------------------------------------------------
         ! substract autotrophic respiration to get NPP, remainder is added 
         ! to labile pool (plabl)
         !----------------------------------------------------------------
-        ! print*, 'calling npp() ... '
+        if (verbose) print*, 'calling npp() ... '
+        if (verbose) print*, '              with state variables:'
+        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) print*, '              proot = ', proot(:,jpngr)
+        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+        if (verbose) orgtmp1 =  plabl(1,jpngr)
+        !----------------------------------------------------------------
         call npp( jpngr, interface%climate(jpngr)%dtemp(day), day )
-        ! print*, '... done'
-
-        ! amount of NPP added to reproduction (xxx ignore at this point)
-        !call reproduction( jpngr )
+        !----------------------------------------------------------------
+        if (verbose) print*, '              ==> returned: '
+        if (verbose) print*, '              dnpp  = ', dnpp(:)
+        if (verbose) print*, '              dcex  = ', dcex(:)
+        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+        if (verbose) print*, '    --- balance: '
+        if (verbose) cbal1 = dgpp(1) - dnpp(1)%c12 - drleaf(1) - drroot(1)
+        if (verbose) cbal2 = dgpp(1) - ( plabl(1,jpngr)%c%c12 - orgtmp1%c%c12 ) - dcex(1) - drleaf(1) - drroot(1)
+        if (verbose) print*, '        gpp - npp - ra_maint          = ', cbal1
+        if (verbose) print*, '        gpp - dlabl - dcex - ra_maint = ', cbal2
+        if (verbose.and.abs(cbal1)>eps) stop 'balance 1 not satisfied'
+        if (verbose.and.abs(cbal2)>eps) stop 'balance 2 not satisfied'
+        if (verbose) print*, '... done'
 
         !----------------------------------------------------------------
         ! leaf, sapwood, and fine-root turnover
         !----------------------------------------------------------------
-        ! print*, 'calling turnover() ... '
+        if (verbose) print*, 'calling turnover() ... '
+        if (verbose) print*, '              with state variables:'
+        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) print*, '              proot = ', proot(:,jpngr)
+        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+        if (verbose) print*, '              plitt = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
+        if (verbose) orgtmp1  =  orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )
+        if (verbose) orgtmp2 =  orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
+        !----------------------------------------------------------------
         call turnover( jpngr, day )
-        ! print*, '... done'
+        !----------------------------------------------------------------
+        if (verbose) print*, '              ==> returned: '
+        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) print*, '              proot = ', proot(:,jpngr)
+        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+        if (verbose) print*, '              plitt = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
+        if (verbose) print*, '   --- balance: '
+        if (verbose) orgbal1 = orgminus( &
+                                        orgminus( &
+                                          orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) ), &
+                                          orgtmp2 &
+                                          ), &
+                                        orgminus( &
+                                          orgtmp1, &
+                                          orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) ) &
+                                          ) &
+                                        )
+        if (verbose) print*, '       dlitt - dplant                = ', orgbal1
+        if (verbose.and.abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (verbose.and.abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (verbose) print*, '... done'
 
         !----------------------------------------------------------------
         ! grass / crop harvest
         !----------------------------------------------------------------
-        ! print*, 'calling allocation() ... '
+        if (verbose) print*, 'calling grharvest() ... '
+        if (verbose) print*, '              with state variables:'
+        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) print*, '              proot = ', proot(:,jpngr)
+        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+        if (verbose) print*, '              mharv = ', mharv(:,jpngr)
+        if (verbose) orgtmp1 =  orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )
+        if (verbose) orgtmp2 =  mharv(1,jpngr)
+        !----------------------------------------------------------------
         call grharvest( jpngr, day )
-        ! print*, '... done'
+        !----------------------------------------------------------------
+        if (verbose) print*, '              ==> returned: '
+        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) print*, '              proot = ', proot(:,jpngr)
+        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+        if (verbose) print*, '              mharv = ', mharv(:,jpngr)
+        if (verbose) print*, '    --- balance: '
+        if (verbose) orgbal1 = orgminus( orgminus( orgtmp1, orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) ) ), orgminus( mharv(1,jpngr), orgtmp2 ) )
+        if (verbose) print*, '        dharv - dplant  = ', orgbal1
+        if (verbose.and.abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (verbose.and.abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (verbose) print*, '... done'
 
         !----------------------------------------------------------------
         ! allocation of labile pools to biomass
         !----------------------------------------------------------------
-        ! print*, 'calling allocation() ... '
+        if (verbose) print*, 'calling allocation() ... '
+        if (verbose) print*, '              with state variables:'
+        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) print*, '              proot = ', proot(:,jpngr)
+        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+        if (verbose) orgtmp1 =  plabl(1,jpngr)
+        if (verbose) orgtmp2 =  orgplus( pleaf(1,jpngr), proot(1,jpngr) )
+        !----------------------------------------------------------------
         call allocation_daily( jpngr, day, moy, dm )
-        ! print*, '... done'
+        !----------------------------------------------------------------
+        if (verbose) print*, '              ==> returned: '
+        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr), ' C:N = ', cton( pleaf(1,jpngr) )
+        if (verbose) print*, '              proot = ', proot(:,jpngr), ' C:N = ', cton( proot(1,jpngr) )
+        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+        if (verbose) print*, '   --- balance: '
+        if (verbose) orgbal1 = orgminus( orgminus( orgminus( orgtmp1, plabl(1,jpngr) ), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr) ), orgtmp2 ) )        
+        ! dlabl  = orgminus( orgtmp1, plabl(1,jpngr) )
+        ! drgrow = orgpool( carbon(drgrow(1)), nitrogen(0.0) )
+        ! dplant = orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr) ), orgtmp2 )
+        if (verbose) print*, '       dlabl - drgrow - dleaf - droot=', orgbal1
+        if (verbose.and.abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        ! print*, 'dlabl  =', orgminus( orgtmp, plabl(1,jpngr) )
+        ! print*, 'drgrow =', drgrow(1), 0.0
+        ! print*, 'dplant =', orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr) ), orgtmp2 )
+        if (verbose) print*, '... done'
 
         ! !----------------------------------------------------------------
         ! ! litter and soil decomposition and N mineralisation
@@ -261,6 +363,8 @@ subroutine biosphere( c_uptake )
     ! print*, '... done'
 
   end do
+
+  ! if (interface%steering%year==5) stop 'end of year no. 5'
 
   ! xxx insignificant
   c_uptake = 0.0

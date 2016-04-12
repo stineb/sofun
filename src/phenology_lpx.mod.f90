@@ -188,7 +188,7 @@ contains
       if (npft>1) stop 'in phenology: think of something nice'
       pft = 1
 
-      do day=1,ndayyear
+      do day=2,ndayyear
 
         if (params_pft_pheno(pft)%summergreen) then
           !----------------------------------------------------------

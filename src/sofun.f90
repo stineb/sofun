@@ -12,7 +12,7 @@ program main
   use md_params_site, only: getpar_site
   use md_grid, only: getgrid
   use md_params_soil, only: getsoil_field
-  use md_forcing_siterun, only: getclimate_site, getndep, getfapar, getclimate_site, getlanduse, getco2
+  use md_forcing_siterun, only: getclimate_site, getndep, getfapar, getlanduse, getco2
 
   implicit none
 

@@ -52,6 +52,9 @@ contains
     real :: droot
     real :: dlabl
 
+    ! xxx verbose
+    logical, parameter :: verbose = .false.
+    type( orgpool ) :: orgtmp, orgtmp2
 
     do pft=1,npft
 
@@ -114,7 +117,29 @@ contains
         ! xxx todo         
         ! Make consistent with turnover accounted for in allocation!
         !--------------------------------------------------------------
+        if (verbose) print*, 'calling turnover_leaf() ... '
+        if (verbose) print*, '              with state variables:'
+        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
+        if (verbose) orgtmp  =  pleaf(pft,jpngr)
+        if (verbose) orgtmp2 =  plitt_af(pft,jpngr)
         if ( dleaf>0.0 )                 call turnover_leaf( dleaf, pft, jpngr )
+        if (verbose) print*, '              ==> returned: '
+        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
+        if (verbose) print*, '              --- balance: '
+        if (verbose) print*, '                  dlitt - dleaf                = ',  orgminus( &
+                                                                                      orgminus( &
+                                                                                        plitt_af(pft,jpngr), &
+                                                                                        orgtmp2 &
+                                                                                        ), &
+                                                                                      orgminus( &
+                                                                                        orgtmp, &
+                                                                                        pleaf(pft,jpngr) &
+                                                                                        ) &
+                                                                                      )
+        if (verbose) print*, '... done'
+
         if ( droot>0.0 )                 call turnover_root( droot, pft, jpngr )
         if ( params_pft_plant(pft)%tree .and. dsapw>0.0 ) call turnover_sapw( dsapw, pft, jpngr )
         if ( dlabl>0.0 )                 call turnover_labl( dlabl, pft, jpngr )
@@ -155,26 +180,43 @@ contains
     ! local variables
     type(orgpool) :: lm_turn
 
+    ! xxx verbose
+    logical, parameter :: verbose = .false.
+    type( orgpool ) :: orgtmp, orgtmp2
+
+    ! new version: >>>>>>>
     ! determine absolute turnover
     lm_turn = orgfrac( dleaf, pleaf(pft,jpngr) ) ! leaf turnover
 
+    ! ! xxx test
+    ! orgtmp  = pleaf(pft,jpngr)
+    ! orgtmp2 = plitt_af(pft,jpngr)
+
     ! reduce leaf mass and root mass
-    call orgsub( lm_turn, pleaf(pft,jpngr) )
+    call orgmv( lm_turn, pleaf(pft,jpngr), plitt_af(pft,jpngr) )
+    ! print*, 'balance in turnover_leaf:'
+    ! print*, 'lm_turn ', lm_turn
+    ! print*, 'dleaf   ', orgminus(orgtmp, pleaf(pft,jpngr))
+    ! print*, 'dlitt   ', orgminus(plitt_af(pft,jpngr), orgtmp2)
+    ! print*, 'balance=', orgminus( orgminus(orgtmp, pleaf(pft,jpngr)), orgminus(plitt_af(pft,jpngr), orgtmp2) )
+    ! <<<<<<<<<<<
 
-    ! add all organic (fixed) C to litter
-    call cmvRec( lm_turn%c, lm_turn%c, plitt_af(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
+    ! ! old version didn't conserve mass: >>>>>>>
+    ! ! determine absolute turnover
+    ! lm_turn = orgfrac( dleaf, pleaf(pft,jpngr) ) ! leaf turnover
 
-    ! retain fraction of N
-    call nmv( nfrac( params_plant%f_nretain, lm_turn%n ), lm_turn%n, plabl(pft,jpngr)%n )
+    ! ! reduce leaf mass and root mass
+    ! call orgsub( lm_turn, pleaf(pft,jpngr) )
 
-    ! rest goes to litter
-    call nmvRec( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
+    ! ! add all organic (fixed) C to litter
+    ! call cmvRec( lm_turn%c, lm_turn%c, plitt_af(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
 
-    ! !--------------------------------------------------------------
-    ! ! Update foliage-related state variables (lai_ind, fpc_grid, and fapar_ind)
-    ! ! This assumes that leaf canopy-average traits do not change upon changes in LAI.
-    ! !--------------------------------------------------------------
-    ! call update_foliage_vars( pft, jpngr )
+    ! ! retain fraction of N
+    ! call nmv( nfrac( params_plant%f_nretain, lm_turn%n ), lm_turn%n, plabl(pft,jpngr)%n )
+
+    ! ! rest goes to litter
+    ! call nmvRec( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
+    ! ! <<<<<<<<<<<
 
   end subroutine turnover_leaf
 
@@ -193,20 +235,30 @@ contains
     ! local variables
     type(orgpool) :: rm_turn
 
+    ! new version: >>>>>>>
     ! determine absolute turnover
     rm_turn = orgfrac( droot, proot(pft,jpngr) ) ! root turnover
 
-    ! reduce leaf mass and root mass
-    call orgsub( rm_turn, proot(pft,jpngr) )
+    ! reduce root mass and root mass
+    call orgmv( rm_turn, proot(pft,jpngr), plitt_bg(pft,jpngr) )
+    ! <<<<<<<<<<<
 
-    ! add all organic (fixed) C to litter
-    call cmvRec( rm_turn%c, rm_turn%c, plitt_bg(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
+    ! ! old version didn't conserve mass: >>>>>>>
+    ! ! determine absolute turnover
+    ! rm_turn = orgfrac( droot, proot(pft,jpngr) ) ! root turnover
 
-    ! retain fraction of N
-    call nmv( nfrac( params_plant%f_nretain, rm_turn%n ), rm_turn%n, plabl(pft,jpngr)%n )
+    ! ! reduce leaf mass and root mass
+    ! call orgsub( rm_turn, proot(pft,jpngr) )
 
-    ! rest goes to litter
-    call nmvRec( rm_turn%n, rm_turn%n, plitt_bg(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
+    ! ! add all organic (fixed) C to litter
+    ! call cmvRec( rm_turn%c, rm_turn%c, plitt_bg(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
+
+    ! ! retain fraction of N
+    ! call nmv( nfrac( params_plant%f_nretain, rm_turn%n ), rm_turn%n, plabl(pft,jpngr)%n )
+
+    ! ! rest goes to litter
+    ! call nmvRec( rm_turn%n, rm_turn%n, plitt_bg(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
+    ! ! <<<<<<<<<<<
 
   end subroutine turnover_root
 
@@ -223,17 +275,27 @@ contains
     ! local variables
     type(orgpool) :: lb_turn
 
+    ! new version: >>>>>>>
     ! determine absolute turnover
     lb_turn = orgfrac( dlabl, plabl(pft,jpngr) ) ! labl turnover
 
-    ! reduce labl mass and root mass
-    call orgsub( lb_turn, plabl(pft,jpngr) )
+    ! reduce labl mass and labl mass
+    call orgmv( lb_turn, plabl(pft,jpngr), plitt_af(pft,jpngr) )
+    ! <<<<<<<<<<<
 
-    ! add all organic (fixed) C to litter
-    call cmvRec( lb_turn%c, lb_turn%c, plitt_af(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
+    ! ! old version didn't conserve mass: >>>>>>>
+    ! ! determine absolute turnover
+    ! lb_turn = orgfrac( dlabl, plabl(pft,jpngr) ) ! labl turnover
 
-    ! rest goes to litter
-    call nmvRec( lb_turn%n, lb_turn%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
+    ! ! reduce labl mass and root mass
+    ! call orgsub( lb_turn, plabl(pft,jpngr) )
+
+    ! ! add all organic (fixed) C to litter
+    ! call cmvRec( lb_turn%c, lb_turn%c, plitt_af(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
+
+    ! ! rest goes to litter
+    ! call nmvRec( lb_turn%n, lb_turn%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
+    ! ! <<<<<<<<<<<
 
   end subroutine turnover_labl
 

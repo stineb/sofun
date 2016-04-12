@@ -25,7 +25,7 @@ subroutine biosphere( c_uptake )
 
   ! XXX PMODEL_TEST
   ! print* 'WARNING: FAPAR = 1.00 USED IN PMODEL'
-  write(0,*) 'WARNING IN BIOSPHERE: CAPPED DAILY TEMPERATURE AT 25 DEG C.'
+  ! write(0,*) 'WARNING IN BIOSPHERE: CAPPED DAILY TEMPERATURE AT 25 DEG C.'
 
   !----------------------------------------------------------------
   ! INITIALISATIONS

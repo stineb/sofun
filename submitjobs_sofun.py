@@ -6,8 +6,8 @@ from subprocess import call
 ##--------------------------------------------------------------------
 ## Simulation suite
 ##--------------------------------------------------------------------
-# simsuite = 'fluxnet'
-simsuite = 'gcme'
+simsuite = 'fluxnet'
+# simsuite = 'gcme'
 # simsuite = 'fluxnet_cmodel'
 # simsuite = 'pmodel_test'
 

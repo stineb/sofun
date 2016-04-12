@@ -17,9 +17,10 @@ module md_littersom
   implicit none
   
   private 
-  public getpar_modl_littersom, initio_littersom, initoutput_littersom, &
-   getout_annual_littersom, writeout_ascii_littersom, &
-   littersom, initdaily_littersom, initglobal_littersom
+  public psoil_fs, psoil_sl, drhet, getpar_modl_littersom, initio_littersom, &
+    initoutput_littersom, &
+    getout_annual_littersom, writeout_ascii_littersom, &
+    littersom, initdaily_littersom, initglobal_littersom
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -62,11 +63,11 @@ module md_littersom
   real, allocatable, dimension(:,:,:) :: outdnfixfree  ! N fixation by free-living organisms [gN/m2/d]
 
   ! annual
-  real, dimension(npft,maxgrid) :: outaClitt
-  real, dimension(nlu,maxgrid)  :: outaCsoil
+  real, dimension(npft,maxgrid) :: outaclitt
+  real, dimension(nlu,maxgrid)  :: outacsoil
   real, dimension(nlu,maxgrid)  :: outanreq      ! N required from litter -> soil transfer [gN/m2/d]
-  real, dimension(nlu,maxgrid)  :: outaClit2soil
-  real, dimension(nlu,maxgrid)  :: outaNlit2soil
+  real, dimension(nlu,maxgrid)  :: outaclit2soil
+  real, dimension(nlu,maxgrid)  :: outanlit2soil
   real, dimension(nlu,maxgrid)  :: outaCdsoil
   real, dimension(nlu,maxgrid)  :: outaNdsoil
   real, dimension(nlu,maxgrid)  :: outaNimmo
@@ -143,20 +144,6 @@ contains
     real, dimension(nlu,maxgrid), save :: mean_ksoil_sl
     real, dimension(nlu,maxgrid), save :: mean_ksoil_fs
     real :: ntoc_save_fs, ntoc_save_sl
-
-#if _check_sanity
-    real :: cbal_before
-    real :: cbal_after
-    real :: nbal_before
-    real :: nbal_after
-
-    cbal_before = plitt_af(1,1)%c%c12 + plitt_as(1,1)%c%c12 &
-      + plitt_bg(1,1)%c%c12 + psoil_fs(1,1)%c%c12 &
-      + psoil_sl(1,1)%c%c12 + drhet(1)%c12
-    nbal_before = plitt_af(1,1)%n%n14 + plitt_as(1,1)%n%n14 &
-      + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 &
-      + psoil_sl(1,1)%n%n14 + pninorg(1,1)%n14
-#endif
 
     !-------------------------------------------------------------------------
     ! Count number of calls (one for each simulation year)
@@ -334,11 +321,11 @@ contains
 
         ! OUTPUT COLLECTION
         outanreq(lu,jpngr)      = outanreq(lu,jpngr)      + Nreq_S
-        outaClit2soil(lu,jpngr) = outaClit2soil(lu,jpngr) + dlitt%c%c12 * eff
-        outaNlit2soil(lu,jpngr) = outaNlit2soil(lu,jpngr) + Nreq_S
+        outaclit2soil(lu,jpngr) = outaclit2soil(lu,jpngr) + dlitt%c%c12 * eff
+        outanlit2soil(lu,jpngr) = outanlit2soil(lu,jpngr) + Nreq_S
 
-        ! write(0,*) 'outaClit2soil(lu,jpngr)',outaClit2soil(lu,jpngr)
-        ! outaNlit2soil(pft,jpngr) = outaNlit2soil(pft,jpngr) + dlitt%n%n14
+        ! write(0,*) 'outaclit2soil(lu,jpngr)',outaclit2soil(lu,jpngr)
+        ! outanlit2soil(pft,jpngr) = outanlit2soil(pft,jpngr) + dlitt%n%n14
 
         !----------------------------------------------------------------    
         ! If N supply is sufficient, mineralisation occurrs: positive (dNLit-Nreq).
@@ -370,8 +357,10 @@ contains
         ! write(0,*) 'immo direct', dlitt%c%c12 * ( ntoc_crit - dlitt%n%n14 / dlitt%c%c12 )
 
         ! OUTPUT COLLECTION
-        outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + netmin_litt
-        outdnetmin_litt(lu,doy,jpngr) = outdnetmin_litt(lu,doy,jpngr) + netmin_litt
+        if (interface%params_siml%loutlittersom) then
+          outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + netmin_litt
+          outdnetmin_litt(lu,doy,jpngr) = outdnetmin_litt(lu,doy,jpngr) + netmin_litt
+        end if
         
         outaNimmo(lu,jpngr)           = outaNimmo(lu,jpngr) - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
 
@@ -473,8 +462,19 @@ contains
       do pft=1,npft
         if (params_pft_plant(pft)%islu(lu)) then
 
-          dexu = cfrac( 1.0-exp(-kexu(lu)), pexud(pft,jpngr) )
-          call cmv( dexu, pexud(pft,jpngr), drsoil(pft) )
+          if (pexud(pft,jpngr)%c12<0.0) stop 'A neg. pexud'
+
+          drsoil(pft) = pexud(pft,jpngr)
+          pexud(pft,jpngr) = carbon(0.0)
+
+          ! dexu = cfrac( 1.0-exp(-kexu(lu)), pexud(pft,jpngr) )
+
+          ! print*,'pexud(pft,jpngr) ', pexud(pft,jpngr)
+          ! print*,'dexu             ', dexu
+
+          ! call cmv( dexu, pexud(pft,jpngr), drsoil(pft) )
+
+          if (pexud(pft,jpngr)%c12<0.0) stop 'B neg. pexud'
 
         end if
 
@@ -569,10 +569,12 @@ contains
       end if
  
       ! OUTPUT COLLECTION
-      outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      outdnetmin_soil(lu,doy,jpngr) = outdnetmin_soil(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      outaCdsoil(lu,jpngr)          = outaCdsoil(lu,jpngr)     + dsoil_fs%c%c12 + dsoil_sl%c%c12
-      outaNdsoil(lu,jpngr)          = outaNdsoil(lu,jpngr)     + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      if (interface%params_siml%loutlittersom) then
+        outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
+        outdnetmin_soil(lu,doy,jpngr) = outdnetmin_soil(lu,doy,jpngr) + dsoil_fs%n%n14 + dsoil_sl%n%n14
+        outaCdsoil(lu,jpngr)          = outaCdsoil(lu,jpngr)     + dsoil_fs%c%c12 + dsoil_sl%c%c12
+        outaNdsoil(lu,jpngr)          = outaNdsoil(lu,jpngr)     + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      end if
 
       ! ! Record monthly (daily) soil turnover flux (labile carbon availability)
       ! ! xxx try: replace this with exudates pool 
@@ -592,28 +594,12 @@ contains
       pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + Nfix
 
       ! OUTPUT COLLECTION
-      outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
+      if (interface%params_siml%loutlittersom) then
+        outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
+      end if
       ! write(0,*) 'e pninorg(lu,jpngr)%n14',pninorg
 
     enddo                   !lu
-
-#if _check_sanity
-    cbal_after = plitt_af(1,1)%c%c12 + plitt_as(1,1)%c%c12 &
-      + plitt_bg(1,1)%c%c12 + psoil_fs(1,1)%c%c12 &
-      + psoil_sl(1,1)%c%c12 + drhet(1)%c12
-    nbal_after = plitt_af(1,1)%n%n14 + plitt_as(1,1)%n%n14 &
-      + plitt_bg(1,1)%n%n14 + psoil_fs(1,1)%n%n14 &
-      + psoil_sl(1,1)%n%n14 + pninorg(1,1)%n14
-    nbal_after = Nbal_after - dnfix_free(1)
-    if (abs(cbal_after-cbal_before)>1.0d9) then
-      print*,'cbal_before, cbal_after ', cbal_before, cbal_after
-      stop 'C balance violated in LITTERSOM'
-    endif
-    if (abs(nbal_after-nbal_before)>1.0d9) then
-      print*,'nbal_before, nbal_after ', nbal_before, nbal_after
-      stop 'N balance violated in LITTERSOM'
-    endif
-#endif
 
   end subroutine littersom
 
@@ -666,6 +652,10 @@ contains
     !  Initialisation of all pools on all gridcells at the beginning
     !  of the simulation.
     !----------------------------------------------------------------
+    ! ! try:
+    ! psoil_fs(:,:) = orgpool( carbon( 10.0 * params_littersom%cton_soil ), nitrogen( 10.0 ) )  
+    ! psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))  
+
     psoil_fs(:,:) = orgpool(carbon(0.0),nitrogen(0.0))  
     psoil_sl(:,:) = orgpool(carbon(0.0),nitrogen(0.0))  
 
@@ -760,7 +750,7 @@ contains
   end subroutine initio_littersom
 
 
-  subroutine initoutput_littersom
+  subroutine initoutput_littersom()
     !////////////////////////////////////////////////////////////////
     !  Initialises littersomance-specific output variables
     !----------------------------------------------------------------
@@ -778,11 +768,11 @@ contains
       outdnetmin_litt(:,:,:) = 0.0
       outdnfixfree(:,:,:)    = 0.0
 
-      outaClitt(:,:)         = 0.0
-      outaCsoil(:,:)         = 0.0
+      outaclitt(:,:)         = 0.0
+      outacsoil(:,:)         = 0.0
       outanreq(:,:)          = 0.0
-      outaClit2soil(:,:)     = 0.0
-      outaNlit2soil(:,:)     = 0.0
+      outaclit2soil(:,:)     = 0.0
+      outanlit2soil(:,:)     = 0.0
       outaNdsoil(:,:)        = 0.0
       outaCdsoil(:,:)        = 0.0
       outaNimmo(:,:)         = 0.0
@@ -803,8 +793,8 @@ contains
     integer, intent(in) :: jpngr
 
     if (interface%params_siml%loutlittersom) then
-      outaClitt(:,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
-      outaCsoil(:,jpngr) = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
+      outaclitt(:,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
+      outacsoil(:,jpngr) = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
     end if
 
   end subroutine getout_annual_littersom
@@ -858,11 +848,11 @@ contains
     !-------------------------------------------------------------------------
     itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
 
-    if (interface%params_siml%loutlittersom) write(301,999) itime, sum(outaClitt(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(302,999) itime, sum(outaCsoil(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(301,999) itime, sum(outaclitt(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(302,999) itime, sum(outacsoil(:,jpngr))
     if (interface%params_siml%loutlittersom) write(304,999) itime, sum(outanreq(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(305,999) itime, sum(outaClit2soil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(306,999) itime, sum(outaNlit2soil(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(305,999) itime, sum(outaclit2soil(:,jpngr))
+    if (interface%params_siml%loutlittersom) write(306,999) itime, sum(outanlit2soil(:,jpngr))
     if (interface%params_siml%loutlittersom) write(313,999) itime, sum(outaCdsoil(:,jpngr))
     if (interface%params_siml%loutlittersom) write(314,999) itime, sum(outaNdsoil(:,jpngr))
     if (interface%params_siml%loutlittersom) write(315,999) itime, sum(outaNimmo(:,jpngr))

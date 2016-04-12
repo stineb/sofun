@@ -67,6 +67,38 @@ contains
   end function getco2
 
 
+  function getndep( runname, sitename, forcingyear, firstyeartrend, const_ndep, ndep_noy_forcing_file, ndep_nhx_forcing_file, climate ) result( out_getndep )
+    !////////////////////////////////////////////////////////////////
+    ! Function reads this year's annual ndeposition and distributes it
+    !  over days according to daily precipitation.
+    !----------------------------------------------------------------
+    use md_params_core, only: dummy
+
+    ! arguments
+    character(len=*), intent(in) :: runname
+    character(len=*), intent(in) :: sitename
+    integer, intent(in)          :: forcingyear
+    integer, intent(in) :: firstyeartrend
+    logical, intent(in) :: const_ndep
+    character(len=*), intent(in) :: ndep_noy_forcing_file
+    character(len=*), intent(in) :: ndep_nhx_forcing_file
+    type( climate_type ), dimension(maxgrid), intent(in) :: climate
+
+    ! function return variable
+    type( ndep_type ), dimension(maxgrid) :: out_getndep 
+
+    integer :: jpngr
+
+    ! Distribute annual Ndep to days by daily precipitation
+    do jpngr=1,maxgrid
+      out_getndep(jpngr)%dnoy(:) = 0.0
+      out_getndep(jpngr)%dnhx(:) = 0.0
+      out_getndep(jpngr)%dtot(:) = 0.0
+    end do
+
+  end function getndep
+
+
   function getfapar( runname, sitename, forcingyear, prescr_monthly_fapar ) result( fapar_field )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's atmospheric CO2 from input
@@ -91,7 +123,8 @@ contains
       if (prescr_monthly_fapar) then
         ! create 4-digit string for year  
         write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-        fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_modis_'//trim(sitename)//'_'//faparyear_char//'.txt' )
+        ! fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_modis_'//trim(sitename)//'_'//faparyear_char//'.txt' )
+        fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_evi_modissubset_'//trim(sitename)//'_'//faparyear_char//'.txt' )
       else
         fapar_field(:,jpngr) = dummy
       end if
@@ -204,14 +237,15 @@ contains
   end function getclimate_site
 
 
-  function getlanduse( runname, sitename, forcingyear ) result( out_landuse )
+  function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file ) result( out_landuse )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual landuse state
     !----------------------------------------------------------------
-    ! arguments
+   ! arguments
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
+    character(len=*), intent(in), optional :: do_grharvest_forcing_file
 
     ! function return variable
     type( landuse_type ) :: out_landuse
@@ -221,58 +255,10 @@ contains
 
     ! xxx dummy
     out_landuse%lu_area(lunat) = 1.0
-
-    do doy=1,ndayyear
-      if (tmp(doy)==1.0) then
-        out_landuse%do_grharvest(doy) = .false.
-      else
-        out_landuse%do_grharvest(doy) = .false.
-      end if
-    end do
-
+    out_landuse%do_grharvest(:) = .false.
 
   end function getlanduse
 
-
-function getndep( &
-    runname, &
-    sitename, &
-    forcingyear, &
-    firstyeartrend, &
-    const_ndep, &
-    ndep_noy_forcing_file, &
-    ndep_nhx_forcing_file, &
-    climate &
-    ) result( out_getndep )
-    !////////////////////////////////////////////////////////////////
-    ! Function reads this year's annual ndeposition and distributes it
-    !  over days according to daily precipitation.
-    !----------------------------------------------------------------
-    use md_params_core, only: dummy
-
-    ! arguments
-    character(len=*), intent(in) :: runname
-    character(len=*), intent(in) :: sitename
-    integer, intent(in)          :: forcingyear
-    integer, intent(in) :: firstyeartrend
-    logical, intent(in) :: const_ndep
-    character(len=*), intent(in) :: ndep_noy_forcing_file
-    character(len=*), intent(in) :: ndep_nhx_forcing_file
-    type( climate_type ), dimension(maxgrid), intent(in) :: climate
-
-    ! function return variable
-    type( ndep_type ), dimension(maxgrid) :: out_getndep 
-
-    integer :: jpngr
-
-    ! Distribute annual Ndep to days by daily precipitation
-    do jpngr=1,maxgrid
-      out_getndep(jpngr)%dnoy(:) = 0.0
-      out_getndep(jpngr)%dnhx(:) = 0.0
-      out_getndep(jpngr)%dtot(:) = 0.0
-    end do
-
-  end function getndep
 
   function calc_vpd( tc, vap, tmin, tmax ) result( vpd )
     !-----------------------------------------------------------------------

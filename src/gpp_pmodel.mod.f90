@@ -222,20 +222,20 @@ contains
       if ( canopy(pft)%fapar_ind>0.0 ) then
 
         ! GPP
-        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), dtemp, evap(lu)%cpa )
-        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy) )
+        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), dtemp, evap(lu)%cpa )
+        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), dtemp )
 
         ! Dark respiration
-        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), dtemp, evap(lu)%cpa )
-        ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy) )
+        ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), dtemp, evap(lu)%cpa )
+        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), dtemp )
 
         ! transpiration
-        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), dtemp, evap(lu)%cpa )
-        ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy) )
+        ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), dtemp, evap(lu)%cpa )
+        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), dtemp )
 
         ! Vcmax
-        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), dtemp, evap(lu)%cpa )
-        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
+        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), dtemp, evap(lu)%cpa )
+        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), dtemp )
 
       else  
 
@@ -1367,26 +1367,27 @@ contains
       open(114,file=filnam,err=888,status='unknown')
     end if
 
-    !----------------------------------------------------------------
-    ! MONTHLY OUTPUT
-    !----------------------------------------------------------------
-    ! GPP
-    if (interface%params_siml%loutdgpp) then     ! monthly and daily output switch are identical
-      filnam=trim(prefix)//'.m.gpp.out'
-      open(151,file=filnam,err=888,status='unknown')
-    end if 
+    ! xxx: not yet included in writeout_ascii_gpp()
+    ! !----------------------------------------------------------------
+    ! ! MONTHLY OUTPUT
+    ! !----------------------------------------------------------------
+    ! ! GPP
+    ! if (interface%params_siml%loutdgpp) then     ! monthly and daily output switch are identical
+    !   filnam=trim(prefix)//'.m.gpp.out'
+    !   open(151,file=filnam,err=888,status='unknown')
+    ! end if 
 
-    ! RD
-    if (interface%params_siml%loutdrd) then     ! monthly and daily output switch are identical
-      filnam=trim(prefix)//'.m.rd.out'
-      open(152,file=filnam,err=888,status='unknown')
-    end if 
+    ! ! RD
+    ! if (interface%params_siml%loutdrd) then     ! monthly and daily output switch are identical
+    !   filnam=trim(prefix)//'.m.rd.out'
+    !   open(152,file=filnam,err=888,status='unknown')
+    ! end if 
 
-    ! TRANSP
-    if (interface%params_siml%loutdtransp) then     ! monthly and daily output switch are identical
-      filnam=trim(prefix)//'.m.transp.out'
-      open(153,file=filnam,err=888,status='unknown')
-    end if 
+    ! ! TRANSP
+    ! if (interface%params_siml%loutdtransp) then     ! monthly and daily output switch are identical
+    !   filnam=trim(prefix)//'.m.transp.out'
+    !   open(153,file=filnam,err=888,status='unknown')
+    ! end if 
 
     !----------------------------------------------------------------
     ! ANNUAL OUTPUT

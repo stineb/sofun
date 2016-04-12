@@ -141,7 +141,6 @@ contains
 
 
         if ( plabl(pft,jpngr)%c%c12>0.0 ) then
-
           ! !------------------------------------------------------------------
           ! ! C-only model specific: dynamics of labile N pool are not simulated
           ! ! but just used to close the budget

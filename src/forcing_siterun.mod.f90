@@ -167,15 +167,25 @@ contains
     ! local variables
     integer :: day, mo, dm, yr
     integer :: jpngr = 1
+    integer :: findyear
     real, dimension(ndayyear) :: dvapr
     character(len=4) :: climateyear_char
 
     ! function return variable
     type( climate_type ), dimension(maxgrid) :: out_climate
 
-    ! create 4-digit string for year  
-    write(climateyear_char,999) climateyear
-
+    if (climateyear>2013) then
+      write(0,*) 'GETLANDUSE: held harvest dates fixed after 2013'
+      write(climateyear_char,999) 2013
+    else
+      ! create 4-digit string for year  
+      write(climateyear_char,999) climateyear
+    end if
+    ! filnam_dtemp = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt'
+    ! filnam_dprec = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt'
+    ! filnam_dfsun = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt'
+    ! filnam_dvapr = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dvapr_'//trim(sitename)//'_'//climateyear_char//'.txt'
+    
     write(0,*) 'prescribe daily climate (temp, prec, fsun, vpd) for ', trim(sitename), ' yr ', climateyear_char,'...'
     
     jpngr = 1
@@ -264,7 +274,7 @@ contains
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
-    character(len=*), intent(in) :: do_grharvest_forcing_file
+    character(len=*), intent(in), optional :: do_grharvest_forcing_file
 
     ! local variables
     integer :: doy
@@ -282,41 +292,44 @@ contains
     out_landuse%lu_area(lunat) = 1.0
 
     ! get harvest data for forcing year
-    if (forcingyear>2002) then
-      write(landuseyear_char,999) 2002
-    else
-      ! create 4-digit string for year  
-      write(landuseyear_char,999) forcingyear
-    end if
-    filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
-    inquire( file='./input/'//trim(filnam), exist=file_exists )
-    
-    if ( file_exists ) then
-      ! found data file
-      write(0,*) 'GETLANDUSE: harvest data for year ', forcingyear
-      tmp(:) = read1year_daily( trim(filnam) )
-    
-    else
-      ! find first year with data available
-      findyear = forcingyear
-      do while ( .not. file_exists )
-        findyear = findyear + 1
-        write(landuseyear_char,999) findyear
-        filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
-        inquire( file='./input/'//trim(filnam), exist=file_exists )
-        if ( file_exists ) tmp(:) = read1year_daily( trim(filnam) )
-      end do   
-      write(0,*) 'GETLANDUSE: found harvest data for first year  ', findyear
-    end if
-
-    ! translate zeros and ones to boolean
-    do doy=1,ndayyear
-      if (tmp(doy)==1.0) then
-        out_landuse%do_grharvest(doy) = .true.
+    if (present(do_grharvest_forcing_file)) then
+      if (forcingyear>2002) then
+        write(0,*) 'GETLANDUSE: held harvest dates fixed after 2002'
+        write(landuseyear_char,999) 2002
       else
-        out_landuse%do_grharvest(doy) = .false.
+        ! create 4-digit string for year  
+        write(landuseyear_char,999) forcingyear
       end if
-    end do
+      filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
+      inquire( file='./input/'//trim(filnam), exist=file_exists )
+      
+      if ( file_exists ) then
+        ! found data file
+        write(0,*) 'GETLANDUSE: harvest data for year ', forcingyear
+        tmp(:) = read1year_daily( trim(filnam) )
+      
+      else
+        ! find first year with data available
+        findyear = forcingyear
+        do while ( .not. file_exists )
+          findyear = findyear + 1
+          write(landuseyear_char,999) findyear
+          filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
+          inquire( file='./input/'//trim(filnam), exist=file_exists )
+          if ( file_exists ) tmp(:) = read1year_daily( trim(filnam) )
+        end do   
+        write(0,*) 'GETLANDUSE: found harvest data for first year  ', findyear
+      end if
+
+      ! translate zeros and ones to boolean
+      do doy=1,ndayyear
+        if (tmp(doy)==1.0) then
+          out_landuse%do_grharvest(doy) = .true.
+        else
+          out_landuse%do_grharvest(doy) = .false.
+        end if
+      end do
+    end if
 
     return
     999  format (I4.4)

@@ -122,7 +122,6 @@ contains
         out_calc_dnup%fix = 0.0                          ! N fixation, sum over sub-timesteps
         n_uptake_retrans = 0.0
 
-
         if ( dcex(pft)>0.0 ) then
           !//////////////////////////////////////////////////////////////////////////
           ! USE STORED N (RETRANSLOCATION)

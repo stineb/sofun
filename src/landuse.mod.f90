@@ -8,8 +8,9 @@ module md_landuse
   implicit none
 
   private
-  public grharvest, initoutput_landuse, initio_landuse, getout_annual_landuse, &
-    writeout_ascii_landuse
+  public mharv, grharvest, initoutput_landuse, initio_landuse, &
+    getout_annual_landuse, writeout_ascii_landuse, initglobal_landuse, &
+    init_mharv
 
   !----------------------------------------------------------------
   ! Private, module-specific state variables
@@ -55,15 +56,11 @@ contains
     type( orgpool ) :: lm_turn
     type( orgpool ) :: lb_turn
 
-    ! set to zero on the first day of the year
-    if (doy==1) then
-      mharv(:,jpngr) = orgpool( carbon(0.0), nitrogen(0.0))
-    end if
-
-    if (plabl(pft,jpngr)%c%c12<0.0) stop 'labile C is neg.'
-    if (plabl(pft,jpngr)%n%n14<0.0) stop 'labile N is neg.'
 
     do pft=1,npft
+
+      if (plabl(pft,jpngr)%c%c12<0.0) stop 'labile C is neg.'
+      if (plabl(pft,jpngr)%n%n14<0.0) stop 'labile N is neg.'
 
       if ( params_pft_plant(pft)%grass .and. interface%landuse(jpngr)%do_grharvest(doy) ) then
         ! grasses are harvested
@@ -96,6 +93,27 @@ contains
     end do
 
   end subroutine grharvest
+
+  subroutine initglobal_landuse()
+    !////////////////////////////////////////////////////////////////
+    !  Initialisation of all pools on all gridcells at the beginning
+    !  of the simulation.
+    !----------------------------------------------------------------
+    mharv(:,:) = orgpool(carbon(0.0),nitrogen(0.0))  
+
+  end subroutine initglobal_landuse
+
+
+  subroutine init_mharv(jpngr)
+    !////////////////////////////////////////////////////////////////
+    !  Initialisation harvest pool on first day of the year
+    !----------------------------------------------------------------
+    ! arguments
+    integer, intent(in) :: jpngr
+
+    mharv(:,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))  
+
+  end subroutine init_mharv
 
 
   subroutine initoutput_landuse()

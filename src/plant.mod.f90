@@ -22,7 +22,7 @@ module md_plant
     outalai, outalma, outacton_lm, get_fapar,            &
     initoutput_plant, initio_plant, getout_daily_plant,                   &
     getout_annual_plant, writeout_ascii_plant, getpar_modl_plant,         &
-    leaftraits_type, canopy_type, get_canopy, seed
+    leaftraits_type, canopy_type, get_canopy, seed, break_after_alloc
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -73,17 +73,18 @@ module md_plant
 
   type( canopy_type ), dimension(npft)   :: canopy
 
-
   real, dimension(npft,maxgrid)    :: lai_ind
   logical, dimension(npft,maxgrid) :: ispresent        ! boolean whether PFT is present
   real, dimension(npft,maxgrid)    :: fpc_grid         ! area fraction within gridcell occupied by PFT
   real, dimension(npft,maxgrid)    :: nind             ! number of individuals [1/m2]
 
+  logical :: break_after_alloc = .false.
+
   !-----------------------------------------------------------------------
   ! Fixed parameters
   !-----------------------------------------------------------------------
-  type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.0) )
-  ! type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.12) )
+  ! type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.0) )
+  type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.12) )
 
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
@@ -339,6 +340,7 @@ contains
     
     if (params_pft_plant(pft)%grass) then
       ! xxx try: for grass add seed only at initialisation
+      write(0,*) 'INITPFT: initialising plabl with seed'
       plabl(pft,jpngr) = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
       ispresent(pft,jpngr) = .true.
       nind(pft,jpngr) = 1.0
