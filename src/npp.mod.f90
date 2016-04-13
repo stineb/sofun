@@ -27,7 +27,7 @@ module md_npp
   implicit none
 
   private
-  public npp, calc_cexu, calc_resp_maint
+  public npp, calc_cexu, calc_resp_maint, deactivate_root
 
 contains
 
@@ -93,7 +93,7 @@ contains
         endif
                 
         !/////////////////////////////////////////////////////////////////////////
-        ! DAILY NPP 
+        ! DAILY NPP AND C EXPORT
         ! NPP is the sum of C available for growth and for N uptake 
         ! This is where isotopic signatures are introduced because only 'dbminc'
         ! is diverted to a pool and re-emission to atmosphere gets delayed. Auto-
@@ -101,58 +101,39 @@ contains
         ! full isotopic effects of gross exchange _fluxes.
         ! Growth respiration ('drgrow') is deduced from 'dnpp' in allocation SR.
         !-------------------------------------------------------------------------
-        dnpp(pft)   = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
+        dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
+        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )     
+        avl       = plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)
 
-        if ( dnpp(pft)%c12 < 0.0 ) then
-          print*, 'pft    ',pft
-          print*, 'doy    ',doy
-          print*, 'drleaf ',drleaf(pft)
-          print*, 'drroot ',drroot(pft)
-          print*, 'dgpp   ',dgpp(pft)
-          print*, 'dnpp   ',dnpp(pft)
-          print*, 'NPP: dnpp negative'
-          stop
+        ! If C used for root respiration and export is not available, then reduce 
+        ! root mass to match 
+        if ( avl < 0.0 ) then
+          ! print*, 'pft    ', pft
+          ! print*, 'doy    ', doy
+          ! print*, 'proot  ', proot(pft,jpngr)
+          ! print*, 'pleaf  ', pleaf(pft,jpngr)
+          ! print*, 'drleaf ', drleaf(pft)
+          ! print*, 'drroot ', drroot(pft)
+          ! print*, 'dgpp   ', dgpp(pft)
+          ! print*, 'dnpp   ', dnpp(pft)
+          ! print*, 'dcex   ', dcex(pft)
+          ! print*, 'plabl  ', plabl(pft,jpngr)
+          ! print*, 'NPP: dnpp + plabl negative'
+          call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
+          ! avl  = plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)
+          ! print*, 'plabl  ', plabl(pft,jpngr)
+          ! print*, 'dnpp   ', dnpp(pft)
+          ! print*, 'dcex   ', dcex(pft)
+          ! print*, 'avl    ', avl
+          ! stop
         end if
-
-        !/////////////////////////////////////////////////////////////////////////
-        ! EXUDATION FOR N UPTAKE
-        ! This calculates exudation 'dcex', N uptake 'dnup', ...
-        ! Labile C exuded for N uptake in interaction with mycorrhiza.
-        ! Calculate otpimal C expenditure for N uptake (FUN approach).
-        ! PFT loop has to be closed above to get total NPP over all PFTs in each 
-        ! LU. 
-        !-------------------------------------------------------------------------
-        ! dnup(pft) = nitrogen(0.0) ! XXX WILL BE DETERMINED IN ALLOCATION
-        avl = dnpp(pft)%c12 + plabl(pft,jpngr)%c%c12
-        if (avl<0.0) stop 'neg. avl'
-        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12, avl , dtemp )     
-
-        ! print*,'croot' , proot(pft,jpngr)%c%c12
-        ! print*,'clabl' , plabl(pft,jpngr)%c%c12
- 
-
-        ! if ( avl - dcex(pft) < 0.0 ) then
-        !   print*, 'pft    ',pft
-        !   print*, 'drleaf ',drleaf(pft)
-        !   print*, 'drroot ',drroot(pft)
-        !   print*, 'dgpp   ',dgpp(pft)
-        !   print*, 'dnpp   ',dnpp(pft)
-        !   print*, 'dcex   ',dcex(pft)
-        !   print*, 'NPP-CEX negative'
-        !   stop
-        ! end if
-
-        ! ! SR nuptake calculates dcex and dnup (incl. dnup_act, dnup_pas, ...)
-        ! call nuptake( jpngr, pft )
-
-        ! Add exuded C to exudates pool (fast decay)
-        call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
 
         !/////////////////////////////////////////////////////////////////////////
         ! TO LABILE POOL
         ! NPP available for growth first enters the labile pool ('plabl ').
         ! XXX Allocation is called here without "paying"  growth respir.?
         !-------------------------------------------------------------------------
+        call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
         call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
 
         ! print*, '---------------in NPP'
@@ -161,7 +142,6 @@ contains
         ! print*, 'drroot ',drroot(pft)
         ! print*, 'dgpp(pft) ',dgpp(pft)
         ! print*, 'dnpp(pft) ',dnpp(pft)
-        ! print*, 'dnup(pft) ',dnup(pft)
         ! print*, 'dcex(pft) ',dcex(pft)
         ! if (doy==39) stop
 
@@ -178,8 +158,8 @@ contains
         !   end if
         ! end if
 
-        if (plabl(pft,jpngr)%c%c12<0.0) stop 'after npp labile C is neg.'
-        if (plabl(pft,jpngr)%n%n14<0.0) stop 'after npp labile N is neg.'
+        if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
+        if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
 
       else
 
@@ -195,6 +175,48 @@ contains
     ! print*, '---- finished npp'
 
   end subroutine npp
+
+
+  subroutine deactivate_root( mygpp, mydrleaf, myplabl, myproot, rroot, npp, cexu, dtemp, myplitt )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Calculates amount of root mass supportable by (GPP-Rd+Clabl='avl'), so that
+    ! NPP is zero and doesn't get negative. Moves excess from pool 'myproot' to
+    ! pool 'myplitt'.
+    !-------------------------------------------------------------------------
+    ! argument
+    real, intent(in) :: mygpp
+    real, intent(in) :: mydrleaf
+    real, intent(in) :: myplabl
+    type( orgpool ), intent(inout) :: myproot
+    real, intent(out) :: rroot
+    real, intent(out) :: npp
+    real, intent(out) :: cexu
+    real, intent(in) :: dtemp
+    type( orgpool ), intent(inout), optional :: myplitt
+    
+    ! local variables
+    real :: croot_trgt
+    real :: droot
+    type( orgpool ) :: rm_turn
+
+    real, parameter :: safety = 0.9999
+
+    ! calculate target root mass
+    croot_trgt = safety * ( mygpp - mydrleaf + myplabl) / ( params_plant%r_root + params_plant%exurate )
+    droot      = ( 1.0 - croot_trgt / myproot%c%c12 )
+    rm_turn    = orgfrac( droot, myproot )
+    if (present(myplitt)) then
+      call orgmv( rm_turn, myproot, myplitt )
+    else
+      myproot = orgminus( myproot, rm_turn )
+    end if
+
+    ! update fluxes based on corrected root mass
+    rroot = calc_resp_maint( myproot%c%c12, params_plant%r_root, dtemp )
+    npp   = mygpp - mydrleaf - rroot
+    cexu  = calc_cexu( myproot%c%c12 , dtemp )     
+
+  end subroutine deactivate_root
 
 
   function calc_resp_maint( cmass, rresp, dtemp ) result( resp_maint )
@@ -220,7 +242,7 @@ contains
   end function calc_resp_maint
 
 
-  function calc_cexu( croot, avl, dtemp ) result( cexu )
+  function calc_cexu( croot, dtemp ) result( cexu )
     !/////////////////////////////////////////////////////////////////
     ! Constant exudation rate
     !-----------------------------------------------------------------
@@ -228,19 +250,12 @@ contains
 
     ! arguments
     real, intent(in)           :: croot
-    real, intent(in)           :: avl
     real, intent(in), optional :: dtemp   ! temperature (soil or air, deg C)
 
     ! function return variable
     real :: cexu
 
-    if (avl<=0.0) then
-      cexu = 0.0
-    else
-      cexu = min( avl, params_plant%exurate * croot * ramp_gpp_lotemp( dtemp ) )
-    end if
-
-    ! if (cexu>avl) stop 'exuding more than available'
+    cexu = params_plant%exurate * croot * ramp_gpp_lotemp( dtemp )
 
   end function calc_cexu
 

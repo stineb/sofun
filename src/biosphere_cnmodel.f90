@@ -72,7 +72,7 @@ subroutine biosphere( c_uptake )
     ! GET MODEL PARAMETERS
     ! read model parameters that may be varied for optimisation
     !----------------------------------------------------------------
-    if (verbose) print*,'getting model parameters ...'
+    if (verbose) write(0,*) 'getting model parameters ...'
     call getpar_modl_plant()
     call getpar_modl_waterbal()
     call getpar_modl_gpp()
@@ -80,23 +80,23 @@ subroutine biosphere( c_uptake )
     call getpar_modl_littersom()
     call getpar_modl_ntransform()
     call getpar_modl_nuptake()
-    if (verbose) print*,'... done'
+    if (verbose) write(0,*) '... done'
 
     !----------------------------------------------------------------
     ! Initialise pool variables and/or read from restart file (not implemented)
     !----------------------------------------------------------------
-    if (verbose) print*,'initialising variables ...'
+    if (verbose) write(0,*) 'initialising variables ...'
     call initglobal_plant()
     call initglobal_waterbal()
     call initglobal_littersom()
     call initglobal_ntransform()
 
-    if (verbose) print*,'... done'
+    if (verbose) write(0,*) '... done'
 
     !----------------------------------------------------------------
     ! Open input/output files
     !----------------------------------------------------------------
-    if (verbose) print*,'initialising IO ...'
+    if (verbose) write(0,*) 'initialising IO ...'
     call initio_waterbal()
     call initio_soiltemp()
     call initio_gpp()
@@ -106,14 +106,14 @@ subroutine biosphere( c_uptake )
     call initio_nuptake()
     call initio_allocation()
     call initio_landuse()
-    if (verbose) print*,'... done'
+    if (verbose) write(0,*) '... done'
 
   endif 
 
   !----------------------------------------------------------------
   ! Initialise output variables for this year
   !----------------------------------------------------------------
-  if (verbose)  print*,'initialising output variables ...'
+  if (verbose) write(0,*) 'initialising output variables ...'
   call initoutput_waterbal()
   call initoutput_soiltemp()
   call initoutput_gpp()
@@ -123,7 +123,7 @@ subroutine biosphere( c_uptake )
   call initoutput_nuptake()
   call initoutput_allocation()
   call initoutput_landuse()
-  if (verbose)  print*,'... done'
+  if (verbose) write(0,*) '... done'
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
@@ -176,9 +176,9 @@ subroutine biosphere( c_uptake )
       do dm=1,ndaymonth(moy)
         day=day+1
 
-        if (verbose) print*, '------------------'
-        if (verbose) print*, 'DAY ', day
-        if (verbose) print*, '------------------'
+        if (verbose) write(0,*) '------------------'
+        if (verbose) write(0,*) 'DAY ', day
+        if (verbose) write(0,*) '------------------'
 
         !----------------------------------------------------------------
         ! initialise daily updated variables 
@@ -195,7 +195,7 @@ subroutine biosphere( c_uptake )
         !----------------------------------------------------------------
         ! get soil moisture, and runoff
         !----------------------------------------------------------------
-        if (verbose) print*, 'calling waterbal() ... '
+        if (verbose) write(0,*) 'calling waterbal() ... '
         call waterbal( &
           jpngr, day, & 
           interface%grid(jpngr)%lat, & 
@@ -204,38 +204,38 @@ subroutine biosphere( c_uptake )
           interface%climate(jpngr)%dtemp(day), & 
           interface%climate(jpngr)%dfsun(day)  &
           )
-        if (verbose) print*, '... done'
+        if (verbose) write(0,*) '... done'
 
         !----------------------------------------------------------------
         ! calculate soil temperature
         !----------------------------------------------------------------
-        if (verbose) print*, 'calling soiltemp() ... '
+        if (verbose) write(0,*) 'calling soiltemp() ... '
         call soiltemp( &
                       jpngr, & 
                       moy, & 
                       day, & 
                       interface%climate(jpngr)%dtemp(:) &
                       )
-        if (verbose) print*, '... done'
+        if (verbose) write(0,*) '... done'
 
         !----------------------------------------------------------------
         ! update canopy and stand variables and simulate daily 
         ! establishment / sprouting
         !----------------------------------------------------------------
-        if (verbose) print*, 'calling vegdynamics() ... '
+        if (verbose) write(0,*) 'calling vegdynamics() ... '
         call vegdynamics( jpngr, day ) 
-        if (verbose) print*, '... done'
+        if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
         ! calculate GPP
         !----------------------------------------------------------------
-        if (verbose) print*, 'calling gpp() ... '
-        if (verbose) print*, '              with state variables:'
-        if (verbose) print*, '              fapar = ', canopy(:)%fapar_ind
-        if (verbose) print*, '              dppfd = ', solar%dppfd(day)
-        if (verbose) print*, '              lue   = ', mlue(1,moy)
-        if (verbose) print*, '              temp  = ', interface%climate(jpngr)%dtemp(day)
-        if (verbose) print*, '              CPA   = ', evap(1)%cpa
+        if (verbose) write(0,*) 'calling gpp() ... '
+        if (verbose) write(0,*) '              with state variables:'
+        if (verbose) write(0,*) '              fapar = ', canopy(:)%fapar_ind
+        if (verbose) write(0,*) '              dppfd = ', solar%dppfd(day)
+        if (verbose) write(0,*) '              lue   = ', mlue(1,moy)
+        if (verbose) write(0,*) '              temp  = ', interface%climate(jpngr)%dtemp(day)
+        if (verbose) write(0,*) '              CPA   = ', evap(1)%cpa
         !----------------------------------------------------------------
         call gpp( &
           jpngr, day, moy, & 
@@ -243,132 +243,132 @@ subroutine biosphere( c_uptake )
           interface%mfapar_field(moy,jpngr) & 
           )
         !----------------------------------------------------------------
-        if (verbose) print*, '              ==> returned: '
-        if (verbose) print*, '              dgpp  = ', dgpp(:)
-        if (verbose) print*, '              drd   = ', drd(:)
-        if (verbose) print*, '... done'
+        if (verbose) write(0,*) '              ==> returned: '
+        if (verbose) write(0,*) '              dgpp  = ', dgpp(:)
+        if (verbose) write(0,*) '              drd   = ', drd(:)
+        if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
         ! substract autotrophic respiration to get NPP, remainder is added 
         ! to labile pool (plabl)
         !----------------------------------------------------------------
-        if (verbose) print*, 'calling npp() ... '
-        if (verbose) print*, '              with state variables:'
-        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
-        if (verbose) print*, '              proot = ', proot(:,jpngr)
-        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) 'calling npp() ... '
+        if (verbose) write(0,*) '              with state variables:'
+        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+        if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) orgtmp1 =  plabl(1,jpngr)
         !----------------------------------------------------------------
         call npp( jpngr, interface%climate(jpngr)%dtemp(day), day )
         !----------------------------------------------------------------
-        if (verbose) print*, '              ==> returned: '
-        if (verbose) print*, '              dnpp  = ', dnpp(:)
-        if (verbose) print*, '              dcex  = ', dcex(:)
-        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
-        if (verbose) print*, '              dlabl = ', orgminus( plabl(1,jpngr), orgtmp1 )
-        if (verbose) print*, '    --- balance: '
+        if (verbose) write(0,*) '              ==> returned: '
+        if (verbose) write(0,*) '              dnpp  = ', dnpp(:)
+        if (verbose) write(0,*) '              dcex  = ', dcex(:)
+        if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) '              dlabl = ', orgminus( plabl(1,jpngr), orgtmp1 )
+        if (verbose) write(0,*) '    --- balance: '
         if (verbose) cbal1 = dgpp(1) - dnpp(1)%c12 - drleaf(1) - drroot(1)
         if (verbose) cbal2 = dgpp(1) - ( plabl(1,jpngr)%c%c12 - orgtmp1%c%c12 ) - dcex(1) - drleaf(1) - drroot(1)
-        if (verbose) print*, '        gpp - npp - ra_maint          = ', cbal1
-        if (verbose) print*, '        gpp - dlabl - dcex - ra_maint = ', cbal2
+        if (verbose) write(0,*) '        gpp - npp - ra_maint          = ', cbal1
+        if (verbose) write(0,*) '        gpp - dlabl - dcex - ra_maint = ', cbal2
         if (verbose .and. abs(cbal1)>1.0e-6) stop 'balance 1 not satisfied'
         if (verbose .and. abs(cbal2)>1.0e-6) stop 'balance 2 not satisfied'
-        if (verbose) print*, '... done'
+        if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
         ! calculate N acquisition as a function of C exudation
         !----------------------------------------------------------------
-        if (verbose) print*, 'calling nuptake() ... '
-        if (verbose) print*, '              with state variables:'
-        if (verbose) print*, '              dcex  = ', dcex(:)
+        if (verbose) write(0,*) 'calling nuptake() ... '
+        if (verbose) write(0,*) '              with state variables:'
+        if (verbose) write(0,*) '              dcex  = ', dcex(:)
         !----------------------------------------------------------------
         call nuptake( jpngr )
         !----------------------------------------------------------------
-        if (verbose) print*, '              ==> returned: '
-        if (verbose) print*, '              dnup  = ', dnup(:)
-        if (verbose) print*, '... done'
+        if (verbose) write(0,*) '              ==> returned: '
+        if (verbose) write(0,*) '              dnup  = ', dnup(:)
+        if (verbose) write(0,*) '... done'
 
         ! if (break_after_alloc) stop 'check quantities after allocation'
 
         !/////////////////////////////////////////////////////////////////
         ! leaf, sapwood, and fine-root turnover
         !----------------------------------------------------------------
-        if (verbose) print*, 'calling turnover() ... '
-        if (verbose) print*, '              with state variables:'
-        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
-        if (verbose) print*, '              proot = ', proot(:,jpngr)
-        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
-        if (verbose) print*, '              plitt = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
+        if (verbose) write(0,*) 'calling turnover() ... '
+        if (verbose) write(0,*) '              with state variables:'
+        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+        if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) '              plitt = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
         if (verbose) orgtmp1 = orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )
         if (verbose) orgtmp2 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
         !----------------------------------------------------------------
         call turnover( jpngr, day )
         !----------------------------------------------------------------
-        if (verbose) print*, '              ==> returned: '
-        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
-        if (verbose) print*, '              proot = ', proot(:,jpngr)
-        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
-        if (verbose) print*, '              plitt = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
-        if (verbose) print*, '   --- balance: '
+        if (verbose) write(0,*) '              ==> returned: '
+        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+        if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) '              plitt = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
+        if (verbose) write(0,*) '   --- balance: '
         if (verbose) orgbal1 = orgminus( orgminus(   orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) ),   orgtmp2   ), orgminus(   orgtmp1,   orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )   ) )
-        if (verbose) print*, '       dlitt - dplant                = ', orgbal1
+        if (verbose) write(0,*) '       dlitt - dplant                = ', orgbal1
         if (verbose .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
         if (verbose .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
-        if (verbose) print*, '... done'
+        if (verbose) write(0,*) '... done'
 
         ! /////////////////////////////////////////////////////////////////
         ! ! grass / crop harvest
         ! !----------------------------------------------------------------
-        ! if (verbose) print*, 'calling grharvest() ... '
-        ! if (verbose) print*, '              with state variables:'
-        ! if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
-        ! if (verbose) print*, '              proot = ', proot(:,jpngr)
-        ! if (verbose) print*, '              plabl = ', plabl(:,jpngr)
-        ! if (verbose) print*, '              mharv = ', mharv(:,jpngr)
+        ! if (verbose) write(0,*) 'calling grharvest() ... '
+        ! if (verbose) write(0,*) '              with state variables:'
+        ! if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+        ! if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+        ! if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        ! if (verbose) write(0,*) '              mharv = ', mharv(:,jpngr)
         ! if (verbose) orgtmp1 =  orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )
         ! if (verbose) orgtmp2 =  mharv(1,jpngr)
         ! !----------------------------------------------------------------
         ! call grharvest( jpngr, day )
         ! !----------------------------------------------------------------
-        ! if (verbose) print*, '              ==> returned: '
-        ! if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
-        ! if (verbose) print*, '              proot = ', proot(:,jpngr)
-        ! if (verbose) print*, '              plabl = ', plabl(:,jpngr)
-        ! if (verbose) print*, '              mharv = ', mharv(:,jpngr)
-        ! if (verbose) print*, '    --- balance: '
+        ! if (verbose) write(0,*) '              ==> returned: '
+        ! if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+        ! if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+        ! if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        ! if (verbose) write(0,*) '              mharv = ', mharv(:,jpngr)
+        ! if (verbose) write(0,*) '    --- balance: '
         ! if (verbose) orgbal1 = orgminus( orgminus( orgtmp1, orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) ) ), orgminus( mharv(1,jpngr), orgtmp2 ) )
-        ! if (verbose) print*, '        dharv - dplant  = ', orgbal1
+        ! if (verbose) write(0,*) '        dharv - dplant  = ', orgbal1
         ! if (verbose .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
         ! if (verbose .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
-        ! if (verbose) print*, '... done'
+        ! if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
         ! litter and soil decomposition and N mineralisation
         !----------------------------------------------------------------
-        if (verbose) print*, 'calling littersom() ... '
-        if (verbose) print*, '              with state variables:'
-        if (verbose) print*, '              plitt_af =  ', plitt_af(1,jpngr)
-        if (verbose) print*, '              plitt_as =  ', plitt_as(1,jpngr)
-        if (verbose) print*, '              plitt_bg =  ', plitt_bg(1,jpngr)
-        if (verbose) print*, '              plitt tot=  ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
-        if (verbose) print*, '              psoil_fs  = ', psoil_fs(1,jpngr)
-        if (verbose) print*, '              psoil_sl  = ', psoil_sl(1,jpngr)
-        if (verbose) print*, '              psoil tot = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
-        if (verbose) print*, '              pexud     = ', pexud(1,jpngr)
-        if (verbose) print*, '              pninorg=    ', pninorg(1,jpngr)
-        if (verbose) print*, '              drhet  =    ', drhet(1)
+        if (verbose) write(0,*) 'calling littersom() ... '
+        if (verbose) write(0,*) '              with state variables:'
+        if (verbose) write(0,*) '              plitt_af =  ', plitt_af(1,jpngr)
+        if (verbose) write(0,*) '              plitt_as =  ', plitt_as(1,jpngr)
+        if (verbose) write(0,*) '              plitt_bg =  ', plitt_bg(1,jpngr)
+        if (verbose) write(0,*) '              plitt tot=  ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
+        if (verbose) write(0,*) '              psoil_fs  = ', psoil_fs(1,jpngr)
+        if (verbose) write(0,*) '              psoil_sl  = ', psoil_sl(1,jpngr)
+        if (verbose) write(0,*) '              psoil tot = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
+        if (verbose) write(0,*) '              pexud     = ', pexud(1,jpngr)
+        if (verbose) write(0,*) '              pninorg=    ', pninorg(1,jpngr)
+        if (verbose) write(0,*) '              drhet  =    ', drhet(1)
         if (verbose) orgtmp1 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
         if (verbose) orgtmp2 = orgpool( drhet(1), pninorg(1,jpngr) )
         !----------------------------------------------------------------
         call littersom( jpngr, day )
         !----------------------------------------------------------------
-        if (verbose) print*, '              ==> returned: '
-        if (verbose) print*, '              plitt  = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
-        if (verbose) print*, '              psoil  = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
-        if (verbose) print*, '              pninorg= ', pninorg(1,jpngr)
-        if (verbose) print*, '              drhet  = ', drhet(1)
-        if (verbose) print*, '   --- balance: '
-        if (verbose) print*, '       d( litt + soil ) - d(drhet,ninorg) = ', orgminus( &
+        if (verbose) write(0,*) '              ==> returned: '
+        if (verbose) write(0,*) '              plitt  = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
+        if (verbose) write(0,*) '              psoil  = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
+        if (verbose) write(0,*) '              pninorg= ', pninorg(1,jpngr)
+        if (verbose) write(0,*) '              drhet  = ', drhet(1)
+        if (verbose) write(0,*) '   --- balance: '
+        if (verbose) write(0,*) '       d( litt + soil ) - d(drhet,ninorg) = ', orgminus( &
                                                                                           orgminus( &
                                                                                             orgtmp1, &
                                                                                             orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) ) &
@@ -377,25 +377,25 @@ subroutine biosphere( c_uptake )
                                                                                             orgpool( drhet(1), pninorg(1,jpngr) ), &
                                                                                             orgtmp2 ) &
                                                                                           )
-        if (verbose) print*, '... done'
+        if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
         ! inorganic soil N dynamics
         !----------------------------------------------------------------
-        if (verbose)  print*, 'calling ntransform() ... '
+        if (verbose) write(0,*) 'calling ntransform() ... '
         !----------------------------------------------------------------
         call ntransform( dm, moy, jpngr, interface%ndep_field(jpngr)%dtot(day), sum(interface%climate(jpngr)%dprec(:)) )
         !----------------------------------------------------------------
-        if (verbose)  print*, '... done'
+        if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
         ! allocation of labile pools to biomass
         !----------------------------------------------------------------
-        if (verbose) print*, 'calling allocation() ... '
-        if (verbose) print*, '              with state variables:'
-        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
-        if (verbose) print*, '              proot = ', proot(:,jpngr)
-        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) 'calling allocation() ... '
+        if (verbose) write(0,*) '              with state variables:'
+        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+        if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) orgtmp1 =  plabl(1,jpngr)
         if (verbose) orgtmp2 =  orgplus( pleaf(1,jpngr), proot(1,jpngr) )
         !----------------------------------------------------------------
@@ -413,21 +413,21 @@ subroutine biosphere( c_uptake )
         !----------------------------------------------------------------
         call allocation_daily( jpngr, usedoy, usemoy, interface%climate(jpngr)%dtemp(usedoy) )
         !----------------------------------------------------------------
-        if (verbose) print*, '              ==> returned: '
-        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr), ' C:N = ', cton( pleaf(1,jpngr), default=0.0 )
-        if (verbose) print*, '              proot = ', proot(:,jpngr), ' C:N = ', cton( proot(1,jpngr), default=0.0 )
-        if (verbose) print*, '              plabl = ', plabl(:,jpngr)
-        if (verbose) print*, '   --- balance: '
+        if (verbose) write(0,*) '              ==> returned: '
+        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr), ' C:N = ', cton( pleaf(1,jpngr), default=0.0 )
+        if (verbose) write(0,*) '              proot = ', proot(:,jpngr), ' C:N = ', cton( proot(1,jpngr), default=0.0 )
+        if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) '   --- balance: '
         if (verbose) orgbal1 = orgminus( orgminus( orgminus( orgtmp1, plabl(1,jpngr) ), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr) ), orgtmp2 ) )        
-        if (verbose) print*, '       dlabl - drgrow - dleaf - droot=', orgbal1
+        if (verbose) write(0,*) '       dlabl - drgrow - dleaf - droot=', orgbal1
         if (verbose .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
-        if (verbose) print*, '... done'
+        if (verbose) write(0,*) '... done'
 
 
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
-        if (verbose) print*, 'calling getout_daily_*() ... '
+        if (verbose) write(0,*) 'calling getout_daily_*() ... '
         call getout_daily_waterbal( jpngr, moy, day )
         call getout_daily_soiltemp( jpngr, moy, day )
         call getout_daily_gpp( jpngr, moy, day )
@@ -435,7 +435,7 @@ subroutine biosphere( c_uptake )
         call getout_daily_ntransform( jpngr, moy, day )
         call getout_daily_nuptake( jpngr, moy, day )
         call getout_daily_allocation( jpngr, moy, day )
-        if (verbose) print*, '... done'
+        if (verbose) write(0,*) '... done'
 
       end do
 

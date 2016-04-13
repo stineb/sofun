@@ -1293,11 +1293,11 @@ contains
     ! function return variable
     real :: ftemp
 
-    ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
-    ftemp = max( 0.0, min( 1.0, dtemp / 12.0 ) )
+    ! ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
+    ! ftemp = max( 0.0, min( 1.0, dtemp / 12.0 ) )
 
-    ! ! xxx try: no temperature inhibition
-    ! ftemp = 1.0
+    ! xxx try: no temperature inhibition
+    ftemp = 1.0
 
   end function ramp_gpp_lotemp
 

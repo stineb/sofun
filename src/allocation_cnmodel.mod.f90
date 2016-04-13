@@ -113,11 +113,10 @@ contains
     ! local variables
     integer :: lu
     integer :: pft
-    integer :: usemoy
-    integer :: usedoy
     logical :: cont          ! true if allocation to leaves (roots) is not 100% and not 0%
     real    :: max_dcleaf_n_constraint
     real    :: max_dcroot_n_constraint
+    real    :: max_dc_buffr_constraint
     real    :: max_dc_n_constraint
     real    :: max_dc
     real    :: min_dc
@@ -135,7 +134,7 @@ contains
     integer, parameter :: spinupyr_phaseinit_2 = 1   ! this is unnecessary: might as well do flexible allocation right from the start.
 
     ! xxx verbose
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
 
     abserr=100.0*XMACHEPS !*10e5
     relerr=1000.0*XMACHEPS !*10e5
@@ -224,13 +223,18 @@ contains
             ! print*, 'initial guess: r_cton_leaf(pft,jpngr) ', leaftraits(pft)%r_cton_leaf  
             ! stop
           end if
+
           max_dcleaf_n_constraint = plabl(pft,jpngr)%n%n14 * leaftraits(pft)%r_cton_leaf
           max_dcroot_n_constraint = plabl(pft,jpngr)%n%n14 * params_pft_plant(pft)%r_cton_root ! should be obsolete as generally r_ntoc_leaf > r_ntoc_root
-          max_dc = min( params_plant%growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint, max_dcroot_n_constraint )
+          max_dc_buffr_constraint = max( 0.0, plabl(pft,jpngr)%c%c12 - ( params_plant%r_root + params_plant%exurate ) * proot(pft,jpngr)%c%c12 )
+          ! if (plabl(pft,jpngr)%c%c12<( params_plant%r_root + params_plant%exurate ) * proot(pft,jpngr)%c%c12 ) stop 'not enough clabl'
+          ! max_dc = min( params_plant%growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint, max_dcroot_n_constraint )
+          max_dc = min( params_plant%growtheff * max_dc_buffr_constraint, max_dcleaf_n_constraint, max_dcroot_n_constraint )
           min_dc = 0.0
 
-          print*, 'plabl(pft,jpngr)', plabl(pft,jpngr)  
-          print*, 'available for allocation: ', max_dc
+          ! print*, 'plabl(pft,jpngr)', plabl(pft,jpngr)  
+          ! print*, 'available after buffer c. ', max_dc_buffr_constraint
+          ! print*, 'available for allocation: ', max_dc
 
           ! print*, 'r_cton_leaf(pft,jpngr)',r_cton_leaf(pft,jpngr)
           ! print*, 'r_cton_root(pft)',r_cton_root(pft)
@@ -357,9 +361,9 @@ contains
             if (verbose) print*, '----------------------------------'
             break_after_alloc = .true.
             ! if (doy==200) stop 'do beni'
+          else
+            break_after_alloc = .false.
           end if
-
-          print*,'break_after_alloc ', break_after_alloc
 
           ! !------------------------------------------------------------------
           ! ! xxx debug: project next-day's fluxes with optimal dcleaf, derived now
@@ -458,7 +462,7 @@ contains
       canopy_type, get_canopy
     use md_gpp, only: calc_dgpp, calc_drd, mactnv_unitiabs, mlue, mrd_unitiabs
     use md_nuptake, only: calc_dnup, outtype_calc_dnup
-    use md_npp, only: calc_resp_maint, calc_cexu
+    use md_npp, only: calc_resp_maint, calc_cexu, deactivate_root
     use md_findroot_fzeroin
     use md_waterbal, only: solar, evap
     use md_soiltemp, only: dtemp_soil
@@ -495,6 +499,7 @@ contains
     real :: rd
     real :: mresp_root
     real :: cexu
+    real :: avl
     real :: dc
     real :: dn
     real :: kcleaf
@@ -562,7 +567,9 @@ contains
     rd            = calc_drd(  mycanopy%fapar_ind, solar%meanmppfd(usemoy), mrd_unitiabs(usepft,usemoy), airtemp, evap(lu)%cpa  )
     mresp_root    = calc_resp_maint( croot, params_plant%r_root, airtemp )
     npp           = gpp - rd - mresp_root
-    cexu          = calc_cexu( croot, ( gpp - rd - mresp_root + clabl ), airtemp ) 
+    cexu          = calc_cexu( croot, airtemp ) 
+    avl           = clabl + npp - cexu
+    if (avl<0.0) call deactivate_root( gpp, rd, clabl, orgpool(carbon(croot),nitrogen(nroot)), mresp_root, npp, cexu, airtemp )
     dc            = npp - cexu
     out_calc_dnup = calc_dnup( cexu, pninorg(lu,usejpngr)%n14 )
     dn            = out_calc_dnup%fix + out_calc_dnup%act

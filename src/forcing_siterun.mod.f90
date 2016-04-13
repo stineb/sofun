@@ -102,7 +102,8 @@ contains
     end if
 
     ! xxx try
-    readyear = min( readyear, 2009 )
+    readyear = max( 1993, min( readyear, 2009 ) )
+    write(0,*) 'GETNDEP: use N fertilisation data of year ', readyear
 
     ! andep = getvalreal( trim(input_dir)//trim(ndep_forcing_file), readyear )
     andep_noy = getvalreal( 'sitedata/ndep/'//trim(sitename)//'/'//trim(ndep_noy_forcing_file), readyear )
