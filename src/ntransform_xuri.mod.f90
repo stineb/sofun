@@ -59,6 +59,7 @@ module md_ntransform
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
+  real, allocatable, dimension(:,:,:) :: outdninorg
   real, allocatable, dimension(:,:,:) :: outdnloss     ! daily total N loss (gaseous+leacing) (gN/m2/d)
   real, allocatable, dimension(:,:,:) :: outddenitr    ! daily amount of N denitrified (gN/m2/d)
   real, allocatable, dimension(:,:,:) :: outdnitr      ! daily amount of N nitrified (gN/m2/d)
@@ -67,6 +68,7 @@ module md_ntransform
   real, allocatable, dimension(:,:,:) :: outdn2o       ! daily N2O emitted (gN/m2/d)
 
   ! annual
+  real, dimension(nlu,maxgrid) :: outaninorg
   real, dimension(nlu,maxgrid) :: outanloss              ! annual total N loss (gaseous+leacing) (gN/m2/yr)
   real, dimension(nlu,maxgrid) :: outan2o                ! annual N2O emitted (gaseous+leacing) (gN/m2/yr)
 
@@ -461,6 +463,10 @@ contains
     !----------------------------------------------------------------
     if (interface%params_siml%loutntransform) then
 
+      ! INORGANIC N (NO3+NH4)
+      filnam=trim(prefix)//'.d.ninorg.out'
+      open(107,file=filnam,err=888,status='unknown')
+
       ! DAILY TOTAL N LOSS (gN/m2/d)
       filnam=trim(prefix)//'.d.nloss.out'
       open(500,file=filnam,err=888,status='unknown')
@@ -498,6 +504,10 @@ contains
     filnam=trim(prefix)//'.a.n2o.out'
     open(551,file=filnam,err=888,status='unknown')
 
+    ! INORGANIC N (mean over days)
+    filnam=trim(prefix)//'.a.ninorg.out'
+    open(316,file=filnam,err=888,status='unknown')
+
     return
 
     888  stop 'INITIO_NTRANSFORM: error opening output files'
@@ -519,6 +529,7 @@ contains
       if (interface%steering%init) allocate( outdnvol  ( nlu,ndayyear,maxgrid ) ) ! daily amount of N volatilised (gN/m2/d)
       if (interface%steering%init) allocate( outdnleach( nlu,ndayyear,maxgrid ) ) ! daily amount of N leached (gN/m2/d)
       if (interface%steering%init) allocate( outdn2o   ( nlu,ndayyear,maxgrid ) ) ! daily N2O emitted (gN/m2/d)
+      if (interface%steering%init) allocate( outdninorg( nlu,ndayyear,maxgrid ) ) ! daily total inorganic N (gN/m2)
 
       outdnloss(:,:,:)  = 0.0
       outddenitr(:,:,:) = 0.0
@@ -526,11 +537,13 @@ contains
       outdnvol(:,:,:)   = 0.0
       outdnleach(:,:,:) = 0.0
       outdn2o(:,:,:)    = 0.0
+      outdninorg(:,:,:) = 0.0
 
     end if
       
-    outanloss(:,:)    = 0.0
-    outan2o(:,:)      = 0.0
+    outanloss(:,:)  = 0.0
+    outan2o(:,:)    = 0.0
+    outaninorg(:,:) = 0.0
 
   end subroutine initoutput_ntransform
 
@@ -557,14 +570,16 @@ contains
       outdnvol(:,doy,jpngr)   = dnvol(:)
       outdnleach(:,doy,jpngr) = dnleach(:)
       outdn2o(:,doy,jpngr)    = dn2o(:)
+      outdninorg(:,doy,jpngr) = pninorg(:,jpngr)%n14
     end if
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    outanloss(:,jpngr)    = outanloss(:,jpngr) + dnloss(:)
-    outan2o(:,jpngr)      = outan2o(:,jpngr) + dn2o(:)
+    outaninorg(:,jpngr)= outaninorg(:,jpngr) + pninorg(:,jpngr)%n14 / ndayyear
+    outanloss(:,jpngr) = outanloss(:,jpngr) + dnloss(:)
+    outan2o(:,jpngr)   = outan2o(:,jpngr) + dn2o(:)
 
   end subroutine getout_daily_ntransform
 
@@ -603,6 +618,7 @@ contains
           if (nlu>1) stop 'writeout_ascii_ntransform: write out lu-area weighted sum'
           if (npft>1) stop 'writeout_ascii_ntransform: think of something for ccost output'
 
+          write(107,999) itime, sum(outdninorg(:,myday,myjpngr))
           write(500,999) itime, sum(outdnloss(:,myday,myjpngr))
           write(501,999) itime, sum(outdnvol(:,myday,myjpngr))
           write(502,999) itime, sum(outddenitr(:,myday,myjpngr))
@@ -621,6 +637,7 @@ contains
     !-------------------------------------------------------------------------
     itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
 
+    write(316,999) itime, sum(outaninorg(:,myjpngr))
     write(550,999) itime, sum(outanloss(:,myjpngr))
     write(551,999) itime, sum(outan2o(:,myjpngr))
 

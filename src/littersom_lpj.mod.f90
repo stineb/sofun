@@ -234,6 +234,7 @@ contains
       ! pool 'dlitt'.
       ! All goes to daily updated litter decomposition pool
       !----------------------------------------------------------------
+      ! print*,'1'
       do pft=1,npft
         if (params_pft_plant(pft)%islu(lu)) then
                         
@@ -253,10 +254,13 @@ contains
       ! Soil C:N ratio is the average PFT-specific prescribed C:N ratio
       ! weighted by the PFT-specific decomposition.
       !----------------------------------------------------------------
+      ! print*,'2'
       if ( dlitt%c%c12 > 0.0 ) then
 
         cton_soil_local = params_littersom%cton_soil
         ntoc_soil_local = 1.0 / cton_soil_local
+        ! print*,'2.1'
+
 
         ! cton_soil_local = sum( params_littersom%cton_soil(pft_start(lu):pft_end(lu)) &
         !   * ( dlitt_af(pft_start(lu):pft_end(lu))%c%c12  &
@@ -279,6 +283,7 @@ contains
         !----------------------------------------------------------------
         ntoc_crit = params_littersom%ntoc_crit1 * ntoc( dlitt, default=0.0 ) ** params_littersom%ntoc_crit2  ! = rCR
         eff = ntoc_crit * cton_soil_local
+        ! print*,'2.2'
 
         !////////////////////////////////////////////////////////////////
         ! LITTER -> SOIL FLUX AND NET MINERALISATION/IMMOBILISATION
@@ -300,11 +305,12 @@ contains
         call ccp( cfrac( (1.0-eff), dlitt%c ), drhet(lu) )
 
         ! get average litter -> soil flux for analytical soil C equilibration
-        if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation < spinupyr_soilequil_1 &
-          .or. interface%steering%spinup .and. invocation > ( spinupyr_soilequil_2 - interface%params_siml%recycle ) .and. invocation < spinupyr_soilequil_2) then
+        if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation <= spinupyr_soilequil_1 &
+          .or. interface%steering%spinup .and. invocation > ( spinupyr_soilequil_2 - interface%params_siml%recycle ) .and. invocation <= spinupyr_soilequil_2) then
           mean_insoil_fs(lu,jpngr) = mean_insoil_fs(lu,jpngr) + eff * params_littersom%fastfrac * dlitt%c%c12
           mean_insoil_sl(lu,jpngr) = mean_insoil_sl(lu,jpngr) + eff * (1.0-params_littersom%fastfrac) * dlitt%c%c12
         end if
+        ! print*,'2.3'
 
 
         !----------------------------------------------------------------    
@@ -323,6 +329,7 @@ contains
         outanreq(lu,jpngr)      = outanreq(lu,jpngr)      + Nreq_S
         outaclit2soil(lu,jpngr) = outaclit2soil(lu,jpngr) + dlitt%c%c12 * eff
         outanlit2soil(lu,jpngr) = outanlit2soil(lu,jpngr) + Nreq_S
+        ! print*,'2.4'
 
         ! write(0,*) 'outaclit2soil(lu,jpngr)',outaclit2soil(lu,jpngr)
         ! outanlit2soil(pft,jpngr) = outanlit2soil(pft,jpngr) + dlitt%n%n14
@@ -364,6 +371,7 @@ contains
         
         outaNimmo(lu,jpngr)           = outaNimmo(lu,jpngr) - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
 
+        ! print*,'2.5'
 
         ! write(0,*) 'a pninorg(lu,jpngr)%n14',pninorg
         ! write(0,*) 'a netmin_litt',netmin_litt
@@ -392,34 +400,36 @@ contains
 
           !   ! ===========
           ! else
-            ! xxx THIS LEADS TO COMPLETE DIE-OFF: equilibration without immobilisation
+          ! xxx THIS LEADS TO COMPLETE DIE-OFF: equilibration without immobilisation
+          !----------------------------------------------------------------    
+          ! immobilisation
+          !----------------------------------------------------------------    
+          req = -1.0 * netmin_litt
+          avl = pninorg(lu,jpngr)%n14
+
+          ! write(0,*) 'req, avl',req,avl
+
+          if (avl>=req) then
+            ! enough mineral N for immobilisation
+            pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - req
+            req = 0.0
+          else
+            ! not enough pninorg for immobilisation
+            pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - avl
+            req = req - avl
+
             !----------------------------------------------------------------    
-            ! immobilisation
+            ! N fixation by free-living bacteria in litter to satisfy remainder
             !----------------------------------------------------------------    
-            req = -1.0 * netmin_litt
-            avl = pninorg(lu,jpngr)%n14
-
-            ! write(0,*) 'req, avl',req,avl
-
-            if (avl>=req) then
-              ! enough mineral N for immobilisation
-              pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - req
-              req = 0.0
-            else
-              ! not enough pninorg for immobilisation
-              pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - avl
-              req = req - avl
-
-              !----------------------------------------------------------------    
-              ! N fixation by free-living bacteria in litter to satisfy remainder
-              !----------------------------------------------------------------    
-              ! Nfix = req
-              req = 0.0
-              ! write(0,*) 'fixing remainder:',Nfix
-              ! stop 'fixing remainder'
+            ! Nfix = req
+            req = 0.0
+            ! write(0,*) 'fixing remainder:',Nfix
+            ! stop 'fixing remainder'
 
             ! end if
             ! ! <<<<<<<<<<<
+            ! print*,'2.5.1'
+
           end if
 
         end if
@@ -448,6 +458,7 @@ contains
         if ( abs( dlitt%c%c12 * eff / Nreq_S - params_littersom%cton_soil ) > 1e-5 ) stop 'imprecision'
 
       end if
+      ! print*,'3'
 
       !////////////////////////////////////////////////////////////////
       ! EXUDATES DECAY
@@ -469,8 +480,8 @@ contains
 
           ! dexu = cfrac( 1.0-exp(-kexu(lu)), pexud(pft,jpngr) )
 
-          ! print*,'pexud(pft,jpngr) ', pexud(pft,jpngr)
-          ! print*,'dexu             ', dexu
+          ! print*,  'pexud(pft,jpngr) ', pexud(pft,jpngr)
+          ! print*,  'dexu             ', dexu
 
           ! call cmv( dexu, pexud(pft,jpngr), drsoil(pft) )
 
@@ -479,6 +490,7 @@ contains
         end if
 
       end do
+      ! print*,'4'
 
       ! write(0,*) 'c2 pninorg(lu,jpngr)%n14',pninorg
 
@@ -526,6 +538,7 @@ contains
       ! Warning: this does not strictly conserve mass!
       psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_soil_local
       psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_soil_local
+      ! print*,'5'
 
       ! xxx try:
       ! >>>>>>>>>>>
@@ -545,15 +558,23 @@ contains
       ! end if
       ! xxxxxxxxxxx
       ! xxx try: use budgeted N mineralisation also after spinup and equilibration to avoid problem (most likely budget violation in turnover)
+      ! print*,'cton_soil_local ', cton_soil_local 
       if ( dlitt%c%c12 > 0.0 ) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
       ! <<<<<<<<<<<      
 
       ! get average litter -> soil flux for analytical soil C equilibration
-      if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation<spinupyr_soilequil_1 &
-        .or. interface%steering%spinup .and. invocation > ( spinupyr_soilequil_2 - interface%params_siml%recycle ) .and. invocation<spinupyr_soilequil_2 ) then
+      if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation<=spinupyr_soilequil_1 &
+        .or. interface%steering%spinup .and. invocation > ( spinupyr_soilequil_2 - interface%params_siml%recycle ) .and. invocation<=spinupyr_soilequil_2 ) then
         mean_ksoil_fs(lu,jpngr) = mean_ksoil_fs(lu,jpngr) + ksoil_fs(lu)
         mean_ksoil_sl(lu,jpngr) = mean_ksoil_sl(lu,jpngr) + ksoil_sl(lu)
       end if
+
+      ! print*,'interface%steering%spinup ', interface%steering%spinup
+      ! print*,'invocation ', invocation
+      ! print*,'spinupyr_soilequil_1 ', spinupyr_soilequil_1
+      ! print*,'interface%params_siml%recycle ', interface%params_siml%recycle
+      ! print*,'spinupyr_soilequil_2 ', spinupyr_soilequil_2
+      ! print*,'mean_ksoil_fs(lu,jpngr) ', mean_ksoil_fs(lu,jpngr)
 
       ! analytical soil C equilibration
       if ( interface%steering%spinup .and. invocation==spinupyr_soilequil_1 .and. doy==ndayyear &
@@ -575,6 +596,8 @@ contains
         outaCdsoil(lu,jpngr)          = outaCdsoil(lu,jpngr)     + dsoil_fs%c%c12 + dsoil_sl%c%c12
         outaNdsoil(lu,jpngr)          = outaNdsoil(lu,jpngr)     + dsoil_fs%n%n14 + dsoil_sl%n%n14
       end if
+      ! print*,'mean_ksoil_fs(lu,jpngr) ', mean_ksoil_fs(lu,jpngr)
+      ! print*,'6'
 
       ! ! Record monthly (daily) soil turnover flux (labile carbon availability)
       ! ! xxx try: replace this with exudates pool 
@@ -598,6 +621,7 @@ contains
         outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
       end if
       ! write(0,*) 'e pninorg(lu,jpngr)%n14',pninorg
+      ! print*,'7'
 
     enddo                   !lu
 

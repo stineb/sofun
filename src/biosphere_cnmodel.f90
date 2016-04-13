@@ -55,7 +55,7 @@ subroutine biosphere( c_uptake )
   integer :: dm, moy, jpngr, day, usemoy, usedoy
 
   ! xxx verbose
-  logical, parameter :: verbose = .true.
+  logical, parameter :: verbose = .false.
   real            :: cbal1, cbal2
   type( orgpool ) :: orgtmp1, orgtmp2, orgbal1, orgbal2
   real :: eps = 9.999e-10
@@ -90,7 +90,6 @@ subroutine biosphere( c_uptake )
     call initglobal_waterbal()
     call initglobal_littersom()
     call initglobal_ntransform()
-
     if (verbose) write(0,*) '... done'
 
     !----------------------------------------------------------------
@@ -176,9 +175,9 @@ subroutine biosphere( c_uptake )
       do dm=1,ndaymonth(moy)
         day=day+1
 
-        if (verbose) write(0,*) '------------------'
-        if (verbose) write(0,*) 'DAY ', day
-        if (verbose) write(0,*) '------------------'
+        if (verbose) write(0,*) '----------------------'
+        if (verbose) write(0,*) 'YEAR, DAY ', interface%steering%year, day
+        if (verbose) write(0,*) '----------------------'
 
         !----------------------------------------------------------------
         ! initialise daily updated variables 
@@ -316,31 +315,31 @@ subroutine biosphere( c_uptake )
         if (verbose .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
-        ! /////////////////////////////////////////////////////////////////
-        ! ! grass / crop harvest
-        ! !----------------------------------------------------------------
-        ! if (verbose) write(0,*) 'calling grharvest() ... '
-        ! if (verbose) write(0,*) '              with state variables:'
-        ! if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-        ! if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
-        ! if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-        ! if (verbose) write(0,*) '              mharv = ', mharv(:,jpngr)
-        ! if (verbose) orgtmp1 =  orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )
-        ! if (verbose) orgtmp2 =  mharv(1,jpngr)
-        ! !----------------------------------------------------------------
-        ! call grharvest( jpngr, day )
-        ! !----------------------------------------------------------------
-        ! if (verbose) write(0,*) '              ==> returned: '
-        ! if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-        ! if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
-        ! if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-        ! if (verbose) write(0,*) '              mharv = ', mharv(:,jpngr)
-        ! if (verbose) write(0,*) '    --- balance: '
-        ! if (verbose) orgbal1 = orgminus( orgminus( orgtmp1, orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) ) ), orgminus( mharv(1,jpngr), orgtmp2 ) )
-        ! if (verbose) write(0,*) '        dharv - dplant  = ', orgbal1
-        ! if (verbose .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
-        ! if (verbose .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
-        ! if (verbose) write(0,*) '... done'
+        !/////////////////////////////////////////////////////////////////
+        ! grass / crop harvest
+        !----------------------------------------------------------------
+        if (verbose) write(0,*) 'calling grharvest() ... '
+        if (verbose) write(0,*) '              with state variables:'
+        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+        if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) '              mharv = ', mharv(:,jpngr)
+        if (verbose) orgtmp1 =  orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )
+        if (verbose) orgtmp2 =  mharv(1,jpngr)
+        !----------------------------------------------------------------
+        call grharvest( jpngr, day )
+        !----------------------------------------------------------------
+        if (verbose) write(0,*) '              ==> returned: '
+        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+        if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) '              mharv = ', mharv(:,jpngr)
+        if (verbose) write(0,*) '    --- balance: '
+        if (verbose) orgbal1 = orgminus( orgminus( orgtmp1, orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) ) ), orgminus( mharv(1,jpngr), orgtmp2 ) )
+        if (verbose) write(0,*) '        dharv - dplant  = ', orgbal1
+        if (verbose .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (verbose .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
         ! litter and soil decomposition and N mineralisation

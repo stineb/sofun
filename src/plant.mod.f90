@@ -18,7 +18,7 @@ module md_plant
     outdfapar,                                                            &
     dnarea_mb, dnarea_cw, dlma, dcton_lm, outanpp, outanup, outacleaf,    &
     outacroot, &
-    outaCveg2lit, outaNveg2lit, outaNinorg, outanarea_mb, outanarea_cw,   &
+    outaCveg2lit, outaNveg2lit, outanarea_mb, outanarea_cw,   &
     outalai, outalma, outacton_lm, get_fapar,            &
     initoutput_plant, initio_plant, getout_daily_plant,                   &
     getout_annual_plant, writeout_ascii_plant, getpar_modl_plant,         &
@@ -152,7 +152,6 @@ module md_plant
   real, dimension(npft,maxgrid) :: outacex
   real, dimension(npft,maxgrid) :: outaCveg2lit
   real, dimension(npft,maxgrid) :: outaNveg2lit
-  real, dimension(nlu, maxgrid) :: outaNinorg
   real, dimension(npft,maxgrid) :: outanarea_mb
   real, dimension(npft,maxgrid) :: outanarea_cw
   real, dimension(npft,maxgrid) :: outalai
@@ -472,7 +471,6 @@ contains
     outanup(:,:)        = 0.0
     outaCveg2lit(:,:)   = 0.0
     outaNveg2lit(:,:)   = 0.0
-    outaninorg(:,:)     = 0.0
     outanarea_mb(:,:)   = 0.0
     outanarea_cw(:,:)   = 0.0
     outalai     (:,:)   = 0.0
@@ -606,10 +604,6 @@ contains
     ! ROOT C
     filnam=trim(prefix)//'.a.croot.out'
     open(324,file=filnam,err=999,status='unknown')
-
-    ! INORGANIC N (mean over days)
-    filnam=trim(prefix)//'.a.ninorg.out'
-    open(316,file=filnam,err=999,status='unknown')
 
     ! N UPTAKE
     filnam=trim(prefix)//'.a.nup.out'
@@ -839,7 +833,6 @@ contains
     write(311,999) itime, sum(outanpp(:,jpngr))
     write(312,999) itime, sum(outacleaf(:,jpngr))
     write(324,999) itime, sum(outacroot(:,jpngr))
-    write(316,999) itime, sum(outaninorg(:,jpngr))
     write(317,999) itime, sum(outanup(:,jpngr))
     write(317,999) itime, sum(outacex(:,jpngr))
     write(318,999) itime, sum(outalai(:,jpngr))

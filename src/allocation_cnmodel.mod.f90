@@ -574,27 +574,27 @@ contains
     out_calc_dnup = calc_dnup( cexu, pninorg(lu,usejpngr)%n14 )
     dn            = out_calc_dnup%fix + out_calc_dnup%act
 
-    if (present(verbose)) then
-      print*, '-------------'
-      print*, 'in eval_imbalance, projected quantities:'
-      print*, 'fapar              ', mycanopy%fapar_ind
-      print*, 'dppfd              ', solar%dppfd(usedoy)
-      print*, 'lue                ', mlue(usepft,usemoy)
-      print*, 'temp               ', airtemp
-      print*, 'CPA                ', evap(lu)%cpa
-      print*, 'gpp                ', gpp
-      print*, 'npp                ', npp
-      print*, 'rd                 ', rd
-      print*, 'cexu               ', cexu
-      print*, 'mresp_root         ', mresp_root
-      print*, 'dc                 ', dc
-      print*, 'dn                 ', dn
-      print*, 'current   plant C:N', ( cleaf + croot ) / ( nleaf + nroot )
-      print*, '(dn + nlabl)       ', (dn + nlabl)
-      print*, 'tomorrows plant C:N', params_plant%growtheff * (dc + clabl) / (dn + nlabl)
-      print*, '-------------'
-      ! stop
-    end if
+    ! if (present(verbose)) then
+    !   print*, '-------------'
+    !   print*, 'in eval_imbalance, projected quantities:'
+    !   print*, 'fapar              ', mycanopy%fapar_ind
+    !   print*, 'dppfd              ', solar%dppfd(usedoy)
+    !   print*, 'lue                ', mlue(usepft,usemoy)
+    !   print*, 'temp               ', airtemp
+    !   print*, 'CPA                ', evap(lu)%cpa
+    !   print*, 'gpp                ', gpp
+    !   print*, 'npp                ', npp
+    !   print*, 'rd                 ', rd
+    !   print*, 'cexu               ', cexu
+    !   print*, 'mresp_root         ', mresp_root
+    !   print*, 'dc                 ', dc
+    !   print*, 'dn                 ', dn
+    !   print*, 'current   plant C:N', ( cleaf + croot ) / ( nleaf + nroot )
+    !   print*, '(dn + nlabl)       ', (dn + nlabl)
+    !   print*, 'tomorrows plant C:N', params_plant%growtheff * (dc + clabl) / (dn + nlabl)
+    !   print*, '-------------'
+    !   ! stop
+    ! end if
 
     !-------------------------------------------------------------------
     ! EVALUATION QUANTITY - IS MINIMISED BY OPTIMISATION
