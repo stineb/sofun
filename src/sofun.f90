@@ -89,15 +89,13 @@ program main
     interface%climate(:) = getclimate_site( &
                                           trim(runname), &
                                           trim(interface%params_siml%sitename), &
+                                          ! 1993 &
                                           interface%steering%climateyear &
                                           )
-
-    !----------------------------------------------------------------
-    ! Get external (environmental) forcing
-    !----------------------------------------------------------------
     interface%pco2 = getco2( &
                             trim(runname), &
                             trim(interface%params_siml%sitename), &
+                            ! 1993, &
                             interface%steering%forcingyear, &
                             interface%params_siml%const_co2, &
                             interface%params_siml%firstyeartrend,&
@@ -106,6 +104,7 @@ program main
     interface%ndep_field(:) = getndep( &
                                       trim(runname), &
                                       trim(interface%params_siml%sitename), &
+                                      ! 1993, &
                                       interface%steering%forcingyear, &
                                       interface%params_siml%firstyeartrend, &
                                       interface%params_siml%const_ndep, &
@@ -113,10 +112,12 @@ program main
                                       interface%params_siml%ndep_nhx_forcing_file, &
                                       interface%climate(:)&
                                       )
+    write(0,*) 'SOFUN: holding harvesting regime constant at 1993 level.'
     interface%landuse(:) = getlanduse( &
                                       trim(runname), &
                                       trim(interface%params_siml%sitename), &
-                                      interface%steering%forcingyear, &
+                                      1993, &
+                                      ! interface%steering%forcingyear, &
                                       interface%params_siml%do_grharvest_forcing_file &
                                       )
     ! pft_field(:)     = getpft( trim(interface%params_siml%sitename), interface%steering%forcingyear )

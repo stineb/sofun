@@ -122,11 +122,6 @@ contains
 
     endif
 
-    ! write(0,*) 'params_siml%recycle, params_siml%spinupyears, params_siml%firstyeartrend', out_steering%recycle, out_steering%spinupyears, out_steering%firstyeartrend
-    ! write(0,*) 'first_cycleyear, cycleyear', first_cycleyear, cycleyear
-    ! write(0,*) 'year, forcingyear, climateyear', year, out_steering%forcingyear, out_steering%climateyear
-    ! stop
-
     if (year==1) then
       out_steering%init = .true.
     else

@@ -357,10 +357,11 @@ contains
             if (verbose) print*, 'no. of iterations   ', out_zeroin%niter
             if (verbose) print*, 'dcleaf(pft) is root ', dcleaf(pft)
             test = eval_imbalance( dcleaf(pft), .true. )
-            if (verbose) print*, 'eval                              =', test
+            if (verbose) print*, 'eval               =', test
+            ! if (abs(test)>1e-4) stop 'failed finding a good root'
             if (verbose) print*, '----------------------------------'
             break_after_alloc = .true.
-            ! if (doy==200) stop 'do beni'
+            ! stop 'after finding root'
           else
             break_after_alloc = .false.
           end if
@@ -396,7 +397,7 @@ contains
           ! Update fpc_grid and fapar_ind (not lai_ind)
           !-------------------------------------------------------------------  
           canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
-
+! 
           ! call update_fpc_grid( pft, jpngr )
 
           !-------------------------------------------------------------------
@@ -419,7 +420,10 @@ contains
           ! add growth respiration to autotrophic respiration and substract from NPP
           ! (note that NPP is added to plabl in and growth resp. is implicitly removed
           ! from plabl above)
+          ! print*,'dcleaf ', dcleaf(pft)
+          ! print*,'dcroot ', dcroot(pft)
           drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+          ! print*, 'drgrow ', drgrow(pft)
 
         else
 
@@ -752,6 +756,10 @@ contains
       !   ! print*, 'B cleaf', cleaf
       !   ! print*, 'B root', root
       ! end if
+    
+    else
+      mydcroot = 0.0
+      mydnroot = 0.0
     end if
 
   end subroutine allocate_root

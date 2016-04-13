@@ -6,8 +6,8 @@ from subprocess import call
 ##--------------------------------------------------------------------
 ## Simulation suite
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet'
-# simsuite = 'gcme'
+# simsuite = 'fluxnet'
+simsuite = 'gcme'
 # simsuite = 'fluxnet_cmodel'
 # simsuite = 'pmodel_test'
 
@@ -18,7 +18,8 @@ if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
     exe = 'runpmodel'
     compiling_opt = 'pmodel'
 elif simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'gcme':
-    exe = 'runcmodel'
+    # exe = 'runcmodel'
+    exe = 'runcnmodel'
     compiling_opt = 'cmodel'
 else:
     print 'simsuite not valid'

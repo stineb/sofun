@@ -61,6 +61,7 @@ contains
     else  
       readyear = forcingyear
     end if
+    write(0,*) 'GETCO2: use CO2 data of year ', readyear
     pco2 = getvalreal( 'sitedata/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
 
   end function getco2
@@ -102,7 +103,7 @@ contains
     end if
 
     ! xxx try
-    readyear = max( 1993, min( readyear, 2009 ) )
+    readyear = max( 1992, min( readyear, 2009 ) )
     write(0,*) 'GETNDEP: use N fertilisation data of year ', readyear
 
     ! andep = getvalreal( trim(input_dir)//trim(ndep_forcing_file), readyear )
@@ -116,6 +117,8 @@ contains
       out_getndep(jpngr)%dnhx(:) = andep_nhx * dprec_rel(:)
       out_getndep(jpngr)%dtot(:) = out_getndep(jpngr)%dnoy(:) + out_getndep(jpngr)%dnhx(:)
     end do
+
+    ! print*,'out_getndep(jpngr) ', sum(out_getndep(1)%dnoy(:)), sum(out_getndep(1)%dnhx(:)), sum(out_getndep(1)%dtot(:))
 
   end function getndep
 
@@ -176,7 +179,7 @@ contains
     type( climate_type ), dimension(maxgrid) :: out_climate
 
     if (climateyear>2013) then
-      write(0,*) 'GETLANDUSE: held harvest dates fixed after 2013'
+      write(0,*) 'GETCLIMATE_SITE: held climate fixed at year 2013'
       write(climateyear_char,999) 2013
     else
       ! create 4-digit string for year  
@@ -187,8 +190,8 @@ contains
     ! filnam_dfsun = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt'
     ! filnam_dvapr = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dvapr_'//trim(sitename)//'_'//climateyear_char//'.txt'
     
-    write(0,*) 'prescribe daily climate (temp, prec, fsun, vpd) for ', trim(sitename), ' yr ', climateyear_char,'...'
-    
+    write(0,*) 'GETCLIMATE_SITE: use climate data of year ', climateyear_char
+
     jpngr = 1
 
     out_climate(jpngr)%dtemp(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt')
@@ -259,8 +262,6 @@ contains
     !  end do
     !enddo
     
-    write(0,*) '... done. Good job, beni.'
-
     return
     999  format (I4.4)
 
@@ -331,6 +332,7 @@ contains
         end if
       end do
     end if
+
 
     return
     999  format (I4.4)

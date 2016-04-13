@@ -58,7 +58,7 @@ subroutine biosphere( c_uptake )
   logical, parameter :: verbose = .false.
   real            :: cbal1, cbal2
   type( orgpool ) :: orgtmp1, orgtmp2, orgbal1, orgbal2
-  real :: eps = 9.999e-10
+  real :: eps = 9.999e-8
 
   ! ! XXX PMODEL_TEST
   ! print*, 'WARNING: FAPAR = 1.00 USED IN PMODEL'
@@ -270,8 +270,8 @@ subroutine biosphere( c_uptake )
         if (verbose) cbal2 = dgpp(1) - ( plabl(1,jpngr)%c%c12 - orgtmp1%c%c12 ) - dcex(1) - drleaf(1) - drroot(1)
         if (verbose) write(0,*) '        gpp - npp - ra_maint          = ', cbal1
         if (verbose) write(0,*) '        gpp - dlabl - dcex - ra_maint = ', cbal2
-        if (verbose .and. abs(cbal1)>1.0e-6) stop 'balance 1 not satisfied'
-        if (verbose .and. abs(cbal2)>1.0e-6) stop 'balance 2 not satisfied'
+        if (verbose .and. abs(cbal1)>eps) stop 'balance 1 not satisfied'
+        if (verbose .and. abs(cbal2)>eps) stop 'balance 2 not satisfied'
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
@@ -395,6 +395,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
         if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) '              drgrow= ', drgrow(:)
         if (verbose) orgtmp1 =  plabl(1,jpngr)
         if (verbose) orgtmp2 =  orgplus( pleaf(1,jpngr), proot(1,jpngr) )
         !----------------------------------------------------------------
@@ -416,6 +417,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr), ' C:N = ', cton( pleaf(1,jpngr), default=0.0 )
         if (verbose) write(0,*) '              proot = ', proot(:,jpngr), ' C:N = ', cton( proot(1,jpngr), default=0.0 )
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) '              drgrow= ', drgrow(:)
         if (verbose) write(0,*) '   --- balance: '
         if (verbose) orgbal1 = orgminus( orgminus( orgminus( orgtmp1, plabl(1,jpngr) ), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr) ), orgtmp2 ) )        
         if (verbose) write(0,*) '       dlabl - drgrow - dleaf - droot=', orgbal1

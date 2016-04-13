@@ -65,7 +65,7 @@ contains
       if ( params_pft_plant(pft)%grass .and. interface%landuse(jpngr)%do_grharvest(doy) ) then
         ! grasses are harvested
 
-        print*,'harvest on day ', doy
+        ! print*,'harvest on day ', doy
 
         if (pleaf(pft,jpngr)%c%c12>min_cleaf_left) then
           dleaf = ( 1.0 - min_cleaf_left / pleaf(pft,jpngr)%c%c12 )
