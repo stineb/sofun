@@ -90,6 +90,7 @@ subroutine biosphere( c_uptake )
     call initglobal_waterbal()
     call initglobal_littersom()
     call initglobal_ntransform()
+    call initglobal_landuse()
     if (verbose) write(0,*) '... done'
 
     !----------------------------------------------------------------
@@ -445,13 +446,16 @@ subroutine biosphere( c_uptake )
     !----------------------------------------------------------------
     ! collect annually updated output variables
     !----------------------------------------------------------------
+    if (verbose) write(0,*) 'calling getout_annual() ... '
     call getout_annual_plant( jpngr )
     call getout_annual_littersom( jpngr )
+    call getout_annual_landuse( jpngr )
+    if (verbose) write(0,*) '... done'
 
     !----------------------------------------------------------------
     ! Write to output
     !----------------------------------------------------------------
-    ! print*, 'calling writeout_ascii_() ... '
+    if (verbose) write(0,*) 'calling writeout_ascii_() ... '
     call writeout_ascii_waterbal( interface%steering%year )
     call writeout_ascii_soiltemp( interface%steering%year )
     call writeout_ascii_gpp( interface%steering%year )
@@ -460,7 +464,8 @@ subroutine biosphere( c_uptake )
     call writeout_ascii_nuptake( interface%steering%year )
     call writeout_ascii_allocation( interface%steering%year )
     call writeout_ascii_littersom( interface%steering%year )
-    ! print*, '... done'
+    call writeout_ascii_landuse( interface%steering%year )
+    if (verbose) write(0,*) '... done'
 
   end do
 
