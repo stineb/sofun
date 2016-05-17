@@ -51,7 +51,7 @@ contains
     character(len=*), intent(in) :: co2_forcing_file
 
     ! function return variable
-    real, intent(out) :: pco2
+    real :: pco2
 
     ! local variables 
     integer :: readyear
