@@ -11,6 +11,13 @@ simsuite = 'gcme'
 # simsuite = 'fluxnet_cmodel'
 # simsuite = 'pmodel_test'
 
+# ctrl_SwissFACE_lolium2_c0f1
+# ctrl_SwissFACE_lolium2_c1f0
+# grad_SwissFACE_lolium2_c0f1
+# grad_SwissFACE_lolium2_c1f0
+# step_SwissFACE_lolium2_c0f1
+# step_SwissFACE_lolium2_c1f0
+
 ##--------------------------------------------------------------------
 ## Compile
 ##--------------------------------------------------------------------

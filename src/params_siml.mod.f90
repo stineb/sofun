@@ -24,6 +24,8 @@ module md_params_siml
     logical :: do_spinup       ! whether this simulation does spinup 
     logical :: const_co2       ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
     logical :: const_ndep      ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
+    logical :: const_clim      ! is true when using constant climate, given by year 'firstyeartrend'
+    logical :: const_lu        ! is true when using constant land use, given by year 'firstyeartrend'
     
     character(len=256) :: runname
     character(len=256) :: sitename
@@ -128,6 +130,10 @@ contains
       out_steering%init = .false.
     endif 
 
+    ! print*, 'out_steering%climateyear'
+    ! print*, out_steering%climateyear
+    ! if (year>30) stop
+
   end function getsteering
 
 
@@ -163,6 +169,8 @@ contains
     out_getpar_siml%do_spinup            = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
     out_getpar_siml%const_co2            = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_co2' )
     out_getpar_siml%const_ndep           = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_ndep' )
+    out_getpar_siml%const_clim           = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_clim' )
+    out_getpar_siml%const_lu             = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_lu' )
     
     out_getpar_siml%spinupyears          = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
     out_getpar_siml%firstyeartrend       = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )

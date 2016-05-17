@@ -7,8 +7,8 @@ module md_nuptake
   ! of subroutines (names that way).
   !   - nuptake
   !   - getpar_modl_nuptake
-  !   - ((interface%steering%init))io_nuptake
-  !   - ((interface%steering%init))output_nuptake
+  !   - initio_nuptake
+  !   - initoutput_nuptake
   !   - getout_daily_nuptake
   !   - getout_monthly_nuptake
   !   - writeout_ascii_nuptake
@@ -27,8 +27,8 @@ module md_nuptake
   implicit none
 
   private
-  public nuptake, getpar_modl_nuptake, ((interface%steering%init))daily_nuptake, ((interface%steering%init))io_nuptake, &
-    ((interface%steering%init))output_nuptake, getout_daily_nuptake, writeout_ascii_nuptake, &
+  public nuptake, getpar_modl_nuptake, initdaily_nuptake, initio_nuptake, &
+    initoutput_nuptake, getout_daily_nuptake, writeout_ascii_nuptake, &
     calc_dnup, outtype_calc_dnup
 
   !----------------------------------------------------------------
@@ -85,6 +85,7 @@ contains
     use md_classdefs
     use md_plant, only: dcex, dnup, params_pft_plant, ispresent, plabl
     use md_ntransform, only: pninorg
+    use md_soiltemp, only: dtemp_soil
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -114,17 +115,17 @@ contains
 
         lu = params_pft_plant(pft)%lu_category
 
-        ! ! xxx try:
-        ! dtransp = daet(lu_category(pft)) * fpc_grid(pft,jpngr)
+        ! xxx think about this: order in which PFTs get access to Ninorg matters!
+        
+        ! write(0,*) '---- in nuptake:'
 
         !//////////////////////////////////////////////////////////////////////////
         ! INITIALIZATION
         !-------------------------------------------------------------------------
-        n_uptake_pass = 0.0
-        
-        dNacq_act = 0.0                          ! active uptake, sum over sub-timesteps
-        dNacq_fix = 0.0                          ! N fixation, sum over sub-timesteps
-        dCexu     = 0.0
+        n_uptake_pass     = 0.0
+        out_calc_dnup%act = 0.0                          ! active uptake, sum over sub-timesteps
+        out_calc_dnup%fix = 0.0                          ! N fixation, sum over sub-timesteps
+        n_uptake_retrans = 0.0
 
         if ( dcex(pft)>0.0 ) then
           !//////////////////////////////////////////////////////////////////////////
@@ -161,9 +162,9 @@ contains
 
           !//////////////////////////////////////////////////////////////////////////
           ! ACTIVE UPTAKE
-          ! Active N uptake is a function of ((interface%steering%init))ial N available and C exuded
+          ! Active N uptake is a function of initial N available and C exuded
           !--------------------------------------------------------------------------
-          out_calc_dnup = calc_dnup( dcex(pft), pninorg(lu,jpngr)%n14 )
+          out_calc_dnup = calc_dnup( dcex(pft), pninorg(lu,jpngr)%n14, dtemp_soil(lu,jpngr) )
 
           ! write(0,*) 'dcex(pft)      ', dcex(pft)      
           ! write(0,*) 'in SR nuptake: dcex(pft)            ',dcex(pft)      
@@ -210,7 +211,7 @@ contains
   end subroutine nuptake
 
 
-  function calc_dnup( cexu, n0, soiltemp ) result( out_dnup )
+  function calc_dnup( cexu, n0, soiltemp ) result( out_calc_dnup )
     !/////////////////////////////////////////////////////////////////
     ! With a FUN-like approach:
     ! dCexu/dNup = K / (N0 - Nup); K=1/eff_nup
@@ -218,7 +219,7 @@ contains
     !-----------------------------------------------------------------
     ! arguments
     real, intent(in) :: cexu      ! C exuded (gC/m2/d)
-    real, intent(in) :: n0        ! ((interface%steering%init))ial available N (gN/m2)
+    real, intent(in) :: n0        ! initial available N (gN/m2)
     real, intent(in) :: soiltemp  ! soil temperature (deg C)
 
     ! function return variable
@@ -250,7 +251,7 @@ contains
     ! dNup_act / dCex = eff_bnf
     ! ==> Cex = - 1/K * ln( bnf_eff/K )
     !-----------------------------------------------------------------
-    cexu_act = -1.0 / eff_nup * log( eff_bnf / ( n0 * eff_nup ) )
+    cexu_act = -1.0 / params_nuptake%eff_nup * log( eff_bnf / ( n0 * params_nuptake%eff_nup ) )
 
     if (cexu_act < cexu) then
       !-----------------------------------------------------------------
@@ -266,12 +267,12 @@ contains
       !-----------------------------------------------------------------
       ! N uptake via active uptake
       !-----------------------------------------------------------------
-      out_calc_dnup%act = n0 * ( 1.0 - exp( - eff_nup * cexu_act ) )
+      out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu_act ) )
 
     else
 
       out_calc_dnup%fix = 0.0
-      out_calc_dnup%act = n0 * ( 1.0 - exp( - eff_nup * cexu ) )
+      out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
 
     end if
 
@@ -279,21 +280,23 @@ contains
   end function calc_dnup
 
 
-  function fun_cost_fix( soiltemp )
+  function fun_cost_fix( soiltemp ) result( out_fun_cost_fix )
     !////////////////////////////////////////////////////////////////
     ! Cost of symbiotic N fixation is the inverse of nitrogenase activity
     ! after Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
     ! (value from Gutschik 1981)
-    !---------------------------------------------------------------- 
-    use md_params_modl
-
+    !--------------------------------------------------------------------------  
+    ! arguments    
     real, intent(in) :: soiltemp
-    real :: fun_cost_fix                 ! function return variable
 
-    fun_cost_fix = MINIMUMCOSTFIX + exp((soiltemp-FIXOPTIMUM)**2/(2*FIXWIDTH**2))    ! inverse gauss function  (take WARMEST layer)
+    ! function return variable
+    real :: out_fun_cost_fix                 ! function return variable
 
-  end function fucost_fix
+    out_fun_cost_fix = params_nuptake%minimumcostfix + exp((soiltemp-params_nuptake%fixoptimum)**2/(2*params_nuptake%fixwidth**2))    ! inverse gauss function  (take WARMEST layer)
+
+  end function fun_cost_fix
   
+
 
   ! function calc_avail_ninorg( ninorg, wtot ) result( avail_ninorg )
   !   !//////////////////////////////////////////////////////////////////////////
@@ -337,7 +340,7 @@ contains
   ! end function calc_conc_ninorg
 
 
-  subroutine ((interface%steering%init))daily_nuptake()
+  subroutine initdaily_nuptake()
     !////////////////////////////////////////////////////////////////
     ! Initialise daily variables with zero
     !----------------------------------------------------------------
@@ -346,65 +349,7 @@ contains
     dnup_fix(:)    = 0.0
     dnup_ret(:)    = 0.0
 
-  end subroutine ((interface%steering%init))daily_nuptake
-
-
-  subroutine ((interface%steering%init))io_nuptake()
-    !////////////////////////////////////////////////////////////////
-    ! OPEN ASCII OUTPUT FILES FOR OUTPUT
-    !----------------------------------------------------------------
-    use md_params_siml, only: runname
-
-    ! local variables
-    character(len=256) :: prefix
-    character(len=256) :: filnam
-
-    prefix = "./output/"//trim(runname)
-
-    !----------------------------------------------------------------
-    ! DAILY OUTPUT
-    !----------------------------------------------------------------
-
-    ! MEAN DAILY C COST OF N UPTAKE (gC/gN)
-    filnam=trim(prefix)//'.d.ccost.out'
-    open(400,file=filnam,err=888,status='unknown')
-
-    ! PASSIVE N UPTAKE (gN)
-    filnam=trim(prefix)//'.d.nup_pas.out'
-    open(401,file=filnam,err=888,status='unknown')
-
-    ! ACTIVE N UPTAKE (gN)
-    filnam=trim(prefix)//'.d.nup_act.out'
-    open(402,file=filnam,err=888,status='unknown')
-
-    ! SYMBIOTIC BNF (gN)
-    filnam=trim(prefix)//'.d.nup_fix.out'
-    open(403,file=filnam,err=888,status='unknown')
-
-    ! RETRANSLOCATED N FROM LABILE POOL TO SATISFY DEMAND (gN)
-    filnam=trim(prefix)//'.d.nup_ret.out'
-    open(404,file=filnam,err=888,status='unknown')
-
-    ! C EXUDATION
-    filnam=trim(prefix)//'.d.cex.out'
-    open(105,file=filnam,err=888,status='unknown')
-
-
-    !----------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    !----------------------------------------------------------------
-
-    ! ANNUAL TOTAL C EXUDATION
-    filnam=trim(prefix)//'.a.cex.out'
-    open(405,file=filnam,err=888,status='unknown')
-
-
-    return
-
-    888  stop 'INITIO_NUPTAKE: error opening output files'
-
-  end subroutine ((interface%steering%init))io_nuptake
-
+  end subroutine initdaily_nuptake
 
 
   subroutine getpar_modl_nuptake()
@@ -436,31 +381,19 @@ contains
   end subroutine getpar_modl_nuptake
 
 
-  subroutine ((interface%steering%init))daily_nuptake()
-    !////////////////////////////////////////////////////////////////
-    ! Initialise daily variables with zero
-    !----------------------------------------------------------------
-    dnup_pas(:) = 0.0
-    dnup_act(:) = 0.0
-    dnup_fix(:) = 0.0
-    dnup_ret(:) = 0.0
-
-  end subroutine ((interface%steering%init))daily_nuptake
-
-
-  subroutine ((interface%steering%init))io_nuptake()
+  subroutine initio_nuptake()
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_params_siml, only: runname, loutnuptake
+    use md_interface
 
     ! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
 
-    prefix = "./output/"//trim(runname)
+    prefix = "./output/"//trim(interface%params_siml%runname)
 
-    if (loutnuptake) then
+    if (interface%params_siml%loutnuptake) then
       !----------------------------------------------------------------
       ! DAILY OUTPUT
       !----------------------------------------------------------------
@@ -490,22 +423,22 @@ contains
 
     888  stop 'INITIO_NUPTAKE: error opening output files'
 
-  end subroutine ((interface%steering%init))io_nuptake
+  end subroutine initio_nuptake
 
 
-  subroutine ((interface%steering%init))output_nuptake
+  subroutine initoutput_nuptake
     !////////////////////////////////////////////////////////////////
     !  Initialises nuptake-specific output variables
     !----------------------------------------------------------------
-    use md_params_siml, only: ((interface%steering%init)), loutnuptake
+    use md_interface
 
-    if (loutnuptake) then
+    if (interface%params_siml%loutnuptake) then
 
-      if (((interface%steering%init))) allocate( outdccost   (npft,ndayyear,maxgrid) ) ! daily mean C cost of N uptake (gC/gN) 
-      if (((interface%steering%init))) allocate( outdnup_pas (npft,ndayyear,maxgrid) )
-      if (((interface%steering%init))) allocate( outdnup_act (npft,ndayyear,maxgrid) )
-      if (((interface%steering%init))) allocate( outdnup_fix (npft,ndayyear,maxgrid) )
-      if (((interface%steering%init))) allocate( outdnup_ret (npft,ndayyear,maxgrid) )
+      if (interface%steering%init) allocate( outdccost   (npft,ndayyear,maxgrid) ) ! daily mean C cost of N uptake (gC/gN) 
+      if (interface%steering%init) allocate( outdnup_pas (npft,ndayyear,maxgrid) )
+      if (interface%steering%init) allocate( outdnup_act (npft,ndayyear,maxgrid) )
+      if (interface%steering%init) allocate( outdnup_fix (npft,ndayyear,maxgrid) )
+      if (interface%steering%init) allocate( outdnup_ret (npft,ndayyear,maxgrid) )
 
       outdccost  (:,:,:) = 0.0 ! daily mean C cost of N uptake (gC/gN) 
       outdnup_pas(:,:,:) = 0.0
@@ -515,15 +448,14 @@ contains
 
     end if
 
-  end subroutine ((interface%steering%init))output_nuptake
+  end subroutine initoutput_nuptake
 
 
-
-  subroutine getout_daily_nuptake( jmoy, doy )
+  subroutine getout_daily_nuptake( jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use md_vars_core, only: dcex 
+    use md_interface
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -533,21 +465,14 @@ contains
     !----------------------------------------------------------------
     ! DAILY
     ! Collect daily output variables
-    ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    outdccost(:,doy,jpngr)   = dccost(:)
-    outdnup_pas(:,doy,jpngr) = dnup_pas(:)
-    outdnup_act(:,doy,jpngr) = dnup_act(:)
-    outdnup_fix(:,doy,jpngr) = dnup_fix(:)
-    outdnup_ret(:,doy,jpngr) = dnup_ret(:)
-    outdcex(:,doy,jpngr)     = dcex(:)
-
-    !----------------------------------------------------------------
-    ! ANNUAL SUM OVER DAILY VALUES
-    ! Collect annual output variables as sum of daily values
-    !----------------------------------------------------------------
-    outacex(:,jpngr) = outacex(:,jpngr) + dcex(:)
-
+    if (interface%params_siml%loutnuptake) then
+      outdccost  (:,doy,jpngr) = dccost(:)
+      outdnup_pas(:,doy,jpngr) = dnup_pas(:)
+      outdnup_act(:,doy,jpngr) = dnup_act(:)
+      outdnup_fix(:,doy,jpngr) = dnup_fix(:)
+      outdnup_ret(:,doy,jpngr) = dnup_ret(:)
+    end if
 
   end subroutine getout_daily_nuptake
 
@@ -557,8 +482,7 @@ contains
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, npft, nlu
-    use md_params_siml, only: firstyeartrend, spinupyears, interface%params_siml%daily_out_startyr, &
-      interface%params_siml%daily_out_endyr, outyear
+    use md_interface
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
@@ -576,13 +500,16 @@ contains
     ! Write daily value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    if (loutnuptake) then
-      if ( .not. spinup .and. outyear>=interface%params_siml%daily_out_startyr .and. outyear<=interface%params_siml%daily_out_endyr ) then
+    if (interface%params_siml%loutnuptake) then
+      if ( .not. interface%steering%spinup &
+        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
         ! Write daily output only during transient simulation
         do day=1,ndayyear
 
           ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(year) + real(firstyeartrend) - real(spinupyears) + real(day-1)/real(ndayyear)
+          itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears) + real(day-1)/real(ndayyear)
 
           if (nlu>1) stop 'writeout_ascii_nuptake: write out lu-area weighted sum'
           if (npft>1) stop 'writeout_ascii_nuptake: think of something for ccost output'

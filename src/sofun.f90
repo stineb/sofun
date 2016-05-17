@@ -13,6 +13,7 @@ program main
   use md_grid, only: getgrid
   use md_params_soil, only: getsoil_field
   use md_forcing_siterun, only: getclimate_site, getndep, getfapar, getlanduse, getco2
+  use md_params_core, only: dummy
 
   implicit none
 
@@ -89,8 +90,10 @@ program main
     interface%climate(:) = getclimate_site( &
                                           trim(runname), &
                                           trim(interface%params_siml%sitename), &
-                                          ! 1993 &
-                                          interface%steering%climateyear &
+                                          ! 1993, &
+                                          interface%steering%climateyear, &
+                                          interface%params_siml%const_clim, &
+                                          interface%params_siml%firstyeartrend  &
                                           )
     interface%pco2 = getco2( &
                             trim(runname), &
@@ -116,21 +119,25 @@ program main
     interface%landuse(:) = getlanduse( &
                                       trim(runname), &
                                       trim(interface%params_siml%sitename), &
-                                      1993, &
-                                      ! interface%steering%forcingyear, &
-                                      interface%params_siml%do_grharvest_forcing_file &
+                                      ! 1993, &
+                                      interface%steering%forcingyear, &
+                                      interface%params_siml%do_grharvest_forcing_file, &
+                                      interface%params_siml%const_lu, &
+                                      interface%params_siml%firstyeartrend &
                                       )
-    ! pft_field(:)     = getpft( trim(interface%params_siml%sitename), interface%steering%forcingyear )
 
     !----------------------------------------------------------------
-    ! Get prescribed fAPAR
+    ! Get prescribed fAPAR if required
     !----------------------------------------------------------------
-    interface%mfapar_field(:,:) = getfapar( &
-                                          trim(runname), &
-                                          trim(interface%params_siml%sitename), &
-                                          interface%steering%forcingyear, &
-                                          interface%params_siml%prescr_monthly_fapar &
-                                          )
+    if (interface%params_siml%prescr_monthly_fapar) then
+      interface%mfapar_field(:,:) = getfapar( &
+                                            trim(runname), &
+                                            trim(interface%params_siml%sitename), &
+                                            interface%steering%forcingyear &
+                                            )
+    else
+      interface%mfapar_field(:,:) = dummy
+    end if
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
@@ -138,11 +145,11 @@ program main
     !----------------------------------------------------------------
     write(0,100) 'sim. year, year AD, pco2', yr, interface%steering%forcingyear, interface%pco2
 
-    !================================================================
-    !================================================================
+    !----------------------------------------------------------------
+    !----------------------------------------------------------------
     call biosphere( c_uptake ) 
-    !================================================================
-    !================================================================
+    !----------------------------------------------------------------
+    !----------------------------------------------------------------
 
   enddo
 

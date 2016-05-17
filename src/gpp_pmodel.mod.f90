@@ -24,7 +24,7 @@ module md_gpp
 
   private
   public dgpp, dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
-    initdaily_gpp, gpp, getlue, getout_daily_gpp, writeout_ascii_gpp, mlue, &
+    initdaily_gpp, gpp, getlue, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp, mlue, &
     mactnv_unitiabs, mrd_unitiabs, ramp_gpp_lotemp, calc_dgpp, calc_drd
 
   !----------------------------------------------------------------
@@ -626,7 +626,6 @@ contains
 
     ! ! XXX PMODEL_TEST: ok
     ! print*, 'm ', m
-    ! stop
 
     ! ! XXX PMODEL_TEST: ok
     ! print*, 'chi ', chi
@@ -904,6 +903,7 @@ contains
     ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
     xi  = sqrt( ( params_gpp%beta * ( kmm + gstar ) ) / ( 1.6 * ns_star ) )     ! see Eq. 2 in 'Estimation_of_beta.pdf'
     chi = gstar / ca + ( 1.0 - gstar / ca ) * xi / ( xi + sqrt(vpd) )  ! see Eq. 1 in 'Estimation_of_beta.pdf'
+
 
     ! consistent with this, directly return light-use-efficiency (m)
     ! see Eq. 13 in 'Simplifying_LUE.pdf'
@@ -1502,7 +1502,7 @@ contains
     integer, intent(in) :: jpngr
 
     ! outanrlarea(jpngr) = anrlarea
-    outavcmax(:,jpngr)   = avcmax(:)
+    outavcmax(:,jpngr)   = maxval( outdvcmax_canop(jpngr,:) )
     outachi(:,jpngr)     = sum( mchi(1,:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
     outalue(:,jpngr)     = sum( mlue(1,:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
 
@@ -1554,7 +1554,7 @@ contains
     itime = real(interface%steering%outyear)
 
     write(310,999) itime, sum(outagpp(:,jpngr))
-    write(651,999) itime, sum(outavcmax(:,jpngr))
+    write(323,999) itime, sum(outavcmax(:,jpngr))
     write(652,999) itime, sum(outachi(:,jpngr))
     write(653,999) itime, sum(outalue(:,jpngr))
 

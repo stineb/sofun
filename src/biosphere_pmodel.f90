@@ -27,6 +27,11 @@ subroutine biosphere( c_uptake )
   ! print* 'WARNING: FAPAR = 1.00 USED IN PMODEL'
   ! write(0,*) 'WARNING IN BIOSPHERE: CAPPED DAILY TEMPERATURE AT 25 DEG C.'
 
+  print*,'temp ', sum( interface%climate(1)%dtemp(:) ) / 365.0
+  print*,'prec ', sum( interface%climate(1)%dprec(:) )
+  print*,'fsun ', sum( interface%climate(1)%dfsun(:) ) / 365.0
+  print*,'vpd ',  sum( interface%climate(1)%dvpd(:) ) / 365.0
+
   !----------------------------------------------------------------
   ! INITIALISATIONS
   !----------------------------------------------------------------

@@ -16,7 +16,7 @@ module md_forcing_siterun
   implicit none
 
   private
-  public getco2, getfapar, getclimate_site, getlanduse, landuse_type, climate_type, ndep_type, getndep
+  public getco2, getndep, ndep_type, getfapar, getclimate_site, getlanduse, landuse_type, climate_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp
@@ -35,7 +35,6 @@ module md_forcing_siterun
     real, dimension(ndayyear) :: dnhx
     real, dimension(ndayyear) :: dtot
   end type ndep_type
-
 
 contains
 
@@ -62,6 +61,7 @@ contains
     else  
       readyear = forcingyear
     end if
+    write(0,*) 'GETCO2: use CO2 data of year ', readyear
     pco2 = getvalreal( 'sitedata/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
 
   end function getco2
@@ -99,7 +99,7 @@ contains
   end function getndep
 
 
-  function getfapar( runname, sitename, forcingyear, prescr_monthly_fapar ) result( fapar_field )
+  function getfapar( runname, sitename, forcingyear ) result( fapar_field )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
@@ -109,7 +109,6 @@ contains
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: forcingyear
-    logical, intent(in) :: prescr_monthly_fapar
 
     ! function return variable
     real, dimension(nmonth,maxgrid) :: fapar_field
@@ -120,14 +119,9 @@ contains
     character(len=4) :: faparyear_char
 
     do jpngr=1,maxgrid
-      if (prescr_monthly_fapar) then
-        ! create 4-digit string for year  
-        write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-        ! fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_modis_'//trim(sitename)//'_'//faparyear_char//'.txt' )
-        fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_evi_modissubset_'//trim(sitename)//'_'//faparyear_char//'.txt' )
-      else
-        fapar_field(:,jpngr) = dummy
-      end if
+      ! create 4-digit string for year  
+      write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
+      fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_modis_'//trim(sitename)//'_'//faparyear_char//'.txt' )
     end do
 
     return
@@ -136,7 +130,7 @@ contains
   end function getfapar
 
 
-  function getclimate_site( runname, sitename, climateyear ) result ( out_climate )
+  function getclimate_site( runname, sitename, climateyear, const_clim, firstyeartrend ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     !  SR reads this year's daily temperature and precipitation.
     !----------------------------------------------------------------    
@@ -144,6 +138,8 @@ contains
     character(len=*), intent(in) :: runname     
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: climateyear
+    logical, intent(in) :: const_clim
+    integer, intent(in) :: firstyeartrend
 
     ! local variables
     integer :: day, mo, dm, yr
@@ -171,64 +167,10 @@ contains
     do day=1,ndayyear
       out_climate(jpngr)%dvpd(day) = calc_vpd( out_climate(jpngr)%dtemp(day), dvapr(day) )
     end do
-
-    ! ! xxx alternatively, if no daily values are available, use weather generator for precip
-    ! ! mprec(:) = read1year_monthly('mprec_'//sitename//'_2002.txt')
-    ! ! mwetd(:) = read1year_monthly('mwetd_'//sitename//'_2002.txt')
-    ! ! xxx try:
-    ! mprec = (/ 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 50.0 /)
-    ! mwetd = (/ 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0 /)
-    ! do day=1,ndayyear
-    !   call random_number( harvest1 )
-    !   call random_number( harvest2 )
-    !   prdaily_random(day,1) = harvest1
-    !   prdaily_random(day,2) = harvest2
-    ! end do
-    ! dprec_field(:,1) = monthly2daily_weather( mprec(:), mwetd(:), prdaily_random(:,:) )
-
-    ! mfsun(:) = read1year_monthly('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'mfsun_'//sitename//'_'//climateyear_char//'.txt')
-    ! mvapr(:) = read1year_monthly('sitedata/climate/'//sitename//'/'//climateyear_char//'/'//'mvapr_'//sitename//'_'//climateyear_char//'.txt')
-
-    ! ! calculate monthly VPD based on monthly vapour pressure and temperature data
-    ! mtemp(:) = daily2monthly( dtemp_field(:,1), "mean" )
-    ! do mo=1,nmonth
-    !   mvpd(mo) = calc_vpd( mtemp(mo), mvapr(mo) )
-    ! end do
-
-    ! ! use monthly value for each day in month for dfsun, and dvpd
-    ! dfsun_field(:,1) = monthly2daily( mfsun(:), "uniform" )
-    ! dvpd_field(:,1)  = monthly2daily( mvpd(:), "uniform" )
-
-    !insf  = (/0.21, 0.27, 0.30, 0.40, 0.39, 0.39, 0.40, 0.43, 0.36, 0.32, 0.23, 0.19/)
-    !intc  = (/4.80, 4.85, 7.10, 9.10, 12.4, 15.3, 17.6, 17.3, 14.6, 11.2, 7.55, 5.05/)
-    !inppt = (/61.0, 41.2, 44.5, 48.0, 46.4, 44.6, 46.0, 52.3, 50.3, 71.8, 66.3, 62.9/)
-    !day=0
-    !do mo=1,nmonth
-    !  do dm=1,ndaymonth(mo)
-    !    day=day+1
-    !    dtemp_field(day,1) = intc(mo)
-    !    dprec_field(day,1) = inppt(mo)/ndaymonth(mo)
-    !    dfsun_field(day,1) = insf(mo)
-    !  end do
-    !enddo
-
-    !day=0
-    !do mo=1,nmonth
-    !  do dm=1,ndaymonth(mo)
-    !    day=day+1
-    !    print*,'day, mo, dm ',day, mo, dm
-    !    dtemp_field(day,1) = getvalreal_STANDARD( &
-    !      sitename//'_dtemp_2000_STANDARD.txt', mo=mo, dm=dm &
-    !      )
-    !    dprec_field(day,1) = getvalreal_STANDARD( &
-    !      sitename//'_dprec_2000_STANDARD.txt', mo=mo, dm=dm &
-    !      )
-    !    dfsun_field(day,1) = getvalreal_STANDARD( &
-    !      sitename//'_dfsun_2000_STANDARD.txt', mo=mo, dm=dm &
-    !      )
-    !  end do
-    !enddo
     
+    ! print*,'VPD'
+    ! print*,out_climate(jpngr)%dvpd(:)
+
     write(0,*) '... done. Good job, beni.'
 
     return
@@ -237,15 +179,17 @@ contains
   end function getclimate_site
 
 
-  function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file ) result( out_landuse )
+  function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file, const_lu, firstyeartrend ) result( out_landuse )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual landuse state
     !----------------------------------------------------------------
-   ! arguments
+    ! arguments
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
     character(len=*), intent(in), optional :: do_grharvest_forcing_file
+    logical, intent(in) :: const_lu
+    integer, intent(in) :: firstyeartrend
 
     ! function return variable
     type( landuse_type ) :: out_landuse
@@ -292,6 +236,15 @@ contains
 
     !! calculate VPD in units of kPa
     vpd = ( 0.611 * exp( (17.27 * my_tc)/(my_tc + 237.3) ) - 0.10 * vap )    
+
+    ! if (vpd<0.0) then
+    !   print*,'temp: ', my_tc
+    !   print*,'vapr: ', vap
+    !   print*,'vpd : ', vpd
+    !   print*,'SETTING VPD TO ZERO'
+    !   vpd = 0.0
+    !   stop
+    ! end if
 
     !! convert to Pa
     vpd = vpd * 1.0e3

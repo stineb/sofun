@@ -427,19 +427,6 @@ contains
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
-    ! use md_params_siml, only: init &
-    !   , interface%params_siml%loutdgpp       &
-    !   , interface%params_siml%loutdnpp       &
-    !   , interface%params_siml%loutdnup       &
-    !   , interface%params_siml%loutdcex       &
-    !   , interface%params_siml%loutdCleaf     &
-    !   , interface%params_siml%loutdCroot     &
-    !   , interface%params_siml%loutdClabl     &
-    !   , interface%params_siml%loutdNlabl     &
-    !   , interface%params_siml%loutdClitt     &
-    !   , interface%params_siml%loutdNlitt     &
-    !   , interface%params_siml%loutdlai       &
-    !   , interface%params_siml%loutdfapar
     use md_interface
 
     if (interface%steering%init .and. interface%params_siml%loutdnpp  ) allocate( outdnpp      (npft,ndayyear,maxgrid) )
@@ -467,17 +454,18 @@ contains
     outdfapar(:,:,:) = 0.0
 
     ! annual output variables
-    outanpp(:,:)        = 0.0
-    outanup(:,:)        = 0.0
-    outaCveg2lit(:,:)   = 0.0
-    outaNveg2lit(:,:)   = 0.0
-    outanarea_mb(:,:)   = 0.0
-    outanarea_cw(:,:)   = 0.0
-    outalai     (:,:)   = 0.0
-    outalma     (:,:)   = 0.0
-    outacton_lm (:,:)   = 0.0
-    outacleaf(:,:)      = 0.0
-    outacroot(:,:)      = 0.0
+    outanpp(:,:)      = 0.0
+    outanup(:,:)      = 0.0
+    outacex(:,:)      = 0.0
+    outaCveg2lit(:,:) = 0.0
+    outaNveg2lit(:,:) = 0.0
+    outanarea_mb(:,:) = 0.0
+    outanarea_cw(:,:) = 0.0
+    outalai     (:,:) = 0.0
+    outalma     (:,:) = 0.0
+    outacton_lm (:,:) = 0.0
+    outacleaf(:,:)    = 0.0
+    outacroot(:,:)    = 0.0
 
   end subroutine initoutput_plant
 
@@ -486,21 +474,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Opens input/output files.
     !----------------------------------------------------------------
-    ! use md_params_siml, only: & 
-    !     interface%params_siml%loutdgpp       &
-    !   , interface%params_siml%loutdnpp       &
-    !   , interface%params_siml%loutdnup       &
-    !   , interface%params_siml%loutdcex       &
-    !   , interface%params_siml%loutdCleaf     &
-    !   , interface%params_siml%loutdCroot     &
-    !   , interface%params_siml%loutdClabl     &
-    !   , interface%params_siml%loutdNlabl     &
-    !   , interface%params_siml%loutdClitt     &
-    !   , interface%params_siml%loutdNlitt     &
-    !   , interface%params_siml%loutdlai       &
-    !   , interface%params_siml%loutdfapar
     use md_interface
-    ! use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
@@ -650,19 +624,6 @@ contains
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
     use md_interface
-    ! use md_params_siml, only: & 
-    !     interface%params_siml%loutdgpp       &
-    !   , interface%params_siml%loutdnpp       &
-    !   , interface%params_siml%loutdnup       &
-    !   , interface%params_siml%loutdcex       &
-    !   , interface%params_siml%loutdCleaf     &
-    !   , interface%params_siml%loutdCroot     &
-    !   , interface%params_siml%loutdClabl     &
-    !   , interface%params_siml%loutdNlabl     &
-    !   , interface%params_siml%loutdClitt     &
-    !   , interface%params_siml%loutdNlitt     &
-    !   , interface%params_siml%loutdlai       &
-    !   , interface%params_siml%loutdfapar
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -806,17 +767,17 @@ contains
         ! Define 'itime' as a decimal number corresponding to day in the year + year
         itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
         
-        if (interface%params_siml%loutdnpp      ) write(102,999) itime, sum(outdnpp(:,day,jpngr))
-        if (interface%params_siml%loutdCleaf    ) write(103,999) itime, sum(outdCleaf(:,day,jpngr))
-        if (interface%params_siml%loutdnup      ) write(104,999) itime, sum(outdnup(:,day,jpngr))
-        if (interface%params_siml%loutdcex      ) write(105,999) itime, sum(outdcex(:,day,jpngr))
-        if (interface%params_siml%loutdCroot    ) write(111,999) itime, sum(outdCroot(:,day,jpngr))
-        if (interface%params_siml%loutdClabl    ) write(112,999) itime, sum(outdClabl(:,day,jpngr))
-        if (interface%params_siml%loutdClitt    ) write(113,999) itime, sum(outdClitt(:,day,jpngr))
-        if (interface%params_siml%loutdNlabl    ) write(115,999) itime, sum(outdNlabl(:,day,jpngr))
-        if (interface%params_siml%loutdNlitt    ) write(119,999) itime, sum(outdNlitt(:,day,jpngr))
-        if (interface%params_siml%loutdlai      ) write(121,999) itime, sum(outdlai(:,day,jpngr))
-        if (interface%params_siml%loutdfapar    ) write(122,999) itime, sum(outdfapar(:,day,jpngr))
+        if (interface%params_siml%loutdnpp  ) write(102,999) itime, sum(outdnpp(:,day,jpngr))
+        if (interface%params_siml%loutdCleaf) write(103,999) itime, sum(outdCleaf(:,day,jpngr))
+        if (interface%params_siml%loutdnup  ) write(104,999) itime, sum(outdnup(:,day,jpngr))
+        if (interface%params_siml%loutdcex  ) write(105,999) itime, sum(outdcex(:,day,jpngr))
+        if (interface%params_siml%loutdCroot) write(111,999) itime, sum(outdCroot(:,day,jpngr))
+        if (interface%params_siml%loutdClabl) write(112,999) itime, sum(outdClabl(:,day,jpngr))
+        if (interface%params_siml%loutdClitt) write(113,999) itime, sum(outdClitt(:,day,jpngr))
+        if (interface%params_siml%loutdNlabl) write(115,999) itime, sum(outdNlabl(:,day,jpngr))
+        if (interface%params_siml%loutdNlitt) write(119,999) itime, sum(outdNlitt(:,day,jpngr))
+        if (interface%params_siml%loutdlai  ) write(121,999) itime, sum(outdlai(:,day,jpngr))
+        if (interface%params_siml%loutdfapar) write(122,999) itime, sum(outdfapar(:,day,jpngr))
           
       end do
     end if
@@ -834,7 +795,7 @@ contains
     write(312,999) itime, sum(outacleaf(:,jpngr))
     write(324,999) itime, sum(outacroot(:,jpngr))
     write(317,999) itime, sum(outanup(:,jpngr))
-    write(317,999) itime, sum(outacex(:,jpngr))
+    write(405,999) itime, sum(outacex(:,jpngr))
     write(318,999) itime, sum(outalai(:,jpngr))
     write(319,999) itime, sum(outanarea_mb(:,jpngr))
     write(320,999) itime, sum(outanarea_cw(:,jpngr))

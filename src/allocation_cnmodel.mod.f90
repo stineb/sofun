@@ -54,14 +54,15 @@ module md_allocation
   ! MODULE-SPECIFIC, PRIVATE VARIABLES
   !----------------------------------------------------------------
   type statetype_eval_imbalance
-    type(orgpool)           :: pleaf
-    type(orgpool)           :: proot
-    type(orgpool)           :: plabl
-    real                    :: usepft 
-    integer                 :: usemoy
-    integer                 :: usedoy
-    integer                 :: usejpngr
-    real                    :: airtemp
+    type(orgpool) :: pleaf
+    type(orgpool) :: proot
+    type(orgpool) :: plabl
+    real          :: usepft 
+    integer       :: usemoy
+    integer       :: usedoy
+    integer       :: usejpngr
+    real          :: airtemp
+    real          :: soiltemp
   end type statetype_eval_imbalance
 
   type(statetype_eval_imbalance)      :: state_eval_imbalance
@@ -95,7 +96,7 @@ contains
     !------------------------------------------------------------------
     use md_classdefs
     use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
-      plabl, drgrow, dnup, lai_ind, nind, canopy, leaftraits, &
+      plabl, drgrow, lai_ind, nind, canopy, leaftraits, &
       get_canopy, break_after_alloc
     use md_waterbal, only: solar
     use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
@@ -208,6 +209,7 @@ contains
           state_eval_imbalance%usedoy   = usedoy
           state_eval_imbalance%usejpngr = jpngr
           state_eval_imbalance%airtemp  = dtemp
+          state_eval_imbalance%soiltemp = dtemp_soil(lu,jpngr)
 
           !------------------------------------------------------------------
           ! Calculate maximum C allocatable based on current labile pool size.
@@ -469,7 +471,6 @@ contains
     use md_npp, only: calc_resp_maint, calc_cexu, deactivate_root
     use md_findroot_fzeroin
     use md_waterbal, only: solar, evap
-    use md_soiltemp, only: dtemp_soil
     use md_ntransform, only: pninorg
 
     ! arguments
@@ -491,6 +492,7 @@ contains
     integer :: usedoy
     integer :: usejpngr
     real    :: airtemp
+    real    :: soiltemp
 
     integer :: lu
 
@@ -532,6 +534,7 @@ contains
     usedoy   = state_eval_imbalance%usedoy
     usejpngr = state_eval_imbalance%usejpngr
     airtemp  = state_eval_imbalance%airtemp
+    soiltemp = state_eval_imbalance%soiltemp
 
     !-------------------------------------------------------------------
     ! LEAF ALLOCATION
@@ -575,7 +578,7 @@ contains
     avl           = clabl + npp - cexu
     if (avl<0.0) call deactivate_root( gpp, rd, clabl, orgpool(carbon(croot),nitrogen(nroot)), mresp_root, npp, cexu, airtemp )
     dc            = npp - cexu
-    out_calc_dnup = calc_dnup( cexu, pninorg(lu,usejpngr)%n14 )
+    out_calc_dnup = calc_dnup( cexu, pninorg(lu,usejpngr)%n14, soiltemp )
     dn            = out_calc_dnup%fix + out_calc_dnup%act
 
     ! if (present(verbose)) then

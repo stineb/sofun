@@ -21,7 +21,7 @@ subroutine biosphere( c_uptake )
     writeout_ascii_waterbal
   use md_phenology, only: gettempphenology, getpar_modl_phenology
   use md_gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, &
-    getout_daily_gpp, writeout_ascii_gpp
+    getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp
   use md_npp, only: npp
   use md_turnover, only: turnover
   use md_vegdynamics, only: vegdynamics
@@ -37,7 +37,7 @@ subroutine biosphere( c_uptake )
   use md_landuse, only: grharvest, initoutput_landuse, initio_landuse, getout_annual_landuse, &
     writeout_ascii_landuse, initglobal_landuse, init_mharv
 
-  ! xxx verbose
+  ! Verbose: uncomment these lines if 'verbose' is set to true
   use md_plant
   use md_gpp
   use md_classdefs
@@ -63,9 +63,14 @@ subroutine biosphere( c_uptake )
   ! ! XXX PMODEL_TEST
   ! print*, 'WARNING: FAPAR = 1.00 USED IN PMODEL'
 
+  ! print*,'temp ', sum( interface%climate(1)%dtemp(:) ) / 365.0
+  ! print*,'prec ', sum( interface%climate(1)%dprec(:) )
+  ! print*,'fsun ', sum( interface%climate(1)%dfsun(:) ) / 365.0
+  ! print*,'vpd ',  sum( interface%climate(1)%dvpd(:) ) / 365.0
+
   !----------------------------------------------------------------
   ! INITIALISATIONS
-  !----------------------------------------------------------------
+  ! ----------------------------------------------------------------
   if (interface%steering%init) then
 
     !----------------------------------------------------------------
@@ -136,11 +141,13 @@ subroutine biosphere( c_uptake )
     ! This is not compatible with a daily biosphere-climate coupling. I.e., 
     ! there is a daily loop within 'getsolar'!
     !----------------------------------------------------------------
+    if (verbose) write(0,*) 'calling getsolar_alldays() ...'
     call getsolar_alldays( &
       interface%grid(jpngr)%lat, & 
       interface%grid(jpngr)%elv, & 
       interface%climate(jpngr)%dfsun(:) & 
       )
+    if (verbose) write(0,*) '... done'
 
     !----------------------------------------------------------------
     ! Get monthly light use efficiency, and Rd per unit of light absorbed
@@ -148,6 +155,7 @@ subroutine biosphere( c_uptake )
     ! This is not compatible with a daily biosphere-climate coupling. I.e., 
     ! there is a monthly loop within 'getlue'!
     !----------------------------------------------------------------
+    if (verbose) write(0,*) 'calling getlue() ...'
     call getlue( &
       jpngr, & 
       interface%pco2, & 
@@ -155,6 +163,7 @@ subroutine biosphere( c_uptake )
       interface%climate(jpngr)%dvpd(:), & 
       interface%grid(jpngr)%elv & 
       )
+    if (verbose) write(0,*) '... done'
 
     !----------------------------------------------------------------
     ! Get radiation based on daily temperature, sunshine fraction, and 
@@ -162,7 +171,9 @@ subroutine biosphere( c_uptake )
     ! This is not compatible with a daily biosphere-climate coupling. I.e., 
     ! there is a daily loop within 'getsolar'!
     !----------------------------------------------------------------
+    if (verbose) write(0,*) 'calling gettempphenology() ...'
     call gettempphenology( jpngr, interface%climate(jpngr)%dtemp(:) )
+    if (verbose) write(0,*) '... done'
 
     !----------------------------------------------------------------
     ! LOOP THROUGH MONTHS
@@ -447,6 +458,7 @@ subroutine biosphere( c_uptake )
     ! collect annually updated output variables
     !----------------------------------------------------------------
     if (verbose) write(0,*) 'calling getout_annual() ... '
+    call getout_annual_gpp( jpngr )
     call getout_annual_plant( jpngr )
     call getout_annual_littersom( jpngr )
     call getout_annual_landuse( jpngr )
