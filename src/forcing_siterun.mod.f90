@@ -158,44 +158,33 @@ contains
   end function getfapar
 
 
-  function getclimate_site( runname, sitename, climateyear, const_clim, firstyeartrend ) result ( out_climate )
+  function getclimate_site( sitename, climateyear ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
-    !  SR reads this year's daily temperature and precipitation.
+    ! SR reads this year's daily temperature and precipitation.
+    ! Read year-2013 data after 2013
     !----------------------------------------------------------------    
     ! arguments
-    character(len=*), intent(in) :: runname     
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: climateyear
-    logical, intent(in) :: const_clim
-    integer, intent(in) :: firstyeartrend
 
     ! local variables
-    integer :: day, mo, dm, yr
+    integer :: day
     integer :: jpngr = 1
-    integer :: findyear
-    integer :: readyear
     real, dimension(ndayyear) :: dvapr
     character(len=4) :: climateyear_char
-
 
     ! function return variable
     type( climate_type ), dimension(maxgrid) :: out_climate
 
-    if (const_clim) then
-      readyear = firstyeartrend
-    else
-      readyear = climateyear
-    end if
-
-    if (readyear>2013) then
+    if (climateyear>2013) then
       write(0,*) 'GETCLIMATE_SITE: held climate fixed at year 2013'
       write(climateyear_char,999) 2013
-    else if (readyear<1993) then
-      write(0,*) 'GETCLIMATE_SITE: held climate fixed at year 1993'
-      write(climateyear_char,999) 1993
+    ! else if (climateyear<1993) then
+    !   write(0,*) 'GETCLIMATE_SITE: held climate fixed at year 1993'
+    !   write(climateyear_char,999) 1993
     else
       ! create 4-digit string for year  
-      write(climateyear_char,999) readyear
+      write(climateyear_char,999) climateyear
     end if
     ! filnam_dtemp = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt'
     ! filnam_dprec = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt'
@@ -225,7 +214,9 @@ contains
 
   function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file, const_lu, firstyeartrend ) result( out_landuse )
     !////////////////////////////////////////////////////////////////
-    ! Function reads this year's annual landuse state
+    ! Function reads this year's annual landuse state and harvesting regime (day of above-ground harvest)
+    ! Grass harvest forcing file is read for specific year, if none is available,
+    ! use earliest forcing file available. 
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: runname
@@ -270,9 +261,8 @@ contains
       
       if ( file_exists ) then
         ! found data file
-        write(0,*) 'GETLANDUSE: harvest data for year ', readyear
+        write(0,*) 'GETLANDUSE: use harvest data for year ', readyear
         tmp(:) = read1year_daily( trim(filnam) )
-      
       else
         ! find first year with data available
         findyear = readyear

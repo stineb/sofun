@@ -85,8 +85,7 @@ contains
     type( paramstype_siml ), intent(in) :: params_siml
 
     ! local variables
-    integer :: first_cycleyear, cycleyear
-    integer :: remainder, nfits
+    integer :: cycleyear
 
     ! function return variable
     type( outtype_steering ) :: out_steering
@@ -94,24 +93,28 @@ contains
     out_steering%year = year
     
     if (params_siml%do_spinup) then
-
       if (year<=params_siml%spinupyears) then
-
+        ! during spinup
         out_steering%spinup = .true.
         out_steering%forcingyear = params_siml%firstyeartrend
-
-        remainder = mod( params_siml%spinupyears, params_siml%recycle )
-        nfits = (params_siml%spinupyears - remainder) / params_siml%recycle
-        first_cycleyear = params_siml%recycle - remainder + 1
-        cycleyear = modulo( first_cycleyear + year - 1, params_siml%recycle )  
-        if (cycleyear==0) cycleyear = params_siml%recycle
+        cycleyear = get_cycleyear( year, params_siml%spinupyears, params_siml%recycle )
         out_steering%climateyear = cycleyear + params_siml%firstyeartrend - 1
 
       else  
-
+        ! during transient simulation
         out_steering%spinup = .false.
-        out_steering%forcingyear =  year - params_siml%spinupyears + params_siml%firstyeartrend - 1 
-        out_steering%climateyear = out_steering%forcingyear
+        out_steering%forcingyear =  year - params_siml%spinupyears + params_siml%firstyeartrend - 1
+
+        if (params_siml%const_clim) then
+          ! constant climate flag activated
+          cycleyear = get_cycleyear( year, params_siml%spinupyears, params_siml%recycle )
+          out_steering%climateyear = cycleyear + params_siml%firstyeartrend - 1
+        
+        else
+          ! constant climate flag not activated
+          out_steering%climateyear = out_steering%forcingyear
+        
+        end if
 
       endif
       out_steering%outyear = year + params_siml%firstyeartrend - params_siml%spinupyears - 1
@@ -135,6 +138,34 @@ contains
     ! if (year>30) stop
 
   end function getsteering
+
+
+  function get_cycleyear( year, spinupyears, recycle ) result( cycleyear )
+    !////////////////////////////////////////////////////////////////
+    ! Returns cyce year for climate recycling, given number of spinup
+    ! years and recycle period length, so that in the last year of
+    ! of the spinup, 'cycleyear' is equal to 'recycle'.
+    !----------------------------------------------------------------
+    ! arguments
+    integer, intent(in) :: year
+    integer, intent(in) :: spinupyears
+    integer, intent(in) :: recycle
+
+    ! local variables
+    integer :: remainder
+    integer :: nfits
+    integer :: first_cycleyear
+
+    ! function return variable
+    integer :: cycleyear
+
+    remainder = mod( spinupyears, recycle )
+    nfits = (spinupyears - remainder) / recycle
+    first_cycleyear = recycle - remainder + 1
+    cycleyear = modulo( first_cycleyear + year - 1, recycle )  
+    if (cycleyear==0) cycleyear = recycle
+
+  end function get_cycleyear
 
 
   function getpar_siml( runname ) result( out_getpar_siml )

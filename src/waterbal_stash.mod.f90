@@ -777,9 +777,6 @@ contains
 
   end subroutine getpar_modl_waterbal
 
-
-
-
   ! xxx put these functions into a 'contain' within calling SR?
 
   function dgcos( x ) result( dgcos_out )

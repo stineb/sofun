@@ -40,7 +40,7 @@ if not os.path.exists( exe ):
 filnam_siteinfo_csv = '../input_' + simsuite + '_sofun/siteinfo_' + simsuite + '_sofun.csv'
 
 if os.path.exists( filnam_siteinfo_csv ):
-    print 'reading site information file ...'
+    print 'reading site information file ' + filnam_siteinfo_csv + '...'
     siteinfo = pandas.read_csv( filnam_siteinfo_csv )
 else:
     print 'site info file does not exist: ' + filnam_siteinfo_csv

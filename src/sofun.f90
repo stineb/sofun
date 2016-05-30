@@ -88,18 +88,25 @@ program main
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
     interface%climate(:) = getclimate_site( &
-                                          trim(runname), &
                                           trim(interface%params_siml%sitename), &
-                                          ! 1993, &
-                                          interface%steering%climateyear, &
-                                          interface%params_siml%const_clim, &
-                                          interface%params_siml%firstyeartrend  &
+                                          1992 &
+                                          ! interface%steering%climateyear &
                                           )
+    ! print*,'dtemp:'
+    ! print*,interface%climate(1)%dtemp(:)
+    ! print*,'dfsun:'
+    ! print*,interface%climate(1)%dfsun(:)
+    ! print*,'dvpd:'
+    ! print*,interface%climate(1)%dvpd(:)
+    ! print*,'dprec:'
+    ! print*,interface%climate(1)%dprec(:)
+    ! stop
+
     interface%pco2 = getco2( &
                             trim(runname), &
                             trim(interface%params_siml%sitename), &
-                            ! 1993, &
-                            interface%steering%forcingyear, &
+                            1993, &
+                            ! interface%steering%forcingyear, &
                             interface%params_siml%const_co2, &
                             interface%params_siml%firstyeartrend,&
                             interface%params_siml%co2_forcing_file&
@@ -107,20 +114,20 @@ program main
     interface%ndep_field(:) = getndep( &
                                       trim(runname), &
                                       trim(interface%params_siml%sitename), &
-                                      ! 1993, &
-                                      interface%steering%forcingyear, &
+                                      1993, &
+                                      ! interface%steering%forcingyear, &
                                       interface%params_siml%firstyeartrend, &
                                       interface%params_siml%const_ndep, &
                                       interface%params_siml%ndep_noy_forcing_file, &
                                       interface%params_siml%ndep_nhx_forcing_file, &
                                       interface%climate(:)&
                                       )
-    write(0,*) 'SOFUN: holding harvesting regime constant at 1993 level.'
+    ! write(0,*) 'SOFUN: holding harvesting regime constant at 1993 level.'
     interface%landuse(:) = getlanduse( &
                                       trim(runname), &
                                       trim(interface%params_siml%sitename), &
-                                      ! 1993, &
-                                      interface%steering%forcingyear, &
+                                      1993, &
+                                      ! interface%steering%forcingyear, &
                                       interface%params_siml%do_grharvest_forcing_file, &
                                       interface%params_siml%const_lu, &
                                       interface%params_siml%firstyeartrend &
