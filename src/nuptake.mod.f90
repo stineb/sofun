@@ -164,7 +164,7 @@ contains
           ! ACTIVE UPTAKE
           ! Active N uptake is a function of initial N available and C exuded
           !--------------------------------------------------------------------------
-          out_calc_dnup = calc_dnup( dcex(pft), pninorg(lu,jpngr)%n14, dtemp_soil(lu,jpngr) )
+          out_calc_dnup = calc_dnup( dcex(pft), pninorg(lu,jpngr)%n14, params_pft_plant(pft)%nfixer, dtemp_soil(lu,jpngr) )
 
           ! write(0,*) 'dcex(pft)      ', dcex(pft)      
           ! write(0,*) 'in SR nuptake: dcex(pft)            ',dcex(pft)      
@@ -211,16 +211,17 @@ contains
   end subroutine nuptake
 
 
-  function calc_dnup( cexu, n0, soiltemp ) result( out_calc_dnup )
+  function calc_dnup( cexu, n0, isnfixer, soiltemp ) result( out_calc_dnup )
     !/////////////////////////////////////////////////////////////////
     ! With a FUN-like approach:
     ! dCexu/dNup = K / (N0 - Nup); K=1/eff_nup
     ! => Nup(Cexu) = N0 * ( 1.0 - exp( - eff_nup * cexu ) )
     !-----------------------------------------------------------------
     ! arguments
-    real, intent(in) :: cexu      ! C exuded (gC/m2/d)
-    real, intent(in) :: n0        ! initial available N (gN/m2)
-    real, intent(in) :: soiltemp  ! soil temperature (deg C)
+    real, intent(in)    :: cexu      ! C exuded (gC/m2/d)
+    real, intent(in)    :: n0        ! initial available N (gN/m2)
+    logical, intent(in) :: isnfixer  ! true if pft is N-fixer
+    real, intent(in)    :: soiltemp  ! soil temperature (deg C)
 
     ! function return variable
     type( outtype_calc_dnup ) :: out_calc_dnup
@@ -233,48 +234,63 @@ contains
     real :: cexu_act
     real :: cexu_bnf
 
-    !-----------------------------------------------------------------
-    ! get cost of BNF at this soil temperature. Cost = dCex / dNfix
-    !-----------------------------------------------------------------
-    cost_bnf = fun_cost_fix( soiltemp )
-
-    !-----------------------------------------------------------------
-    ! get inverse of cost = efficiency: eff_bnf = dNfix / dCex
-    !-----------------------------------------------------------------
-    eff_bnf = 1.0 / cost_bnf
-
-    !-----------------------------------------------------------------
-    ! Find amount of active uptake (~Cex) for which eff_act = eff_bnf
-    ! eff_act = dNup_act / dCex
-    ! Nup_act = N0 * ( 1.0 - exp( -K * Cex ) )
-    ! dNup_act / dCex = K * exp( -K * Cex)
-    ! dNup_act / dCex = eff_bnf
-    ! ==> Cex = - 1/K * ln( bnf_eff/K )
-    !-----------------------------------------------------------------
-    cexu_act = -1.0 / params_nuptake%eff_nup * log( eff_bnf / ( n0 * params_nuptake%eff_nup ) )
-
-    if (cexu_act < cexu) then
+    if (isnfixer) then
       !-----------------------------------------------------------------
-      ! Remaining Cex is consumed by N fixing processes
+      ! N FIXER
       !-----------------------------------------------------------------
-      cexu_bnf = cexu - cexu_act
+      ! get cost of BNF at this soil temperature. Cost = dCex / dNfix
+      !-----------------------------------------------------------------
+      cost_bnf = fun_cost_fix( soiltemp )
 
       !-----------------------------------------------------------------
-      ! N uptake via BNF
+      ! get inverse of cost = efficiency: eff_bnf = dNfix / dCex
       !-----------------------------------------------------------------
-      out_calc_dnup%fix = cexu_bnf * eff_bnf
+      eff_bnf = 1.0 / cost_bnf
 
       !-----------------------------------------------------------------
-      ! N uptake via active uptake
+      ! Find amount of active uptake (~Cex) for which eff_act = eff_bnf
+      ! eff_act = dNup_act / dCex
+      ! Nup_act = N0 * ( 1.0 - exp( -K * Cex ) )
+      ! dNup_act / dCex = K * exp( -K * Cex)
+      ! dNup_act / dCex = eff_bnf
+      ! ==> Cex = - 1/K * ln( bnf_eff/K )
       !-----------------------------------------------------------------
-      out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu_act ) )
+      cexu_act = -1.0 / params_nuptake%eff_nup * log( eff_bnf / ( n0 * params_nuptake%eff_nup ) )
+
+      if (cexu_act < cexu) then
+        !-----------------------------------------------------------------
+        ! Remaining Cex is consumed by N fixing processes
+        !-----------------------------------------------------------------
+        cexu_bnf = cexu - cexu_act
+
+        !-----------------------------------------------------------------
+        ! N uptake via BNF
+        !-----------------------------------------------------------------
+        out_calc_dnup%fix = cexu_bnf * eff_bnf
+
+        !-----------------------------------------------------------------
+        ! N uptake via active uptake
+        !-----------------------------------------------------------------
+        out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu_act ) )
+
+      else
+
+        out_calc_dnup%fix = 0.0
+        out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
+
+      end if
 
     else
-
-      out_calc_dnup%fix = 0.0
+      !-----------------------------------------------------------------
+      ! NOT N FIXER
+      !-----------------------------------------------------------------
+      ! N uptake function of C exuded
       out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
 
-    end if
+      ! no N fixation considered
+      out_calc_dnup%fix = 0.0
+
+    end if 
 
 
   end function calc_dnup
@@ -361,7 +377,7 @@ contains
 
     ! uptake efficiency for equation
     ! dCexu/dNup = K / (N0 - Nup); K=1/eff_nup
-    params_nuptake%eff_nup = getparreal( 'params/params_nuptake_constexu.dat', 'eff_nup' )
+    params_nuptake%eff_nup = getparreal( 'params/params_nuptake.dat', 'eff_nup' )
 
     ! shape parameter of cost function of N fixation 
     ! Below parameters (minimumcostfix, fixoptimum, fixwidth ) are based on 
@@ -369,13 +385,13 @@ contains
     ! inverse of nitrogenase activity. 
     ! After Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
     ! (value from Gutschik 1981)
-    params_nuptake%minimumcostfix = getparreal( 'params/params_nuptake_constexu.dat', 'minimumcostfix' )
+    params_nuptake%minimumcostfix = getparreal( 'params/params_nuptake.dat', 'minimumcostfix' )
 
     ! shape parameter of cost function of N fixation 
-    params_nuptake%fixoptimum = getparreal( 'params/params_nuptake_constexu.dat', 'fixoptimum' )
+    params_nuptake%fixoptimum = getparreal( 'params/params_nuptake.dat', 'fixoptimum' )
  
     ! shape parameter of cost function of N fixation 
-    params_nuptake%fixwidth = getparreal( 'params/params_nuptake_constexu.dat', 'fixwidth' )
+    params_nuptake%fixwidth = getparreal( 'params/params_nuptake.dat', 'fixwidth' )
 
 
   end subroutine getpar_modl_nuptake

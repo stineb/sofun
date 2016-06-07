@@ -29,6 +29,7 @@ contains
     ! Defines grid variables
     !----------------------------------------------------------------
     use md_sofunutils, only: getparreal
+    use md_params_site, only: grid_siterun
 
     ! arguments
     character(len=*) :: sitename
@@ -37,9 +38,9 @@ contains
 
     ! xxx try. otherwise loop over sites and allocate values for each 
     ! site into vectors containing all sites
-    out_grid(:)%lon = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'longitude' )
-    out_grid(:)%lat = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'latitude' )
-    out_grid(:)%elv = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'altitude' )
+    out_grid(:)%lon = grid_siterun%lon_site
+    out_grid(:)%lat = grid_siterun%lat_site
+    out_grid(:)%elv = grid_siterun%elv_site
 
   end function getgrid
 

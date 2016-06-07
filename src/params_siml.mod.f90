@@ -34,9 +34,14 @@ module md_params_siml
     character(len=256) :: ndep_noy_forcing_file
     character(len=256) :: ndep_nhx_forcing_file
     character(len=256) :: do_grharvest_forcing_file
-    character(len=256) :: pftparfil
 
     logical :: prescr_monthly_fapar
+
+    ! activated PFTs
+    logical :: lTeBS
+    logical :: lGrC3
+    logical :: lGNC3
+    logical :: lGrC4
 
     ! booleans defining whether variable is written to output
     logical :: loutdgpp       
@@ -187,7 +192,6 @@ contains
     ! sitename         = getparstring( 'run/'//runname//'.sofun.parameter', 'sitename' )
     ! input_dir        = getparstring( 'run/'//runname//'.sofun.parameter', 'input_dir' )
     ! co2_forcing_file = getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file' )
-    ! pftparfil        = getparstring( 'run/'//runname//'.sofun.parameter', 'pftparfil' )
 
     call getparstring( 'run/'//runname//'.sofun.parameter', 'sitename', out_getpar_siml%sitename )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'input_dir', out_getpar_siml%input_dir )
@@ -195,7 +199,6 @@ contains
     call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_noy_forcing_file', out_getpar_siml%ndep_noy_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_nhx_forcing_file', out_getpar_siml%ndep_nhx_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'pftparfil', out_getpar_siml%pftparfil )
 
     out_getpar_siml%do_spinup            = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
     out_getpar_siml%const_co2            = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_co2' )
@@ -220,6 +223,11 @@ contains
       out_getpar_siml%spinupyears = 0
     endif
 
+    out_getpar_siml%lTeBS          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTeBS' )
+    out_getpar_siml%lGrC3          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGrC3' )
+    out_getpar_siml%lGNC3          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGNC3' )
+    out_getpar_siml%lGrC4          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGrC4' )
+    
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
     out_getpar_siml%loutdrd        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdrd' )
     out_getpar_siml%loutdtransp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtransp' )
@@ -236,7 +244,7 @@ contains
     out_getpar_siml%loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     out_getpar_siml%loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
-
+    
     out_getpar_siml%loutntransform = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutntransform') 
     out_getpar_siml%loutwaterbal   = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal')
     out_getpar_siml%loutlittersom  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlittersom' )

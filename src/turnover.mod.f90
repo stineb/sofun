@@ -166,14 +166,14 @@ contains
 
     ! add all organic (fixed) C to litter
     ! call cmvRec( lm_turn%c, lm_turn%c, plitt_af(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
-    call cmv( lm_turn%c, lm_turn%c, plitt_af(pft,jpngr)%c ) ! , scale=nind(pft,jpngr)
+    call cmv( lm_turn%c, lm_turn%c, plitt_af(pft,jpngr)%c, scale=nind(pft,jpngr) )
 
     ! retain fraction of N
     call nmv( nfrac( params_plant%f_nretain, lm_turn%n ), lm_turn%n, plabl(pft,jpngr)%n )
 
     ! rest goes to litter
     ! call nmvRec( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
-    call nmv( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n ) ! , scale=nind(pft,jpngr)
+    call nmv( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr) )
 
   end subroutine turnover_leaf
 

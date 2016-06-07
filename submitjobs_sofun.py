@@ -24,9 +24,12 @@ simsuite = 'gcme'
 if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
     exe = 'runpmodel'
     compiling_opt = 'pmodel'
-elif simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'gcme':
-    exe = 'runcnmodel'
+elif simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test':
+    exe = 'runcmodel'
     compiling_opt = 'cmodel'
+elif simsuite == 'gcme':
+    exe = 'runcnmodel'
+    compiling_opt = 'cnmodel'
 else:
     print 'simsuite not valid'
 

@@ -6,8 +6,10 @@
 
 gddbase                                 5.0
 ramp_pft_GrC3                           0.0
+ramp_pft_GNC3                           0.0
 ramp_pft_GrC4                           0.0
 phentype_pft_GrC3                       2.0
+phentype_pft_GNC3                       2.0
 phentype_pft_GrC4                       2.0
 
 #                                      |

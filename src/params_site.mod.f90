@@ -9,17 +9,19 @@ module md_params_site
   implicit none
 
   private 
-  public paramstype_site, getpar_site
+  public paramstype_site, getpar_site, grid_siterun
 
   type paramstype_site
+    integer :: soilcode
+  end type paramstype_site
+
+  type type_grid_siterun
     real :: lon_site
     real :: lat_site
     real :: elv_site
-    logical :: lTeBS
-    logical :: lGrC3
-    logical :: lGrC4
-    integer :: soilcode
-  end type paramstype_site
+  end type type_grid_siterun
+
+  type( type_grid_siterun ) :: grid_siterun
 
 contains
 
@@ -37,15 +39,9 @@ contains
   
     write(0,*) 'reading site parameter file ', 'site_paramfils/'//trim(sitename)//'.parameter ...'
 
-    ! out_getpar_site%lon_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'longitude' )
-    ! out_getpar_site%lat_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'latitude' )
-    ! out_getpar_site%elv_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'altitude' )
-
-    ! order is important and must be equal to order in site parameter file
-    ! as well as in getpar_modl()
-    out_getpar_site%lTeBS = getparlogical( 'site_paramfils/'//trim(sitename)//'.parameter', 'lTeBS' )
-    out_getpar_site%lGrC3 = getparlogical( 'site_paramfils/'//trim(sitename)//'.parameter', 'lGrC3' )
-    out_getpar_site%lGrC4 = getparlogical( 'site_paramfils/'//trim(sitename)//'.parameter', 'lGrC4' )
+    grid_siterun%lon_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'longitude' )
+    grid_siterun%lat_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'latitude' )
+    grid_siterun%elv_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'altitude' )
 
     ! dimension length (maxgrid) is 1 for site-scale simulations
     out_getpar_site%soilcode = getparint( 'site_paramfils/'//trim(sitename)//'.parameter', 'soilcode' )

@@ -578,7 +578,7 @@ contains
     avl           = clabl + npp - cexu
     if (avl<0.0) call deactivate_root( gpp, rd, clabl, orgpool(carbon(croot),nitrogen(nroot)), mresp_root, npp, cexu, airtemp )
     dc            = npp - cexu
-    out_calc_dnup = calc_dnup( cexu, pninorg(lu,usejpngr)%n14, soiltemp )
+    out_calc_dnup = calc_dnup( cexu, pninorg(lu,usejpngr)%n14, params_pft_plant(usepft)%nfixer, soiltemp )
     dn            = out_calc_dnup%fix + out_calc_dnup%act
 
     ! if (present(verbose)) then

@@ -31,9 +31,6 @@ module md_plant
   !-----------------------------------------------------------------------
   ! Parameters. Runtime read-in
   !-----------------------------------------------------------------------
-  ! type params_plant_type
-  ! end type params_plant_type
-
   type params_pft_plant_type
     character(len=4) :: pftname    ! standard PFT name with 4 characters length
     integer :: lu_category         ! land use category associated with PFT
@@ -79,15 +76,15 @@ contains
     ! important: Keep this order of reading PFT parameters fixed.
     !----------------------------------------------------------------
     pft = 0
-    if ( interface%params_site%lTeBS ) then
+    if ( interface%params_siml%lTeBS ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'TeBS' )
     end if 
-    if ( interface%params_site%lGrC3 ) then
+    if ( interface%params_siml%lGrC3 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GrC3' )
     end if
-    if ( interface%params_site%lGrC4 ) then
+    if ( interface%params_siml%lGrC4 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GrC4' )
     end if
@@ -120,17 +117,23 @@ contains
     ! GrC3 : C3 grass                          
     ! GrC4 : C4 grass     
     if (trim(pftname)=='GrC3') then
-      out_getpftparams%grass = .true.
-      out_getpftparams%tree  = .false.
+      out_getpftparams%grass   = .true.
+      out_getpftparams%tree    = .false.
       out_getpftparams%c3grass = .true.
       out_getpftparams%c4grass = .false.
-      out_getpftparams%nfixer = .false.
+      out_getpftparams%nfixer  = .false.
+    else if (trim(pftname)=='GNC3') then
+      out_getpftparams%grass   = .true.
+      out_getpftparams%tree    = .false.
+      out_getpftparams%c3grass = .true.
+      out_getpftparams%c4grass = .false.
+      out_getpftparams%nfixer  = .true.
     else if (trim(pftname)=='GrC4') then
-      out_getpftparams%grass = .true.
-      out_getpftparams%tree  = .false.
+      out_getpftparams%grass   = .true.
+      out_getpftparams%tree    = .false.
       out_getpftparams%c3grass = .false.
       out_getpftparams%c4grass = .true.
-      out_getpftparams%nfixer = .false.
+      out_getpftparams%nfixer  = .false.
     end if      
 
     ! land use category associated with PFT (provisional)
@@ -142,6 +145,18 @@ contains
       out_getpftparams%islu(lunat) = .false.
     end if
 
+    ! leaf decay constant, read in as [years-1], central value: 0.0 yr-1 for deciduous plants
+    out_getpftparams%k_decay_leaf = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_leaf' ) / ndayyear 
+
+    ! sapwood decay constant [days], read in as [years-1], central value: xxx
+    out_getpftparams%k_decay_sapw = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_sapw' ) / ndayyear 
+
+    ! root decay constant [days], read in as [years-1], central value: 1.04 (Shan et al., 1993; see Li et al., 2014)
+    out_getpftparams%k_decay_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_root' ) / ndayyear 
+
+    ! root C:N and N:C ratio (gC/gN and gN/gC)
+    out_getpftparams%r_cton_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'r_cton_root' )
+    out_getpftparams%r_ntoc_root = 1.0 / out_getpftparams%r_cton_root
 
   end function getpftparams
 

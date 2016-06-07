@@ -6,7 +6,6 @@ module md_npp
   ! Every module that implements 'npp' must contain this list 
   ! of subroutines (names that way).
   !   - npp
-  !   - getpar_modl_npp
   !   - ((interface%steering%init))io_npp
   !   - ((interface%steering%init))output_npp
   !   - getout_daily_npp

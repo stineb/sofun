@@ -5,21 +5,9 @@
 # write value behind this position:    |->
 
 lu_category_prov                        1.00000
-code_growthform                         3.00000
-code_nfixer                             0.00000
 k_decay_leaf                            2.50000
 k_decay_sapw                            9999999
 k_decay_root                            0.70000
-cton_soil                               9.77000
-reinickerp                              1.60000
-wooddens                                0.00000
-allom1                                  0.00000
-allom2                                  0.00000
-allom3                                  0.00000
-crownarea_max                           0.00000
-latosa                                  0.00000
-woodtosapw                              1.20000
-lmtorm0                                 0.75000
 r_cton_root                             50.0000
 
 #                                      |

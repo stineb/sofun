@@ -89,19 +89,21 @@ module md_plant
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
   !-----------------------------------------------------------------------
+  ! NON PFT-DEPENDENT PARAMETERS
   type params_plant_type
-    real :: r_root  ! Fine root-specific respiration rate (gC gC-1 d-1)
-    real :: r_sapw  ! Sapwood-specific respiration rate (gC gC-1 d-1)
-    real :: exurate  ! Fine root-specific C export rate (gC gC-1 d-1)
+    real :: r_root            ! Fine root-specific respiration rate (gC gC-1 d-1)
+    real :: r_sapw            ! Sapwood-specific respiration rate (gC gC-1 d-1)
+    real :: exurate           ! Fine root-specific C export rate (gC gC-1 d-1)
     real :: kbeer             ! canopy light extinction coefficient
     real :: f_nretain         ! fraction of N retained at leaf abscission 
     real :: fpc_tree_max      ! maximum fractional plant coverage of trees
     real :: growtheff         ! growth respiration coefficient = yield factor [unitless]
+    real :: cton_soil         ! C:N ratio of soil organic matter (consider this to be equal to that of microbial biomass)
   end type params_plant_type
 
   type( params_plant_type ) :: params_plant
 
-
+  ! PFT-DEPENDENT PARAMETERS
   type params_pft_plant_type
     character(len=4) :: pftname    ! standard PFT name with 4 characters length
     integer :: lu_category         ! land use category associated with PFT
@@ -205,6 +207,8 @@ contains
     ! C export rate per unit root mass
     params_plant%exurate = getparreal( 'params/params_plant.dat', 'exurate' )
 
+    ! C:N ratio of soil organic matter [1]
+    params_plant%cton_soil = getparreal( 'params/params_plant.dat', 'cton_soil' )
 
     !----------------------------------------------------------------
     ! PFT DEPENDENT PARAMETERS
@@ -212,17 +216,24 @@ contains
     ! important: Keep this order of reading PFT parameters fixed.
     !----------------------------------------------------------------
     pft = 0
-    if ( interface%params_site%lTeBS ) then
+    if ( interface%params_siml%lTeBS ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'TeBS' )
-    end if 
-    if ( interface%params_site%lGrC3 ) then
+
+    else if ( interface%params_siml%lGrC3 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GrC3' )
-    end if
-    if ( interface%params_site%lGrC4 ) then
+
+    else if ( interface%params_siml%lGNC3 ) then
+      pft = pft + 1
+      params_pft_plant(pft) = getpftparams( 'GNC3' )
+
+    else if ( interface%params_siml%lGrC4 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GrC4' )
+
+    else
+      stop 'PLANT:GETPAR_MODL_PLANT: PFT name not valid. See run/<simulationname>.sofun.parameter'
     end if
     npft_site = pft
 
@@ -240,8 +251,6 @@ contains
 
     ! local variables
     real :: lu_category_prov    ! land use category associated with PFT (provisional)
-    real :: code_growthform
-    real :: code_nfixer
 
     ! function return variable
     type( params_pft_plant_type ) :: out_getpftparams
@@ -253,19 +262,25 @@ contains
     ! GrC3 : C3 grass                          
     ! GrC4 : C4 grass     
     if (trim(pftname)=='GrC3') then
-      out_getpftparams%grass = .true.
-      out_getpftparams%tree  = .false.
+      out_getpftparams%grass   = .true.
+      out_getpftparams%tree    = .false.
       out_getpftparams%c3grass = .true.
       out_getpftparams%c4grass = .false.
-      out_getpftparams%nfixer = .false.
+      out_getpftparams%nfixer  = .false.
+    else if (trim(pftname)=='GNC3') then
+      out_getpftparams%grass   = .true.
+      out_getpftparams%tree    = .false.
+      out_getpftparams%c3grass = .true.
+      out_getpftparams%c4grass = .false.
+      out_getpftparams%nfixer  = .true.
     else if (trim(pftname)=='GrC4') then
-      out_getpftparams%grass = .true.
-      out_getpftparams%tree  = .false.
+      out_getpftparams%grass   = .true.
+      out_getpftparams%tree    = .false.
       out_getpftparams%c3grass = .false.
       out_getpftparams%c4grass = .true.
-      out_getpftparams%nfixer = .false.
+      out_getpftparams%nfixer  = .false.
     end if      
-
+    
     ! land use category associated with PFT (provisional)
     lu_category_prov = getparreal( trim('params/params_plant_'//trim(pftname)//'.dat'), 'lu_category_prov' )
     if (lu_category_prov==1.0) then

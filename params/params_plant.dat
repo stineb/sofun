@@ -11,6 +11,7 @@ growtheff                               0.600000
 r_root                                  0.91300
 r_sapw                                  0.04400
 exurate                                 0.002000
+cton_soil                               9.77000
 
 #                                      |
 # write value *behind* this position:  |->
