@@ -89,8 +89,8 @@ program main
     !----------------------------------------------------------------
     interface%climate(:) = getclimate_site( &
                                           trim(interface%params_siml%sitename), &
-                                          1992 &
-                                          ! interface%steering%climateyear &
+                                          ! 1992 &
+                                          interface%steering%climateyear &
                                           )
     ! print*,'dtemp:'
     ! print*,interface%climate(1)%dtemp(:)
@@ -105,8 +105,8 @@ program main
     interface%pco2 = getco2( &
                             trim(runname), &
                             trim(interface%params_siml%sitename), &
-                            1993, &
-                            ! interface%steering%forcingyear, &
+                            ! 1993, &
+                            interface%steering%forcingyear, &
                             interface%params_siml%const_co2, &
                             interface%params_siml%firstyeartrend,&
                             interface%params_siml%co2_forcing_file&
@@ -114,8 +114,8 @@ program main
     interface%ndep_field(:) = getndep( &
                                       trim(runname), &
                                       trim(interface%params_siml%sitename), &
-                                      1993, &
-                                      ! interface%steering%forcingyear, &
+                                      ! 1993, &
+                                      interface%steering%forcingyear, &
                                       interface%params_siml%firstyeartrend, &
                                       interface%params_siml%const_ndep, &
                                       interface%params_siml%ndep_noy_forcing_file, &
@@ -126,8 +126,8 @@ program main
     interface%landuse(:) = getlanduse( &
                                       trim(runname), &
                                       trim(interface%params_siml%sitename), &
-                                      1993, &
-                                      ! interface%steering%forcingyear, &
+                                      ! 1993, &
+                                      interface%steering%forcingyear, &
                                       interface%params_siml%do_grharvest_forcing_file, &
                                       interface%params_siml%const_lu, &
                                       interface%params_siml%firstyeartrend &

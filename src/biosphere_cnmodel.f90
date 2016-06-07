@@ -63,11 +63,6 @@ subroutine biosphere( c_uptake )
   ! ! XXX PMODEL_TEST
   ! print*, 'WARNING: FAPAR = 1.00 USED IN PMODEL'
 
-  ! print*,'temp ', sum( interface%climate(1)%dtemp(:) ) / 365.0
-  ! print*,'prec ', sum( interface%climate(1)%dprec(:) )
-  ! print*,'fsun ', sum( interface%climate(1)%dfsun(:) ) / 365.0
-  ! print*,'vpd ',  sum( interface%climate(1)%dvpd(:) ) / 365.0
-
   !----------------------------------------------------------------
   ! INITIALISATIONS
   ! ----------------------------------------------------------------
@@ -480,8 +475,6 @@ subroutine biosphere( c_uptake )
     if (verbose) write(0,*) '... done'
 
   end do
-
-  ! stop 'end of the year'
 
   ! xxx insignificant
   c_uptake = 0.0

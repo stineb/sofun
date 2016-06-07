@@ -447,7 +447,6 @@ contains
     !  Generic function to return variable of type 'orgpool' and size
     !  of a fraction 'frac' of source pool ('from')
     !----------------------------------------------------------------
- 
     ! arguments
     real, intent(in)          :: frac
     type(orgpool), intent(in) :: from
