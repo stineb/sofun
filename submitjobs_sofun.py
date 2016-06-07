@@ -25,7 +25,6 @@ if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
     exe = 'runpmodel'
     compiling_opt = 'pmodel'
 elif simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'gcme':
-    # exe = 'runcmodel'
     exe = 'runcnmodel'
     compiling_opt = 'cmodel'
 else:

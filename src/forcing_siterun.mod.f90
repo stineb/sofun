@@ -115,10 +115,10 @@ contains
 
     do jpngr=1,maxgrid
       dprec_rel(:)               = climate(jpngr)%dprec(:)/sum(climate(jpngr)%dprec(:))
-      ! out_getndep(jpngr)%dnoy(:) = andep_noy * dprec_rel(:)
-      ! out_getndep(jpngr)%dnhx(:) = andep_nhx * dprec_rel(:)
-      out_getndep(jpngr)%dnoy(:) = andep_noy / 365.0
-      out_getndep(jpngr)%dnhx(:) = andep_nhx / 365.0
+      out_getndep(jpngr)%dnoy(:) = andep_noy * dprec_rel(:)
+      out_getndep(jpngr)%dnhx(:) = andep_nhx * dprec_rel(:)
+      ! out_getndep(jpngr)%dnoy(:) = andep_noy / 365.0
+      ! out_getndep(jpngr)%dnhx(:) = andep_nhx / 365.0
       out_getndep(jpngr)%dtot(:) = out_getndep(jpngr)%dnoy(:) + out_getndep(jpngr)%dnhx(:)
     end do
 
