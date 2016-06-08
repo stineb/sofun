@@ -118,6 +118,9 @@ module md_plant
     real    :: k_decay_root        ! root decay constant [year-1]
     real    :: r_cton_root         ! C:N ratio in roots
     real    :: r_ntoc_root         ! N:C ratio in roots (inverse of 'r_cton_root')
+    real    :: ncw_min             ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area    
+    real    :: r_n_cw_v            ! slope in the relationship of non-metabolic versus metabolic N per leaf area              
+    real    :: r_ctostructn_leaf   ! constant ratio of C to structural N
   end type params_pft_plant_type
 
   type( params_pft_plant_type ), dimension(npft) :: params_pft_plant
@@ -302,6 +305,15 @@ contains
     ! root C:N and N:C ratio (gC/gN and gN/gC)
     out_getpftparams%r_cton_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'r_cton_root' )
     out_getpftparams%r_ntoc_root = 1.0 / out_getpftparams%r_cton_root
+
+    ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area
+    out_getpftparams%ncw_min = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'ncw_min' )
+
+    ! slope in the relationship of non-metabolic versus metabolic N per leaf area
+    out_getpftparams%r_n_cw_v = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'r_n_cw_v' )
+
+    ! constant ratio of C to structural N
+    out_getpftparams%r_ctostructn_leaf = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'r_ctostructn_leaf' )
 
   end function getpftparams
 
