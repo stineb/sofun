@@ -39,10 +39,11 @@ module md_nuptake
   ! Uncertain (unknown) parameters. Runtime read-in
   !-----------------------------------------------------------------------
   type params_nuptake_type
-    real :: eff_nup           ! uptake efficiency for equation
-    real :: minimumcostfix    ! minimum cost of N fixation (at optimal temperature)
-    real :: fixoptimum        ! optimum temperature for N fixation
-    real :: fixwidth          ! shape parameter for width of N fixation cost function
+    real :: eff_nup           ! uptake efficiency for equation (gN/gC)
+    real :: minimumcostfix    ! Minimum cost of N-fixation at optimal soil temperature, is 4.8 gC/gN, value from Gutschik (1981)
+    real :: fixoptimum        ! Optimum soil temperature for N fixation. Taken to be equal to optimum temperature for nitrogenase activity as given by Houlton et al. (2008), Nature: 25.15+-0.66 
+    real :: a_param_fix       ! shape parameter of the N fixation function taken to be equal to nitrogenase activity function given Houlton et al. (2008), Nature: -3.62+-0.52
+    real :: b_param_fix       ! shape parameter of the N fixation function taken to be equal to nitrogenase activity function given Houlton et al. (2008), Nature: 0.27+-0.04 
   end type params_nuptake_type
 
   type( params_nuptake_type ) :: params_nuptake
@@ -238,14 +239,9 @@ contains
       !-----------------------------------------------------------------
       ! N FIXER
       !-----------------------------------------------------------------
-      ! get cost of BNF at this soil temperature. Cost = dCex / dNfix
+      ! Get efficiency of BNF in gN/gC as a function of soil temperature
       !-----------------------------------------------------------------
-      cost_bnf = fun_cost_fix( soiltemp )
-
-      !-----------------------------------------------------------------
-      ! get inverse of cost = efficiency: eff_bnf = dNfix / dCex
-      !-----------------------------------------------------------------
-      eff_bnf = 1.0 / cost_bnf
+      eff_bnf = eff_fix( soiltemp )
 
       !-----------------------------------------------------------------
       ! Find amount of active uptake (~Cex) for which eff_act = eff_bnf
@@ -296,22 +292,29 @@ contains
   end function calc_dnup
 
 
-  function fun_cost_fix( soiltemp ) result( out_fun_cost_fix )
+  function eff_fix( soiltemp ) result( out_eff_fix )
     !////////////////////////////////////////////////////////////////
-    ! Cost of symbiotic N fixation is the inverse of nitrogenase activity
-    ! after Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
-    ! (value from Gutschik 1981)
-    !--------------------------------------------------------------------------  
+    ! Calculates N fixation efficiency (dNfix/dCex) as a function of 
+    ! soil temperature. The functional form is chosen to be equal to
+    ! the (fitted) relationship between soil temperature and nitro-
+    ! genase activity derived by Houlton et al. (2008), Nature. The 
+    ! maximum efficiency is 0.21 gN/gC, which corresponds to the 
+    ! inverse of the "minimum cost of N-fixation" of 4.8 gC/gN given 
+    ! Gutschik (1981). At higher and lower temperature, efficiency de-
+    ! clines to zero.
+    !-----------------------------------------------------------------
     ! arguments    
     real, intent(in) :: soiltemp
 
+    ! local variables
+    real, parameter :: norm = 1.25  ! used to normalise efficiency (nitrogenase activiy) function to 1 at optimal soil temperature (see Houlton et al., 2008)
+
     ! function return variable
-    real :: out_fun_cost_fix                 ! function return variable
+    real :: out_eff_fix             ! function return variable
 
-    out_fun_cost_fix = params_nuptake%minimumcostfix + exp((soiltemp-params_nuptake%fixoptimum)**2/(2*params_nuptake%fixwidth**2))    ! inverse gauss function  (take WARMEST layer)
+    out_eff_fix = 1.0 / params_nuptake%minimumcostfix * norm * exp( params_nuptake%a_param_fix + params_nuptake%b_param_fix * soiltemp * ( 1.0 - 0.5 * soiltemp / params_nuptake%fixoptimum ) )
 
-  end function fun_cost_fix
-  
+  end function eff_fix
 
 
   ! function calc_avail_ninorg( ninorg, wtot ) result( avail_ninorg )
@@ -375,23 +378,23 @@ contains
     !----------------------------------------------------------------
     use md_sofunutils, only: getparreal
 
-    ! uptake efficiency for equation
-    ! dCexu/dNup = K / (N0 - Nup); K=1/eff_nup
+    ! initial N uptake efficiency from soil
     params_nuptake%eff_nup = getparreal( 'params/params_nuptake.dat', 'eff_nup' )
 
-    ! shape parameter of cost function of N fixation 
-    ! Below parameters (minimumcostfix, fixoptimum, fixwidth ) are based on 
-    ! the assumption that the cost of symbiotic N fixation is the 
-    ! inverse of nitrogenase activity. 
-    ! After Houlton et al., 2008. Minimum cost of N-fixation is 4.8 gC/gN
-    ! (value from Gutschik 1981)
+    ! Minimum cost of N-fixation is 4.8 gC/gN, value from Gutschik (1981)
     params_nuptake%minimumcostfix = getparreal( 'params/params_nuptake.dat', 'minimumcostfix' )
 
-    ! shape parameter of cost function of N fixation 
+    ! Optimum temperature for N fixation. Taken to be equal to optimum temperature for 
+    ! nitrogenase activity as given by Houlton et al. (2008), Nature: 25.15+-0.66 
     params_nuptake%fixoptimum = getparreal( 'params/params_nuptake.dat', 'fixoptimum' )
  
-    ! shape parameter of cost function of N fixation 
-    params_nuptake%fixwidth = getparreal( 'params/params_nuptake.dat', 'fixwidth' )
+    ! shape parameter of the N fixation function taken to be equal to nitrogenase activity 
+    ! function given Houlton et al. (2008), Nature: -3.62+-0.52 
+    params_nuptake%a_param_fix = getparreal( 'params/params_nuptake.dat', 'a_param_fix' )
+
+    ! shape parameter of the N fixation function taken to be equal to nitrogenase activity 
+    ! function given Houlton et al. (2008), Nature: 0.27+-0.04 
+    params_nuptake%b_param_fix = getparreal( 'params/params_nuptake.dat', 'b_param_fix' )
 
 
   end subroutine getpar_modl_nuptake

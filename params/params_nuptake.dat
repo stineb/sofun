@@ -5,9 +5,10 @@
 # write value behind this position:    |->
 
 eff_nup                                 0.500000
-minimumcostfix                          4.320000
-fixoptimum                              25.20000
-fixwidth                                8.000000
+minimumcostfix                          4.800000
+fixoptimum                              25.15000
+a_param_fix                             -3.62000
+b_param_fix                             0.270000
 
 #                                      |
 # write value *behind* this position:  |->
