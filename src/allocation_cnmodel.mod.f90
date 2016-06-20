@@ -233,27 +233,27 @@ contains
           ! print*, 'meanmppfd',meanmppfd(moy) ! ok
 
           ! print*, 'calculating LAI for Cleaf = 2.857124'
-          ! test = get_lai( 2.857124, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+          ! test = get_lai_old( 2.857124, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
           ! print*, 'lai                       =', test
           ! print*, '----------------------------------'
 
           ! print*, 'calculating LAI for Cleaf = 100'
-          ! test = get_lai( 100.0, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+          ! test = get_lai_old( 100.0, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
           ! print*, 'lai                       =', test
           ! print*, '----------------------------------'
 
           ! print*, 'calculating LAI for Cleaf = 2.857124'
-          ! test = get_lai( 2.857124, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+          ! test = get_lai_old( 2.857124, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
           ! print*, 'lai                       =', test
           ! print*, '----------------------------------'
 
           ! print*, 'calculating LAI for Cleaf = 0.5'
-          ! test = get_lai( 0.5  , solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+          ! test = get_lai_old( 0.5  , solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
           ! print*, 'lai                       =', test
           ! print*, '----------------------------------'
 
           ! print*, 'calculating LAI for Cleaf = 100'
-          ! test = get_lai( 100.0, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+          ! test = get_lai_old( 100.0, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
           ! print*, 'lai                       =', test
           ! ! print*, '----------------------------------'
 
@@ -644,12 +644,21 @@ contains
       cleaf  = cleaf + mydcleaf
       ! print*, 'mydcleaf     ', mydcleaf 
 
-      ! print*, 'cleaf = 0.5', get_lai( 0.5  , meanmppfd(:), nv(:) )
-      ! print*, 'cleaf = 100', get_lai( 100.0, meanmppfd(:), nv(:))
+      ! print*, 'cleaf = 0.5', get_lai_old( 0.5  , meanmppfd(:), nv(:) )
+      ! print*, 'cleaf = 100', get_lai_old( 100.0, meanmppfd(:), nv(:))
       ! stop
 
       ! Calculate LAI as a function of leaf C
-      lai = get_lai( pft, cleaf, meanmppfd(:), nv(:) )
+      ! cleaf = 1.0
+      ! print*,'cleaf ', cleaf
+      lai = get_lai_old( pft, cleaf, meanmppfd(:), nv(:) )
+      ! print*,'lai, old method ', lai
+
+      ! lai = get_lai( pft, cleaf, meanmppfd(:), nv(:) )
+      ! print*,'lai, new method ', lai 
+
+      ! stop 'problem with new method for small cleaf'
+
       ! print*, 'in allocate_leaf: cleaf, lai :', cleaf, lai
       ! print*, 'mydcleaf ', mydcleaf 
       ! ! stop
@@ -674,7 +683,7 @@ contains
 
     else
 
-      lai      =  get_lai( pft, cleaf, meanmppfd(:), nv(:) )
+      lai      =  get_lai_old( pft, cleaf, meanmppfd(:), nv(:) )
       mydnleaf = 0.0
 
     end if
@@ -749,6 +758,54 @@ contains
 
 
   function get_lai( pft, cleaf, meanmppfd, nv ) result( lai )
+    !////////////////////////////////////////////////////////////////
+    ! XXX problem with 'calc_wapr' and therefore with 'get_lai' for
+    ! small 'cleaf'.
+    !----------------------------------------------------------------
+    use md_lambertw, only: calc_wapr
+    use md_plant, only: params_pft_plant, params_plant
+
+    ! arguments
+    integer, intent(in)                 :: pft
+    real, intent(in)                    :: cleaf
+    real, dimension(nmonth), intent(in) :: meanmppfd
+    real, dimension(nmonth), intent(in) :: nv 
+
+    ! function return variable
+    real :: lai
+
+    ! local variables
+    real    :: alpha, beta, gamma ! variable substitutes
+    real    :: maxnv
+    real    :: arg_to_lambertw
+    integer :: nerror
+
+
+    if (cleaf>0.0) then
+
+      ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
+      ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
+      maxnv = maxval( meanmppfd(:) * nv(:) )
+      alpha = maxnv * params_pft_plant(pft)%r_n_cw_v
+      beta  = params_pft_plant(pft)%ncw_min
+      gamma = cleaf / ( c_molmass * params_pft_plant(pft)%r_ctostructn_leaf ) 
+
+      arg_to_lambertw = alpha / beta * exp( params_plant%kbeer * ( alpha - gamma ) / beta )
+
+      lai = - alpha / beta + gamma / beta + calc_wapr( arg_to_lambertw, 0, nerror, 9999 )
+
+      print*,'error of calc_wapr: ', nerror
+
+    else
+
+      lai = 0.0
+
+    end if
+
+  end function get_lai
+
+
+  function get_lai_old( pft, cleaf, meanmppfd, nv ) result( lai )
     !////////////////////////////////////////////////////////////////
     ! Calculates LAI as a function of canopy-level leaf-C:
     ! Cleaf = Mc * c * ( I0 * ( 1 - exp( -kL ) * nv * b + L * a ) )
@@ -846,7 +903,7 @@ contains
 
     end if
 
-  end function get_lai
+  end function get_lai_old
 
 
   function mustbe_zero_for_lai( mylai ) result( mustbe_zero )
