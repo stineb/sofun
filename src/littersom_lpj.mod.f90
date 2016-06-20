@@ -74,7 +74,7 @@ module md_littersom
 
 contains
 
-  subroutine littersom( jpngr, doy )
+  subroutine littersom( jpngr, doy, dtemp )
     !////////////////////////////////////////////////////////////////
     !  Litter and SOM decomposition and nitrogen mineralisation.
     !  1st order decay of litter and SOM _pools, governed by temperature
@@ -96,6 +96,7 @@ contains
     ! arguments
     integer, intent(in) :: jpngr                    ! grid cell number
     integer, intent(in) :: doy                      ! day of year
+    real, intent(in)    :: dtemp                    ! daily temperature (deg C)
 
     ! local variables
     integer :: lu                                   ! counter variable for landuse class
@@ -205,8 +206,8 @@ contains
           ! Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
           !-------------------------------------------------------------------------
           ! define decomposition _rates for current soil temperature and moisture 
-          klitt_af(lu) = params_littersom%klitt_af10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
-          klitt_as(lu) = params_littersom%klitt_as10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_af(lu) = params_littersom%klitt_af10 * ftemp( dtemp,                "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_as(lu) = params_littersom%klitt_as10 * ftemp( dtemp,                "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
           klitt_bg(lu) = params_littersom%klitt_bg10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
           kexu(lu)     = params_littersom%kexu10     * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
 

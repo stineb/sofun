@@ -366,7 +366,7 @@ subroutine biosphere( c_uptake )
         if (verbose) orgtmp1 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
         if (verbose) orgtmp2 = orgpool( drhet(1), pninorg(1,jpngr) )
         !----------------------------------------------------------------
-        call littersom( jpngr, day )
+        call littersom( jpngr, day, interface%climate(jpngr)%dtemp(day) )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '              ==> returned: '
         if (verbose) write(0,*) '              plitt  = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )

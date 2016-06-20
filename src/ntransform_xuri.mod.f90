@@ -229,7 +229,7 @@ contains
       no3_inc    = params_ntransform%maxnitr * ftemp_ninorg * nh4_d
       dnitr(lu)  = no3_inc
       nh4_d      = nh4_d - no3_inc   
-      dnloss(lu) = dnloss(lu) + no3_inc
+      ! dnloss(lu) = dnloss(lu) ! + no3_inc XXXX NOOOOO this is not lost 
 
       
       ! NO from nitrification (Eq.3, Tab.8, XP08)

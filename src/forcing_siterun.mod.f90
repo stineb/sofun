@@ -112,6 +112,9 @@ contains
     andep_nhx = getvalreal( 'sitedata/ndep/'//trim(sitename)//'/'//trim(ndep_nhx_forcing_file), readyear )
 
     ! Distribute annual Ndep to days by daily precipitation
+    write(0,*) 'GETNDEP: use fertilisation of 10 gN/yr '
+    andep_noy = 5
+    andep_nhx = 5
 
     do jpngr=1,maxgrid
       dprec_rel(:)               = climate(jpngr)%dprec(:)/sum(climate(jpngr)%dprec(:))
