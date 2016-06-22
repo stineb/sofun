@@ -106,7 +106,10 @@ contains
     real, save :: nh3max
     
     real       :: dnmax                                          ! labile carbon availability modifier
-    real       :: ftemp_ninorg                                   ! temperature modifier
+    real       :: ftemp_vol                                      ! temperature modifier for ammonia volatilization
+    real       :: ftemp_nitr                                     ! temperature modifier for nitrification
+    real       :: ftemp_denitr                                   ! temperature modifier for denitrification
+    real       :: ftemp_diffus                                   ! temperature modifier for gas difussion from soil
     
     real       :: no3_inc, n2o_inc, no_inc, no2_inc, n2_inc      ! temporary variables
     real       :: tmp                                            ! temporary variable
@@ -128,7 +131,6 @@ contains
     ddenitr(:) = 0.0
     dnitr(:)   = 0.0
     dnleach(:) = 0.0
-
     
     if ( dm==1 .and. mo==1 ) then
       !///////////////////////////////////////////////////////////////////////
@@ -170,7 +172,7 @@ contains
       ! must rather be wtot_up which includes water below permanent wilting point (see waterbalance.F).
       !------------------------------------------------------------------
       ! reference temperature: 25°C
-      ftemp_ninorg = min( 1.0, ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=25.0 ) )   
+      ftemp_vol = min( 1.0, ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=25.0 ) )   
 
 
       !///////////////////////////////////////////////////////////////////////
@@ -178,7 +180,7 @@ contains
       !-----------------------------------------------------------------------
       ! use mw1 for monthly timestep and wpool for daily, because this is updated daily
       ! XXX nh3max is not considered in the equations presented in the paper! XXX
-      dnvol(lu)  = ( nh3max * ( soilphys(lu)%wscal * ( 1.0 - soilphys(lu)%wscal ) ) * ftemp_ninorg * ftemp_ninorg * exp( 2.0 * ( ph_soil - 10.0 ) ) ) * nh4
+      dnvol(lu)  = ( nh3max * ( soilphys(lu)%wscal * ( 1.0 - soilphys(lu)%wscal ) ) * ftemp_vol * ftemp_vol * exp( 2.0 * ( ph_soil - 10.0 ) ) ) * nh4
       nh4        = nh4 - dnvol(lu)
       dnloss(lu) = dnloss(lu) + dnvol(lu)
 
@@ -221,12 +223,12 @@ contains
       !///////////////////////////////////////////////////////////////////////
       ! NITRIFICATION in aerobic microsites (ntransform.cpp:123)
       !------------------------------------------------------------------
-      ftemp_ninorg = max( min( (((70.0-dtemp_soil(lu,jpngr))/(70.0-38.0))**12.0) * exp(12.0*(dtemp_soil(lu,jpngr)-38.0)/(70.0-38.0)), 1.0), 0.0)
+      ftemp_nitr = max( min( (((70.0-dtemp_soil(lu,jpngr))/(70.0-38.0))**12.0) * exp(12.0*(dtemp_soil(lu,jpngr)-38.0)/(70.0-38.0)), 1.0), 0.0)
 
       
       ! gross nitrification rate (Eq.1, Tab.8, XP08)
       !------------------------------------------------------------------
-      no3_inc    = params_ntransform%maxnitr * ftemp_ninorg * nh4_d
+      no3_inc    = params_ntransform%maxnitr * ftemp_nitr * nh4_d
       dnitr(lu)  = no3_inc
       nh4_d      = nh4_d - no3_inc   
       ! dnloss(lu) = dnloss(lu) ! + no3_inc XXXX NOOOOO this is not lost 
@@ -254,7 +256,7 @@ contains
       ! DENITRIFICATION (ntransform.cpp:177) in anaerobic microsites
       !------------------------------------------------------------------
       ! reference temperature: 22°C
-      ftemp_ninorg = ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=22.0 )
+      ftemp_denitr = ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=22.0 )
 
       
       ! Effect of labile carbon availability on denitrification (Eq.2, Tab.9, XP08)
@@ -266,7 +268,7 @@ contains
       
       ! Denitrification ratio, NO3->NO2 (Eq.3, Tab.9, XP08)
       !------------------------------------------------------------------
-      no2_inc     = min( dnmax * ftemp_ninorg * no3_w / ( params_ntransform%kn + no3_w ) * 1000.0, no3_w )
+      no2_inc     = min( dnmax * ftemp_denitr * no3_w / ( params_ntransform%kn + no3_w ) * 1000.0, no3_w )
       if (no2_inc>no3_w) stop 'no2_inc > no3_w'
       
       no3_w       = no3_w - no2_inc
@@ -277,7 +279,7 @@ contains
       
       ! Transformation NO2->N2 (Eq.4., Tab.9, XP08)
       !------------------------------------------------------------------
-      n2_inc = min( dnmax * ftemp_ninorg * no2_w / ( params_ntransform%kn + no2_w ) * 1000.0, no2_w )
+      n2_inc = min( dnmax * ftemp_denitr * no2_w / ( params_ntransform%kn + no2_w ) * 1000.0, no2_w )
       if (n2_inc>no2_w) stop 'n2_inc > no2_w'
 
       no2_w = no2_w - n2_inc
@@ -285,11 +287,11 @@ contains
       
       ! N2O from denitrification (Eq.6, Tab.9, XP08)
       !------------------------------------------------------------------
-      ! n2o_inc = 0.018d0*ftemp_ninorg*(1.01d0-0.21d0*soilphys(lu)%wscal)*n2_inc  !Colin says 0.018 was used here. Code I got had 0.015
+      ! n2o_inc = 0.018d0*ftemp_denitr*(1.01d0-0.21d0*soilphys(lu)%wscal)*n2_inc  !Colin says 0.018 was used here. Code I got had 0.015
       ! Factor reduced from 1.8% to 1.2% to get ~6.5 TgN/yr N2O emissions
-      ! n2o_inc = dnitr2n2o*ftemp_ninorg*(1.01-0.21*soilphys(lu)%wscal)*n2_inc
+      ! n2o_inc = dnitr2n2o*ftemp_denitr*(1.01-0.21*soilphys(lu)%wscal)*n2_inc
       ! XXX try: Changed this to from 0.21 to 1.0 in order to get plausible results
-      n2o_inc = params_ntransform%dnitr2n2o * ftemp_ninorg * ( 1.01 - 0.8 * soilphys(lu)%wscal ) * n2_inc
+      n2o_inc = params_ntransform%dnitr2n2o * ftemp_denitr * ( 1.01 - 0.8 * soilphys(lu)%wscal ) * n2_inc
       n2_inc  = n2_inc - n2o_inc
       
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr) + n2o_inc
@@ -298,9 +300,9 @@ contains
 
       ! NO from denitrification (Eq.5, Tab.9, XP08)
       !------------------------------------------------------------------
-      ! no_inc = 0.0001*ftemp_ninorg*(1.01-0.21*soilphys(lu)%wscal)*n2_inc
+      ! no_inc = 0.0001*ftemp_denitr*(1.01-0.21*soilphys(lu)%wscal)*n2_inc
       ! XXX try: Changed this to from 0.21 to 1.0 in order to get plausible results
-      no_inc = 0.0001 * ftemp_ninorg * ( 1.01 - 0.8 * soilphys(lu)%wscal ) * n2_inc
+      no_inc = 0.0001 * ftemp_denitr * ( 1.01 - 0.8 * soilphys(lu)%wscal ) * n2_inc
       n2_inc = n2_inc - no_inc
 
       no_w(lu,jpngr) = no_w(lu,jpngr) + no_inc
@@ -343,23 +345,23 @@ contains
       ! Diffusion of NO, N2O and N2 from the soil (ntransform.cpp:281)
       !------------------------------------------------------------------
       ! reference temperature: 25°C. Corresponds to Eq.1, Tab.10, Xu-Ri & Prentice, 2008
-      ftemp_ninorg = min( 1.0, ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=25.0 ))
+      ftemp_diffus = min( 1.0, ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=25.0 ))
 
       ! Nitrification _fluxes
       !------------------------------------------------------------------
-      tmp = ftemp_ninorg*(1.0-soilphys(lu)%wscal)*no_d(lu,jpngr)
+      tmp = ftemp_diffus*(1.0-soilphys(lu)%wscal)*no_d(lu,jpngr)
       no_d(lu,jpngr) = no_d(lu,jpngr)-tmp
       
-      tmp = ftemp_ninorg*(1.0-soilphys(lu)%wscal)*n2o_d(lu,jpngr)
+      tmp = ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2o_d(lu,jpngr)
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr)-tmp
 
       
       ! Denitrification _fluxes
       !------------------------------------------------------------------
-      tmp = ftemp_ninorg*(1.0-soilphys(lu)%wscal)*no_w(lu,jpngr)
+      tmp = ftemp_diffus*(1.0-soilphys(lu)%wscal)*no_w(lu,jpngr)
       no_w(lu,jpngr) = no_w(lu,jpngr)-tmp
       
-      tmp = ftemp_ninorg*(1.0-soilphys(lu)%wscal)*n2o_w(lu,jpngr)
+      tmp = ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2o_w(lu,jpngr)
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr)-tmp
                  
 
@@ -367,9 +369,9 @@ contains
       ! ! Total _fluxes (XXX should be equal to sum of nitrification and
       ! ! denitrification _fluxes. XXX)
       ! !------------------------------------------------------------------
-      ! dno(lu) = ftemp_ninorg*(1.0-soilphys(lu)%wscal)*no
-      ! dn2o(lu)= ftemp_ninorg*(1.0-soilphys(lu)%wscal)*n2o
-      ! dn2(lu) = ftemp_ninorg*(1.0-soilphys(lu)%wscal)*n2
+      ! dno(lu) = ftemp_diffus*(1.0-soilphys(lu)%wscal)*no
+      ! dn2o(lu)= ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2o
+      ! dn2(lu) = ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2
 
       ! write(0,*) 'n2o ', n2o
 
