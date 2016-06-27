@@ -45,15 +45,6 @@ module md_allocation
 
   type(statetype_eval_imbalance)      :: state_eval_imbalance
 
-  type statetype_mustbe_zero_for_lai
-    real :: cleaf
-    real :: maxnv
-    real :: usepft
-  end type statetype_mustbe_zero_for_lai
-
-  ! states area global within module (instead of being passed on as arguments)
-  type(statetype_mustbe_zero_for_lai) :: state_mustbe_zero_for_lai
-
   logical, parameter :: write_logfile_eval_imbalance = .false.
   real :: test
 
@@ -143,8 +134,9 @@ contains
         ! print*, 'croot          ', proot(pft,jpngr)%c%c12
         ! print*, 'C:N in leaves  ', cton( pleaf(pft,jpngr), default=0.0 )
 
-
         if ( plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 .and. dtemp>0.0 ) then
+
+          ! print*,'allocation on day, month ', usedoy, usemoy
 
           !------------------------------------------------------------------
           ! Store state variables for optimisation
@@ -441,6 +433,10 @@ contains
     ! Evaluates C:N ratio of new assimilation after allocation 
     ! versus whole-plant C:N ratio after allocation. Optimal 
     ! allocation is where the two are equal. 
+    ! Returns positive value (eval) if C:N ratio of new acquisition
+    ! is greater than C:N ratio of new growth => put more to roots
+    ! Returns negative value (eval) if C:N ratio of new acquisition
+    ! is smaller than C:N ratio of new growth => put more to leaves
     !---------------------------------------------------------
     use md_classdefs, only: orgpool, nitrogen
     use md_plant, only: params_pft_plant, params_plant, get_fapar, &
@@ -591,11 +587,26 @@ contains
     if ((dn + nlabl)==0.0) then
       eval = -999.0
     else
-      !     |---------------------------------------------------|  |------------------------------------|
-      eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
-      !     |---------------------------------------------------|  |------------------------------------|
-      !     |lab. pool C:N ratio after acq. nxt. day            |  | current whole-plant C:N ratio      |
-      !     |---------------------------------------------------|  |------------------------------------|
+      ! ! ORIGINAL: C:N OF ACQUISITION IS EQUAL TO C:N OF CURRENT WHOLE-PLANT
+      ! !     |---------------------------------------------------|  |------------------------------------|
+      ! eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
+      ! !     |---------------------------------------------------|  |------------------------------------|
+      ! !     |lab. pool C:N ratio after acq. nxt. day            |  | current whole-plant C:N ratio      |
+      ! !     |---------------------------------------------------|  |------------------------------------|
+
+      ! ALTERNATIVE: C:N OF ACQUISITION IS EQUAL TO C:N OF INVESTMENT
+      ! print*,'dn + nlabl',dn + nlabl
+      ! print*,'mydnleaf ', mydnleaf
+      ! print*,'mydnroot ', mydnroot
+
+      ! print*,'mydcleaf', mydcleaf
+      ! print*,'mydcroot', mydcroot
+      !     |---------------------------------------------------|  |-------------------------------------------------|
+      eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( mydcleaf + mydcroot ) / ( mydnleaf + mydnroot )
+      !     |---------------------------------------------------|  |-------------------------------------------------|
+      !     |lab. pool C:N ratio after acq. nxt. day            |  | C:N ratio of new growth                         |
+      !     |---------------------------------------------------|  |-------------------------------------------------|
+
     end if
 
     ! write(0,*) 'new assimilates stoichiometry: ', growtheff * (dc + clabl) / (dn + nlabl)
@@ -636,31 +647,32 @@ contains
     real :: nleaf0
     real :: dclabl, dnlabl
 
+    ! xxx debug
+    real :: lai_tmp
+
     ! find LAI, given new leaf mass. This is necessary to get leaf-N as 
     ! a function of LAI.
     if (mydcleaf>0.0) then
 
-      ! print*, 'cleaf before ', cleaf 
       cleaf  = cleaf + mydcleaf
-      ! print*, 'mydcleaf     ', mydcleaf 
 
-      ! print*, 'cleaf = 0.5', get_lai( 0.5  , meanmppfd(:), nv(:) )
-      ! print*, 'cleaf = 100', get_lai( 100.0, meanmppfd(:), nv(:))
-      ! stop
+      lai_tmp = lai 
 
       ! Calculate LAI as a function of leaf C
       lai = get_lai( pft, cleaf, meanmppfd(:), nv(:) )
-      ! print*, 'in allocate_leaf: cleaf, lai :', cleaf, lai
-      ! print*, 'mydcleaf ', mydcleaf 
-      ! ! stop
 
       ! calculate canopy-level leaf N as a function of LAI
       nleaf0   = nleaf      
       nleaf    = get_leaf_n_canopy( pft, lai, meanmppfd(:), nv(:) )
       mydnleaf = nleaf - nleaf0
-      ! if (mydnleaf>0.0) then
-      !   print*, 'mydcleaf/dnleaf ', mydcleaf/mydnleaf 
-      ! end if
+
+      ! if (mydnleaf<0) then
+      !   print*,'mycnleaf ',   mydcleaf
+      !   print*,'mydnleaf ',   mydnleaf
+      !   print*,'lai before ', lai_tmp
+      !   print*,'lai after  ', lai
+      !   stop 'error: positive dcleaf and negative dnleaf!'
+      ! end if 
 
       ! subtract from labile pool, making sure pool does not get negative
       dclabl = min( clabl, 1.0 / params_plant%growtheff * mydcleaf )
@@ -670,11 +682,9 @@ contains
       clabl  = clabl - dclabl
       nlabl  = nlabl - dnlabl
 
-      ! write(0,*) 'r_ntoc_root(pft)  ', r_ntoc_root(pft)
-
     else
 
-      lai      =  get_lai( pft, cleaf, meanmppfd(:), nv(:) )
+      lai      = get_lai( pft, cleaf, meanmppfd(:), nv(:) )
       mydnleaf = 0.0
 
     end if
@@ -750,16 +760,11 @@ contains
 
   function get_lai( pft, cleaf, meanmppfd, nv ) result( lai )
     !////////////////////////////////////////////////////////////////
-    ! Calculates LAI as a function of canopy-level leaf-C:
-    ! Cleaf = Mc * c * ( I0 * ( 1 - exp( -kL ) * nv * b + L * a ) )
-    ! Cannot be solved analytically for L = f(Cleaf). Therefore, 
-    ! numerical root-searching algorithm is applied so that
-    ! Cleaf / ( Mc * c ) - ( I0 * ( 1 - exp( -kL ) * nv * b + L * a ) ) = 0
-    ! This is implemented in function 'mustbe_zero_for_lai()'.
+    ! XXX problem with 'calc_wapr' and therefore with 'get_lai' for
+    ! small 'cleaf'.
     !----------------------------------------------------------------
-    ! use md_params_core, only: nmonth
-    use md_findroot_fzeroin
-    use md_plant, only: params_pft_plant
+    use md_lambertw, only: calc_wapr
+    use md_plant, only: params_pft_plant, params_plant
 
     ! arguments
     integer, intent(in)                 :: pft
@@ -767,138 +772,37 @@ contains
     real, dimension(nmonth), intent(in) :: meanmppfd
     real, dimension(nmonth), intent(in) :: nv 
 
-    ! local variables
-    real                 :: abserr
-    real                 :: relerr
-    real                 :: lower
-    real                 :: upper
-    integer, parameter   :: nmax = 100
-    type(outtype_zeroin) :: out_zeroin
-
-    ! xxx debug
-    real :: test
-
-    ! function return value
+    ! function return variable
     real :: lai
 
     ! local variables
-    real :: maxnv
+    real    :: alpha, beta, gamma ! variable substitutes
+    real    :: maxnv
+    real    :: arg_to_lambertw
+    integer :: nerror
+
 
     if (cleaf>0.0) then
-      ! Metabolic N is predicted and is optimised at a monthly time scale. 
-      ! Leaf traits are calculated based on metabolic N => cellwall N => cellwall C / LMA
-      ! Leaves get thinner at the bottom of the canopy => increasing LAI through the season comes at a declining C and N cost.
+
       ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
       ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
       maxnv = maxval( meanmppfd(:) * nv(:) )
-      ! print*, 'maxnv ', maxnv
-      ! stop
 
-      ! print*, 'what is LAI for Cleaf=', cleaf
-      ! print*, 'maxnv ', maxnv
+      alpha = maxnv * params_pft_plant(pft)%r_n_cw_v
+      beta  = params_pft_plant(pft)%ncw_min
+      gamma = cleaf / ( c_molmass * params_pft_plant(pft)%r_ctostructn_leaf ) 
 
-      ! Update state. This derived-type variable is "global" within this module
-      state_mustbe_zero_for_lai%cleaf  = cleaf
-      state_mustbe_zero_for_lai%maxnv  = maxnv
-      state_mustbe_zero_for_lai%usepft = pft
+      arg_to_lambertw = alpha * params_plant%kbeer / beta * exp( (alpha - gamma) * params_plant%kbeer / beta )
 
-      ! Calculate initial guess for LAI (always larger than actual LAI)
-      lower = 0.0 ! uninformed lower bound
-      upper = 1.0 / ( c_molmass * params_pft_plant(pft)%ncw_min * params_pft_plant(pft)%r_ctostructn_leaf ) * cleaf
+      lai = 1.0 / (beta * params_plant%kbeer ) * ( -alpha * params_plant%kbeer + gamma * params_plant%kbeer + beta * calc_wapr( arg_to_lambertw, 0, nerror, 9999 ) )
 
-      ! upper = 20.0
-      ! print*, 'upper ', upper
-
-      ! print*, 'lower =', lower
-      ! test = mustbe_zero_for_lai( lower ) 
-      ! print*, '=> test =', test
-
-      ! print*, 'upper =', upper
-      ! test = mustbe_zero_for_lai( upper ) 
-      ! print*, '=> test =', test
-
-      ! call function zeroin to find root (value of LAI for which evaluation expression is zero)
-      abserr=100.0*XMACHEPS !*10e5
-      relerr=1000.0*XMACHEPS !*10e5
-
-      ! print*, 'abserr', abserr
-      ! print*, 'relerr', relerr
-      ! stop 'here'
-
-      ! print*, '*** finding root of mustbe_zero_for_lai ***'
-      out_zeroin = zeroin( mustbe_zero_for_lai, abserr, relerr, nmax, lower, upper )
-      if ( out_zeroin%error /= 0 ) then
-        lai = 0.0
-        print*, 'error code', out_zeroin%error
-        stop 'zeroin for mustbe_zero_for_lai() failed'
-      else
-        lai = out_zeroin%root
-      end if
-
-      ! print*, 'out_zeroin', out_zeroin
-      ! print*, 'cleaf', cleaf
-      ! print*, 'lai', lai
-      ! stop
-    
     else
 
       lai = 0.0
 
     end if
-
-  end function get_lai
-
-
-  function mustbe_zero_for_lai( mylai ) result( mustbe_zero )
-    !/////////////////////////////////////////////////////////
-    ! This function returns value of the expression 'mustbe_zero'. 
-    ! If expression is zero, then 'mylai' is a root and is the 
-    ! LAI for a given Cleaf (meanmppfd, cleaf, and nv are 
-    ! passed on to this function as a derived type state.)
-    !---------------------------------------------------------
-    ! Cleaf = c_molmass * params_pft_plant(pft)%r_ctostructn_leaf * N_canop_cellwall
-    ! N_canop_cellwall = LAI * params_pft_plant(pft)%ncw_min + nv * Iabs * params_pft_plant(pft)%r_n_cw_v
-    ! Iabs = meanmppfd * (1-exp( -kbeer * LAI))
-    ! ==> Cleaf = f(LAI) = c_molmass * params_pft_plant(pft)%r_ctostructn_leaf * [ meanmppfd * (1-exp( -kbeer * LAI)) * nv * params_pft_plant(pft)%r_n_cw_v + LAI * params_pft_plant(pft)%ncw_min ]
-    ! ==> LAI = f(Cleaf) leads to inhomogenous equation. Therefore apply root finding algorithm so that:
-    ! 0 = cleaf / ( c_molmass * params_pft_plant(pft)%r_ctostructn_leaf ) - meanmppfd * ( 1.0 - exp( -1.0 * kbeer * mylai ) ) * nv * params_pft_plant(pft)%r_n_cw_v - mylai * params_pft_plant(pft)%ncw_min
-    !---------------------------------------------------------
-    use md_plant, only: params_plant, get_fapar, params_pft_plant
-
-    ! arguments
-    real, intent(in) :: mylai
-
-    ! function return value
-    real :: mustbe_zero
-
-    ! local variables
-    real    :: mycleaf
-    real    :: mymaxnv
-    integer :: usepft
-
-    ! print*, '--- in mustbe_zero_for_lai with mydcleaf=', mylai
-
-    ! Read from updated state. This derived-type variable is "global" within this module
-    mycleaf = state_mustbe_zero_for_lai%cleaf
-    mymaxnv = state_mustbe_zero_for_lai%maxnv
-    usepft  = state_mustbe_zero_for_lai%usepft
-
-    ! print*, '----------'
-    ! print*, 'inside mustbe_zero_for_lai: '
-    ! print*, 'mylai', mylai
-    ! print*, 'mycleaf', mycleaf
-    ! print*, 'mymaxnv', mymaxnv
-
-    ! mustbe_zero = cleaf / ( c_molmass * params_pft_plant(pft)%r_ctostructn_leaf ) - meanmppfd * nv * ( 1.0 - exp( -1.0 * kbeer * mylai ) ) * params_pft_plant(pft)%r_n_cw_v - mylai * params_pft_plant(pft)%ncw_min
-    ! mustbe_zero = cleaf / ( c_molmass * params_pft_plant(pft)%r_ctostructn_leaf ) - maxnv * ( 1.0 - exp( -1.0 * kbeer * mylai ) ) * params_pft_plant(pft)%r_n_cw_v - mylai * params_pft_plant(pft)%ncw_min
     
-    mustbe_zero = mycleaf / ( c_molmass * params_pft_plant(usepft)%r_ctostructn_leaf ) - mymaxnv * get_fapar( mylai ) * params_pft_plant(usepft)%r_n_cw_v - mylai * params_pft_plant(usepft)%ncw_min
-
-    ! print*, 'mustbe_zero                           ', mustbe_zero
-    ! print*, '-------------'
-
-
-  end function mustbe_zero_for_lai
+  end function get_lai
 
 
   function get_rcton_init( pft, meanmppfd, nv ) result( rcton )

@@ -74,8 +74,11 @@ contains
         if (params_pft_plant(pft)%grass) then
 
           ! grasses have continuous turnover
-          dleaf = params_pft_plant(pft)%k_decay_leaf
+          ! dleaf = params_pft_plant(pft)%k_decay_leaf
           droot = params_pft_plant(pft)%k_decay_root
+
+          ! Alternative turnover function: increase turnover rate towards high LAI
+          dleaf = (lai_ind(pft,jpngr)/params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
         else
 

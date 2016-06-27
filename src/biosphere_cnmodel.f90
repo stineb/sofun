@@ -56,6 +56,7 @@ subroutine biosphere( c_uptake )
 
   ! xxx verbose
   logical, parameter :: verbose = .false.
+  logical, parameter :: baltest = .false.
   real            :: cbal1, cbal2
   type( orgpool ) :: orgtmp1, orgtmp2, orgbal1, orgbal2
   real :: eps = 9.999e-8
@@ -277,8 +278,8 @@ subroutine biosphere( c_uptake )
         if (verbose) cbal2 = dgpp(1) - ( plabl(1,jpngr)%c%c12 - orgtmp1%c%c12 ) - dcex(1) - drleaf(1) - drroot(1)
         if (verbose) write(0,*) '        gpp - npp - ra_maint          = ', cbal1
         if (verbose) write(0,*) '        gpp - dlabl - dcex - ra_maint = ', cbal2
-        if (verbose .and. abs(cbal1)>eps) stop 'balance 1 not satisfied'
-        if (verbose .and. abs(cbal2)>eps) stop 'balance 2 not satisfied'
+        if (verbose .and. baltest .and. abs(cbal1)>eps) stop 'balance 1 not satisfied'
+        if (verbose .and. baltest .and. abs(cbal2)>eps) stop 'balance 2 not satisfied'
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
@@ -318,8 +319,8 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '   --- balance: '
         if (verbose) orgbal1 = orgminus( orgminus(   orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) ),   orgtmp2   ), orgminus(   orgtmp1,   orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )   ) )
         if (verbose) write(0,*) '       dlitt - dplant                = ', orgbal1
-        if (verbose .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
-        if (verbose .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (verbose .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (verbose .and. baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
@@ -344,8 +345,8 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '    --- balance: '
         if (verbose) orgbal1 = orgminus( orgminus( orgtmp1, orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) ) ), orgminus( mharv(1,jpngr), orgtmp2 ) )
         if (verbose) write(0,*) '        dharv - dplant  = ', orgbal1
-        if (verbose .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
-        if (verbose .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (verbose .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (verbose .and. baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
@@ -428,7 +429,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '   --- balance: '
         if (verbose) orgbal1 = orgminus( orgminus( orgminus( orgtmp1, plabl(1,jpngr) ), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr) ), orgtmp2 ) )        
         if (verbose) write(0,*) '       dlabl - drgrow - dleaf - droot=', orgbal1
-        if (verbose .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (verbose .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
         if (verbose) write(0,*) '... done'
 
 
