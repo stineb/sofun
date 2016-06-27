@@ -134,8 +134,9 @@ contains
         ! print*, 'croot          ', proot(pft,jpngr)%c%c12
         ! print*, 'C:N in leaves  ', cton( pleaf(pft,jpngr), default=0.0 )
 
-
         if ( plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 .and. dtemp>0.0 ) then
+
+          ! print*,'allocation on day, month ', usedoy, usemoy
 
           !------------------------------------------------------------------
           ! Store state variables for optimisation
@@ -432,6 +433,10 @@ contains
     ! Evaluates C:N ratio of new assimilation after allocation 
     ! versus whole-plant C:N ratio after allocation. Optimal 
     ! allocation is where the two are equal. 
+    ! Returns positive value (eval) if C:N ratio of new acquisition
+    ! is greater than C:N ratio of new growth => put more to roots
+    ! Returns negative value (eval) if C:N ratio of new acquisition
+    ! is smaller than C:N ratio of new growth => put more to leaves
     !---------------------------------------------------------
     use md_classdefs, only: orgpool, nitrogen
     use md_plant, only: params_pft_plant, params_plant, get_fapar, &
@@ -590,6 +595,12 @@ contains
       ! !     |---------------------------------------------------|  |------------------------------------|
 
       ! ALTERNATIVE: C:N OF ACQUISITION IS EQUAL TO C:N OF INVESTMENT
+      ! print*,'dn + nlabl',dn + nlabl
+      ! print*,'mydnleaf ', mydnleaf
+      ! print*,'mydnroot ', mydnroot
+
+      ! print*,'mydcleaf', mydcleaf
+      ! print*,'mydcroot', mydcroot
       !     |---------------------------------------------------|  |-------------------------------------------------|
       eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( mydcleaf + mydcroot ) / ( mydnleaf + mydnroot )
       !     |---------------------------------------------------|  |-------------------------------------------------|
@@ -636,11 +647,16 @@ contains
     real :: nleaf0
     real :: dclabl, dnlabl
 
+    ! xxx debug
+    real :: lai_tmp
+
     ! find LAI, given new leaf mass. This is necessary to get leaf-N as 
     ! a function of LAI.
     if (mydcleaf>0.0) then
 
       cleaf  = cleaf + mydcleaf
+
+      lai_tmp = lai 
 
       ! Calculate LAI as a function of leaf C
       lai = get_lai( pft, cleaf, meanmppfd(:), nv(:) )
@@ -649,6 +665,14 @@ contains
       nleaf0   = nleaf      
       nleaf    = get_leaf_n_canopy( pft, lai, meanmppfd(:), nv(:) )
       mydnleaf = nleaf - nleaf0
+
+      ! if (mydnleaf<0) then
+      !   print*,'mycnleaf ',   mydcleaf
+      !   print*,'mydnleaf ',   mydnleaf
+      !   print*,'lai before ', lai_tmp
+      !   print*,'lai after  ', lai
+      !   stop 'error: positive dcleaf and negative dnleaf!'
+      ! end if 
 
       ! subtract from labile pool, making sure pool does not get negative
       dclabl = min( clabl, 1.0 / params_plant%growtheff * mydcleaf )
@@ -660,7 +684,7 @@ contains
 
     else
 
-      lai      =  get_lai( pft, cleaf, meanmppfd(:), nv(:) )
+      lai      = get_lai( pft, cleaf, meanmppfd(:), nv(:) )
       mydnleaf = 0.0
 
     end if
@@ -777,7 +801,7 @@ contains
       lai = 0.0
 
     end if
-
+    
   end function get_lai
 
 
