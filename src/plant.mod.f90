@@ -113,7 +113,8 @@ module md_plant
     logical :: nfixer              ! whether plant is capable of symbiotically fixing N
     logical :: c3grass             ! whether plant follows C3 photosynthesis
     logical :: c4grass             ! whether plant follows C4 photosynthesis
-    real    :: k_decay_leaf        ! leaf decay constant [year-1]
+    real    :: k_decay_leaf_base   ! base leaf decay constant [year-1]
+    real    :: k_decay_leaf_width  ! shape parameter for turnover function if LAI
     real    :: k_decay_sapw        ! sapwood decay constant [year-1]
     real    :: k_decay_root        ! root decay constant [year-1]
     real    :: r_cton_root         ! C:N ratio in roots
@@ -294,7 +295,10 @@ contains
     end if
 
     ! leaf decay constant, read in as [years-1], central value: 0.0 yr-1 for deciduous plants
-    out_getpftparams%k_decay_leaf = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_leaf' ) / ndayyear 
+    out_getpftparams%k_decay_leaf_base = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_leaf_base' ) / ndayyear 
+
+    ! shape parameter for turnover function if LAI
+    out_getpftparams%k_decay_leaf_width = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_leaf_width' )
 
     ! sapwood decay constant [days], read in as [years-1], central value: xxx
     out_getpftparams%k_decay_sapw = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_sapw' ) / ndayyear 
