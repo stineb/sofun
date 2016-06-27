@@ -93,23 +93,24 @@ contains
     ! should be water-filled pore space = ( (porosity - ice) - (total fluid water volume) ) / dz
 
     ! arguments
-    integer, intent(in) :: mo                              ! month
-    integer, intent(in) :: dm                              ! day of the current month
-    integer, intent(in) :: jpngr                           ! grid cell number
-    real, intent(in)    :: dndep                           ! daily N deposition [gN/d]
-    real, intent(in)    :: aprec                           ! annual total precipitation [mm/d]
+    integer, intent(in) :: mo            ! month
+    integer, intent(in) :: dm            ! day of the current month
+    integer, intent(in) :: jpngr         ! grid cell number
+    real, intent(in)    :: dndep         ! daily N deposition [gN/d]
+    real, intent(in)    :: aprec         ! annual total precipitation [mm/d]
     
     ! local variables
-    integer    :: lu                                             ! gridcell unit counter variable
+    integer    :: lu                     ! gridcell unit counter variable
     
     real, save :: ph_soil
     real, save :: nh3max
     
-    real       :: dnmax                                          ! labile carbon availability modifier
-    real       :: ftemp_vol                                      ! temperature modifier for ammonia volatilization
-    real       :: ftemp_nitr                                     ! temperature modifier for nitrification
-    real       :: ftemp_denitr                                   ! temperature modifier for denitrification
-    real       :: ftemp_diffus                                   ! temperature modifier for gas difussion from soil
+    real       :: dnmax                  ! labile carbon availability modifier
+    real       :: ftemp_vol              ! temperature modifier for ammonia volatilization
+    real       :: ftemp_nitr             ! temperature modifier for nitrification
+    real       :: ftemp_denitr           ! temperature modifier for denitrification
+    real       :: ftemp_diffus           ! temperature modifier for gas difussion from soil
+    real       :: fph                    ! soil-pH modifier
     
     real       :: no3_inc, n2o_inc, no_inc, no2_inc, n2_inc      ! temporary variables
     real       :: tmp                                            ! temporary variable
@@ -117,11 +118,11 @@ contains
     real       :: nh4      ! ammonium [gN/m2]
     real       :: no3      ! nitrate [gN/m2]
     
-    real       :: nh4_w, no3_w, no2_w                            ! anaerobic _pools
-    real       :: nh4_d, no3_d, no2_d                            ! aerobic _pools
-    real       :: doc_w, no, n2o, n2                             ! anaerobic _pools
+    real       :: nh4_w, no3_w, no2_w    ! anaerobic pools
+    real       :: nh4_d, no3_d, no2_d    ! aerobic pools
+    real       :: doc_w, no, n2o, n2     ! anaerobic pools
     
-    real       :: doc_d                                          ! aerobic _pools
+    real       :: doc_d                  ! aerobic pools
 
     !///////////////////////////////////////////////////////////////////////
     ! INITIALIZATION 
@@ -180,7 +181,8 @@ contains
       !-----------------------------------------------------------------------
       ! use mw1 for monthly timestep and wpool for daily, because this is updated daily
       ! XXX nh3max is not considered in the equations presented in the paper! XXX
-      dnvol(lu)  = ( nh3max * ( soilphys(lu)%wscal * ( 1.0 - soilphys(lu)%wscal ) ) * ftemp_vol * ftemp_vol * exp( 2.0 * ( ph_soil - 10.0 ) ) ) * nh4
+      fph        = exp( 2.0 * ( ph_soil - 10.0 ) )
+      dnvol(lu)  = nh3max * ftemp_vol**2 * fph * soilphys(lu)%wscal * ( 1.0 - soilphys(lu)%wscal ) * nh4
       nh4        = nh4 - dnvol(lu)
       dnloss(lu) = dnloss(lu) + dnvol(lu)
 
