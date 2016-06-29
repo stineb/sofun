@@ -69,8 +69,8 @@ contains
 
   function getndep( runname, sitename, forcingyear, firstyeartrend, const_ndep, ndep_noy_forcing_file, ndep_nhx_forcing_file, climate ) result( out_getndep )
     !////////////////////////////////////////////////////////////////
-    ! Function reads this year's annual ndeposition and distributes it
-    !  over days according to daily precipitation.
+    ! Function reads this year's annual Ndeposition and distributes it
+    ! over days according to daily precipitation.
     !----------------------------------------------------------------
     use md_params_core, only: dummy
 

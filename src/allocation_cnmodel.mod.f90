@@ -586,6 +586,8 @@ contains
     !-------------------------------------------------------------------
     if ((dn + nlabl)==0.0) then
       eval = -999.0
+    else if (( mydnleaf + mydnroot )==0.0) then
+      eval = 999.0
     else
       ! ! ORIGINAL: C:N OF ACQUISITION IS EQUAL TO C:N OF CURRENT WHOLE-PLANT
       ! !     |---------------------------------------------------|  |------------------------------------|
@@ -601,6 +603,10 @@ contains
 
       ! print*,'mydcleaf', mydcleaf
       ! print*,'mydcroot', mydcroot
+      ! print*,'(dn + nlabl)',(dn + nlabl)
+      ! print*,'( mydnleaf + mydnroot )',( mydnleaf + mydnroot )
+      ! print*,' ( mydcleaf + mydcroot )', ( mydcleaf + mydcroot )
+
       !     |---------------------------------------------------|  |-------------------------------------------------|
       eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( mydcleaf + mydcroot ) / ( mydnleaf + mydnroot )
       !     |---------------------------------------------------|  |-------------------------------------------------|
