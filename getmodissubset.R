@@ -111,7 +111,7 @@ get_evi_modis_250m <- function( sitename, lon, lat ){
                 getmodissubset_evi( 
                                     sitename, lon, lat, modis$start[idx], modis$end[idx], 
                                     paste( 
-                                            "/alphadata01/bstocker/data/modis_fluxnet_cutouts/data_",
+                                            "../../data/modis_fluxnet_cutouts/data_",
                                             sitename, 
                                             "_", 
                                             as.Date(modis$start[idx]), 

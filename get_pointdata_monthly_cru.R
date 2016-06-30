@@ -4,7 +4,7 @@ get_pointdata_monthly_cru <- function( varnam, lon, lat, yr=NA ){
   ## monthly dataframe (at the right location).
   ## Original data in K, returns data in K
   ##--------------------------------------------------------------------
-  filn   <- paste( "../../../data/cru/ts_3.22/cru_ts3.22.1901.2013.", varnam, ".dat.nc", sep="" )
+  filn   <- paste( "../../data/cru/ts_3.22/cru_ts3.22.1901.2013.", varnam, ".dat.nc", sep="" )
   if (!is.na(yr)){
     istart <- max( 1     , (yr - 1901) * nmonth + 1 )
     iend   <- max( nmonth, (yr - 1901) * nmonth + nmonth )    

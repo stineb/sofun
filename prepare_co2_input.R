@@ -1,6 +1,6 @@
 library(zoo)
 
-df <- read.table( "/alphadata01/bstocker/data/co2/cCO2_rcp85_const850-1765.dat", col.names=c("year","co2") )
+df <- read.table( "../../data/co2/cCO2_rcp85_const850-1765.dat", col.names=c("year","co2") )
 
 len <- length(df[,1])
 
@@ -47,6 +47,6 @@ for (i in 1:len){
   print(formatted.step.out[i])
 }
 
-writeLines(formatted.ctrl.out,"/alphadata01/bstocker/sofun/trunk/input/sitedata/co2/SwissFACE/cCO2_ctrl.dat")
-writeLines(formatted.step.out,"/alphadata01/bstocker/sofun/trunk/input/sitedata/co2/SwissFACE/cCO2_step.dat")
-writeLines(formatted.grad.out,"/alphadata01/bstocker/sofun/trunk/input/sitedata/co2/SwissFACE/cCO2_grad.dat")
+writeLines(formatted.ctrl.out,"../trunk/input/sitedata/co2/SwissFACE/cCO2_ctrl.dat")
+writeLines(formatted.step.out,"../trunk/input/sitedata/co2/SwissFACE/cCO2_step.dat")
+writeLines(formatted.grad.out,"../trunk/input/sitedata/co2/SwissFACE/cCO2_grad.dat")

@@ -4,7 +4,7 @@ get_pointdata_fapar3g <- function( lon, lat ){
   ## monthly dataframe (at the right location).
   ## Original data in K, returns data in K
   ##--------------------------------------------------------------------
-  filn   <- "../../../data/fAPAR/fAPAR3g/fAPAR3g_monthly_1982_2011.nc"
+  filn   <- "../../data/fAPAR/fAPAR3g/fAPAR3g_monthly_1982_2011.nc"
 
   if ( file.exists( filn ) ){
     

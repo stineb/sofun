@@ -6,7 +6,7 @@ get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap ){
   ##--------------------------------------------------------------------
   
   ## rain
-  filn <- paste( "../../../data/watch_wfdei/Rainf_daily/Rainf_daily_WFDEI_CRU_", sprintf( "%4d", yr ), sprintf( "%02d", mo ), ".nc", sep="" )
+  filn <- paste( "../../data/watch_wfdei/Rainf_daily/Rainf_daily_WFDEI_CRU_", sprintf( "%4d", yr ), sprintf( "%02d", mo ), ".nc", sep="" )
   if ( file.exists( filn ) ){
     print( paste( "extracting from", filn ) )
     system( paste( "./extract_pointdata_byfil.sh", filn, "Rainf", "lon", "lat", lon, lat ) )
@@ -18,7 +18,7 @@ get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap ){
   # print( paste( "rain only: ", mprec))
 
   ## snow
-  filn <- paste( "../../../data/watch_wfdei/Snowf_daily/Snowf_daily_WFDEI_CRU_", sprintf( "%4d", yr ), sprintf( "%02d", mo ), ".nc", sep="" )
+  filn <- paste( "../../data/watch_wfdei/Snowf_daily/Snowf_daily_WFDEI_CRU_", sprintf( "%4d", yr ), sprintf( "%02d", mo ), ".nc", sep="" )
   if ( file.exists( filn ) ){
     print( paste( "extracting from", filn ) )
     system( paste( "./extract_pointdata_byfil.sh", filn, "Snowf", "lon", "lat", lon, lat ) )

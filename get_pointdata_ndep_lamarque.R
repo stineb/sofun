@@ -4,7 +4,7 @@ get_pointdata_ndep_lamarque <- function( lon, lat, yr=NA ){
   ## monthly dataframe (at the right location).
   ## Original data in K, returns data in K
   ##--------------------------------------------------------------------
-  filn   <- "../../../data/ndep_lamarque/Ndep_Lamarque11cc_historical_halfdeg_NEW.nc"
+  filn   <- "../../data/ndep_lamarque/Ndep_Lamarque11cc_historical_halfdeg_NEW.nc"
   if (!is.na(yr)){
     istart <- max( 1   , (yr - 1850) + 1 )
     iend   <- max( 2009, (yr - 1850) + 1 )    

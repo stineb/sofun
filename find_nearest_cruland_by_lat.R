@@ -2,7 +2,7 @@ find_nearest_cruland_by_lat <- function( lon, lat ){
 
   library(ncdf)
 
-  nc <- open.ncdf( "../data/cru/cru_ts_3.23/cru_ts3.23.190101.tmp.dat.nc", readunlim=FALSE )
+  nc <- open.ncdf( "../../data/cru/cru_ts_3.23/cru_ts3.23.190101.tmp.dat.nc", readunlim=FALSE )
   crufield <- get.var.ncdf( nc, varid="TMP" )
   lon_vec <- get.var.ncdf( nc, varid="LON" )
   lat_vec <- get.var.ncdf( nc, varid="LAT" )

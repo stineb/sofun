@@ -79,10 +79,10 @@ for (i in 1:len){
   formatted_nhx.grad.out[i] <- sprintf("%16.6f    %f", out_nhx.grad$year[i], out_nhx.grad$ndep[i])
 }
 
-writeLines(formatted_nhx.ctrl.out,"/alphadata01/bstocker/sofun/trunk/input/sitedata/ndep/SwissFACE/ndep_nhx_ctrl.dat")
-writeLines(formatted_nhx.step.out,"/alphadata01/bstocker/sofun/trunk/input/sitedata/ndep/SwissFACE/ndep_nhx_step.dat")
-writeLines(formatted_nhx.grad.out,"/alphadata01/bstocker/sofun/trunk/input/sitedata/ndep/SwissFACE/ndep_nhx_grad.dat")
+writeLines(formatted_nhx.ctrl.out,"../trunk/input/sitedata/ndep/SwissFACE/ndep_nhx_ctrl.dat")
+writeLines(formatted_nhx.step.out,"../trunk/input/sitedata/ndep/SwissFACE/ndep_nhx_step.dat")
+writeLines(formatted_nhx.grad.out,"../trunk/input/sitedata/ndep/SwissFACE/ndep_nhx_grad.dat")
 
-writeLines(formatted_noy.ctrl.out,"/alphadata01/bstocker/sofun/trunk/input/sitedata/ndep/SwissFACE/ndep_noy_ctrl.dat")
-writeLines(formatted_noy.step.out,"/alphadata01/bstocker/sofun/trunk/input/sitedata/ndep/SwissFACE/ndep_noy_step.dat")
-writeLines(formatted_noy.grad.out,"/alphadata01/bstocker/sofun/trunk/input/sitedata/ndep/SwissFACE/ndep_noy_grad.dat")
+writeLines(formatted_noy.ctrl.out,"../trunk/input/sitedata/ndep/SwissFACE/ndep_noy_ctrl.dat")
+writeLines(formatted_noy.step.out,"../trunk/input/sitedata/ndep/SwissFACE/ndep_noy_step.dat")
+writeLines(formatted_noy.grad.out,"../trunk/input/sitedata/ndep/SwissFACE/ndep_noy_grad.dat")

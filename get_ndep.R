@@ -12,7 +12,7 @@ ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)
 nmonth <- length(ndaymonth)
 
-siteinfo <- read.csv( paste( "../../input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
+siteinfo <- read.csv( paste( "../input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 
 for (idx in seq(nsites)){
@@ -23,7 +23,7 @@ for (idx in seq(nsites)){
   lat      <- siteinfo$lat[idx]
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
-  dirnam_ndep_csv <- paste( "../../input_", simsuite, "_sofun/sitedata/ndep/", sitename, "/", sep="" )
+  dirnam_ndep_csv <- paste( "../input_", simsuite, "_sofun/sitedata/ndep/", sitename, "/", sep="" )
   filnam_ndep_csv <- paste( dirnam_ndep_csv, "ndep_lamarque_", sitename, ".csv", sep="" )
 
   if (!file.exists(filnam_ndep_csv)){
