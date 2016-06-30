@@ -58,7 +58,7 @@ for (idx in 1:1){
 
     ## Check if data is provided, otherwise use nearest gridcell
     if (is.na(clim_cru_monthly$temp[1])) {
-      lon_look <- find_nearest_by_lat( lon, lat )
+      lon_look <- find_nearest_cruland_by_lat( lon, lat )
       clim_cru_monthly$temp <- get_pointdata_monthly_cru( "tmp", lon_look, lat )
     } else {
       lon_look <- lon
