@@ -1,4 +1,4 @@
-get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap ){
+get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap=TRUE ){
   ##--------------------------------------------------------------------
   ## Extract monthly data from files for each year and attach to the 
   ## monthly dataframe (at the right location). 
