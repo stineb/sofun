@@ -26,7 +26,7 @@ staryr_wfdei <- 1979
 endyr_wfdei  <- 2012
 
 ## load meta data file for site simulation
-siteinfo <- read.csv( paste( "../../input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
+siteinfo <- read.csv( paste( "../input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 
 # for (idx in seq(nsites)){
@@ -37,7 +37,7 @@ for (idx in 1:1){
   lat      <- siteinfo$lat[idx]
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
-  dirnam_clim_csv <- paste( "../../input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", sep="" )
+  dirnam_clim_csv <- paste( "../input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", sep="" )
   filnam_clim_csv <- paste( dirnam_clim_csv, "clim_daily_", sitename, ".csv", sep="" )
 
   if (overwrite || !file.exists(filnam_clim_csv)){
@@ -244,7 +244,7 @@ for (idx in 1:1){
   print( "writing formatted input files ..." )
   for ( yr in startyr_cru:endyr_cru ){
 
-    dirnam <- paste( "../../input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
+    dirnam <- paste( "../input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
     system( paste( "mkdir -p", dirnam ) )
 
     filnam <- paste( dirnam, "dtemp_", sitename, "_", yr, ".txt", sep="" )
