@@ -24,6 +24,7 @@ module md_params_siml
     logical :: do_spinup       ! whether this simulation does spinup 
     logical :: const_co2       ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
     logical :: const_ndep      ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
+    logical :: const_nfert     ! is true when using constant N fertilisation, given by first transient year in 'nfert_forcing_file'
     logical :: const_clim      ! is true when using constant climate, given by year 'firstyeartrend'
     logical :: const_lu        ! is true when using constant land use, given by year 'firstyeartrend'
     
@@ -33,6 +34,8 @@ module md_params_siml
     character(len=256) :: co2_forcing_file
     character(len=256) :: ndep_noy_forcing_file
     character(len=256) :: ndep_nhx_forcing_file
+    character(len=256) :: nfert_noy_forcing_file
+    character(len=256) :: nfert_nhx_forcing_file
     character(len=256) :: do_grharvest_forcing_file
 
     logical :: prescr_monthly_fapar
@@ -198,11 +201,14 @@ contains
     call getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file', out_getpar_siml%co2_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_noy_forcing_file', out_getpar_siml%ndep_noy_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_nhx_forcing_file', out_getpar_siml%ndep_nhx_forcing_file )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_noy_forcing_file', out_getpar_siml%nfert_noy_forcing_file )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_nhx_forcing_file', out_getpar_siml%nfert_nhx_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
 
     out_getpar_siml%do_spinup            = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
     out_getpar_siml%const_co2            = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_co2' )
     out_getpar_siml%const_ndep           = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_ndep' )
+    out_getpar_siml%const_nfert          = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_nfert' )
     out_getpar_siml%const_clim           = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_clim' )
     out_getpar_siml%const_lu             = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_lu' )
     

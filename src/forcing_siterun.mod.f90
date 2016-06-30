@@ -16,7 +16,7 @@ module md_forcing_siterun
   implicit none
 
   private
-  public getco2, getndep, ndep_type, getfapar, getclimate_site, getlanduse, landuse_type, climate_type
+  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate_site, getlanduse, landuse_type, climate_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp
@@ -30,11 +30,11 @@ module md_forcing_siterun
     logical, dimension(ndayyear) :: do_grharvest
   end type landuse_type
 
-  type ndep_type
+  type ninput_type
     real, dimension(ndayyear) :: dnoy
     real, dimension(ndayyear) :: dnhx
     real, dimension(ndayyear) :: dtot
-  end type ndep_type
+  end type ninput_type
 
 contains
 
@@ -67,9 +67,9 @@ contains
   end function getco2
 
 
-  function getndep( runname, sitename, forcingyear, firstyeartrend, const_ndep, ndep_noy_forcing_file, ndep_nhx_forcing_file, climate ) result( out_getndep )
+  function getninput( runname, sitename, forcingyear, firstyeartrend, const_ninput, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
     !////////////////////////////////////////////////////////////////
-    ! Function reads this year's annual Ndeposition and distributes it
+    ! Function reads this year's annual ninputosition and distributes it
     ! over days according to daily precipitation.
     !----------------------------------------------------------------
     use md_params_core, only: dummy
@@ -79,24 +79,24 @@ contains
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
     integer, intent(in) :: firstyeartrend
-    logical, intent(in) :: const_ndep
-    character(len=*), intent(in) :: ndep_noy_forcing_file
-    character(len=*), intent(in) :: ndep_nhx_forcing_file
+    logical, intent(in) :: const_ninput
+    character(len=*), intent(in) :: ninput_noy_forcing_file
+    character(len=*), intent(in) :: ninput_nhx_forcing_file
     type( climate_type ), dimension(maxgrid), intent(in) :: climate
 
     ! function return variable
-    type( ndep_type ), dimension(maxgrid) :: out_getndep 
+    type( ninput_type ), dimension(maxgrid) :: out_getninput 
 
     ! local variables
-    real                      :: andep_noy
-    real                      :: andep_nhx
+    real                      :: aninput_noy
+    real                      :: aninput_nhx
     real, dimension(ndayyear) :: dprec_rel
     integer                   :: jpngr
     integer                   :: readyear
-    real, dimension(ndayyear) :: dndep_noy
-    real, dimension(ndayyear) :: dndep_nhx
+    real, dimension(ndayyear) :: dninput_noy
+    real, dimension(ndayyear) :: dninput_nhx
     
-    if (const_ndep) then
+    if (const_ninput) then
       readyear = firstyeartrend
     else  
       readyear = forcingyear
@@ -105,24 +105,47 @@ contains
     ! xxx try
     ! readyear = max( 1992, min( readyear, 2009 ) )
     readyear = max( 1850, readyear )
-    write(0,*) 'GETNDEP: use N fertilisation data of year ', readyear
+    write(0,*) 'GETNINPUT: use N fertilisation data of year ', readyear
 
-    ! andep = getvalreal( trim(input_dir)//trim(ndep_forcing_file), readyear )
-    andep_noy = getvalreal( 'sitedata/ndep/'//trim(sitename)//'/'//trim(ndep_noy_forcing_file), readyear )
-    andep_nhx = getvalreal( 'sitedata/ndep/'//trim(sitename)//'/'//trim(ndep_nhx_forcing_file), readyear )
+    ! aninput = getvalreal( trim(input_dir)//trim(ninput_forcing_file), readyear )
+    aninput_noy = getvalreal( 'sitedata/ninput/'//trim(sitename)//'/'//trim(ninput_noy_forcing_file), readyear )
+    aninput_nhx = getvalreal( 'sitedata/ninput/'//trim(sitename)//'/'//trim(ninput_nhx_forcing_file), readyear )
 
     do jpngr=1,maxgrid
       dprec_rel(:)               = climate(jpngr)%dprec(:)/sum(climate(jpngr)%dprec(:))
-      out_getndep(jpngr)%dnoy(:) = andep_noy * dprec_rel(:)
-      out_getndep(jpngr)%dnhx(:) = andep_nhx * dprec_rel(:)
-      ! out_getndep(jpngr)%dnoy(:) = andep_noy / 365.0
-      ! out_getndep(jpngr)%dnhx(:) = andep_nhx / 365.0
-      out_getndep(jpngr)%dtot(:) = out_getndep(jpngr)%dnoy(:) + out_getndep(jpngr)%dnhx(:)
+      out_getninput(jpngr)%dnoy(:) = aninput_noy * dprec_rel(:)
+      out_getninput(jpngr)%dnhx(:) = aninput_nhx * dprec_rel(:)
+      ! out_getninput(jpngr)%dnoy(:) = aninput_noy / 365.0
+      ! out_getninput(jpngr)%dnhx(:) = aninput_nhx / 365.0
+      out_getninput(jpngr)%dtot(:) = out_getninput(jpngr)%dnoy(:) + out_getninput(jpngr)%dnhx(:)
     end do
 
-    ! print*,'out_getndep(jpngr) ', sum(out_getndep(1)%dnoy(:)), sum(out_getndep(1)%dnhx(:)), sum(out_getndep(1)%dtot(:))
+    ! print*,'out_getninput(jpngr) ', sum(out_getninput(1)%dnoy(:)), sum(out_getninput(1)%dnhx(:)), sum(out_getninput(1)%dtot(:))
 
-  end function getndep
+  end function getninput
+
+
+  function gettot_ninput( ninput1, ninput2 ) result( out_gettot_ninput )
+    !////////////////////////////////////////////////////////////////
+    ! Function returns totals of two ninput type variables with 
+    ! dimension maxgrid
+    !----------------------------------------------------------------
+    ! arguments
+    type( ninput_type ), dimension(maxgrid), intent(in) :: ninput1, ninput2 
+
+    ! local variables
+    integer :: jpngr
+
+    ! function return variable
+    type( ninput_type ), dimension(maxgrid) :: out_gettot_ninput 
+
+    do jpngr=1,maxgrid
+      out_gettot_ninput(jpngr)%dnoy(:) = ninput1(jpngr)%dnoy(:) + ninput2(jpngr)%dnoy(:)
+      out_gettot_ninput(jpngr)%dnhx(:) = ninput1(jpngr)%dnhx(:) + ninput2(jpngr)%dnhx(:)
+      out_gettot_ninput(jpngr)%dtot(:) = ninput1(jpngr)%dtot(:) + ninput2(jpngr)%dtot(:)
+    end do
+
+  end function gettot_ninput
 
 
   function getfapar( runname, sitename, forcingyear ) result( fapar_field )
