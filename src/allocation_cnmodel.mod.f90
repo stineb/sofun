@@ -491,6 +491,7 @@ contains
     real :: nleaf0
     real :: lai0, lai1
 
+    type( orgpool )           :: proot_tmp
     type( outtype_zeroin )    :: out_zeroin
     type( outtype_calc_dnup ) :: out_calc_dnup
     type( canopy_type )       :: mycanopy
@@ -551,7 +552,10 @@ contains
     npp           = gpp - rd - mresp_root
     cexu          = calc_cexu( croot, airtemp ) 
     avl           = clabl + npp - cexu
-    if (avl<0.0) call deactivate_root( gpp, rd, clabl, orgpool(carbon(croot),nitrogen(nroot)), mresp_root, npp, cexu, airtemp )
+    if (avl<0.0) then
+       proot_tmp = orgpool(carbon(croot),nitrogen(nroot))
+       call deactivate_root( gpp, rd, clabl, proot_tmp, mresp_root, npp, cexu, airtemp )
+    end if
     dc            = npp - cexu
     out_calc_dnup = calc_dnup( cexu, pninorg(lu,usejpngr)%n14, params_pft_plant(usepft)%nfixer, soiltemp )
     dn            = out_calc_dnup%fix + out_calc_dnup%act
