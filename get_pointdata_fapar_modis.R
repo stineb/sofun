@@ -7,7 +7,7 @@ get_pointdata_fapar_modis <- function( lon, lat, yr ){
   syshome <- Sys.getenv( "HOME" )
   source( paste( syshome, "/.Rprofile", sep="" ) )
 
-  filn   <- paste( "../../data/fAPAR/monthly_0.5deg_MODIS-EVI-based/ISI-MIP_", as.character( yr ), "-fAPAR_0.5deg.nc", sep="" )
+  filn   <- paste( myhome "data/fAPAR/monthly_0.5deg_MODIS-EVI-based/ISI-MIP_", as.character( yr ), "-fAPAR_0.5deg.nc", sep="" )
 
   if ( file.exists( filn ) ){
     

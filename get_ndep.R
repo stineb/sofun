@@ -4,8 +4,8 @@ library(plyr)
 syshome <- Sys.getenv( "HOME" )
 source( paste( syshome, "/.Rprofile", sep="" ) )
 
-source( "get_pointdata_ndep_lamarque.R" )
-source( "write_sofunformatted.R" )
+source( paste( myhome, "get_pointdata_ndep_lamarque.R", sep="" ) )
+source( paste( myhome, "write_sofunformatted.R", sep="" ) )
 
 simsuite <- "gcme"
 

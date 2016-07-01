@@ -4,8 +4,8 @@ library(plyr)
 syshome <- Sys.getenv( "HOME" )
 source( paste( syshome, "/.Rprofile", sep="" ) )
 
-source( "get_pointdata_fapar_modis.R" )
-source( "write_sofunformatted.R" )
+source( paste( myhome, "get_pointdata_fapar_modis.R", sep="" ) )
+source( paste( myhome, "write_sofunformatted.R", sep="" ) )
 
 ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)
