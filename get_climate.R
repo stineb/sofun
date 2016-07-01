@@ -1,14 +1,14 @@
 library(plyr)
 # library(dplyr)
 
-source( "get_pointdata_monthly_cru.R" )
-source( "get_pointdata_temp_wfdei.R" )
-source( "get_pointdata_prec_wfdei.R" )
-source( "find_nearest_cruland_by_lat.R" )
-source( "get_daily_prec.R" )
-source( "monthly2daily.R" )
-source( "write_sofunformatted.R" )
-source( "monthly2daily.R" )
+source( "/home/bstocker/sofun/getin/get_pointdata_monthly_cru.R" )
+source( "/home/bstocker/sofun/getin/get_pointdata_temp_wfdei.R" )
+source( "/home/bstocker/sofun/getin/get_pointdata_prec_wfdei.R" )
+source( "/home/bstocker/sofun/getin/find_nearest_cruland_by_lat.R" )
+source( "/home/bstocker/sofun/getin/get_daily_prec.R" )
+source( "/home/bstocker/sofun/getin/monthly2daily.R" )
+source( "/home/bstocker/sofun/getin/write_sofunformatted.R" )
+source( "/home/bstocker/sofun/getin/monthly2daily.R" )
 
 overwrite <- TRUE
 
@@ -26,18 +26,18 @@ staryr_wfdei <- 1979
 endyr_wfdei  <- 2012
 
 ## load meta data file for site simulation
-siteinfo <- read.csv( paste( "../input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
+siteinfo <- read.csv( paste( "/home/bstocker/sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 
 # for (idx in seq(nsites)){
-for (idx in 1:1){
+for (idx in 9:21){
 
   sitename <- as.character(siteinfo$mysitename[idx])
   lon      <- siteinfo$lon[idx]
   lat      <- siteinfo$lat[idx]
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
-  dirnam_clim_csv <- paste( "../input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", sep="" )
+  dirnam_clim_csv <- paste( "/home/bstocker/sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", sep="" )
   filnam_clim_csv <- paste( dirnam_clim_csv, "clim_daily_", sitename, ".csv", sep="" )
 
   if (overwrite || !file.exists(filnam_clim_csv)){
@@ -197,30 +197,30 @@ for (idx in 1:1){
       }
     }
 
-    ##--------------------------------------------------------------------
-    ## Get site-specific meto data for separate (site-specific) file
-    ##--------------------------------------------------------------------
-    if (!is.null(siteinfo$meteosource)){
-      print("Using site-specific meteo data from separate file ...")
-      filn <- paste( "../../../", as.character(siteinfo$meteosource[idx] ), sep="" )
-      print( paste( "file name", filn))
-      meteo <- read.csv( filn )
+    # ##--------------------------------------------------------------------
+    # ## Get site-specific meto data for separate (site-specific) file
+    # ##--------------------------------------------------------------------
+    # if (!is.null(siteinfo$meteosource)){
+    #   print("Using site-specific meteo data from separate file ...")
+    #   filn <- paste( "../../../", as.character(siteinfo$meteosource[idx] ), sep="" )
+    #   print( paste( "file name", filn))
+    #   meteo <- read.csv( filn )
       
-      meteo$moy <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mon + 1
-      meteo$dom <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mday
+    #   meteo$moy <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mon + 1
+    #   meteo$dom <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mday
 
-      for (jdx in 1:dim(meteo)[1]){
+    #   for (jdx in 1:dim(meteo)[1]){
 
-        putjdx <- which( clim_daily$year==meteo$year[jdx] & clim_daily$moy==meteo$moy[jdx] & clim_daily$dom==meteo$dom[jdx] )
+    #     putjdx <- which( clim_daily$year==meteo$year[jdx] & clim_daily$moy==meteo$moy[jdx] & clim_daily$dom==meteo$dom[jdx] )
 
-        # if (length(putjdx)!=1) { print("PROBLEM") }
-        if (!is.na(meteo$temp_mean[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp_mean[jdx] }
-        if (!is.na(meteo$temp_mean[jdx])) { clim_daily$source[ putjdx ] <- "temp_sitedata" }
+    #     # if (length(putjdx)!=1) { print("PROBLEM") }
+    #     if (!is.na(meteo$temp_mean[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp_mean[jdx] }
+    #     if (!is.na(meteo$temp_mean[jdx])) { clim_daily$source[ putjdx ] <- "temp_sitedata" }
 
-        if (!is.na(meteo$rainfall[jdx])) { clim_daily$prec[ putjdx ]   <- meteo$rainfall[jdx] }
-        if (!is.na(meteo$rainfall[jdx])) { clim_daily$source[ putjdx ] <- "prec_sitedata" }
+    #     if (!is.na(meteo$rainfall[jdx])) { clim_daily$prec[ putjdx ]   <- meteo$rainfall[jdx] }
+    #     if (!is.na(meteo$rainfall[jdx])) { clim_daily$source[ putjdx ] <- "prec_sitedata" }
 
-      }
+    #   }
 
     }
 
@@ -244,7 +244,7 @@ for (idx in 1:1){
   print( "writing formatted input files ..." )
   for ( yr in startyr_cru:endyr_cru ){
 
-    dirnam <- paste( "../input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
+    dirnam <- paste( "/home/bstocker/sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
     system( paste( "mkdir -p", dirnam ) )
 
     filnam <- paste( dirnam, "dtemp_", sitename, "_", yr, ".txt", sep="" )
