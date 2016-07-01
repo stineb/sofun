@@ -200,30 +200,30 @@ for (idx in 9:21){
       }
     }
 
-    # ##--------------------------------------------------------------------
-    # ## Get site-specific meto data for separate (site-specific) file
-    # ##--------------------------------------------------------------------
-    # if (!is.null(siteinfo$meteosource)){
-    #   print("Using site-specific meteo data from separate file ...")
-    #   filn <- paste( "../../../", as.character(siteinfo$meteosource[idx] ), sep="" )
-    #   print( paste( "file name", filn))
-    #   meteo <- read.csv( filn )
+    ##--------------------------------------------------------------------
+    ## Get site-specific meto data for separate (site-specific) file
+    ##--------------------------------------------------------------------
+    if (!is.null(siteinfo$meteosource)){
+      print("Using site-specific meteo data from separate file ...")
+      filn <- paste( "../../../", as.character(siteinfo$meteosource[idx] ), sep="" )
+      print( paste( "file name", filn))
+      meteo <- read.csv( filn )
       
-    #   meteo$moy <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mon + 1
-    #   meteo$dom <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mday
+      meteo$moy <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mon + 1
+      meteo$dom <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mday
 
-    #   for (jdx in 1:dim(meteo)[1]){
+      for (jdx in 1:dim(meteo)[1]){
 
-    #     putjdx <- which( clim_daily$year==meteo$year[jdx] & clim_daily$moy==meteo$moy[jdx] & clim_daily$dom==meteo$dom[jdx] )
+        putjdx <- which( clim_daily$year==meteo$year[jdx] & clim_daily$moy==meteo$moy[jdx] & clim_daily$dom==meteo$dom[jdx] )
 
-    #     # if (length(putjdx)!=1) { print("PROBLEM") }
-    #     if (!is.na(meteo$temp_mean[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp_mean[jdx] }
-    #     if (!is.na(meteo$temp_mean[jdx])) { clim_daily$source[ putjdx ] <- "temp_sitedata" }
+        # if (length(putjdx)!=1) { print("PROBLEM") }
+        if (!is.na(meteo$temp_mean[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp_mean[jdx] }
+        if (!is.na(meteo$temp_mean[jdx])) { clim_daily$source[ putjdx ] <- "temp_sitedata" }
 
-    #     if (!is.na(meteo$rainfall[jdx])) { clim_daily$prec[ putjdx ]   <- meteo$rainfall[jdx] }
-    #     if (!is.na(meteo$rainfall[jdx])) { clim_daily$source[ putjdx ] <- "prec_sitedata" }
+        if (!is.na(meteo$rainfall[jdx])) { clim_daily$prec[ putjdx ]   <- meteo$rainfall[jdx] }
+        if (!is.na(meteo$rainfall[jdx])) { clim_daily$source[ putjdx ] <- "prec_sitedata" }
 
-    #   }
+      }
 
     }
 
