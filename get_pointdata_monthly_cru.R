@@ -16,7 +16,7 @@ get_pointdata_monthly_cru <- function( varnam, lon, lat, yr=NA ){
     cmd <- paste( paste( myhome, "extract_pointdata_byfil.sh ", sep="" ), filn, varnam, "lon", "lat", lon, lat )
     print( paste( "executing command:", cmd ) )
     system( cmd )
-    mdata_full <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
+    mdata_full <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
     if (!is.na(yr)){
       mdata <- mdata_full[ istart:iend ]
     } else {

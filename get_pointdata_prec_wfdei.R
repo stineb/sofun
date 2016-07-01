@@ -12,7 +12,7 @@ get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap=TRUE ){
   if ( file.exists( filn ) ){
     print( paste( "extracting from", filn ) )
     system( paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "Rainf", "lon", "lat", lon, lat ) )
-    dprec <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
+    dprec <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
     dprec <- dprec*60*60*24 # kg/m2/s -> mm/day
   } else {
     print( paste( "file", filn, "does not exist." ) )
@@ -24,7 +24,7 @@ get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap=TRUE ){
   if ( file.exists( filn ) ){
     print( paste( "extracting from", filn ) )
     system( paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "Snowf", "lon", "lat", lon, lat ) )
-    dsnow <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
+    dsnow <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
     dsnow <- dsnow*60*60*24 # kg/m2/s -> mm/day
     dprec <- dprec + dsnow
     # print( paste( "snow only: ", sum( dprec*60*60*24 )))

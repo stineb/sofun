@@ -11,7 +11,7 @@ get_pointdata_temp_wfdei <- function( lon, lat, mo, yr, ignore_leap=TRUE ){
   if ( file.exists( filn ) ){
     print( paste( "extracting from", filn ) )
     system( paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "Tair", "lon", "lat", lon, lat ) )
-    dtemp <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1 - 273.15  # conversion from Kelving to Celsius
+    dtemp <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1 - 273.15  # conversion from Kelving to Celsius
     if (ignore_leap & length(dtemp==29)){ dtemp <- dtemp[1:28] }
   }
   return( dtemp )

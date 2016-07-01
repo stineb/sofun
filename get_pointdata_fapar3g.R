@@ -14,7 +14,7 @@ get_pointdata_fapar3g <- function( lon, lat ){
     cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "fAPAR", "lon", "lat", lon, lat )
     print( paste( "executing command:", cmd ) )
     system( cmd )
-    out <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
+    out <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
 
   } else {
 

@@ -18,19 +18,19 @@ get_pointdata_ndep_lamarque <- function( lon, lat, yr=NA ){
     cmd <- paste( paste( myhome, "extract_pointdata_byfil.sh ", sep="" ), filn, "TIME", "LON", "LAT", lon, lat )
     # print( paste( "executing command:", cmd ) )
     system( cmd )
-    year <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
+    year <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
 
     ## NOy      
     cmd <- paste( paste( myhome, "extract_pointdata_byfil.sh ", sep="" ), filn, "NOy", "LON", "LAT", lon, lat )
     # print( paste( "executing command:", cmd ) )
     system( cmd )
-    noy <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
+    noy <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
 
     ## NHx      
     cmd <- paste( paste( myhome, "extract_pointdata_byfil.sh ", sep="" ), filn, "NHx", "LON", "LAT", lon, lat )
     # print( paste( "executing command:", cmd ) )
     system( cmd )
-    nhx <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
+    nhx <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
 
     out_full <- data.frame( year=year, noy=noy, nhx=nhx )
 
