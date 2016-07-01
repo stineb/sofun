@@ -4,14 +4,17 @@ get_pointdata_fapar3g <- function( lon, lat ){
   ## monthly dataframe (at the right location).
   ## Original data in K, returns data in K
   ##--------------------------------------------------------------------
-  filn   <- "../../data/fAPAR/fAPAR3g/fAPAR3g_monthly_1982_2011.nc"
+  syshome <- Sys.getenv( "HOME" )
+  source( paste( syshome, "/.Rprofile", sep="" ) )
+
+  filn   <- paste( myhome, "data/fAPAR/fAPAR3g/fAPAR3g_monthly_1982_2011.nc", sep="" )
 
   if ( file.exists( filn ) ){
     
-    cmd <- paste( "./extract_pointdata_byfil.sh ", filn, "fAPAR", "lon", "lat", lon, lat )
+    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "fAPAR", "lon", "lat", lon, lat )
     print( paste( "executing command:", cmd ) )
     system( cmd )
-    out <- read.table( "out.txt" )$V1
+    out <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
 
   } else {
 

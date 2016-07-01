@@ -4,14 +4,17 @@ get_pointdata_fapar_modis <- function( lon, lat, yr ){
   ## monthly dataframe (at the right location).
   ## Original data in K, returns data in K
   ##--------------------------------------------------------------------
+  syshome <- Sys.getenv( "HOME" )
+  source( paste( syshome, "/.Rprofile", sep="" ) )
+
   filn   <- paste( "../../data/fAPAR/monthly_0.5deg_MODIS-EVI-based/ISI-MIP_", as.character( yr ), "-fAPAR_0.5deg.nc", sep="" )
 
   if ( file.exists( filn ) ){
     
-    cmd <- paste( "./extract_pointdata_byfil.sh ", filn, "fAPAR", "lon", "lat", lon, lat )
+    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh "), filn, "fAPAR", "lon", "lat", lon, lat )
     print( paste( "executing command:", cmd ) )
     system( cmd )
-    out <- read.table( "out.txt" )$V1
+    out <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
 
   } else {
 

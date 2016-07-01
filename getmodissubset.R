@@ -76,7 +76,9 @@ get_evi_modis_250m <- function( sitename, lon, lat ){
   ##--------------------------------------
 
   library( MODISTools )
-  
+  syshome <- Sys.getenv( "HOME" )
+  source( paste( syshome, "/.Rprofile", sep="" ) )
+
   ##--------------------------------------
   ## Get dates for which data is available
   ##--------------------------------------
@@ -111,7 +113,8 @@ get_evi_modis_250m <- function( sitename, lon, lat ){
                 getmodissubset_evi( 
                                     sitename, lon, lat, modis$start[idx], modis$end[idx], 
                                     paste( 
-                                            "../../data/modis_fluxnet_cutouts/data_",
+                                            myhome,
+                                            "data/modis_fluxnet_cutouts/data_",
                                             sitename, 
                                             "_", 
                                             as.Date(modis$start[idx]), 

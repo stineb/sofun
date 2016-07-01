@@ -1,6 +1,9 @@
 library(plyr)
 #library(dplyr)
 
+syshome <- Sys.getenv( "HOME" )
+source( paste( syshome, "/.Rprofile", sep="" ) )
+
 source( "get_pointdata_ndep_lamarque.R" )
 source( "write_sofunformatted.R" )
 

@@ -4,7 +4,10 @@ get_pointdata_ndep_lamarque <- function( lon, lat, yr=NA ){
   ## monthly dataframe (at the right location).
   ## Original data in K, returns data in K
   ##--------------------------------------------------------------------
-  filn   <- "../../data/ndep_lamarque/Ndep_Lamarque11cc_historical_halfdeg_NEW.nc"
+  syshome <- Sys.getenv( "HOME" )
+  source( paste( syshome, "/.Rprofile", sep="" ) )
+
+  filn   <- paste( myhome, "data/ndep_lamarque/Ndep_Lamarque11cc_historical_halfdeg_NEW.nc", sep="" )
   if (!is.na(yr)){
     istart <- max( 1   , (yr - 1850) + 1 )
     iend   <- max( 2009, (yr - 1850) + 1 )    
@@ -12,22 +15,22 @@ get_pointdata_ndep_lamarque <- function( lon, lat, yr=NA ){
   if ( file.exists( filn ) ){
     
     ## TIME      
-    cmd <- paste( "./extract_pointdata_byfil.sh ", filn, "TIME", "LON", "LAT", lon, lat )
+    cmd <- paste( paste( myhome, "extract_pointdata_byfil.sh ", sep="" ), filn, "TIME", "LON", "LAT", lon, lat )
     # print( paste( "executing command:", cmd ) )
     system( cmd )
-    year <- read.table( "out.txt" )$V1
+    year <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
 
     ## NOy      
-    cmd <- paste( "./extract_pointdata_byfil.sh ", filn, "NOy", "LON", "LAT", lon, lat )
+    cmd <- paste( paste( myhome, "extract_pointdata_byfil.sh ", sep="" ), filn, "NOy", "LON", "LAT", lon, lat )
     # print( paste( "executing command:", cmd ) )
     system( cmd )
-    noy <- read.table( "out.txt" )$V1
+    noy <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
 
     ## NHx      
-    cmd <- paste( "./extract_pointdata_byfil.sh ", filn, "NHx", "LON", "LAT", lon, lat )
+    cmd <- paste( paste( myhome, "extract_pointdata_byfil.sh ", sep="" ), filn, "NHx", "LON", "LAT", lon, lat )
     # print( paste( "executing command:", cmd ) )
     system( cmd )
-    nhx <- read.table( "out.txt" )$V1
+    nhx <- read.table( paste( myhome, "sofun/getin/out.txt", sep="" ) )$V1
 
     out_full <- data.frame( year=year, noy=noy, nhx=nhx )
 

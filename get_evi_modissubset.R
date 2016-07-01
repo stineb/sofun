@@ -3,6 +3,9 @@ library(plyr)
 
 # install.packages("MODISTools")
 
+syshome <- Sys.getenv( "HOME" )
+source( paste( syshome, "/.Rprofile", sep="" ) )
+
 source( "write_sofunformatted.R" )
 source( "getmodissubset.R" )
 
@@ -16,12 +19,12 @@ fapar_year_start <- 1999
 fapar_year_end   <- 2016
 nyears <- fapar_year_end - fapar_year_start + 1
 
-siteinfo <- read.csv( paste( "../input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="") )
+siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 
 ## create data frame holding data for all sites
 df_modis_allsites <- data.frame( year=rep( seq( fapar_year_start, fapar_year_end ), each=nmonth ), mo=rep(1:nmonth,nyears) )
-path_fapar_allsites_csv <- paste( "../input_", simsuite,"_sofun/sitedata/fapar/fapar_evi_modissubset_allsites.csv", sep="")
+path_fapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite,"_sofun/sitedata/fapar/fapar_evi_modissubset_allsites.csv", sep="")
 
 overwrite <- FALSE
 
@@ -33,7 +36,7 @@ for (idx in seq(nsites)){
 
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
-  dirnam_fapar_csv <- paste( "../input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", sep="" )
+  dirnam_fapar_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", sep="" )
   filnam_fapar_csv <- paste( dirnam_fapar_csv, "fapar_evi_modissubset_", sitename, ".csv", sep="" )
 
   if (!file.exists(filnam_fapar_csv)||overwrite){
@@ -100,7 +103,7 @@ for (idx in seq(nsites)){
   for (yr in unique(df_modis$yr)){
 
     print( paste("... for year", yr))
-    dirnam <- paste( "../input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(yr), "/", sep="" )
+    dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(yr), "/", sep="" )
     system( paste( "mkdir -p", dirnam ) )
 
     filnam <- paste( dirnam, "fapar_evi_modissubset_", sitename, "_", yr, ".txt", sep="" )

@@ -1,14 +1,17 @@
 library(plyr)
 # library(dplyr)
 
-source( "/home/bstocker/sofun/getin/get_pointdata_monthly_cru.R" )
-source( "/home/bstocker/sofun/getin/get_pointdata_temp_wfdei.R" )
-source( "/home/bstocker/sofun/getin/get_pointdata_prec_wfdei.R" )
-source( "/home/bstocker/sofun/getin/find_nearest_cruland_by_lat.R" )
-source( "/home/bstocker/sofun/getin/get_daily_prec.R" )
-source( "/home/bstocker/sofun/getin/monthly2daily.R" )
-source( "/home/bstocker/sofun/getin/write_sofunformatted.R" )
-source( "/home/bstocker/sofun/getin/monthly2daily.R" )
+syshome <- Sys.getenv( "HOME" )
+source( paste( syshome, "/.Rprofile", sep="" ) )
+
+source( paste( myhome, "sofun/getin/get_pointdata_monthly_cru.R", sep="" ) )
+source( paste( myhome, "sofun/getin/get_pointdata_temp_wfdei.R", sep="" ) )
+source( paste( myhome, "sofun/getin/get_pointdata_prec_wfdei.R", sep="" ) )
+source( paste( myhome, "sofun/getin/find_nearest_cruland_by_lat.R", sep="" ) )
+source( paste( myhome, "sofun/getin/get_daily_prec.R", sep="" ) )
+source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
+source( paste( myhome, "sofun/getin/write_sofunformatted.R", sep="" ) )
+source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 
 overwrite <- TRUE
 
@@ -26,7 +29,7 @@ staryr_wfdei <- 1979
 endyr_wfdei  <- 2012
 
 ## load meta data file for site simulation
-siteinfo <- read.csv( paste( "/home/bstocker/sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
+siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 
 # for (idx in seq(nsites)){
@@ -37,7 +40,7 @@ for (idx in 9:21){
   lat      <- siteinfo$lat[idx]
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
-  dirnam_clim_csv <- paste( "/home/bstocker/sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", sep="" )
+  dirnam_clim_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", sep="" )
   filnam_clim_csv <- paste( dirnam_clim_csv, "clim_daily_", sitename, ".csv", sep="" )
 
   if (overwrite || !file.exists(filnam_clim_csv)){
@@ -244,7 +247,7 @@ for (idx in 9:21){
   print( "writing formatted input files ..." )
   for ( yr in startyr_cru:endyr_cru ){
 
-    dirnam <- paste( "/home/bstocker/sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
+    dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
     system( paste( "mkdir -p", dirnam ) )
 
     filnam <- paste( dirnam, "dtemp_", sitename, "_", yr, ".txt", sep="" )

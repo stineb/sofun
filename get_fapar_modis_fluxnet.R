@@ -1,6 +1,9 @@
 library(plyr)
 #library(dplyr)
 
+syshome <- Sys.getenv( "HOME" )
+source( paste( syshome, "/.Rprofile", sep="" ) )
+
 source( "get_pointdata_fapar_modis.R" )
 source( "write_sofunformatted.R" )
 
@@ -12,12 +15,12 @@ fapar_year_start <- 2001
 fapar_year_end   <- 2013
 nyears <- fapar_year_end - fapar_year_start + 1
 
-siteinfo <- read.csv( "../input_fluxnet_sofun/siteinfo_fluxnet_sofun.csv" )
+siteinfo <- read.csv( paste( myhome, "sofun/input_fluxnet_sofun/siteinfo_fluxnet_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 
 ## create data frame holding data for all sites
 df_fapar_allsites <- data.frame( year=rep( seq( fapar_year_start, fapar_year_end ), each=nmonth ), mo=rep(1:nmonth,nyears) )
-path_fapar_allsites_csv <- "../input_fluxnet_sofun/sitedata/fapar/fapar_modis_allsites.csv"
+path_fapar_allsites_csv <- paste( myhome, "sofun/input_fluxnet_sofun/sitedata/fapar/fapar_modis_allsites.csv", sep="" )
 
 overwrite <- FALSE
 
@@ -29,7 +32,7 @@ for (idx in seq(nsites)){
   lat      <- siteinfo$lat[idx]
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
-  dirnam_fapar_csv <- paste( "../input_fluxnet_sofun/sitedata/fapar/", sitename, "/", sep="" )
+  dirnam_fapar_csv <- paste( myhome, "sofun/input_fluxnet_sofun/sitedata/fapar/", sitename, "/", sep="" )
   filnam_fapar_csv <- paste( dirnam_fapar_csv, "fapar_modis_", sitename, ".csv", sep="" )
 
   df_fapar <- data.frame( year=rep( seq( fapar_year_start, fapar_year_end ), each=nmonth ), mo=rep(1:nmonth,nyears), fapar=rep(NA,nmonth*nyears) )
@@ -85,7 +88,7 @@ for (idx in seq(nsites)){
   for (yr in unique(df_fapar$year)){
 
     print( paste("... for year", yr))
-    dirnam <- paste( "../input_fluxnet_sofun/sitedata/fapar/", sitename, "/", as.character(yr), "/", sep="" )
+    dirnam <- paste( myhome, "sofun/input_fluxnet_sofun/sitedata/fapar/", sitename, "/", as.character(yr), "/", sep="" )
     system( paste( "mkdir -p", dirnam ) )
 
     filnam <- paste( dirnam, "fapar_modis_", sitename, "_", yr, ".txt", sep="" )
