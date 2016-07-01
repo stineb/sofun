@@ -7,7 +7,7 @@ source( paste( syshome, "/.Rprofile", sep="" ) )
 source( paste( myhome, "sofun/getin/get_pointdata_ndep_lamarque.R", sep="" ) )
 source( paste( myhome, "sofun/getin/write_sofunformatted.R", sep="" ) )
 
-simsuite <- "gcme"
+simsuite <- "campi"
 
 ##--------------------------------------------------------------------
 ##--------------------------------------------------------------------
@@ -26,7 +26,7 @@ for (idx in seq(nsites)){
   lat      <- siteinfo$lat[idx]
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
-  dirnam_ndep_csv <- paste( myhome, "/input_", simsuite, "_sofun/sitedata/ndep/", sitename, "/", sep="" )
+  dirnam_ndep_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/ndep/", sitename, "/", sep="" )
   filnam_ndep_csv <- paste( dirnam_ndep_csv, "ndep_lamarque_", sitename, ".csv", sep="" )
 
   if (!file.exists(filnam_ndep_csv)){
