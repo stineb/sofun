@@ -13,7 +13,7 @@ get_pointdata_monthly_cru <- function( varnam, lon, lat, yr=NA ){
     iend   <- max( nmonth, (yr - 1901) * nmonth + nmonth )    
   }
   if ( file.exists( filn ) ){
-    cmd <- paste( paste( myhome, "extract_pointdata_byfil.sh ", sep="" ), filn, varnam, "lon", "lat", lon, lat )
+    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, varnam, "lon", "lat", lon, lat )
     print( paste( "executing command:", cmd ) )
     system( cmd )
     mdata_full <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1

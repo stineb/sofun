@@ -6,8 +6,8 @@ library(plyr)
 syshome <- Sys.getenv( "HOME" )
 source( paste( syshome, "/.Rprofile", sep="" ) )
 
-source( paste( myhome, "write_sofunformatted.R", sep="" ) )
-source( paste( myhome, "getmodissubset.R", sep="" ) )
+source( paste( myhome, "sofun/getin/write_sofunformatted.R", sep="" ) )
+source( paste( myhome, "sofun/getin/getmodissubset.R", sep="" ) )
 
 simsuite <- "fluxnet"
 
