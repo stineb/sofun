@@ -1345,7 +1345,7 @@ contains
     character(len=256) :: filnam
 
     prefix = "./output/"//trim(interface%params_siml%runname)
-
+    
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------

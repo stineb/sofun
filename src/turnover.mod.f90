@@ -37,7 +37,6 @@ contains
     !  year.
     !----------------------------------------------------------------
     use md_classdefs
-    use md_phenology, only: shedleaves, params_pft_pheno
     use md_params_core, only: npft
 
     ! arguments
@@ -60,11 +59,6 @@ contains
       if (plabl(pft,jpngr)%n%n14<0.0) stop 'before turnover labile N is neg.'
 
       if (ispresent(pft,jpngr)) then
-    
-        ! print*,'to A plabl(pft,jpngr): ', plabl(pft,jpngr)
-        ! print*,'params_pft_plant(pft)%grass ', params_pft_plant(pft)%grass
-        ! print*,'params_pft_pheno(pft)%summergreen', params_pft_pheno(pft)%summergreen
-        ! print*,'shedleaves(doy,pft)', shedleaves(doy,pft)
         !--------------------------------------------------------------
         ! Get turnover fractions
         ! Turnover-rates are reciprocals of tissue longevity

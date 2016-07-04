@@ -30,7 +30,7 @@ module md_npp
 
 contains
 
-  subroutine npp( jpngr, dtemp, doy )
+  subroutine npp( jpngr, dtemp )
     !/////////////////////////////////////////////////////////////////////////
     ! NET PRIMARY PRODUCTIVITY
     ! Calculate maintenance and growth respiration and substract this from GPP 
@@ -45,14 +45,10 @@ contains
     use md_params_core, only: npft, ndayyear
     use md_soiltemp, only: dtemp_soil
     use md_gpp, only: dgpp, drd
-    use md_phenology, only: shedleaves
 
     ! arguments
     integer, intent(in) :: jpngr
     real, intent(in)    :: dtemp      ! air temperature at this day
-
-    ! xxx debug
-    integer, intent(in) :: doy
 
     ! local variables
     integer :: pft
@@ -67,13 +63,6 @@ contains
     do pft=1,npft
 
       if ( ispresent(pft,jpngr) ) then
-
-        ! print*, '---------------in NPP'
-        ! print*, 'drd ',drd(pft)
-        ! print*, 'dgpp(pft) ',dgpp(pft)
-        ! print*, 'dnpp(pft) ',dnpp(pft)
-        ! print*, 'dcex(pft) ',dcex(pft)
-        ! print*, 'plabl(pft,jpngr) ',plabl(pft,jpngr)
 
         if (plabl(pft,jpngr)%c%c12<0.0) stop 'before npp labile C is neg.'
         if (plabl(pft,jpngr)%n%n14<0.0) stop 'before npp labile N is neg.'
@@ -107,24 +96,7 @@ contains
         ! If C used for root respiration and export is not available, then reduce 
         ! root mass to match 
         if ( avl < 0.0 ) then
-          ! print*, 'pft    ', pft
-          ! print*, 'doy    ', doy
-          ! print*, 'proot  ', proot(pft,jpngr)
-          ! print*, 'pleaf  ', pleaf(pft,jpngr)
-          ! print*, 'drleaf ', drleaf(pft)
-          ! print*, 'drroot ', drroot(pft)
-          ! print*, 'dgpp   ', dgpp(pft)
-          ! print*, 'dnpp   ', dnpp(pft)
-          ! print*, 'dcex   ', dcex(pft)
-          ! print*, 'plabl  ', plabl(pft,jpngr)
-          ! print*, 'NPP: dnpp + plabl negative'
           call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
-          ! avl  = plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)
-          ! print*, 'plabl  ', plabl(pft,jpngr)
-          ! print*, 'dnpp   ', dnpp(pft)
-          ! print*, 'dcex   ', dcex(pft)
-          ! print*, 'avl    ', avl
-          ! stop
         end if
 
         !/////////////////////////////////////////////////////////////////////////
@@ -134,28 +106,6 @@ contains
         !-------------------------------------------------------------------------
         call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
         call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
-
-        ! print*, '---------------in NPP'
-        ! print*, 'plabl  ', plabl(pft,jpngr)
-        ! print*, 'drd    ', drd(pft)
-        ! print*, 'drroot ',drroot(pft)
-        ! print*, 'dgpp(pft) ',dgpp(pft)
-        ! print*, 'dnpp(pft) ',dnpp(pft)
-        ! print*, 'dcex(pft) ',dcex(pft)
-        ! if (doy==39) stop
-
-        ! !-------------------------------------------------------------------------
-        ! ! Leaves are shed in (annual) grasses (=end of vegetation period) when 
-        ! ! labile C pool gets negative.
-        ! !-------------------------------------------------------------------------
-        ! if ( dnpp(pft)%c12 < 0.0 ) then
-        !   if (summergreen(pft)) then
-        !     shedleaves(:,pft)   = .false.
-        !     shedleaves(doy,pft) = .true.
-        !   else
-        !     stop 'labile C negative'
-        !   end if
-        ! end if
 
         if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
         if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'

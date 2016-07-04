@@ -16,7 +16,7 @@ module md_forcing_siterun
   implicit none
 
   private
-  public getco2, getndep, ndep_type, getfapar, getclimate_site, getlanduse, landuse_type, climate_type
+  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate_site, getlanduse, landuse_type, climate_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp
@@ -30,11 +30,11 @@ module md_forcing_siterun
     logical, dimension(ndayyear) :: do_grharvest
   end type landuse_type
 
-  type ndep_type
+  type ninput_type
     real, dimension(ndayyear) :: dnoy
     real, dimension(ndayyear) :: dnhx
     real, dimension(ndayyear) :: dtot
-  end type ndep_type
+  end type ninput_type
 
 contains
 
@@ -67,10 +67,9 @@ contains
   end function getco2
 
 
-  function getndep( runname, sitename, forcingyear, firstyeartrend, const_ndep, ndep_noy_forcing_file, ndep_nhx_forcing_file, climate ) result( out_getndep )
+  function getninput( runname, sitename, forcingyear, firstyeartrend, const_ninput, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
     !////////////////////////////////////////////////////////////////
-    ! Function reads this year's annual ndeposition and distributes it
-    !  over days according to daily precipitation.
+    ! Dummy function in 'pmodel' setup.
     !----------------------------------------------------------------
     use md_params_core, only: dummy
 
@@ -79,27 +78,50 @@ contains
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
     integer, intent(in) :: firstyeartrend
-    logical, intent(in) :: const_ndep
-    character(len=*), intent(in) :: ndep_noy_forcing_file
-    character(len=*), intent(in) :: ndep_nhx_forcing_file
+    logical, intent(in) :: const_ninput
+    character(len=*), intent(in) :: ninput_noy_forcing_file
+    character(len=*), intent(in) :: ninput_nhx_forcing_file
     type( climate_type ), dimension(maxgrid), intent(in) :: climate
 
     ! function return variable
-    type( ndep_type ), dimension(maxgrid) :: out_getndep 
+    type( ninput_type ), dimension(maxgrid) :: out_getninput 
 
+    ! local variables
     integer :: jpngr
 
-    ! Distribute annual Ndep to days by daily precipitation
     do jpngr=1,maxgrid
-      out_getndep(jpngr)%dnoy(:) = 0.0
-      out_getndep(jpngr)%dnhx(:) = 0.0
-      out_getndep(jpngr)%dtot(:) = 0.0
+      out_getninput(jpngr)%dnoy(:) = 0.0 * climate(jpngr)%dprec(:)
+      out_getninput(jpngr)%dnhx(:) = 0.0 * climate(jpngr)%dprec(:)
+      out_getninput(jpngr)%dtot(:) = out_getninput(jpngr)%dnoy(:) + out_getninput(jpngr)%dnhx(:)
     end do
 
-  end function getndep
+  end function getninput
 
 
-  function getfapar( runname, sitename, forcingyear ) result( fapar_field )
+  function gettot_ninput( ninput1, ninput2 ) result( out_gettot_ninput )
+    !////////////////////////////////////////////////////////////////
+    ! Function returns totals of two ninput type variables with 
+    ! dimension maxgrid
+    !----------------------------------------------------------------
+    ! arguments
+    type( ninput_type ), dimension(maxgrid), intent(in) :: ninput1, ninput2 
+
+    ! local variables
+    integer :: jpngr
+
+    ! function return variable
+    type( ninput_type ), dimension(maxgrid) :: out_gettot_ninput 
+
+    do jpngr=1,maxgrid
+      out_gettot_ninput(jpngr)%dnoy(:) = ninput1(jpngr)%dnoy(:) + ninput2(jpngr)%dnoy(:)
+      out_gettot_ninput(jpngr)%dnhx(:) = ninput1(jpngr)%dnhx(:) + ninput2(jpngr)%dnhx(:)
+      out_gettot_ninput(jpngr)%dtot(:) = ninput1(jpngr)%dtot(:) + ninput2(jpngr)%dtot(:)
+    end do
+
+  end function gettot_ninput
+
+
+  function getfapar( runname, sitename, forcingyear, fapar_forcing_source ) result( fapar_field )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
@@ -109,6 +131,7 @@ contains
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: forcingyear
+    character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
     real, dimension(nmonth,maxgrid) :: fapar_field
@@ -121,7 +144,7 @@ contains
     do jpngr=1,maxgrid
       ! create 4-digit string for year  
       write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-      fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_modis_'//trim(sitename)//'_'//faparyear_char//'.txt' )
+      fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_'//trim(fapar_forcing_source)//'_'//trim(sitename)//'_'//faparyear_char//'.txt' )
     end do
 
     return
@@ -130,19 +153,17 @@ contains
   end function getfapar
 
 
-  function getclimate_site( runname, sitename, climateyear, const_clim, firstyeartrend ) result ( out_climate )
+  function getclimate_site( sitename, climateyear ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
-    !  SR reads this year's daily temperature and precipitation.
+    ! SR reads this year's daily temperature and precipitation.
+    ! Read year-2013 data after 2013
     !----------------------------------------------------------------    
     ! arguments
-    character(len=*), intent(in) :: runname     
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: climateyear
-    logical, intent(in) :: const_clim
-    integer, intent(in) :: firstyeartrend
 
     ! local variables
-    integer :: day, mo, dm, yr
+    integer :: day
     integer :: jpngr = 1
     real, dimension(ndayyear) :: dvapr
     character(len=4) :: climateyear_char
@@ -155,6 +176,8 @@ contains
 
     write(0,*) 'prescribe daily climate (temp, prec, fsun, vpd) for ', trim(sitename), ' yr ', climateyear_char,'...'
     
+    write(0,*) 'GETCLIMATE_SITE: use climate data of year ', climateyear_char
+
     jpngr = 1
 
     out_climate(jpngr)%dtemp(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt')
@@ -181,7 +204,7 @@ contains
 
   function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file, const_lu, firstyeartrend ) result( out_landuse )
     !////////////////////////////////////////////////////////////////
-    ! Function reads this year's annual landuse state
+    ! Dummy function in 'pmodel' setup.
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: runname
@@ -194,11 +217,8 @@ contains
     ! function return variable
     type( landuse_type ) :: out_landuse
 
-    integer :: doy
-    real, dimension(ndayyear) :: tmp
-
     ! xxx dummy
-    out_landuse%lu_area(lunat) = 1.0
+    out_landuse%lu_area(lunat)  = 1.0
     out_landuse%do_grharvest(:) = .false.
 
   end function getlanduse
@@ -237,278 +257,11 @@ contains
     !! calculate VPD in units of kPa
     vpd = ( 0.611 * exp( (17.27 * my_tc)/(my_tc + 237.3) ) - 0.10 * vap )    
 
-    ! if (vpd<0.0) then
-    !   print*,'temp: ', my_tc
-    !   print*,'vapr: ', vap
-    !   print*,'vpd : ', vpd
-    !   print*,'SETTING VPD TO ZERO'
-    !   vpd = 0.0
-    !   stop
-    ! end if
-
     !! convert to Pa
     vpd = vpd * 1.0e3
 
   end function calc_vpd
 
-
-  !===========================LOW-LEVEL============================
-
-  ! function read1year_daily( filename )
-  !   !////////////////////////////////////////////////////////////////
-  !   ! Function reads a file that contains 365 lines, each line for
-  !   ! a daily value. 
-  !   !----------------------------------------------------------------
-  !   use md_params_core, only: ndayyear
-  !   implicit none
-
-  !   ! arguments
-  !   character(len=*), intent(in) :: filename
-
-  !   ! local variables
-  !   real, dimension(ndayyear) :: dval
-
-  !   ! function return value
-  !   real, dimension(ndayyear) :: read1year_daily
-
-  !   open(20, file='./input/'//filename, status='old',  form='formatted', action='read', err=888)
-  !   read(20,*) dval
-  !   close(20)
-
-  !   read1year_daily = dval
-
-  !   return
-  !   600 format (F9.7)
-  !   888 write(0,*) 'READ1YEAR: error opening file '//trim(filename)//'. Abort. '
-  !   stop
-
-  ! end function read1year_daily
-
-
-  ! function read1year_monthly( filename )
-  !   !////////////////////////////////////////////////////////////////
-  !   ! Function reads a file that contains 365 lines, each line for
-  !   ! a daily value. 
-  !   !----------------------------------------------------------------
-  !   use md_params_core, only: nmonth
-  !   implicit none
-
-  !   ! arguments
-  !   character(len=*), intent(in) :: filename
-
-  !   ! local variables
-  !   real, dimension(nmonth) :: mval
-
-  !   ! function return value
-  !   real, dimension(nmonth) :: read1year_monthly
-
-  !   open(20, file='./input/'//trim(filename), status='old',  form='formatted', action='read', err=888)
-  !   read(20,*) mval
-  !   close(20)
-
-  !   read1year_monthly = mval
-
-  !   return
-  !   600 format (F9.7)
-  !   888 write(0,*) 'READ1YEAR: error opening file '//trim(filename)//'. Abort. '
-  !   stop
-
-  ! end function read1year_monthly
-
-
-  ! function getvalreal( filename, realyear, day, dm, mo )
-  !   !////////////////////////////////////////////////////////////////
-  !   ! Function reads one (annual) value corresponding to the given 
-  !   !  year from a time series ascii file. 
-  !   !----------------------------------------------------------------
-
-  !   implicit none
-  !   ! arguments
-  !   character(len=*), intent(in) :: filename
-  !   integer, intent(in) :: realyear
-  !   integer, intent(in), optional :: day ! day in year (1:365)
-  !   integer, intent(in), optional :: dm  ! day in month (1:31)
-  !   integer, intent(in), optional :: mo  ! month in year (1:12)
-
-  !   ! function return value
-  !   real :: getvalreal
-
-  !   ! local variables
-  !   integer :: l
-  !   real :: tmp(3) ! 3 so that an additional value for this year could be read
-  !   real :: realyear_decimal 
-
-  !   if (present(day)) then
-  !    ! convert day number into decimal number
-  !    realyear_decimal = real(realyear) + real(day)/real(ndayyear)
-  !   endif
-
-  !   open(20, file=filename, status='old',  form='formatted', err=888)
-
-  !   if (present(day)) then
-  !    ! find corresponding day in first column and read 3 values on this line
-  !    read(20, 100, err=999) (tmp(l), l=1,3)  
-  !    do while (abs(realyear_decimal-tmp(1)).gt.1.0d-8)
-  !      read(20, 100, err=999) (tmp(l), l=1,3)
-  !    enddo
-
-  !   else
-  !    ! find corresponding year in first column and read 3 values on this line
-  !    read(20, 100, err=999) (tmp(l), l=1,3)  
-  !    do while (abs(realyear-tmp(1)).gt.1.0d-8)
-  !      read(20, 100, err=999) (tmp(l), l=1,3)
-  !    enddo
-
-  !   endif
-
-  !   getvalreal = tmp(2) 
-
-  !   100     format (30d16.8)
-  !   close(20)
-
-  !   return
-
-  !   888     write(0,*) 'GETVALREAL: error opening file '//trim(filename)//'. Abort. '
-  !   stop
-  !   999     write(0,*) 'GETVALREAL: error reading file '//trim(filename)//'. Abort. '
-  !   stop 
-
-  ! end function getvalreal
-
-
-  ! function getvalreal_STANDARD( filename, realyear, mo, dm, day, realyear_decimal )
-  !   !////////////////////////////////////////////////////////////////
-  !   !  SR reads one (annual) value corresponding to the given year 
-  !   ! from a time series ascii file. File has to be located in 
-  !   !  ./input/ and has to contain only rows formatted like
-  !   !  '2002  1  1 0.496632 0.054053', which represents 
-  !   !  'YYYY MM DM      GPP GPP err.'. DM is the day within the month.
-  !   !  If 'realyear' is dummy (-9999), then it's interpreted as to 
-  !   !  represent a mean climatology for the course of a year.
-  !   !----------------------------------------------------------------
-
-  !   implicit none
-  !   ! arguments
-  !   character(len=*), intent(in) :: filename
-  !   integer, intent(in), optional :: realyear ! year AD as integer
-  !   integer, intent(in), optional :: mo  ! month in year (1:12)
-  !   integer, intent(in), optional :: dm  ! day in month (1:31 or 1:31 or 1:28)
-  !   integer, intent(in), optional :: day ! day in year (1:365)
-  !   real,    intent(in), optional :: realyear_decimal ! year AD as decimal number corresponding to day in the year
-
-  !   ! function return value
-  !   real :: getvalreal_STANDARD
-
-  !   ! local variables
-  !   integer :: inyear
-  !   integer :: inmo
-  !   integer :: indm
-  !   integer :: inday
-  !   real    :: inyear_decimal
-  !   real    :: inval1
-  !   real    :: inval2
-
-  !   !print*,'looking for realyear, mo, dm',realyear,mo,dm
-
-  !   ! open file
-  !   open(20, file='./input/'//filename, status='old', form='formatted', err=888)
-
-  !   if (present(realyear)) then
-  !      ! DATA FOR EACH YEAR
-  !      if (present(mo)) then
-  !          ! DATA FOR EACH MONTH
-  !          if (present(dm)) then
-  !              ! DATA FOR EACH DAY IN THE MONTH
-  !              ! read the 2 values for this day in this year
-  !              read(20, 100, err=999) inyear, inmo, indm, inval1, inval2
-  !              do while ( (realyear-inyear).ne.0 .or. (mo-inmo).ne.0 .or. (dm-indm).ne.0 )
-  !                read(20, 100, err=999) inyear, inmo, indm, inval1, inval2
-  !              enddo
-  !          else           
-  !              ! read the 2 values for this month in this year
-  !              read(20, 200, err=999) inyear, inmo, inval1, inval2
-  !              do while ( (realyear-inyear).ne.0 .or. (mo-inmo).ne.0 )
-  !                read(20, 200, err=999) inyear, inmo, inval1, inval2
-  !              enddo
-  !          end if
-  !      else if (present(day)) then
-  !          ! DATA FOR EACH DAY IN THE YEAR
-  !          ! read the 2 values for this day in this year
-  !          read(20, 700, err=999) inyear, inday, inval1, inval2
-  !          do while ( (realyear-inyear).ne.0 .or. (day-inday).ne.0 )
-  !            read(20, 700, err=999) inyear, inday, inval1, inval2
-  !          enddo
-  !      else
-  !          ! read the 2 values for this year
-  !          read(20, 300, err=999) inyear, inval1, inval2
-  !          do while ( (realyear-inyear).ne.0 )
-  !            read(20, 300, err=999) inyear, inval1, inval2
-  !          enddo
-  !      end if
-  !   else if (present(realyear_decimal)) then
-  !     ! DATA PROVIDED FOR EACH DAY AS A DECIMAL OF REALYEAR
-  !     ! find corresponding day in first column and read 3 values on this line
-  !     read(20, 900, err=999) inyear_decimal, inval1, inval2  
-  !     do while (abs(realyear_decimal-inyear_decimal).gt.1.0d-8)
-  !       read(20, 900, err=999) inyear_decimal, inval1, inval2  
-  !     enddo
-  !   else
-  !      ! DATA AS AVERAGE OVER MULTIPLE YEARS (recycle climatology)
-  !      ! FOR EACH MONTH, AND DAY-IN-THE-MONTH
-  !      if (present(mo)) then
-  !          if (present(dm)) then
-  !              ! read the 2 values for this day
-  !              read(20, 400, err=999) inmo, indm, inval1, inval2
-  !              !print*,'inmo, indm, inval1, inval2', inmo, indm, inval1, inval2
-  !              do while ( (mo-inmo).ne.0 .or. (dm-indm).ne.0 )
-  !                read(20, 400, err=999) inmo, indm, inval1, inval2
-  !                !print*,'inmo, indm, inval1, inval2', inmo, indm, inval1, inval2
-  !              enddo
-  !          else           
-  !              ! read the 2 values for this month
-  !              read(20, 500, err=999) inmo, inval1, inval2
-  !              do while ( (mo-inmo).ne.0 )
-  !                read(20, 500, err=999) inmo, inval1, inval2
-  !              enddo
-
-  !          end if
-  !      else if (present(day)) then
-  !          ! DATA FOR EACH DAY IN THE YEAR
-  !          ! read the 2 values for this day
-  !          read(20, 800, err=999) inday, inval1, inval2
-  !          do while ( (day-inday).ne.0 )
-  !            read(20, 800, err=999) inday, inval1, inval2
-  !          enddo
-  !      else
-  !          ! read the 2 values in this input file
-  !          read(20, 600, err=999) inval1, inval2
-  !      end if
-  !   endif
-
-  !   !print*,'found realyear, mo, dm      ',inyear,inmo,indm,inval1
-
-  !   getvalreal_STANDARD = inval1
-
-  !   100     format (I4,I3,I3,F9.7,F9.7)
-  !   200     format (I4,I3,F9.7,F9.7)
-  !   300     format (I4,F9.7,F9.7)
-  !   400     format (I3,I3,F9.7,F9.7)
-  !   500     format (I3,F9.7,F9.7)
-  !   600     format (F9.7,F9.7)
-  !   700     format (I4,I4,F9.7,F9.7)
-  !   800     format (I4,F9.7,F9.7)
-  !   900     format (30d16.8,F9.7,F9.7)
-
-  !   close(20)
-
-  !   return
-
-  !   888     write(0,*) 'GETVALREAL_STANDARD: error opening file '//trim(filename)//'. Abort. '
-  !   stop
-  !   999     write(0,*) 'GETVALREAL_STANDARD: error reading file '//trim(filename)//'. Abort. '
-  !   stop 
-
-  ! end function getvalreal_STANDARD
 
 end module md_forcing_siterun
 

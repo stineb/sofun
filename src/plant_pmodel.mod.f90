@@ -79,14 +79,21 @@ contains
     if ( interface%params_siml%lTeBS ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'TeBS' )
-    end if 
-    if ( interface%params_siml%lGrC3 ) then
+
+    else if ( interface%params_siml%lGrC3 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GrC3' )
-    end if
-    if ( interface%params_siml%lGrC4 ) then
+
+    else if ( interface%params_siml%lGNC3 ) then
+      pft = pft + 1
+      params_pft_plant(pft) = getpftparams( 'GNC3' )
+
+    else if ( interface%params_siml%lGrC4 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GrC4' )
+
+    else
+      stop 'PLANT:GETPAR_MODL_PLANT: PFT name not valid. See run/<simulationname>.sofun.parameter'
     end if
     npft_site = pft
 
@@ -135,28 +142,6 @@ contains
       out_getpftparams%c4grass = .true.
       out_getpftparams%nfixer  = .false.
     end if      
-
-    ! land use category associated with PFT (provisional)
-    lu_category_prov = getparreal( trim('params/params_plant_'//trim(pftname)//'.dat'), 'lu_category_prov' )
-    if (lu_category_prov==1.0) then
-      out_getpftparams%lu_category = lunat
-      out_getpftparams%islu(lunat) = .true.
-    else
-      out_getpftparams%islu(lunat) = .false.
-    end if
-
-    ! leaf decay constant, read in as [years-1], central value: 0.0 yr-1 for deciduous plants
-    out_getpftparams%k_decay_leaf = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_leaf' ) / ndayyear 
-
-    ! sapwood decay constant [days], read in as [years-1], central value: xxx
-    out_getpftparams%k_decay_sapw = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_sapw' ) / ndayyear 
-
-    ! root decay constant [days], read in as [years-1], central value: 1.04 (Shan et al., 1993; see Li et al., 2014)
-    out_getpftparams%k_decay_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_root' ) / ndayyear 
-
-    ! root C:N and N:C ratio (gC/gN and gN/gC)
-    out_getpftparams%r_cton_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'r_cton_root' )
-    out_getpftparams%r_ntoc_root = 1.0 / out_getpftparams%r_cton_root
 
   end function getpftparams
 

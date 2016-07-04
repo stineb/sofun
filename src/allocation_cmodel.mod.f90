@@ -83,7 +83,6 @@ contains
       get_canopy, dnpp
     use md_waterbal, only: solar
     use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
-    use md_phenology, only: dtphen
     use md_findroot_fzeroin
 
     ! arguments
@@ -129,16 +128,6 @@ contains
       lu = params_pft_plant(pft)%lu_category
 
       if (params_pft_plant(pft)%grass) then
-
-        ! print*, '--- allocation_daily, doy:',doy
-        ! print*, 'doy, plabl  ', doy, plabl(pft,jpngr)
-        ! print*, 'doy, dtphen ', dtphen(:,pft)
-        ! stop 'do beni'
-
-        ! print*, 'cleaf          ', pleaf(pft,jpngr)%c%c12
-        ! print*, 'croot          ', proot(pft,jpngr)%c%c12
-        ! print*, 'C:N in leaves  ', cton( pleaf(pft,jpngr), default=0.0 )
-
 
         if ( plabl(pft,jpngr)%c%c12>0.0 ) then
           ! !------------------------------------------------------------------

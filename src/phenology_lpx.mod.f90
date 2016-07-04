@@ -69,10 +69,9 @@ contains
     real, dimension(ndayyear)       :: dtemp_int   ! daily temperature as linearly interpolated from monthly temperature
     logical, save :: firstcall = .true.
 
-    ! ((interface%steering%init))ialise
     dtphen(:,:)     = 0.0
-    ! sprout(:,:)     = .false.
-    ! shedleaves(:,:) = .false.
+    sprout(:,:)     = .false.
+    shedleaves(:,:) = .false.
 
     ! Phenology is driven by monthly temperatures and daily temperatures
     ! as interpolated from monthly temperatures to remove day-to-day
@@ -203,7 +202,7 @@ contains
             shedleaves(day,pft) = .false.
             ! print*, 'sprouting on day ', day 
             ! print*, sprout(38,pft)
-            ! stop
+
           else if ( dtphen(day,pft) > 0.0 ) then
             !----------------------------------------------------------
             ! during season (after spring and before autumn)
@@ -220,7 +219,7 @@ contains
             shedleaves(day,pft) = .true.
             ! print*, 'shedding leaves on day ', day 
             ! print*, shedleaves(345,pft)
-            ! stop
+
           else if ( dtphen(day,pft) == 0.0 ) then
             !----------------------------------------------------------
             ! during dormant season (after autumn and before spring)
@@ -238,14 +237,6 @@ contains
         end if
 
       end do
-    ! end do
-
-    ! print*,'sprout '
-    ! print*, sprout(38,pft)
-    ! print*, shedleaves(345,pft)
-    ! stop
-    ! print*,' dtphen(:,pft) ', dtphen(:,pft)
-    ! stop
     
     return
 

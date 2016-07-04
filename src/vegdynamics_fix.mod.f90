@@ -17,7 +17,7 @@ contains
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
     use md_params_core, only: npft
-    use md_phenology, only: dtphen, sprout, params_pft_pheno
+    use md_phenology, only: dtphen, sprout
 
     ! xxx debug
     use md_plant, only: ispresent
@@ -51,9 +51,6 @@ contains
       !   stop 'estab_daily not implemented for non-summergreen'
 
       ! end if
-
-      ! ! ! Update canopy state variables
-      ! ! canopy = get_canopy( lai_ind(pft,jpngr) )
 
     end do
 

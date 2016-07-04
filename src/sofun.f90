@@ -90,16 +90,6 @@ program main
                                           ! 1992 &
                                           interface%steering%climateyear &
                                           )
-    ! print*,'dtemp:'
-    ! print*,interface%climate(1)%dtemp(:)
-    ! print*,'dfsun:'
-    ! print*,interface%climate(1)%dfsun(:)
-    ! print*,'dvpd:'
-    ! print*,interface%climate(1)%dvpd(:)
-    ! print*,'dprec:'
-    ! print*,interface%climate(1)%dprec(:)
-    ! stop
-
     ! CO2
     interface%pco2 = getco2( &
                             trim(runname), &
@@ -158,7 +148,8 @@ program main
       interface%mfapar_field(:,:) = getfapar( &
                                             trim(runname), &
                                             trim(interface%params_siml%sitename), &
-                                            interface%steering%forcingyear &
+                                            interface%steering%forcingyear, &
+                                            interface%params_siml%fapar_forcing_source &
                                             )
     else
       interface%mfapar_field(:,:) = dummy

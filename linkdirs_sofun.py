@@ -17,3 +17,4 @@ simsuite = 'fluxnet'
 call(['ln', '-svf', '../../input_' + simsuite + '_sofun/sitedata', 'input'])
 call(['ln', '-svf', '../input_' + simsuite + '_sofun/site_paramfils', '.'])
 call(['ln', '-svf', '../input_' + simsuite + '_sofun/run', '.'])
+call(['ln', '-svf', '../output_' + simsuite + '_sofun', 'output'])
