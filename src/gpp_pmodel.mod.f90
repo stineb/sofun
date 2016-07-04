@@ -337,7 +337,7 @@ contains
           ! ! XXX PMODEL_TEST
           ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
 
-          if ( params_pft_plant(pft)%c4grass ) then
+          if ( params_pft_plant(pft)%c4 ) then
             ! C4: use infinite CO2 for ci
             out_pmodel = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
           else
@@ -1293,11 +1293,11 @@ contains
     ! function return variable
     real :: ftemp
 
-    ! ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
-    ! ftemp = max( 0.0, min( 1.0, dtemp / 12.0 ) )
+    ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
+    ftemp = max( 0.0, min( 1.0, dtemp / 12.0 ) )
 
-    ! xxx try: no temperature inhibition
-    ftemp = 1.0
+    ! ! xxx try: no temperature inhibition
+    ! ftemp = 1.0
 
   end function ramp_gpp_lotemp
 
@@ -1345,7 +1345,7 @@ contains
     character(len=256) :: filnam
 
     prefix = "./output/"//trim(interface%params_siml%runname)
-    
+
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------

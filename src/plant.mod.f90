@@ -111,8 +111,8 @@ module md_plant
     logical :: grass               ! boolean for growth form 'grass'
     logical :: tree                ! boolean for growth form 'tree'
     logical :: nfixer              ! whether plant is capable of symbiotically fixing N
-    logical :: c3grass             ! whether plant follows C3 photosynthesis
-    logical :: c4grass             ! whether plant follows C4 photosynthesis
+    logical :: c3                  ! whether plant follows C3 photosynthesis
+    logical :: c4                  ! whether plant follows C4 photosynthesis
     real    :: k_decay_leaf_base   ! base leaf decay constant [year-1]
     real    :: k_decay_leaf_width  ! shape parameter for turnover function if LAI
     real    :: k_decay_sapw        ! sapwood decay constant [year-1]
@@ -268,20 +268,20 @@ contains
     if (trim(pftname)=='GrC3') then
       out_getpftparams%grass   = .true.
       out_getpftparams%tree    = .false.
-      out_getpftparams%c3grass = .true.
-      out_getpftparams%c4grass = .false.
+      out_getpftparams%c3      = .true.
+      out_getpftparams%c4      = .false.
       out_getpftparams%nfixer  = .false.
     else if (trim(pftname)=='GNC3') then
       out_getpftparams%grass   = .true.
       out_getpftparams%tree    = .false.
-      out_getpftparams%c3grass = .true.
-      out_getpftparams%c4grass = .false.
+      out_getpftparams%c3      = .true.
+      out_getpftparams%c4      = .false.
       out_getpftparams%nfixer  = .true.
     else if (trim(pftname)=='GrC4') then
       out_getpftparams%grass   = .true.
       out_getpftparams%tree    = .false.
-      out_getpftparams%c3grass = .false.
-      out_getpftparams%c4grass = .true.
+      out_getpftparams%c3      = .false.
+      out_getpftparams%c4      = .true.
       out_getpftparams%nfixer  = .false.
     end if      
     
