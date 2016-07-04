@@ -37,6 +37,7 @@ module md_params_siml
     character(len=256) :: nfert_noy_forcing_file
     character(len=256) :: nfert_nhx_forcing_file
     character(len=256) :: do_grharvest_forcing_file
+    character(len=256) :: fapar_forcing_source
 
     logical :: prescr_monthly_fapar
 
@@ -204,6 +205,8 @@ contains
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_noy_forcing_file', out_getpar_siml%nfert_noy_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_nhx_forcing_file', out_getpar_siml%nfert_nhx_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
+    
+    out_getpar_siml%fapar_forcing_source = 'NA'
 
     out_getpar_siml%do_spinup            = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
     out_getpar_siml%const_co2            = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_co2' )

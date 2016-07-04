@@ -103,6 +103,7 @@ program main
 
     ! Atmospheric N deposition
     ndep_field(:) = getninput( &
+                              "ndep", &
                               trim(runname), &
                               trim(interface%params_siml%sitename), &
                               ! 1993, &
@@ -116,6 +117,7 @@ program main
 
     ! N fertiliser input
     nfert_field(:) = getninput( &
+                              "nfert", &
                               trim(runname), &
                               trim(interface%params_siml%sitename), &
                               ! 1993, &

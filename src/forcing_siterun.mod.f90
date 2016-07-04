@@ -67,7 +67,7 @@ contains
   end function getco2
 
 
-  function getninput( runname, sitename, forcingyear, firstyeartrend, const_ninput, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
+  function getninput( ntype, runname, sitename, forcingyear, firstyeartrend, const_ninput, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual ninputosition and distributes it
     ! over days according to daily precipitation.
@@ -75,6 +75,7 @@ contains
     use md_params_core, only: dummy
 
     ! arguments
+    character(len=*), intent(in) :: ntype   ! either "nfert" or "ndep"
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
@@ -103,13 +104,13 @@ contains
     end if
 
     ! xxx try
-    ! readyear = max( 1992, min( readyear, 2009 ) )
+    if (ntype=="ndep") readyear = min( readyear, 2009 )
     readyear = max( 1850, readyear )
     write(0,*) 'GETNINPUT: use N fertilisation data of year ', readyear
 
     ! aninput = getvalreal( trim(input_dir)//trim(ninput_forcing_file), readyear )
-    aninput_noy = getvalreal( 'sitedata/ninput/'//trim(sitename)//'/'//trim(ninput_noy_forcing_file), readyear )
-    aninput_nhx = getvalreal( 'sitedata/ninput/'//trim(sitename)//'/'//trim(ninput_nhx_forcing_file), readyear )
+    aninput_noy = getvalreal( 'sitedata/'//trim(ntype)//'/'//trim(sitename)//'/'//trim(ninput_noy_forcing_file), readyear )
+    aninput_nhx = getvalreal( 'sitedata/'//trim(ntype)//'/'//trim(sitename)//'/'//trim(ninput_nhx_forcing_file), readyear )
 
     do jpngr=1,maxgrid
       dprec_rel(:)               = climate(jpngr)%dprec(:)/sum(climate(jpngr)%dprec(:))
@@ -148,7 +149,7 @@ contains
   end function gettot_ninput
 
 
-  function getfapar( runname, sitename, forcingyear ) result( fapar_field )
+  function getfapar( runname, sitename, forcingyear, fapar_forcing_source ) result( fapar_field )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
@@ -158,6 +159,7 @@ contains
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: forcingyear
+    character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
     real, dimension(nmonth,maxgrid) :: fapar_field
@@ -170,7 +172,7 @@ contains
     do jpngr=1,maxgrid
       ! create 4-digit string for year  
       write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-      fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_modis_'//trim(sitename)//'_'//faparyear_char//'.txt' )
+      fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_'//trim(fapar_forcing_source)//'_'//trim(sitename)//'_'//faparyear_char//'.txt' )
     end do
 
     return

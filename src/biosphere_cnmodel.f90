@@ -21,6 +21,7 @@ subroutine biosphere( c_uptake )
   use md_waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, &
     initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, &
     writeout_ascii_waterbal
+  use md_phenology, only: gettempphenology, getpar_modl_phenology
   use md_gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, &
     getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp
   use md_npp, only: npp
@@ -76,6 +77,7 @@ subroutine biosphere( c_uptake )
     call getpar_modl_plant()
     call getpar_modl_waterbal()
     call getpar_modl_gpp()
+    call getpar_modl_phenology()
     call getpar_modl_littersom()
     call getpar_modl_ntransform()
     call getpar_modl_nuptake()
@@ -158,6 +160,13 @@ subroutine biosphere( c_uptake )
       interface%climate(jpngr)%dvpd(:), & 
       interface%grid(jpngr)%elv & 
       )
+    if (verbose) write(0,*) '... done'
+
+    !----------------------------------------------------------------
+    ! Get phenology variables (temperature-drivenå)
+    !----------------------------------------------------------------
+    if (verbose) write(0,*) 'calling gettempphenology() ...'
+    call gettempphenology( jpngr, interface%climate(jpngr)%dtemp(:) )
     if (verbose) write(0,*) '... done'
 
     !----------------------------------------------------------------

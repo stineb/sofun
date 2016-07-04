@@ -148,7 +148,13 @@ contains
           ! discounted by the yield factor.
           !------------------------------------------------------------------
           if (pleaf(pft,jpngr)%c%c12==0.0) then
+            ! print*, 'Calculating initial C:N ratio'
+            ! initial guess based on Taylor approximation of Cleaf and Nleaf function around cleaf=0
             leaftraits(pft)%r_cton_leaf = get_rcton_init( pft, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+            ! print*, 'solar%meanmppfd(:)', solar%meanmppfd(:)  
+            ! print*, 'mactnv_unitiabs(pft,:)', mactnv_unitiabs(pft,:)  
+            ! print*, 'initial guess: r_cton_leaf(pft,jpngr) ', leaftraits(pft)%r_cton_leaf  
+            ! stop
           end if
 
           max_dcleaf_n_constraint = plabl(pft,jpngr)%n%n14 * leaftraits(pft)%r_cton_leaf
@@ -237,7 +243,7 @@ contains
           ! Update fpc_grid and fapar_ind (not lai_ind)
           !-------------------------------------------------------------------  
           canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
-! 
+
           !-------------------------------------------------------------------
           ! ROOT ALLOCATION
           !-------------------------------------------------------------------
@@ -412,12 +418,12 @@ contains
     else if (( mydnleaf + mydnroot )==0.0) then
       eval = 999.0
     else
-      ! ! ORIGINAL: C:N OF ACQUISITION IS EQUAL TO C:N OF CURRENT WHOLE-PLANT
-      ! !     |---------------------------------------------------|  |------------------------------------|
-      ! eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
-      ! !     |---------------------------------------------------|  |------------------------------------|
-      ! !     |lab. pool C:N ratio after acq. nxt. day            |  | current whole-plant C:N ratio      |
-      ! !     |---------------------------------------------------|  |------------------------------------|
+      ! ORIGINAL: C:N OF ACQUISITION IS EQUAL TO C:N OF CURRENT WHOLE-PLANT
+      !     |---------------------------------------------------|  |------------------------------------|
+      eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
+      !     |---------------------------------------------------|  |------------------------------------|
+      !     |lab. pool C:N ratio after acq. nxt. day            |  | current whole-plant C:N ratio      |
+      !     |---------------------------------------------------|  |------------------------------------|
 
       ! ALTERNATIVE: C:N OF ACQUISITION IS EQUAL TO C:N OF INVESTMENT
       !     |---------------------------------------------------|  |-------------------------------------------------|
@@ -761,25 +767,23 @@ contains
     mynarea_metabolic_canop  = get_leaf_n_metabolic_canopy(  mylai, meanmppfd(:), nv(:) )     ! mol N m-2-ground    
     mynarea_structural_canop = get_leaf_n_structural_canopy( pft, mylai, mynarea_metabolic_canop ) ! mol N m-2-ground
     
-    out_traits%narea_metabolic  = n_molmass * mynarea_metabolic_canop / mylai   ! g N m-2-leaf
-    out_traits%narea_structural = n_molmass * mynarea_structural_canop / mylai  ! g N m-2-leaf
-    out_traits%narea            = n_molmass * ( mynarea_metabolic_canop + mynarea_structural_canop ) / mylai ! g N m-2-leaf
-    out_traits%lma              = c_molmass * params_pft_plant(pft)%r_ctostructn_leaf * mynarea_structural_canop / mylai 
-    out_traits%nmass            = out_traits%narea / ( out_traits%lma / c_content_of_biomass )
-    out_traits%r_cton_leaf      = out_traits%lma / out_traits%narea
-    out_traits%r_ntoc_leaf      = 1.0 / out_traits%r_cton_leaf
-
-    ! print*, '--- in get_leaftraits'
-    ! print*, 'mylai                  ', mylai
-    ! print*, 'traits%narea_metabolic ', traits%narea_metabolic 
-    ! print*, 'traits%narea_structural', traits%narea_structural
-    ! print*, 'traits%narea           ', traits%narea           
-    ! print*, 'traits%lma             ', traits%lma             
-    ! print*, 'traits%nmass           ', traits%nmass           
-    ! print*, 'traits%r_cton_leaf     ', traits%r_cton_leaf     
-    ! print*, 'traits%r_ntoc_leaf     ', traits%r_ntoc_leaf     
-    ! print*, '-------------------------------'
-    ! stop 
+    if (mylai==0.0) then
+      out_traits%narea_metabolic  = 0.0
+      out_traits%narea_structural = 0.0
+      out_traits%narea            = 0.0
+      out_traits%lma              = 0.0
+      out_traits%nmass            = 0.0
+      out_traits%r_cton_leaf      = 0.0
+      out_traits%r_ntoc_leaf      = 0.0
+    else
+      out_traits%narea_metabolic  = n_molmass * mynarea_metabolic_canop / mylai   ! g N m-2-leaf
+      out_traits%narea_structural = n_molmass * mynarea_structural_canop / mylai  ! g N m-2-leaf
+      out_traits%narea            = n_molmass * ( mynarea_metabolic_canop + mynarea_structural_canop ) / mylai ! g N m-2-leaf
+      out_traits%lma              = c_molmass * params_pft_plant(pft)%r_ctostructn_leaf * mynarea_structural_canop / mylai 
+      out_traits%nmass            = out_traits%narea / ( out_traits%lma / c_content_of_biomass )
+      out_traits%r_cton_leaf      = out_traits%lma / out_traits%narea
+      out_traits%r_ntoc_leaf      = 1.0 / out_traits%r_cton_leaf
+    end if
 
   end function get_leaftraits
 

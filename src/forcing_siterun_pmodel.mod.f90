@@ -67,13 +67,14 @@ contains
   end function getco2
 
 
-  function getninput( runname, sitename, forcingyear, firstyeartrend, const_ninput, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
+  function getninput( ntype, runname, sitename, forcingyear, firstyeartrend, const_ninput, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
     !////////////////////////////////////////////////////////////////
     ! Dummy function in 'pmodel' setup.
     !----------------------------------------------------------------
     use md_params_core, only: dummy
 
     ! arguments
+    character(len=*), intent(in) :: ntype   ! either "ndep" or "nfert"
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear

@@ -370,19 +370,6 @@ contains
       end do
     end do
 
-    ! xxx debug
-    ! print*, 'mtemp', mtemp
-    ! print*, 'mvpd', mvpd
-    ! print*, 'co2', co2
-    ! print*, 'elv', elv
-    ! print*, 'mlue', mlue
-    ! print*, 'mvcmax_unitiabs', mvcmax_unitiabs
-    ! print*, 'mactnv_unitiabs', mactnv_unitiabs
-    ! print*, 'factor25', factor25
-    ! print*, 'mrd_unitiabs', mrd_unitiabs
-    ! print*, 'mchi', mchi
-    ! stop 'do beni'
-
   end subroutine getlue
 
 

@@ -5,18 +5,12 @@ from subprocess import call
 
 ##--------------------------------------------------------------------
 ## Simulation suite
+## - "swissface"
+## - "fluxnet"
+## - "gcme"
+## - "campi"
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet'
-# simsuite = 'gcme'
-# simsuite = 'fluxnet_cmodel'
-# simsuite = 'pmodel_test'
-
-# ctrl_SwissFACE_lolium2_c0f1
-# ctrl_SwissFACE_lolium2_c1f0
-# grad_SwissFACE_lolium2_c0f1
-# grad_SwissFACE_lolium2_c1f0
-# step_SwissFACE_lolium2_c0f1
-# step_SwissFACE_lolium2_c1f0
+simsuite = 'swissface'
 
 ##--------------------------------------------------------------------
 ## Compile
@@ -27,7 +21,7 @@ if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
 elif simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test':
     exe = 'runcmodel'
     compiling_opt = 'cmodel'
-elif simsuite == 'gcme':
+elif simsuite == 'gcme' or simsuite == 'swissface':
     exe = 'runcnmodel'
     compiling_opt = 'cnmodel'
 else:
@@ -55,7 +49,7 @@ for index, row in siteinfo.iterrows():
         if row['classid'] == 'GRA':
             print 'submitting job for site ' + row['mysitename'] + '...'
             os.system( 'echo ' + row['mysitename'] + '| ./' + exe )
-    elif simsuite == 'gcme':
+    elif simsuite == 'gcme' or 'swissface':
         print 'submitting job for experiment ' + row['expname'] + '...'
         os.system( 'echo ' + row['expname'] + '| ./' + exe )        
     else:
