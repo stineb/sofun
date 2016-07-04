@@ -15,19 +15,19 @@ get_pointdata_ndep_lamarque <- function( lon, lat, yr=NA ){
   if ( file.exists( filn ) ){
     
     ## TIME      
-    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "TIME", "LON", "LAT", lon, lat )
+    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "TIME", "LON", "LAT", sprintf("%.2f",lon), sprintf("%.2f",lat) )
     # print( paste( "executing command:", cmd ) )
     system( cmd )
     year <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
 
     ## NOy      
-    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "NOy", "LON", "LAT", lon, lat )
+    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "NOy", "LON", "LAT", sprintf("%.2f",lon), sprintf("%.2f",lat) )
     # print( paste( "executing command:", cmd ) )
     system( cmd )
     noy <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
 
     ## NHx      
-    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "NHx", "LON", "LAT", lon, lat )
+    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "NHx", "LON", "LAT", sprintf("%.2f",lon), sprintf("%.2f",lat) )
     # print( paste( "executing command:", cmd ) )
     system( cmd )
     nhx <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1

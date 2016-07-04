@@ -11,7 +11,7 @@ get_pointdata_elv_watch <- function( lon, lat ){
 
   if ( file.exists( filn ) ){
     
-    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh "), filn, "elevation", "lon", "lat", lon, lat )
+    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "elevation", "lon", "lat", sprintf( "%.2f", lon ), sprintf( "%.2f", lat ) )
     system( cmd )
     out <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
 

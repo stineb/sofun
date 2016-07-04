@@ -11,7 +11,7 @@ get_pointdata_fapar_modis <- function( lon, lat, yr ){
 
   if ( file.exists( filn ) ){
     
-    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh "), filn, "fAPAR", "lon", "lat", lon, lat )
+    cmd <- paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh "), filn, "fAPAR", "lon", "lat", sprintf("%.2f",lon), sprintf("%.2f",lat) )
     print( paste( "executing command:", cmd ) )
     system( cmd )
     out <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1

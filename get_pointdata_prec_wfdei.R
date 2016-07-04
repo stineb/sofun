@@ -11,7 +11,7 @@ get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap=TRUE ){
   filn <- paste( myhome, "data/watch_wfdei/Rainf_daily/Rainf_daily_WFDEI_CRU_", sprintf( "%4d", yr ), sprintf( "%02d", mo ), ".nc", sep="" )
   if ( file.exists( filn ) ){
     print( paste( "extracting from", filn ) )
-    system( paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "Rainf", "lon", "lat", lon, lat ) )
+    system( paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "Rainf", "lon", "lat", sprintf("%.2f",lon), sprintf("%.2f",lat) ) )
     dprec <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
     dprec <- dprec*60*60*24 # kg/m2/s -> mm/day
   } else {
@@ -23,7 +23,7 @@ get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap=TRUE ){
   filn <- paste( myhome, "data/watch_wfdei/Snowf_daily/Snowf_daily_WFDEI_CRU_", sprintf( "%4d", yr ), sprintf( "%02d", mo ), ".nc", sep="" )
   if ( file.exists( filn ) ){
     print( paste( "extracting from", filn ) )
-    system( paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "Snowf", "lon", "lat", lon, lat ) )
+    system( paste( paste( myhome, "sofun/getin/extract_pointdata_byfil.sh ", sep="" ), filn, "Snowf", "lon", "lat", sprintf("%.2f",lon), sprintf("%.2f",lat) ) )
     dsnow <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
     dsnow <- dsnow*60*60*24 # kg/m2/s -> mm/day
     dprec <- dprec + dsnow
