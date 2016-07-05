@@ -115,6 +115,12 @@ program main
                               interface%climate(:)&
                               )
 
+    if (interface%steering%forcingyear>1993) then
+      ndep_field(1)%dnoy(:) = 0.0
+      ndep_field(1)%dnhx(:) = 0.0
+      ndep_field(1)%dtot(:) = 0.0
+    end if
+
     ! N fertiliser input
     nfert_field(:) = getninput( &
                               "nfert", &

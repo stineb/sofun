@@ -33,7 +33,7 @@ if not os.path.exists( exe ):
 ##--------------------------------------------------------------------
 ## Get site/experiment names
 ##--------------------------------------------------------------------
-filnam_siteinfo_csv = '../input_' + simsuite + '_sofun/siteinfo_' + simsuite + '_sofun.csv'
+filnam_siteinfo_csv = '../input_' + simsuite + '_sofun/experiments_' + simsuite + '_sofun.csv'
 
 if os.path.exists( filnam_siteinfo_csv ):
     print 'reading site information file ' + filnam_siteinfo_csv + '...'

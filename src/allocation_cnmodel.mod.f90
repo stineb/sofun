@@ -418,14 +418,14 @@ contains
     else if (( mydnleaf + mydnroot )==0.0) then
       eval = 999.0
     else
-      ! ORIGINAL: C:N OF ACQUISITION IS EQUAL TO C:N OF CURRENT WHOLE-PLANT
-      !     |---------------------------------------------------|  |------------------------------------|
-      eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
-      !     |---------------------------------------------------|  |------------------------------------|
-      !     |lab. pool C:N ratio after acq. nxt. day            |  | current whole-plant C:N ratio      |
-      !     |---------------------------------------------------|  |------------------------------------|
+      ! ! INITIAL IMPLEMENTATION: C:N OF ACQUISITION IS EQUAL TO C:N OF CURRENT WHOLE-PLANT
+      ! !     |---------------------------------------------------|  |------------------------------------|
+      ! eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
+      ! !     |---------------------------------------------------|  |------------------------------------|
+      ! !     |lab. pool C:N ratio after acq. nxt. day            |  | current whole-plant C:N ratio      |
+      ! !     |---------------------------------------------------|  |------------------------------------|
 
-      ! ALTERNATIVE: C:N OF ACQUISITION IS EQUAL TO C:N OF INVESTMENT
+      ! NEW IMPLEMENTATION: C:N OF ACQUISITION IS EQUAL TO C:N OF INVESTMENT
       !     |---------------------------------------------------|  |-------------------------------------------------|
       eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( mydcleaf + mydcroot ) / ( mydnleaf + mydnroot )
       !     |---------------------------------------------------|  |-------------------------------------------------|

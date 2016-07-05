@@ -106,7 +106,7 @@ contains
     ! xxx try
     if (ntype=="ndep") readyear = min( readyear, 2009 )
     readyear = max( 1850, readyear )
-    write(0,*) 'GETNINPUT: use N fertilisation data of year ', readyear
+    write(0,*) 'GETNINPUT: use '//trim(ntype)//' data of year ', readyear
 
     ! aninput = getvalreal( trim(input_dir)//trim(ninput_forcing_file), readyear )
     aninput_noy = getvalreal( 'sitedata/'//trim(ntype)//'/'//trim(sitename)//'/'//trim(ninput_noy_forcing_file), readyear )
