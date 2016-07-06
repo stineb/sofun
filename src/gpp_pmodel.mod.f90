@@ -348,7 +348,7 @@ contains
           ! print*,'elv   ', elv
           ! print*,'C4    ', params_pft_plant(pft)%c4
 
-          if (mtemp(moy)>0.0) then
+          ! if (mtemp(moy)>0.0) then
 
             ! Plant is only active above absolute minimum temperature 'temp0' (usually at 0 deg C)
           
@@ -381,30 +381,30 @@ contains
             ! ci:ca
             mchi(pft,moy)             = out_pmodel%chi
 
-          else
-            ! Plant is inactive below absolute minimum temperature 'temp0' (usually at 0 deg C)
-            ! Light use efficiency: (gpp - rd) per unit light absorbed
-            mlue(pft,moy)             = 0.0
+          ! else
+          !   ! Plant is inactive below absolute minimum temperature 'temp0' (usually at 0 deg C)
+          !   ! Light use efficiency: (gpp - rd) per unit light absorbed
+          !   mlue(pft,moy)             = 0.0
             
-            ! Vcmax per unit absorbed light
-            mvcmax_unitiabs(pft,moy)  = 0.0
+          !   ! Vcmax per unit absorbed light
+          !   mvcmax_unitiabs(pft,moy)  = 0.0
             
-            ! conversion factor to get from absorbed light to Rubisco-N
-            mactnv_unitiabs(pft,moy)  = 0.0
+          !   ! conversion factor to get from absorbed light to Rubisco-N
+          !   mactnv_unitiabs(pft,moy)  = 0.0
             
-            ! factor to convert from 25 deg-normalised to ambient T
-            factor25(pft,moy)         = 0.0
+          !   ! factor to convert from 25 deg-normalised to ambient T
+          !   factor25(pft,moy)         = 0.0
             
-            ! dark respiration per unit absorbed light
-            mrd_unitiabs(pft,moy)     = 0.0
+          !   ! dark respiration per unit absorbed light
+          !   mrd_unitiabs(pft,moy)     = 0.0
 
-            ! transpiration per unit 
-            mtransp_unitiabs(pft,moy) = 0.0
+          !   ! transpiration per unit 
+          !   mtransp_unitiabs(pft,moy) = 0.0
 
-            ! ci:ca
-            mchi(pft,moy)             = 0.0
+          !   ! ci:ca
+          !   mchi(pft,moy)             = 0.0
 
-          end if
+          ! end if
 
         end do
       end do
@@ -1320,8 +1320,11 @@ contains
     ! function return variable
     real :: ftemp
 
-    ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
-    ftemp = max( 0.0, min( 1.0, (dtemp - temp0) / temp1 ) )
+    ! ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
+    ! ftemp = max( 0.0, min( 1.0, (dtemp - temp0) / temp1 ) )
+
+    ! no temperature ramp
+    ftemp = 1.0
 
   end function ramp_gpp_lotemp
 
