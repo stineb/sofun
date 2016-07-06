@@ -15,7 +15,7 @@ source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 
 overwrite <- TRUE
 
-simsuite <- "campi"
+simsuite <- "swissface"
 
 ##--------------------------------------------------------------------
 ##--------------------------------------------------------------------
@@ -33,8 +33,6 @@ siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_
 nsites <- dim(siteinfo)[1]
 
 for (idx in seq(nsites)){
-# for (idx in 1:1){
-# for (idx in 9:9){
 
   sitename <- as.character(siteinfo$mysitename[idx])
   lon      <- siteinfo$lon[idx]
@@ -217,7 +215,13 @@ for (idx in seq(nsites)){
 
         putjdx <- which( clim_daily$year==meteo$year[jdx] & clim_daily$moy==meteo$moy[jdx] & clim_daily$dom==meteo$dom[jdx] )
 
-        if (length(putjdx)!=1) { print("PROBLEM") }
+        if (length(putjdx)>1) { 
+          print("PROBLEM: found multiple corresponding indeces for ...")
+          print(paste("year =", meteo$year[jdx], "moy =", meteo$moy[jdx], "dom =", meteo$dom[jdx] ) ) 
+        } else if (length(putjdx)==0){
+          print("PROBLEM: found no corresponding indeces for ...")
+          print(paste("year =", meteo$year[jdx], "moy =", meteo$moy[jdx], "dom =", meteo$dom[jdx] ) )           
+        }
         if (!is.na(meteo$temp_mean[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp_mean[jdx] }
         if (!is.na(meteo$temp_mean[jdx])) { clim_daily$source[ putjdx ] <- "temp_sitedata" }
 
