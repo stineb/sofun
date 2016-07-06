@@ -15,7 +15,7 @@ source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 
 overwrite <- TRUE
 
-simsuite <- "gcme"
+simsuite <- "campi"
 
 ##--------------------------------------------------------------------
 ##--------------------------------------------------------------------
@@ -32,8 +32,9 @@ endyr_wfdei  <- 2012
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 
-# for (idx in seq(nsites)){
-for (idx in 9:21){
+for (idx in seq(nsites)){
+# for (idx in 1:1){
+# for (idx in 9:9){
 
   sitename <- as.character(siteinfo$mysitename[idx])
   lon      <- siteinfo$lon[idx]
@@ -189,13 +190,13 @@ for (idx in 9:21){
         print( paste( "... found data for year and month:", yr, moy ) )
         tmp <- get_pointdata_temp_wfdei( lon, lat, moy, yr )
         if (!is.na(tmp[1])) { 
-          useidx <- which( clim_daily$year==yr & clim_daily$moy==moy )
-          clim_daily$temp[ useidx ]   <- tmp 
-          clim_daily$source[ useidx ] <- "wfdei" 
+         useidx <- which( clim_daily$year==yr & clim_daily$moy==moy )
+         clim_daily$temp[ useidx ]   <- tmp 
+         clim_daily$source[ useidx ] <- "wfdei" 
         }
         tmp <- get_pointdata_prec_wfdei( lon, lat, moy, yr )
         if (!is.na(tmp[1])) { 
-          clim_daily$prec[ which( clim_daily$year==yr & clim_daily$moy==moy ) ] <- tmp 
+         clim_daily$prec[ which( clim_daily$year==yr & clim_daily$moy==moy ) ] <- tmp 
         }
       }
     }
@@ -205,7 +206,7 @@ for (idx in 9:21){
     ##--------------------------------------------------------------------
     if (!is.null(siteinfo$meteosource)){
       print("Using site-specific meteo data from separate file ...")
-      filn <- paste( "../../../", as.character(siteinfo$meteosource[idx] ), sep="" )
+      filn <- paste( "../../", as.character(siteinfo$meteosource[idx] ), sep="" )
       print( paste( "file name", filn))
       meteo <- read.csv( filn )
       
@@ -216,7 +217,7 @@ for (idx in 9:21){
 
         putjdx <- which( clim_daily$year==meteo$year[jdx] & clim_daily$moy==meteo$moy[jdx] & clim_daily$dom==meteo$dom[jdx] )
 
-        # if (length(putjdx)!=1) { print("PROBLEM") }
+        if (length(putjdx)!=1) { print("PROBLEM") }
         if (!is.na(meteo$temp_mean[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp_mean[jdx] }
         if (!is.na(meteo$temp_mean[jdx])) { clim_daily$source[ putjdx ] <- "temp_sitedata" }
 
