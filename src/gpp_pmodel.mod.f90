@@ -66,6 +66,8 @@ module md_gpp
   !-----------------------------------------------------------------------
   real, parameter :: kPo = 101325.0        ! standard atmosphere, Pa (Allen, 1973)
   real, parameter :: kTo = 25.0            ! base temperature, deg C (Prentice, unpublished)
+  real, parameter :: temp0 = 0.0           ! temperature below which all quantities are zero (deg C)
+  real, parameter :: temp1 = 12.0          ! temperature above which ramp function is 1.0 (linear between temp0 and temp1) (deg C)
 
   !-----------------------------------------------------------------------
   ! Metabolic N ratio (N per unit Vcmax)
@@ -337,34 +339,72 @@ contains
           ! ! XXX PMODEL_TEST
           ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
 
-          if ( params_pft_plant(pft)%c4 ) then
-            ! C4: use infinite CO2 for ci
-            out_pmodel = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
+          ! ! xxx debug
+          ! print*,'calling P-model with:'
+          ! print*,'pft   ', pft
+          ! print*,'moy   ', moy
+          ! print*,'mtemp ', mtemp(moy)
+          ! print*,'mvpd  ', mvpd(moy)
+          ! print*,'elv   ', elv
+          ! print*,'C4    ', params_pft_plant(pft)%c4
+
+          if (mtemp(moy)>0.0) then
+
+            ! Plant is only active above absolute minimum temperature 'temp0' (usually at 0 deg C)
+          
+            if ( params_pft_plant(pft)%c4 ) then
+              ! C4: use infinite CO2 for ci
+              out_pmodel = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
+            else
+              ! C3
+              out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
+            end if
+
+            ! Light use efficiency: (gpp - rd) per unit light absorbed
+            mlue(pft,moy)             = out_pmodel%lue
+            
+            ! Vcmax per unit absorbed light
+            mvcmax_unitiabs(pft,moy)  = out_pmodel%vcmax_unitiabs
+            
+            ! conversion factor to get from absorbed light to Rubisco-N
+            mactnv_unitiabs(pft,moy)  = out_pmodel%actnv_unitiabs
+            
+            ! factor to convert from 25 deg-normalised to ambient T
+            factor25(pft,moy)         = out_pmodel%factor25_vcmax
+            
+            ! dark respiration per unit absorbed light
+            mrd_unitiabs(pft,moy)     = out_pmodel%rd_unitiabs
+
+            ! transpiration per unit 
+            mtransp_unitiabs(pft,moy) = out_pmodel%transp_unitiabs
+
+            ! ci:ca
+            mchi(pft,moy)             = out_pmodel%chi
+
           else
-            ! C3
-            out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
+            ! Plant is inactive below absolute minimum temperature 'temp0' (usually at 0 deg C)
+            ! Light use efficiency: (gpp - rd) per unit light absorbed
+            mlue(pft,moy)             = 0.0
+            
+            ! Vcmax per unit absorbed light
+            mvcmax_unitiabs(pft,moy)  = 0.0
+            
+            ! conversion factor to get from absorbed light to Rubisco-N
+            mactnv_unitiabs(pft,moy)  = 0.0
+            
+            ! factor to convert from 25 deg-normalised to ambient T
+            factor25(pft,moy)         = 0.0
+            
+            ! dark respiration per unit absorbed light
+            mrd_unitiabs(pft,moy)     = 0.0
+
+            ! transpiration per unit 
+            mtransp_unitiabs(pft,moy) = 0.0
+
+            ! ci:ca
+            mchi(pft,moy)             = 0.0
+
           end if
-
-          ! Light use efficiency: (gpp - rd) per unit light absorbed
-          mlue(pft,moy)             = out_pmodel%lue
-          
-          ! Vcmax per unit absorbed light
-          mvcmax_unitiabs(pft,moy)  = out_pmodel%vcmax_unitiabs
-          
-          ! conversion factor to get from absorbed light to Rubisco-N
-          mactnv_unitiabs(pft,moy)  = out_pmodel%actnv_unitiabs
-          
-          ! factor to convert from 25 deg-normalised to ambient T
-          factor25(pft,moy)         = out_pmodel%factor25_vcmax
-          
-          ! dark respiration per unit absorbed light
-          mrd_unitiabs(pft,moy)     = out_pmodel%rd_unitiabs
-
-          ! transpiration per unit 
-          mtransp_unitiabs(pft,moy) = out_pmodel%transp_unitiabs
-
-          ! ci:ca
-          mchi(pft,moy)             = out_pmodel%chi
 
         end do
       end do
@@ -633,6 +673,7 @@ contains
 
     ! ! XXX PMODEL_TEST: ok
     ! print*, 'lue ', lue
+    ! print*, 'chi ', chi
 
     ! leaf-internal CO2 partial pressure (Pa)
     ci = chi * ca
@@ -699,7 +740,7 @@ contains
     out_pmodel%transp           = transp          
     out_pmodel%transp_unitfapar = transp_unitfapar
     out_pmodel%transp_unitiabs  = transp_unitiabs 
-    
+
   end function pmodel
 
 
@@ -889,8 +930,7 @@ contains
 
     ! leaf-internal-to-ambient CO2 partial pressure (ci/ca) ratio
     xi  = sqrt( ( params_gpp%beta * ( kmm + gstar ) ) / ( 1.6 * ns_star ) )     ! see Eq. 2 in 'Estimation_of_beta.pdf'
-    chi = gstar / ca + ( 1.0 - gstar / ca ) * xi / ( xi + sqrt(vpd) )  ! see Eq. 1 in 'Estimation_of_beta.pdf'
-
+    chi = gstar / ca + ( 1.0 - gstar / ca ) * xi / ( xi + sqrt(vpd) )           ! see Eq. 1 in 'Estimation_of_beta.pdf'
 
     ! consistent with this, directly return light-use-efficiency (m)
     ! see Eq. 13 in 'Simplifying_LUE.pdf'
@@ -1281,10 +1321,7 @@ contains
     real :: ftemp
 
     ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
-    ftemp = max( 0.0, min( 1.0, dtemp / 12.0 ) )
-
-    ! ! xxx try: no temperature inhibition
-    ! ftemp = 1.0
+    ftemp = max( 0.0, min( 1.0, (dtemp - temp0) / temp1 ) )
 
   end function ramp_gpp_lotemp
 

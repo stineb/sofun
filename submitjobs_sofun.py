@@ -7,10 +7,11 @@ from subprocess import call
 ## Simulation suite
 ## - "swissface"
 ## - "fluxnet"
+## - "fluxnet_cnmodel"
 ## - "gcme"
 ## - "campi"
 ##--------------------------------------------------------------------
-simsuite = 'swissface'
+simsuite = 'fluxnet_cnmodel'
 
 ##--------------------------------------------------------------------
 ## Compile
@@ -21,7 +22,7 @@ if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
 elif simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test':
     exe = 'runcmodel'
     compiling_opt = 'cmodel'
-elif simsuite == 'gcme' or simsuite == 'swissface':
+elif simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel':
     exe = 'runcnmodel'
     compiling_opt = 'cnmodel'
 else:
@@ -49,7 +50,7 @@ for index, row in siteinfo.iterrows():
         if row['classid'] == 'GRA':
             print 'submitting job for site ' + row['mysitename'] + '...'
             os.system( 'echo ' + row['mysitename'] + '| ./' + exe )
-    elif simsuite == 'gcme' or 'swissface':
+    elif simsuite == 'gcme' or 'swissface' or simsuite == 'fluxnet_cnmodel':
         print 'submitting job for experiment ' + row['expname'] + '...'
         os.system( 'echo ' + row['expname'] + '| ./' + exe )        
     else:

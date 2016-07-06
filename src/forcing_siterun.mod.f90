@@ -106,7 +106,7 @@ contains
     ! xxx try
     if (ntype=="ndep") readyear = min( readyear, 2009 )
     readyear = max( 1850, readyear )
-    write(0,*) 'GETNINPUT: use '//trim(ntype)//' data of year ', readyear
+    write(0,*) 'GETNINPUT: use '//trim(ntype)//' data of year ', readyear, '...'
 
     ! aninput = getvalreal( trim(input_dir)//trim(ninput_forcing_file), readyear )
     aninput_noy = getvalreal( 'sitedata/'//trim(ntype)//'/'//trim(sitename)//'/'//trim(ninput_noy_forcing_file), readyear )
@@ -122,6 +122,7 @@ contains
     end do
 
     ! print*,'out_getninput(jpngr) ', sum(out_getninput(1)%dnoy(:)), sum(out_getninput(1)%dnhx(:)), sum(out_getninput(1)%dtot(:))
+    write(0,*) 'GETNINPUT: done'
 
   end function getninput
 
@@ -202,9 +203,6 @@ contains
     if (climateyear>2013) then
       write(0,*) 'GETCLIMATE_SITE: held climate fixed at year 2013'
       write(climateyear_char,999) 2013
-    ! else if (climateyear<1993) then
-    !   write(0,*) 'GETCLIMATE_SITE: held climate fixed at year 1993'
-    !   write(climateyear_char,999) 1993
     else
       ! create 4-digit string for year  
       write(climateyear_char,999) climateyear
@@ -272,16 +270,20 @@ contains
 
     ! get harvest data for forcing year
     if (present(do_grharvest_forcing_file)) then
-      if (readyear>2002) then
-        write(0,*) 'GETLANDUSE: held harvest dates fixed after 2002'
-        write(landuseyear_char,999) 2002
-      else
-        ! create 4-digit string for year  
-        write(landuseyear_char,999) readyear
-      end if
+      ! if (readyear>2002) then
+      !   write(0,*) 'GETLANDUSE: held harvest dates fixed after 2002'
+      !   write(landuseyear_char,999) 2002
+      ! else
+      !   ! create 4-digit string for year  
+      !   write(landuseyear_char,999) readyear
+      ! end if
+      ! create 4-digit string for year  
+      write(0,*) 'GETLANDUSE: looking for harvest data for year ', readyear
+      write(landuseyear_char,999) readyear
+
       filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
       inquire( file='./input/'//trim(filnam), exist=file_exists )
-      
+
       if ( file_exists ) then
         ! found data file
         write(0,*) 'GETLANDUSE: use harvest data for year ', readyear
@@ -348,8 +350,11 @@ contains
       my_tc = tc
     end if
 
-    !! calculate VPD in units of kPa
+    ! calculate VPD in units of kPa
     vpd = ( 0.611 * exp( (17.27 * my_tc)/(my_tc + 237.3) ) - 0.10 * vap )    
+
+    ! this empirical equation may lead to negative values for VPD (happens very rarely). assume positive...
+    vpd = max( 0.0, vpd )
 
     !! convert to Pa
     vpd = vpd * 1.0e3
