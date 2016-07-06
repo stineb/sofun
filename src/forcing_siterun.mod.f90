@@ -270,16 +270,16 @@ contains
 
     ! get harvest data for forcing year
     if (present(do_grharvest_forcing_file)) then
-      ! if (readyear>2002) then
-      !   write(0,*) 'GETLANDUSE: held harvest dates fixed after 2002'
-      !   write(landuseyear_char,999) 2002
-      ! else
-      !   ! create 4-digit string for year  
-      !   write(landuseyear_char,999) readyear
-      ! end if
-      ! create 4-digit string for year  
-      write(0,*) 'GETLANDUSE: looking for harvest data for year ', readyear
-      write(landuseyear_char,999) readyear
+      if (readyear>2002) then
+        write(0,*) 'GETLANDUSE: held harvest dates fixed after 2002'
+        write(landuseyear_char,999) 2002
+      else
+        ! create 4-digit string for year  
+        write(landuseyear_char,999) readyear
+      end if
+      ! ! create 4-digit string for year  
+      ! write(0,*) 'GETLANDUSE: looking for harvest data for year ', readyear
+      ! write(landuseyear_char,999) readyear
 
       filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
       inquire( file='./input/'//trim(filnam), exist=file_exists )
