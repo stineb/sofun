@@ -9,7 +9,7 @@ module md_forcing_siterun
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu
+  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu, dummy
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
 
@@ -38,7 +38,7 @@ module md_forcing_siterun
 
 contains
 
-  function getco2( runname, sitename, forcingyear, const_co2, firstyeartrend, co2_forcing_file ) result( pco2 )
+  function getco2( runname, sitename, forcingyear, const_co2_year, firstyeartrend, co2_forcing_file ) result( pco2 )
     !////////////////////////////////////////////////////////////////
     !  Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
@@ -46,7 +46,7 @@ contains
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: forcingyear
-    logical, intent(in) :: const_co2
+    integer, intent(in) :: const_co2_year
     integer, intent(in) :: firstyeartrend
     character(len=*), intent(in) :: co2_forcing_file
 
@@ -56,8 +56,8 @@ contains
     ! local variables 
     integer :: readyear
 
-    if (const_co2) then
-      readyear = firstyeartrend
+    if (const_co2_year/=int(dummy)) then
+      readyear = const_co2_year
     else  
       readyear = forcingyear
     end if
@@ -67,20 +67,18 @@ contains
   end function getco2
 
 
-  function getninput( ntype, runname, sitename, forcingyear, firstyeartrend, const_ninput, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
+  function getninput( ntype, runname, sitename, forcingyear, firstyeartrend, const_ninput_year, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual ninputosition and distributes it
     ! over days according to daily precipitation.
     !----------------------------------------------------------------
-    use md_params_core, only: dummy
-
     ! arguments
     character(len=*), intent(in) :: ntype   ! either "nfert" or "ndep"
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
     integer, intent(in) :: firstyeartrend
-    logical, intent(in) :: const_ninput
+    integer, intent(in) :: const_ninput_year
     character(len=*), intent(in) :: ninput_noy_forcing_file
     character(len=*), intent(in) :: ninput_nhx_forcing_file
     type( climate_type ), dimension(maxgrid), intent(in) :: climate
@@ -97,8 +95,8 @@ contains
     real, dimension(ndayyear) :: dninput_noy
     real, dimension(ndayyear) :: dninput_nhx
     
-    if (const_ninput) then
-      readyear = firstyeartrend
+    if (const_ninput_year/=int(dummy)) then
+      readyear = const_ninput_year
     else  
       readyear = forcingyear
     end if
@@ -154,8 +152,6 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
-    use md_params_core, only: dummy
-
     ! arguments
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
@@ -233,7 +229,7 @@ contains
   end function getclimate_site
 
 
-  function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file, const_lu, firstyeartrend ) result( out_landuse )
+  function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file, const_lu_year, firstyeartrend ) result( out_landuse )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual landuse state and harvesting regime (day of above-ground harvest)
     ! Grass harvest forcing file is read for specific year, if none is available,
@@ -244,7 +240,7 @@ contains
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
     character(len=*), intent(in), optional :: do_grharvest_forcing_file
-    logical, intent(in) :: const_lu
+    integer, intent(in) :: const_lu_year
     integer, intent(in) :: firstyeartrend
 
     ! local variables
@@ -262,8 +258,8 @@ contains
     ! xxx dummy
     out_landuse%lu_area(lunat) = 1.0
 
-    if (const_lu) then
-      readyear = firstyeartrend
+    if (const_lu_year/=int(dummy)) then
+      readyear = const_lu_year
     else
       readyear = forcingyear
     end if    
@@ -291,7 +287,7 @@ contains
       else
         ! find first year with data available
         findyear = readyear
-        do while ( .not. file_exists )
+        do while ( .not. file_exists .and. findyear<2501 )
           findyear = findyear + 1
           write(landuseyear_char,999) findyear
           filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'

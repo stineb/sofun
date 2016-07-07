@@ -21,12 +21,13 @@ module md_params_siml
     integer :: daily_out_startyr! first year where daily output is written
     integer :: daily_out_endyr ! last year where daily output is written
     
-    logical :: do_spinup       ! whether this simulation does spinup 
-    logical :: const_co2       ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
-    logical :: const_ndep      ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
-    logical :: const_nfert     ! is true when using constant N fertilisation, given by first transient year in 'nfert_forcing_file'
-    logical :: const_clim      ! is true when using constant climate, given by year 'firstyeartrend'
-    logical :: const_lu        ! is true when using constant land use, given by year 'firstyeartrend'
+    logical :: do_spinup            ! whether this simulation does spinup 
+    
+    integer :: const_co2_year       ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
+    integer :: const_ndep_year      ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
+    integer :: const_nfert_year     ! is true when using constant N fertilisation, given by first transient year in 'nfert_forcing_file'
+    integer :: const_clim_year      ! is true when using constant climate, given by year 'firstyeartrend'
+    integer :: const_lu_year        ! is true when using constant land use, given by year 'firstyeartrend'
     
     character(len=256) :: runname
     character(len=256) :: sitename
@@ -89,6 +90,8 @@ contains
     !  simulation year (setting booleans for opening files, doing   
     !  spinup etc.)
     !----------------------------------------------------------------
+    use md_params_core, only: dummy
+
     ! arguments
     integer, intent(in) :: year
     type( paramstype_siml ), intent(in) :: params_siml
@@ -114,13 +117,13 @@ contains
         out_steering%spinup = .false.
         out_steering%forcingyear =  year - params_siml%spinupyears + params_siml%firstyeartrend - 1
 
-        if (params_siml%const_clim) then
-          ! constant climate flag activated
+        if (params_siml%const_clim_year/=int(dummy)) then
+          ! constant climate year specified
           cycleyear = get_cycleyear( year, params_siml%spinupyears, params_siml%recycle )
-          out_steering%climateyear = cycleyear + params_siml%firstyeartrend - 1
+          out_steering%climateyear = cycleyear + params_siml%const_clim_year - 1
         
         else
-          ! constant climate flag not activated
+          ! constant climate year not specified
           out_steering%climateyear = out_steering%forcingyear
         
         end if
@@ -209,11 +212,12 @@ contains
     out_getpar_siml%fapar_forcing_source = 'NA'
 
     out_getpar_siml%do_spinup            = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
-    out_getpar_siml%const_co2            = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_co2' )
-    out_getpar_siml%const_ndep           = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_ndep' )
-    out_getpar_siml%const_nfert          = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_nfert' )
-    out_getpar_siml%const_clim           = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_clim' )
-    out_getpar_siml%const_lu             = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_lu' )
+
+    out_getpar_siml%const_co2_year       = getparint( 'run/'//runname//'.sofun.parameter', 'const_co2_year' )
+    out_getpar_siml%const_ndep_year      = getparint( 'run/'//runname//'.sofun.parameter', 'const_ndep_year' )
+    out_getpar_siml%const_nfert_year     = getparint( 'run/'//runname//'.sofun.parameter', 'const_nfert_year' )
+    out_getpar_siml%const_clim_year      = getparint( 'run/'//runname//'.sofun.parameter', 'const_clim_year' )
+    out_getpar_siml%const_lu_year        = getparint( 'run/'//runname//'.sofun.parameter', 'const_lu_year' )
     
     out_getpar_siml%spinupyears          = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
     out_getpar_siml%firstyeartrend       = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )

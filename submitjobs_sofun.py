@@ -11,7 +11,7 @@ from subprocess import call
 ## - "gcme"
 ## - "campi"
 ##--------------------------------------------------------------------
-simsuite = 'swissface'
+simsuite = 'fluxnet_cnmodel'
 
 ##--------------------------------------------------------------------
 ## Compile
