@@ -293,7 +293,6 @@ contains
         !----------------------------------------------------------------    
         ! CARBON LITTER -> SOIL TRANSFER
         !----------------------------------------------------------------    
-
         ! record N:C ratio to override later (compensating for numerical imprecision)
         ntoc_save_fs = ntoc( psoil_fs(lu,jpngr), default=0.0 )
         ntoc_save_sl = ntoc( psoil_sl(lu,jpngr), default=0.0 )
@@ -318,13 +317,7 @@ contains
         ! N MINERALISATION
         !----------------------------------------------------------------    
         ! N requirement to maintain rS (SOM N:C ratio)
-        ! write(0,*) 'a dlitt%c%c12',dlitt%c%c12
-        ! write(0,*) 'a eff',eff
-        ! write(0,*) 'a cton_soil_local',cton_soil_local
         Nreq_S = dlitt%c%c12 * eff * ntoc_soil_local  ! 1/cton_soil = rS
-
-        ! write(0,*) 'cton_soil      ',cton_soil_local 
-        ! write(0,*) 'cton_crit      ',1.0/ntoc_crit
 
         ! OUTPUT COLLECTION
         outanreq(lu,jpngr)      = outanreq(lu,jpngr)      + Nreq_S
@@ -361,23 +354,14 @@ contains
 
         Nfix = 0.0
 
-        ! write(0,*) 'netmin_litt', netmin_litt
-        ! write(0,*) 'immo direct', dlitt%c%c12 * ( ntoc_crit - dlitt%n%n14 / dlitt%c%c12 )
-
         ! OUTPUT COLLECTION
         if (interface%params_siml%loutlittersom) then
           outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + netmin_litt
           outdnetmin_litt(lu,doy,jpngr) = outdnetmin_litt(lu,doy,jpngr) + netmin_litt
         end if
         
-        outaNimmo(lu,jpngr)           = outaNimmo(lu,jpngr) - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
+        outaNimmo(lu,jpngr)             = outaNimmo(lu,jpngr) - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
 
-        ! print*,'2.5'
-
-        ! write(0,*) 'a pninorg(lu,jpngr)%n14',pninorg
-        ! write(0,*) 'a netmin_litt',netmin_litt
-        ! write(0,*) 'a dlitt%n%n14',dlitt%n%n14
-        ! write(0,*) 'a Nreq_S',Nreq_S
         if (netmin_litt>0.0) then
           !----------------------------------------------------------------    
           ! net N mineralisation
@@ -434,7 +418,6 @@ contains
           end if
 
         end if
-        ! write(0,*) 'c pninorg(lu,jpngr)%n14',pninorg
 
         ! Nreq_S (= dlitt - netmin) remains in the system: 
         call ncp( nfrac( params_littersom%fastfrac      , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
@@ -456,6 +439,7 @@ contains
         outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
           
         ! C:N ratio of soil influx
+        ! print*,"actual: ", dlitt%c%c12 * eff / Nreq_S, "target: ", params_littersom%cton_soil
         if ( abs( dlitt%c%c12 * eff / Nreq_S - params_littersom%cton_soil ) > 1e-5 ) stop 'imprecision'
 
       end if

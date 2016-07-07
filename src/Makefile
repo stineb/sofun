@@ -59,7 +59,7 @@ ARCHIVE=sofun.a
 # CDFARCHIVE=./cdfcode/cdf.a
 
 # Export variables that are needed by Makefiles in the subdirectories (called below)
-export FCOM CPPFLAGS COMPFLAGS DEBUGFLAGS #LIBS
+export FCOM CPPFLAGS COMPFLAGS DPCOMPFLAGS DEBUGFLAGS #LIBS
 
 # Targets
 # -------
@@ -121,6 +121,13 @@ dbgcmodel: $(DBGCMODEL_MODOBJS) $(DBGCMODEL_OBJS)
 
 # full model setup: CN-model
 cnmodel: $(CNMODEL_MODOBJS) $(CNMODEL_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(CNMODEL_MODOBJS) $(CNMODEL_OBJS) 
+
+# full model setup with double precitions: CN-model
+dpcnmodel: $(CNMODEL_MODOBJS) $(CNMODEL_OBJS)
 	# $(MAKE) -C cdfcode
 	-rm $(ARCHIVE)
 	# cp $(CDFARCHIVE) $(ARCHIVE)

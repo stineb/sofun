@@ -534,7 +534,7 @@ contains
   function pmodel( pft, fpar, ppfd, co2, tc, vpd, elv, method ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
     ! Output:   gpp (mol/m2/month)   : gross primary production
-    !------------------------------------------------------------------, evap(lu)%cpa
+    !------------------------------------------------------------------
     ! arguments
     integer, intent(in) :: pft         
     real, intent(in)    :: fpar         ! monthly fraction of absorbed photosynthetically active radiation (unitless) 
