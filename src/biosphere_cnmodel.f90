@@ -24,7 +24,7 @@ subroutine biosphere( c_uptake )
   use md_phenology, only: gettempphenology, getpar_modl_phenology
   use md_gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, &
     getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp
-  use md_npp, only: npp
+  use md_npp, only: npp, initoutput_npp, initio_npp, getout_daily_npp, writeout_ascii_npp
   use md_turnover, only: turnover
   use md_vegdynamics, only: vegdynamics
   use md_littersom, only: getpar_modl_littersom, initio_littersom, initoutput_littersom, &
@@ -102,6 +102,7 @@ subroutine biosphere( c_uptake )
     call initio_soiltemp()
     call initio_gpp()
     call initio_plant()
+    call initio_npp()
     call initio_littersom()
     call initio_ntransform()
     call initio_nuptake()
@@ -119,6 +120,7 @@ subroutine biosphere( c_uptake )
   call initoutput_soiltemp()
   call initoutput_gpp()
   call initoutput_plant()
+  call initoutput_npp()
   call initoutput_littersom()
   call initoutput_ntransform()
   call initoutput_nuptake()
@@ -439,6 +441,7 @@ subroutine biosphere( c_uptake )
         call getout_daily_soiltemp( jpngr, moy, day )
         call getout_daily_gpp( jpngr, moy, day )
         call getout_daily_plant( jpngr, moy, day )
+        call getout_daily_npp( jpngr, moy, day )
         call getout_daily_ntransform( jpngr, moy, day )
         call getout_daily_nuptake( jpngr, moy, day )
         call getout_daily_allocation( jpngr, moy, day )
@@ -466,6 +469,7 @@ subroutine biosphere( c_uptake )
     call writeout_ascii_soiltemp( interface%steering%year )
     call writeout_ascii_gpp( interface%steering%year )
     call writeout_ascii_plant( interface%steering%year )
+    call writeout_ascii_npp( interface%steering%year )
     call writeout_ascii_ntransform( interface%steering%year )
     call writeout_ascii_nuptake( interface%steering%year )
     call writeout_ascii_allocation( interface%steering%year )

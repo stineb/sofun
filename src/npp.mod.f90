@@ -27,7 +27,8 @@ module md_npp
   implicit none
 
   private
-  public npp, calc_cexu, calc_resp_maint, deactivate_root
+  public npp, calc_cexu, calc_resp_maint, deactivate_root, initoutput_npp, &
+    initio_npp, getout_daily_npp, writeout_ascii_npp
 
   !----------------------------------------------------------------
   ! Module-specific output variables
@@ -261,6 +262,8 @@ contains
     character(len=256) :: filnam
 
     prefix = "./output/"//trim(interface%params_siml%runname)
+
+    print*,'interface%params_siml%loutnpp ', interface%params_siml%loutnpp
 
     !////////////////////////////////////////////////////////////////
     ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
