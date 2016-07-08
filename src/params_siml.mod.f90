@@ -66,6 +66,7 @@ module md_params_siml
     logical :: loutdninorg    
     logical :: loutdtemp_soil 
 
+    logical :: loutnpp
     logical :: loutntransform
     logical :: loutwaterbal  
     logical :: loutlittersom
@@ -258,6 +259,7 @@ contains
     out_getpar_siml%loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
     
+    out_getpar_siml%loutnpp        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnpp' )
     out_getpar_siml%loutntransform = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutntransform') 
     out_getpar_siml%loutwaterbal   = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal')
     out_getpar_siml%loutlittersom  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlittersom' )

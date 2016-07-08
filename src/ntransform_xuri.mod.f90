@@ -438,6 +438,8 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     !----------------------------------------------------------------
+    use md_interface
+
     dn2o   (:) = 0.0
     dn2    (:) = 0.0
     dno    (:) = 0.0
@@ -446,6 +448,13 @@ contains
     dnitr  (:) = 0.0
     dnvol  (:) = 0.0
     dnleach(:) = 0.0
+
+    ! this is necessary to make sure the system gets out of the stable 
+    ! state where everything is zero
+    if (interface%steering%year<100) then
+      print*,'initdaily_ntransform: setting N inorg to 1.0 gN/m2/yr'
+      pninorg(:,:) = nitrogen( 1.0 )
+    end if
 
   end subroutine initdaily_ntransform
 

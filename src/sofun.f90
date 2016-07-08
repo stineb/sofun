@@ -131,6 +131,12 @@ program main
 
     ! Interface holds only total reactive N input (N deposition + N fertiliser)                             
     interface%ninput_field(:) = gettot_ninput( nfert_field(:), ndep_field(:) )
+
+    ! ! xxx try
+    ! if (yr<=500) then
+    !   interface%ninput_field(1)%dnoy(:) = 5.0 / 365.0
+    !   interface%ninput_field(1)%dnhx(:) = 5.0 / 365.0
+    ! end if
                                  
     ! write(0,*) 'SOFUN: holding harvesting regime constant at 1993 level.'
     interface%landuse(:) = getlanduse( &

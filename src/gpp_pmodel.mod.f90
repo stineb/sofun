@@ -250,19 +250,6 @@ contains
 
     end do
 
-    ! print*, '---in gpp: '
-    ! print*, 'fapar_ind(pft,jpngr) ',fapar_ind
-    ! print*, 'solar%dppfd(doy) ',solar%dppfd(doy)
-    ! print*, 'mlue(pft,moy) ',mlue(pft,moy)
-    ! print*, 'solar%meanmppfd(moy) ',solar%meanmppfd(moy)
-    ! print*, 'mrd_unitiabs(moy) ',mrd_unitiabs(moy)
-    ! print*, 'dgpp(pft) ',dgpp
-    ! print*, 'drd(pft)  ',drd
-
-    ! print*, 'dgpp', dgpp
-    ! print*, 'sum(dppfd)',sum(dppfd)
-    ! stop
-
   end subroutine gpp
 
 

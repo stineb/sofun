@@ -30,7 +30,7 @@ Holds model output files.
 
 # SOFUN: Seasonal optimisation of fixation and uptake of nitrogen
 ----------------------------------------------------------------------------
-This is a modular framework that serves as a structure for simulating terrestrial ecosystem functioning (radiation, photosynthesis, allocation, soil organic dynamics, inorganic nitrogen dynamics). Code is programmed in Fortran 90 and can be compiled using either the PGI90 compiler or gfortran (others not tested).
+This is a modular framework that serves as a structure for simulating terrestrial ecosystem functioning (radiation, photosynthesis, allocation, soil organic dynamics, inorganic nitrogen dynamics). Code is programmed in Fortran 90.
 Written, developed and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
 
 
@@ -54,7 +54,10 @@ Component models can be compiled and executed individually:
 # Model structure
 -------------------------
 
-sofun is designed to be a modular framework that can adopt different formulation of processes by selecting modules. Irrespective of the module choice, a set of state variables must be calculated and updated by the respective subroutines which are contained in the chosen modules. These required state variables are declared in modules 'fluxes', 'pools', and 'treegeometry'. Other module-specific variables are declared within the module. Module-specific output variables are also declared only in the respective module. These "feature-"modules may also contain other subroutines to read/write necessary inputp/output that is not required by the model outside the module.
+This is designed to be a modular framework that can adopt different formulation of processes by selecting modules. 
+
+
+ Module-specific output variables are also declared only in the respective module. These "feature-"modules may also contain other subroutines to read/write necessary inputp/output that is not required by the model outside the module.
 
 The separation between the main program 'sofun' and the subroutine 'biosphere' is somewhat arbitrary and I have not been able to follow a clear distinction between what is contained in modules and what is passed on as arguments.
 
