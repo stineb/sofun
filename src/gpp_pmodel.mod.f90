@@ -85,7 +85,6 @@ module md_gpp
   ! Uncertain (unknown) parameters. Runtime read-in
   !-----------------------------------------------------------------------
   type paramstype_gpp
-    real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
     real :: beta         ! Unit cost of carboxylation (dimensionless)
   end type paramstype_gpp
 
@@ -94,6 +93,7 @@ module md_gpp
   ! PFT-DEPENDENT PARAMETERS
   type pftparamstype_gpp
     real :: kphio        ! quantum efficiency (Long et al., 1993)  
+    real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
   end type pftparamstype_gpp
 
   type( pftparamstype_gpp ), dimension(npft) :: params_pft_gpp
@@ -191,7 +191,7 @@ contains
     !
     !------------------------------------------------------------------
     use md_params_core, only: dummy
-    use md_plant, only: canopy, params_pft_plant, ispresent
+    use md_plant, only: canopy, params_pft_plant
     use md_waterbal, only: solar, evap
 
     ! arguments
@@ -224,20 +224,20 @@ contains
       if ( canopy(pft)%fapar_ind>0.0 ) then
 
         ! GPP
-        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), dtemp, evap(lu)%cpa )
-        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), dtemp )
+        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), dtemp, evap(lu)%cpa )
+        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), dtemp )
 
         ! Dark respiration
-        ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), dtemp, evap(lu)%cpa )
-        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), dtemp )
+        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), dtemp, evap(lu)%cpa )
+        ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), dtemp )
 
         ! transpiration
-        ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), dtemp, evap(lu)%cpa )
-        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), dtemp )
+        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), dtemp, evap(lu)%cpa )
+        ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), dtemp )
 
         ! Vcmax
-        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), dtemp, evap(lu)%cpa )
-        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), dtemp )
+        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), dtemp, evap(lu)%cpa )
+        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), dtemp )
 
       else  
 
@@ -335,7 +335,7 @@ contains
           ! print*,'elv   ', elv
           ! print*,'C4    ', params_pft_plant(pft)%c4
 
-          ! if (mtemp(moy)>0.0) then
+          ! if (mtemp(moy)>temp0) then
 
             ! Plant is only active above absolute minimum temperature 'temp0' (usually at 0 deg C)
           
@@ -685,13 +685,13 @@ contains
     vcmax25_unitiabs  = factor25_vcmax * vcmax_unitiabs
 
     ! Dark respiration
-    rd = params_gpp%rd_to_vcmax * vcmax
+    rd = params_pft_gpp(pft)%rd_to_vcmax * vcmax
 
     ! Dark respiration per unit fAPAR (assuming fAPAR=1)
-    rd_unitfapar = params_gpp%rd_to_vcmax * vcmax_unitfapar
+    rd_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * vcmax_unitfapar
 
     ! Dark respiration per unit absorbed PPFD (assuming iabs=1)
-    rd_unitiabs = params_gpp%rd_to_vcmax * vcmax_unitiabs
+    rd_unitiabs = params_pft_gpp(pft)%rd_to_vcmax * vcmax_unitiabs
 
     ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
     actnv = vcmax25 * n_v
@@ -748,16 +748,14 @@ contains
     ! unit cost of carboxylation
     params_gpp%beta  = getparreal( 'params/params_gpp_pmodel.dat', 'beta' )
 
-    ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
-    params_gpp%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
-
     do pft=1,npft
 
-      ! ! define PFT-extension used for parameter names in parameter file
-      ! write(char_pftcode, 999) params_pft_plant(pft)%pftcode
+      ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
+      params_pft_gpp(pft)%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax_'//params_pft_plant(pft)%pftname )
 
       ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
       params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
+
     end do
 
     return
@@ -1307,11 +1305,12 @@ contains
     ! function return variable
     real :: ftemp
 
-    ! ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
-    ! ftemp = max( 0.0, min( 1.0, (dtemp - temp0) / temp1 ) )
+    ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
+    ftemp = max( 0.0, min( 1.0, (dtemp - temp0) / temp1 ) )
+    ! print*,'ftemp ', ftemp
 
-    ! no temperature ramp
-    ftemp = 1.0
+    ! ! no temperature ramp
+    ! ftemp = 1.0
 
   end function ramp_gpp_lotemp
 

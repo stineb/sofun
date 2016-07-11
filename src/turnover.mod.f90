@@ -27,7 +27,7 @@ module md_turnover
   implicit none
 
   private
-  public turnover
+  public turnover, turnover_leaf, turnover_root
 
 contains
 
@@ -38,6 +38,7 @@ contains
     !----------------------------------------------------------------
     use md_classdefs
     use md_params_core, only: npft
+    use md_phenology, only: shedleaves, params_pft_pheno
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -58,14 +59,22 @@ contains
       if (plabl(pft,jpngr)%c%c12<0.0) stop 'before turnover labile C is neg.'
       if (plabl(pft,jpngr)%n%n14<0.0) stop 'before turnover labile N is neg.'
 
-      if (ispresent(pft,jpngr)) then
+      if (pleaf(pft,jpngr)%c%c12>0.0 .or. proot(pft,jpngr)%c%c12>0.0) then
         !--------------------------------------------------------------
         ! Get turnover fractions
         ! Turnover-rates are reciprocals of tissue longevity
         ! dleaf=1.0/long_leaf(pft)
         ! assuming no continuous leaf turnover
         !--------------------------------------------------------------
-        if (params_pft_plant(pft)%grass) then
+        ! if ( params_pft_pheno(pft)%summergreen .and. shedleaves(doy,pft) ) then
+        ! if ( isdying(pft,jpngr) ) then
+
+        !   dleaf = 0.1
+        !   droot = 0.1
+        !   print*,'dying on day ', doy
+        !   stop 'in turnover'
+
+        ! else if (params_pft_plant(pft)%grass) then
 
           ! grasses have continuous turnover
           ! dleaf = 2.5 / 365.0
@@ -74,11 +83,11 @@ contains
           ! Alternative turnover function: increase turnover rate towards high LAI
           dleaf = (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
-        else
+        ! else
 
-          stop 'turnover not implemented for non-grasses'
+        !   stop 'turnover not implemented for non-grasses'
 
-        endif
+        ! endif
 
         !--------------------------------------------------------------
         ! Calculate leaf turnover in this day 

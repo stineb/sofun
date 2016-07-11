@@ -12,7 +12,7 @@ module md_plant
   implicit none
 
   private
-  public getpar_modl_plant, params_pft_plant, canopy, ispresent
+  public getpar_modl_plant, params_pft_plant, canopy
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -23,10 +23,6 @@ module md_plant
   end type canopy_type
 
   type( canopy_type ), dimension(npft) :: canopy
-
-
-  ! This is not used interactively, therefore always true
-  logical, dimension(npft,maxgrid), parameter :: ispresent = .true.
 
   !-----------------------------------------------------------------------
   ! Parameters. Runtime read-in

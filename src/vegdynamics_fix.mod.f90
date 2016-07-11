@@ -17,10 +17,7 @@ contains
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
     use md_params_core, only: npft
-    use md_phenology, only: dtphen, sprout
-
-    ! xxx debug
-    use md_plant, only: ispresent
+    use md_phenology, only: sprout, params_pft_pheno
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -29,28 +26,27 @@ contains
     ! local variables
     integer :: pft
 
-
     do pft=1,npft
 
-      ! print*, 'xxx try: do nothing in vegdynamics'
+      if (params_pft_pheno(pft)%summergreen) then
+        !----------------------------------------------------------
+        ! GRASSES, summergreen
+        !----------------------------------------------------------
 
-      ! if (params_pft_pheno(pft)%summergreen) then
-      !   !----------------------------------------------------------
-      !   ! GRASSES, summergreen
-      !   !----------------------------------------------------------
+        if ( sprout(doy,pft) ) then
+          !----------------------------------------------------------
+          ! beginning of season
+          !----------------------------------------------------------
+          print*, 'starting to grow on day ',doy
+          call estab_daily( pft, jpngr, doy )
 
-      !   if ( sprout(doy,pft) ) then
-      !     !----------------------------------------------------------
-      !     ! beginning of season
-      !     !----------------------------------------------------------
-      !     print*, 'starting to grow on day ',doy
-      !     call estab_daily( pft, jpngr, doy )
+        end if
 
-      ! else
+      else
 
-      !   stop 'estab_daily not implemented for non-summergreen'
+        stop 'estab_daily not implemented for non-summergreen'
 
-      ! end if
+      end if
 
     end do
 
@@ -62,7 +58,7 @@ contains
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
     !------------------------------------------------------------------
-    use md_plant, only: initpft, params_pft_plant, ispresent, nind
+    use md_plant, only: initpft, params_pft_plant, isgrowing, nind
 
     ! arguments
     integer, intent(in) :: pft
@@ -75,8 +71,8 @@ contains
     ! add C (and N) to labile pool (available for allocation)
     call add_seed( pft, jpngr )
     
-    ! set other state variables: 'ispresent' and 'nind'
-    ispresent(pft,jpngr) = .true.
+    ! set other state variables
+    isgrowing(pft,jpngr) = .true.
 
     if (params_pft_plant(pft)%grass) then
       nind(pft,jpngr) = 1.0

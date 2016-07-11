@@ -225,14 +225,6 @@ subroutine biosphere( c_uptake )
                       )
         if (verbose) write(0,*) '... done'
 
-        !----------------------------------------------------------------
-        ! update canopy and stand variables and simulate daily 
-        ! establishment / sprouting
-        !----------------------------------------------------------------
-        if (verbose) write(0,*) 'calling vegdynamics() ... '
-        call vegdynamics( jpngr, day ) 
-        if (verbose) write(0,*) '... done'
-
         !/////////////////////////////////////////////////////////////////
         ! calculate GPP
         !----------------------------------------------------------------
@@ -256,7 +248,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
-        ! substract autotrophic respiration to get NPP, remainder is added 
+        ! NPP: substract autotrophic respiration to get NPP, remainder is added 
         ! to labile pool (plabl)
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling npp() ... '
@@ -396,6 +388,13 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
+        ! start growing when temperature phenology allows it
+        !----------------------------------------------------------------
+        if (verbose) write(0,*) 'calling vegdynamics() ... '
+        call vegdynamics( jpngr, day ) 
+        if (verbose) write(0,*) '... done'
+
+        !/////////////////////////////////////////////////////////////////
         ! allocation of labile pools to biomass
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling allocation() ... '
@@ -407,19 +406,7 @@ subroutine biosphere( c_uptake )
         if (verbose) orgtmp1 =  plabl(1,jpngr)
         if (verbose) orgtmp2 =  orgplus( pleaf(1,jpngr), proot(1,jpngr) )
         !----------------------------------------------------------------
-        if (dm==ndaymonth(moy)) then
-          usemoy = moy + 1
-          if (usemoy==13) usemoy = 1
-        else
-          usemoy = moy
-        end if
-        if (day==ndayyear) then
-          usedoy = 1
-        else
-          usedoy = day + 1
-        end if
-        !----------------------------------------------------------------
-        call allocation_daily( jpngr, usedoy, usemoy, interface%climate(jpngr)%dtemp(usedoy) )
+        call allocation_daily( jpngr, day, dm, moy, interface%climate(jpngr)%dtemp(usedoy) )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '              ==> returned: '
         if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr), ' C:N = ', cton( pleaf(1,jpngr), default=0.0 )
@@ -431,7 +418,6 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '       dlabl - drgrow - dleaf - droot=', orgbal1
         if (verbose .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
         if (verbose) write(0,*) '... done'
-
 
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
@@ -476,6 +462,8 @@ subroutine biosphere( c_uptake )
     call writeout_ascii_littersom( interface%steering%year )
     call writeout_ascii_landuse( interface%steering%year )
     if (verbose) write(0,*) '... done'
+
+    stop 'end of year'
 
   end do
 

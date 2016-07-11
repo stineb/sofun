@@ -169,11 +169,6 @@ contains
         dtphen(:,pft)=1.0
 
       endif
-      
-      ! print*, 'gettempphenology: dtphen_tmp(day,pft) '
-      ! print*, dtphen(:,pft)
-      ! print*, 'a' 
-      ! stop
 
 
     ! save monthly temperature for next year
@@ -201,7 +196,6 @@ contains
             sprout(day,pft) = .true.
             shedleaves(day,pft) = .false.
             ! print*, 'sprouting on day ', day 
-            ! print*, sprout(38,pft)
 
           else if ( dtphen(day,pft) > 0.0 ) then
             !----------------------------------------------------------
@@ -218,7 +212,6 @@ contains
             sprout(day,pft) = .false.
             shedleaves(day,pft) = .true.
             ! print*, 'shedding leaves on day ', day 
-            ! print*, shedleaves(345,pft)
 
           else if ( dtphen(day,pft) == 0.0 ) then
             !----------------------------------------------------------
@@ -237,7 +230,7 @@ contains
         end if
 
       end do
-    
+
     return
 
   end subroutine gettempphenology

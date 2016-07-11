@@ -11,7 +11,7 @@ module md_plant
   public pleaf, proot, psapw, plabl, pexud, plitt_af, plitt_as, plitt_bg, &
     dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy,       &
     lai_ind,      &
-    ispresent, fpc_grid, nind, dnup,        &
+    isgrowing, isdying, fpc_grid, nind, dnup,                             &
     params_pft_plant, params_plant, initglobal_plant, initpft,            &
     initdaily_plant, outdnpp, outdnup, outdCleaf, outdCroot, outdClabl,   &
     outdNlabl, outdClitt, outdNlitt, outdCsoil, outdNsoil, outdlai,       &
@@ -73,8 +73,9 @@ module md_plant
 
   type( canopy_type ), dimension(npft)   :: canopy
 
+  logical, dimension(npft,maxgrid) :: isgrowing        ! true as long as the PFT is growing (positive C balance after respiration and C export)
+  logical, dimension(npft,maxgrid) :: isdying          ! true when PFT is dying (labile C pool depleted)
   real, dimension(npft,maxgrid)    :: lai_ind
-  logical, dimension(npft,maxgrid) :: ispresent        ! boolean whether PFT is present
   real, dimension(npft,maxgrid)    :: fpc_grid         ! area fraction within gridcell occupied by PFT
   real, dimension(npft,maxgrid)    :: nind             ! number of individuals [1/m2]
 
@@ -92,6 +93,7 @@ module md_plant
   ! NON PFT-DEPENDENT PARAMETERS
   type params_plant_type
     real :: r_root            ! Fine root-specific respiration rate (gC gC-1 d-1)
+    real :: r_leaf            ! Foliage mass-specific respiration rate (gC gC-1 d-1)
     real :: r_sapw            ! Sapwood-specific respiration rate (gC gC-1 d-1)
     real :: exurate           ! Fine root-specific C export rate (gC gC-1 d-1)
     real :: kbeer             ! canopy light extinction coefficient
@@ -198,6 +200,9 @@ contains
 
     ! growth efficiency = yield factor, central value: 0.6, range: 0.5-0.7; Zhang et al. (2009), see Li et al., 2014
     params_plant%growtheff = getparreal( 'params/params_plant.dat', 'growtheff' )
+
+    ! Foliage mass specific respiration rate (gC gC-1 year-1)
+    params_plant%r_leaf = getparreal( 'params/params_plant.dat', 'r_leaf' ) / ndayyear  ! conversion to rate per day
 
     ! Fine-root mass specific respiration rate (gC gC-1 year-1)
     ! Central value: 0.913 year-1 (Yan and Zhao (2007); see Li et al., 2014)
@@ -368,15 +373,20 @@ contains
     pleaf(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     proot(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     
-    if (params_pft_plant(pft)%grass) then
-      ! xxx try: for grass add seed only at initialisation
-      write(0,*) 'INITPFT: initialising plabl with seed'
-      plabl(pft,jpngr) = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
-      ispresent(pft,jpngr) = .true.
-      nind(pft,jpngr) = 1.0
-    else
-      stop 'in initpft: not implemented for trees'
-    end if
+    isgrowing(pft,jpngr) = .false.
+    isdying(pft,jpngr)   = .false.
+    nind(pft,jpngr)      = 0.0
+
+    ! if (params_pft_plant(pft)%grass) then
+    !   ! xxx try: for grass add seed only at initialisation
+    !   write(0,*) 'INITPFT: initialising plabl with seed'
+    !   plabl(pft,jpngr) = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
+    !   nind(pft,jpngr) = 1.0
+    ! else
+    !   stop 'in initpft: not implemented for trees'
+    ! end if
+
+    plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
 
     if (params_pft_plant(pft)%tree) then
       psapw(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
@@ -408,7 +418,6 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     !----------------------------------------------------------------
-
     dnpp(:)   = carbon(0.0)
     dcex(:)   = 0.0
     dnup(:)   = nitrogen(0.0)

@@ -250,9 +250,6 @@ contains
           ! print*, 'root C:N     ', cton( proot(pft,jpngr) )
           ! if (doy==39) stop
 
-          ! ! set other state variables: 'ispresent' and 'nind'
-          ! ispresent(pft,jpngr) = .true.
-
           ! if (params_pft_plant(pft)%grass) then
           !   nind(pft,jpngr) = 1.0
           ! else
