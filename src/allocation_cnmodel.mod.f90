@@ -166,6 +166,10 @@ contains
           ! max_dc_buffr_constraint = max( 0.0, plabl(pft,jpngr)%c%c12 - reservefrac * ( proot(pft,jpngr)%c%c12 + pleaf(pft,jpngr)%c%c12 ) )
           ! max_dc = min( params_plant%growtheff * max_dc_buffr_constraint, max_dcleaf_n_constraint, max_dcroot_n_constraint )
 
+          ! print*,'params_plant%exurate', params_plant%exurate
+          ! print*,'params_plant%r_root', params_plant%r_root
+          ! stop
+
           max_dc_buffr_constraint = max( 0.0, plabl(pft,jpngr)%c%c12 - ( params_plant%r_root + params_plant%exurate ) * proot(pft,jpngr)%c%c12 - 0.01 * pleaf(pft,jpngr)%c%c12 )
           max_dc = min( params_plant%growtheff * max_dc_buffr_constraint, max_dcleaf_n_constraint, max_dcroot_n_constraint )
           

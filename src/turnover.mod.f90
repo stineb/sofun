@@ -27,7 +27,7 @@ module md_turnover
   implicit none
 
   private
-  public turnover
+  public turnover, turnover_root, turnover_leaf
 
 contains
 
@@ -38,6 +38,7 @@ contains
     !----------------------------------------------------------------
     use md_classdefs
     use md_params_core, only: npft
+    use md_phenology, only: shedleaves
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -67,12 +68,22 @@ contains
         !--------------------------------------------------------------
         if (params_pft_plant(pft)%grass) then
 
-          ! grasses have continuous turnover
-          ! dleaf = 2.5 / 365.0
-          droot = params_pft_plant(pft)%k_decay_root
+          ! if (shedleaves(doy,pft)) then
 
-          ! Alternative turnover function: increase turnover rate towards high LAI
-          dleaf = (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
+          !   droot = 1.0
+          !   dleaf = 1.0
+          !   ispresent(pft,jpngr) = .true.
+
+          ! else
+
+            ! grasses have continuous turnover
+            ! dleaf = 2.5 / 365.0
+            droot = params_pft_plant(pft)%k_decay_root
+
+            ! Alternative turnover function: increase turnover rate towards high LAI
+            dleaf = (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
+
+          ! end if
 
         else
 

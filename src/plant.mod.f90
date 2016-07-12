@@ -368,17 +368,21 @@ contains
     pleaf(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     proot(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     
+    ! if (params_pft_plant(pft)%grass) then
+    !   ! xxx try: for grass add seed only at initialisation
+    !   write(0,*) 'INITPFT: initialising plabl with seed'
+    !   plabl(pft,jpngr) = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
+    !   ispresent(pft,jpngr) = .true.
+    !   nind(pft,jpngr) = 1.0
+    ! else
+    !   stop 'in initpft: not implemented for trees'
+    ! end if
+    plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+    
     if (params_pft_plant(pft)%grass) then
-      ! xxx try: for grass add seed only at initialisation
-      write(0,*) 'INITPFT: initialising plabl with seed'
-      plabl(pft,jpngr) = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
       ispresent(pft,jpngr) = .true.
       nind(pft,jpngr) = 1.0
-    else
-      stop 'in initpft: not implemented for trees'
-    end if
-
-    if (params_pft_plant(pft)%tree) then
+    else if (params_pft_plant(pft)%tree) then
       psapw(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
       pwood(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     endif

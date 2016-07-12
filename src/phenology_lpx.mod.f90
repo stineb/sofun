@@ -238,6 +238,8 @@ contains
 
       end do
     
+      ! stop 'phenology' 
+      
     return
 
   end subroutine gettempphenology

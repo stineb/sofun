@@ -17,7 +17,8 @@ contains
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
     use md_params_core, only: npft
-    use md_phenology, only: dtphen, sprout
+    use md_phenology, only: dtphen, sprout, params_pft_pheno
+    use md_plant, only: params_pft_plant
 
     ! xxx debug
     use md_plant, only: ispresent
@@ -29,28 +30,26 @@ contains
     ! local variables
     integer :: pft
 
-
     do pft=1,npft
 
-      ! print*, 'xxx try: do nothing in vegdynamics'
+      if (params_pft_plant(pft)%grass) then
+        !----------------------------------------------------------
+        ! GRASSES, summergreen
+        !----------------------------------------------------------
+        if ( sprout(doy,pft) ) then
+          !----------------------------------------------------------
+          ! beginning of season
+          !----------------------------------------------------------
+          print*, 'starting to grow on day ',doy
+          call estab_daily( pft, jpngr, doy )
 
-      ! if (params_pft_pheno(pft)%summergreen) then
-      !   !----------------------------------------------------------
-      !   ! GRASSES, summergreen
-      !   !----------------------------------------------------------
+        end if
 
-      !   if ( sprout(doy,pft) ) then
-      !     !----------------------------------------------------------
-      !     ! beginning of season
-      !     !----------------------------------------------------------
-      !     print*, 'starting to grow on day ',doy
-      !     call estab_daily( pft, jpngr, doy )
+      else
 
-      ! else
+        stop 'estab_daily not implemented for non-summergreen'
 
-      !   stop 'estab_daily not implemented for non-summergreen'
-
-      ! end if
+      end if
 
     end do
 
@@ -69,8 +68,8 @@ contains
     integer, intent(in) :: jpngr
     integer, intent(in) :: doy
 
-    ! initialise all pools of this PFT with zero
-    call initpft( pft, jpngr )
+    ! ! initialise all pools of this PFT with zero
+    ! call initpft( pft, jpngr )
 
     ! add C (and N) to labile pool (available for allocation)
     call add_seed( pft, jpngr )
@@ -99,7 +98,7 @@ contains
     integer, intent(in) :: pft
     integer, intent(in) :: jpngr
 
-    plabl(pft,jpngr) = seed
+    plabl(pft,jpngr) = orgplus( plabl(pft,jpngr), seed )
 
   end subroutine add_seed
 
