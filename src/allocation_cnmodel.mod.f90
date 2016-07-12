@@ -127,6 +127,7 @@ contains
 
       if (params_pft_plant(pft)%grass) then
 
+        ! if ( isgrowing(pft,jpngr) .and. plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 .and. dtemp>0.0 ) then
         if ( plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 .and. dtemp>0.0 ) then
 
           ! print*,'allocation on day, month ', usedoy, usemoy
@@ -170,7 +171,7 @@ contains
           ! print*,'params_plant%r_root', params_plant%r_root
           ! stop
 
-          max_dc_buffr_constraint = max( 0.0, plabl(pft,jpngr)%c%c12 - ( params_plant%r_root + params_plant%exurate ) * proot(pft,jpngr)%c%c12 - 0.01 * pleaf(pft,jpngr)%c%c12 )
+          max_dc_buffr_constraint = max( 0.0, plabl(pft,jpngr)%c%c12 - ( params_plant%r_root + params_plant%exurate ) * proot(pft,jpngr)%c%c12 - 0.00 * pleaf(pft,jpngr)%c%c12 )
           max_dc = min( params_plant%growtheff * max_dc_buffr_constraint, max_dcleaf_n_constraint, max_dcroot_n_constraint )
           
           min_dc = 0.0

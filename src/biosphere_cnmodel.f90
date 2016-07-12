@@ -266,7 +266,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) orgtmp1 =  plabl(1,jpngr)
         !----------------------------------------------------------------
-        call npp( jpngr, interface%climate(jpngr)%dtemp(day) )
+        call npp( jpngr, interface%climate(jpngr)%dtemp(day), day )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '              ==> returned: '
         if (verbose) write(0,*) '              dnpp  = ', dnpp(:)

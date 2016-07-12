@@ -191,7 +191,7 @@ contains
     !
     !------------------------------------------------------------------
     use md_params_core, only: dummy
-    use md_plant, only: canopy, params_pft_plant, ispresent
+    use md_plant, only: canopy, params_pft_plant
     use md_waterbal, only: solar, evap
 
     ! arguments

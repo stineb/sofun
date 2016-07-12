@@ -11,7 +11,7 @@ module md_plant
   public pleaf, proot, psapw, plabl, pexud, plitt_af, plitt_as, plitt_bg, &
     dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy,       &
     lai_ind,      &
-    ispresent, fpc_grid, nind, dnup,        &
+    fpc_grid, nind, dnup,        &
     params_pft_plant, params_plant, initglobal_plant, initpft,            &
     initdaily_plant, outdnpp, outdnup, outdCleaf, outdCroot, outdClabl,   &
     outdNlabl, outdClitt, outdNlitt, outdCsoil, outdNsoil, outdlai,       &
@@ -74,7 +74,7 @@ module md_plant
   type( canopy_type ), dimension(npft)   :: canopy
 
   real, dimension(npft,maxgrid)    :: lai_ind
-  logical, dimension(npft,maxgrid) :: ispresent        ! boolean whether PFT is present
+  ! logical, dimension(npft,maxgrid) :: isgrowing
   real, dimension(npft,maxgrid)    :: fpc_grid         ! area fraction within gridcell occupied by PFT
   real, dimension(npft,maxgrid)    :: nind             ! number of individuals [1/m2]
 
@@ -372,7 +372,6 @@ contains
     !   ! xxx try: for grass add seed only at initialisation
     !   write(0,*) 'INITPFT: initialising plabl with seed'
     !   plabl(pft,jpngr) = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
-    !   ispresent(pft,jpngr) = .true.
     !   nind(pft,jpngr) = 1.0
     ! else
     !   stop 'in initpft: not implemented for trees'
@@ -380,7 +379,6 @@ contains
     plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     
     if (params_pft_plant(pft)%grass) then
-      ispresent(pft,jpngr) = .true.
       nind(pft,jpngr) = 1.0
     else if (params_pft_plant(pft)%tree) then
       psapw(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))

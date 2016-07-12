@@ -20,9 +20,6 @@ contains
     use md_phenology, only: dtphen, sprout, params_pft_pheno
     use md_plant, only: params_pft_plant
 
-    ! xxx debug
-    use md_plant, only: ispresent
-
     ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: doy
@@ -61,7 +58,7 @@ contains
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
     !------------------------------------------------------------------
-    use md_plant, only: initpft, params_pft_plant, ispresent, nind
+    use md_plant, only: initpft, params_pft_plant, nind
 
     ! arguments
     integer, intent(in) :: pft
@@ -75,7 +72,6 @@ contains
     call add_seed( pft, jpngr )
     
     ! set other state variables: 'ispresent' and 'nind'
-    ispresent(pft,jpngr) = .true.
 
     if (params_pft_plant(pft)%grass) then
       nind(pft,jpngr) = 1.0

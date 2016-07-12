@@ -59,93 +59,91 @@ contains
       if (plabl(pft,jpngr)%c%c12<0.0) stop 'before turnover labile C is neg.'
       if (plabl(pft,jpngr)%n%n14<0.0) stop 'before turnover labile N is neg.'
 
-      if (ispresent(pft,jpngr)) then
-        !--------------------------------------------------------------
-        ! Get turnover fractions
-        ! Turnover-rates are reciprocals of tissue longevity
-        ! dleaf=1.0/long_leaf(pft)
-        ! assuming no continuous leaf turnover
-        !--------------------------------------------------------------
-        if (params_pft_plant(pft)%grass) then
+      !--------------------------------------------------------------
+      ! Get turnover fractions
+      ! Turnover-rates are reciprocals of tissue longevity
+      ! dleaf=1.0/long_leaf(pft)
+      ! assuming no continuous leaf turnover
+      !--------------------------------------------------------------
+      if (params_pft_plant(pft)%grass) then
 
-          ! if (shedleaves(doy,pft)) then
+        ! if (shedleaves(doy,pft)) then
 
-          !   droot = 1.0
-          !   dleaf = 1.0
-          !   ispresent(pft,jpngr) = .true.
+        !   droot = 1.0
+        !   dleaf = 1.0
+        !   ispresent(pft,jpngr) = .true.
 
-          ! else
+        ! else
 
-            ! grasses have continuous turnover
-            ! dleaf = 2.5 / 365.0
-            droot = params_pft_plant(pft)%k_decay_root
+          ! grasses have continuous turnover
+          ! dleaf = 2.5 / 365.0
+          droot = params_pft_plant(pft)%k_decay_root
 
-            ! Alternative turnover function: increase turnover rate towards high LAI
-            dleaf = (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
+          ! Alternative turnover function: increase turnover rate towards high LAI
+          dleaf = (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
-          ! end if
+        ! end if
 
-        else
+      else
 
-          stop 'turnover not implemented for non-grasses'
+        stop 'turnover not implemented for non-grasses'
 
-        endif
+      endif
 
-        !--------------------------------------------------------------
-        ! Calculate leaf turnover in this day 
-        !--------------------------------------------------------------
-        if (verbose) print*, 'calling turnover_leaf() ... '
-        if (verbose) print*, '              with state variables:'
-        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
-        if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
-        if (verbose) orgtmp  =  pleaf(pft,jpngr)
-        if (verbose) orgtmp2 =  plitt_af(pft,jpngr)
-        !--------------------------------------------------------------
-        if ( dleaf>0.0 )                 call turnover_leaf( dleaf, pft, jpngr )
-        !--------------------------------------------------------------
-        if (verbose) print*, '              ==> returned: '
-        if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
-        if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
-        if (verbose) print*, '              --- balance: '
-        if (verbose) print*, '                  dlitt - dleaf                = ',  orgminus( &
-                                                                                      orgminus( &
-                                                                                        plitt_af(pft,jpngr), &
-                                                                                        orgtmp2 &
-                                                                                        ), &
-                                                                                      orgminus( &
-                                                                                        orgtmp, &
-                                                                                        pleaf(pft,jpngr) &
-                                                                                        ) &
-                                                                                      )
+      !--------------------------------------------------------------
+      ! Calculate leaf turnover in this day 
+      !--------------------------------------------------------------
+      if (verbose) print*, 'calling turnover_leaf() ... '
+      if (verbose) print*, '              with state variables:'
+      if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+      if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
+      if (verbose) orgtmp  =  pleaf(pft,jpngr)
+      if (verbose) orgtmp2 =  plitt_af(pft,jpngr)
+      !--------------------------------------------------------------
+      if ( dleaf>0.0 )                 call turnover_leaf( dleaf, pft, jpngr )
+      !--------------------------------------------------------------
+      if (verbose) print*, '              ==> returned: '
+      if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+      if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
+      if (verbose) print*, '              --- balance: '
+      if (verbose) print*, '                  dlitt - dleaf                = ',  orgminus( &
+                                                                                    orgminus( &
+                                                                                      plitt_af(pft,jpngr), &
+                                                                                      orgtmp2 &
+                                                                                      ), &
+                                                                                    orgminus( &
+                                                                                      orgtmp, &
+                                                                                      pleaf(pft,jpngr) &
+                                                                                      ) &
+                                                                                    )
 
-        !--------------------------------------------------------------
-        ! Calculate root turnover in this day 
-        !--------------------------------------------------------------
-        if (verbose) print*, 'calling turnover_root() ... '
-        if (verbose) print*, '              with state variables:'
-        if (verbose) print*, '              pleaf = ', proot(:,jpngr)
-        if (verbose) print*, '              plitt = ', plitt_bg(pft,jpngr)
-        if (verbose) orgtmp  =  proot(pft,jpngr)
-        if (verbose) orgtmp2 =  plitt_bg(pft,jpngr)
-        !--------------------------------------------------------------
-        if ( droot>0.0 )                 call turnover_root( droot, pft, jpngr )
-        !--------------------------------------------------------------
-        if (verbose) print*, '              ==> returned: '
-        if (verbose) print*, '              proot = ', proot(:,jpngr)
-        if (verbose) print*, '              plitt = ', plitt_bg(pft,jpngr)
-        if (verbose) print*, '              --- balance: '
-        if (verbose) print*, '                  dlitt - droot                = ',  orgminus( &
-                                                                                      orgminus( &
-                                                                                        plitt_bg(pft,jpngr), &
-                                                                                        orgtmp2 &
-                                                                                        ), &
-                                                                                      orgminus( &
-                                                                                        orgtmp, &
-                                                                                        proot(pft,jpngr) &
-                                                                                        ) &
-                                                                                      )
+      !--------------------------------------------------------------
+      ! Calculate root turnover in this day 
+      !--------------------------------------------------------------
+      if (verbose) print*, 'calling turnover_root() ... '
+      if (verbose) print*, '              with state variables:'
+      if (verbose) print*, '              pleaf = ', proot(:,jpngr)
+      if (verbose) print*, '              plitt = ', plitt_bg(pft,jpngr)
+      if (verbose) orgtmp  =  proot(pft,jpngr)
+      if (verbose) orgtmp2 =  plitt_bg(pft,jpngr)
+      !--------------------------------------------------------------
+      if ( droot>0.0 )                 call turnover_root( droot, pft, jpngr )
+      !--------------------------------------------------------------
+      if (verbose) print*, '              ==> returned: '
+      if (verbose) print*, '              proot = ', proot(:,jpngr)
+      if (verbose) print*, '              plitt = ', plitt_bg(pft,jpngr)
+      if (verbose) print*, '              --- balance: '
+      if (verbose) print*, '                  dlitt - droot                = ',  orgminus( &
+                                                                                    orgminus( &
+                                                                                      plitt_bg(pft,jpngr), &
+                                                                                      orgtmp2 &
+                                                                                      ), &
+                                                                                    orgminus( &
+                                                                                      orgtmp, &
+                                                                                      proot(pft,jpngr) &
+                                                                                      ) &
+                                                                                    )
 
-      endif                   !present
     enddo                     !pft
 
   end subroutine turnover

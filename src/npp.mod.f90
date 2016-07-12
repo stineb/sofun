@@ -46,7 +46,7 @@ module md_npp
 
 contains
 
-  subroutine npp( jpngr, dtemp )
+  subroutine npp( jpngr, dtemp, doy )
     !/////////////////////////////////////////////////////////////////////////
     ! NET PRIMARY PRODUCTIVITY
     ! Calculate maintenance and growth respiration and substract this from GPP 
@@ -66,6 +66,7 @@ contains
     ! arguments
     integer, intent(in) :: jpngr
     real, intent(in)    :: dtemp      ! air temperature at this day
+    integer, intent(in) :: doy
 
     ! local variables
     integer :: pft
@@ -86,148 +87,151 @@ contains
     !-------------------------------------------------------------------------
     do pft=1,npft
 
-      if ( ispresent(pft,jpngr) ) then
+      if (plabl(pft,jpngr)%c%c12<0.0) stop 'before npp labile C is neg.'
+      if (plabl(pft,jpngr)%n%n14<0.0) stop 'before npp labile N is neg.'
 
-        if (plabl(pft,jpngr)%c%c12<0.0) stop 'before npp labile C is neg.'
-        if (plabl(pft,jpngr)%n%n14<0.0) stop 'before npp labile N is neg.'
+      lu = params_pft_plant(pft)%lu_category
+      
+      !/////////////////////////////////////////////////////////////////////////
+      ! MAINTENANCE RESPIRATION
+      ! use function 'resp_main'
+      !-------------------------------------------------------------------------
+      ! fine roots should have a higher repsiration coefficient than other tissues (Franklin et al., 2007).
+      drleaf(pft) = drd(pft)  ! leaf respiration is given by dark respiration as calculated in P-model.       
+      drroot(pft) = calc_resp_maint( proot(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_root, dtemp )
+      if (params_pft_plant(pft)%tree) then
+        drsapw(pft) = calc_resp_maint( psapw(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_sapw, dtemp )
+      endif
 
-        lu = params_pft_plant(pft)%lu_category
+
+      !!<<<<<<<new:
+      ! dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
+      ! dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )
+
+      ! cbal      = dnpp(pft)%c12 - dcex(pft)
+      ! if ( cbal>0.0 ) then
+      !   ! positive C balance after respiration and C export => PFT continues growing
+      !   ! cleaf + croot = 0.0 after initialisation of PFT in vegdynamics
+      !   ! isgrowing(pft,jpngr) = .true.
+      !   ! isdying(pft,jpngr)   = .false.
+      ! else
+      !   ! no positive C balance after respiration and C export => PFT stops growing
+      !   ! isgrowing(pft,jpngr) = .false.
+      !   ! isdying(pft,jpngr)   = .false.
+      !   dcex(pft) = 0.0
+
+      !   if ( (dnpp(pft)%c12 + plabl(pft,jpngr)%c%c12) < 0.0 ) then
+      !     ! labile pool is depleted
+      !     ! print*,'cbal  ', cbal
+      !     ! print*,'clabl ', plabl(pft,jpngr)%c%c12
+      !     ! isdying(pft,jpngr) = .true.
+
+      !     call turnover_leaf( dleaf_die, pft, jpngr )
+      !     call turnover_root( droot_die, pft, jpngr )
+
+      !     dgpp(pft)   = 0.0
+      !     drleaf(pft) = 0.0
+      !     drroot(pft) = 0.0
+      !     drd(pft)    = 0.0
+      !     dnpp(pft)   = carbon(0.0)
+
+      !     ! print*,'dcex ', dcex(pft)
+      !     ! print*,'dnpp ', dnpp(pft)
+      !     ! print*,'clabl', plabl(pft,jpngr)
+      !     ! stop 'in npp'
+
+      !   end if
+
+      ! end if
+
+      ! !/////////////////////////////////////////////////////////////////////////
+      ! ! C TO/FROM LABILE POOL AND TO EXUDATES POOL
+      ! !-------------------------------------------------------------------------
+      ! call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
+      ! call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
+
+      ! ! ! If C used for root respiration and export is not available, then reduce 
+      ! ! ! root mass to match 
+      ! ! if ( avl < 0.0 ) then
+      ! !   print*,'resize_plant ...'
+      ! !   call resize_plant( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), pleaf(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_af(pft,jpngr), plitt_bg(pft,jpngr) )
+      ! !   print*,'... done'
+      ! ! end if
+
+
+      ! if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
+      ! if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
+
+      !!===========   
+
+      !/////////////////////////////////////////////////////////////////////////
+      ! DAILY NPP AND C EXPORT
+      ! NPP is the sum of C available for growth and for N uptake 
+      ! This is where isotopic signatures are introduced because only 'dbminc'
+      ! is diverted to a pool and re-emission to atmosphere gets delayed. Auto-
+      ! trophic respiration is immediate, it makes thus no sense to calculate 
+      ! full isotopic effects of gross exchange _fluxes.
+      ! Growth respiration ('drgrow') is deduced from 'dnpp' in allocation SR.
+      !-------------------------------------------------------------------------
+      dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
+      dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )   
+
+      if (dgpp(pft)>0.0) print*,'DOY, resp. as fraction of GPP:', doy, (drleaf(pft) + drroot(pft) + dcex(pft)) / dgpp(pft)
+
+      ! xxx try
+      if ( (drleaf(pft) + drroot(pft) + dcex(pft)) > dgpp(pft) ) then
         
-        !/////////////////////////////////////////////////////////////////////////
-        ! MAINTENANCE RESPIRATION
-        ! use function 'resp_main'
-        !-------------------------------------------------------------------------
-        ! fine roots should have a higher repsiration coefficient than other tissues (Franklin et al., 2007).
-        drleaf(pft) = drd(pft)  ! leaf respiration is given by dark respiration as calculated in P-model.       
-        drroot(pft) = calc_resp_maint( proot(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_root, dtemp )
-        if (params_pft_plant(pft)%tree) then
-          drsapw(pft) = calc_resp_maint( psapw(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_sapw, dtemp )
-        endif
+        ! isgrowing(pft,jpngr) = .false.
+        dcex(pft) = 0.0
 
+        ! if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12)<0.0 ) then
 
-        !!<<<<<<<new:
-        ! dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
-        ! dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )
+        !   call turnover_leaf( dleaf_die, pft, jpngr )
+        !   call turnover_root( droot_die, pft, jpngr )
 
-        ! cbal      = dnpp(pft)%c12 - dcex(pft)
-        ! if ( cbal>0.0 ) then
-        !   ! positive C balance after respiration and C export => PFT continues growing
-        !   ! cleaf + croot = 0.0 after initialisation of PFT in vegdynamics
-        !   ! isgrowing(pft,jpngr) = .true.
-        !   ! isdying(pft,jpngr)   = .false.
-        ! else
-        !   ! no positive C balance after respiration and C export => PFT stops growing
-        !   ! isgrowing(pft,jpngr) = .false.
-        !   ! isdying(pft,jpngr)   = .false.
-        !   dcex(pft) = 0.0
+        !   dcex(pft)   = 0.0
+        !   dgpp(pft)   = 0.0
+        !   drleaf(pft) = 0.0
+        !   drroot(pft) = 0.0
+        !   drd(pft)    = 0.0
+        !   dnpp(pft)   = carbon(0.0)
 
-        !   if ( (dnpp(pft)%c12 + plabl(pft,jpngr)%c%c12) < 0.0 ) then
-        !     ! labile pool is depleted
-        !     ! print*,'cbal  ', cbal
-        !     ! print*,'clabl ', plabl(pft,jpngr)%c%c12
-        !     ! isdying(pft,jpngr) = .true.
-
-        !     call turnover_leaf( dleaf_die, pft, jpngr )
-        !     call turnover_root( droot_die, pft, jpngr )
-
-        !     dgpp(pft)   = 0.0
-        !     drleaf(pft) = 0.0
-        !     drroot(pft) = 0.0
-        !     drd(pft)    = 0.0
-        !     dnpp(pft)   = carbon(0.0)
-
-        !     ! print*,'dcex ', dcex(pft)
-        !     ! print*,'dnpp ', dnpp(pft)
-        !     ! print*,'clabl', plabl(pft,jpngr)
-        !     ! stop 'in npp'
-
-        !   end if
+        !   ! stop 'sharp decline'
 
         ! end if
 
-        ! !/////////////////////////////////////////////////////////////////////////
-        ! ! C TO/FROM LABILE POOL AND TO EXUDATES POOL
-        ! !-------------------------------------------------------------------------
-        ! call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
-        ! call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
+      end if
 
-        ! ! ! If C used for root respiration and export is not available, then reduce 
-        ! ! ! root mass to match 
-        ! ! if ( avl < 0.0 ) then
-        ! !   print*,'resize_plant ...'
-        ! !   call resize_plant( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), pleaf(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_af(pft,jpngr), plitt_bg(pft,jpngr) )
-        ! !   print*,'... done'
-        ! ! end if
+      ! To avoid negative labile C pool, deactivate roots beforehand
+      avl = plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)
+      if ( avl < 0.0 ) then
+        print*,'deactivating root'
+        call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
+      end if
 
+      !/////////////////////////////////////////////////////////////////////////
+      ! TO LABILE POOL
+      ! NPP available for growth first enters the labile pool ('plabl ').
+      ! XXX Allocation is called here without "paying"  growth respir.?
+      !-------------------------------------------------------------------------
+      call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
+      call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
 
-        ! if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
-        ! if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
+      ! ! try: kill plant
+      ! if (plabl(pft,jpngr)%c%c12< -1.0e-13 .or. plabl(pft,jpngr)%n%n14< -1.0e-13) then
+      !   call initpft( pft, jpngr )
+      !   plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+      !   dnpp(:)   = carbon(0.0)
+      !   dcex(:)   = 0.0
+      !   drleaf(:) = 0.0
+      !   drroot(:) = 0.0
+      ! end if
 
-        !!===========   
+      if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
+      if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
 
-        !/////////////////////////////////////////////////////////////////////////
-        ! DAILY NPP AND C EXPORT
-        ! NPP is the sum of C available for growth and for N uptake 
-        ! This is where isotopic signatures are introduced because only 'dbminc'
-        ! is diverted to a pool and re-emission to atmosphere gets delayed. Auto-
-        ! trophic respiration is immediate, it makes thus no sense to calculate 
-        ! full isotopic effects of gross exchange _fluxes.
-        ! Growth respiration ('drgrow') is deduced from 'dnpp' in allocation SR.
-        !-------------------------------------------------------------------------
-        dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
-        dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )   
+      !!>>>>>>>>:old
 
-        ! xxx try
-        if ( (dnpp(pft)%c12 - dcex(pft))<0.0 ) then
-          
-          dcex(pft) = 0.0
-
-          ! if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12)<0.0 ) then
-
-          !   call turnover_leaf( dleaf_die, pft, jpngr )
-          !   call turnover_root( droot_die, pft, jpngr )
-
-          !   dcex(pft)   = 0.0
-          !   dgpp(pft)   = 0.0
-          !   drleaf(pft) = 0.0
-          !   drroot(pft) = 0.0
-          !   drd(pft)    = 0.0
-          !   dnpp(pft)   = carbon(0.0)
-
-          !   ! stop 'sharp decline'
-
-          ! end if
-
-        end if
-
-        ! To avoid negative labile C pool, deactivate roots beforehand
-        avl = plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)
-        if ( avl < 0.0 ) then
-          call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
-        end if
-
-        !/////////////////////////////////////////////////////////////////////////
-        ! TO LABILE POOL
-        ! NPP available for growth first enters the labile pool ('plabl ').
-        ! XXX Allocation is called here without "paying"  growth respir.?
-        !-------------------------------------------------------------------------
-        call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
-        call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
-
-        if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
-        if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
-
-        !!>>>>>>>>:old
-
-      else
-
-        dnpp(pft)   = carbon(0.0)
-        drleaf(pft) = 0.0
-        drroot(pft) = 0.0
-        drsapw(pft) = 0.0
-        dcex(pft)   = 0.0
-
-      endif
     end do
 
     ! print*, '---- finished npp'
