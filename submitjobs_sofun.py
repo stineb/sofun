@@ -11,7 +11,7 @@ from subprocess import call
 ## - "gcme"
 ## - "campi"
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet_cnmodel'
+simsuite = 'campi'
 
 ##--------------------------------------------------------------------
 ## Compile
@@ -22,7 +22,7 @@ if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
 elif simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test':
     exe = 'runcmodel'
     compiling_opt = 'cmodel'
-elif simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel':
+elif simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi':
     exe = 'runcnmodel'
     compiling_opt = 'cnmodel'
 else:
@@ -50,7 +50,7 @@ for index, row in siteinfo.iterrows():
         if row['classid'] == 'GRA':
             print 'submitting job for site ' + row['mysitename'] + '...'
             os.system( 'echo ' + row['mysitename'] + '| ./' + exe )
-    elif simsuite == 'gcme' or 'swissface' or simsuite == 'fluxnet_cnmodel':
+    elif simsuite == 'gcme' or 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi':
         print 'submitting job for experiment ' + row['expname'] + '...'
         os.system( 'echo ' + row['expname'] + '| ./' + exe )        
     else:

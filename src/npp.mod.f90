@@ -201,7 +201,7 @@ contains
 
         end if
       end if
-      print*,'doy, clabl, depl. ', doy, plabl(pft,jpngr)%c%c12, depletionfrac(pft)
+      ! print*,'doy, clabl, depl. ', doy, plabl(pft,jpngr)%c%c12, depletionfrac(pft)
 
       ! ! xxx try
       ! if ( (drleaf(pft) + drroot(pft) + dcex(pft)) > dgpp(pft) ) then
@@ -239,7 +239,7 @@ contains
       ! To avoid negative labile C pool, deactivate roots beforehand
       avl = plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)
       if ( avl < 0.0 ) then
-        print*,'deactivating root'
+        ! print*,'deactivating root'
         call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
       end if
 

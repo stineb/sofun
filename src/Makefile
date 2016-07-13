@@ -10,7 +10,7 @@ MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f9
 SOURCES=sofun.f90 biosphere_cnmodel.f90
 
 # List of source code files for reduced setup, executing only SPLASH: XXX UNDER CONSTRUCTION XXX
-SPLASH_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 params_modl.mod.f90 interface_biosphere.mod.f90 vars_core.mod.f90 outvars.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 
+SPLASH_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 params_modl.mod.f90 interface_biosphere.mod.f90 vars_core.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 
 SPLASH_SOURCES=sofun.f90 biosphere_splash.f90
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL:

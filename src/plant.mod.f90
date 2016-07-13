@@ -566,11 +566,11 @@ contains
       open(113,file=filnam,err=999,status='unknown')
     end if
 
-    ! ! LABILE N
-    ! if (interface%params_siml%loutdNlabl    ) then
-    !   filnam=trim(prefix)//'.d.nlabl.out'
-    !   open(115,file=filnam,err=999,status='unknown')
-    ! end if
+    ! LABILE N
+    if (interface%params_siml%loutdNlabl    ) then
+      filnam=trim(prefix)//'.d.nlabl.out'
+      open(115,file=filnam,err=999,status='unknown')
+    end if
 
     ! LITTER N
     if (interface%params_siml%loutdNlitt    ) then
