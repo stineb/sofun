@@ -10,7 +10,7 @@ module md_plant
   private
   public pleaf, proot, psapw, plabl, pexud, plitt_af, plitt_as, plitt_bg, &
     dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy,       &
-    lai_ind,      &
+    lai_ind, isgrowing, depletionfrac,     &
     fpc_grid, nind, dnup,        &
     params_pft_plant, params_plant, initglobal_plant, initpft,            &
     initdaily_plant, outdnpp, outdnup, outdCleaf, outdCroot, outdClabl,   &
@@ -74,9 +74,11 @@ module md_plant
   type( canopy_type ), dimension(npft)   :: canopy
 
   real, dimension(npft,maxgrid)    :: lai_ind
-  ! logical, dimension(npft,maxgrid) :: isgrowing
+  logical, dimension(npft,maxgrid) :: isgrowing
   real, dimension(npft,maxgrid)    :: fpc_grid         ! area fraction within gridcell occupied by PFT
   real, dimension(npft,maxgrid)    :: nind             ! number of individuals [1/m2]
+
+  real, dimension(npft)            :: depletionfrac
 
   logical :: break_after_alloc = .false.
 

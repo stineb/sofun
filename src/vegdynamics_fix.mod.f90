@@ -58,7 +58,7 @@ contains
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
     !------------------------------------------------------------------
-    use md_plant, only: initpft, params_pft_plant, nind
+    use md_plant, only: initpft, params_pft_plant, nind, isgrowing
 
     ! arguments
     integer, intent(in) :: pft
@@ -72,7 +72,8 @@ contains
     call add_seed( pft, jpngr )
     
     ! set other state variables: 'ispresent' and 'nind'
-
+    isgrowing(pft,jpngr) = .true.
+    
     if (params_pft_plant(pft)%grass) then
       nind(pft,jpngr) = 1.0
     else

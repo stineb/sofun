@@ -62,6 +62,7 @@ contains
     use md_soiltemp, only: dtemp_soil
     use md_gpp, only: dgpp, drd
     use md_turnover, only: turnover_leaf, turnover_root
+    use md_phenology, only: sprout
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -105,18 +106,22 @@ contains
 
 
       !!<<<<<<<new:
+
       ! dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
       ! dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )
+      ! if (dgpp(pft)>0.0) print*,'DOY, resp. as fraction of GPP:', doy, (drleaf(pft) + drroot(pft) + dcex(pft)) / dgpp(pft)
 
-      ! cbal      = dnpp(pft)%c12 - dcex(pft)
+      ! cbal = dnpp(pft)%c12 - dcex(pft)
+
       ! if ( cbal>0.0 ) then
       !   ! positive C balance after respiration and C export => PFT continues growing
       !   ! cleaf + croot = 0.0 after initialisation of PFT in vegdynamics
-      !   ! isgrowing(pft,jpngr) = .true.
+      !   isgrowing(pft,jpngr) = .true.
       !   ! isdying(pft,jpngr)   = .false.
+
       ! else
       !   ! no positive C balance after respiration and C export => PFT stops growing
-      !   ! isgrowing(pft,jpngr) = .false.
+      !   isgrowing(pft,jpngr) = .false.
       !   ! isdying(pft,jpngr)   = .false.
       !   dcex(pft) = 0.0
 
@@ -176,31 +181,60 @@ contains
       dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
       dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )   
 
-      if (dgpp(pft)>0.0) print*,'DOY, resp. as fraction of GPP:', doy, (drleaf(pft) + drroot(pft) + dcex(pft)) / dgpp(pft)
+      if (dgpp(pft)>0.0) then
+        depletionfrac(pft) = max( 0.0, 1.0 - (drleaf(pft) + drroot(pft) + dcex(pft)) / dgpp(pft) )
+      else
+        if (sprout(doy,pft)) then
+          depletionfrac(pft) = 1.0
+        else
+          depletionfrac(pft) = 0.0
 
-      ! xxx try
-      if ( (drleaf(pft) + drroot(pft) + dcex(pft)) > dgpp(pft) ) then
-        
-        ! isgrowing(pft,jpngr) = .false.
-        dcex(pft) = 0.0
+          ! enhance turnover when plant has negative C balance
+          call turnover_leaf( params_pft_plant(pft)%k_decay_leaf_base, pft, jpngr )
+          call turnover_root( params_pft_plant(pft)%k_decay_root, pft, jpngr )
+          dgpp(pft)   = 0.0
+          dnpp(pft)   = carbon(0.0)
+          dcex(pft)   = 0.0
+          drleaf(pft) = 0.0
+          drroot(pft) = 0.0
+          drd(pft)    = 0.0
 
-        ! if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12)<0.0 ) then
-
-        !   call turnover_leaf( dleaf_die, pft, jpngr )
-        !   call turnover_root( droot_die, pft, jpngr )
-
-        !   dcex(pft)   = 0.0
-        !   dgpp(pft)   = 0.0
-        !   drleaf(pft) = 0.0
-        !   drroot(pft) = 0.0
-        !   drd(pft)    = 0.0
-        !   dnpp(pft)   = carbon(0.0)
-
-        !   ! stop 'sharp decline'
-
-        ! end if
-
+        end if
       end if
+      print*,'doy, clabl, depl. ', doy, plabl(pft,jpngr)%c%c12, depletionfrac(pft)
+
+      ! ! xxx try
+      ! if ( (drleaf(pft) + drroot(pft) + dcex(pft)) > dgpp(pft) ) then
+        
+      !   ! if (lai_ind(pft,jpngr)>1.0)  then
+      !   !   isgrowing(pft,jpngr) = .false.
+      !   ! else
+      !   !   isgrowing(pft,jpngr) = .true.
+      !   ! end if
+
+      !   dcex(pft) = 0.0
+
+      !   ! if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12)<0.0 ) then
+
+      !   !   call turnover_leaf( dleaf_die, pft, jpngr )
+      !   !   call turnover_root( droot_die, pft, jpngr )
+
+      !   !   dcex(pft)   = 0.0
+      !   !   dgpp(pft)   = 0.0
+      !   !   drleaf(pft) = 0.0
+      !   !   drroot(pft) = 0.0
+      !   !   drd(pft)    = 0.0
+      !   !   dnpp(pft)   = carbon(0.0)
+
+      !   !   ! stop 'sharp decline'
+
+      !   ! end if
+
+      ! ! else
+
+      ! !   isgrowing(pft,jpngr) = .true.
+
+      ! end if
 
       ! To avoid negative labile C pool, deactivate roots beforehand
       avl = plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)
@@ -296,7 +330,7 @@ contains
     ! function return variable
     real :: resp_maint                    ! return value: maintenance respiration [gC/m2]
 
-    resp_maint = cmass * rresp ! * ramp_gpp_lotemp( dtemp )
+    resp_maint = cmass * rresp * ramp_gpp_lotemp( dtemp )
 
     ! LPX-like temperature dependeneo of respiration rates
     ! resp_maint = cmass * rresp * ftemp( dtemp, "lloyd_and_taylor" ) * ramp_gpp_lotemp( dtemp )
@@ -317,7 +351,7 @@ contains
     ! function return variable
     real :: cexu
 
-    cexu = params_plant%exurate * croot ! * ramp_gpp_lotemp( dtemp )
+    cexu = params_plant%exurate * croot * ramp_gpp_lotemp( dtemp )
 
   end function calc_cexu
 
