@@ -87,7 +87,7 @@ contains
     use md_rates
     use md_waterbal, only: soilphys, psoilphys
     use md_soiltemp, only: dtemp_soil
-    use md_plant, only: pexud
+    use md_plant, only: pexud, ddoc
 
     ! XXX try: this is wrong: dw1 is only plant available water. 
     ! should be water-filled pore space = ( (porosity - ice) - (total fluid water volume) ) / dz
@@ -191,8 +191,11 @@ contains
       ! NITRATE LEACHING
       !-----------------------------------------------------------------------
       ! Reduce NO3 by fraction dnleach(lu)
-      !------------------------------------------------------------------
+      !------------------------------------------------------------------      
+      ! print*,'fraction leached ', soilphys(lu)%ro / psoilphys(lu,jpngr)%wcont
       dnleach(lu) = no3 * soilphys(lu)%ro / psoilphys(lu,jpngr)%wcont
+      ! ! xxx try
+      ! dnleach(lu) = 0.0
       no3         = no3 - dnleach(lu)
       dnloss(lu)  = dnloss(lu) + dnleach(lu)
 
@@ -209,8 +212,9 @@ contains
       no3_w = soilphys(lu)%wscal / 3.3 * no3
       no2_w = soilphys(lu)%wscal / 3.3 * no2(lu,jpngr)
 
-      doc_w = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * soilphys(lu)%wscal / 3.3
-      
+      ! doc_w = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * soilphys(lu)%wscal / 3.3
+      doc_w = ddoc(lu) * soilphys(lu)%wscal / 3.3
+
       ! write(0,*) 'mo, dm, ddoc(lu) ', mo, dm, ddoc(lu)
 
       ! dry (aerobic) fraction
@@ -219,9 +223,9 @@ contains
       no3_d = ( 1.0 - soilphys(lu)%wscal / 3.3 ) * no3
       no2_d = ( 1.0 - soilphys(lu)%wscal / 3.3 ) * no2(lu,jpngr)
 
-      doc_d = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * ( 1.0 - soilphys(lu)%wscal / 3.3 )
+      ! doc_d = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * ( 1.0 - soilphys(lu)%wscal / 3.3 )
+      doc_d = ddoc(lu) * ( 1.0 - soilphys(lu)%wscal / 3.3 )
 
-    
       !///////////////////////////////////////////////////////////////////////
       ! NITRIFICATION in aerobic microsites (ntransform.cpp:123)
       !------------------------------------------------------------------
@@ -266,7 +270,6 @@ contains
       ! while this SR is calculated daily, even when _dailymode==0.
       !------------------------------------------------------------------
       dnmax = params_ntransform%docmax * doc_w / ( params_ntransform%kdoc + doc_w )                     ! dnmax < 1 for all doc_w 
-
       
       ! Denitrification ratio, NO3->NO2 (Eq.3, Tab.9, XP08)
       !------------------------------------------------------------------
@@ -277,6 +280,8 @@ contains
       no2_w       = no2_w + no2_inc
       ddenitr(lu) = no2_inc
       dnloss(lu)  = dnloss(lu) + no2_inc
+
+      ! print*,'ddenitr(lu) ', ddenitr(lu)
 
       
       ! Transformation NO2->N2 (Eq.4., Tab.9, XP08)
@@ -448,13 +453,6 @@ contains
     dnitr  (:) = 0.0
     dnvol  (:) = 0.0
     dnleach(:) = 0.0
-
-    ! this is necessary to make sure the system gets out of the stable 
-    ! state where everything is zero
-    if (interface%steering%year<100) then
-      print*,'initdaily_ntransform: setting N inorg to 1.0 gN/m2/yr'
-      pninorg(:,:) = nitrogen( 1.0 )
-    end if
 
   end subroutine initdaily_ntransform
 

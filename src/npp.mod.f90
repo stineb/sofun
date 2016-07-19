@@ -76,9 +76,8 @@ contains
     real :: cbal
     real :: avl
 
-    real, parameter :: dleaf_die = 0.1
-    real, parameter :: droot_die = 0.1
-
+    real, parameter :: dleaf_die = 0.005
+    real, parameter :: droot_die = 0.005
 
 
     ! print*, '---- in npp:'
@@ -87,6 +86,8 @@ contains
     ! PFT LOOP
     !-------------------------------------------------------------------------
     do pft=1,npft
+
+      ! print*,'BEFORE: clabl    ', plabl(pft,jpngr)%c
 
       if (plabl(pft,jpngr)%c%c12<0.0) stop 'before npp labile C is neg.'
       if (plabl(pft,jpngr)%n%n14<0.0) stop 'before npp labile N is neg.'
@@ -181,26 +182,26 @@ contains
       dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
       dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )   
 
-      if (dgpp(pft)>0.0) then
-        depletionfrac(pft) = max( 0.0, 1.0 - (drleaf(pft) + drroot(pft) + dcex(pft)) / dgpp(pft) )
-      else
-        if (sprout(doy,pft)) then
-          depletionfrac(pft) = 1.0
-        else
-          depletionfrac(pft) = 0.0
+      ! if (dgpp(pft)>0.0) then
+      !   depletionfrac(pft) = max( 0.0, 1.0 - (drleaf(pft) + drroot(pft) + dcex(pft)) / dgpp(pft) )
+      ! else
+      !   if (sprout(doy,pft)) then
+      !     depletionfrac(pft) = 1.0
+      !   else
+      !     depletionfrac(pft) = 0.0
 
-          ! enhance turnover when plant has negative C balance
-          call turnover_leaf( params_pft_plant(pft)%k_decay_leaf_base, pft, jpngr )
-          call turnover_root( params_pft_plant(pft)%k_decay_root, pft, jpngr )
-          dgpp(pft)   = 0.0
-          dnpp(pft)   = carbon(0.0)
-          dcex(pft)   = 0.0
-          drleaf(pft) = 0.0
-          drroot(pft) = 0.0
-          drd(pft)    = 0.0
+      !     ! enhance turnover when plant has negative C balance
+      !     call turnover_leaf( params_pft_plant(pft)%k_decay_leaf_base, pft, jpngr )
+      !     call turnover_root( params_pft_plant(pft)%k_decay_root, pft, jpngr )
+      !     dgpp(pft)   = 0.0
+      !     dnpp(pft)   = carbon(0.0)
+      !     dcex(pft)   = 0.0
+      !     drleaf(pft) = 0.0
+      !     drroot(pft) = 0.0
+      !     drd(pft)    = 0.0
 
-        end if
-      end if
+      !   end if
+      ! end if
       ! print*,'doy, clabl, depl. ', doy, plabl(pft,jpngr)%c%c12, depletionfrac(pft)
 
       ! ! xxx try
@@ -236,11 +237,39 @@ contains
 
       ! end if
 
-      ! To avoid negative labile C pool, deactivate roots beforehand
-      avl = plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)
-      if ( avl < 0.0 ) then
+
+      !/////////////////////////////////////////////////////////////////////////
+      ! SAFETY AND DEATH
+      ! If negative C balance results from GPP - Rleaf - Rroot - Cex then ...
+      ! ... first, change allocation to 100% leaves
+      ! ... second, when this still leads to a complete depletion of the labile
+      !     pool (negative values), shut down organism (zero GPP, NPP, etc., 
+      !     but continuing turnover).
+      !-------------------------------------------------------------------------
+      if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
+        ! slow death
+        print*,'slow death', doy
+        frac_leaf(pft) = 1.0
+        dgpp(pft)   = 0.0
+        drleaf(pft) = 0.0
+        drroot(pft) = 0.0
+        drd(pft)    = 0.0
+        dcex(pft)   = 0.0
+        dnpp(pft)   = carbon(0.0)
+
+        call turnover_leaf( dleaf_die, pft, jpngr )
+        call turnover_root( droot_die, pft, jpngr )
+
         ! print*,'deactivating root'
-        call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
+        ! call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
+      else if ( dnpp(pft)%c12 - dcex(pft) < 0.0 ) then
+        ! negative C balance -> no more allocation to roots (no growth anyways)
+        print*,'put all to leaves', doy
+        frac_leaf(pft) = 1.0
+      else
+        ! normal growth
+        print*,'normal growth', doy
+        frac_leaf(pft) = 0.5
       end if
 
       !/////////////////////////////////////////////////////////////////////////
@@ -251,18 +280,16 @@ contains
       call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
       call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
 
-      ! ! try: kill plant
-      ! if (plabl(pft,jpngr)%c%c12< -1.0e-13 .or. plabl(pft,jpngr)%n%n14< -1.0e-13) then
-      !   call initpft( pft, jpngr )
-      !   plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-      !   dnpp(:)   = carbon(0.0)
-      !   dcex(:)   = 0.0
-      !   drleaf(:) = 0.0
-      !   drroot(:) = 0.0
-      ! end if
+      ! print*,'doy ', doy
+      ! print*,'npp - cex', dnpp(pft)%c12 - dcex(pft)
+      ! print*,'clabl    ', plabl(pft,jpngr)%c
 
       if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
       if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
+
+      ! ! xxx try:
+      ! if (plabl(pft,jpngr)%c%c12< -1.0e-13) plabl(pft,jpngr)%c%c12 = 0.0
+      ! if (plabl(pft,jpngr)%n%n14< -1.0e-13) plabl(pft,jpngr)%n%n14 = 0.0
 
       !!>>>>>>>>:old
 
@@ -330,7 +357,7 @@ contains
     ! function return variable
     real :: resp_maint                    ! return value: maintenance respiration [gC/m2]
 
-    resp_maint = cmass * rresp * ramp_gpp_lotemp( dtemp )
+    resp_maint = cmass * rresp ! * ramp_gpp_lotemp( dtemp )
 
     ! LPX-like temperature dependeneo of respiration rates
     ! resp_maint = cmass * rresp * ftemp( dtemp, "lloyd_and_taylor" ) * ramp_gpp_lotemp( dtemp )
@@ -351,6 +378,7 @@ contains
     ! function return variable
     real :: cexu
 
+    ! low-temperature ramp is included here to prevent negative C balance after exudation
     cexu = params_plant%exurate * croot * ramp_gpp_lotemp( dtemp )
 
   end function calc_cexu

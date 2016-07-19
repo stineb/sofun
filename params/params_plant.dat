@@ -5,7 +5,7 @@
 # write value behind this position:    |->
 
 kbeer                                   0.500000
-f_nretain                               0.500000
+f_nretain                               0.000000
 fpc_tree_max                            0.950000
 growtheff                               0.600000
 r_root                                  6.000000

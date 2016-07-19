@@ -109,7 +109,7 @@ contains
         if (firstday>ndayyear) firstday=1
       enddo
       
-      if (params_pft_pheno(pft)%summergreen) then
+      ! if (params_pft_pheno(pft)%summergreen) then
         !----------------------------------------------------------
         ! summergreen TAXA
         !----------------------------------------------------------
@@ -162,13 +162,13 @@ contains
         !   endif
         ! endif
 
-      else
-        !----------------------------------------------------------
-        ! NON-summergreen TAXA
-        !----------------------------------------------------------
-        dtphen(:,pft)=1.0
+      ! else
+      !   !----------------------------------------------------------
+      !   ! NON-summergreen TAXA
+      !   !----------------------------------------------------------
+      !   dtphen(:,pft)=1.0
 
-      endif
+      ! endif
       
       ! print*, 'gettempphenology: dtphen_tmp(day,pft) '
       ! print*, dtphen(:,pft)
@@ -237,9 +237,21 @@ contains
         end if
 
       end do
+
+      ! xxx debug
+      print*,'PHENOLOGY: overriding shedleaves'
+      shedleaves(:,pft) = .false.
     
+      ! ! xxx debug
+      ! print*,'PHENOLOGY: overriding shedleaves and sprout'
+      ! shedleaves(:,pft) = .false.
+      ! sprout(:,pft) = .false.
+
+      ! shedleaves(300,pft) = .true.
+      ! sprout(40,pft) = .true.
+
       ! stop 'phenology' 
-      
+
     return
 
   end subroutine gettempphenology
