@@ -6,8 +6,8 @@ module md_npp
   ! Every module that implements 'npp' must contain this list 
   ! of subroutines (names that way).
   !   - npp
-  !   - ((interface%steering%init))io_npp
-  !   - ((interface%steering%init))output_npp
+  !   - initio_npp
+  !   - initoutput_npp
   !   - getout_daily_npp
   !   - getout_monthly_npp
   !   - writeout_ascii_npp
@@ -76,8 +76,8 @@ contains
     real :: cbal
     real :: avl
 
-    real, parameter :: dleaf_die = 0.005
-    real, parameter :: droot_die = 0.005
+    real, parameter :: dleaf_die = 0.01
+    real, parameter :: droot_die = 0.01
 
 
     ! print*, '---- in npp:'
@@ -248,7 +248,7 @@ contains
       !-------------------------------------------------------------------------
       if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
         ! slow death
-        print*,'slow death', doy
+        ! print*,'slow death', doy
         frac_leaf(pft) = 1.0
         dgpp(pft)   = 0.0
         drleaf(pft) = 0.0
@@ -264,11 +264,11 @@ contains
         ! call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
       else if ( dnpp(pft)%c12 - dcex(pft) < 0.0 ) then
         ! negative C balance -> no more allocation to roots (no growth anyways)
-        print*,'put all to leaves', doy
+        ! print*,'put all to leaves', doy
         frac_leaf(pft) = 1.0
       else
         ! normal growth
-        print*,'normal growth', doy
+        ! print*,'normal growth', doy
         frac_leaf(pft) = 0.5
       end if
 

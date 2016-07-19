@@ -57,17 +57,17 @@ subroutine biosphere( c_uptake )
   integer :: dm, moy, jpngr, day, usemoy, usedoy
 
   ! Variables used for verbose mode and mass conservation test 'baltest'
-  logical, parameter :: verbose = .false.  ! set to true to activate verbose mode
-  logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test
+  logical, parameter :: baltest_trans = .true.  ! set to true to do mass conservation test during transient simulation
+  logical :: verbose = .false.  ! set to true to activate verbose mode
   logical :: baltest
   real            :: cbal1, cbal2, nbal1, nbal2
-  type( orgpool ) :: orgtmp1, orgtmp2, orgbal1, orgbal2
+  type( orgpool ) :: orgtmp1, orgtmp2, orgtmp3, orgtmp4, orgbal1, orgbal2
   real            :: ntmp1, ntmp2, ctmp1, ctmp2
-  real :: eps = 9.999e-8                   ! numerical imprecision allowed in mass conservation tests
-
+  real, parameter :: eps = 9.999e-8                   ! numerical imprecision allowed in mass conservation tests
 
   if (baltest_trans .and. .not. interface%steering%spinup) then
     baltest = .true.
+    verbose = .true.
   else
     baltest = .false.
   end if
@@ -291,10 +291,10 @@ subroutine biosphere( c_uptake )
         if (baltest) write(0,*) '    --- balance: '
         if (baltest) cbal1 = dgpp(1) - dnpp(1)%c12 - drleaf(1) - drroot(1)
         if (baltest) cbal2 = dgpp(1) - ( plabl(1,jpngr)%c%c12 - orgtmp1%c%c12 ) - dcex(1) - drleaf(1) - drroot(1)
-        if (baltest) write(0,*) '        gpp - npp - ra_maint          = ', cbal1
-        if (baltest) write(0,*) '        gpp - dlabl - dcex - ra_maint = ', cbal2
-        if (baltest .and. baltest .and. abs(cbal1)>eps) stop 'balance 1 not satisfied'
-        if (baltest .and. baltest .and. abs(cbal2)>eps) stop 'balance 2 not satisfied'
+        if (verbose) write(0,*) '        gpp - npp - ra_maint          = ', cbal1
+        if (verbose) write(0,*) '        gpp - dlabl - dcex - ra_maint = ', cbal2
+        if (baltest .and. abs(cbal1)>eps) stop 'balance 1 not satisfied'
+        if (baltest .and. abs(cbal2)>eps) stop 'balance 2 not satisfied'
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
@@ -316,10 +316,10 @@ subroutine biosphere( c_uptake )
         if (baltest) write(0,*) '    --- balance: '
         if (baltest) nbal1 = dnup(1)%n14 + ( pninorg(1,jpngr)%n14 - ntmp1 ) 
         if (baltest) nbal2 = ( plabl(1,jpngr)%n%n14 - ntmp2 ) + ( pninorg(1,jpngr)%n14 - ntmp1 )
-        if (baltest) write(0,*) '        nup - dninorg     = ', nbal1
-        if (baltest) write(0,*) '        dnlabl - dninorg  = ', nbal2
-        if (baltest .and. baltest .and. abs(nbal1)>eps) stop 'balance 1 not satisfied'
-        if (baltest .and. baltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
+        if (verbose) write(0,*) '        nup - dninorg     = ', nbal1
+        if (verbose) write(0,*) '        dnlabl - dninorg  = ', nbal2
+        if (baltest .and. abs(nbal1)>eps) stop 'balance 1 not satisfied'
+        if (baltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
@@ -349,9 +349,9 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              plitt = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
         if (baltest) write(0,*) '   --- balance: '
         if (baltest) orgbal1 = orgminus( orgminus(   orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) ),   orgtmp2   ), orgminus(   orgtmp1,   orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )   ) )
-        if (baltest) write(0,*) '       dlitt - dplant                = ', orgbal1
-        if (baltest .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
-        if (baltest .and. baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (verbose) write(0,*) '       dlitt - dplant                = ', orgbal1
+        if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
@@ -375,9 +375,9 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              mharv = ', mharv(:,jpngr)
         if (baltest) write(0,*) '    --- balance: '
         if (baltest) orgbal1 = orgminus( orgminus( orgtmp1, orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) ) ), orgminus( mharv(1,jpngr), orgtmp2 ) )
-        if (baltest) write(0,*) '        dharv - dplant  = ', orgbal1
-        if (baltest .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
-        if (baltest .and. baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (verbose) write(0,*) '        dharv - dplant  = ', orgbal1
+        if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
@@ -385,19 +385,15 @@ subroutine biosphere( c_uptake )
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling littersom() ... '
         if (verbose) write(0,*) '              with state variables:'
-        if (verbose) write(0,*) '              plitt_af =  ', plitt_af(1,jpngr)
-        if (verbose) write(0,*) '              plitt_as =  ', plitt_as(1,jpngr)
-        if (verbose) write(0,*) '              plitt_bg =  ', plitt_bg(1,jpngr)
         if (verbose) write(0,*) '              plitt tot=  ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
-        if (verbose) write(0,*) '              psoil_fs  = ', psoil_fs(1,jpngr)
-        if (verbose) write(0,*) '              psoil_sl  = ', psoil_sl(1,jpngr)
         if (verbose) write(0,*) '              psoil tot = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
         if (verbose) write(0,*) '              pexud     = ', pexud(1,jpngr)
         if (verbose) write(0,*) '              pninorg=    ', pninorg(1,jpngr)
-        if (verbose) write(0,*) '              drhet  =    ', drhet(1)
+        if (verbose) write(0,*) '              drhet     = ', drhet(1)
+        if (verbose) write(0,*) '              dnetmin   = ', outdnetmin(1,day,jpngr)
         if (baltest) orgtmp1 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
         if (baltest) orgtmp2 = orgpool( drhet(1), pninorg(1,jpngr) )
-        if (baltest) ntmp1 = outdnetmin(1,day,jpngr) + orgtmp1%n%n14
+        if (baltest) ntmp1 = outdnetmin(1,day,jpngr)
         !----------------------------------------------------------------
         call littersom( jpngr, day, interface%climate(jpngr)%dtemp(day) )
         !----------------------------------------------------------------
@@ -406,26 +402,21 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              psoil  = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
         if (verbose) write(0,*) '              pninorg= ', pninorg(1,jpngr)
         if (verbose) write(0,*) '              drhet  = ', drhet(1)
+        if (verbose) write(0,*) '              dnetmin= ', outdnetmin(1,day,jpngr)
         if (baltest) write(0,*) '   --- balance: '
-        if (baltest) orgbal1 = orgminus( &
-                                        orgminus( &
-                                          orgtmp1, &
-                                          orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) ) &
-                                          ), &
-                                        orgminus( &
-                                          orgpool( drhet(1), pninorg(1,jpngr) ), &
-                                          orgtmp2 ) &
-                                        )
-        if (baltest) nbal1 = outdnetmin(1,day,jpngr) + orgtmp1%n%n14 - ntmp1
-        if (baltest) write(0,*) '       d( litt + soil ) - d(drhet,ninorg) = ', orgbal1
-        if (baltest) write(0,*) '       d( litt + soil ) - netmin          = ', nbal1
-        if (baltest .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
-        if (baltest .and. baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
-        if (baltest .and. baltest .and. abs(nbal1)>eps)         stop 'balance not satisfied for N, test 2'
+        if (baltest) orgtmp3 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
+        if (baltest) orgtmp4 = orgpool( drhet(1), pninorg(1,jpngr) )
+        if (baltest) orgbal1 = orgminus( orgplus( orgtmp3, orgtmp4 ), orgplus( orgtmp1, orgtmp2 ) )
+        if (baltest) nbal1 = (orgtmp1%n%n14 + ntmp1) - (orgtmp3%n%n14 + outdnetmin(1,day,jpngr))
+        if (verbose) write(0,*) '       d( litt + soil ) - d(drhet,ninorg) = ', orgbal1
+        if (verbose) write(0,*) '       d( litt + soil ) - netmin          = ', nbal1
+        if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (baltest .and. abs(nbal1)>eps)         stop 'balance not satisfied for N, test 1'
         if (verbose) write(0,*) '... done'
 
         !/////////////////////////////////////////////////////////////////
-        ! inorganic soil N dynamics
+        ! inorganic soil N dynamics (mass balance test only possible inside module)
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling ntransform() ... '
         !----------------------------------------------------------------
@@ -442,8 +433,8 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) write(0,*) '              drgrow= ', drgrow(:)
-        if (baltest) orgtmp1 =  plabl(1,jpngr)
-        if (baltest) orgtmp2 =  orgplus( pleaf(1,jpngr), proot(1,jpngr) )
+        if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
+        if (baltest) orgtmp1 = orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(1)) )
         !----------------------------------------------------------------
         if (dm==ndaymonth(moy)) then
           usemoy = moy + 1
@@ -460,14 +451,17 @@ subroutine biosphere( c_uptake )
         call allocation_daily( jpngr, usedoy, usemoy, interface%climate(jpngr)%dtemp(usedoy) )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '              ==> returned: '
-        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr), ' C:N = ', cton( pleaf(1,jpngr), default=0.0 )
-        if (verbose) write(0,*) '              proot = ', proot(:,jpngr), ' C:N = ', cton( proot(1,jpngr), default=0.0 )
+        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) write(0,*) '              drgrow= ', drgrow(:)
+        if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
         if (verbose) write(0,*) '   --- balance: '
-        if (baltest) orgbal1 = orgminus( orgminus( orgminus( orgtmp1, plabl(1,jpngr) ), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr) ), orgtmp2 ) )        
-        if (baltest) write(0,*) '       dlabl - drgrow - dleaf - droot=', orgbal1
-        if (baltest .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (baltest) orgtmp2 = orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(1)) )
+        if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
+        if (baltest) write(0,*) '       d( pleaf + proot + plabl + Nfix ) =', orgbal1
+        if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
 

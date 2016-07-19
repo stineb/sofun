@@ -451,8 +451,10 @@ contains
         if ( abs( cton(psoil_sl(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) stop 'B sl: C:N not ok'
 
         ! OUTPUT COLLECTION
-        outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
-          
+        if (interface%params_siml%loutlittersom) then
+          outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
+        end if
+
         ! C:N ratio of soil influx
         ! print*,"actual: ", dlitt%c%c12 * eff / Nreq_S, "target: ", params_littersom%cton_soil
         if ( abs( dlitt%c%c12 * eff / Nreq_S - params_littersom%cton_soil ) > 1e-5 ) stop 'imprecision'
@@ -530,29 +532,14 @@ contains
       ! psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_soil_local
       ! ! xxxxxxxx commented this out again
 
-
-      ! xxx try:
-      ! >>>>>>>>>>>
-      ! ! to inorganic N pool
-      ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      ! ===========
-      ! if ( spinup .and. invocation <= spinupyr_phaseinit_3 ) then
-      !   if ( dlitt%c%c12 > 0.0 ) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
-      !   ! write(0,*) 'fraction immobilised', (-1.0)*netmin_litt / ( eff * dlitt%c%c12 / cton_soil_local )
-      !   ! ! xxx try:
-      !   ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * (eff * dlitt%c%c12 / cton_soil_local)
-      ! else  
-      !   pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      !   ! write(0,*) 'fraction immobilised', (-1.0)*netmin_litt / ( dsoil_fs%n%n14 + dsoil_sl%n%n14 )
-      !   ! ! xxx try:
-      !   ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * ( dsoil_fs%n%n14 + dsoil_sl%n%n14 )
-      ! end if
-      ! xxxxxxxxxxx
-      ! xxx try: use budgeted N mineralisation also after spinup and equilibration to avoid problem (most likely budget violation in turnover)
-      ! print*,'cton_soil_local ', cton_soil_local 
-      ! print*,'eff * dlitt%c%c12 / cton_soil_local ', eff * dlitt%c%c12 / cton_soil_local
-      if ( dlitt%c%c12 > 0.0 ) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
-      ! <<<<<<<<<<<      
+      ! Spinup trick: use projected soil N mineralisation before soil equilibration
+      if ( interface%steering%spinup .and. invocation <=  spinupyr_soilequil_1 ) then 
+        ! projected soil N mineralisation
+        if (dlitt%c%c12 > 0.0) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
+      else
+        ! actual soil N mineralisation
+        pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      end if
 
       ! get average litter -> soil flux for analytical soil C equilibration
       if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation<=spinupyr_soilequil_1 &

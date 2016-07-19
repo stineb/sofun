@@ -891,12 +891,16 @@ contains
     open(322,file=filnam,err=999,status='unknown')
 
     ! LABILE C AT THE END OF THE YEAR
-    filnam=trim(prefix)//'.a.clabl.out'
-    open(325,file=filnam,err=999,status='unknown')
+    if (interface%params_siml%loutdClabl) then
+      filnam=trim(prefix)//'.a.clabl.out'
+      open(325,file=filnam,err=999,status='unknown')
+    end if
 
     ! LABILE N AT THE END OF THE YEAR
-    filnam=trim(prefix)//'.a.nlabl.out'
-    open(326,file=filnam,err=999,status='unknown')
+    if (interface%params_siml%loutdNlabl) then
+      filnam=trim(prefix)//'.a.nlabl.out'
+      open(326,file=filnam,err=999,status='unknown')
+    end if
 
     return
 
@@ -962,6 +966,7 @@ contains
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
+    use md_interface
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -991,8 +996,9 @@ contains
       outalai     (pft,jpngr) = maxlai
       outalma     (pft,jpngr) = dlma(pft,maxdoy)
       outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy)
-      outaclabl   (pft,jpngr) = outdClabl(pft,ndayyear,jpngr) ! taken at the end of the year
-      outanlabl   (pft,jpngr) = outdNlabl(pft,ndayyear,jpngr) ! taken at the end of the year
+
+      if (interface%params_siml%loutdClabl) outaclabl   (pft,jpngr) = outdClabl(pft,ndayyear,jpngr) ! taken at the end of the year
+      if (interface%params_siml%loutdNlabl) outanlabl   (pft,jpngr) = outdNlabl(pft,ndayyear,jpngr) ! taken at the end of the year
 
     end do
 
@@ -1089,8 +1095,8 @@ contains
     write(320,999) itime, sum(outanarea_cw(:,jpngr))
     write(321,999) itime, sum(outacton_lm(:,jpngr))
     write(322,999) itime, sum(outalma(:,jpngr))
-    write(325,999) itime, sum(outaclabl(:,jpngr))
-    write(326,999) itime, sum(outanlabl(:,jpngr))
+    if (interface%params_siml%loutdClabl) write(325,999) itime, sum(outaclabl(:,jpngr))
+    if (interface%params_siml%loutdNlabl) write(326,999) itime, sum(outanlabl(:,jpngr))
 
     return
 
