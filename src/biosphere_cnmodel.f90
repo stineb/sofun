@@ -63,7 +63,6 @@ subroutine biosphere( c_uptake )
   real            :: cbal1, cbal2, nbal1, nbal2
   type( orgpool ) :: orgtmp1, orgtmp2, orgtmp3, orgtmp4, orgbal1, orgbal2
   real            :: ntmp1, ntmp2, ctmp1, ctmp2
-  real, parameter :: eps = 9.999e-8                   ! numerical imprecision allowed in mass conservation tests
 
   if (baltest_trans .and. .not. interface%steering%spinup) then
     baltest = .true.

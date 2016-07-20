@@ -49,6 +49,7 @@ contains
     use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
     use md_soiltemp, only: dtemp_soil
     use md_ntransform, only: pninorg
+    use md_params_core, only: eps
 
     ! xxx debug
     use md_nuptake, only: calc_dnup, outtype_calc_dnup
@@ -73,9 +74,6 @@ contains
 
     ! xxx debug
     type( orgpool ) :: bal1, bal2, bald
-    real, parameter :: eps = 9.999e-8                   ! numerical imprecision allowed in mass conservation tests
-
-    logical, save :: toleaves = .true.       ! boolean determining whether C and N in this time step are allocated to leaves or roots
 
     ! Variables N balance test
     logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
@@ -247,16 +245,16 @@ contains
 
     ! calculate canopy-level leaf N as a function of LAI and implied 
     ! depletion of labile N pool
-    nleaf0 = nleaf      
-    nleaf  = get_leaf_n_canopy( pft, lai, meanmppfd(:), nv(:) )
-    dnlabl = nleaf - nleaf0
+    nleaf0   = nleaf      
+    nleaf    = get_leaf_n_canopy( pft, lai, meanmppfd(:), nv(:) )
+    mydnleaf = nleaf - nleaf0
 
     ! depletion of labile C pool is enhanced by growth respiration
     dclabl = 1.0 / params_plant%growtheff * mydcleaf
 
     ! substract from labile pools
     clabl  = clabl - dclabl
-    nlabl  = nlabl - dnlabl
+    nlabl  = nlabl - mydnleaf
 
     if ( clabl < -1e-8 ) then
       stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf C'
@@ -293,14 +291,15 @@ contains
     use md_nuptake, only: dnup_fix
 
     ! arguments
-    integer, intent(in)         :: pft
-    real, intent(in)            :: mydcroot
-    real, intent(in)            :: mydnroot
-    real, intent(inout)         :: croot, nroot
-    real, intent(inout)         :: clabl, nlabl
+    integer, intent(in) :: pft
+    real, intent(in)    :: mydcroot
+    real, intent(in)    :: mydnroot
+    real, intent(inout) :: croot, nroot
+    real, intent(inout) :: clabl, nlabl
 
     ! local variables
     real :: dclabl
+    real :: dnlabl
 
     ! update root pools
     croot = croot + mydcroot

@@ -197,6 +197,7 @@ contains
     use md_plant, only: lai_ind, leaftraits, canopy, get_canopy, get_leaftraits, get_lai
     use md_waterbal, only: solar
     use md_gpp, only: mactnv_unitiabs
+    use md_params_core, only: eps
 
     ! arguments
     real, intent(in)    :: dleaf
@@ -270,7 +271,23 @@ contains
 
       else
 
-        stop 'unknown reason'
+        if ( (cleaf - pleaf(pft,jpngr)%c%c12) > eps ) then
+          print*,'dleaf ', dleaf
+          print*,'cleaf ', cleaf
+          print*,'pleaf(pft,jpngr)%c%c12 ', pleaf(pft,jpngr)%c%c12
+          stop 'unknown reason'
+        else
+          pleaf(pft,jpngr)%c%c12 = cleaf
+        end if
+
+        if ( (nleaf - pleaf(pft,jpngr)%n%n14) > eps ) then
+          print*,'dleaf ', dleaf
+          print*,'nleaf ', nleaf
+          print*,'pleaf(pft,jpngr)%n%n14 ', pleaf(pft,jpngr)%n%n14
+          stop 'unknown reason'
+        else
+          pleaf(pft,jpngr)%n%n14 = nleaf
+        end if
 
       end if
 
@@ -278,14 +295,22 @@ contains
 
     ! update 
     lai_ind(pft,jpngr) = lai_new
-    pleaf(pft,jpngr)%n%n14 = nleaf
     pleaf(pft,jpngr)%c%c12 = cleaf
+    pleaf(pft,jpngr)%n%n14 = nleaf
 
     ! determine C and N turned over
     lm_turn = orgminus( lm_init, pleaf(pft,jpngr) )
 
-    if (lm_turn%c%c12<0.0) stop 'negative turnover C'
-    if (lm_turn%n%n14<0.0) stop 'negative turnover N'
+    if ( lm_turn%c%c12 < -1.0*eps ) then
+      stop 'negative turnover C'
+    else if ( lm_turn%c%c12 < 0.0 ) then
+       lm_turn%c%c12 = 0.0
+    end if
+    if ( lm_turn%n%n14 < -1.0*eps ) then
+      stop 'negative turnover N'
+    else if ( lm_turn%n%n14 < 0.0 ) then
+       lm_turn%n%n14 = 0.0
+    end if
 
     ! add all organic (fixed) C to litter
     call cmvRec( lm_turn%c, lm_turn%c, plitt_af(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))

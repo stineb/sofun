@@ -30,7 +30,7 @@ module md_allocation
   real, dimension(npft,maxgrid) :: outaCalclm
   real, dimension(npft,maxgrid) :: outaNalclm
   real, dimension(npft,maxgrid) :: outaCalcrm
-  real, dimension(npft,maxgrid) :: outaNalcrm
+  real, dimension(npft,maxgrid) :: outaNalcrm  
 
 contains
 
@@ -42,11 +42,12 @@ contains
     use md_classdefs
     use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
       plabl, drgrow, lai_ind, nind, canopy, leaftraits, &
-      get_canopy, depletionfrac, isgrowing, get_leaftraits, get_leaftraits_init
+      get_canopy, get_leaftraits, get_leaftraits_init, frac_leaf
     use md_waterbal, only: solar
     use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
     use md_soiltemp, only: dtemp_soil
     use md_ntransform, only: pninorg
+    use md_params_core, only: eps
 
     ! xxx debug
     use md_nuptake, only: calc_dnup, outtype_calc_dnup
@@ -55,6 +56,7 @@ contains
     use md_npp, only: calc_resp_maint, calc_cexu, deactivate_root
     use md_gpp, only: dgpp, drd 
     use md_plant, only: dnpp, drleaf, drroot, dcex, dnup
+    use md_interface
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -65,14 +67,24 @@ contains
     ! local variables
     integer :: lu
     integer :: pft
-    type( orgpool ) :: reserve
-    real, parameter :: freserve = 0.0000
+    real    :: cavl, navl, avl
+    real, parameter :: freserve = 0.0
 
     ! xxx debug
     type( orgpool ) :: bal1, bal2, bald
-    real :: eps = 9.999e-8                   ! numerical imprecision allowed in mass conservation tests
-
     logical, save :: toleaves = .true.       ! boolean determining whether C and N in this time step are allocated to leaves or roots
+
+    ! Variables N balance test
+    logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
+    logical :: verbose = .false.  ! set to true to activate verbose mode
+    logical :: baltest
+    type( orgpool ) :: orgtmp1, orgtmp2, orgbal1
+    real :: ctmp
+
+    !------------------------------------------------------------------
+    baltest = .false.
+    verbose = .false.
+    !------------------------------------------------------------------
 
     ! initialise
     dcleaf(:) = 0.0
@@ -83,150 +95,178 @@ contains
 
     do pft=1,npft
 
-      reserve = orgfrac( freserve, pleaf(pft,jpngr) )
-      ! print*,'reserve ', reserve
-      ! print*,'plabl   ', plabl
-      ! print*,'avl     ', orgminus( plabl(pft,jpngr), reserve )
-
       lu = params_pft_plant(pft)%lu_category
 
-      if (params_pft_plant(pft)%grass) then
+      ! if (interface%steering%forcingyear < 2004) then
+      !   !------------------------------------------------------------------
+      !   ! Debug: try fixed allocation during spinup and first two transient years
+      !   !------------------------------------------------------------------
+      !   if (params_pft_plant(pft)%grass) then
 
-        ! if ( plabl(pft,jpngr)%c%c12>reserve%c%c12 .and. plabl(pft,jpngr)%n%n14>reserve%n%n14 .and. dtemp>0.0 ) then
-        if ( plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 .and. dtemp>0.0 ) then
+      !     if ( plabl(pft,jpngr)%c%c12>0.0 .and. dtemp>0.0 ) then
+      !       !------------------------------------------------------------------
+      !       ! Calculate maximum C allocatable based on current labile pool size.
+      !       ! Maximum is the lower of all labile C and the C to be matched by all labile N,
+      !       ! discounted by the yield factor.
+      !       !------------------------------------------------------------------
+      !       if (pleaf(pft,jpngr)%c%c12==0.0) then
+      !         leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+      !       end if
 
-          ! ! mass balance test 
-          ! print*,'pleaf ', pleaf
-          ! print*,'proot ', proot
-          ! print*,'plabl ', plabl
-          ! print*,'drgrow', drgrow
-          ! bal1 = orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(drgrow(pft)), nitrogen(0.0) ) )
+      !       ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
+      !       avl = max( 0.0, plabl(pft,jpngr)%c%c12 - freserve * pleaf(pft,jpngr)%c%c12 )
+      !       dcleaf(pft) = frac_leaf(pft) * params_plant%growtheff * avl
+      !       dcroot(pft) = (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl
+      !       dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
 
-          !------------------------------------------------------------------
-          ! Calculate maximum C allocatable based on current labile pool size.
-          ! Maximum is the lower of all labile C and the C to be matched by all labile N,
-          ! discounted by the yield factor.
-          !------------------------------------------------------------------
-          if (pleaf(pft,jpngr)%c%c12==0.0) then
-            ! print*, 'Calculating initial C:N ratio'
-            ! initial guess based on Taylor approximation of Cleaf and Nleaf function around cleaf=0
-            leaftraits(pft)%r_cton_leaf = get_rcton_init( pft, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
-            ! print*, 'solar%meanmppfd(:)', solar%meanmppfd(:)  
-            ! print*, 'mactnv_unitiabs(pft,:)', mactnv_unitiabs(pft,:)  
-            ! print*, 'initial guess: r_cton_leaf(pft,jpngr) ', leaftraits(pft)%r_cton_leaf  
-            ! ! stop
+      !       !-------------------------------------------------------------------
+      !       ! LEAF ALLOCATION
+      !       !-------------------------------------------------------------------
+      !       call allocate_leaf( &
+      !         pft, dcleaf(pft), &
+      !         pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
+      !         plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
+      !         solar%meanmppfd(:), mactnv_unitiabs(pft,:), &
+      !         lai_ind(pft,jpngr), dnleaf(pft), nignore=.true. &
+      !         )
 
-            ! leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
-            ! print*, 'initial guess: r_cton_leaf(pft,jpngr) ', leaftraits(pft)%r_cton_leaf  
-            ! stop
+      !       !-------------------------------------------------------------------  
+      !       ! Update leaf traits
+      !       !-------------------------------------------------------------------  
+      !       leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
 
-          end if
+      !       !-------------------------------------------------------------------  
+      !       ! Update fpc_grid and fapar_ind (not lai_ind)
+      !       !-------------------------------------------------------------------  
+      !       canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
 
-          ! mass balance test 
-          bal1 = orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr) )
+      !       !-------------------------------------------------------------------
+      !       ! ROOT ALLOCATION
+      !       !-------------------------------------------------------------------
+      !       call allocate_root( &
+      !         pft, dcroot(pft), dnroot(pft), &
+      !         proot(pft,jpngr)%c%c12, proot(pft,jpngr)%n%n14, &
+      !         plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
+      !         nignore=.true. &
+      !         )
 
-          if (toleaves) then
+      !       !-------------------------------------------------------------------
+      !       ! GROWTH RESPIRATION, NPP
+      !       !-------------------------------------------------------------------
+      !       ! add growth respiration to autotrophic respiration and substract from NPP
+      !       ! (note that NPP is added to plabl in and growth resp. is implicitly removed
+      !       ! from plabl above)
+      !       drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+
+      !     end if
+
+      !   else
+
+      !     stop 'allocation_daily not implemented for trees'
+
+      !   end if
+
+      ! else
+        !------------------------------------------------------------------
+        ! Debug: flexible allocation only after first two transient years
+        !------------------------------------------------------------------
+        if (params_pft_plant(pft)%grass) then
+
+          ! if ( plabl(pft,jpngr)%c%c12>reserve%c%c12 .and. plabl(pft,jpngr)%n%n14>reserve%n%n14 .and. dtemp>0.0 ) then
+          if ( plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 .and. dtemp>0.0 ) then
+
+            !------------------------------------------------------------------
+            ! Calculate maximum C allocatable based on current labile pool size.
+            ! Maximum is the lower of all labile C and the C to be matched by all labile N,
+            ! discounted by the yield factor.
+            !------------------------------------------------------------------
+            if (pleaf(pft,jpngr)%c%c12==0.0) then
+              leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+            end if
+
+            ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
+            avl = max( 0.0, plabl(pft,jpngr)%c%c12 - freserve * pleaf(pft,jpngr)%c%c12 )
+            dcleaf(pft) = frac_leaf(pft) * params_plant%growtheff * avl
+            dcroot(pft) = (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl
+            dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
+
             !-------------------------------------------------------------------
             ! LEAF ALLOCATION
             !-------------------------------------------------------------------
-            print*,'doy, toleaves', usedoy, toleaves
-            ! dcleaf(pft) = min( &
-            !   params_plant%growtheff * (plabl(pft,jpngr)%c%c12 - reserve%c%c12), &
-            !   (plabl(pft,jpngr)%n%n14 - reserve%n%n14) * leaftraits(pft)%r_cton_leaf &
-            !   )
+            if (dcleaf(pft)>0.0) then
 
-            ! This criterium never completely depletes N pool because C:N decreases when
-            ! leaf C and LAI increase. Therefore, the actual N needed is less than what
-            ! is determined based on current C:N (leaftraits(pft)%r_cton_leaf).
-            dcleaf(pft) = min( &
-              params_plant%growtheff * (plabl(pft,jpngr)%c%c12), &
-              (plabl(pft,jpngr)%n%n14) * leaftraits(pft)%r_cton_leaf &
-              )
+              call allocate_leaf( &
+                pft, dcleaf(pft), &
+                pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
+                plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
+                solar%meanmppfd(:), mactnv_unitiabs(pft,:), &
+                lai_ind(pft,jpngr), dnleaf(pft), nignore=.true. &
+                )
 
+              !-------------------------------------------------------------------  
+              ! Update leaf traits
+              !-------------------------------------------------------------------  
+              leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
 
-            call allocate_leaf( &
-              pft, dcleaf(pft), &
-              pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
-              plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
-              solar%meanmppfd(:), mactnv_unitiabs(pft,:), &
-              lai_ind(pft,jpngr), dnleaf(pft) &
-              )
+              !-------------------------------------------------------------------  
+              ! Update fpc_grid and fapar_ind (not lai_ind)
+              !-------------------------------------------------------------------  
+              canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
 
-            !-------------------------------------------------------------------  
-            ! Update leaf traits
-            !-------------------------------------------------------------------  
-            leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+            end if
 
-            !-------------------------------------------------------------------  
-            ! Update fpc_grid and fapar_ind (not lai_ind)
-            !-------------------------------------------------------------------  
-            canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
-
-            !-------------------------------------------------------------------  
-            ! If C is left in labile pool, then N wasn't sufficient => get more
-            ! N by allocating to roots next day.
-            !-------------------------------------------------------------------  
-            if ( plabl(pft,jpngr)%c%c12 > 0.0 ) toleaves = .false.
-
-          else
-            print*,'doy, toleaves', usedoy, toleaves
             !-------------------------------------------------------------------
             ! ROOT ALLOCATION
             !-------------------------------------------------------------------
-            ! dcroot(pft) = min( &
-            !   params_plant%growtheff * (plabl(pft,jpngr)%c%c12 - reserve%c%c12), &
-            !   (plabl(pft,jpngr)%n%n14 - reserve%n%n14) * params_pft_plant(pft)%r_cton_root &
-            !   )
-            dcroot(pft) = min( &
-              params_plant%growtheff * (plabl(pft,jpngr)%c%c12), &
-              (plabl(pft,jpngr)%n%n14) * params_pft_plant(pft)%r_cton_root &
-              )
-            dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root
+            if (dcroot(pft)>0.0) then
 
-            call allocate_root( &
-              pft, dcroot(pft), dnroot(pft), &
-              proot(pft,jpngr)%c%c12, proot(pft,jpngr)%n%n14, &
-              plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14  &
-              )
+              call allocate_root( &
+                pft, dcroot(pft), dnroot(pft), &
+                proot(pft,jpngr)%c%c12, proot(pft,jpngr)%n%n14, &
+                plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
+                nignore=.true. &
+                )
 
-            !-------------------------------------------------------------------  
-            ! If N is left in labile pool, then C wasn't sufficient => get more
-            ! C by allocating to leaves next day.
-            !-------------------------------------------------------------------  
-            if ( plabl(pft,jpngr)%n%n14 > 0.0 ) toleaves = .true.
+            end if
+
+            !-------------------------------------------------------------------
+            ! GROWTH RESPIRATION, NPP
+            !-------------------------------------------------------------------
+            ! add growth respiration to autotrophic respiration and substract from NPP
+            ! (note that NPP is added to plabl in and growth resp. is implicitly removed
+            ! from plabl above)
+            drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+
+
+            if ( interface%steering%dofree_alloc .and. ( plabl(pft,jpngr)%c%c12 == 0.0 .or. plabl(pft,jpngr)%n%n14 == 0.0 ) ) then
+
+              !-------------------------------------------------------------------  
+              ! If C is left in labile pool, then N wasn't sufficient => get more
+              ! N by allocating to roots next day.
+              !-------------------------------------------------------------------  
+              if ( plabl(pft,jpngr)%c%c12 > 0.0 ) frac_leaf = 0.0
+
+              !-------------------------------------------------------------------  
+              ! If N is left in labile pool, then C wasn't sufficient => get more
+              ! C by allocating to leaves next day.
+              !-------------------------------------------------------------------  
+              if ( plabl(pft,jpngr)%n%n14 > 0.0 ) frac_leaf = 1.0
+
+            else 
+
+              frac_leaf = 0.5
+
+            end if
 
           end if
 
-          !-------------------------------------------------------------------
-          ! GROWTH RESPIRATION, NPP
-          !-------------------------------------------------------------------
-          ! add growth respiration to autotrophic respiration and substract from NPP
-          ! (note that NPP is added to plabl in and growth resp. is implicitly removed
-          ! from plabl above)
-          drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+        else
 
-          ! mass balance test 
-          ! print*,'checking balance ... '
-          bal2 = orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(drgrow(pft)), nitrogen(0.0) ) ) 
-          bald = orgminus( bal2, bal1 )
-          ! print*,'pleaf ', pleaf
-          ! print*,'proot ', proot
-          ! print*,'plabl ', plabl
-          ! print*,'drgrow', drgrow
-          ! print*,'                 ... ', bald
-          if (abs(bald%c%c12)>eps) stop 'balance not satisfied for C'
-          if (abs(bald%n%n14)>eps) stop 'balance not satisfied for N'
-          ! print*,'... done'
-
-          ! if (usedoy==40) stop 
+          stop 'allocation_daily not implemented for trees'
 
         end if
 
-      else
-
-        stop 'allocation_daily not implemented for trees'
-
-      end if
+      ! end if
 
     end do
 
@@ -235,7 +275,7 @@ contains
   end subroutine allocation_daily
 
 
-  subroutine allocate_leaf( pft, mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd, nv, lai, mydnleaf )
+  subroutine allocate_leaf( pft, mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd, nv, lai, mydnleaf, nignore )
     !///////////////////////////////////////////////////////////////////
     ! LEAF ALLOCATION
     ! Sequence of steps:
@@ -245,7 +285,9 @@ contains
     ! - reduce labile pool by C and N increments
     !-------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant, get_leaf_n_canopy, get_lai
+    use md_plant, only: params_plant, get_leaf_n_canopy, get_lai, dnup
+    use md_nuptake, only: dnup_fix
+    use md_params_core, only: eps
 
     ! arguments
     integer, intent(in)                 :: pft
@@ -256,16 +298,14 @@ contains
     real, dimension(nmonth), intent(in) :: nv
     real, intent(out)                   :: lai
     real, intent(out)                   :: mydnleaf
+    logical, intent(in)                 :: nignore
 
     ! local variables
     real :: nleaf0
     real :: dclabl, dnlabl
 
-    ! find LAI, given new leaf mass. This is necessary to get leaf-N as 
-    ! a function of LAI.
-    cleaf  = cleaf + mydcleaf
-
     ! Calculate LAI as a function of leaf C
+    cleaf  = cleaf + mydcleaf
     lai = get_lai( pft, cleaf, meanmppfd(:), nv(:) )
 
     ! calculate canopy-level leaf N as a function of LAI
@@ -273,55 +313,110 @@ contains
     nleaf    = get_leaf_n_canopy( pft, lai, meanmppfd(:), nv(:) )
     mydnleaf = nleaf - nleaf0
 
-    ! xxx DO THIS SANITY CHECK!!! 
-    ! ! subtract from labile pool, making sure pool does not get negative
-    ! if ( (mydnleaf - nlabl) > 1e-8 ) then
-    !   print*,'nlabl    ', nlabl 
-    !   print*,'mydnleaf ', mydnleaf
-    !   stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf N'
-    ! end if
+    ! depletion of labile C pool is enhanced by growth respiration
+    dclabl = 1.0 / params_plant%growtheff * mydcleaf
 
-    dclabl = min( clabl, 1.0 / params_plant%growtheff * mydcleaf )
-    dnlabl = min( nlabl, mydnleaf )
-    if ( (dclabl - clabl) > 1e-8 ) stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf C'
-    if ( (dnlabl - nlabl) > 1e-8 ) stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf N'
+    ! substract from labile pools
     clabl  = clabl - dclabl
-    nlabl  = nlabl - dnlabl
+    nlabl  = nlabl - mydnleaf
+
+    if ( clabl < -1.0*eps ) then
+      stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf C'
+    else if ( clabl < 0.0 ) then
+      ! numerical imprecision
+      ! print*,'numerical imprecision?'
+      ! print*,'clabl ', clabl
+      ! stop 'allocate leaf'
+      clabl = 0.0
+    end if
+
+    if (nignore) then
+      ! If labile N gets negative, account gap as N fixation
+      if ( nlabl < 0.0 ) then
+        dnup(pft)%n14 = dnup(pft)%n14 - nlabl
+        dnup_fix(pft) = dnup_fix(pft) - nlabl
+        nlabl = 0.0
+      end if
+    else
+      if ( nlabl < -1.0*eps ) then
+        stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf N'
+      else if ( nlabl < 0.0 ) then
+        ! numerical imprecision
+        ! print*,'numerical imprecision?'
+        ! print*,'nlabl ', nlabl
+        ! stop 'allocate leaf'
+        nlabl = 0.0
+      end if
+    end if  
+
+    ! dnlabl = min( nlabl, mydnleaf )
+    ! if ( (dclabl - clabl) > 1e-8 ) stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf C'
+    ! if ( (dnlabl - nlabl) > 1e-8 ) stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf N'
+    ! clabl  = clabl - dclabl
+    ! nlabl  = nlabl - dnlabl
 
   end subroutine allocate_leaf
 
 
-  subroutine allocate_root( pft, mydcroot, mydnroot, croot, nroot, clabl, nlabl )
+  subroutine allocate_root( pft, mydcroot, mydnroot, croot, nroot, clabl, nlabl, nignore )
     !-------------------------------------------------------------------
     ! ROOT ALLOCATION
     !-------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant, params_pft_plant
+    use md_plant, only: params_plant, params_pft_plant, dnup
+    use md_nuptake, only: dnup_fix
+    use md_params_core, only: eps
 
     ! arguments
-    integer, intent(in)         :: pft
-    real, intent(in)            :: mydcroot
-    real, intent(in)            :: mydnroot
-    real, intent(inout)         :: croot, nroot
-    real, intent(inout)         :: clabl, nlabl
+    integer, intent(in) :: pft
+    real, intent(in)    :: mydcroot
+    real, intent(in)    :: mydnroot
+    real, intent(inout) :: croot, nroot
+    real, intent(inout) :: clabl, nlabl
+    logical, intent(in) :: nignore
 
     ! local variables
     real :: dclabl
     real :: dnlabl
 
-    dclabl = min( clabl, 1.0 / params_plant%growtheff * mydcroot )
-    dnlabl = min( nlabl, mydnroot )
-    if ( (dnlabl - nlabl) > 1e-8 ) stop 'ALLOCATE ROOT: trying to remove too much from labile pool: root N'
-    if ( (dclabl - clabl) > 1e-8 ) stop 'ALLOCATE ROOT: trying to remove too much from labile pool: root C'
-    clabl  = clabl - dclabl
-    nlabl  = nlabl - dnlabl
-
-    if (mydcroot<0.0) stop 'ALLOCATE ROOT: root allocation neg.: C'
-    if (mydnroot<0.0) stop 'ALLOCATE ROOT: root allocation neg.: N'
-
+    ! update root pools
     croot = croot + mydcroot
     nroot = nroot + mydnroot
-  
+
+    ! depletion of labile C pool is enhanced by growth respiration
+    dclabl = 1.0 / params_plant%growtheff * mydcroot
+
+    ! substract from labile pools
+    clabl  = clabl - dclabl
+    nlabl  = nlabl - mydnroot
+
+    if ( clabl < -1.0*eps ) then
+      stop 'ALLOCATE_ROOT: trying to remove too much from labile pool: root C'
+    else if ( clabl < 0.0 ) then
+      ! numerical imprecision
+      ! print*,'numerical imprecision?'
+      ! stop 'allocate root'
+      clabl = 0.0
+    end if
+
+    if (nignore) then
+      ! If labile N gets negative, account gap as N fixation
+      if ( nlabl < 0.0 ) then
+        dnup(pft)%n14 = dnup(pft)%n14 - nlabl
+        dnup_fix(pft) = dnup_fix(pft) - nlabl
+        nlabl = 0.0
+      end if
+    else
+      if ( nlabl < -1.0*eps ) then
+        stop 'ALLOCATE_ROOT: trying to remove too much from labile pool: root N'
+      else if ( nlabl < 0.0 ) then
+        ! numerical imprecision
+        ! print*,'numerical imprecision?'
+        ! stop 'allocate leaf'
+        nlabl = 0.0
+      end if
+    end if
+
   end subroutine allocate_root
 
 

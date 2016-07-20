@@ -147,10 +147,10 @@ contains
         ! negative C balance -> no more allocation to roots (no growth anyways)
         ! print*,'put all to leaves', doy
         frac_leaf(pft) = 1.0
-      else
+      ! else
         ! normal growth
         ! print*,'normal growth', doy
-        frac_leaf(pft) = 0.5
+        ! frac_leaf(pft) = 0.5
       end if
 
       !/////////////////////////////////////////////////////////////////////////

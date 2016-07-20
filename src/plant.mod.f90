@@ -52,7 +52,7 @@ module md_plant
   real, dimension(nlu)                   :: ddoc             ! surrogate for dissolved organic carbon used for denitrification rate (see ntransform)
   type(nitrogen), dimension(npft)        :: dnup             ! daily N uptake [gN/m2/d]
 
-  real, dimension(npft)                  :: frac_leaf        ! fraction of labile C allocated to leaves
+  real, dimension(npft)                  :: frac_leaf = 0.5  ! fraction of labile C allocated to leaves
 
   ! Leaf traits
   type leaftraits_type

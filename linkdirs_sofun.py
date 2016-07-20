@@ -11,7 +11,7 @@ import os.path
 ## - "campi"
 ## - "fluxnet_fixalloc"
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet_fixalloc'
+simsuite = 'fluxnet_cnmodel'
 
 ##--------------------------------------------------------------------
 ## Link directories

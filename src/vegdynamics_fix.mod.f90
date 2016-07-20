@@ -37,8 +37,8 @@ contains
           !----------------------------------------------------------
           ! beginning of season
           !----------------------------------------------------------
-          ! print*, 'starting to grow on day ',doy
-          ! call estab_daily( pft, jpngr, doy )
+          print*, 'starting to grow on day ',doy
+          call estab_daily( pft, jpngr, doy )
 
         end if
 
@@ -58,7 +58,7 @@ contains
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
     !------------------------------------------------------------------
-    use md_plant, only: initpft, params_pft_plant, nind
+    use md_plant, only: initpft, params_pft_plant, nind, frac_leaf
 
     ! arguments
     integer, intent(in) :: pft
@@ -70,6 +70,7 @@ contains
 
     ! add C (and N) to labile pool (available for allocation)
     call add_seed( pft, jpngr )
+    frac_leaf(pft) = 0.5
     
     if (params_pft_plant(pft)%grass) then
       nind(pft,jpngr) = 1.0

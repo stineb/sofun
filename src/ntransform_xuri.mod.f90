@@ -126,7 +126,7 @@ contains
     real       :: doc_d                  ! aerobic pools
 
     ! Variables N balance test
-    logical, parameter :: baltest_trans = .true.  ! set to true to do mass conservation test during transient simulation
+    logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
     logical :: verbose = .false.  ! set to true to activate verbose mode
     logical :: baltest
     real :: nbal_before_1, nbal_after_1, nbal1, nbal_before_2, nbal_after_2, nbal2
@@ -393,7 +393,7 @@ contains
     enddo                                                 ! lu
 
     !-------------------------------------------------------------------------
-    ! Record for balances
+    ! Test mass conservation
     !-------------------------------------------------------------------------
     ! all pools plus all losses summed up
     if (baltest) nbal_after_1 = pninorg(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
