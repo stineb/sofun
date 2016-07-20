@@ -114,7 +114,7 @@ contains
 
     if (params_siml%do_spinup) then
 
-      if (year > (spinupyr_soilequil_1 + 9999) ) then
+      if (year > (spinupyr_soilequil_1 - 100) ) then
         out_steering%dofree_alloc = .true.
       else
         out_steering%dofree_alloc = .false.
