@@ -63,6 +63,7 @@ contains
     use md_gpp, only: dgpp, drd
     use md_turnover, only: turnover_leaf, turnover_root
     use md_phenology, only: sprout
+    use md_interface
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -129,8 +130,8 @@ contains
       !-------------------------------------------------------------------------
       if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
         ! slow death
-        ! print*,'slow death', doy
-        frac_leaf(pft) = 1.0
+        ! print*,'slow death -> all to leaves', doy
+        ! frac_leaf(pft) = 1.0
         dgpp(pft)   = 0.0
         drleaf(pft) = 0.0
         drroot(pft) = 0.0
@@ -145,12 +146,12 @@ contains
         ! call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
       else if ( dnpp(pft)%c12 - dcex(pft) < 0.0 ) then
         ! negative C balance -> no more allocation to roots (no growth anyways)
-        ! print*,'put all to leaves', doy
-        frac_leaf(pft) = 1.0
-      ! else
+        ! print*,'negative balance -> all to leaves ', doy
+        ! frac_leaf(pft) = 1.0
+      else
         ! normal growth
         ! print*,'normal growth', doy
-        ! frac_leaf(pft) = 0.5
+        if ( .not. interface%steering%dofree_alloc ) frac_leaf(pft) = 0.5
       end if
 
       !/////////////////////////////////////////////////////////////////////////

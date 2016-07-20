@@ -95,6 +95,9 @@ contains
           droot =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
           dleaf =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
+          ! dleaf = 2.5 / 365.0
+          ! droot = 2.5 / 365.0
+
         end if
 
       else
