@@ -106,70 +106,6 @@ contains
       endif
 
 
-      !!<<<<<<<new:
-
-      ! dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
-      ! dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )
-      ! if (dgpp(pft)>0.0) print*,'DOY, resp. as fraction of GPP:', doy, (drleaf(pft) + drroot(pft) + dcex(pft)) / dgpp(pft)
-
-      ! cbal = dnpp(pft)%c12 - dcex(pft)
-
-      ! if ( cbal>0.0 ) then
-      !   ! positive C balance after respiration and C export => PFT continues growing
-      !   ! cleaf + croot = 0.0 after initialisation of PFT in vegdynamics
-      !   isgrowing(pft,jpngr) = .true.
-      !   ! isdying(pft,jpngr)   = .false.
-
-      ! else
-      !   ! no positive C balance after respiration and C export => PFT stops growing
-      !   isgrowing(pft,jpngr) = .false.
-      !   ! isdying(pft,jpngr)   = .false.
-      !   dcex(pft) = 0.0
-
-      !   if ( (dnpp(pft)%c12 + plabl(pft,jpngr)%c%c12) < 0.0 ) then
-      !     ! labile pool is depleted
-      !     ! print*,'cbal  ', cbal
-      !     ! print*,'clabl ', plabl(pft,jpngr)%c%c12
-      !     ! isdying(pft,jpngr) = .true.
-
-      !     call turnover_leaf( dleaf_die, pft, jpngr )
-      !     call turnover_root( droot_die, pft, jpngr )
-
-      !     dgpp(pft)   = 0.0
-      !     drleaf(pft) = 0.0
-      !     drroot(pft) = 0.0
-      !     drd(pft)    = 0.0
-      !     dnpp(pft)   = carbon(0.0)
-
-      !     ! print*,'dcex ', dcex(pft)
-      !     ! print*,'dnpp ', dnpp(pft)
-      !     ! print*,'clabl', plabl(pft,jpngr)
-      !     ! stop 'in npp'
-
-      !   end if
-
-      ! end if
-
-      ! !/////////////////////////////////////////////////////////////////////////
-      ! ! C TO/FROM LABILE POOL AND TO EXUDATES POOL
-      ! !-------------------------------------------------------------------------
-      ! call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
-      ! call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
-
-      ! ! ! If C used for root respiration and export is not available, then reduce 
-      ! ! ! root mass to match 
-      ! ! if ( avl < 0.0 ) then
-      ! !   print*,'resize_plant ...'
-      ! !   call resize_plant( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), pleaf(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_af(pft,jpngr), plitt_bg(pft,jpngr) )
-      ! !   print*,'... done'
-      ! ! end if
-
-
-      ! if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
-      ! if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
-
-      !!===========   
-
       !/////////////////////////////////////////////////////////////////////////
       ! DAILY NPP AND C EXPORT
       ! NPP is the sum of C available for growth and for N uptake 
@@ -181,61 +117,6 @@ contains
       !-------------------------------------------------------------------------
       dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
       dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )   
-
-      ! if (dgpp(pft)>0.0) then
-      !   depletionfrac(pft) = max( 0.0, 1.0 - (drleaf(pft) + drroot(pft) + dcex(pft)) / dgpp(pft) )
-      ! else
-      !   if (sprout(doy,pft)) then
-      !     depletionfrac(pft) = 1.0
-      !   else
-      !     depletionfrac(pft) = 0.0
-
-      !     ! enhance turnover when plant has negative C balance
-      !     call turnover_leaf( params_pft_plant(pft)%k_decay_leaf_base, pft, jpngr )
-      !     call turnover_root( params_pft_plant(pft)%k_decay_root, pft, jpngr )
-      !     dgpp(pft)   = 0.0
-      !     dnpp(pft)   = carbon(0.0)
-      !     dcex(pft)   = 0.0
-      !     drleaf(pft) = 0.0
-      !     drroot(pft) = 0.0
-      !     drd(pft)    = 0.0
-
-      !   end if
-      ! end if
-      ! print*,'doy, clabl, depl. ', doy, plabl(pft,jpngr)%c%c12, depletionfrac(pft)
-
-      ! ! xxx try
-      ! if ( (drleaf(pft) + drroot(pft) + dcex(pft)) > dgpp(pft) ) then
-        
-      !   ! if (lai_ind(pft,jpngr)>1.0)  then
-      !   !   isgrowing(pft,jpngr) = .false.
-      !   ! else
-      !   !   isgrowing(pft,jpngr) = .true.
-      !   ! end if
-
-      !   dcex(pft) = 0.0
-
-      !   ! if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12)<0.0 ) then
-
-      !   !   call turnover_leaf( dleaf_die, pft, jpngr )
-      !   !   call turnover_root( droot_die, pft, jpngr )
-
-      !   !   dcex(pft)   = 0.0
-      !   !   dgpp(pft)   = 0.0
-      !   !   drleaf(pft) = 0.0
-      !   !   drroot(pft) = 0.0
-      !   !   drd(pft)    = 0.0
-      !   !   dnpp(pft)   = carbon(0.0)
-
-      !   !   ! stop 'sharp decline'
-
-      !   ! end if
-
-      ! ! else
-
-      ! !   isgrowing(pft,jpngr) = .true.
-
-      ! end if
 
 
       !/////////////////////////////////////////////////////////////////////////
@@ -286,12 +167,6 @@ contains
 
       if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
       if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
-
-      ! ! xxx try:
-      ! if (plabl(pft,jpngr)%c%c12< -1.0e-13) plabl(pft,jpngr)%c%c12 = 0.0
-      ! if (plabl(pft,jpngr)%n%n14< -1.0e-13) plabl(pft,jpngr)%n%n14 = 0.0
-
-      !!>>>>>>>>:old
 
     end do
 

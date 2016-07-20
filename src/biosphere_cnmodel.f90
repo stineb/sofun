@@ -57,7 +57,7 @@ subroutine biosphere( c_uptake )
   integer :: dm, moy, jpngr, day, usemoy, usedoy
 
   ! Variables used for verbose mode and mass conservation test 'baltest'
-  logical, parameter :: baltest_trans = .true.  ! set to true to do mass conservation test during transient simulation
+  logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
   logical :: verbose = .false.  ! set to true to activate verbose mode
   logical :: baltest
   real            :: cbal1, cbal2, nbal1, nbal2

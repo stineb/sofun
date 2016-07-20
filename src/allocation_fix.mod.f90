@@ -42,7 +42,7 @@ contains
     use md_classdefs
     use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
       plabl, drgrow, lai_ind, nind, canopy, leaftraits, &
-      get_canopy, depletionfrac, isgrowing, get_leaftraits, get_leaftraits_init, &
+      get_canopy, get_leaftraits, get_leaftraits_init, &
       frac_leaf
     use md_nuptake, only: dnup_fix
     use md_waterbal, only: solar
@@ -78,7 +78,7 @@ contains
     logical, save :: toleaves = .true.       ! boolean determining whether C and N in this time step are allocated to leaves or roots
 
     ! Variables N balance test
-    logical, parameter :: baltest_trans = .true.  ! set to true to do mass conservation test during transient simulation
+    logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
     logical :: verbose = .false.  ! set to true to activate verbose mode
     logical :: baltest
     type( orgpool ) :: orgtmp1, orgtmp2, orgbal1
