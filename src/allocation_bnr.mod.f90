@@ -463,7 +463,7 @@ contains
     if (nignore) then
       ! If labile N gets negative, account gap as N fixation
       if ( nlabl < 0.0 ) then
-        print*,'not enough N'
+        ! print*,'not enough N'
         dnup(pft)%n14 = dnup(pft)%n14 - nlabl
         dnup_fix(pft) = dnup_fix(pft) - nlabl
         nlabl = 0.0
@@ -533,7 +533,7 @@ contains
     if (nignore) then
       ! If labile N gets negative, account gap as N fixation
       if ( nlabl < 0.0 ) then
-        print*,'not enough N'
+        ! print*,'not enough N'
         dnup(pft)%n14 = dnup(pft)%n14 - nlabl
         dnup_fix(pft) = dnup_fix(pft) - nlabl
         nlabl = 0.0
