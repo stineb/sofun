@@ -37,8 +37,8 @@ contains
           !----------------------------------------------------------
           ! beginning of season
           !----------------------------------------------------------
-          ! print*, 'starting to grow on day ',doy
-          ! call estab_daily( pft, jpngr, doy )
+          print*, 'starting to grow on day ',doy
+          call estab_daily( pft, jpngr, doy )
 
         end if
 

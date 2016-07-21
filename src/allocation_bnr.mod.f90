@@ -68,7 +68,7 @@ contains
     integer :: lu
     integer :: pft
     integer :: usemoy, usedoy
-    real    :: cavl, navl, avl
+    real    :: cavl, navl, avl, maxdc_cavl, maxdc_navl
     real, parameter :: freserve = 0.0
 
     ! xxx debug
@@ -121,35 +121,88 @@ contains
             end if
 
             ! first day of free allocation, put all to leaves
-            if (frac_leaf(pft)==0.5) frac_leaf(pft) = 1.0
 
-            ! abort when labile N pool gets negative upon allocation
+            ! if (frac_leaf(pft)==0.5) frac_leaf(pft) = 1.0
+
+            ! ! xxx try
+            ! ! ! abort when labile N pool gets negative upon allocation
+            ! ! nignore = .false.
+            ! frac_leaf(pft) = 0.5
+            ! nignore = .true.
+
+            ! ! ! get allocatable C to roots and leaves 
+            ! ! if (frac_leaf(pft)==1.0) then
+
+            !   dcleaf(pft) = min( &
+            !     frac_leaf(pft) * params_plant%growtheff      * (plabl(pft,jpngr)%c%c12)  &
+            !    ! ,frac_leaf(pft) * leaftraits(pft)%r_cton_leaf * (plabl(pft,jpngr)%n%n14)  &
+            !     )
+
+            ! ! else if (frac_leaf(pft)==0.0) then
+
+            !   dcroot(pft) = min( &
+            !     ( 1.0 - frac_leaf(pft) ) * params_plant%growtheff            * (plabl(pft,jpngr)%c%c12)  &
+            !    ! ,( 1.0 - frac_leaf(pft) ) * params_pft_plant(pft)%r_cton_root * (plabl(pft,jpngr)%n%n14)  &
+            !     )
+            !   dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root
+
+            
+            ! ! not limited by N availability
+            ! nignore = .true.
+            ! avl = max( 0.0, plabl(pft,jpngr)%c%c12 - freserve * pleaf(pft,jpngr)%c%c12 )
+            ! dcleaf(pft) = frac_leaf(pft) * params_plant%growtheff * avl 
+            ! dcroot(pft) = (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl
+            ! dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
+
+
+            ! limited by N availability 
             nignore = .false.
+            avl = max( 0.0, plabl(pft,jpngr)%c%c12 - freserve * pleaf(pft,jpngr)%c%c12 )
+            dcleaf(pft) = min( frac_leaf(pft) * params_plant%growtheff * avl, &
+              frac_leaf(pft) * plabl(pft,jpngr)%n%n14 * leaftraits(pft)%r_cton_leaf )
+            dcroot(pft) = min( (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl, &
+              (1.0 - frac_leaf(pft)) * plabl(pft,jpngr)%n%n14 * params_pft_plant(pft)%r_cton_root )
+            dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
 
-            ! get allocatable C to roots and leaves 
-            if (frac_leaf(pft)==1.0) then
 
-              dcleaf(pft) = min( &
-                params_plant%growtheff * (plabl(pft,jpngr)%c%c12), &
-                (plabl(pft,jpngr)%n%n14) * leaftraits(pft)%r_cton_leaf &
-                )
-              dcroot(pft) = 0.0
-              dnroot(pft) = 0.0
+            maxdc_cavl = plabl(pft,jpngr)%c%c12 
+            maxdc_navl = plabl(pft,jpngr)%n%n14 * ( frac_leaf(pft) * leaftraits(pft)%r_cton_leaf + ( 1.0 - frac_leaf(pft) ) * params_pft_plant(pft)%r_cton_root ) 
 
-            else if (frac_leaf(pft)==0.0) then
-
-              dcroot(pft) = min( &
-                params_plant%growtheff * (plabl(pft,jpngr)%c%c12), &
-                (plabl(pft,jpngr)%n%n14) * params_pft_plant(pft)%r_cton_root &
-                )
-              dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root
-              dcleaf(pft) = 0.0
-
+            if (maxdc_cavl<maxdc_navl) then
+              print*,'C is limiting -> should put more to leaves'
+              frac_leaf(pft) = 1.0
+              ! frac_leaf(pft) = min( frac_leaf(pft) + 0.1, 1.0 )
             else
-              print*,'frac_leaf ', frac_leaf
-              stop 'frac_leaf/=0 or 1'
-
+              print*,'N is limiting -> should put more to roots'
+              frac_leaf(pft) = 0.0
+              ! frac_leaf(pft) = max( frac_leaf(pft) - 0.1, 0.0 )
             end if
+
+            ! !-------------------------------------------------------------------  
+            ! ! Determine next day's allocation by what's more limiting today: C or N?
+            ! !-------------------------------------------------------------------              
+            ! if (  ) then
+
+            !   !-------------------------------------------------------------------  
+            !   ! If C is left in labile pool, then N wasn't sufficient => get more
+            !   ! N by allocating to roots next day.
+            !   !-------------------------------------------------------------------  
+            !   if ( plabl(pft,jpngr)%c%c12 > 0.0 ) frac_leaf = 0.0
+
+            !   !-------------------------------------------------------------------  
+            !   ! If N is left in labile pool, then C wasn't sufficient => get more
+            !   ! C by allocating to leaves next day.
+            !   !-------------------------------------------------------------------  
+            !   if ( plabl(pft,jpngr)%n%n14 > 0.0 ) frac_leaf = 1.0
+
+            ! ! else 
+
+            ! !   stop 'middle way'
+            ! !   frac_leaf = 0.5
+
+            ! end if
+
+
 
             print*,'----', doy, '----'
             print*,'plabl before ', plabl(pft,jpngr)
@@ -202,43 +255,44 @@ contains
             ! from plabl above)
             drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
             
-            print*,'plabl after ', plabl(pft,jpngr)
+            ! xxx try
+            ! print*,'plabl after ', plabl(pft,jpngr)
 
-            if ( plabl(pft,jpngr)%n%n14 == 0.0 ) then
+            ! if ( plabl(pft,jpngr)%n%n14 == 0.0 ) then
 
-              frac_leaf(pft) = 0.0 
+            !   frac_leaf(pft) = 0.0 
             
-            else if ( cton( plabl(pft,jpngr) ) > max( params_pft_plant(pft)%r_cton_root, leaftraits(pft)%r_cton_leaf ) ) then
+            ! else if ( cton( plabl(pft,jpngr) ) > max( params_pft_plant(pft)%r_cton_root, leaftraits(pft)%r_cton_leaf ) ) then
             
-              frac_leaf(pft) = 0.0 
+            !   frac_leaf(pft) = 0.0 
             
-            else
+            ! else
             
-              frac_leaf(pft) = 1.0
+            !   frac_leaf(pft) = 1.0
             
-            end if  
+            ! end if  
+            ! if ( plabl(pft,jpngr)%c%c12 == 0.0 .or. plabl(pft,jpngr)%n%n14 == 0.0 &
+            !   .or. cton( plabl(pft,jpngr)) > max( params_pft_plant(pft)%r_cton_root, leaftraits(pft)%r_cton_leaf ) ) then
 
-          !   if ( plabl(pft,jpngr)%c%c12 == 0.0 .or. plabl(pft,jpngr)%n%n14 == 0.0 &
-          !     .or. cton( plabl(pft,jpngr)) > max( params_pft_plant(pft)%r_cton_root, leaftraits(pft)%r_cton_leaf ) ) then
+            !   !-------------------------------------------------------------------  
+            !   ! If C is left in labile pool, then N wasn't sufficient => get more
+            !   ! N by allocating to roots next day.
+            !   !-------------------------------------------------------------------  
+            !   if ( plabl(pft,jpngr)%c%c12 > 0.0 ) frac_leaf = 0.0
 
-          !     !-------------------------------------------------------------------  
-          !     ! If C is left in labile pool, then N wasn't sufficient => get more
-          !     ! N by allocating to roots next day.
-          !     !-------------------------------------------------------------------  
-          !     if ( plabl(pft,jpngr)%c%c12 > 0.0 ) frac_leaf = 0.0
+            !   !-------------------------------------------------------------------  
+            !   ! If N is left in labile pool, then C wasn't sufficient => get more
+            !   ! C by allocating to leaves next day.
+            !   !-------------------------------------------------------------------  
+            !   if ( plabl(pft,jpngr)%n%n14 > 0.0 ) frac_leaf = 1.0
 
-          !     !-------------------------------------------------------------------  
-          !     ! If N is left in labile pool, then C wasn't sufficient => get more
-          !     ! C by allocating to leaves next day.
-          !     !-------------------------------------------------------------------  
-          !     if ( plabl(pft,jpngr)%n%n14 > 0.0 ) frac_leaf = 1.0
+            ! ! else 
 
-          !   ! else 
+            ! !   stop 'middle way'
+            ! !   frac_leaf = 0.5
 
-          !   !   stop 'middle way'
-          !   !   frac_leaf = 0.5
+            ! end if
 
-          !   end if
 
           end if
 
@@ -409,6 +463,7 @@ contains
     if (nignore) then
       ! If labile N gets negative, account gap as N fixation
       if ( nlabl < 0.0 ) then
+        print*,'not enough N'
         dnup(pft)%n14 = dnup(pft)%n14 - nlabl
         dnup_fix(pft) = dnup_fix(pft) - nlabl
         nlabl = 0.0
@@ -478,6 +533,7 @@ contains
     if (nignore) then
       ! If labile N gets negative, account gap as N fixation
       if ( nlabl < 0.0 ) then
+        print*,'not enough N'
         dnup(pft)%n14 = dnup(pft)%n14 - nlabl
         dnup_fix(pft) = dnup_fix(pft) - nlabl
         nlabl = 0.0
