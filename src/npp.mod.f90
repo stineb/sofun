@@ -61,7 +61,7 @@ contains
     use md_params_core, only: npft, ndayyear
     use md_soiltemp, only: dtemp_soil
     use md_gpp, only: dgpp, drd
-    use md_turnover, only: turnover_leaf, turnover_root
+    use md_turnover, only: turnover_leaf, turnover_root, turnover_labl
     use md_phenology, only: sprout
     use md_interface
 
@@ -79,6 +79,7 @@ contains
 
     real, parameter :: dleaf_die = 0.01
     real, parameter :: droot_die = 0.01
+    real, parameter :: dlabl_die = 0.1
 
 
     ! print*, '---- in npp:'
@@ -130,7 +131,7 @@ contains
       !-------------------------------------------------------------------------
       if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
         ! slow death
-        ! print*,'slow death -> all to leaves', doy
+        ! print*,'slow death', doy
         ! frac_leaf(pft) = 1.0
         dgpp(pft)   = 0.0
         drleaf(pft) = 0.0
@@ -141,6 +142,7 @@ contains
 
         call turnover_leaf( dleaf_die, pft, jpngr )
         call turnover_root( droot_die, pft, jpngr )
+        call turnover_labl( droot_die, pft, jpngr )
 
         ! print*,'deactivating root'
         ! call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )

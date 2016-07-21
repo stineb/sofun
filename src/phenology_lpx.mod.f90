@@ -238,9 +238,9 @@ contains
 
       end do
 
-      ! ! xxx debug
-      ! print*,'PHENOLOGY: overriding shedleaves'
-      ! shedleaves(:,pft) = .false.
+      ! xxx debug
+      print*,'PHENOLOGY: overriding shedleaves'
+      shedleaves(:,pft) = .false.
     
       ! ! xxx debug
       ! print*,'PHENOLOGY: overriding shedleaves and sprout'

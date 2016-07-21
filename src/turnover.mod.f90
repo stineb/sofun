@@ -27,7 +27,7 @@ module md_turnover
   implicit none
 
   private
-  public turnover, turnover_root, turnover_leaf
+  public turnover, turnover_root, turnover_leaf, turnover_labl
 
 contains
 
@@ -92,11 +92,11 @@ contains
           ! dleaf = (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
           ! xxx try
-          ! droot =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
-          ! dleaf =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
+          droot =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
+          dleaf =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
-          dleaf = 1.5 / 365.0
-          droot = 1.5 / 365.0
+          ! dleaf = 1.5 / 365.0
+          ! droot = 1.5 / 365.0
 
         end if
 

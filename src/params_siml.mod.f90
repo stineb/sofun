@@ -140,27 +140,28 @@ contains
       endif
       out_steering%outyear = year + params_siml%firstyeartrend - params_siml%spinupyears - 1
 
-      ! if (year > (spinupyr_soilequil_1 + 9999) ) then
+      ! if ( year > 3 ) then
+      ! if (year > (spinupyr_soilequil_1 + 1) ) then
       if (out_steering%forcingyear > 2003 ) then
         out_steering%dofree_alloc = .true.
       else
         out_steering%dofree_alloc = .false.
       end if
 
-      if (year==spinupyr_soilequil_1 .or. year==spinupyr_soilequil_2) then
+      if ( (year==spinupyr_soilequil_1 .or. year==spinupyr_soilequil_2 ) .and. year<=params_siml%spinupyears) then
         out_steering%do_soilequil = .true.
       else
         out_steering%do_soilequil = .false.
       end if
 
-      if ( year > ( spinupyr_soilequil_1 - params_siml%recycle ) .and. year <= spinupyr_soilequil_1 &
-        .or. year > ( spinupyr_soilequil_2 - params_siml%recycle ) .and. year <= spinupyr_soilequil_2 ) then
+      if ( year<=params_siml%spinupyears .and. ( year > ( spinupyr_soilequil_1 - params_siml%recycle ) .and. year <= spinupyr_soilequil_1 &
+              .or. year > ( spinupyr_soilequil_2 - params_siml%recycle ) .and. year <= spinupyr_soilequil_2 ) ) then
         out_steering%average_soil = .true.
       else
         out_steering%average_soil = .false.
       end if
 
-      if ( year <= spinupyr_soilequil_1 ) then
+      if ( year<=params_siml%spinupyears .and. year <= spinupyr_soilequil_1 ) then
         out_steering%project_nmin = .true.
       else
         out_steering%project_nmin = .false.
