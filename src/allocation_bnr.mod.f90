@@ -127,6 +127,10 @@ contains
             ! dcroot(pft) = (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl
             ! dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
 
+            ! print*,'----', doy, '----'
+            ! print*,'plabl before ', plabl(pft,jpngr)
+            ! print*,'frac_leaf    ', frac_leaf(pft)
+            print*,'doy, frac_leaf    ', doy, frac_leaf(pft)
 
             ! limited by N availability 
             nignore = .false.
@@ -137,10 +141,10 @@ contains
               (1.0 - frac_leaf(pft)) * plabl(pft,jpngr)%n%n14 * params_pft_plant(pft)%r_cton_root )
             dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
 
-
             maxdc_cavl = plabl(pft,jpngr)%c%c12 
             maxdc_navl = plabl(pft,jpngr)%n%n14 * ( frac_leaf(pft) * leaftraits(pft)%r_cton_leaf + ( 1.0 - frac_leaf(pft) ) * params_pft_plant(pft)%r_cton_root ) 
 
+            ! binary decision
             if (maxdc_cavl<maxdc_navl) then
               ! print*,'C is limiting -> should put more to leaves'
               frac_leaf(pft) = 1.0
@@ -151,11 +155,17 @@ contains
               ! frac_leaf(pft) = max( frac_leaf(pft) - 0.1, 0.0 )
             end if
 
-
-            ! print*,'----', doy, '----'
-            ! print*,'plabl before ', plabl(pft,jpngr)
-            ! print*,'frac_leaf    ', frac_leaf(pft)
-            print*,'doy, frac_leaf    ', doy, frac_leaf(pft)
+            ! Safety brakes
+            print*,'cton in plabl ', cton( plabl(pft,jpngr) )
+            if ( cton( plabl(pft,jpngr) ) > 10.0 * params_pft_plant(pft)%r_cton_root  ) then
+              if (maxdc_cavl<maxdc_navl) stop 'surprise'
+              frac_leaf(pft) = 0.0
+            else if ( ntoc( plabl(pft,jpngr) ) > 10.0 * leaftraits(pft)%r_ntoc_leaf ) then
+              if (.not.maxdc_cavl<maxdc_navl) stop 'surprise'
+              frac_leaf(pft) = 1.0
+            else
+              print*,'optimum in between'
+            end if
 
             !-------------------------------------------------------------------
             ! LEAF ALLOCATION
@@ -205,6 +215,8 @@ contains
             drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
 
           end if
+
+          if (doy==365) stop
 
         else
           !------------------------------------------------------------------
