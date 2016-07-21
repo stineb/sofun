@@ -226,6 +226,14 @@ contains
         ! GPP
         dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), dtemp, evap(lu)%cpa )
         ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), mlue(pft,moy), dtemp )
+        ! print*,'DOY, GPP ', doy, dgpp(pft)
+        ! print*,'fAPAR ', canopy(pft)%fapar_ind
+        ! print*,'dppfd ', solar%dppfd(doy)
+        ! print*,'mlue  ', mlue(pft,moy)
+        ! print*,'temp  ', dtemp
+        ! print*,'pft   ', pft
+        ! print*,'moy   ', moy
+        ! print*,'--------------'
 
         ! Dark respiration
         drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), mrd_unitiabs(pft,moy), dtemp, evap(lu)%cpa )

@@ -23,6 +23,22 @@ module md_allocation
   real, dimension(npft) :: dcroot
   real, dimension(npft) :: dnroot
 
+  ! current conditions determining light use and N uptake efficiency
+  type statetype_eval_imbalance
+    type(orgpool) :: pleaf
+    type(orgpool) :: proot
+    type(orgpool) :: plabl
+    real          :: usepft 
+    integer       :: usemoy
+    integer       :: usedoy
+    integer       :: usejpngr
+    real          :: airtemp
+    real          :: soiltemp
+  end type statetype_eval_imbalance
+  type(statetype_eval_imbalance) :: state_eval_imbalance
+
+  logical, parameter :: write_logfile_eval_imbalance = .true.
+
   !----------------------------------------------------------------
   ! Module-specific output variables
   !----------------------------------------------------------------
@@ -48,6 +64,7 @@ contains
     use md_soiltemp, only: dtemp_soil
     use md_ntransform, only: pninorg
     use md_params_core, only: eps
+    use md_findroot_fzeroin
 
     ! xxx debug
     use md_nuptake, only: calc_dnup, outtype_calc_dnup
@@ -67,27 +84,42 @@ contains
     ! local variables
     integer :: lu
     integer :: pft
-    integer :: usemoy, usedoy
     real    :: cavl, navl, avl, maxdc_cavl, maxdc_navl
+    real    :: frac_leaf_opt
     real, parameter :: freserve = 0.0
+
+    ! variables for root finding algorithm
+    real :: max_dcleaf_n_constraint, max_dc, min_dc, max_dc_save
+    real :: abserr
+    real :: relerr
+    real :: dcleaf_opt
+    real :: test
+    real :: eval_allroots, eval_allleaves
+    logical :: cont
+    integer, parameter :: nmax = 100
+    type(outtype_zeroin)  :: out_zeroin
+    logical :: verbose = .false.
 
     ! xxx debug
     type( orgpool ) :: bal1, bal2, bald
     logical, save :: toleaves = .true.       ! boolean determining whether C and N in this time step are allocated to leaves or roots
     logical, save :: nignore = .true.
 
-    ! Variables N balance test
-    logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
-    logical :: verbose = .false.  ! set to true to activate verbose mode
-    logical :: baltest
-    type( orgpool ) :: orgtmp1, orgtmp2, orgbal1
-    real :: ctmp
+    ! ! Variables N balance test
+    ! logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
+    ! logical :: verbose = .false.  ! set to true to activate verbose mode
+    ! logical :: baltest
+    ! type( orgpool ) :: orgtmp1, orgtmp2, orgbal1
+    ! real :: ctmp
 
-    !------------------------------------------------------------------
-    ! Turn mass conservation tests on and off
-    !------------------------------------------------------------------
-    baltest = .false.
-    verbose = .false.
+    ! !------------------------------------------------------------------
+    ! ! Turn mass conservation tests on and off
+    ! !------------------------------------------------------------------
+    ! baltest = .false.
+    ! verbose = .false.
+
+    abserr=100.0*XMACHEPS !*10e5
+    relerr=1000.0*XMACHEPS !*10e5
 
     !------------------------------------------------------------------
     ! initialise
@@ -130,21 +162,13 @@ contains
             ! print*,'----', doy, '----'
             ! print*,'plabl before ', plabl(pft,jpngr)
             ! print*,'frac_leaf    ', frac_leaf(pft)
-            print*,'doy, frac_leaf    ', doy, frac_leaf(pft)
 
-            ! limited by N availability 
-            nignore = .false.
-            avl = max( 0.0, plabl(pft,jpngr)%c%c12 - freserve * pleaf(pft,jpngr)%c%c12 )
-            dcleaf(pft) = min( frac_leaf(pft) * params_plant%growtheff * avl, &
-              frac_leaf(pft) * plabl(pft,jpngr)%n%n14 * leaftraits(pft)%r_cton_leaf )
-            dcroot(pft) = min( (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl, &
-              (1.0 - frac_leaf(pft)) * plabl(pft,jpngr)%n%n14 * params_pft_plant(pft)%r_cton_root )
-            dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
-
+            !------------------------------------------------------------------
+            ! Binary decision: this is good for quickly depleting labile pool 
+            ! imbalance but leads to overshoot 
+            !------------------------------------------------------------------
             maxdc_cavl = plabl(pft,jpngr)%c%c12 
             maxdc_navl = plabl(pft,jpngr)%n%n14 * ( frac_leaf(pft) * leaftraits(pft)%r_cton_leaf + ( 1.0 - frac_leaf(pft) ) * params_pft_plant(pft)%r_cton_root ) 
-
-            ! binary decision
             if (maxdc_cavl<maxdc_navl) then
               ! print*,'C is limiting -> should put more to leaves'
               frac_leaf(pft) = 1.0
@@ -155,17 +179,146 @@ contains
               ! frac_leaf(pft) = max( frac_leaf(pft) - 0.1, 0.0 )
             end if
 
-            ! Safety brakes
-            print*,'cton in plabl ', cton( plabl(pft,jpngr) )
+            print*,'doy, bnr-frac_leaf', doy, frac_leaf(pft)
+
+            !------------------------------------------------------------------
+            ! Safety brakes: if massive imbalance in labile pool accumulates,
+            ! do binary allocation as a safety measure to re-balance labile pool's
+            ! C:N ratio.
+            ! Otherwise (as long as no massive imbalance arises), find optimum
+            ! allocation, defined by newly acquired C and N (NPP-Ra-Cex, Nuptake)
+            ! are acquired in the same ratio as is needed for new tissue growth.
+            !------------------------------------------------------------------
+            ! print*,'cton in plabl ', cton( plabl(pft,jpngr) )
             if ( cton( plabl(pft,jpngr) ) > 10.0 * params_pft_plant(pft)%r_cton_root  ) then
+              !------------------------------------------------------------------
+              ! massive imbalance: too much C -> put all to roots
+              !------------------------------------------------------------------
               if (maxdc_cavl<maxdc_navl) stop 'surprise'
               frac_leaf(pft) = 0.0
+              frac_leaf_opt  = 0.0 
+              print*,'safety: all to roots'
+            
             else if ( ntoc( plabl(pft,jpngr) ) > 10.0 * leaftraits(pft)%r_ntoc_leaf ) then
+              !------------------------------------------------------------------
+              ! massive imbalance: too much N -> put all to leaves
+              !------------------------------------------------------------------
               if (.not.maxdc_cavl<maxdc_navl) stop 'surprise'
               frac_leaf(pft) = 1.0
+              frac_leaf_opt  = 1.0 
+              print*,'safety: all to leaves'
+            
             else
-              print*,'optimum in between'
+              !------------------------------------------------------------------
+              ! No massive imbalance. determine allocation so that C:N of return is equal to C:N new tissue
+              ! test: if flexible allocation returns 1 or 0 for frac_leaf, then test if this is consistent with what it's set to above
+              !------------------------------------------------------------------
+              ! print*,'optimum in between'
+
+              !------------------------------------------------------------------
+              ! Store state variables for root search of 'eval_imbalance'
+              !------------------------------------------------------------------
+              state_eval_imbalance%pleaf    = pleaf(pft,jpngr)
+              state_eval_imbalance%proot    = proot(pft,jpngr)
+              state_eval_imbalance%plabl    = plabl(pft,jpngr)
+              state_eval_imbalance%usepft   = pft
+              state_eval_imbalance%usemoy   = moy
+              state_eval_imbalance%usedoy   = doy
+              state_eval_imbalance%usejpngr = jpngr
+              state_eval_imbalance%airtemp  = dtemp
+              state_eval_imbalance%soiltemp = dtemp_soil(lu,jpngr)
+
+              !------------------------------------------------------------------
+              ! Optimum is between 0.0 (=min_dc) and max_dc. Find root of function 
+              ! 'eval_imbalance()' in the interval [0.0, max_dc].
+              !------------------------------------------------------------------
+              max_dcleaf_n_constraint = min( plabl(pft,jpngr)%n%n14 * leaftraits(pft)%r_cton_leaf, &
+                plabl(pft,jpngr)%n%n14 * params_pft_plant(pft)%r_cton_root )
+              max_dc = min( params_plant%growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint )
+              min_dc = 0.0
+
+              !------------------------------------------------------------------
+              ! Test I: Evaluate balance if all is put to roots.
+              ! If eval quantity is still positive then put all to roots.
+              !------------------------------------------------------------------
+              cont = .true.
+              if (verbose) print*, 'check allocation: all to roots'
+              eval_allroots  = eval_imbalance( 0.0 )
+              if (verbose) print*, 'eval_allroots', eval_allroots  
+              if (eval_allroots > 0.0) then
+                dcleaf_opt = 0.0
+                cont = .false.
+                if (verbose) print*, '* putting all to roots *'
+              end if
+
+              !------------------------------------------------------------------
+              ! Test II: Evaluate balance if all is put to leaves.
+              ! If eval quantity is still negative then put all to leaves.
+              !------------------------------------------------------------------
+              if (cont) then
+                if (verbose) print*, 'check alloation: all to leaves with dcleaf =', max_dc
+                eval_allleaves = eval_imbalance( max_dc )
+                if (verbose) print*, 'eval_allleaves', eval_allleaves  
+                if (eval_allleaves < 0.0) then
+                  dcleaf_opt = max_dc
+                  cont = .false.
+                  if (verbose) print*, '* putting all to leaves *'
+                end if
+              end if
+
+              !------------------------------------------------------------------
+              ! Optimum is between 0.0 (=min_dc) and max_dc. Find root of function 
+              ! 'eval_imbalance()' in the interval [0.0, max_dc].
+              !------------------------------------------------------------------
+              if (cont) then
+                if (verbose) print*, '*** finding root of eval_imbalance ***'
+                if (write_logfile_eval_imbalance) open(unit=666,file='eval_imbalance.log',status='unknown')
+                if (write_logfile_eval_imbalance) write(666,*) "mydcleaf, eval" !, dc, dn, mydcleaf, mydcroot, mydnleaf, mydnroot"
+                max_dc_save = max_dc ! necessary because 'zeroin' alters that variable
+                out_zeroin = zeroin( eval_imbalance, abserr, relerr, nmax, min_dc, max_dc )
+                max_dc = max_dc_save
+                if ( out_zeroin%error /= 0 ) then
+                  print*, 'error code ', out_zeroin%error
+                  stop 'zeroin for eval_imbalance() failed'
+                  dcleaf_opt = 9999.0
+                else
+                  dcleaf_opt = out_zeroin%root
+                end if
+                if (write_logfile_eval_imbalance) close(unit=666)
+                if (verbose) print*, 'no. of iterations   ', out_zeroin%niter
+                if (verbose) print*, 'dcleaf_opt is root ', dcleaf_opt
+                test = eval_imbalance( dcleaf_opt, .true. )
+                if (verbose) print*, 'eval               =', test
+                ! if (abs(test)>1e-4) stop 'failed finding a good root'
+                if (verbose) print*, '----------------------------------'
+                ! break_after_alloc = .true.
+                ! print*,'dcleaf_opt ', dcleaf_opt 
+                ! print*,'max_dc     ', max_dc
+                ! print*,'optimum frac_leaf ', dcleaf_opt / max_dc
+                ! stop 'after finding root'
+              end if
+
+              print*,'optimum frac_leaf ', dcleaf_opt / max_dc
+              frac_leaf_opt = dcleaf_opt / max_dc
+              ! stop 'd o b e n i'
+
             end if
+
+            !-------------------------------------------------------------------
+            ! Set to "optimal" solution
+            !-------------------------------------------------------------------
+            frac_leaf(pft) = frac_leaf_opt
+
+            !-------------------------------------------------------------------
+            ! Determine allocation to leaves and roots, limited by N availability 
+            !-------------------------------------------------------------------
+            nignore = .false.
+            avl = max( 0.0, plabl(pft,jpngr)%c%c12 - freserve * pleaf(pft,jpngr)%c%c12 )
+            dcleaf(pft) = min( frac_leaf(pft) * params_plant%growtheff * avl, &
+              frac_leaf(pft) * plabl(pft,jpngr)%n%n14 * leaftraits(pft)%r_cton_leaf )
+            dcroot(pft) = min( (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl, &
+              (1.0 - frac_leaf(pft)) * plabl(pft,jpngr)%n%n14 * params_pft_plant(pft)%r_cton_root )
+            dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
 
             !-------------------------------------------------------------------
             ! LEAF ALLOCATION
@@ -215,8 +368,6 @@ contains
             drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
 
           end if
-
-          if (doy==365) stop
 
         else
           !------------------------------------------------------------------
@@ -445,49 +596,190 @@ contains
   end subroutine allocate_root
 
 
-  function get_rcton_init( pft, meanmppfd, nv ) result( rcton )
-    !////////////////////////////////////////////////////////////////
-    ! Calculates initial guess based on Taylor approximation of 
-    ! Cleaf and Nleaf function around cleaf=0.
-    ! Cleaf = c_molmass * params_pft_plant(pft)%r_ctostructn_leaf * [ meanmppfd * (1-exp(-kbeer*LAI)) * nv * params_pft_plant(pft)%r_n_cw_v + LAI * params_pft_plant(pft)%ncw_min ]
-    ! Nleaf = n_molmass * [ meanmppfd * (1-exp(-kbeer*LAI)) * nv * (params_pft_plant(pft)%r_n_cw_v + 1) + LAI * params_pft_plant(pft)%ncw_min ]
-    ! linearization around LAI = 0 ==> (1-exp(-k*L)) ~= k*L
-    ! ==> Cleaf ~= LAI * c_molmass * params_pft_plant(pft)%r_ctostructn_leaf * ( meanmppfd * kbeer * nv * params_pft_plant(pft)%r_n_cw_v + params_pft_plant(pft)%ncw_min )
-    ! ==> Nleaf ~= LAI * n_molmass * ( meanmppfd * kbeer * nv * (params_pft_plant(pft)%r_n_cw_v + 1) + params_pft_plant(pft)%ncw_min )
-    ! r_cton = Cleaf / Nleaf
-    !----------------------------------------------------------------
-    ! use md_params_core, only: nmonth
-    use md_plant, only: params_plant, params_pft_plant
+  function eval_imbalance( mydcleaf, verbose ) result ( eval )
+    !/////////////////////////////////////////////////////////
+    ! Evaluates C:N ratio of new assimilation after allocation 
+    ! versus whole-plant C:N ratio after allocation. Optimal 
+    ! allocation is where the two are equal. 
+    ! 
+    ! Returns positive value (eval) if C:N ratio of new acquisition
+    ! is greater than C:N ratio of new growth => put more to roots
+    !
+    ! Returns negative value (eval) if C:N ratio of new acquisition
+    ! is smaller than C:N ratio of new growth => put more to leaves
+    !---------------------------------------------------------
+    use md_classdefs, only: orgpool, nitrogen
+    use md_plant, only: params_pft_plant, params_plant, get_fapar, &
+      canopy_type, get_canopy
+    use md_gpp, only: calc_dgpp, calc_drd, mactnv_unitiabs, mlue, mrd_unitiabs
+    use md_nuptake, only: calc_dnup, outtype_calc_dnup
+    use md_npp, only: calc_resp_maint, calc_cexu, deactivate_root
+    use md_findroot_fzeroin
+    use md_waterbal, only: solar, evap
+    use md_ntransform, only: pninorg
 
     ! arguments
-    integer, intent(in)                 :: pft
-    real, dimension(nmonth), intent(in) :: meanmppfd
-    real, dimension(nmonth), intent(in) :: nv
+    real, intent(in)              :: mydcleaf
+    logical, intent(in), optional :: verbose
 
     ! function return variable
-    real :: rcton
+    real :: eval
 
-    ! local variables
-    real :: maxnv
-    real :: tmp1, tmp2, tmp3
+    ! local variables used for shorter writing
+    real    :: cleaf, nleaf, croot, nroot, clabl, nlabl, airtemp, soiltemp
+    integer :: usepft, usemoy, usedoy, usejpngr, lu
 
-    ! Metabolic N is predicted and is optimised at a monthly time scale. 
-    ! Leaf traits are calculated based on metabolic N => cellwall N => cellwall C / LMA
-    ! Leaves get thinner at the bottom of the canopy => increasing LAI through the season comes at a declining C and N cost
-    ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
-    ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
-    maxnv = maxval( meanmppfd(:) * nv(:) )
+    ! local temporary variables for budget calculation
+    real :: mydcroot, mydnleaf, mydnroot, mylai, gpp, npp, rd, mresp_root, &
+      cexu, dc, dn, kcleaf, knleaf, kcroot, knroot
 
-    ! tmp1 = c_molmass * params_pft_plant(pft)%r_ctostructn_leaf
-    ! tmp2 = maxnv * params_plant%kbeer * params_pft_plant(pft)%r_n_cw_v + params_pft_plant(pft)%ncw_min
-    ! tmp3 = n_molmass * ( maxnv * params_plant%kbeer * ( params_pft_plant(pft)%r_n_cw_v + 1.0 ) + params_pft_plant(pft)%ncw_min )
-    ! rcton = tmp1 * tmp2 / tmp3
+    real :: nleaf0
+    real :: lai0, lai1
 
-    rcton = ( c_molmass * params_pft_plant(pft)%r_ctostructn_leaf * &
-      ( maxnv * params_plant%kbeer * params_pft_plant(pft)%r_n_cw_v + params_pft_plant(pft)%ncw_min ) &
-      ) / ( n_molmass * ( maxnv * params_plant%kbeer * ( params_pft_plant(pft)%r_n_cw_v + 1.0 ) + params_pft_plant(pft)%ncw_min ) )
+    type( orgpool )           :: proot_tmp
+    type( outtype_zeroin )    :: out_zeroin
+    type( outtype_calc_dnup ) :: out_calc_dnup
+    type( canopy_type )       :: mycanopy
 
-  end function get_rcton_init
+    ! print*,'--- in eval_imbalance with mydcleaf=', mydcleaf
+
+    ! Copy to local variables for shorter writing
+    cleaf    = state_eval_imbalance%pleaf%c%c12
+    nleaf    = state_eval_imbalance%pleaf%n%n14
+    croot    = state_eval_imbalance%proot%c%c12
+    nroot    = state_eval_imbalance%proot%n%n14
+    clabl    = state_eval_imbalance%plabl%c%c12
+    nlabl    = state_eval_imbalance%plabl%n%n14
+    usepft   = state_eval_imbalance%usepft
+    usemoy   = state_eval_imbalance%usemoy
+    usedoy   = state_eval_imbalance%usedoy
+    usejpngr = state_eval_imbalance%usejpngr
+    airtemp  = state_eval_imbalance%airtemp
+    soiltemp = state_eval_imbalance%soiltemp
+
+    !-------------------------------------------------------------------
+    ! LEAF ALLOCATION
+    !-------------------------------------------------------------------
+    call allocate_leaf( &
+      usepft, mydcleaf, cleaf, nleaf, clabl, nlabl, &
+      solar%meanmppfd(:), mactnv_unitiabs(usepft,:), mylai, mydnleaf, &
+      nignore=.false. &
+      )
+
+    ! !-------------------------------------------------------------------  
+    ! ! Update leaf traits
+    ! !-------------------------------------------------------------------  
+    ! leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+
+    !-------------------------------------------------------------------  
+    ! Update fpc_grid and fapar_ind (not lai_ind)
+    !-------------------------------------------------------------------  
+    mycanopy = get_canopy( mylai )
+
+    !-------------------------------------------------------------------
+    ! ROOT ALLOCATION
+    ! use remainder for allocation to roots
+    !-------------------------------------------------------------------
+    mydcroot = min( params_plant%growtheff * clabl, params_pft_plant(usepft)%r_cton_root * nlabl )
+    mydnroot = mydcroot * params_pft_plant(usepft)%r_ntoc_root
+
+    call allocate_root( &
+      usepft, mydcroot, mydnroot, croot, nroot, clabl, nlabl, &
+      nignore=.false. &
+      )
+
+    !-------------------------------------------------------------------
+    ! PROJECT NEXT DAY'S C AND N BALANCE:
+    ! decay, GPP, respiration, N uptake
+    !-------------------------------------------------------------------
+    ! Calculate next day's C and N return after assumed allocation (tissue turnover happens before!)
+    lu = params_pft_plant(usepft)%lu_category
+
+    gpp           = calc_dgpp( mycanopy%fapar_ind, solar%dppfd(usedoy), mlue(usepft,usemoy), airtemp, evap(lu)%cpa )
+    rd            = calc_drd(  mycanopy%fapar_ind, solar%meanmppfd(usemoy), mrd_unitiabs(usepft,usemoy), airtemp, evap(lu)%cpa  )
+    mresp_root    = calc_resp_maint( croot, params_plant%r_root, airtemp )
+    npp           = gpp - rd - mresp_root
+    cexu          = calc_cexu( croot, airtemp ) 
+    if ((clabl + npp - cexu)<0.0 .or. (npp - cexu)<0.0) then
+      dc          = 0.0
+    else
+      dc          = npp - cexu
+    end if
+    out_calc_dnup = calc_dnup( cexu, pninorg(lu,usejpngr)%n14, params_pft_plant(usepft)%nfixer, soiltemp )
+    dn            = out_calc_dnup%fix + out_calc_dnup%act
+
+    ! print*,'fapar ', mycanopy%fapar_ind
+    ! print*,'cleaf ', cleaf
+    ! print*,'lai   ', mylai
+    ! print*,'cpa   ', evap(lu)%cpa
+    ! print*,'gpp   ', gpp
+    ! print*,'rd    ', rd 
+    ! print*,'dppfd ', solar%dppfd(usedoy)
+    ! print*,'mlue  ', mlue(usepft,usemoy)
+    ! print*,'temp  ', airtemp
+    ! print*,'pft   ', usepft
+    ! print*,'moy   ', usemoy
+    ! print*,'doy   ', usedoy
+
+
+    ! if ( abs( (mydcroot+mydcleaf) / (mydnroot+mydnleaf) - params_plant%growtheff * dc / dn ) > 0.0005 ) print*, 'unsuccessful allocation'
+
+    !-------------------------------------------------------------------
+    ! EVALUATION QUANTITY - IS MINIMISED BY OPTIMISATION
+    ! Evaluation quantity is the difference between the 
+    ! C:N ratio of new assimilates and the C:N ratio 
+    ! of the whole plant after allocation.
+    !-------------------------------------------------------------------
+    ! if ((dn + nlabl)==0.0) then
+    !   eval = 999.0
+    ! else if (( mydnleaf + mydnroot )==0.0) then
+    !   eval = 999.0
+    ! else if (dc <= 0.0) then
+    !   eval = - 999.0
+    ! else
+    !   ! ! IMPLEMENTATION A: C:N OF ACQUISITION (incl. labile left) IS EQUAL TO C:N OF CURRENT WHOLE-PLANT
+    !   ! !     |---------------------------------------------------|  |------------------------------------|
+    !   ! eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
+    !   ! !     |---------------------------------------------------|  |------------------------------------|
+    !   ! !     |lab. pool C:N ratio after acq. nxt. day            |  | current whole-plant C:N ratio      |
+    !   ! !     |---------------------------------------------------|  |------------------------------------|
+
+    !   ! IMPLEMENTATION B: C:N OF ACQUISITION (incl. labile left) IS EQUAL TO C:N OF INVESTMENT
+    !   !     |---------------------------------------------------|  |-------------------------------------------------|
+    !   eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( mydcleaf + mydcroot ) / ( mydnleaf + mydnroot )
+    !   !     |---------------------------------------------------|  |-------------------------------------------------|
+    !   !     |lab. pool C:N ratio after acq. nxt. day            |  | C:N ratio of new growth                         |
+    !   !     |---------------------------------------------------|  |-------------------------------------------------|
+    ! end if
+
+    ! IMPLEMENTATION C: C:N OF ACQUISITION IS EQUAL TO C:N OF INVESTMENT
+    if (dn==0.0) then
+      eval = 999.0
+    else if (( mydnleaf + mydnroot )==0.0) then
+      eval = -999.0
+    else
+      !     |---------------------------------------------------|  |-------------------------------------------------|
+      eval = params_plant%growtheff * (dc) / (dn)     - ( mydcleaf + mydcroot ) / ( mydnleaf + mydnroot )
+      !     |---------------------------------------|   |-------------------------------------------------|
+      !     |lab. pool C:N ratio after acq. nxt. day|   | C:N ratio of new growth                         |
+      !     |---------------------------------------|   |-------------------------------------------------|
+
+      ! ! IMPLEMENTATION A: C:N OF ACQUISITION (incl. labile left) IS EQUAL TO C:N OF CURRENT WHOLE-PLANT
+      ! !     |---------------------------------------------------|  |------------------------------------|
+      ! eval = params_plant%growtheff * (dc) / (dn) - ( cleaf + croot ) / ( nleaf + nroot )
+      ! !     |---------------------------------------------------|  |------------------------------------|
+      ! !     |lab. pool C:N ratio after acq. nxt. day            |  | current whole-plant C:N ratio      |
+      ! !     |---------------------------------------------------|  |------------------------------------|
+    end if
+
+    ! print*,'dcleaf, eval', mydcleaf, eval
+    ! print*,'returned (C,N, rC:N)', dc, dn, dc / dn
+    ! print*,'acq. y*dc/dn ', params_plant%growtheff * dc / dn
+    ! print*,'req.   dc/dn ', ( mydcleaf + mydcroot ) / ( mydnleaf + mydnroot )
+
+    if (write_logfile_eval_imbalance) write(666,*) mydcleaf, ",", eval  !, ",", dc, ",", dn, ",", mydcleaf, ",", mydcroot, ",", mydnleaf, ",", mydnroot
+
+  end function eval_imbalance
 
 
   subroutine initio_allocation()
