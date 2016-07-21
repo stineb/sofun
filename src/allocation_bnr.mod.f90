@@ -39,6 +39,9 @@ module md_allocation
 
   logical, parameter :: write_logfile_eval_imbalance = .true.
 
+  ! acceleration factor: what about sustained allocation for the next N days?
+  real, parameter :: acc = 1.0
+
   !----------------------------------------------------------------
   ! Module-specific output variables
   !----------------------------------------------------------------
@@ -220,7 +223,7 @@ contains
               !------------------------------------------------------------------
               state_eval_imbalance%pleaf    = pleaf(pft,jpngr)
               state_eval_imbalance%proot    = proot(pft,jpngr)
-              state_eval_imbalance%plabl    = plabl(pft,jpngr)
+              state_eval_imbalance%plabl    = orgfrac( acc, plabl(pft,jpngr) )
               state_eval_imbalance%usepft   = pft
               state_eval_imbalance%usemoy   = moy
               state_eval_imbalance%usedoy   = doy
@@ -232,9 +235,9 @@ contains
               ! Optimum is between 0.0 (=min_dc) and max_dc. Find root of function 
               ! 'eval_imbalance()' in the interval [0.0, max_dc].
               !------------------------------------------------------------------
-              max_dcleaf_n_constraint = min( plabl(pft,jpngr)%n%n14 * leaftraits(pft)%r_cton_leaf, &
-                plabl(pft,jpngr)%n%n14 * params_pft_plant(pft)%r_cton_root )
-              max_dc = min( params_plant%growtheff * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint )
+              max_dcleaf_n_constraint = min( acc * plabl(pft,jpngr)%n%n14 * leaftraits(pft)%r_cton_leaf, &
+                acc * plabl(pft,jpngr)%n%n14 * params_pft_plant(pft)%r_cton_root )
+              max_dc = min( params_plant%growtheff * acc * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint )
               min_dc = 0.0
 
               !------------------------------------------------------------------
@@ -641,6 +644,8 @@ contains
     type( outtype_calc_dnup ) :: out_calc_dnup
     type( canopy_type )       :: mycanopy
 
+    mydcleaf = mydcleaf
+
     ! print*,'--- in eval_imbalance with mydcleaf=', mydcleaf
 
     ! Copy to local variables for shorter writing
@@ -663,7 +668,7 @@ contains
     call allocate_leaf( &
       usepft, mydcleaf, cleaf, nleaf, clabl, nlabl, &
       solar%meanmppfd(:), mactnv_unitiabs(usepft,:), mylai, mydnleaf, &
-      nignore=.false. &
+      nignore=.true. &
       )
 
     ! !-------------------------------------------------------------------  
@@ -685,7 +690,7 @@ contains
 
     call allocate_root( &
       usepft, mydcroot, mydnroot, croot, nroot, clabl, nlabl, &
-      nignore=.false. &
+      nignore=.true. &
       )
 
     !-------------------------------------------------------------------
@@ -703,10 +708,10 @@ contains
     if ((clabl + npp - cexu)<0.0 .or. (npp - cexu)<0.0) then
       dc          = 0.0
     else
-      dc          = npp - cexu
+      dc          = acc * (npp - cexu)
     end if
     out_calc_dnup = calc_dnup( cexu, pninorg(lu,usejpngr)%n14, params_pft_plant(usepft)%nfixer, soiltemp )
-    dn            = out_calc_dnup%fix + out_calc_dnup%act
+    dn            = acc * (out_calc_dnup%fix + out_calc_dnup%act)
 
     ! print*,'fapar ', mycanopy%fapar_ind
     ! print*,'cleaf ', cleaf
@@ -721,37 +726,6 @@ contains
     ! print*,'moy   ', usemoy
     ! print*,'doy   ', usedoy
 
-
-    ! if ( abs( (mydcroot+mydcleaf) / (mydnroot+mydnleaf) - params_plant%growtheff * dc / dn ) > 0.0005 ) print*, 'unsuccessful allocation'
-
-    !-------------------------------------------------------------------
-    ! EVALUATION QUANTITY - IS MINIMISED BY OPTIMISATION
-    ! Evaluation quantity is the difference between the 
-    ! C:N ratio of new assimilates and the C:N ratio 
-    ! of the whole plant after allocation.
-    !-------------------------------------------------------------------
-    ! if ((dn + nlabl)==0.0) then
-    !   eval = 999.0
-    ! else if (( mydnleaf + mydnroot )==0.0) then
-    !   eval = 999.0
-    ! else if (dc <= 0.0) then
-    !   eval = - 999.0
-    ! else
-    !   ! ! IMPLEMENTATION A: C:N OF ACQUISITION (incl. labile left) IS EQUAL TO C:N OF CURRENT WHOLE-PLANT
-    !   ! !     |---------------------------------------------------|  |------------------------------------|
-    !   ! eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( cleaf + croot ) / ( nleaf + nroot )
-    !   ! !     |---------------------------------------------------|  |------------------------------------|
-    !   ! !     |lab. pool C:N ratio after acq. nxt. day            |  | current whole-plant C:N ratio      |
-    !   ! !     |---------------------------------------------------|  |------------------------------------|
-
-    !   ! IMPLEMENTATION B: C:N OF ACQUISITION (incl. labile left) IS EQUAL TO C:N OF INVESTMENT
-    !   !     |---------------------------------------------------|  |-------------------------------------------------|
-    !   eval = params_plant%growtheff * (dc + clabl) / (dn + nlabl) - ( mydcleaf + mydcroot ) / ( mydnleaf + mydnroot )
-    !   !     |---------------------------------------------------|  |-------------------------------------------------|
-    !   !     |lab. pool C:N ratio after acq. nxt. day            |  | C:N ratio of new growth                         |
-    !   !     |---------------------------------------------------|  |-------------------------------------------------|
-    ! end if
-
     ! IMPLEMENTATION C: C:N OF ACQUISITION IS EQUAL TO C:N OF INVESTMENT
     if (dn==0.0) then
       eval = 999.0
@@ -763,13 +737,6 @@ contains
       !     |---------------------------------------|   |-------------------------------------------------|
       !     |lab. pool C:N ratio after acq. nxt. day|   | C:N ratio of new growth                         |
       !     |---------------------------------------|   |-------------------------------------------------|
-
-      ! ! IMPLEMENTATION A: C:N OF ACQUISITION (incl. labile left) IS EQUAL TO C:N OF CURRENT WHOLE-PLANT
-      ! !     |---------------------------------------------------|  |------------------------------------|
-      ! eval = params_plant%growtheff * (dc) / (dn) - ( cleaf + croot ) / ( nleaf + nroot )
-      ! !     |---------------------------------------------------|  |------------------------------------|
-      ! !     |lab. pool C:N ratio after acq. nxt. day            |  | current whole-plant C:N ratio      |
-      ! !     |---------------------------------------------------|  |------------------------------------|
     end if
 
     ! print*,'dcleaf, eval', mydcleaf, eval
