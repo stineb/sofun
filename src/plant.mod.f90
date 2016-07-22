@@ -719,9 +719,11 @@ contains
     if (interface%steering%init .and. interface%params_siml%loutdNlabl) allocate( outdNlabl    (npft,ndayyear,maxgrid) )
     if (interface%steering%init .and. interface%params_siml%loutdClitt) allocate( outdClitt    (npft,ndayyear,maxgrid) )
     if (interface%steering%init .and. interface%params_siml%loutdNlitt) allocate( outdNlitt    (npft,ndayyear,maxgrid) )
-    if (interface%steering%init .and. interface%params_siml%loutdlai  ) allocate( outdlai      (npft,ndayyear,maxgrid) )
     if (interface%steering%init .and. interface%params_siml%loutdfapar) allocate( outdfapar    (npft,ndayyear,maxgrid) )
 
+    ! this is needed also for other (annual) output variables
+    allocate( outdlai(npft,ndayyear,maxgrid) )
+    
     outdnpp  (:,:,:) = 0.0
     outdnup  (:,:,:) = 0.0
     outdcex  (:,:,:) = 0.0
@@ -942,8 +944,10 @@ contains
     if (interface%params_siml%loutdNlabl ) outdNlabl(:,doy,jpngr) = plabl(:,jpngr)%n%n14
     if (interface%params_siml%loutdClitt ) outdClitt(:,doy,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
     if (interface%params_siml%loutdNlitt ) outdNlitt(:,doy,jpngr) = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
-    if (interface%params_siml%loutdlai   ) outdlai(:,doy,jpngr)   = lai_ind(:,jpngr)
     if (interface%params_siml%loutdfapar ) outdfapar(:,doy,jpngr) = canopy(:)%fapar_ind
+
+    ! this is needed also for other (annual) output variables
+    outdlai(:,doy,jpngr) = lai_ind(:,jpngr)
     
     dnarea_mb(:,doy) = leaftraits(:)%narea_metabolic
     dnarea_cw(:,doy) = leaftraits(:)%narea_structural

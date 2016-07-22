@@ -435,7 +435,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
         if (baltest) orgtmp1 = orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(1)) )
         !----------------------------------------------------------------
-        call allocation_daily( jpngr, day, dm, moy, interface%climate(jpngr)%dtemp(usedoy) )
+        call allocation_daily( jpngr, day, dm, moy, interface%climate(jpngr)%dtemp(:) )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '              ==> returned: '
         if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
