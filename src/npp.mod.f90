@@ -6,8 +6,8 @@ module md_npp
   ! Every module that implements 'npp' must contain this list 
   ! of subroutines (names that way).
   !   - npp
-  !   - ((interface%steering%init))io_npp
-  !   - ((interface%steering%init))output_npp
+  !   - initio_npp
+  !   - initoutput_npp
   !   - getout_daily_npp
   !   - getout_monthly_npp
   !   - writeout_ascii_npp
@@ -46,7 +46,7 @@ module md_npp
 
 contains
 
-  subroutine npp( jpngr, dtemp )
+  subroutine npp( jpngr, dtemp, doy )
     !/////////////////////////////////////////////////////////////////////////
     ! NET PRIMARY PRODUCTIVITY
     ! Calculate maintenance and growth respiration and substract this from GPP 
@@ -61,19 +61,25 @@ contains
     use md_params_core, only: npft, ndayyear
     use md_soiltemp, only: dtemp_soil
     use md_gpp, only: dgpp, drd
-    use md_turnover, only: turnover_leaf, turnover_root
+    use md_turnover, only: turnover_leaf, turnover_root, turnover_labl
+    use md_phenology, only: sprout
+    use md_interface
 
     ! arguments
     integer, intent(in) :: jpngr
     real, intent(in)    :: dtemp      ! air temperature at this day
+    integer, intent(in) :: doy
 
     ! local variables
     integer :: pft
     integer :: lu
-    real :: cbal                      ! plant C balance after respiration and C export 
+    real :: cbal
+    real :: avl
 
-    real, parameter :: dleaf_die = 0.1
-    real, parameter :: droot_die = 0.1
+    real, parameter :: dleaf_die = 0.01
+    real, parameter :: droot_die = 0.01
+    real, parameter :: dlabl_die = 0.0
+
 
     ! print*, '---- in npp:'
 
@@ -92,12 +98,13 @@ contains
       ! use function 'resp_main'
       !-------------------------------------------------------------------------
       ! fine roots should have a higher repsiration coefficient than other tissues (Franklin et al., 2007).
-      drleaf(pft) = drd(pft) !+ calc_resp_maint( pleaf(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_leaf, dtemp ) ! drd is dark respiration as calculated in P-model.       
+      drleaf(pft) = drd(pft)  ! leaf respiration is given by dark respiration as calculated in P-model.       
       drroot(pft) = calc_resp_maint( proot(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_root, dtemp )
       if (params_pft_plant(pft)%tree) then
         drsapw(pft) = calc_resp_maint( psapw(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_sapw, dtemp )
       endif
-              
+
+
       !/////////////////////////////////////////////////////////////////////////
       ! DAILY NPP AND C EXPORT
       ! NPP is the sum of C available for growth and for N uptake 
@@ -108,58 +115,49 @@ contains
       ! Growth respiration ('drgrow') is deduced from 'dnpp' in allocation SR.
       !-------------------------------------------------------------------------
       dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
-      dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )
+      dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )   
 
-      cbal      = dnpp(pft)%c12 - dcex(pft)
-      if ( cbal>0.0 ) then
-        ! positive C balance after respiration and C export => PFT continues growing
-        ! cleaf + croot = 0.0 after initialisation of PFT in vegdynamics
-        isgrowing(pft,jpngr) = .true.
-        isdying(pft,jpngr)   = .false.
+
+      !/////////////////////////////////////////////////////////////////////////
+      ! SAFETY AND DEATH
+      ! If negative C balance results from GPP - Rleaf - Rroot - Cex then ...
+      ! ... first, change allocation to 100% leaves
+      ! ... second, when this still leads to a complete depletion of the labile
+      !     pool (negative values), shut down organism (zero GPP, NPP, etc., 
+      !     but continuing turnover).
+      !-------------------------------------------------------------------------
+      if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
+        ! slow death
+        ! print*,'slow death', doy
+        ! frac_leaf(pft) = 1.0
+        dgpp(pft)   = 0.0
+        drleaf(pft) = 0.0
+        drroot(pft) = 0.0
+        drd(pft)    = 0.0
+        dcex(pft)   = 0.0
+        dnpp(pft)   = carbon(0.0)
+
+        call turnover_leaf( dleaf_die, pft, jpngr )
+        call turnover_root( droot_die, pft, jpngr )
+        call turnover_labl( dlabl_die, pft, jpngr )
+
+      else if ( dnpp(pft)%c12 - dcex(pft) < 0.0 ) then
+        ! negative C balance -> no more allocation to roots (no growth anyways)
+        ! print*,'negative balance -> all to leaves ', doy
+        ! frac_leaf(pft) = 1.0
       else
-        ! no positive C balance after respiration and C export => PFT stops growing
-        isgrowing(pft,jpngr) = .false.
-        isdying(pft,jpngr)   = .false.
-        dcex(pft) = 0.0
-
-        if ( (cbal + plabl(pft,jpngr)%c%c12) < 0.0 ) then
-          ! labile pool is depleted
-          ! print*,'cbal  ', cbal
-          ! print*,'clabl ', plabl(pft,jpngr)%c%c12
-          isdying(pft,jpngr) = .true.
-
-          call turnover_leaf( dleaf_die, pft, jpngr )
-          call turnover_root( droot_die, pft, jpngr )
-
-          dgpp(pft)   = 0.0
-          drleaf(pft) = 0.0
-          drroot(pft) = 0.0
-          drd(pft)    = 0.0
-          dnpp(pft)   = carbon(0.0)
-
-          ! print*,'dcex ', dcex(pft)
-          ! print*,'dnpp ', dnpp(pft)
-          ! print*,'clabl', plabl(pft,jpngr)
-          ! stop 'in npp'
-
-        end if
-
+        ! normal growth
+        ! print*,'normal growth', doy
+        if ( .not. interface%steering%dofree_alloc ) frac_leaf(pft) = 0.5
       end if
 
       !/////////////////////////////////////////////////////////////////////////
-      ! C TO/FROM LABILE POOL AND TO EXUDATES POOL
+      ! TO LABILE POOL
+      ! NPP available for growth first enters the labile pool ('plabl ').
+      ! XXX Allocation is called here without "paying"  growth respir.?
       !-------------------------------------------------------------------------
       call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
       call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
-
-      ! ! If C used for root respiration and export is not available, then reduce 
-      ! ! root mass to match 
-      ! if ( avl < 0.0 ) then
-      !   print*,'resize_plant ...'
-      !   call resize_plant( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), pleaf(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_af(pft,jpngr), plitt_bg(pft,jpngr) )
-      !   print*,'... done'
-      ! end if
-
 
       if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
       if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
@@ -169,77 +167,6 @@ contains
     ! print*, '---- finished npp'
 
   end subroutine npp
-
-
-  ! subroutine resize_plant( mygpp, mydrleaf, myplabl, myproot, mypleaf, rroot, npp, cexu, dtemp, myplitt_af, myplitt_bg )
-  !   !/////////////////////////////////////////////////////////////////////////
-  !   ! Calculates amount of root mass supportable by (GPP-Rd+Clabl='avl'), so that
-  !   ! NPP is zero and doesn't get negative. Moves excess from pool 'myproot' to
-  !   ! pool 'myplitt'.
-  !   !-------------------------------------------------------------------------
-  !   ! argument
-  !   real, intent(in) :: mygpp
-  !   real, intent(inout) :: mydrleaf
-  !   real, intent(in) :: myplabl
-  !   type( orgpool ), intent(inout) :: myproot
-  !   type( orgpool ), intent(inout) :: mypleaf
-  !   real, intent(out) :: rroot
-  !   real, intent(out) :: npp
-  !   real, intent(out) :: cexu
-  !   real, intent(in) :: dtemp
-  !   type( orgpool ), intent(inout), optional :: myplitt_af
-  !   type( orgpool ), intent(inout), optional :: myplitt_bg
-    
-  !   ! local variables
-  !   ! real :: croot_trgt
-  !   ! real :: droot
-  !   real :: r_leaf_act
-  !   real :: resize_by
-
-  !   type( orgpool ) :: lm_turn
-  !   type( orgpool ) :: rm_turn
-
-  !   real, parameter :: safety = 0.9999
-
-  !   ! assume dark respiration to scale linearly with leaf mass (approximation)
-  !   print*,' mypleaf%c%c12 ', mypleaf%c%c12
-  !   print*,'myproot%c%c12  ', myproot%c%c12
-  !   r_leaf_act = mydrleaf / mypleaf%c%c12
-  !   resize_by  = safety * ( mygpp + myplabl ) / ( myproot%c%c12 * ( params_plant%r_root + params_plant%exurate ) + mypleaf%c%c12 * r_leaf_act )
-
-  !   rm_turn    = orgfrac( (1.0 - resize_by), myproot )
-  !   lm_turn    = orgfrac( (1.0 - resize_by), mypleaf )
-  !   if (present(myplitt_bg)) then
-  !     call orgmv( rm_turn, myproot, myplitt_bg )
-  !     call orgmv( lm_turn, mypleaf, myplitt_af )
-  !   else
-  !     myproot = orgminus( myproot, rm_turn )
-  !     mypleaf = orgminus( mypleaf, lm_turn )
-  !   end if
-
-  !   ! update fluxes based on corrected root mass
-  !   mydrleaf = mypleaf%c%c12 * r_leaf_act
-  !   rroot = calc_resp_maint( myproot%c%c12, params_plant%r_root, dtemp )
-  !   npp   = mygpp - mydrleaf - rroot
-  !   cexu  = calc_cexu( myproot%c%c12 , dtemp )     
-
-  !   ! ! calculate target root mass
-  !   ! croot_trgt = safety * ( mygpp - mydrleaf + myplabl ) / ( params_plant%r_root + params_plant%exurate )
-  !   ! droot      = ( 1.0 - croot_trgt / myproot%c%c12 )
-  !   ! if (droot>1.0) stop ''
-  !   ! rm_turn    = orgfrac( droot, myproot )
-  !   ! if (present(myplitt)) then
-  !   !   call orgmv( rm_turn, myproot, myplitt )
-  !   ! else
-  !   !   myproot = orgminus( myproot, rm_turn )
-  !   ! end if
-
-  !   ! ! update fluxes based on corrected root mass
-  !   ! rroot = calc_resp_maint( myproot%c%c12, params_plant%r_root, dtemp )
-  !   ! npp   = mygpp - mydrleaf - rroot
-  !   ! cexu  = calc_cexu( myproot%c%c12 , dtemp )     
-
-  ! end subroutine resize_plant
 
 
   function calc_resp_maint( cmass, rresp, dtemp ) result( resp_maint )
@@ -278,7 +205,8 @@ contains
     ! function return variable
     real :: cexu
 
-    cexu = params_plant%exurate * croot ! * ramp_gpp_lotemp( dtemp )
+    ! low-temperature ramp is included here to prevent negative C balance after exudation
+    cexu = params_plant%exurate * croot * ramp_gpp_lotemp( dtemp )
 
   end function calc_cexu
 
@@ -288,8 +216,8 @@ contains
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
-    use md_interface
     use md_params_core, only: npft, ndayyear, maxgrid
+    use md_interface
 
     if (interface%steering%init .and. interface%params_siml%loutnpp) then
       allocate( outdrleaf(npft,ndayyear,maxgrid) )

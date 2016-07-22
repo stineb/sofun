@@ -5,12 +5,10 @@
 # write value behind this position:    |->
 
 beta                                    244.033
-rd_to_vcmax_GrC3                        0.01500
-rd_to_vcmax_GNC3                        0.01500
-rd_to_vcmax_GrC4                        0.01500
-kphio_GrC3                              0.09300
-kphio_GNC3                              0.09300
-kphio_GrC4                              0.05500
+rd_to_vcmax                             0.020
+kphio_GrC3                              0.093
+kphio_GNC3                              0.093
+kphio_GrC4                              0.055
 
 #                                      |
 # write value *behind* this position:  |->

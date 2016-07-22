@@ -20,7 +20,9 @@ module md_littersom
   public psoil_fs, psoil_sl, drhet, getpar_modl_littersom, initio_littersom, &
     initoutput_littersom, &
     getout_annual_littersom, writeout_ascii_littersom, &
-    littersom, initdaily_littersom, initglobal_littersom
+    littersom, initdaily_littersom, initglobal_littersom, &
+    outdnetmin ! xxx debug
+
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -88,7 +90,8 @@ contains
     use md_interface
     use md_classdefs
     use md_rates, only: ftemp, fmoist
-    use md_plant, only: params_pft_plant, plitt_af, plitt_as, plitt_bg, pexud
+    use md_plant, only: params_pft_plant, plitt_af, plitt_as, plitt_bg, &
+      pexud, ddoc
     use md_waterbal, only: soilphys
     use md_soiltemp, only: dtemp_soil
     use md_ntransform, only: pninorg
@@ -132,26 +135,28 @@ contains
     real :: netmin_litt                             ! net N mineralisation from litter decomposition
 
     integer, save :: invocation = 0                 ! internally counted simulation year
-    integer, parameter :: spinupyr_soilequil_1 = 600   ! year of analytical soil equilibration, based on mean litter -> soil input flux
-    integer, parameter :: spinupyr_soilequil_2 = 1200  ! year of analytical soil equilibration, based on mean litter -> soil input flux
-    ! integer, parameter :: spinupyr_phaseinit_2 = 900
-    ! integer, parameter :: spinupyr_phaseinit_3 = 1300   ! change this to 9999 to make fully coupled simulation working
-    integer, parameter :: spinupyr_phaseinit_3 = 9999   ! change this to 9999 to make fully coupled simulation working
 
-    ! real :: acc                                     ! soil equilibration acceleration factor
-    ! real :: scal, hi, lo
     real, dimension(nlu,maxgrid), save :: mean_insoil_fs
     real, dimension(nlu,maxgrid), save :: mean_insoil_sl
     real, dimension(nlu,maxgrid), save :: mean_ksoil_sl
     real, dimension(nlu,maxgrid), save :: mean_ksoil_fs
     real :: ntoc_save_fs, ntoc_save_sl
 
+    ! xxx debug
+    type( orgpool ) :: orgtmp1, orgtmp2, orgbal1, orgbal2
+    real            :: ntmp1, ntmp2, ctmp1, ctmp2
+
+    ! xxx debug
+    orgtmp1 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
+    ! print*,'C org., Rhet   before   ', orgtmp1%c%c12, drhet(1)
+    ! print*,'N org., inorg. before   ', orgtmp1%n%n14, pninorg(1,jpngr)%n14
+
     !-------------------------------------------------------------------------
     ! Count number of calls (one for each simulation year)
     !-------------------------------------------------------------------------
     if (doy==1) invocation = invocation + 1
 
-    ! initialise 
+    ! initialise average fluxes
     if (invocation==1 .and. doy==1) then
       mean_insoil_fs(:,:) = 0.0
       mean_insoil_sl(:,:) = 0.0
@@ -168,17 +173,8 @@ contains
     ! for a temperate climate (Switzerland). May have to adjust this
     ! for improving performance with a global simulation.
     !-------------------------------------------------------------------------
-    ! if (spinup) then
-    !   acc = max( 1.0, 200.0 - real(invocation) ) 
-    ! else
-    !   acc = 1.0
-    ! end if
-    ! acc = 1.0
 
     do lu=1,nlu
-
-      ! if ( abs( cton(psoil_fs(lu,jpngr)) - cton_soil(1) ) > 1e-5 ) stop 'A fs: C:N not ok'
-      ! if ( abs( cton(psoil_sl(lu,jpngr)) - cton_soil(1) ) > 1e-5 ) stop 'A sl: C:N not ok'
 
       !/////////////////////////////////////////////////////////////////////////
       ! DECAY RATES
@@ -304,14 +300,12 @@ contains
         ! move fraction '(1-eff)' of C to heterotrophic respiration
         call ccp( cfrac( (1.0-eff), dlitt%c ), drhet(lu) )
 
+
         ! get average litter -> soil flux for analytical soil C equilibration
-        if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation <= spinupyr_soilequil_1 &
-          .or. interface%steering%spinup .and. invocation > ( spinupyr_soilequil_2 - interface%params_siml%recycle ) .and. invocation <= spinupyr_soilequil_2) then
+        if ( interface%steering%average_soil ) then
           mean_insoil_fs(lu,jpngr) = mean_insoil_fs(lu,jpngr) + eff * params_littersom%fastfrac * dlitt%c%c12
           mean_insoil_sl(lu,jpngr) = mean_insoil_sl(lu,jpngr) + eff * (1.0-params_littersom%fastfrac) * dlitt%c%c12
         end if
-        ! print*,'2.3'
-
 
         !----------------------------------------------------------------    
         ! N MINERALISATION
@@ -362,13 +356,15 @@ contains
         
         outaNimmo(lu,jpngr)             = outaNimmo(lu,jpngr) - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
 
+        ! print*,'dlitt%n%n14 ', dlitt%n%n14
+        ! print*,'Nreq_S      ', Nreq_S
+        ! print*,'netmin_litt ', netmin_litt
+
         if (netmin_litt>0.0) then
           !----------------------------------------------------------------    
           ! net N mineralisation
           !----------------------------------------------------------------    
           pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + netmin_litt
-          ! stop 'net N mineralisation from litter decomposition'
-          ! write(0,*) 'b pninorg(lu,jpngr)%n14',pninorg
 
         else
 
@@ -392,7 +388,7 @@ contains
           req = -1.0 * netmin_litt
           avl = pninorg(lu,jpngr)%n14
 
-          ! write(0,*) 'req, avl',req,avl
+          ! print*,'req, avl',req,avl
 
           if (avl>=req) then
             ! enough mineral N for immobilisation
@@ -423,27 +419,30 @@ contains
         call ncp( nfrac( params_littersom%fastfrac      , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
         call ncp( nfrac( (1.0-params_littersom%fastfrac), nitrogen(Nreq_S) ), psoil_sl(lu,jpngr)%n )
 
-        ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
-        ! Warning: This may not strictly conserve mass!
-        if (ntoc_save_fs>0.0) then
-          psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_save_fs
-        end if
-        if (ntoc_save_sl>0.0) then
-          psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_save_sl
-        end if
+        ! xxxxxxxx commented this out again
+        ! ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
+        ! ! Warning: This may not strictly conserve mass!
+        ! if (ntoc_save_fs>0.0) then
+        !   psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_save_fs
+        ! end if
+        ! if (ntoc_save_sl>0.0) then
+        !   psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_save_sl
+        ! end if
+        ! xxxxxxxx commented this out again
 
         if ( abs( cton(psoil_fs(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) stop 'B fs: C:N not ok'
         if ( abs( cton(psoil_sl(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) stop 'B sl: C:N not ok'
 
         ! OUTPUT COLLECTION
-        outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
-          
+        if (interface%params_siml%loutlittersom) then
+          outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
+        end if
+
         ! C:N ratio of soil influx
         ! print*,"actual: ", dlitt%c%c12 * eff / Nreq_S, "target: ", params_littersom%cton_soil
         if ( abs( dlitt%c%c12 * eff / Nreq_S - params_littersom%cton_soil ) > 1e-5 ) stop 'imprecision'
 
       end if
-      ! print*,'3'
 
       !////////////////////////////////////////////////////////////////
       ! EXUDATES DECAY
@@ -463,21 +462,11 @@ contains
           drsoil(pft) = pexud(pft,jpngr)
           pexud(pft,jpngr) = carbon(0.0)
 
-          ! dexu = cfrac( 1.0-exp(-kexu(lu)), pexud(pft,jpngr) )
-
-          ! print*,  'pexud(pft,jpngr) ', pexud(pft,jpngr)
-          ! print*,  'dexu             ', dexu
-
-          ! call cmv( dexu, pexud(pft,jpngr), drsoil(pft) )
-
           if (pexud(pft,jpngr)%c12<0.0) stop 'B neg. pexud'
 
         end if
 
       end do
-      ! print*,'4'
-
-      ! write(0,*) 'c2 pninorg(lu,jpngr)%n14',pninorg
 
       !////////////////////////////////////////////////////////////////
       ! SOIL DECAY
@@ -519,37 +508,25 @@ contains
         stop 'C sl: C:N not ok'
       end if
 
-      ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
-      ! Warning: this does not strictly conserve mass!
-      psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_soil_local
-      psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_soil_local
-      ! print*,'5'
+      ! ! xxxxxxxx commented this out again
+      ! ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
+      ! ! Warning: this does not strictly conserve mass!
+      ! psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_soil_local
+      ! psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_soil_local
+      ! ! xxxxxxxx commented this out again
 
-      ! xxx try:
-      ! >>>>>>>>>>>
-      ! ! to inorganic N pool
-      ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      ! ===========
-      ! if ( spinup .and. invocation <= spinupyr_phaseinit_3 ) then
-      !   if ( dlitt%c%c12 > 0.0 ) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
-      !   ! write(0,*) 'fraction immobilised', (-1.0)*netmin_litt / ( eff * dlitt%c%c12 / cton_soil_local )
-      !   ! ! xxx try:
-      !   ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * (eff * dlitt%c%c12 / cton_soil_local)
-      ! else  
-      !   pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      !   ! write(0,*) 'fraction immobilised', (-1.0)*netmin_litt / ( dsoil_fs%n%n14 + dsoil_sl%n%n14 )
-      !   ! ! xxx try:
-      !   ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * ( dsoil_fs%n%n14 + dsoil_sl%n%n14 )
-      ! end if
-      ! xxxxxxxxxxx
-      ! xxx try: use budgeted N mineralisation also after spinup and equilibration to avoid problem (most likely budget violation in turnover)
-      ! print*,'cton_soil_local ', cton_soil_local 
-      if ( dlitt%c%c12 > 0.0 ) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
-      ! <<<<<<<<<<<      
+      ! Spinup trick: use projected soil N mineralisation before soil equilibration
+      ! if ( interface%steering%spinup .and. invocation <=  spinupyr_soilequil_1 ) then 
+      if ( interface%steering%project_nmin ) then
+        ! projected soil N mineralisation
+        if (dlitt%c%c12 > 0.0) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
+      else
+        ! actual soil N mineralisation
+        pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      end if
 
       ! get average litter -> soil flux for analytical soil C equilibration
-      if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation<=spinupyr_soilequil_1 &
-        .or. interface%steering%spinup .and. invocation > ( spinupyr_soilequil_2 - interface%params_siml%recycle ) .and. invocation<=spinupyr_soilequil_2 ) then
+      if ( interface%steering%average_soil ) then
         mean_ksoil_fs(lu,jpngr) = mean_ksoil_fs(lu,jpngr) + ksoil_fs(lu)
         mean_ksoil_sl(lu,jpngr) = mean_ksoil_sl(lu,jpngr) + ksoil_sl(lu)
       end if
@@ -561,9 +538,9 @@ contains
       ! print*,'spinupyr_soilequil_2 ', spinupyr_soilequil_2
       ! print*,'mean_ksoil_fs(lu,jpngr) ', mean_ksoil_fs(lu,jpngr)
 
+
       ! analytical soil C equilibration
-      if ( interface%steering%spinup .and. invocation==spinupyr_soilequil_1 .and. doy==ndayyear &
-        .or. interface%steering%spinup .and. invocation==spinupyr_soilequil_2 .and. doy==ndayyear ) then
+      if ( interface%steering%do_soilequil .and. doy==ndayyear ) then
         psoil_fs(lu,jpngr)%c%c12 = mean_insoil_fs(lu,jpngr) / mean_ksoil_fs(lu,jpngr)
         psoil_sl(lu,jpngr)%c%c12 = mean_insoil_sl(lu,jpngr) / mean_ksoil_sl(lu,jpngr)
         psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_save_fs
@@ -584,21 +561,12 @@ contains
       ! print*,'mean_ksoil_fs(lu,jpngr) ', mean_ksoil_fs(lu,jpngr)
       ! print*,'6'
 
-      ! ! Record monthly (daily) soil turnover flux (labile carbon availability)
-      ! ! xxx try: replace this with exudates pool 
-      ! !----------------------------------------------------------------
-      ! ddoc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
+      ! Record monthly (daily) soil turnover flux (labile carbon availability)
+      ! xxx try: replace this with exudates pool 
+      !----------------------------------------------------------------
+      ddoc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
 
-      !----------------------------------------------------------------
-      ! XXX debug: add constant N fixation 0.5 gN/m2/yr)
-      !----------------------------------------------------------------
-      ! if (invocation<200) then
-      !   Nfix = 5.0/365.0
-      ! else
-      !   Nfix = 1.0/365.0
-      ! end if
-      Nfix = 1.0 / 365.0
-      ! Nfix = 0.0
+      Nfix = 0.0
       pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + Nfix
 
       ! OUTPUT COLLECTION
@@ -609,6 +577,12 @@ contains
       ! print*,'7'
 
     enddo                   !lu
+
+    ! xxx debug
+    orgtmp2 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
+    ! print*,'C org., Rhet   before   ', orgtmp2%c%c12, drhet(1)
+    ! print*,'N org., inorg after     ', orgtmp2%n%n14, pninorg(1,jpngr)%n14
+
 
   end subroutine littersom
 

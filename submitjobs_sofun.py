@@ -11,7 +11,13 @@ from subprocess import call
 ## - "gcme"
 ## - "campi"
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet_cnmodel'
+simsuite = 'fluxnet_fixalloc'
+
+##--------------------------------------------------------------------
+## in some cases use same experiment info file
+##--------------------------------------------------------------------
+if simsuite == 'fluxnet_fixalloc':
+    simsuite = 'fluxnet_cnmodel'
 
 ##--------------------------------------------------------------------
 ## Compile
@@ -22,7 +28,7 @@ if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
 elif simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test':
     exe = 'runcmodel'
     compiling_opt = 'cmodel'
-elif simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel':
+elif simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi':
     exe = 'runcnmodel'
     compiling_opt = 'cnmodel'
 else:
@@ -49,10 +55,11 @@ for index, row in siteinfo.iterrows():
     if simsuite == 'fluxnet_cmodel':
         if row['classid'] == 'GRA':
             print 'submitting job for site ' + row['mysitename'] + '...'
-            os.system( 'echo ' + row['mysitename'] + '| ./' + exe )
-    elif simsuite == 'gcme' or 'swissface' or simsuite == 'fluxnet_cnmodel':
+            os.system( 'echo ' + row['mysitename'] + '| ./' + exe + '>' + row['mysitename'] + '.out' + '2>' + row['mysitename'] + '.out' )
+    elif simsuite == 'gcme' or 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi' or simsuite == 'fluxnet_fixalloc':
         print 'submitting job for experiment ' + row['expname'] + '...'
-        os.system( 'echo ' + row['expname'] + '| ./' + exe )        
+        os.system( 'echo ' + row['expname'] + '| ./' + exe+ '>' + row['expname'] + '.out' + '2>' + row['expname'] + '.out' )        
     else:
         print 'submitting job for site ' + row['mysitename'] + '...'
-        os.system( 'echo ' + row['mysitename'] + '| ./' + exe )
+        os.system( 'echo ' + row['mysitename'] + '| ./' + exe + '>' + row['mysitename'] + '.out' + '2>' + row['mysitename'] + '.out')
+

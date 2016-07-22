@@ -29,7 +29,7 @@ module md_nuptake
   private
   public nuptake, getpar_modl_nuptake, initdaily_nuptake, initio_nuptake, &
     initoutput_nuptake, getout_daily_nuptake, writeout_ascii_nuptake, &
-    calc_dnup, outtype_calc_dnup
+    calc_dnup, outtype_calc_dnup, dnup_fix
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables

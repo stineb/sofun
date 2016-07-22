@@ -10,19 +10,20 @@ module md_plant
   private
   public pleaf, proot, psapw, plabl, pexud, plitt_af, plitt_as, plitt_bg, &
     dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy,       &
-    lai_ind,      &
-    isgrowing, isdying, fpc_grid, nind, dnup,                             &
+    lai_ind,  &
+    fpc_grid, nind, dnup,        &
     params_pft_plant, params_plant, initglobal_plant, initpft,            &
     initdaily_plant, outdnpp, outdnup, outdCleaf, outdCroot, outdClabl,   &
     outdNlabl, outdClitt, outdNlitt, outdCsoil, outdNsoil, outdlai,       &
-    outdfapar,                                                            &
+    outdfapar, ddoc,                                                      &
     dnarea_mb, dnarea_cw, dlma, dcton_lm, outanpp, outanup, outacleaf,    &
     outacroot, &
     outaCveg2lit, outaNveg2lit, outanarea_mb, outanarea_cw,   &
     outalai, outalma, outacton_lm, get_fapar,            &
     initoutput_plant, initio_plant, getout_daily_plant,                   &
     getout_annual_plant, writeout_ascii_plant, getpar_modl_plant,         &
-    leaftraits_type, canopy_type, get_canopy, seed, break_after_alloc
+    leaftraits_type, get_leaftraits, get_leaf_n_canopy, canopy_type,      & 
+    get_canopy, seed, get_lai, get_leaftraits_init, frac_leaf
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -48,18 +49,25 @@ module md_plant
   real, dimension(npft)                  :: drsapw           ! sapwood maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
   real, dimension(npft)                  :: dcex             ! labile C exudation for N uptake, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
 
+  real, dimension(nlu)                   :: ddoc             ! surrogate for dissolved organic carbon used for denitrification rate (see ntransform)
   type(nitrogen), dimension(npft)        :: dnup             ! daily N uptake [gN/m2/d]
+
+  real, dimension(npft)                  :: frac_leaf = 0.5  ! fraction of labile C allocated to leaves
 
   ! Leaf traits
   type leaftraits_type
-    real :: narea               ! g N m-2-leaf
-    real :: narea_metabolic     ! g N m-2-leaf
-    real :: narea_structural    ! g N m-2-leaf
-    real :: lma                 ! leaf mass per area [gC/m2]. C, NOT DRY-MASS!
-    real :: sla                 ! specific leaf area [m2/gC]. C, NOT DRY-MASS!
-    real :: nmass               ! g N / g-dry mass
-    real :: r_cton_leaf         ! leaf C:N ratio [gC/gN] 
-    real :: r_ntoc_leaf         ! leaf N:C ratio [gN/gC]
+    real :: leafc_canopy              ! g C m-2-ground, canopy-level
+    real :: narea_canopy              ! g N m-2-ground, canopy-level
+    real :: narea_metabolic_canopy    ! g N m-2-ground, canopy-level
+    real :: narea_structural_canopy   ! g N m-2-ground, canopy-level
+    real :: narea                     ! g N m-2-leaf, leaf-level
+    real :: narea_metabolic           ! g N m-2-leaf, leaf-level
+    real :: narea_structural          ! g N m-2-leaf, leaf-level
+    real :: lma                       ! leaf mass per area [gC/m2]. C, NOT DRY-MASS!
+    real :: sla                       ! specific leaf area [m2/gC]. C, NOT DRY-MASS!
+    real :: nmass                     ! g N / g-dry mass
+    real :: r_cton_leaf               ! leaf C:N ratio [gC/gN] 
+    real :: r_ntoc_leaf               ! leaf N:C ratio [gN/gC]
   end type leaftraits_type
 
   type( leaftraits_type ), dimension(npft) :: leaftraits
@@ -79,13 +87,14 @@ module md_plant
   real, dimension(npft,maxgrid)    :: fpc_grid         ! area fraction within gridcell occupied by PFT
   real, dimension(npft,maxgrid)    :: nind             ! number of individuals [1/m2]
 
-  logical :: break_after_alloc = .false.
+  real, dimension(npft)            :: depletionfrac
 
   !-----------------------------------------------------------------------
   ! Fixed parameters
   !-----------------------------------------------------------------------
   ! type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.0) )
   type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.12) )
+  ! type( orgpool ), parameter :: seed = orgpool( carbon(100.0), nitrogen(1 .0) )
 
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
@@ -93,7 +102,6 @@ module md_plant
   ! NON PFT-DEPENDENT PARAMETERS
   type params_plant_type
     real :: r_root            ! Fine root-specific respiration rate (gC gC-1 d-1)
-    real :: r_leaf            ! Foliage mass-specific respiration rate (gC gC-1 d-1)
     real :: r_sapw            ! Sapwood-specific respiration rate (gC gC-1 d-1)
     real :: exurate           ! Fine root-specific C export rate (gC gC-1 d-1)
     real :: kbeer             ! canopy light extinction coefficient
@@ -119,11 +127,11 @@ module md_plant
     real    :: k_decay_leaf_width  ! shape parameter for turnover function if LAI
     real    :: k_decay_sapw        ! sapwood decay constant [year-1]
     real    :: k_decay_root        ! root decay constant [year-1]
-    real    :: r_cton_root         ! C:N ratio in roots
-    real    :: r_ntoc_root         ! N:C ratio in roots (inverse of 'r_cton_root')
+    real    :: r_cton_root         ! C:N ratio in roots (gC/gN)
+    real    :: r_ntoc_root         ! N:C ratio in roots (inverse of 'r_cton_root', gN/gC)
     real    :: ncw_min             ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area    
     real    :: r_n_cw_v            ! slope in the relationship of non-metabolic versus metabolic N per leaf area              
-    real    :: r_ctostructn_leaf   ! constant ratio of C to structural N
+    real    :: r_ctostructn_leaf   ! constant ratio of C to structural N (mol C / mol N)
   end type params_pft_plant_type
 
   type( params_pft_plant_type ), dimension(npft) :: params_pft_plant
@@ -167,8 +175,280 @@ module md_plant
   real, dimension(npft,maxgrid) :: outacton_lm
   real, dimension(npft,maxgrid) :: outacroot
   real, dimension(npft,maxgrid) :: outacleaf
+  real, dimension(npft,maxgrid) :: outaclabl
+  real, dimension(npft,maxgrid) :: outanlabl
 
 contains
+
+  function get_canopy( lai ) result( out_canopy )
+    !//////////////////////////////////////////////////////////////////
+    ! Returs canopy variables as a function of LAI
+    !------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: lai
+
+    ! function return value
+    type( canopy_type ) :: out_canopy
+
+    out_canopy%fapar_ind = get_fapar( lai )
+
+  end function get_canopy
+
+
+  function get_fapar( lai ) result( fapar )
+    !////////////////////////////////////////////////////////////////
+    ! FOLIAGE PROJECTIVE COVER 
+    ! = Fraction of Absorbed Photosynthetically Active Radiation
+    ! Function returns fractional plant cover an individual
+    ! Eq. 7 in Sitch et al., 2003
+    !----------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: lai
+
+    ! function return variable
+    real :: fapar
+
+    fapar = ( 1.0 - exp( -1.0 * params_plant%kbeer * lai) )
+
+  end function get_fapar
+
+
+  function get_lai( pft, cleaf, meanmppfd, nv ) result( lai )
+    !////////////////////////////////////////////////////////////////
+    !----------------------------------------------------------------
+    use md_params_core, only: nmonth, c_molmass
+    use md_lambertw, only: calc_wapr
+
+    ! arguments
+    integer, intent(in)                 :: pft
+    real, intent(in)                    :: cleaf
+    real, dimension(nmonth), intent(in) :: meanmppfd
+    real, dimension(nmonth), intent(in) :: nv 
+
+    ! function return variable
+    real :: lai
+
+    ! local variables
+    real    :: alpha, beta, gamma ! variable substitutes
+    real    :: maxnv
+    real    :: arg_to_lambertw
+    integer :: nerror
+
+
+    if (cleaf>0.0) then
+
+      ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
+      ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
+      maxnv = maxval( meanmppfd(:) * nv(:) )
+
+      alpha = maxnv * params_pft_plant(pft)%r_n_cw_v
+      beta  = params_pft_plant(pft)%ncw_min
+      gamma = cleaf / ( c_molmass * params_pft_plant(pft)%r_ctostructn_leaf ) 
+
+      arg_to_lambertw = alpha * params_plant%kbeer / beta * exp( (alpha - gamma) * params_plant%kbeer / beta )
+
+      lai = 1.0 / (beta * params_plant%kbeer ) * ( -alpha * params_plant%kbeer + gamma * params_plant%kbeer + beta * calc_wapr( arg_to_lambertw, 0, nerror, 9999 ) )
+
+    else
+
+      lai = 0.0
+
+    end if
+    
+  end function get_lai
+
+
+  function get_leaf_n_metabolic_canopy( mylai, meanmppfd, nv, myfapar ) result( mynleaf_metabolic )
+    !////////////////////////////////////////////////////////////////
+    ! Calculates metabolic leaf N at canopy-level, determined by 
+    ! light conditions (meanmppfd) and the Rubisco-N per unit absorbed
+    ! light.
+    !----------------------------------------------------------------
+    use md_params_core, only: nmonth
+
+    ! arguments
+    real, intent(in)                    :: mylai
+    real, dimension(nmonth), intent(in) :: meanmppfd
+    real, dimension(nmonth), intent(in) :: nv
+    real, intent(in), optional          :: myfapar
+
+    ! function return variable
+    real :: mynleaf_metabolic  ! mol N m-2-ground
+
+    ! local variables
+    real :: maxnv
+
+    ! Metabolic N is predicted and is optimised at a monthly time scale. 
+    ! Leaf traits are calculated based on metabolic N => cellwall N => cellwall C / LMA
+    ! Leaves get thinner at the bottom of the canopy => increasing LAI through the season comes at a declining C and N cost
+    ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
+    ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
+    maxnv = maxval( meanmppfd(:) * nv(:) )
+
+    if (present(myfapar)) then
+      mynleaf_metabolic = maxnv * myfapar
+    else
+      mynleaf_metabolic = maxnv * get_fapar( mylai )
+    end if
+
+  end function get_leaf_n_metabolic_canopy
+
+
+  function get_leaf_n_structural_canopy( pft, mylai, mynleaf_metabolic ) result( mynleaf_structural )
+    !////////////////////////////////////////////////////////////////
+    ! Calculates structural leaf N at canopy-level, determined by 
+    ! metabolic leaf N (linear relationship)
+    !----------------------------------------------------------------
+    ! arguments
+    integer, intent(in) :: pft
+    real, intent(in)    :: mylai
+    real, intent(in)    :: mynleaf_metabolic
+
+    ! function return variable
+    real :: mynleaf_structural  ! mol N m-2-ground
+
+    mynleaf_structural = mynleaf_metabolic * params_pft_plant(pft)%r_n_cw_v + mylai * params_pft_plant(pft)%ncw_min
+
+  end function get_leaf_n_structural_canopy
+
+
+  function get_leaf_n_canopy( pft, mylai, meanmppfd, nv ) result( mynleaf )
+    !////////////////////////////////////////////////////////////////
+    ! Calculates total leaf N at canopy-level, determined by 
+    ! metabolic leaf N (linear relationship)
+    ! Caution: this returns g N m-2-ground (not mol N m-2-ground)!
+    !----------------------------------------------------------------
+    use md_params_core, only: nmonth, n_molmass
+
+    ! arguments
+    integer, intent(in)                 :: pft
+    real, intent(in)                    :: mylai
+    real, dimension(nmonth), intent(in) :: meanmppfd
+    real, dimension(nmonth), intent(in) :: nv
+
+    ! function return variable
+    real :: mynleaf ! g N m-2-ground
+
+    ! local variables
+    real :: nleaf_metabolic   ! mol N m-2
+    real :: nleaf_structural  ! mol N m-2
+
+    nleaf_metabolic  = get_leaf_n_metabolic_canopy(  mylai, meanmppfd(:), nv(:) )
+    nleaf_structural = get_leaf_n_structural_canopy( pft, mylai, nleaf_metabolic )
+    mynleaf          = n_molmass * ( nleaf_metabolic + nleaf_structural )
+
+  end function get_leaf_n_canopy
+
+
+  function get_leaftraits_init( pft, meanmppfd, nv ) result( out_traits )
+    !////////////////////////////////////////////////////////////////
+    ! Calculates initial leaf traits (Taylor approximation for LAI -> 0)
+    !----------------------------------------------------------------
+    use md_params_core, only: c_content_of_biomass, nmonth, n_molmass, c_molmass
+
+    ! arguments
+    integer, intent(in)                 :: pft
+    real, dimension(nmonth), intent(in) :: meanmppfd
+    real, dimension(nmonth), intent(in) :: nv
+
+    ! function return variable
+    type( leaftraits_type ) :: out_traits
+
+    ! local variables
+    real :: maxnv
+    real :: mynarea_metabolic   ! mol N m-2-ground
+    real :: mynarea_structural  ! mol N m-2-ground
+
+    maxnv = maxval( meanmppfd(:) * nv(:) )
+
+    mynarea_metabolic  = maxnv * params_plant%kbeer
+    mynarea_structural = params_pft_plant(pft)%r_n_cw_v * maxnv * params_plant%kbeer + params_pft_plant(pft)%ncw_min
+
+    ! leaf-level, in units of gN / m2-leaf 
+    out_traits%narea_metabolic  = n_molmass * mynarea_metabolic  ! g N m-2-leaf
+    out_traits%narea_structural = n_molmass * mynarea_structural ! g N m-2-leaf
+    out_traits%narea            = n_molmass * ( mynarea_metabolic +  mynarea_structural ) ! g N m-2-leaf
+    out_traits%lma              = c_molmass * params_pft_plant(pft)%r_ctostructn_leaf * mynarea_structural
+
+    ! additional traits
+    out_traits%nmass            = out_traits%narea / ( out_traits%lma / c_content_of_biomass )
+    out_traits%r_cton_leaf      = out_traits%lma / out_traits%narea
+    out_traits%r_ntoc_leaf      = 1.0 / out_traits%r_cton_leaf
+
+    ! canopy-level, in units of gN / m2-ground 
+    out_traits%narea_metabolic_canopy  = 0.0
+    out_traits%narea_structural_canopy = 0.0
+    out_traits%narea_canopy            = 0.0
+    out_traits%leafc_canopy            = 0.0
+
+  end function get_leaftraits_init 
+
+
+  function get_leaftraits( pft, mylai, meanmppfd, nv, myfapar ) result( out_traits )
+    !////////////////////////////////////////////////////////////////
+    ! Calculates leaf traits based on (predicted) metabolic Narea and
+    ! (prescribed) parameters that relate structural to metabolic
+    ! Narea and Carea to structural Narea:
+    ! Narea_metabolic  = predicted
+    ! Narea_structural = a + b * Narea_metabolic
+    ! Carea            = c * Narea_structural
+    !----------------------------------------------------------------
+    use md_params_core, only: c_content_of_biomass, nmonth, n_molmass, c_molmass
+
+    ! arguments
+    integer, intent(in)                 :: pft
+    real, intent(in)                    :: mylai
+    real, dimension(nmonth), intent(in) :: meanmppfd
+    real, dimension(nmonth), intent(in) :: nv
+    real, intent(in), optional          :: myfapar
+
+    ! function return variable
+    type( leaftraits_type ) :: out_traits
+
+    ! local variables
+    real :: mynarea_metabolic_canop   ! mol N m-2-ground
+    real :: mynarea_structural_canop  ! mol N m-2-ground
+
+    if (mylai==0.0) then
+      ! canopy-level
+      out_traits%narea_metabolic_canopy  = 0.0
+      out_traits%narea_structural_canopy = 0.0
+      out_traits%narea_canopy            = 0.0
+      out_traits%leafc_canopy            = 0.0
+
+      ! leaf-level
+      out_traits%narea_metabolic  = 0.0
+      out_traits%narea_structural = 0.0
+      out_traits%narea            = 0.0
+      out_traits%lma              = 0.0
+      out_traits%nmass            = 0.0
+      out_traits%r_cton_leaf      = 0.0
+      out_traits%r_ntoc_leaf      = 0.0
+    else
+      ! calculate quantities in units of mol N
+      mynarea_metabolic_canop  = get_leaf_n_metabolic_canopy(  mylai, meanmppfd(:), nv(:) )     ! mol N m-2-ground    
+      mynarea_structural_canop = get_leaf_n_structural_canopy( pft, mylai, mynarea_metabolic_canop ) ! mol N m-2-ground
+
+      ! canopy-level, in units of gN / m2-ground 
+      out_traits%narea_metabolic_canopy  = n_molmass * mynarea_metabolic_canop ! g N m-2-ground 
+      out_traits%narea_structural_canopy = n_molmass * mynarea_structural_canop ! g N m-2-ground
+      out_traits%narea_canopy            = n_molmass * (mynarea_metabolic_canop + mynarea_structural_canop)  ! g N m-2-ground
+      out_traits%leafc_canopy            = c_molmass * params_pft_plant(pft)%r_ctostructn_leaf * mynarea_structural_canop ! g C m-2-ground
+
+      ! leaf-level, in units of gN / m2-leaf 
+      out_traits%narea_metabolic  = out_traits%narea_metabolic_canopy / mylai   ! g N m-2-leaf
+      out_traits%narea_structural = out_traits%narea_structural_canopy / mylai  ! g N m-2-leaf
+      out_traits%narea            = out_traits%narea_canopy / mylai ! g N m-2-leaf
+      out_traits%lma              = out_traits%leafc_canopy / mylai 
+
+      ! additional traits
+      out_traits%nmass            = out_traits%narea / ( out_traits%lma / c_content_of_biomass )
+      out_traits%r_cton_leaf      = out_traits%lma / out_traits%narea
+      out_traits%r_ntoc_leaf      = 1.0 / out_traits%r_cton_leaf
+    end if
+
+  end function get_leaftraits
+
 
   subroutine getpar_modl_plant()
     !////////////////////////////////////////////////////////////////
@@ -200,9 +480,6 @@ contains
 
     ! growth efficiency = yield factor, central value: 0.6, range: 0.5-0.7; Zhang et al. (2009), see Li et al., 2014
     params_plant%growtheff = getparreal( 'params/params_plant.dat', 'growtheff' )
-
-    ! Foliage mass specific respiration rate (gC gC-1 year-1)
-    params_plant%r_leaf = getparreal( 'params/params_plant.dat', 'r_leaf' ) / ndayyear  ! conversion to rate per day
 
     ! Fine-root mass specific respiration rate (gC gC-1 year-1)
     ! Central value: 0.913 year-1 (Yan and Zhao (2007); see Li et al., 2014)
@@ -373,22 +650,19 @@ contains
     pleaf(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     proot(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     
-    isgrowing(pft,jpngr) = .false.
-    isdying(pft,jpngr)   = .false.
-    nind(pft,jpngr)      = 0.0
-
-    ! if (params_pft_plant(pft)%grass) then
-    !   ! xxx try: for grass add seed only at initialisation
-    !   write(0,*) 'INITPFT: initialising plabl with seed'
-    !   plabl(pft,jpngr) = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
-    !   nind(pft,jpngr) = 1.0
-    ! else
-    !   stop 'in initpft: not implemented for trees'
-    ! end if
-
-    plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-
-    if (params_pft_plant(pft)%tree) then
+    if (params_pft_plant(pft)%grass) then
+      ! xxx try: for grass add seed only at initialisation
+      write(0,*) 'INITPFT: initialising plabl with seed'
+      plabl(pft,jpngr) = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
+      nind(pft,jpngr) = 1.0
+    else
+      stop 'in initpft: not implemented for trees'
+    end if
+    ! plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+    
+    if (params_pft_plant(pft)%grass) then
+      nind(pft,jpngr) = 1.0
+    else if (params_pft_plant(pft)%tree) then
       psapw(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
       pwood(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
     endif
@@ -427,39 +701,6 @@ contains
     drsapw(:) = 0.0
 
   end subroutine initdaily_plant
-
-
-  function get_canopy( lai ) result( out_canopy )
-    !//////////////////////////////////////////////////////////////////
-    ! Returs canopy variables as a function of LAI
-    !------------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: lai
-
-    ! function return value
-    type( canopy_type ) :: out_canopy
-
-    out_canopy%fapar_ind = get_fapar( lai )
-
-  end function get_canopy
-
-
-  function get_fapar( lai ) result( fapar )
-    !////////////////////////////////////////////////////////////////
-    ! FOLIAGE PROJECTIVE COVER 
-    ! = Fraction of Absorbed Photosynthetically Active Radiation
-    ! Function returns fractional plant cover an individual
-    ! Eq. 7 in Sitch et al., 2003
-    !----------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: lai
-
-    ! function return variable
-    real :: fapar
-
-    fapar = ( 1.0 - exp( -1.0 * params_plant%kbeer * lai) )
-
-  end function get_fapar
 
 
   subroutine initoutput_plant()
@@ -506,6 +747,8 @@ contains
     outacton_lm (:,:) = 0.0
     outacleaf(:,:)    = 0.0
     outacroot(:,:)    = 0.0
+    outaclabl(:,:)    = 0.0
+    outanlabl(:,:)    = 0.0
 
   end subroutine initoutput_plant
 
@@ -571,11 +814,11 @@ contains
       open(113,file=filnam,err=999,status='unknown')
     end if
 
-    ! ! LABILE N
-    ! if (interface%params_siml%loutdNlabl    ) then
-    !   filnam=trim(prefix)//'.d.nlabl.out'
-    !   open(115,file=filnam,err=999,status='unknown')
-    ! end if
+    ! LABILE N
+    if (interface%params_siml%loutdNlabl    ) then
+      filnam=trim(prefix)//'.d.nlabl.out'
+      open(115,file=filnam,err=999,status='unknown')
+    end if
 
     ! LITTER N
     if (interface%params_siml%loutdNlitt    ) then
@@ -647,6 +890,18 @@ contains
     filnam=trim(prefix)//'.a.lma.out'
     open(322,file=filnam,err=999,status='unknown')
 
+    ! LABILE C AT THE END OF THE YEAR
+    if (interface%params_siml%loutdClabl) then
+      filnam=trim(prefix)//'.a.clabl.out'
+      open(325,file=filnam,err=999,status='unknown')
+    end if
+
+    ! LABILE N AT THE END OF THE YEAR
+    if (interface%params_siml%loutdNlabl) then
+      filnam=trim(prefix)//'.a.nlabl.out'
+      open(326,file=filnam,err=999,status='unknown')
+    end if
+
     return
 
     999  stop 'INITIO: error opening output files'
@@ -678,34 +933,30 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    ! print*,'dcex(:) ',dcex(:)
-    
-
     if (interface%params_siml%loutdnpp   ) outdnpp(:,doy,jpngr)   = dnpp(:)%c12
     if (interface%params_siml%loutdnup   ) outdnup(:,doy,jpngr)   = dnup(:)%n14
     if (interface%params_siml%loutdcex   ) outdcex(:,doy,jpngr)   = dcex(:)
     if (interface%params_siml%loutdCleaf ) outdCleaf(:,doy,jpngr) = pleaf(:,jpngr)%c%c12
     if (interface%params_siml%loutdCroot ) outdCroot(:,doy,jpngr) = proot(:,jpngr)%c%c12
     if (interface%params_siml%loutdClabl ) outdClabl(:,doy,jpngr) = plabl(:,jpngr)%c%c12
-
     if (interface%params_siml%loutdNlabl ) outdNlabl(:,doy,jpngr) = plabl(:,jpngr)%n%n14
     if (interface%params_siml%loutdClitt ) outdClitt(:,doy,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
     if (interface%params_siml%loutdNlitt ) outdNlitt(:,doy,jpngr) = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
     if (interface%params_siml%loutdlai   ) outdlai(:,doy,jpngr)   = lai_ind(:,jpngr)
     if (interface%params_siml%loutdfapar ) outdfapar(:,doy,jpngr) = canopy(:)%fapar_ind
     
-    dnarea_mb(:,doy)           = leaftraits(:)%narea_metabolic
-    dnarea_cw(:,doy)           = leaftraits(:)%narea_structural
-    dcton_lm(:,doy)            = leaftraits(:)%r_cton_leaf
-    dlma(:,doy)                = leaftraits(:)%lma
+    dnarea_mb(:,doy) = leaftraits(:)%narea_metabolic
+    dnarea_cw(:,doy) = leaftraits(:)%narea_structural
+    dcton_lm(:,doy)  = leaftraits(:)%r_cton_leaf
+    dlma(:,doy)      = leaftraits(:)%lma
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    outanpp(:,jpngr)    = outanpp(:,jpngr) + dnpp(:)%c12
-    outanup(:,jpngr)    = outanup(:,jpngr) + dnup(:)%n14
-    outacex(:,jpngr)    = outacex(:,jpngr) + dcex(:)
+    outanpp(:,jpngr) = outanpp(:,jpngr) + dnpp(:)%c12
+    outanup(:,jpngr) = outanup(:,jpngr) + dnup(:)%n14
+    outacex(:,jpngr) = outacex(:,jpngr) + dcex(:)
 
   end subroutine getout_daily_plant
 
@@ -715,6 +966,7 @@ contains
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
+    use md_interface
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -724,7 +976,6 @@ contains
     integer :: doy
     integer :: maxdoy
     real    :: maxlai
-    ! intrinsic                :: maxloc
 
     ! Output annual value at day of peak LAI
     do pft=1,npft
@@ -745,6 +996,9 @@ contains
       outalai     (pft,jpngr) = maxlai
       outalma     (pft,jpngr) = dlma(pft,maxdoy)
       outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy)
+
+      if (interface%params_siml%loutdClabl) outaclabl   (pft,jpngr) = outdClabl(pft,ndayyear,jpngr) ! taken at the end of the year
+      if (interface%params_siml%loutdNlabl) outanlabl   (pft,jpngr) = outdNlabl(pft,ndayyear,jpngr) ! taken at the end of the year
 
     end do
 
@@ -841,6 +1095,8 @@ contains
     write(320,999) itime, sum(outanarea_cw(:,jpngr))
     write(321,999) itime, sum(outacton_lm(:,jpngr))
     write(322,999) itime, sum(outalma(:,jpngr))
+    if (interface%params_siml%loutdClabl) write(325,999) itime, sum(outaclabl(:,jpngr))
+    if (interface%params_siml%loutdNlabl) write(326,999) itime, sum(outanlabl(:,jpngr))
 
     return
 
