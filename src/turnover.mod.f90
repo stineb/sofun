@@ -71,30 +71,24 @@ contains
       !--------------------------------------------------------------
       if (params_pft_plant(pft)%grass) then
 
-        ! if (shedleaves(doy,pft) .or. (doy==1 .and. interface%steering%forcingyear==2003)) then
         if (shedleaves(doy,pft)) then
 
           droot = 1.0
           dleaf = 1.0
           dlabl = 1.0
           
-          ! ispresent(pft,jpngr) = .true.
-
         else
 
+          ! dlabl = 0.01
           dlabl = 0.0
-
-          ! grasses have continuous turnover
-          ! dleaf = 2.5 / 365.0
-          ! droot = params_pft_plant(pft)%k_decay_root
 
           ! Alternative turnover function: increase turnover rate towards high LAI
           ! dleaf = (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
-          ! xxx try
           droot =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
           dleaf =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
+          ! xxx try
           ! dleaf = 1.5 / 365.0
           ! droot = 1.5 / 365.0
 

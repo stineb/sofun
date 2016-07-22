@@ -140,9 +140,9 @@ contains
       endif
       out_steering%outyear = year + params_siml%firstyeartrend - params_siml%spinupyears - 1
 
-      ! if ( year > 3 ) then
+      if ( year > 3 ) then
       ! if (year > (spinupyr_soilequil_1 + 1) ) then
-      if (out_steering%forcingyear > 2003 ) then
+      ! if (out_steering%forcingyear > 2003 ) then
         out_steering%dofree_alloc = .true.
       else
         out_steering%dofree_alloc = .false.

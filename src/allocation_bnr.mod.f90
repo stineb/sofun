@@ -61,7 +61,7 @@ contains
     use md_classdefs
     use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
       plabl, drgrow, lai_ind, nind, canopy, leaftraits, &
-      get_canopy, get_leaftraits, get_leaftraits_init, frac_leaf
+      get_canopy, get_leaftraits, get_leaftraits_init, frac_leaf, dnpp
     use md_waterbal, only: solar
     use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
     use md_soiltemp, only: dtemp_soil
@@ -73,7 +73,7 @@ contains
     use md_nuptake, only: calc_dnup, outtype_calc_dnup
     use md_waterbal, only: solar, evap
     use md_gpp, only: calc_dgpp, calc_drd
-    use md_npp, only: calc_resp_maint, calc_cexu, deactivate_root
+    use md_npp, only: calc_resp_maint, calc_cexu
     use md_gpp, only: dgpp, drd 
     use md_plant, only: dnpp, drleaf, drroot, dcex, dnup
     use md_interface
@@ -369,6 +369,7 @@ contains
             ! (note that NPP is added to plabl in and growth resp. is implicitly removed
             ! from plabl above)
             drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+            dnpp(pft) = cminus( dnpp(pft), carbon(drgrow(pft)) )
 
           end if
 
@@ -440,6 +441,7 @@ contains
             ! (note that NPP is added to plabl in and growth resp. is implicitly removed
             ! from plabl above)
             drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+            dnpp(pft) = cminus( dnpp(pft), carbon(drgrow(pft)) )
 
           end if
 
@@ -616,7 +618,7 @@ contains
       canopy_type, get_canopy
     use md_gpp, only: calc_dgpp, calc_drd, mactnv_unitiabs, mlue, mrd_unitiabs
     use md_nuptake, only: calc_dnup, outtype_calc_dnup
-    use md_npp, only: calc_resp_maint, calc_cexu, deactivate_root
+    use md_npp, only: calc_resp_maint, calc_cexu
     use md_findroot_fzeroin
     use md_waterbal, only: solar, evap
     use md_ntransform, only: pninorg
@@ -643,8 +645,6 @@ contains
     type( outtype_zeroin )    :: out_zeroin
     type( outtype_calc_dnup ) :: out_calc_dnup
     type( canopy_type )       :: mycanopy
-
-    mydcleaf = mydcleaf
 
     ! print*,'--- in eval_imbalance with mydcleaf=', mydcleaf
 

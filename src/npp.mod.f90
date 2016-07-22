@@ -27,7 +27,7 @@ module md_npp
   implicit none
 
   private
-  public npp, calc_cexu, calc_resp_maint, deactivate_root, initoutput_npp, &
+  public npp, calc_cexu, calc_resp_maint, initoutput_npp, &
     initio_npp, getout_daily_npp, writeout_ascii_npp
 
   !----------------------------------------------------------------
@@ -79,7 +79,7 @@ contains
 
     real, parameter :: dleaf_die = 0.01
     real, parameter :: droot_die = 0.01
-    real, parameter :: dlabl_die = 0.1
+    real, parameter :: dlabl_die = 0.0
 
 
     ! print*, '---- in npp:'
@@ -142,10 +142,8 @@ contains
 
         call turnover_leaf( dleaf_die, pft, jpngr )
         call turnover_root( droot_die, pft, jpngr )
-        call turnover_labl( droot_die, pft, jpngr )
+        call turnover_labl( dlabl_die, pft, jpngr )
 
-        ! print*,'deactivating root'
-        ! call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
       else if ( dnpp(pft)%c12 - dcex(pft) < 0.0 ) then
         ! negative C balance -> no more allocation to roots (no growth anyways)
         ! print*,'negative balance -> all to leaves ', doy
@@ -176,48 +174,6 @@ contains
     ! print*, '---- finished npp'
 
   end subroutine npp
-
-
-  subroutine deactivate_root( mygpp, mydrleaf, myplabl, myproot, rroot, npp, cexu, dtemp, myplitt )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Calculates amount of root mass supportable by (GPP-Rd+Clabl='avl'), so that
-    ! NPP is zero and doesn't get negative. Moves excess from pool 'myproot' to
-    ! pool 'myplitt'.
-    !-------------------------------------------------------------------------
-    ! argument
-    real, intent(in) :: mygpp
-    real, intent(in) :: mydrleaf
-    real, intent(in) :: myplabl
-    type( orgpool ), intent(inout) :: myproot
-    real, intent(out) :: rroot
-    real, intent(out) :: npp
-    real, intent(out) :: cexu
-    real, intent(in) :: dtemp
-    type( orgpool ), intent(inout), optional :: myplitt
-    
-    ! local variables
-    real :: croot_trgt
-    real :: droot
-    type( orgpool ) :: rm_turn
-
-    real, parameter :: safety = 0.9999
-
-    ! calculate target root mass
-    croot_trgt = safety * ( mygpp - mydrleaf + myplabl) / ( params_plant%r_root + params_plant%exurate )
-    droot      = ( 1.0 - croot_trgt / myproot%c%c12 )
-    rm_turn    = orgfrac( droot, myproot )
-    if (present(myplitt)) then
-      call orgmv( rm_turn, myproot, myplitt )
-    else
-      myproot = orgminus( myproot, rm_turn )
-    end if
-
-    ! update fluxes based on corrected root mass
-    rroot = calc_resp_maint( myproot%c%c12, params_plant%r_root, dtemp )
-    npp   = mygpp - mydrleaf - rroot
-    cexu  = calc_cexu( myproot%c%c12 , dtemp )     
-
-  end subroutine deactivate_root
 
 
   function calc_resp_maint( cmass, rresp, dtemp ) result( resp_maint )
