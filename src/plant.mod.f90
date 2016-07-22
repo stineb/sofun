@@ -737,20 +737,22 @@ contains
     outdfapar(:,:,:) = 0.0
 
     ! annual output variables
-    outanpp(:,:)      = 0.0
-    outanup(:,:)      = 0.0
-    outacex(:,:)      = 0.0
-    outaCveg2lit(:,:) = 0.0
-    outaNveg2lit(:,:) = 0.0
-    outanarea_mb(:,:) = 0.0
-    outanarea_cw(:,:) = 0.0
-    outalai     (:,:) = 0.0
-    outalma     (:,:) = 0.0
-    outacton_lm (:,:) = 0.0
-    outacleaf(:,:)    = 0.0
-    outacroot(:,:)    = 0.0
-    outaclabl(:,:)    = 0.0
-    outanlabl(:,:)    = 0.0
+    if (interface%params_siml%loutplant) then
+      outanpp(:,:)      = 0.0
+      outanup(:,:)      = 0.0
+      outacex(:,:)      = 0.0
+      outaCveg2lit(:,:) = 0.0
+      outaNveg2lit(:,:) = 0.0
+      outanarea_mb(:,:) = 0.0
+      outanarea_cw(:,:) = 0.0
+      outalai     (:,:) = 0.0
+      outalma     (:,:) = 0.0
+      outacton_lm (:,:) = 0.0
+      outacleaf(:,:)    = 0.0
+      outacroot(:,:)    = 0.0
+      outaclabl(:,:)    = 0.0
+      outanlabl(:,:)    = 0.0
+    end if
 
   end subroutine initoutput_plant
 
@@ -843,65 +845,68 @@ contains
     !////////////////////////////////////////////////////////////////
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
     !----------------------------------------------------------------
+    if (interface%params_siml%loutplant) then
 
-    ! C VEGETATION -> LITTER TRANSFER
-    filnam=trim(prefix)//'.a.cveg2lit.out'
-    open(307,file=filnam,err=999,status='unknown')
+      ! C VEGETATION -> LITTER TRANSFER
+      filnam=trim(prefix)//'.a.cveg2lit.out'
+      open(307,file=filnam,err=999,status='unknown')
 
-    ! N VEGETATION -> LITTER TRANSFER
-    filnam=trim(prefix)//'.a.nveg2lit.out'
-    open(308,file=filnam,err=999,status='unknown')
+      ! N VEGETATION -> LITTER TRANSFER
+      filnam=trim(prefix)//'.a.nveg2lit.out'
+      open(308,file=filnam,err=999,status='unknown')
 
-    ! NPP 
-    filnam=trim(prefix)//'.a.npp.out'
-    open(311,file=filnam,err=999,status='unknown')
+      ! NPP 
+      filnam=trim(prefix)//'.a.npp.out'
+      open(311,file=filnam,err=999,status='unknown')
 
-    ! LEAF C
-    filnam=trim(prefix)//'.a.cleaf.out'
-    open(312,file=filnam,err=999,status='unknown')
+      ! LEAF C
+      filnam=trim(prefix)//'.a.cleaf.out'
+      open(312,file=filnam,err=999,status='unknown')
 
-    ! ROOT C
-    filnam=trim(prefix)//'.a.croot.out'
-    open(324,file=filnam,err=999,status='unknown')
+      ! ROOT C
+      filnam=trim(prefix)//'.a.croot.out'
+      open(324,file=filnam,err=999,status='unknown')
 
-    ! N UPTAKE
-    filnam=trim(prefix)//'.a.nup.out'
-    open(317,file=filnam,err=999,status='unknown')
+      ! N UPTAKE
+      filnam=trim(prefix)//'.a.nup.out'
+      open(317,file=filnam,err=999,status='unknown')
 
-    ! C EXUDATION
-    filnam=trim(prefix)//'.a.cex.out'
-    open(405,file=filnam,err=999,status='unknown')
+      ! C EXUDATION
+      filnam=trim(prefix)//'.a.cex.out'
+      open(405,file=filnam,err=999,status='unknown')
 
-    ! LAI (ANNUAL MAXIMUM)
-    filnam=trim(prefix)//'.a.lai.out'
-    open(318,file=filnam,err=999,status='unknown')
+      ! LAI (ANNUAL MAXIMUM)
+      filnam=trim(prefix)//'.a.lai.out'
+      open(318,file=filnam,err=999,status='unknown')
 
-    ! METABOLIC NAREA (AT ANNUAL LAI MAXIMUM)
-    filnam=trim(prefix)//'.a.narea_mb.out'
-    open(319,file=filnam,err=999,status='unknown')
+      ! METABOLIC NAREA (AT ANNUAL LAI MAXIMUM)
+      filnam=trim(prefix)//'.a.narea_mb.out'
+      open(319,file=filnam,err=999,status='unknown')
 
-    ! CELL WALL NAREA (AT ANNUAL LAI MAXIMUM)
-    filnam=trim(prefix)//'.a.narea_cw.out'
-    open(320,file=filnam,err=999,status='unknown')
+      ! CELL WALL NAREA (AT ANNUAL LAI MAXIMUM)
+      filnam=trim(prefix)//'.a.narea_cw.out'
+      open(320,file=filnam,err=999,status='unknown')
 
-    ! LEAF C:N RATIO (AT ANNUAL LAI MAXIMUM)
-    filnam=trim(prefix)//'.a.cton_lm.out'
-    open(321,file=filnam,err=999,status='unknown')
+      ! LEAF C:N RATIO (AT ANNUAL LAI MAXIMUM)
+      filnam=trim(prefix)//'.a.cton_lm.out'
+      open(321,file=filnam,err=999,status='unknown')
 
-    ! LMA (AT ANNUAL LAI MAXIMUM)
-    filnam=trim(prefix)//'.a.lma.out'
-    open(322,file=filnam,err=999,status='unknown')
+      ! LMA (AT ANNUAL LAI MAXIMUM)
+      filnam=trim(prefix)//'.a.lma.out'
+      open(322,file=filnam,err=999,status='unknown')
 
-    ! LABILE C AT THE END OF THE YEAR
-    if (interface%params_siml%loutdClabl) then
-      filnam=trim(prefix)//'.a.clabl.out'
-      open(325,file=filnam,err=999,status='unknown')
-    end if
+      ! LABILE C AT THE END OF THE YEAR
+      if (interface%params_siml%loutdClabl) then
+        filnam=trim(prefix)//'.a.clabl.out'
+        open(325,file=filnam,err=999,status='unknown')
+      end if
 
-    ! LABILE N AT THE END OF THE YEAR
-    if (interface%params_siml%loutdNlabl) then
-      filnam=trim(prefix)//'.a.nlabl.out'
-      open(326,file=filnam,err=999,status='unknown')
+      ! LABILE N AT THE END OF THE YEAR
+      if (interface%params_siml%loutdNlabl) then
+        filnam=trim(prefix)//'.a.nlabl.out'
+        open(326,file=filnam,err=999,status='unknown')
+      end if
+
     end if
 
     return
@@ -946,21 +951,25 @@ contains
     if (interface%params_siml%loutdNlitt ) outdNlitt(:,doy,jpngr) = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
     if (interface%params_siml%loutdfapar ) outdfapar(:,doy,jpngr) = canopy(:)%fapar_ind
 
-    ! this is needed also for other (annual) output variables
-    outdlai(:,doy,jpngr) = lai_ind(:,jpngr)
-    
-    dnarea_mb(:,doy) = leaftraits(:)%narea_metabolic
-    dnarea_cw(:,doy) = leaftraits(:)%narea_structural
-    dcton_lm(:,doy)  = leaftraits(:)%r_cton_leaf
-    dlma(:,doy)      = leaftraits(:)%lma
+    if (interface%params_siml%loutplant) then
+      ! this is needed also for other (annual) output variables
+      outdlai(:,doy,jpngr) = lai_ind(:,jpngr)
+      
+      dnarea_mb(:,doy) = leaftraits(:)%narea_metabolic
+      dnarea_cw(:,doy) = leaftraits(:)%narea_structural
+      dcton_lm(:,doy)  = leaftraits(:)%r_cton_leaf
+      dlma(:,doy)      = leaftraits(:)%lma
+    end if
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    outanpp(:,jpngr) = outanpp(:,jpngr) + dnpp(:)%c12
-    outanup(:,jpngr) = outanup(:,jpngr) + dnup(:)%n14
-    outacex(:,jpngr) = outacex(:,jpngr) + dcex(:)
+    if (interface%params_siml%loutplant) then
+      outanpp(:,jpngr) = outanpp(:,jpngr) + dnpp(:)%c12
+      outanup(:,jpngr) = outanup(:,jpngr) + dnup(:)%n14
+      outacex(:,jpngr) = outacex(:,jpngr) + dcex(:)
+    end if
 
   end subroutine getout_daily_plant
 
@@ -1087,20 +1096,22 @@ contains
     !-------------------------------------------------------------------------
     itime = real(interface%steering%outyear)
 
-    write(307,999) itime, sum(outaCveg2lit(:,jpngr))
-    write(308,999) itime, sum(outaNveg2lit(:,jpngr))
-    write(311,999) itime, sum(outanpp(:,jpngr))
-    write(312,999) itime, sum(outacleaf(:,jpngr))
-    write(324,999) itime, sum(outacroot(:,jpngr))
-    write(317,999) itime, sum(outanup(:,jpngr))
-    write(405,999) itime, sum(outacex(:,jpngr))
-    write(318,999) itime, sum(outalai(:,jpngr))
-    write(319,999) itime, sum(outanarea_mb(:,jpngr))
-    write(320,999) itime, sum(outanarea_cw(:,jpngr))
-    write(321,999) itime, sum(outacton_lm(:,jpngr))
-    write(322,999) itime, sum(outalma(:,jpngr))
-    if (interface%params_siml%loutdClabl) write(325,999) itime, sum(outaclabl(:,jpngr))
-    if (interface%params_siml%loutdNlabl) write(326,999) itime, sum(outanlabl(:,jpngr))
+    if (interface%params_siml%loutplant) then
+      write(307,999) itime, sum(outaCveg2lit(:,jpngr))
+      write(308,999) itime, sum(outaNveg2lit(:,jpngr))
+      write(311,999) itime, sum(outanpp(:,jpngr))
+      write(312,999) itime, sum(outacleaf(:,jpngr))
+      write(324,999) itime, sum(outacroot(:,jpngr))
+      write(317,999) itime, sum(outanup(:,jpngr))
+      write(405,999) itime, sum(outacex(:,jpngr))
+      write(318,999) itime, sum(outalai(:,jpngr))
+      write(319,999) itime, sum(outanarea_mb(:,jpngr))
+      write(320,999) itime, sum(outanarea_cw(:,jpngr))
+      write(321,999) itime, sum(outacton_lm(:,jpngr))
+      write(322,999) itime, sum(outalma(:,jpngr))
+      if (interface%params_siml%loutdClabl) write(325,999) itime, sum(outaclabl(:,jpngr))
+      if (interface%params_siml%loutdNlabl) write(326,999) itime, sum(outanlabl(:,jpngr))
+    end if
 
     return
 

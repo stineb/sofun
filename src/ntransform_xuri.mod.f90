@@ -525,22 +525,22 @@ contains
       filnam=trim(prefix)//'.d.n2o.out'
       open(505,file=filnam,err=888,status='unknown')
 
+      !----------------------------------------------------------------
+      ! ANNUAL OUTPUT
+      !----------------------------------------------------------------
+      ! ANNUAL TOTAL N LOSS (gN/m2/yr)
+      filnam=trim(prefix)//'.a.nloss.out'
+      open(550,file=filnam,err=888,status='unknown')
+
+      ! ANNUAL N2O EMISSIONS (gN/m2/yr)
+      filnam=trim(prefix)//'.a.n2o.out'
+      open(551,file=filnam,err=888,status='unknown')
+
+      ! INORGANIC N (mean over days)
+      filnam=trim(prefix)//'.a.ninorg.out'
+      open(316,file=filnam,err=888,status='unknown')
+
     end if
-
-    !----------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    !----------------------------------------------------------------
-    ! ANNUAL TOTAL N LOSS (gN/m2/yr)
-    filnam=trim(prefix)//'.a.nloss.out'
-    open(550,file=filnam,err=888,status='unknown')
-
-    ! ANNUAL N2O EMISSIONS (gN/m2/yr)
-    filnam=trim(prefix)//'.a.n2o.out'
-    open(551,file=filnam,err=888,status='unknown')
-
-    ! INORGANIC N (mean over days)
-    filnam=trim(prefix)//'.a.ninorg.out'
-    open(316,file=filnam,err=888,status='unknown')
 
     return
 
@@ -572,12 +572,12 @@ contains
       outdnleach(:,:,:) = 0.0
       outdn2o(:,:,:)    = 0.0
       outdninorg(:,:,:) = 0.0
+      
+      outanloss(:,:)  = 0.0
+      outan2o(:,:)    = 0.0
+      outaninorg(:,:) = 0.0
 
     end if
-      
-    outanloss(:,:)  = 0.0
-    outan2o(:,:)    = 0.0
-    outaninorg(:,:) = 0.0
 
   end subroutine initoutput_ntransform
 
@@ -593,11 +593,11 @@ contains
     integer, intent(in) :: moy    
     integer, intent(in) :: doy    
 
-    !----------------------------------------------------------------
-    ! DAILY
-    ! Collect daily output variables
-    !----------------------------------------------------------------
     if (interface%params_siml%loutntransform) then
+      !----------------------------------------------------------------
+      ! DAILY
+      ! Collect daily output variables
+      !----------------------------------------------------------------
       outdnloss(:,doy,jpngr)  = dnloss(:)
       outddenitr(:,doy,jpngr) = ddenitr(:)
       outdnitr(:,doy,jpngr)   = dnitr(:)
@@ -605,15 +605,16 @@ contains
       outdnleach(:,doy,jpngr) = dnleach(:)
       outdn2o(:,doy,jpngr)    = dn2o(:)
       outdninorg(:,doy,jpngr) = pninorg(:,jpngr)%n14
-    end if
 
-    !----------------------------------------------------------------
-    ! ANNUAL SUM OVER DAILY VALUES
-    ! Collect annual output variables as sum of daily values
-    !----------------------------------------------------------------
-    outaninorg(:,jpngr)= outaninorg(:,jpngr) + pninorg(:,jpngr)%n14 / ndayyear
-    outanloss(:,jpngr) = outanloss(:,jpngr) + dnloss(:)
-    outan2o(:,jpngr)   = outan2o(:,jpngr) + dn2o(:)
+      !----------------------------------------------------------------
+      ! ANNUAL SUM OVER DAILY VALUES
+      ! Collect annual output variables as sum of daily values
+      !----------------------------------------------------------------
+      outaninorg(:,jpngr)= outaninorg(:,jpngr) + pninorg(:,jpngr)%n14 / ndayyear
+      outanloss(:,jpngr) = outanloss(:,jpngr) + dnloss(:)
+      outan2o(:,jpngr)   = outan2o(:,jpngr) + dn2o(:)
+
+    end if
 
   end subroutine getout_daily_ntransform
 
@@ -662,18 +663,19 @@ contains
 
         end do
       end if
+
+      !-------------------------------------------------------------------------
+      ! ANNUAL OUTPUT
+      ! Write annual value, summed over all PFTs / LUs
+      ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+      !-------------------------------------------------------------------------
+      itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
+
+      write(316,999) itime, sum(outaninorg(:,myjpngr))
+      write(550,999) itime, sum(outanloss(:,myjpngr))
+      write(551,999) itime, sum(outan2o(:,myjpngr))
+
     end if
-
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
-
-    write(316,999) itime, sum(outaninorg(:,myjpngr))
-    write(550,999) itime, sum(outanloss(:,myjpngr))
-    write(551,999) itime, sum(outan2o(:,myjpngr))
 
     ! write(0,*) 'outan2o written to output ', sum(outan2o(:,myjpngr))
 

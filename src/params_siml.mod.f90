@@ -66,11 +66,16 @@ module md_params_siml
     logical :: loutdninorg    
     logical :: loutdtemp_soil 
 
+    ! booleans defining whether module-specific output variables are to be written to output
+    logical :: loutplant
+    logical :: loutalloc
+    logical :: loutgpp
     logical :: loutnpp
     logical :: loutntransform
     logical :: loutwaterbal  
     logical :: loutlittersom
     logical :: loutnuptake
+    logical :: loutlanduse
 
   end type paramstype_siml
 
@@ -298,11 +303,15 @@ contains
     out_getpar_siml%loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
     
+    out_getpar_siml%loutplant      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
+    out_getpar_siml%loutalloc      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutalloc' )
+    out_getpar_siml%loutgpp        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutgpp' )
     out_getpar_siml%loutnpp        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnpp' )
     out_getpar_siml%loutntransform = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutntransform') 
     out_getpar_siml%loutwaterbal   = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal')
     out_getpar_siml%loutlittersom  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlittersom' )
     out_getpar_siml%loutnuptake    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnuptake' )
+    out_getpar_siml%loutlanduse    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlanduse' )
 
     write(0,*) "... done"
 

@@ -1403,21 +1403,25 @@ contains
     !----------------------------------------------------------------
     ! ANNUAL OUTPUT
     !----------------------------------------------------------------
-    ! GPP 
-    filnam=trim(prefix)//'.a.gpp.out'
-    open(310,file=filnam,err=888,status='unknown')
+    if (interface%params_siml%loutgpp) then
 
-    ! VCMAX (annual maximum) (mol m-2 s-1)
-    filnam=trim(prefix)//'.a.vcmax.out'
-    open(323,file=filnam,err=888,status='unknown')
+      ! GPP 
+      filnam=trim(prefix)//'.a.gpp.out'
+      open(310,file=filnam,err=888,status='unknown')
 
-    ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
-    filnam=trim(prefix)//'.a.chi.out'
-    open(652,file=filnam,err=888,status='unknown')
+      ! VCMAX (annual maximum) (mol m-2 s-1)
+      filnam=trim(prefix)//'.a.vcmax.out'
+      open(323,file=filnam,err=888,status='unknown')
 
-    ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
-    filnam=trim(prefix)//'.a.lue.out'
-    open(653,file=filnam,err=888,status='unknown')
+      ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
+      filnam=trim(prefix)//'.a.chi.out'
+      open(652,file=filnam,err=888,status='unknown')
+
+      ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
+      filnam=trim(prefix)//'.a.lue.out'
+      open(653,file=filnam,err=888,status='unknown')
+
+    end if
 
     return
 
@@ -1450,10 +1454,12 @@ contains
     outmtransp(:,:,:) = 0.0
 
     ! annual
-    outagpp(:,:)   = 0.0
-    outavcmax(:,:) = 0.0
-    outachi(:,:)   = 0.0
-    outalue(:,:)   = 0.0
+    if (interface%params_siml%loutgpp) then
+      outagpp(:,:)   = 0.0
+      outavcmax(:,:) = 0.0
+      outachi(:,:)   = 0.0
+      outalue(:,:)   = 0.0
+    end if
 
   end subroutine initoutput_gpp
 
@@ -1494,7 +1500,9 @@ contains
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    outagpp(:,jpngr) = outagpp(:,jpngr) + dgpp(:)
+    if (interface%params_siml%loutgpp) then
+      outagpp(:,jpngr) = outagpp(:,jpngr) + dgpp(:)
+    end if
 
     ! store all daily values for outputting annual maximum
     outdvcmax_canop(:,doy) = vcmax_canop(:)
@@ -1562,12 +1570,16 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(interface%steering%outyear)
+    if (interface%params_siml%loutgpp) then
+  
+      itime = real(interface%steering%outyear)
 
-    write(310,999) itime, sum(outagpp(:,jpngr))
-    write(323,999) itime, sum(outavcmax(:,jpngr))
-    write(652,999) itime, sum(outachi(:,jpngr))
-    write(653,999) itime, sum(outalue(:,jpngr))
+      write(310,999) itime, sum(outagpp(:,jpngr))
+      write(323,999) itime, sum(outavcmax(:,jpngr))
+      write(652,999) itime, sum(outachi(:,jpngr))
+      write(653,999) itime, sum(outalue(:,jpngr))
+
+    end if
 
     return
     

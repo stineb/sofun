@@ -219,20 +219,24 @@ contains
     use md_params_core, only: npft, ndayyear, maxgrid
     use md_interface
 
-    if (interface%steering%init .and. interface%params_siml%loutnpp) then
-      allocate( outdrleaf(npft,ndayyear,maxgrid) )
-      allocate( outdrroot(npft,ndayyear,maxgrid) )
-      allocate( outdrgrow(npft,ndayyear,maxgrid) )
+    if (interface%params_siml%loutnpp) then
+
+      if (interface%steering%init) then
+        allocate( outdrleaf(npft,ndayyear,maxgrid) )
+        allocate( outdrroot(npft,ndayyear,maxgrid) )
+        allocate( outdrgrow(npft,ndayyear,maxgrid) )
+      end if
+
+      outdrleaf(:,:,:) = 0.0
+      outdrroot(:,:,:) = 0.0
+      outdrgrow(:,:,:) = 0.0
+
+      ! annual output variables
+      outarleaf(:,:) = 0.0
+      outarroot(:,:) = 0.0
+      outargrow(:,:) = 0.0
+
     end if
-
-    outdrleaf(:,:,:) = 0.0
-    outdrroot(:,:,:) = 0.0
-    outdrgrow(:,:,:) = 0.0
-
-    ! annual output variables
-    outarleaf(:,:) = 0.0
-    outarroot(:,:) = 0.0
-    outargrow(:,:) = 0.0
 
   end subroutine initoutput_npp
 
@@ -266,24 +270,24 @@ contains
       filnam=trim(prefix)//'.d.rgrow.out'
       open(454,file=filnam,err=999,status='unknown')
 
+
+      !////////////////////////////////////////////////////////////////
+      ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
+      !----------------------------------------------------------------
+
+      ! LEAF RESPIRATION
+      filnam=trim(prefix)//'.a.rleaf.out'
+      open(452,file=filnam,err=999,status='unknown')
+
+      ! ROOT RESPIRATION
+      filnam=trim(prefix)//'.a.rroot.out'
+      open(453,file=filnam,err=999,status='unknown')
+
+      ! GRWOTH RESPIRATION
+      filnam=trim(prefix)//'.a.rgrow.out'
+      open(455,file=filnam,err=999,status='unknown')
+
     end if
-
-
-    !////////////////////////////////////////////////////////////////
-    ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
-    !----------------------------------------------------------------
-
-    ! LEAF RESPIRATION
-    filnam=trim(prefix)//'.a.rleaf.out'
-    open(452,file=filnam,err=999,status='unknown')
-
-    ! ROOT RESPIRATION
-    filnam=trim(prefix)//'.a.rroot.out'
-    open(453,file=filnam,err=999,status='unknown')
-
-    ! GRWOTH RESPIRATION
-    filnam=trim(prefix)//'.a.rgrow.out'
-    open(455,file=filnam,err=999,status='unknown')
 
     return
 
@@ -308,23 +312,25 @@ contains
     integer, intent(in) :: moy
     integer, intent(in) :: doy
 
-    !----------------------------------------------------------------
-    ! DAILY
-    ! Collect daily output variables
-    ! so far not implemented for isotopes
-    !----------------------------------------------------------------
-    if (interface%params_siml%loutnpp) outdrleaf(:,doy,jpngr) = drleaf(:)
-    if (interface%params_siml%loutnpp) outdrroot(:,doy,jpngr) = drroot(:)
-    if (interface%params_siml%loutnpp) outdrgrow(:,doy,jpngr) = drgrow(:)
+    if (interface%params_siml%loutnpp) then
+      !----------------------------------------------------------------
+      ! DAILY
+      ! Collect daily output variables
+      ! so far not implemented for isotopes
+      !----------------------------------------------------------------
+      outdrleaf(:,doy,jpngr) = drleaf(:)
+      outdrroot(:,doy,jpngr) = drroot(:)
+      outdrgrow(:,doy,jpngr) = drgrow(:)
 
-    !----------------------------------------------------------------
-    ! ANNUAL SUM OVER DAILY VALUES
-    ! Collect annual output variables as sum of daily values
-    !----------------------------------------------------------------
-    outarleaf(:,jpngr) = outarleaf(:,jpngr) + drleaf(:)
-    outarroot(:,jpngr) = outarroot(:,jpngr) + drroot(:)
-    outargrow(:,jpngr) = outargrow(:,jpngr) + drgrow(:)
+      !----------------------------------------------------------------
+      ! ANNUAL SUM OVER DAILY VALUES
+      ! Collect annual output variables as sum of daily values
+      !----------------------------------------------------------------
+      outarleaf(:,jpngr) = outarleaf(:,jpngr) + drleaf(:)
+      outarroot(:,jpngr) = outarroot(:,jpngr) + drroot(:)
+      outargrow(:,jpngr) = outargrow(:,jpngr) + drgrow(:)
 
+    end if
 
   end subroutine getout_daily_npp
 
@@ -354,12 +360,12 @@ contains
     !-------------------------------------------------------------------------
     if (nlu>1) stop 'Output only for one LU category implemented.'
 
-    !-------------------------------------------------------------------------
-    ! DAILY OUTPUT
-    ! Write daily value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
     if (interface%params_siml%loutnpp) then
+      !-------------------------------------------------------------------------
+      ! DAILY OUTPUT
+      ! Write daily value, summed over all PFTs / LUs
+      ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+      !-------------------------------------------------------------------------
       if ( .not. interface%steering%spinup &
         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
@@ -375,19 +381,21 @@ contains
           write(454,999) itime, sum(outdrgrow(:,day,jpngr))
 
         end do
+
+        !-------------------------------------------------------------------------
+        ! ANNUAL OUTPUT
+        ! Write annual value, summed over all PFTs / LUs
+        ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+        !-------------------------------------------------------------------------
+        itime = real(interface%steering%outyear)
+
+        write(452,999) itime, outarleaf(:,jpngr)
+        write(453,999) itime, outarroot(:,jpngr)
+        write(455,999) itime, outargrow(:,jpngr)
+
       end if
+
     end if
-
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    itime = real(interface%steering%outyear)
-
-    write(452,999) itime, outarleaf(:,jpngr)
-    write(453,999) itime, outarroot(:,jpngr)
-    write(455,999) itime, outargrow(:,jpngr)
 
     return
 
