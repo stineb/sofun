@@ -944,18 +944,18 @@ contains
     if (interface%params_siml%loutdlai   ) outdlai(:,doy,jpngr)   = lai_ind(:,jpngr)
     if (interface%params_siml%loutdfapar ) outdfapar(:,doy,jpngr) = canopy(:)%fapar_ind
     
-    dnarea_mb(:,doy)           = leaftraits(:)%narea_metabolic
-    dnarea_cw(:,doy)           = leaftraits(:)%narea_structural
-    dcton_lm(:,doy)            = leaftraits(:)%r_cton_leaf
-    dlma(:,doy)                = leaftraits(:)%lma
+    dnarea_mb(:,doy) = leaftraits(:)%narea_metabolic
+    dnarea_cw(:,doy) = leaftraits(:)%narea_structural
+    dcton_lm(:,doy)  = leaftraits(:)%r_cton_leaf
+    dlma(:,doy)      = leaftraits(:)%lma
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    outanpp(:,jpngr)    = outanpp(:,jpngr) + dnpp(:)%c12
-    outanup(:,jpngr)    = outanup(:,jpngr) + dnup(:)%n14
-    outacex(:,jpngr)    = outacex(:,jpngr) + dcex(:)
+    outanpp(:,jpngr) = outanpp(:,jpngr) + dnpp(:)%c12
+    outanup(:,jpngr) = outanup(:,jpngr) + dnup(:)%n14
+    outacex(:,jpngr) = outacex(:,jpngr) + dcex(:)
 
   end subroutine getout_daily_plant
 

@@ -30,10 +30,10 @@ module md_gpp
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
-  real, dimension(npft)        :: dgpp             ! gross primary production [gC/m2/d]
+  real, dimension(npft)        :: dgpp             ! daily gross primary production [gC/m2/d]
   real, dimension(npft)        :: dtransp          ! daily transpiration [mm]
-  real, dimension(npft)        :: drd              ! dark respiration [gC/m2/d]
-  real, dimension(npft)        :: vcmax_canop      ! canopy-level Vcmax
+  real, dimension(npft)        :: drd              ! daily dark respiration [gC/m2/d]
+  real, dimension(npft)        :: vcmax_canop      ! canopy-level Vcmax [gCO2/m2/s]
   real, dimension(npft,nmonth) :: mlue             ! Light use efficiency: (gpp - rd) per unit light absorbed
   real, dimension(npft,nmonth) :: mactnv_unitiabs  ! conversion factor to get from APAR to Rubisco-N
   real, dimension(npft,nmonth) :: mrd_unitiabs     ! dark respiration per unit fAPAR (assuming fAPAR=1)
@@ -42,18 +42,18 @@ module md_gpp
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
-  real, allocatable, dimension(:,:,:) :: outdgpp
-  real, allocatable, dimension(:,:,:) :: outdrd
-  real, allocatable, dimension(:,:,:) :: outdtransp
+  real, allocatable, dimension(:,:,:) :: outdgpp    ! daily gross primary production [gC/m2/d]
+  real, allocatable, dimension(:,:,:) :: outdrd     ! daily dark respiration [gC/m2/d]
+  real, allocatable, dimension(:,:,:) :: outdtransp ! daily transpiration [mm]
 
   ! monthly
-  real, allocatable, dimension(:,:,:) :: outmgpp
-  real, allocatable, dimension(:,:,:) :: outmrd
-  real, allocatable, dimension(:,:,:) :: outmtransp
+  real, allocatable, dimension(:,:,:) :: outmgpp    ! monthly gross primary production [gC/m2/mo.]
+  real, allocatable, dimension(:,:,:) :: outmrd     ! monthly dark respiration [gC/m2/mo.]
+  real, allocatable, dimension(:,:,:) :: outmtransp ! monthly transpiration [mm]
 
   ! annual
-  real, dimension(npft,maxgrid) :: outagpp
-  real, dimension(npft,maxgrid) :: outavcmax
+  real, dimension(npft,maxgrid) :: outagpp          ! annual gross primary production [gC/m2/a]
+  real, dimension(npft,maxgrid) :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
   real, dimension(npft,maxgrid) :: outachi
   real, dimension(npft,maxgrid) :: outalue
 
@@ -498,8 +498,8 @@ contains
 
   function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd, dtemp, cpalpha ) result( my_vcmax )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level metabolic N content per unit leaf area as a
-    ! function of Vcmax25.
+    ! Calculates canopy-level carboxylation capacity (Vcmax). To get
+    ! value per unit leaf area, divide by LAI.
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: fapar
@@ -509,7 +509,7 @@ contains
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
-    real :: my_vcmax
+    real :: my_vcmax 
 
     ! local variables
     real :: fa
@@ -560,15 +560,15 @@ contains
     real :: n
     real :: gpp                      ! assimilation (mol m-2 s-1)
     real :: lue                      ! Light use efficiency
-    real :: vcmax                    ! Vcmax per unit ground area (mol m-2 s-1)
-    real :: vcmax_unitfapar
-    real :: vcmax_unitiabs
-    real :: vcmax25                  ! Vcmax25 (vcmax normalized to 25 deg C)
-    real :: vcmax25_unitfapar
-    real :: vcmax25_unitiabs
-    real :: rd                       ! Dark respiration (mol m-2 s-1)
-    real :: rd_unitfapar 
-    real :: rd_unitiabs 
+    real :: vcmax                    ! Vcmax per unit ground area (mol CO2 m-2 s-1)
+    real :: vcmax_unitfapar          ! Vcmax per fAPAR (mol CO2 m-2 s-1)
+    real :: vcmax_unitiabs           ! Vcmax per unit absorbed light 
+    real :: vcmax25                  ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
+    real :: vcmax25_unitfapar        ! Vcmax25 per fAPAR (mol CO2 m-2 s-1)
+    real :: vcmax25_unitiabs         ! Vcmax25 per unit absorbed light
+    real :: rd                       ! Dark respiration (mol CO2 m-2 s-1)
+    real :: rd_unitfapar             ! Dark respiration per fAPAR (mol CO2 m-2 s-1)
+    real :: rd_unitiabs              ! Dark respiration per unit absorbed light (mol CO2 m-2 s-1)
     real :: factor25_vcmax           ! correction factor to normalise Vcmax to 25 deg C
     real :: actnv 
     real :: actnv_unitfapar 
