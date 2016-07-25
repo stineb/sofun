@@ -287,7 +287,7 @@ contains
           inquire( file='./input/'//trim(filnam), exist=file_exists )
           if ( file_exists ) tmp(:) = read1year_daily( trim(filnam) )
         end do   
-        write(0,*) 'GETLANDUSE: found harvest data for first year  ', findyear
+        write(0,*) 'GETLANDUSE: found harvest data for first year  ', landuseyear_char
       end if
 
       ! translate zeros and ones to boolean

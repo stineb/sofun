@@ -457,8 +457,8 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) 'calling getout_daily_*() ... '
         call getout_daily_waterbal( jpngr, moy, day )
         call getout_daily_soiltemp( jpngr, moy, day )
-        call getout_daily_gpp( jpngr, moy, day )
         call getout_daily_plant( jpngr, moy, day )
+        call getout_daily_gpp( jpngr, moy, day )
         call getout_daily_npp( jpngr, moy, day )
         call getout_daily_ntransform( jpngr, moy, day )
         call getout_daily_nuptake( jpngr, moy, day )
@@ -473,8 +473,8 @@ subroutine biosphere( c_uptake )
     ! collect annually updated output variables
     !----------------------------------------------------------------
     if (verbose) write(0,*) 'calling getout_annual() ... '
-    call getout_annual_gpp( jpngr )
     call getout_annual_plant( jpngr )
+    call getout_annual_gpp( jpngr )   ! warning: getout_daily_plant needs to be called before
     call getout_annual_littersom( jpngr )
     call getout_annual_landuse( jpngr )
     if (verbose) write(0,*) '... done'

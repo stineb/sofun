@@ -23,7 +23,8 @@ module md_plant
     initoutput_plant, initio_plant, getout_daily_plant,                   &
     getout_annual_plant, writeout_ascii_plant, getpar_modl_plant,         &
     leaftraits_type, get_leaftraits, get_leaf_n_canopy, canopy_type,      & 
-    get_canopy, seed, get_lai, get_leaftraits_init, frac_leaf
+    get_canopy, seed, get_lai, get_leaftraits_init, frac_leaf,            &
+    maxlai, maxdoy
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -177,6 +178,10 @@ module md_plant
   real, dimension(npft,maxgrid) :: outacleaf
   real, dimension(npft,maxgrid) :: outaclabl
   real, dimension(npft,maxgrid) :: outanlabl
+
+  ! required for outputting leaf trait variables in other modules
+  integer, dimension(npft) :: maxdoy  ! DOY of maximum LAI
+  real, dimension(npft)    :: maxlai  ! annual maximum LAI
 
 contains
 
@@ -951,10 +956,10 @@ contains
     if (interface%params_siml%loutdNlitt ) outdNlitt(:,doy,jpngr) = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
     if (interface%params_siml%loutdfapar ) outdfapar(:,doy,jpngr) = canopy(:)%fapar_ind
 
-    if (interface%params_siml%loutplant) then
-      ! this is needed also for other (annual) output variables
-      outdlai(:,doy,jpngr) = lai_ind(:,jpngr)
+    ! this is needed also for other (annual) output variables
+    outdlai(:,doy,jpngr) = lai_ind(:,jpngr)
       
+    if (interface%params_siml%loutplant) then
       dnarea_mb(:,doy) = leaftraits(:)%narea_metabolic
       dnarea_cw(:,doy) = leaftraits(:)%narea_structural
       dcton_lm(:,doy)  = leaftraits(:)%r_cton_leaf
@@ -987,31 +992,31 @@ contains
     ! local variables
     integer :: pft
     integer :: doy
-    integer :: maxdoy
-    real    :: maxlai
+
+    maxlai(:) = 0.0
+    maxdoy(:) = 1
 
     ! Output annual value at day of peak LAI
     do pft=1,npft
-
-      maxdoy = 1
-      maxlai = outdlai(pft,1,jpngr)
+      maxdoy(pft) = 1
+      maxlai(pft) = outdlai(pft,1,jpngr)
       do doy=2,ndayyear
-        if ( outdlai(pft,doy,jpngr) > maxlai ) then
-          maxlai = outdlai(pft,doy,jpngr)
-          maxdoy = doy
+        if ( outdlai(pft,doy,jpngr) > maxlai(pft) ) then
+          maxlai(pft) = outdlai(pft,doy,jpngr)
+          maxdoy(pft) = doy
         end if
       end do
+      
+      outacleaf   (pft,jpngr) = outdCleaf(pft,maxdoy(pft),jpngr)
+      outacroot   (pft,jpngr) = outdCroot(pft,maxdoy(pft),jpngr) 
+      outanarea_mb(pft,jpngr) = dnarea_mb(pft,maxdoy(pft))
+      outanarea_cw(pft,jpngr) = dnarea_cw(pft,maxdoy(pft))
+      outalai     (pft,jpngr) = maxlai(pft)
+      outalma     (pft,jpngr) = dlma(pft,maxdoy(pft))
+      outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy(pft))
 
-      outacleaf   (pft,jpngr) = outdCleaf(pft,maxdoy,jpngr)
-      outacroot   (pft,jpngr) = outdCroot(pft,maxdoy,jpngr) 
-      outanarea_mb(pft,jpngr) = dnarea_mb(pft,maxdoy)
-      outanarea_cw(pft,jpngr) = dnarea_cw(pft,maxdoy)
-      outalai     (pft,jpngr) = maxlai
-      outalma     (pft,jpngr) = dlma(pft,maxdoy)
-      outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy)
-
-      if (interface%params_siml%loutdClabl) outaclabl   (pft,jpngr) = outdClabl(pft,ndayyear,jpngr) ! taken at the end of the year
-      if (interface%params_siml%loutdNlabl) outanlabl   (pft,jpngr) = outdNlabl(pft,ndayyear,jpngr) ! taken at the end of the year
+      if (interface%params_siml%loutdClabl) outaclabl(pft,jpngr) = outdClabl(pft,ndayyear,jpngr) ! taken at the end of the year
+      if (interface%params_siml%loutdNlabl) outanlabl(pft,jpngr) = outdNlabl(pft,ndayyear,jpngr) ! taken at the end of the year
 
     end do
 

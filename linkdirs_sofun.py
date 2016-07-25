@@ -12,7 +12,7 @@ import os.path
 ## - "fluxnet_fixalloc"
 ## - "atkin"
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet_cnmodel'
+simsuite = 'atkin'
 
 ##--------------------------------------------------------------------
 ## Link directories

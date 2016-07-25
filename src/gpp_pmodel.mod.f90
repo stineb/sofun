@@ -30,36 +30,10 @@ module md_gpp
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
-  real, dimension(npft)        :: dgpp             ! daily gross primary production [gC/m2/d]
-  real, dimension(npft)        :: dtransp          ! daily transpiration [mm]
-  real, dimension(npft)        :: drd              ! daily dark respiration [gC/m2/d]
-  real, dimension(npft)        :: vcmax_canop      ! canopy-level Vcmax [gCO2/m2/s]
-  real, dimension(npft,nmonth) :: mlue             ! Light use efficiency: (gpp - rd) per unit light absorbed
-  real, dimension(npft,nmonth) :: mactnv_unitiabs  ! conversion factor to get from APAR to Rubisco-N
-  real, dimension(npft,nmonth) :: mrd_unitiabs     ! dark respiration per unit fAPAR (assuming fAPAR=1)
-
-  !----------------------------------------------------------------
-  ! Module-specific output variables
-  !----------------------------------------------------------------
-  ! daily
-  real, allocatable, dimension(:,:,:) :: outdgpp    ! daily gross primary production [gC/m2/d]
-  real, allocatable, dimension(:,:,:) :: outdrd     ! daily dark respiration [gC/m2/d]
-  real, allocatable, dimension(:,:,:) :: outdtransp ! daily transpiration [mm]
-
-  ! monthly
-  real, allocatable, dimension(:,:,:) :: outmgpp    ! monthly gross primary production [gC/m2/mo.]
-  real, allocatable, dimension(:,:,:) :: outmrd     ! monthly dark respiration [gC/m2/mo.]
-  real, allocatable, dimension(:,:,:) :: outmtransp ! monthly transpiration [mm]
-
-  ! annual
-  real, dimension(npft,maxgrid) :: outagpp          ! annual gross primary production [gC/m2/a]
-  real, dimension(npft,maxgrid) :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
-  real, dimension(npft,maxgrid) :: outachi
-  real, dimension(npft,maxgrid) :: outalue
-
-  ! These are stored as dayly variables for annual output
-  ! at day of year when LAI is at its maximum.
-  real, dimension(npft,ndayyear) :: outdvcmax_canop
+  real, dimension(npft) :: dgpp             ! daily gross primary production [gC/m2/d]
+  real, dimension(npft) :: dtransp          ! daily transpiration [mm]
+  real, dimension(npft) :: drd              ! daily dark respiration [gC/m2/d]
+  real, dimension(npft) :: dvcmax_canop     ! canopy-level Vcmax [gCO2/m2-ground/s]
 
   !-----------------------------------------------------------------------
   ! Known parameters, therefore hard-wired.
@@ -78,7 +52,7 @@ module md_gpp
   real, parameter :: cat_turnover_per_site = 2.33     ! catalytic turnover rate per site at 25 deg C, (mol CO2)(mol R sites)-1; use 2.33 instead of (3.5) as not all Rubisco is active (see Harrison et al., 2009)  
   real, parameter :: cat_sites_per_mol_R   = 8.0      ! number of catalytic sites per mol R, (mol R sites)(mol R)-1
 
-  ! Metabolic N ratio (mol N s (mol CO2)-1 )
+  ! Metabolic N ratio (= 336.3734 mol N s (mol CO2)-1 )
   real, parameter :: n_v = mol_weight_rubisco * n_conc_rubisco / ( cat_turnover_per_site * cat_sites_per_mol_R )
 
   !-----------------------------------------------------------------------
@@ -149,7 +123,7 @@ module md_gpp
     real :: vcmax25               ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
     real :: vcmax_unitfapar       ! Vcmax per fAPAR (mol CO2 m-2 s-1)
     real :: vcmax_unitiabs        ! Vcmax per unit absorbed light (xxx units)
-    real :: factor25_vcmax        ! correction factor to normalise Vcmax to 25 deg C (xxx units)
+    real :: factor25_vcmax        ! correction factor to normalise Vcmax to 25 deg C
     real :: rd                    ! Dark respiration (mol CO2 m-2 s-1)
     real :: rd_unitfapar          ! Dark respiration per fAPAR (mol CO2 m-2 s-1)
     real :: rd_unitiabs           ! Dark respiration per unit absorbed light (mol CO2 m-2 s-1)
@@ -169,6 +143,31 @@ module md_gpp
     real :: m
     real :: n
   end type outtype_lue
+
+  !----------------------------------------------------------------
+  ! Module-specific output variables
+  !----------------------------------------------------------------
+  ! daily
+  real, allocatable, dimension(:,:,:) :: outdgpp    ! daily gross primary production [gC/m2/d]
+  real, allocatable, dimension(:,:,:) :: outdrd     ! daily dark respiration [gC/m2/d]
+  real, allocatable, dimension(:,:,:) :: outdtransp ! daily transpiration [mm]
+
+  ! monthly
+  real, allocatable, dimension(:,:,:) :: outmgpp    ! monthly gross primary production [gC/m2/mo.]
+  real, allocatable, dimension(:,:,:) :: outmrd     ! monthly dark respiration [gC/m2/mo.]
+  real, allocatable, dimension(:,:,:) :: outmtransp ! monthly transpiration [mm]
+
+  ! annual
+  real, dimension(npft,maxgrid) :: outagpp          ! annual gross primary production [gC/m2/a]
+  real, dimension(npft,maxgrid) :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  real, dimension(npft,maxgrid) :: outavcmax25      ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  real, dimension(npft,maxgrid) :: outachi
+  real, dimension(npft,maxgrid) :: outalue
+
+  ! These are stored as dayly variables for annual output
+  ! at day of year when LAI is at its maximum.
+  real, dimension(npft,ndayyear) :: outdvcmax
+  real, dimension(npft,ndayyear) :: outdvcmax25
 
 contains
 
@@ -228,16 +227,16 @@ contains
         dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), out_pmodel(pft,moy)%transp_unitiabs, dtemp, evap(lu)%cpa )
         ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), out_pmodel(pft,moy)%transp_unitiabs, dtemp )
 
-        ! Vcmax
-        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, out_pmodel(pft,moy)%vcmax_unitiabs, solar%meanmppfd(moy), dtemp, evap(lu)%cpa )
-        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, out_pmodel(pft,moy)%vcmax_unitiabs, solar%meanmppfd(moy), dtemp )
+        ! Vcmax (actually changes only monthly)
+        dvcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, out_pmodel(pft,moy)%vcmax_unitiabs, solar%meanmppfd(moy) )
+        ! dvcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, out_pmodel(pft,moy)%vcmax_unitiabs, solar%meanmppfd(moy) )
 
       else  
 
         dgpp(pft)        = 0.0
         drd(pft)         = 0.0
         dtransp(pft)     = 0.0
-        vcmax_canop(pft) = 0.0
+        dvcmax_canop(pft) = 0.0
 
       end if 
 
@@ -430,7 +429,7 @@ contains
   end function calc_dtransp
 
 
-  function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd, dtemp, cpalpha ) result( my_vcmax )
+  function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd ) result( my_vcmax )
     !//////////////////////////////////////////////////////////////////
     ! Calculates canopy-level carboxylation capacity (Vcmax). To get
     ! value per unit leaf area, divide by LAI.
@@ -439,23 +438,11 @@ contains
     real, intent(in) :: fapar
     real, intent(in) :: my_vcmax_unitiabs
     real, intent(in) :: meanmppfd
-    real, intent(in) :: dtemp              ! this day's air temperature
-    real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
-    real :: my_vcmax 
-
-    ! local variables
-    real :: fa
-
-    if (present(cpalpha)) then
-      fa = calc_fa( cpalpha )
-    else
-      fa = 1.0
-    end if
-
+    real :: my_vcmax    ! canopy-level Vcmax [gCO2/m2-ground/s]
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-    my_vcmax = fapar * meanmppfd * fa * ramp_gpp_lotemp( dtemp ) * my_vcmax_unitiabs
+    my_vcmax = fapar * meanmppfd * my_vcmax_unitiabs
 
   end function calc_vcmax_canop
 
@@ -496,7 +483,7 @@ contains
     real :: lue                      ! Light use efficiency
     real :: vcmax                    ! Vcmax per unit ground area (mol CO2 m-2 s-1)
     real :: vcmax_unitfapar          ! Vcmax per fAPAR (mol CO2 m-2 s-1)
-    real :: vcmax_unitiabs           ! Vcmax per unit absorbed light 
+    real :: vcmax_unitiabs           ! Vcmax per unit absorbed light (mol CO2 m-2 s-1 [mol PPFD]-1)
     real :: vcmax25                  ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
     real :: vcmax25_unitfapar        ! Vcmax25 per fAPAR (mol CO2 m-2 s-1)
     real :: vcmax25_unitiabs         ! Vcmax25 per unit absorbed light
@@ -1368,6 +1355,10 @@ contains
       filnam=trim(prefix)//'.a.vcmax.out'
       open(323,file=filnam,err=888,status='unknown')
 
+      ! 25degC-normalised VCMAX (annual maximum) (mol m-2 s-1)
+      filnam=trim(prefix)//'.a.vcmax25.out'
+      open(654,file=filnam,err=888,status='unknown')
+
       ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
       filnam=trim(prefix)//'.a.chi.out'
       open(652,file=filnam,err=888,status='unknown')
@@ -1410,10 +1401,11 @@ contains
 
     ! annual
     if (interface%params_siml%loutgpp) then
-      outagpp(:,:)   = 0.0
-      outavcmax(:,:) = 0.0
-      outachi(:,:)   = 0.0
-      outalue(:,:)   = 0.0
+      outagpp(:,:)     = 0.0
+      outavcmax(:,:)   = 0.0
+      outavcmax25(:,:) = 0.0
+      outachi(:,:)     = 0.0
+      outalue(:,:)     = 0.0
     end if
 
   end subroutine initoutput_gpp
@@ -1428,6 +1420,7 @@ contains
     ! where they are defined.
     !----------------------------------------------------------------
     use md_interface
+    use md_plant, only: lai_ind
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -1439,9 +1432,9 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (interface%params_siml%loutdgpp   ) outdgpp(:,doy,jpngr)       = dgpp(:)
-    if (interface%params_siml%loutdrd    ) outdrd(:,doy,jpngr)        = drd(:)
-    if (interface%params_siml%loutdtransp) outdtransp(:,doy,jpngr)    = dtransp(:)
+    if (interface%params_siml%loutdgpp   ) outdgpp(:,doy,jpngr)    = dgpp(:)
+    if (interface%params_siml%loutdrd    ) outdrd(:,doy,jpngr)     = drd(:)
+    if (interface%params_siml%loutdtransp) outdtransp(:,doy,jpngr) = dtransp(:)
 
     !----------------------------------------------------------------
     ! MONTHLY SUM OVER DAILY VALUES
@@ -1460,8 +1453,15 @@ contains
     end if
 
     ! store all daily values for outputting annual maximum
-    outdvcmax_canop(:,doy) = vcmax_canop(:)
+    if (npft>1) stop 'getout_annual_gpp not implemented for npft>1'
 
+    if (lai_ind(1,jpngr)>0.0) then
+      outdvcmax(1,doy)   = dvcmax_canop(1) / lai_ind(1,jpngr)
+      outdvcmax25(1,doy) = out_pmodel(1,moy)%factor25_vcmax * dvcmax_canop(1) / lai_ind(1,jpngr)
+    else
+      outdvcmax(1,doy)   = 0.0
+      outdvcmax25(1,doy) = 0.0
+    end if
 
   end subroutine getout_daily_gpp
 
@@ -1472,6 +1472,7 @@ contains
     !----------------------------------------------------------------
     use md_waterbal, only: solar
     use md_interface
+    use md_plant, only: maxdoy
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -1480,9 +1481,11 @@ contains
 
     ! outanrlarea(jpngr) = anrlarea
     if (interface%params_siml%loutgpp) then
-      outavcmax(:,jpngr) = maxval( outdvcmax_canop(jpngr,:) )
-      outachi(:,jpngr)   = sum( out_pmodel(1,:)%chi * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
-      outalue(:,jpngr)   = sum( out_pmodel(1,:)%lue * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+      outavcmax(1,jpngr)   = outdvcmax(1,maxdoy(1))
+      outavcmax25(1,jpngr) = outdvcmax25(1,maxdoy(1))
+
+      ! outachi(:,jpngr)     = sum( out_pmodel(1,:)%chi * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+      ! outalue(:,jpngr)     = sum( out_pmodel(1,:)%lue * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
     end if
 
   end subroutine getout_annual_gpp
@@ -1536,6 +1539,7 @@ contains
 
       write(310,999) itime, sum(outagpp(:,jpngr))
       write(323,999) itime, sum(outavcmax(:,jpngr))
+      write(654,999) itime, sum(outavcmax25(:,jpngr))
       write(652,999) itime, sum(outachi(:,jpngr))
       write(653,999) itime, sum(outalue(:,jpngr))
 

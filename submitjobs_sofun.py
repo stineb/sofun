@@ -19,7 +19,7 @@ simsuite = 'atkin'
 ## set options
 ##--------------------------------------------------------------------
 ## standard outputs written to file (otherwise to screen)
-out_to_file = False
+out_to_file = True
 
 ##--------------------------------------------------------------------
 ## set model setup, given simsuite (shorter code below)
@@ -27,13 +27,13 @@ out_to_file = False
 do_cnmodel = False
 do_pmodel  = False
 do_cmodel  = False
-if simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi' or simsuite == 'atkin':
+if simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi':
     do_cnmodel = True
 
 if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
     do_pmodel = True
 
-if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test':
+if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'atkin':
     do_cmodel = True
 
 

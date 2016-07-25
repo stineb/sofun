@@ -90,6 +90,19 @@ program main
                                           ! 1992 &
                                           interface%steering%climateyear &
                                           )
+    ! print*, 'dtemp'
+    ! print*, interface%climate(1)%dtemp(:)
+
+    ! print*, 'dprec'
+    ! print*, interface%climate(1)%dprec(:)
+
+    ! print*, 'dfsun'
+    ! print*, interface%climate(1)%dfsun(:)
+
+    ! print*, 'dvpd'
+    ! print*, interface%climate(1)%dvpd(:)
+    ! stop
+
     ! CO2
     interface%pco2 = getco2( &
                             trim(runname), &

@@ -34,7 +34,7 @@ module md_allocation
 
 contains
 
-  subroutine allocation_daily( jpngr, usedoy, usemoy, dtemp )
+  subroutine allocation_daily( jpngr, doy, dm, moy, dtemp )
     !//////////////////////////////////////////////////////////////////
     ! Finds optimal shoot:root growth ratio to balance C:N stoichiometry
     ! of a grass (no wood allocation).
@@ -55,20 +55,23 @@ contains
     use md_nuptake, only: calc_dnup, outtype_calc_dnup
     use md_waterbal, only: solar, evap
     use md_gpp, only: calc_dgpp, calc_drd
-    use md_npp, only: calc_resp_maint, calc_cexu, deactivate_root
+    use md_npp, only: calc_resp_maint, calc_cexu
     use md_gpp, only: dgpp, drd 
     use md_plant, only: dnpp, drleaf, drroot, dcex, dnup
     use md_interface
 
     ! arguments
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: usedoy     ! day of year
-    integer, intent(in) :: usemoy     ! month of year
-    real,    intent(in) :: dtemp   ! air temperaure, deg C
+    integer, intent(in)                   :: jpngr
+    integer, intent(in)                   :: dm      ! day of month
+    integer, intent(in)                   :: doy     ! day of year
+    integer, intent(in)                   :: moy     ! month of year
+    real, dimension(ndayyear), intent(in) :: dtemp   ! air temperaure, deg C
 
     ! local variables
     integer :: lu
     integer :: pft
+    integer :: usemoy        ! MOY in climate vectors to use for allocation
+    integer :: usedoy        ! DOY in climate vectors to use for allocation
     real :: avl
     real, parameter :: freserve = 0.0
 
@@ -87,6 +90,22 @@ contains
     verbose = .false.
     !------------------------------------------------------------------
 
+    !-------------------------------------------------------------------------
+    ! Determine day of year (DOY) and month of year (MOY) to use in climate vectors
+    !-------------------------------------------------------------------------
+    if (dm==ndaymonth(moy)) then
+      usemoy = moy + 1
+      if (usemoy==13) usemoy = 1
+    else
+      usemoy = moy
+    end if
+    if (doy==ndayyear) then
+      usedoy = 1
+    else
+      usedoy = doy + 1
+    end if
+    !-------------------------------------------------------------------------
+
     ! initialise
     dcleaf(:) = 0.0
     dnleaf(:) = 0.0
@@ -100,7 +119,7 @@ contains
 
       if (params_pft_plant(pft)%grass) then
 
-        if ( plabl(pft,jpngr)%c%c12>0.0 .and. dtemp>0.0 ) then
+        if ( plabl(pft,jpngr)%c%c12>0.0 .and. dtemp(doy)>0.0 ) then
 
           !------------------------------------------------------------------
           ! Calculate maximum C allocatable based on current labile pool size.
