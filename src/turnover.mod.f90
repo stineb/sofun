@@ -189,7 +189,7 @@ contains
     !------------------------------------------------------------------
     use md_plant, only: lai_ind, leaftraits, canopy, get_canopy, get_leaftraits, get_lai
     use md_waterbal, only: solar
-    use md_gpp, only: mactnv_unitiabs
+    use md_gpp, only: out_pmodel
     use md_params_core, only: eps
 
     ! arguments
@@ -221,19 +221,19 @@ contains
     canopy(pft) = get_canopy( lai_new )
 
     ! re-calculate metabolic and structural N, given new LAI and fAPAR
-    leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+    leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
 
     nleaf = leaftraits(pft)%narea_canopy
     cleaf = leaftraits(pft)%leafc_canopy
 
-    ! when light conditions change (annual maximum of solar%meanmppfd(:) * mactnv_unitiabs(pft,:)), 
+    ! when light conditions change (annual maximum of solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs), 
     ! more N and C may be needed in spite of LAI-turnover > 0.0. 
     ! In this case, calculate LAI as a function of leaf C 
     if ( nleaf>pleaf(pft,jpngr)%n%n14 .or. cleaf>pleaf(pft,jpngr)%c%c12 ) then
 
-      if ( invoc > 1 .and. maxval( solar%meanmppfd(:) * mactnv_unitiabs(pft,:) ) > iabs_times_nv ) then
+      if ( invoc > 1 .and. maxval( solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs ) > iabs_times_nv ) then
         ! Light conditions change so that required C and N at current LAI are insufficient. Reduce LAI.
-        diff = maxval( solar%meanmppfd(:) * mactnv_unitiabs(pft,:) ) / iabs_times_nv
+        diff = maxval( solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs ) / iabs_times_nv
 
         ! print*,'diff ', diff
         ! tmp1 = lai_ind(pft,jpngr) * params_plant%kbeer
@@ -248,12 +248,12 @@ contains
         canopy(pft) = get_canopy( lai_new )
 
         ! re-calculate metabolic and structural N, given new LAI and fAPAR
-        leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+        leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
 
         nleaf = leaftraits(pft)%narea_canopy
         cleaf = leaftraits(pft)%leafc_canopy
 
-        ! when light conditions change (annual maximum of solar%meanmppfd(:) * mactnv_unitiabs(pft,:)), 
+        ! when light conditions change (annual maximum of solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs), 
         ! more N and C may be needed in spite of LAI-turnover > 0.0. 
         ! In this case, calculate LAI as a function of leaf C 
         if ( nleaf>pleaf(pft,jpngr)%n%n14 .or. cleaf>pleaf(pft,jpngr)%c%c12 ) then
@@ -317,7 +317,7 @@ contains
     ! call nmv( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr) )
 
     ! save for next time step
-    iabs_times_nv = maxval( solar%meanmppfd(:) * mactnv_unitiabs(pft,:) )
+    iabs_times_nv = maxval( solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs )
 
   end subroutine turnover_leaf
 

@@ -254,7 +254,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              with state variables:'
         if (verbose) write(0,*) '              fapar = ', canopy(:)%fapar_ind
         if (verbose) write(0,*) '              dppfd = ', solar%dppfd(day)
-        if (verbose) write(0,*) '              lue   = ', mlue(1,moy)
+        if (verbose) write(0,*) '              lue   = ', out_pmodel(1,moy)%lue
         if (verbose) write(0,*) '              temp  = ', interface%climate(jpngr)%dtemp(day)
         if (verbose) write(0,*) '              CPA   = ', evap(1)%cpa
         !----------------------------------------------------------------

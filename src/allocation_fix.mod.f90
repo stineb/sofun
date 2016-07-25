@@ -46,7 +46,7 @@ contains
       frac_leaf
     use md_nuptake, only: dnup_fix
     use md_waterbal, only: solar
-    use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
+    use md_gpp, only: out_pmodel
     use md_soiltemp, only: dtemp_soil
     use md_ntransform, only: pninorg
     use md_params_core, only: eps
@@ -108,7 +108,7 @@ contains
           ! discounted by the yield factor.
           !------------------------------------------------------------------
           if (pleaf(pft,jpngr)%c%c12==0.0) then
-            leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+            leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
           end if
 
           ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
@@ -132,7 +132,7 @@ contains
             pft, dcleaf(pft), &
             pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
             plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
-            solar%meanmppfd(:), mactnv_unitiabs(pft,:), &
+            solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs, &
             lai_ind(pft,jpngr), dnleaf(pft) &
             )
           if (verbose) write(0,*) '              ==> returned: '
@@ -151,7 +151,7 @@ contains
           !-------------------------------------------------------------------  
           ! Update leaf traits
           !-------------------------------------------------------------------  
-          leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+          leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
 
           !-------------------------------------------------------------------  
           ! Update fpc_grid and fapar_ind (not lai_ind)

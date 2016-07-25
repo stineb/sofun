@@ -10,8 +10,32 @@ from subprocess import call
 ## - "fluxnet_cnmodel"
 ## - "gcme"
 ## - "campi"
+## - "fluxnet_fixalloc"
+## - "atkin"
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet_fixalloc'
+simsuite = 'atkin'
+
+##--------------------------------------------------------------------
+## set options
+##--------------------------------------------------------------------
+## standard outputs written to file (otherwise to screen)
+out_to_file = False
+
+##--------------------------------------------------------------------
+## set model setup, given simsuite (shorter code below)
+##--------------------------------------------------------------------
+do_cnmodel = False
+do_pmodel  = False
+do_cmodel  = False
+if simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi' or simsuite == 'atkin':
+    do_cnmodel = True
+
+if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
+    do_pmodel = True
+
+if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test':
+    do_cmodel = True
+
 
 ##--------------------------------------------------------------------
 ## in some cases use same experiment info file
@@ -22,13 +46,13 @@ if simsuite == 'fluxnet_fixalloc':
 ##--------------------------------------------------------------------
 ## Compile
 ##--------------------------------------------------------------------
-if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
+if do_pmodel:
     exe = 'runpmodel'
     compiling_opt = 'pmodel'
-elif simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test':
+elif do_cmodel:
     exe = 'runcmodel'
     compiling_opt = 'cmodel'
-elif simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi':
+elif do_cnmodel:
     exe = 'runcnmodel'
     compiling_opt = 'cnmodel'
 else:
@@ -52,14 +76,17 @@ else:
 ## Loop over site/experiment names and submit job for each site
 ##--------------------------------------------------------------------
 for index, row in siteinfo.iterrows():
+
+    ## select only grasslands
     if simsuite == 'fluxnet_cmodel':
         if row['classid'] == 'GRA':
             print 'submitting job for site ' + row['mysitename'] + '...'
             os.system( 'echo ' + row['mysitename'] + '| ./' + exe + '>' + row['mysitename'] + '.out' + '2>' + row['mysitename'] + '.out' )
-    elif simsuite == 'gcme' or 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi' or simsuite == 'fluxnet_fixalloc':
-        print 'submitting job for experiment ' + row['expname'] + '...'
-        os.system( 'echo ' + row['expname'] + '| ./' + exe+ '>' + row['expname'] + '.out' + '2>' + row['expname'] + '.out' )        
-    else:
-        print 'submitting job for site ' + row['mysitename'] + '...'
-        os.system( 'echo ' + row['mysitename'] + '| ./' + exe + '>' + row['mysitename'] + '.out' + '2>' + row['mysitename'] + '.out')
 
+    ## normal case
+    else:
+        print 'submitting job for experiment ' + row['expname'] + '...'
+        if out_to_file:
+            os.system( 'echo ' + row['expname'] + '| ./' + exe+ '>' + row['expname'] + '.out' + '2>' + row['expname'] + '.out' )        
+        else:
+            os.system( 'echo ' + row['expname'] + '| ./' + exe )        

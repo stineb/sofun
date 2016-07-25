@@ -10,6 +10,7 @@ import os.path
 ## - "gcme"
 ## - "campi"
 ## - "fluxnet_fixalloc"
+## - "atkin"
 ##--------------------------------------------------------------------
 simsuite = 'fluxnet_cnmodel'
 

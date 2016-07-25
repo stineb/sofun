@@ -63,7 +63,7 @@ contains
       plabl, drgrow, lai_ind, nind, canopy, leaftraits, &
       get_canopy, get_leaftraits, get_leaftraits_init, frac_leaf, dnpp
     use md_waterbal, only: solar
-    use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
+    use md_gpp, only: out_pmodel
     use md_soiltemp, only: dtemp_soil
     use md_ntransform, only: pninorg
     use md_params_core, only: eps
@@ -170,7 +170,7 @@ contains
             ! discounted by the yield factor.
             !------------------------------------------------------------------
             if (pleaf(pft,jpngr)%c%c12==0.0) then
-              leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+              leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
             end if
             
             ! ! xxx try: not limited by N availability
@@ -350,14 +350,14 @@ contains
                 pft, dcleaf(pft), &
                 pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
                 plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
-                solar%meanmppfd(:), mactnv_unitiabs(pft,:), &
+                solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs, &
                 lai_ind(pft,jpngr), dnleaf(pft), nignore=nignore &
                 )
 
               !-------------------------------------------------------------------  
               ! Update leaf traits
               !-------------------------------------------------------------------  
-              leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+              leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
 
               !-------------------------------------------------------------------  
               ! Update fpc_grid and fapar_ind (not lai_ind)
@@ -403,7 +403,7 @@ contains
             ! discounted by the yield factor.
             !------------------------------------------------------------------
             if (pleaf(pft,jpngr)%c%c12==0.0) then
-              leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+              leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
             end if
 
             ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
@@ -422,14 +422,14 @@ contains
                 pft, dcleaf(pft), &
                 pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
                 plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
-                solar%meanmppfd(:), mactnv_unitiabs(pft,:), &
+                solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs, &
                 lai_ind(pft,jpngr), dnleaf(pft), nignore=nignore &
                 )
 
               !-------------------------------------------------------------------  
               ! Update leaf traits
               !-------------------------------------------------------------------  
-              leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+              leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
 
               !-------------------------------------------------------------------  
               ! Update fpc_grid and fapar_ind (not lai_ind)
@@ -634,7 +634,7 @@ contains
     use md_classdefs, only: orgpool, nitrogen
     use md_plant, only: params_pft_plant, params_plant, get_fapar, &
       canopy_type, get_canopy
-    use md_gpp, only: calc_dgpp, calc_drd, mactnv_unitiabs, mlue, mrd_unitiabs
+    use md_gpp, only: calc_dgpp, calc_drd, out_pmodel
     use md_nuptake, only: calc_dnup, outtype_calc_dnup
     use md_npp, only: calc_resp_maint, calc_cexu
     use md_findroot_fzeroin
@@ -685,14 +685,14 @@ contains
     !-------------------------------------------------------------------
     call allocate_leaf( &
       usepft, mydcleaf, cleaf, nleaf, clabl, nlabl, &
-      solar%meanmppfd(:), mactnv_unitiabs(usepft,:), mylai, mydnleaf, &
+      solar%meanmppfd(:), out_pmodel(usepft,:)%actnv_unitiabs, mylai, mydnleaf, &
       nignore=.true. &
       )
 
     ! !-------------------------------------------------------------------  
     ! ! Update leaf traits
     ! !-------------------------------------------------------------------  
-    ! leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), mactnv_unitiabs(pft,:) )
+    ! leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
 
     !-------------------------------------------------------------------  
     ! Update fpc_grid and fapar_ind (not lai_ind)
@@ -718,8 +718,8 @@ contains
     ! Calculate next day's C and N return after assumed allocation (tissue turnover happens before!)
     lu = params_pft_plant(usepft)%lu_category
 
-    gpp           = calc_dgpp( mycanopy%fapar_ind, solar%dppfd(usedoy), mlue(usepft,usemoy), airtemp, evap(lu)%cpa )
-    rd            = calc_drd(  mycanopy%fapar_ind, solar%meanmppfd(usemoy), mrd_unitiabs(usepft,usemoy), airtemp, evap(lu)%cpa  )
+    gpp           = calc_dgpp( mycanopy%fapar_ind, solar%dppfd(usedoy), out_pmodel(usepft,usemoy)%lue, airtemp, evap(lu)%cpa )
+    rd            = calc_drd(  mycanopy%fapar_ind, solar%meanmppfd(usemoy), out_pmodel(usepft,usemoy)%rd_unitiabs, airtemp, evap(lu)%cpa  )
     mresp_root    = calc_resp_maint( croot, params_plant%r_root, airtemp )
     npp           = gpp - rd - mresp_root
     cexu          = calc_cexu( croot, airtemp ) 
