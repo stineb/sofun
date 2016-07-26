@@ -229,7 +229,6 @@ contains
 
         ! Vcmax (actually changes only monthly)
         dvcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, out_pmodel(pft,moy)%vcmax_unitiabs, solar%meanmppfd(moy) )
-        ! dvcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, out_pmodel(pft,moy)%vcmax_unitiabs, solar%meanmppfd(moy) )
 
       else  
 
@@ -239,8 +238,6 @@ contains
         dvcmax_canop(pft) = 0.0
 
       end if 
-
-      print*,'doy, gpp ', doy, dgpp(pft)
 
     end do
 
@@ -1434,8 +1431,6 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    print*,'doy, output gpp', doy, dgpp(:)
-
     if (interface%params_siml%loutdgpp   ) outdgpp(:,doy,jpngr)    = dgpp(:)
     if (interface%params_siml%loutdrd    ) outdrd(:,doy,jpngr)     = drd(:)
     if (interface%params_siml%loutdtransp) outdtransp(:,doy,jpngr) = dtransp(:)

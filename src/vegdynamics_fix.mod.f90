@@ -41,6 +41,8 @@ contains
           print*, 'starting to grow on day ',doy
           call estab_daily( pft, jpngr, doy )
 
+          ! stop 'adding a seed'
+
         end if
 
       else

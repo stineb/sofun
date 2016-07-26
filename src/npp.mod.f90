@@ -80,6 +80,7 @@ contains
     real, parameter :: droot_die = 0.01
     real, parameter :: dlabl_die = 0.0
 
+    logical, save :: check_sprout = .false.
 
     ! print*, '---- in npp:'
 
@@ -126,30 +127,49 @@ contains
       !     pool (negative values), shut down organism (zero GPP, NPP, etc., 
       !     but continuing turnover).
       !-------------------------------------------------------------------------
+      ! if (dgpp(pft)>0.0) print*,'npp eff. ', doy, (dnpp(pft)%c12 - dcex(pft)) / dgpp(pft)
+
       if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
-        ! slow death
-        print*,'slow death', doy
-        ! frac_leaf(pft) = 1.0
-        dgpp(pft)   = 0.0
-        drleaf(pft) = 0.0
-        drroot(pft) = 0.0
-        drd(pft)    = 0.0
-        dcex(pft)   = 0.0
-        dnpp(pft)   = carbon(0.0)
 
-        call turnover_leaf( dleaf_die, pft, jpngr )
-        call turnover_root( droot_die, pft, jpngr )
-        call turnover_labl( dlabl_die, pft, jpngr )
+        ! stop exuding
+        dcex(pft) = 0.0
 
-      else if ( dnpp(pft)%c12 - dcex(pft) < 0.0 ) then
-        ! negative C balance -> no more allocation to roots (no growth anyways)
-        ! print*,'negative balance -> all to leaves ', doy
-        ! frac_leaf(pft) = 1.0
+        if ( ( plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 ) < 0.0 ) then
+
+          ! after C balance has become negative wait until it gets positive again to trigger sprouting
+          print*,'setting check_sprout = T ', doy
+          check_sprout = .true.
+
+          ! slow death
+          ! print*,'slow death', doy
+          dgpp(pft)   = 0.0
+          drleaf(pft) = 0.0
+          drroot(pft) = 0.0
+          drd(pft)    = 0.0
+          dcex(pft)   = 0.0
+          dnpp(pft)   = carbon(0.0)
+
+          call turnover_leaf( dleaf_die, pft, jpngr )
+          call turnover_root( droot_die, pft, jpngr )
+          call turnover_labl( dlabl_die, pft, jpngr )
+
+        end if
+
       else
         ! normal growth
+
+        ! trigger sprouting now that C balance is positive again
+        if (check_sprout) then
+          print*,'sprouting next day'
+          sprout(doy+1,pft) = .true.
+        end if
+        check_sprout = .false.
+
         ! print*,'normal growth', doy
         if ( .not. interface%steering%dofree_alloc ) frac_leaf(pft) = 0.5
+      
       end if
+
 
       !/////////////////////////////////////////////////////////////////////////
       ! TO LABILE POOL
