@@ -33,12 +33,13 @@ contains
         !----------------------------------------------------------
         ! GRASSES, summergreen
         !----------------------------------------------------------
+
         if ( sprout(doy,pft) ) then
           !----------------------------------------------------------
           ! beginning of season
           !----------------------------------------------------------
-          ! print*, 'starting to grow on day ',doy
-          ! call estab_daily( pft, jpngr, doy )
+          print*, 'starting to grow on day ',doy
+          call estab_daily( pft, jpngr, doy )
 
         end if
 
@@ -59,6 +60,7 @@ contains
     ! function of Vcmax25.
     !------------------------------------------------------------------
     use md_plant, only: initpft, params_pft_plant, nind, frac_leaf
+    use md_interface
 
     ! arguments
     integer, intent(in) :: pft
@@ -70,7 +72,7 @@ contains
 
     ! add C (and N) to labile pool (available for allocation)
     call add_seed( pft, jpngr )
-    frac_leaf(pft) = 0.5
+    if ( .not. interface%steering%dofree_alloc ) frac_leaf(pft) = 0.5
     
     if (params_pft_plant(pft)%grass) then
       nind(pft,jpngr) = 1.0

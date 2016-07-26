@@ -73,6 +73,8 @@ contains
           droot = 1.0
           dleaf = 1.0
           dlabl = 1.0
+
+          stop 'shedding the fucking leaves'
           
         else
 

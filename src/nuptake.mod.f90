@@ -29,7 +29,7 @@ module md_nuptake
   private
   public nuptake, getpar_modl_nuptake, initdaily_nuptake, initio_nuptake, &
     initoutput_nuptake, getout_daily_nuptake, writeout_ascii_nuptake, &
-    calc_dnup, outtype_calc_dnup, dnup_fix
+    calc_dnup, outtype_calc_dnup
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -54,7 +54,6 @@ module md_nuptake
   real, dimension(npft) :: dccost           ! daily mean C cost of N uptake [gC/gN] 
   real, dimension(npft) :: dnup_pas         ! daily passive N uptake [gN/m2/d]
   real, dimension(npft) :: dnup_act         ! daily active N uptake [gN/m2/d]  
-  real, dimension(npft) :: dnup_fix         ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
   real, dimension(npft) :: dnup_ret         ! daily N uptake [gN/m2/d]
 
   type outtype_calc_dnup
@@ -84,7 +83,7 @@ contains
     ! transpiration stream.
     !-----------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: dcex, dnup, params_pft_plant, plabl
+    use md_plant, only: dcex, dnup, params_pft_plant, plabl, dnup_fix
     use md_ntransform, only: pninorg
     use md_soiltemp, only: dtemp_soil
 
@@ -361,7 +360,6 @@ contains
     !----------------------------------------------------------------
     dnup_pas(:)    = 0.0
     dnup_act(:)    = 0.0
-    dnup_fix(:)    = 0.0
     dnup_ret(:)    = 0.0
 
   end subroutine initdaily_nuptake
@@ -471,6 +469,7 @@ contains
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
     use md_interface
+    use md_plant, only: dnup_fix
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -516,6 +515,7 @@ contains
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
     if (interface%params_siml%loutnuptake) then
+    
       if ( .not. interface%steering%spinup &
         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
@@ -524,7 +524,7 @@ contains
         do day=1,ndayyear
 
           ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears) + real(day-1)/real(ndayyear)
+          itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
 
           if (nlu>1) stop 'writeout_ascii_nuptake: write out lu-area weighted sum'
           if (npft>1) stop 'writeout_ascii_nuptake: think of something for ccost output'

@@ -12,8 +12,10 @@ from subprocess import call
 ## - "campi"
 ## - "fluxnet_fixalloc"
 ## - "atkin"
+## - "olson"
+## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'atkin'
+simsuite = 'olson'
 
 ##--------------------------------------------------------------------
 ## set options
@@ -27,14 +29,18 @@ out_to_file = True
 do_cnmodel = False
 do_pmodel  = False
 do_cmodel  = False
-if simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi':
+
+## C-N model setup
+if simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi' or simsuite == 'olson':
     do_cnmodel = True
 
+## C-model setup (fixed allocation)
+if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'atkin' or simsuite == 'olson_cmodel':
+    do_cmodel = True
+
+## P-model setup
 if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
     do_pmodel = True
-
-if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'atkin':
-    do_cmodel = True
 
 
 ##--------------------------------------------------------------------
@@ -42,6 +48,9 @@ if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'atk
 ##--------------------------------------------------------------------
 if simsuite == 'fluxnet_fixalloc':
     simsuite = 'fluxnet_cnmodel'
+
+if simsuite == 'olson_cmodel':
+  simsuite = 'olson'
 
 ##--------------------------------------------------------------------
 ## Compile
@@ -87,6 +96,8 @@ for index, row in siteinfo.iterrows():
     else:
         print 'submitting job for experiment ' + row['expname'] + '...'
         if out_to_file:
-            os.system( 'echo ' + row['expname'] + '| ./' + exe+ '>' + row['expname'] + '.out' + '2>' + row['expname'] + '.out' )        
+            cmd = 'echo ' + row['expname'] + '| ./' + exe+ ' >' + row['expname'] + '.out' + ' 2>' + row['expname'] + '.out'
+            os.system( cmd )        
         else:
-            os.system( 'echo ' + row['expname'] + '| ./' + exe )        
+            cmd = 'echo ' + row['expname'] + '| ./' + exe
+            os.system( cmd )        

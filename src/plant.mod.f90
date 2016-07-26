@@ -11,20 +11,17 @@ module md_plant
   public pleaf, proot, psapw, plabl, pexud, plitt_af, plitt_as, plitt_bg, &
     dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy,       &
     lai_ind,  &
-    fpc_grid, nind, dnup,        &
+    fpc_grid, nind, dnup, dnup_fix, &
     params_pft_plant, params_plant, initglobal_plant, initpft,            &
     initdaily_plant, outdnpp, outdnup, outdCleaf, outdCroot, outdClabl,   &
     outdNlabl, outdClitt, outdNlitt, outdCsoil, outdNsoil, outdlai,       &
     outdfapar, ddoc,                                                      &
-    dnarea_mb, dnarea_cw, dlma, dcton_lm, outanpp, outanup, outacleaf,    &
-    outacroot, &
-    outaCveg2lit, outaNveg2lit, outanarea_mb, outanarea_cw,   &
-    outalai, outalma, outacton_lm, get_fapar,            &
+    dnarea_mb, dnarea_cw, dlma, dcton_lm, get_fapar,                      &
     initoutput_plant, initio_plant, getout_daily_plant,                   &
     getout_annual_plant, writeout_ascii_plant, getpar_modl_plant,         &
     leaftraits_type, get_leaftraits, get_leaf_n_canopy, canopy_type,      & 
     get_canopy, seed, get_lai, get_leaftraits_init, frac_leaf,            &
-    maxlai, maxdoy
+    maxlai, maxdoy, outaCveg2lit, outaNveg2lit
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -52,6 +49,7 @@ module md_plant
 
   real, dimension(nlu)                   :: ddoc             ! surrogate for dissolved organic carbon used for denitrification rate (see ntransform)
   type(nitrogen), dimension(npft)        :: dnup             ! daily N uptake [gN/m2/d]
+  real, dimension(npft)                  :: dnup_fix         ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
 
   real, dimension(npft)                  :: frac_leaf = 0.5  ! fraction of labile C allocated to leaves
 
@@ -166,6 +164,7 @@ module md_plant
   ! annual
   real, dimension(npft,maxgrid) :: outanpp
   real, dimension(npft,maxgrid) :: outanup
+  real, dimension(npft,maxgrid) :: outanup_fix
   real, dimension(npft,maxgrid) :: outacex
   real, dimension(npft,maxgrid) :: outaCveg2lit
   real, dimension(npft,maxgrid) :: outaNveg2lit
@@ -697,13 +696,14 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     !----------------------------------------------------------------
-    dnpp(:)   = carbon(0.0)
-    dcex(:)   = 0.0
-    dnup(:)   = nitrogen(0.0)
-    drgrow(:) = 0.0
-    drleaf(:) = 0.0
-    drroot(:) = 0.0
-    drsapw(:) = 0.0
+    dnpp(:)     = carbon(0.0)
+    dcex(:)     = 0.0
+    dnup(:)     = nitrogen(0.0)
+    dnup_fix(:) = 0.0
+    drgrow(:)   = 0.0
+    drleaf(:)   = 0.0
+    drroot(:)   = 0.0
+    drsapw(:)   = 0.0
 
   end subroutine initdaily_plant
 
@@ -745,6 +745,7 @@ contains
     if (interface%params_siml%loutplant) then
       outanpp(:,:)      = 0.0
       outanup(:,:)      = 0.0
+      outanup_fix(:,:)  = 0.0
       outacex(:,:)      = 0.0
       outaCveg2lit(:,:) = 0.0
       outaNveg2lit(:,:) = 0.0
@@ -876,6 +877,10 @@ contains
       filnam=trim(prefix)//'.a.nup.out'
       open(317,file=filnam,err=999,status='unknown')
 
+      ! N FIXATION
+      filnam=trim(prefix)//'.a.nup_fix.out'
+      open(327,file=filnam,err=999,status='unknown')
+
       ! C EXUDATION
       filnam=trim(prefix)//'.a.cex.out'
       open(405,file=filnam,err=999,status='unknown')
@@ -971,9 +976,10 @@ contains
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
     if (interface%params_siml%loutplant) then
-      outanpp(:,jpngr) = outanpp(:,jpngr) + dnpp(:)%c12
-      outanup(:,jpngr) = outanup(:,jpngr) + dnup(:)%n14
-      outacex(:,jpngr) = outacex(:,jpngr) + dcex(:)
+      outanpp(:,jpngr)     = outanpp(:,jpngr) + dnpp(:)%c12
+      outanup(:,jpngr)     = outanup(:,jpngr) + dnup(:)%n14
+      outanup_fix(:,jpngr) = outanup_fix(:,jpngr) + dnup_fix(:)
+      outacex(:,jpngr)     = outacex(:,jpngr) + dcex(:)
     end if
 
   end subroutine getout_daily_plant
@@ -1099,15 +1105,17 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(interface%steering%outyear)
-
     if (interface%params_siml%loutplant) then
+
+      itime = real(interface%steering%outyear)
+
       write(307,999) itime, sum(outaCveg2lit(:,jpngr))
       write(308,999) itime, sum(outaNveg2lit(:,jpngr))
       write(311,999) itime, sum(outanpp(:,jpngr))
       write(312,999) itime, sum(outacleaf(:,jpngr))
       write(324,999) itime, sum(outacroot(:,jpngr))
       write(317,999) itime, sum(outanup(:,jpngr))
+      write(327,999) itime, sum(outanup_fix(:,jpngr))
       write(405,999) itime, sum(outacex(:,jpngr))
       write(318,999) itime, sum(outalai(:,jpngr))
       write(319,999) itime, sum(outanarea_mb(:,jpngr))

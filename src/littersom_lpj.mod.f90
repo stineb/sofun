@@ -807,19 +807,22 @@ contains
     if ( .not. interface%steering%spinup &
       .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
       .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
       ! Write daily output only during transient simulation
       do day=1,ndayyear
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears) + real(day-1)/real(ndayyear)
+        itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
 
         if (nlu>1) stop 'writeout_ascii_littersom: write out lu-area weighted sum'
 
         ! xxx lu-area weighted sum if nlu>0
-        if (interface%params_siml%loutlittersom) write(106,999) itime, sum(outdnetmin(:,day,jpngr))
-        if (interface%params_siml%loutlittersom) write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
-        if (interface%params_siml%loutlittersom) write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))
-        if (interface%params_siml%loutlittersom) write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
+        if (interface%params_siml%loutlittersom) then
+          write(106,999) itime, sum(outdnetmin(:,day,jpngr))
+          write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
+          write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))
+          write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
+        end if
 
       end do
     end if
@@ -829,16 +832,20 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
+    if (interface%params_siml%loutlittersom) then
+    
+      itime = real(interface%steering%outyear)
 
-    if (interface%params_siml%loutlittersom) write(301,999) itime, sum(outaclitt(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(302,999) itime, sum(outacsoil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(304,999) itime, sum(outanreq(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(305,999) itime, sum(outaclit2soil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(306,999) itime, sum(outanlit2soil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(313,999) itime, sum(outaCdsoil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(314,999) itime, sum(outaNdsoil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(315,999) itime, sum(outaNimmo(:,jpngr))
+      write(301,999) itime, sum(outaclitt(:,jpngr))
+      write(302,999) itime, sum(outacsoil(:,jpngr))
+      write(304,999) itime, sum(outanreq(:,jpngr))
+      write(305,999) itime, sum(outaclit2soil(:,jpngr))
+      write(306,999) itime, sum(outanlit2soil(:,jpngr))
+      write(313,999) itime, sum(outaCdsoil(:,jpngr))
+      write(314,999) itime, sum(outaNdsoil(:,jpngr))
+      write(315,999) itime, sum(outaNimmo(:,jpngr))
+
+    end if
 
     return
     

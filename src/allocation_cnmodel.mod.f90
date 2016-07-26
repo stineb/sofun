@@ -488,8 +488,7 @@ contains
     ! - reduce labile pool by C and N increments
     !-------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant, get_leaf_n_canopy, get_lai, dnup
-    use md_nuptake, only: dnup_fix
+    use md_plant, only: params_plant, get_leaf_n_canopy, get_lai, dnup, dnup_fix
     use md_params_core, only: eps
 
     ! arguments
@@ -561,8 +560,7 @@ contains
     ! ROOT ALLOCATION
     !-------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant, params_pft_plant, dnup
-    use md_nuptake, only: dnup_fix
+    use md_plant, only: params_plant, params_pft_plant, dnup, dnup_fix
     use md_params_core, only: eps
 
     ! arguments
@@ -873,10 +871,10 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
-
-    ! print*, 'writing time, outaCalloc',itime, sum(outaCalloc(:,jpngr))
     if (interface%params_siml%loutalloc) then
+
+      itime = real(interface%steering%outyear)
+
       write(350,999) itime, sum(outaCalclm(:,jpngr))
       write(351,999) itime, sum(outaNalclm(:,jpngr))
       write(352,999) itime, sum(outaCalcrm(:,jpngr))

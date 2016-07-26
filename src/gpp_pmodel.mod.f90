@@ -233,12 +233,14 @@ contains
 
       else  
 
-        dgpp(pft)        = 0.0
-        drd(pft)         = 0.0
-        dtransp(pft)     = 0.0
+        dgpp(pft)         = 0.0
+        drd(pft)          = 0.0
+        dtransp(pft)      = 0.0
         dvcmax_canop(pft) = 0.0
 
       end if 
+
+      print*,'doy, gpp ', doy, dgpp(pft)
 
     end do
 
@@ -1388,7 +1390,7 @@ contains
     if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd       (npft,ndayyear,maxgrid) )
     if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp   (npft,ndayyear,maxgrid) )
     outdgpp(:,:,:)    = 0.0
-    outdrd(:,:,:)    = 0.0
+    outdrd(:,:,:)     = 0.0
     outdtransp(:,:,:) = 0.0
 
     ! monthly
@@ -1432,6 +1434,8 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
+    print*,'doy, output gpp', doy, dgpp(:)
+
     if (interface%params_siml%loutdgpp   ) outdgpp(:,doy,jpngr)    = dgpp(:)
     if (interface%params_siml%loutdrd    ) outdrd(:,doy,jpngr)     = drd(:)
     if (interface%params_siml%loutdtransp) outdtransp(:,doy,jpngr) = dtransp(:)

@@ -631,35 +631,37 @@ contains
 
     ! local variables
     real :: itime
-    integer :: myday, myjpngr
+    integer :: day, jpngr
 
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii_ntransform: think of something ...'
-    myjpngr = 1
+    jpngr = 1
 
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
     if (interface%params_siml%loutntransform) then
+
       if ( .not. interface%steering%spinup &
         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
         ! Write daily output only during transient simulation
-        do myday=1,ndayyear
+        do day=1,ndayyear
 
           ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears) + real(myday-1)/real(ndayyear)
+          itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
 
           if (nlu>1) stop 'writeout_ascii_ntransform: write out lu-area weighted sum'
           if (npft>1) stop 'writeout_ascii_ntransform: think of something for ccost output'
 
-          write(107,999) itime, sum(outdninorg(:,myday,myjpngr))
-          write(500,999) itime, sum(outdnloss(:,myday,myjpngr))
-          write(501,999) itime, sum(outdnvol(:,myday,myjpngr))
-          write(502,999) itime, sum(outddenitr(:,myday,myjpngr))
-          write(503,999) itime, sum(outdnitr(:,myday,myjpngr))
-          write(504,999) itime, sum(outdnleach(:,myday,myjpngr))
-          write(505,999) itime, sum(outdn2o(:,myday,myjpngr))
+          write(107,999) itime, sum(outdninorg(:,day,jpngr))
+          write(500,999) itime, sum(outdnloss(:,day,jpngr))
+          write(501,999) itime, sum(outdnvol(:,day,jpngr))
+          write(502,999) itime, sum(outddenitr(:,day,jpngr))
+          write(503,999) itime, sum(outdnitr(:,day,jpngr))
+          write(504,999) itime, sum(outdnleach(:,day,jpngr))
+          write(505,999) itime, sum(outdn2o(:,day,jpngr))
 
         end do
       end if
@@ -669,15 +671,13 @@ contains
       ! Write annual value, summed over all PFTs / LUs
       ! xxx implement taking sum over PFTs (and gridcells) in this land use category
       !-------------------------------------------------------------------------
-      itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
+      itime = real(interface%steering%outyear)
 
-      write(316,999) itime, sum(outaninorg(:,myjpngr))
-      write(550,999) itime, sum(outanloss(:,myjpngr))
-      write(551,999) itime, sum(outan2o(:,myjpngr))
+      write(316,999) itime, sum(outaninorg(:,jpngr))
+      write(550,999) itime, sum(outanloss(:,jpngr))
+      write(551,999) itime, sum(outan2o(:,jpngr))
 
     end if
-
-    ! write(0,*) 'outan2o written to output ', sum(outan2o(:,myjpngr))
 
     return
     

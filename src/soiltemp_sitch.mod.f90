@@ -222,7 +222,7 @@ contains
 
     ! Local variables
     real :: itime
-    integer :: doy, jpngr
+    integer :: day, jpngr
     
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii_soiltemp: think of something ...'
@@ -231,18 +231,19 @@ contains
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
-    if ( .not. interface%steering%spinup .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+    if ( .not. interface%steering%spinup &
+      .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
       .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       ! Write daily output only during transient simulation
-      do doy=1,ndayyear
+      do day=1,ndayyear
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(interface%steering%outyear) + real(doy-1)/real(ndayyear)
+        itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
 
         if (nlu>1) stop 'writeout_ascii_soiltemp: write out lu-area weighted sum'
 
-        if (interface%params_siml%loutdtemp_soil) write(109,999) itime, sum(outdtemp_soil(:,doy,jpngr))
+        if (interface%params_siml%loutdtemp_soil) write(109,999) itime, sum(outdtemp_soil(:,day,jpngr))
 
       end do
     end if

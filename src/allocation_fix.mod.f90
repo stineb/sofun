@@ -241,8 +241,7 @@ contains
     ! - reduce labile pool by C and N increments
     !-------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant, get_leaf_n_canopy, get_lai, dnup
-    use md_nuptake, only: dnup_fix
+    use md_plant, only: params_plant, get_leaf_n_canopy, get_lai, dnup, dnup_fix
 
     ! arguments
     integer, intent(in)                 :: pft
@@ -306,8 +305,7 @@ contains
     ! ROOT ALLOCATION
     !-------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant, params_pft_plant, dnup  
-    use md_nuptake, only: dnup_fix
+    use md_plant, only: params_plant, params_pft_plant, dnup, dnup_fix
 
     ! arguments
     integer, intent(in) :: pft
@@ -371,22 +369,25 @@ contains
     !////////////////////////////////////////////////////////////////
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
     !----------------------------------------------------------------
+    if (interface%params_siml%loutalloc) then
 
-    ! C ALLOCATED TO LEAF GROWTH 
-    filnam=trim(prefix)//'.a.calclm.out'
-    open(350,file=filnam,err=999,status='unknown')
+      ! C ALLOCATED TO LEAF GROWTH 
+      filnam=trim(prefix)//'.a.calclm.out'
+      open(350,file=filnam,err=999,status='unknown')
 
-    ! N ALLOCATED TO LEAF GROWTH 
-    filnam=trim(prefix)//'.a.nalclm.out'
-    open(351,file=filnam,err=999,status='unknown')
+      ! N ALLOCATED TO LEAF GROWTH 
+      filnam=trim(prefix)//'.a.nalclm.out'
+      open(351,file=filnam,err=999,status='unknown')
 
-    ! C ALLOCATED TO ROOT GROWTH 
-    filnam=trim(prefix)//'.a.calcrm.out'
-    open(352,file=filnam,err=999,status='unknown')
+      ! C ALLOCATED TO ROOT GROWTH 
+      filnam=trim(prefix)//'.a.calcrm.out'
+      open(352,file=filnam,err=999,status='unknown')
 
-    ! N ALLOCATED TO ROOT GROWTH 
-    filnam=trim(prefix)//'.a.nalcrm.out'
-    open(353,file=filnam,err=999,status='unknown')
+      ! N ALLOCATED TO ROOT GROWTH 
+      filnam=trim(prefix)//'.a.nalcrm.out'
+      open(353,file=filnam,err=999,status='unknown')
+
+    end if
 
     return
 
@@ -399,12 +400,16 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises nuptake-specific output variables
     !----------------------------------------------------------------
-    ! xxx remove their day-dimension
-    outaCalclm(:,:) = 0.0
-    outaNalclm(:,:) = 0.0
-    outaCalcrm(:,:) = 0.0
-    outaNalcrm(:,:) = 0.0
+    use md_interface
 
+    ! xxx remove their day-dimension
+    if (interface%params_siml%loutalloc) then
+      outaCalclm(:,:) = 0.0
+      outaNalclm(:,:) = 0.0
+      outaCalcrm(:,:) = 0.0
+      outaNalcrm(:,:) = 0.0
+    end if
+    
     ! print*, 'initialising outaCalloc',outaCalloc
 
   end subroutine initoutput_allocation
@@ -414,15 +419,19 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
+    use md_interface
+
     ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy
     integer, intent(in) :: doy
 
-    outaCalclm(:,jpngr) = outaCalclm(:,jpngr) + dcleaf(:) 
-    outaNalclm(:,jpngr) = outaNalclm(:,jpngr) + dnleaf(:)
-    outaCalcrm(:,jpngr) = outaCalcrm(:,jpngr) + dcroot(:) 
-    outaNalcrm(:,jpngr) = outaNalcrm(:,jpngr) + dnroot(:)
+    if (interface%params_siml%loutalloc) then
+      outaCalclm(:,jpngr) = outaCalclm(:,jpngr) + dcleaf(:) 
+      outaNalclm(:,jpngr) = outaNalclm(:,jpngr) + dnleaf(:)
+      outaCalcrm(:,jpngr) = outaCalcrm(:,jpngr) + dcroot(:) 
+      outaNalcrm(:,jpngr) = outaNalcrm(:,jpngr) + dnroot(:)
+    end if
 
     ! print*, 'collecting outaCalloc',outaCalloc
 
@@ -451,14 +460,15 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
+    if (interface%params_siml%loutalloc) then
 
-    ! print*, 'writing time, outaCalloc',itime, sum(outaCalloc(:,jpngr))
+      itime = real(interface%steering%outyear)
 
-    write(350,999) itime, sum(outaCalclm(:,jpngr))
-    write(351,999) itime, sum(outaNalclm(:,jpngr))
-    write(352,999) itime, sum(outaCalcrm(:,jpngr))
-    write(353,999) itime, sum(outaNalcrm(:,jpngr))
+      write(350,999) itime, sum(outaCalclm(:,jpngr))
+      write(351,999) itime, sum(outaNalclm(:,jpngr))
+      write(352,999) itime, sum(outaCalcrm(:,jpngr))
+      write(353,999) itime, sum(outaNalcrm(:,jpngr))
+    end if
 
     return
     

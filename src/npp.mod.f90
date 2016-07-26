@@ -128,7 +128,7 @@ contains
       !-------------------------------------------------------------------------
       if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
         ! slow death
-        ! print*,'slow death', doy
+        print*,'slow death', doy
         ! frac_leaf(pft) = 1.0
         dgpp(pft)   = 0.0
         drleaf(pft) = 0.0
