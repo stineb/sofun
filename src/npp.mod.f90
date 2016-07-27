@@ -129,6 +129,14 @@ contains
       !-------------------------------------------------------------------------
       ! if (dgpp(pft)>0.0) print*,'npp eff. ', doy, (dnpp(pft)%c12 - dcex(pft)) / dgpp(pft)
 
+      ! print*,'-----------------'
+      ! print*,'DOY ', doy
+      ! print*,'dgpp , fa        ', dgpp(pft)
+      ! print*,'pleaf            ', pleaf(pft,jpngr)
+      ! print*,'proot            ', proot(pft,jpngr)
+
+      ! print*,'doy, gpp, npp - dcex ', doy, dgpp(pft), dnpp(pft)%c12 - dcex(pft)
+
       if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
 
         ! stop exuding
@@ -137,7 +145,7 @@ contains
         if ( ( plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 ) < 0.0 ) then
 
           ! after C balance has become negative wait until it gets positive again to trigger sprouting
-          print*,'setting check_sprout = T ', doy
+          ! print*,'setting check_sprout = T ', doy
           check_sprout = .true.
 
           ! slow death

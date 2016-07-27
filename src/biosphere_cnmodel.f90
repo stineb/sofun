@@ -195,6 +195,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) 'YEAR, DAY ', interface%steering%year, day
         if (verbose) write(0,*) '----------------------'
 
+        print*,'a plabl', plabl(1,jpngr)
         !----------------------------------------------------------------
         ! initialise daily updated variables 
         !----------------------------------------------------------------
@@ -233,6 +234,7 @@ subroutine biosphere( c_uptake )
                       )
         if (verbose) write(0,*) '... done'
 
+        print*,'b plabl', plabl(1,jpngr)
         !----------------------------------------------------------------
         ! update canopy and stand variables and simulate daily 
         ! establishment / sprouting
@@ -247,6 +249,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) write(0,*) '... done'
 
+        print*,'c plabl', plabl(1,jpngr)
         !/////////////////////////////////////////////////////////////////
         ! calculate GPP
         !----------------------------------------------------------------
@@ -269,6 +272,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              drd   = ', drd(:)
         if (verbose) write(0,*) '... done'
 
+        print*,'d plabl', plabl(1,jpngr)
         !/////////////////////////////////////////////////////////////////
         ! substract autotrophic respiration to get NPP, remainder is added 
         ! to labile pool (plabl)
@@ -296,6 +300,7 @@ subroutine biosphere( c_uptake )
         if (baltest .and. abs(cbal2)>eps) stop 'balance 2 not satisfied'
         if (verbose) write(0,*) '... done'
 
+        print*,'e plabl', plabl(1,jpngr)
         !/////////////////////////////////////////////////////////////////
         ! calculate N acquisition as a function of C exudation
         !----------------------------------------------------------------
@@ -321,6 +326,7 @@ subroutine biosphere( c_uptake )
         if (baltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
         if (verbose) write(0,*) '... done'
 
+        print*,'f plabl', plabl(1,jpngr)
         !/////////////////////////////////////////////////////////////////
         ! leaf, sapwood, and fine-root turnover
         !----------------------------------------------------------------
@@ -353,6 +359,7 @@ subroutine biosphere( c_uptake )
         if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
+        print*,'g plabl', plabl(1,jpngr)
         !/////////////////////////////////////////////////////////////////
         ! grass / crop harvest
         !----------------------------------------------------------------
@@ -379,6 +386,7 @@ subroutine biosphere( c_uptake )
         if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
+        print*,'h plabl', plabl(1,jpngr)
         !/////////////////////////////////////////////////////////////////
         ! litter and soil decomposition and N mineralisation
         !----------------------------------------------------------------
@@ -423,6 +431,7 @@ subroutine biosphere( c_uptake )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '... done'
 
+        print*,'i plabl', plabl(1,jpngr)
         !/////////////////////////////////////////////////////////////////
         ! allocation of labile pools to biomass
         !----------------------------------------------------------------
@@ -451,6 +460,7 @@ subroutine biosphere( c_uptake )
         if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
+        print*,'j plabl', plabl(1,jpngr)
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
@@ -497,7 +507,7 @@ subroutine biosphere( c_uptake )
 
   end do
 
-  ! if (interface%steering%forcingyear==1979) stop 'end of year'
+  ! if (interface%steering%forcingyear==1974) stop 'end of year'
 
   ! xxx insignificant
   c_uptake = 0.0

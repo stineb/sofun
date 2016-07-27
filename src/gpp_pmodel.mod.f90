@@ -239,6 +239,14 @@ contains
 
       end if 
 
+      ! print*,'-----------------'
+      ! print*,'DOY ', doy
+      ! print*,'dgpp , fa                ', dgpp(pft), calc_fa( evap(lu)%cpa )
+      ! print*,'fapar                    ', canopy(pft)%fapar_ind
+      ! print*,'solar%dppfd(doy)         ', solar%dppfd(doy)
+      ! print*,'out_pmodel(pft,moy)%lue  ', out_pmodel(pft,moy)%lue
+      ! print*,'dtemp                    ', dtemp
+
     end do
 
   end subroutine gpp
