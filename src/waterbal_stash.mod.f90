@@ -47,6 +47,7 @@ module md_waterbal
     real :: ro         ! daily runoff (mm)
     real :: sw         ! evaporative supply rate (mm/h)
     real :: wscal      ! water filled pore space (unitless)
+    real :: fleach     ! NO3 leaching fraction (unitless)
   end type soilphystype
 
   type( soilphystype ), dimension(nlu) :: soilphys(nlu)
@@ -173,22 +174,32 @@ contains
 
       ! Bucket model for runoff generation
       if (psoilphys(lu,jpngr)%wcont>kWm) then
+        ! -----------------------------------
         ! Bucket is full 
-        ! * set soil moisture to capacity
+        ! -----------------------------------
+        ! * determine NO3 leaching fraction 
+        soilphys(lu)%fleach = 1.0 - kWm / psoilphys(lu,jpngr)%wcont
+
         ! * add remaining water to monthly runoff total
-        soilphys(lu)%ro           = psoilphys(lu,jpngr)%wcont - kWm
+        soilphys(lu)%ro = psoilphys(lu,jpngr)%wcont - kWm
+
+        ! * set soil moisture to capacity
         psoilphys(lu,jpngr)%wcont = kWm
 
       elseif (psoilphys(lu,jpngr)%wcont<0.0) then
+        ! -----------------------------------
         ! Bucket is empty
+        ! -----------------------------------
         ! * set soil moisture to zero
         evap(lu)%aet              = evap(lu)%aet + psoilphys(lu,jpngr)%wcont
         psoilphys(lu,jpngr)%wcont = 0.0
         soilphys(lu)%ro           = 0.0
+        soilphys(lu)%fleach       = 0.0
 
       else
         ! No runoff occurrs
-        soilphys(lu)%ro = 0.0
+        soilphys(lu)%ro     = 0.0
+        soilphys(lu)%fleach = 0.0
 
       end if
 

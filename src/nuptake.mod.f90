@@ -105,6 +105,7 @@ contains
     ! xxx debug
     real :: test_eff_bnf
     real :: test_eff_act
+    real :: pninorg_before
 
     !-------------------------------------------------------------------------
     ! PFT LOOP
@@ -155,19 +156,17 @@ contains
         ! avail_ninorg          = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
         ! ninorg_conc           = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
 
-        ! write(0,*) 'avail_ninorg',avail_ninorg
-        ! write(0,*) 'ninorg_conc ',ninorg_conc 
-
         !//////////////////////////////////////////////////////////////////////////
         ! ACTIVE UPTAKE
         ! Active N uptake is a function of initial N available and C exuded
         !--------------------------------------------------------------------------
+        pninorg_before = pninorg(lu,jpngr)%n14
         out_calc_dnup = calc_dnup( dcex(pft), pninorg(lu,jpngr)%n14, params_pft_plant(pft)%nfixer, dtemp_soil(lu,jpngr) )
-
-        ! write(0,*) 'dcex(pft)      ', dcex(pft)      
-        ! write(0,*) 'in SR nuptake: dcex(pft)            ',dcex(pft)      
-        ! write(0,*) 'in SR nuptake: dNacq_act          ',dNacq_act 
-        ! write(0,*) 'in SR nuptake: pninorg(lu,jpngr)%n14 ',pninorg(lu,jpngr)%n14 
+        ! if (pninorg(lu,jpngr)%n14 < 0.0) then
+        !   print*,'a pninorg ', pninorg_before
+        !   print*,'b pninorg ', pninorg(lu,jpngr)
+        !   print*,'n uptake  ', out_calc_dnup
+        ! end if
 
         if ((out_calc_dnup%act+out_calc_dnup%fix)>0.0) then
           dmean_cost = dcex(pft)  / (out_calc_dnup%act+out_calc_dnup%fix)

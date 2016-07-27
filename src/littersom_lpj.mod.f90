@@ -365,7 +365,7 @@ contains
           ! net N mineralisation
           !----------------------------------------------------------------    
           pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + netmin_litt
-
+          
         else
 
           ! ! ! xxx try:
@@ -413,6 +413,7 @@ contains
 
           end if
 
+          
         end if
 
         ! Nreq_S (= dlitt - netmin) remains in the system: 
@@ -525,6 +526,7 @@ contains
         pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
       end if
 
+      
       ! get average litter -> soil flux for analytical soil C equilibration
       if ( interface%steering%average_soil ) then
         mean_ksoil_fs(lu,jpngr) = mean_ksoil_fs(lu,jpngr) + ksoil_fs(lu)
@@ -569,6 +571,7 @@ contains
       Nfix = 0.0
       pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + Nfix
 
+      
       ! OUTPUT COLLECTION
       if (interface%params_siml%loutlittersom) then
         outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
@@ -583,7 +586,7 @@ contains
     ! print*,'C org., Rhet   before   ', orgtmp2%c%c12, drhet(1)
     ! print*,'N org., inorg after     ', orgtmp2%n%n14, pninorg(1,jpngr)%n14
 
-
+  
   end subroutine littersom
 
 

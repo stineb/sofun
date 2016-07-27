@@ -107,17 +107,19 @@ contains
     real, save :: nh3max
     
     real       :: dnmax                  ! labile carbon availability modifier
-    real       :: ftemp_vol              ! temperature modifier for ammonia volatilization
-    real       :: ftemp_nitr             ! temperature modifier for nitrification
-    real       :: ftemp_denitr           ! temperature modifier for denitrification
-    real       :: ftemp_diffus           ! temperature modifier for gas difussion from soil
+    real       :: ftemp_vol              ! temperature rate modifier for ammonia volatilization
+    real       :: ftemp_nitr             ! temperature rate modifier for nitrification
+    real       :: ftemp_denitr           ! temperature rate modifier for denitrification
+    real       :: ftemp_diffus           ! temperature rate modifier for gas difussion from soil
     real       :: fph                    ! soil-pH modifier
+    real       :: fwet                   ! fraction of pools in wet microsites (subject to denitrification)
+    real       :: fdry                   ! fraction of pools in dry microsites (subject to nitrification)
     
-    real       :: no3_inc, n2o_inc, no_inc, no2_inc, n2_inc      ! temporary variables
+    real       :: no3_inc, n2o_inc, no_inc, no2_inc, n2_inc      ! pool increments, temporary variables
     real       :: tmp                                            ! temporary variable
     
-    real       :: nh4      ! ammonium [gN/m2]
-    real       :: no3      ! nitrate [gN/m2]
+    real       :: nh4                    ! ammonium [gN/m2]
+    real       :: no3                    ! nitrate [gN/m2]
     
     real       :: nh4_w, no3_w, no2_w    ! anaerobic pools
     real       :: nh4_d, no3_d, no2_d    ! aerobic pools
@@ -126,10 +128,11 @@ contains
     real       :: doc_d                  ! aerobic pools
 
     ! Variables N balance test
-    logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
+    logical, parameter :: baltest_trans = .false.  ! set to false to do mass conservation test during transient simulation
     logical :: verbose = .false.  ! set to true to activate verbose mode
     logical :: baltest
     real :: nbal_before_1, nbal_after_1, nbal1, nbal_before_2, nbal_after_2, nbal2
+    real :: no3bal_0, no3bal_1, nh4bal_0, nh4bal_1
     real, parameter :: eps = 9.999e-8    ! numerical imprecision allowed in mass conservation tests
 
     if (baltest_trans .and. .not. interface%steering%spinup) then
@@ -138,6 +141,18 @@ contains
     else
       baltest = .false.
     end if
+
+    !-------------------------------------------------------------------------
+    ! Record for balances
+    !-------------------------------------------------------------------------
+    ! all pools plus all losses summed up
+    if (verbose) print*,'              with state variables:'
+    if (verbose) print*,'              ninorg = ', pninorg(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
+    if (verbose) print*,'              nloss  = ', dnloss(1)
+    if (verbose) print*,'              dndep  = ', dndep
+    if (baltest) nbal_before_1 = pninorg(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr) + dndep
+    if (baltest) nbal_before_2 = pninorg(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) + dndep
+    if (verbose) print*,'executing ntransform() ... '
 
     !///////////////////////////////////////////////////////////////////////
     ! INITIALIZATION 
@@ -166,18 +181,6 @@ contains
       endif
       
     endif
-
-    !-------------------------------------------------------------------------
-    ! Record for balances
-    !-------------------------------------------------------------------------
-    ! all pools plus all losses summed up
-    if (verbose) print*,'              with state variables:'
-    if (verbose) print*,'              ninorg = ', pninorg(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
-    if (verbose) print*,'              nloss  = ', dnloss(1)
-    if (verbose) print*,'              dndep  = ', dndep
-    if (baltest) nbal_before_1 = pninorg(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr) + dndep
-    if (baltest) nbal_before_2 = pninorg(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) + dndep
-    if (verbose) print*,'executing ntransform() ... '
           
     ! LOOP OVER GRIDCELL LAND UNITS
     do lu=1,nlu
@@ -194,8 +197,16 @@ contains
       no3 = pninorg(lu,jpngr)%n14 * fno3(lu,jpngr)
       nh4 = pninorg(lu,jpngr)%n14 * (1.0 - fno3(lu,jpngr))
 
-      ! Daily updated soil moisture and soil temperature are required for
-      ! ntransform.
+      !-------------------------------------------------------------------------
+      ! Record for balances
+      !-------------------------------------------------------------------------
+      ! all pools plus all losses summed up
+      if (verbose) print*,'              before:'
+      if (verbose) print*,'              no3 = ', no3
+      if (verbose) print*,'              no4 = ', nh4
+      if (baltest) no3bal_0 = no3
+      if (baltest) nh4bal_0 = nh4
+ 
 
       ! must rather be wtot_up which includes water below permanent wilting point (see waterbalance.F).
       !------------------------------------------------------------------
@@ -219,10 +230,7 @@ contains
       !-----------------------------------------------------------------------
       ! Reduce NO3 by fraction dnleach(lu)
       !------------------------------------------------------------------      
-      ! print*,'fraction leached ', soilphys(lu)%ro / psoilphys(lu,jpngr)%wcont
-      dnleach(lu) = no3 * soilphys(lu)%ro / psoilphys(lu,jpngr)%wcont
-      ! ! xxx try
-      ! dnleach(lu) = 0.0
+      dnleach(lu) = no3 * soilphys(lu)%fleach
       no3         = no3 - dnleach(lu)
       dnloss(lu)  = dnloss(lu) + dnleach(lu)
 
@@ -236,23 +244,25 @@ contains
       
       ! wet (anaerobic) fraction
       !------------------------------------------------------------------
-      nh4_w = soilphys(lu)%wscal / 3.3 * nh4
-      no3_w = soilphys(lu)%wscal / 3.3 * no3
-      no2_w = soilphys(lu)%wscal / 3.3 * no2(lu,jpngr)
+      fwet  = soilphys(lu)%wscal / 3.3
+      nh4_w = fwet * nh4
+      no3_w = fwet * no3
+      no2_w = fwet * no2(lu,jpngr)
 
-      ! doc_w = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * soilphys(lu)%wscal / 3.3
-      doc_w = ddoc(lu) * soilphys(lu)%wscal / 3.3
+      ! doc_w = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * fwet
+      doc_w = ddoc(lu) * fwet
 
       ! write(0,*) 'mo, dm, ddoc(lu) ', mo, dm, ddoc(lu)
 
       ! dry (aerobic) fraction
       !------------------------------------------------------------------
-      nh4_d = ( 1.0 - soilphys(lu)%wscal / 3.3 ) * nh4
-      no3_d = ( 1.0 - soilphys(lu)%wscal / 3.3 ) * no3
-      no2_d = ( 1.0 - soilphys(lu)%wscal / 3.3 ) * no2(lu,jpngr)
+      fdry  = 1.0 - fwet
+      nh4_d = fdry * nh4
+      no3_d = fdry * no3
+      no2_d = fdry * no2(lu,jpngr)
 
-      ! doc_d = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * ( 1.0 - soilphys(lu)%wscal / 3.3 )
-      doc_d = ddoc(lu) * ( 1.0 - soilphys(lu)%wscal / 3.3 )
+      ! doc_d = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * fdry
+      doc_d = ddoc(lu) * fdry
 
 
       !///////////////////////////////////////////////////////////////////////
@@ -279,6 +289,18 @@ contains
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr) + n2o_inc
       no3_d           = no3_d + no3_inc
             
+      ! xxx debug
+      if (baltest) no3bal_1 = no3_w + no3_d - no3_inc
+      if (baltest) nh4bal_1 = nh4_w + nh4_d + dnitr(lu)
+
+      if (baltest) nbal1 = no3bal_1 - no3bal_0
+      if (baltest) nbal2 = nh4bal_1 - nh4bal_0
+      if (verbose) print*,'              --- preliminary balance after nitrification '
+      if (verbose) print*,'              ', nbal1
+      if (verbose) print*,'              ', nbal2
+      if (baltest .and. abs(nbal1)>eps) stop 'balance 1 not satisfied'
+      if (baltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
+
 
       !///////////////////////////////////////////////////////////////////////
       ! DENITRIFICATION (ntransform.cpp:177) in anaerobic microsites
