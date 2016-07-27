@@ -104,7 +104,7 @@ contains
     logical :: cont
     integer, parameter :: nmax = 100
     type(outtype_zeroin)  :: out_zeroin
-    logical :: doverbose = .false.
+    logical :: verbose = .false.
 
     ! xxx debug
     type( orgpool ) :: bal1, bal2, bald
@@ -112,17 +112,17 @@ contains
     logical, save :: nignore = .true.
 
     ! Variables N balance test
-    logical, parameter :: dobaltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
-    logical :: doverbose = .false.  ! set to true to activate doverbose mode
-    logical :: dobaltest
+    logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
+    logical :: verbose = .false.  ! set to true to activate verbose mode
+    logical :: baltest
     type( orgpool ) :: orgtmp1, orgtmp2, orgbal1
     real :: ctmp
 
     !------------------------------------------------------------------
     ! Turn mass conservation tests on and off
     !------------------------------------------------------------------
-    dobaltest = .false.
-    doverbose = .false.
+    baltest = .false.
+    verbose = .false.
 
     abserr=100.0*XMACHEPS !*10e5
     relerr=1000.0*XMACHEPS !*10e5
@@ -263,13 +263,13 @@ contains
               ! If eval quantity is still positive then put all to roots.
               !------------------------------------------------------------------
               cont = .true.
-              if (doverbose) print*, 'check allocation: all to roots'
+              if (verbose) print*, 'check allocation: all to roots'
               eval_allroots  = eval_imbalance( 0.0 )
-              if (doverbose) print*, 'eval_allroots', eval_allroots  
+              if (verbose) print*, 'eval_allroots', eval_allroots  
               if (eval_allroots > 0.0) then
                 dcleaf_opt = 0.0
                 cont = .false.
-                if (doverbose) print*, '* putting all to roots *'
+                if (verbose) print*, '* putting all to roots *'
               end if
 
               !------------------------------------------------------------------
@@ -277,13 +277,13 @@ contains
               ! If eval quantity is still negative then put all to leaves.
               !------------------------------------------------------------------
               if (cont) then
-                if (doverbose) print*, 'check alloation: all to leaves with dcleaf =', max_dc
+                if (verbose) print*, 'check alloation: all to leaves with dcleaf =', max_dc
                 eval_allleaves = eval_imbalance( max_dc )
-                if (doverbose) print*, 'eval_allleaves', eval_allleaves  
+                if (verbose) print*, 'eval_allleaves', eval_allleaves  
                 if (eval_allleaves < 0.0) then
                   dcleaf_opt = max_dc
                   cont = .false.
-                  if (doverbose) print*, '* putting all to leaves *'
+                  if (verbose) print*, '* putting all to leaves *'
                 end if
               end if
 
@@ -292,7 +292,7 @@ contains
               ! 'eval_imbalance()' in the interval [0.0, max_dc].
               !------------------------------------------------------------------
               if (cont) then
-                if (doverbose) print*, '*** finding root of eval_imbalance ***'
+                if (verbose) print*, '*** finding root of eval_imbalance ***'
                 if (write_logfile_eval_imbalance) open(unit=666,file='eval_imbalance.log',status='unknown')
                 if (write_logfile_eval_imbalance) write(666,*) "mydcleaf, eval" !, dc, dn, mydcleaf, mydcroot, mydnleaf, mydnroot"
                 max_dc_save = max_dc ! necessary because 'zeroin' alters that variable
@@ -306,12 +306,12 @@ contains
                   dcleaf_opt = out_zeroin%root
                 end if
                 if (write_logfile_eval_imbalance) close(unit=666)
-                if (doverbose) print*, 'no. of iterations   ', out_zeroin%niter
-                if (doverbose) print*, 'dcleaf_opt is root ', dcleaf_opt
+                if (verbose) print*, 'no. of iterations   ', out_zeroin%niter
+                if (verbose) print*, 'dcleaf_opt is root ', dcleaf_opt
                 test = eval_imbalance( dcleaf_opt, .true. )
-                if (doverbose) print*, 'eval               =', test
+                if (verbose) print*, 'eval               =', test
                 ! if (abs(test)>1e-4) stop 'failed finding a good root'
-                if (doverbose) print*, '----------------------------------'
+                if (verbose) print*, '----------------------------------'
                 ! break_after_alloc = .true.
                 ! print*,'dcleaf_opt ', dcleaf_opt 
                 ! print*,'max_dc     ', max_dc
@@ -617,7 +617,7 @@ contains
   end subroutine allocate_root
 
 
-  function eval_imbalance( mydcleaf, doverbose ) result ( eval )
+  function eval_imbalance( mydcleaf, verbose ) result ( eval )
     !/////////////////////////////////////////////////////////
     ! Evaluates C:N ratio of new assimilation after allocation 
     ! versus whole-plant C:N ratio after allocation. Optimal 
@@ -641,7 +641,7 @@ contains
 
     ! arguments
     real, intent(in)              :: mydcleaf
-    logical, intent(in), optional :: doverbose
+    logical, intent(in), optional :: verbose
 
     ! function return variable
     real :: eval

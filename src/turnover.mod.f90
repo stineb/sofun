@@ -51,8 +51,8 @@ contains
     real :: dleaf
     real :: droot
 
-    ! xxx doverbose
-    logical, parameter :: doverbose = .false.
+    ! xxx verbose
+    logical, parameter :: verbose = .false.
     type( orgpool ) :: orgtmp, orgtmp2
 
     do pft=1,npft
@@ -102,20 +102,20 @@ contains
       !--------------------------------------------------------------
       ! Calculate leaf turnover in this day 
       !--------------------------------------------------------------
-      if (doverbose) print*, 'calling turnover_leaf() ... '
-      if (doverbose) print*, '              with state variables:'
-      if (doverbose) print*, '              pleaf = ', pleaf(:,jpngr)
-      if (doverbose) print*, '              plitt = ', plitt_af(pft,jpngr)
-      if (doverbose) orgtmp  =  pleaf(pft,jpngr)
-      if (doverbose) orgtmp2 =  plitt_af(pft,jpngr)
+      if (verbose) print*, 'calling turnover_leaf() ... '
+      if (verbose) print*, '              with state variables:'
+      if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+      if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
+      if (verbose) orgtmp  =  pleaf(pft,jpngr)
+      if (verbose) orgtmp2 =  plitt_af(pft,jpngr)
       !--------------------------------------------------------------
       if ( dleaf>0.0 )                 call turnover_leaf( dleaf, pft, jpngr )
       !--------------------------------------------------------------
-      if (doverbose) print*, '              ==> returned: '
-      if (doverbose) print*, '              pleaf = ', pleaf(:,jpngr)
-      if (doverbose) print*, '              plitt = ', plitt_af(pft,jpngr)
-      if (doverbose) print*, '              --- balance: '
-      if (doverbose) print*, '                  dlitt - dleaf                = ',  orgminus( &
+      if (verbose) print*, '              ==> returned: '
+      if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
+      if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
+      if (verbose) print*, '              --- balance: '
+      if (verbose) print*, '                  dlitt - dleaf                = ',  orgminus( &
                                                                                     orgminus( &
                                                                                       plitt_af(pft,jpngr), &
                                                                                       orgtmp2 &
@@ -129,20 +129,20 @@ contains
       !--------------------------------------------------------------
       ! Calculate root turnover in this day 
       !--------------------------------------------------------------
-      if (doverbose) print*, 'calling turnover_root() ... '
-      if (doverbose) print*, '              with state variables:'
-      if (doverbose) print*, '              pleaf = ', proot(:,jpngr)
-      if (doverbose) print*, '              plitt = ', plitt_bg(pft,jpngr)
-      if (doverbose) orgtmp  =  proot(pft,jpngr)
-      if (doverbose) orgtmp2 =  plitt_bg(pft,jpngr)
+      if (verbose) print*, 'calling turnover_root() ... '
+      if (verbose) print*, '              with state variables:'
+      if (verbose) print*, '              pleaf = ', proot(:,jpngr)
+      if (verbose) print*, '              plitt = ', plitt_bg(pft,jpngr)
+      if (verbose) orgtmp  =  proot(pft,jpngr)
+      if (verbose) orgtmp2 =  plitt_bg(pft,jpngr)
       !--------------------------------------------------------------
       if ( droot>0.0 )                 call turnover_root( droot, pft, jpngr )
       !--------------------------------------------------------------
-      if (doverbose) print*, '              ==> returned: '
-      if (doverbose) print*, '              proot = ', proot(:,jpngr)
-      if (doverbose) print*, '              plitt = ', plitt_bg(pft,jpngr)
-      if (doverbose) print*, '              --- balance: '
-      if (doverbose) print*, '                  dlitt - droot                = ',  orgminus( &
+      if (verbose) print*, '              ==> returned: '
+      if (verbose) print*, '              proot = ', proot(:,jpngr)
+      if (verbose) print*, '              plitt = ', plitt_bg(pft,jpngr)
+      if (verbose) print*, '              --- balance: '
+      if (verbose) print*, '                  dlitt - droot                = ',  orgminus( &
                                                                                     orgminus( &
                                                                                       plitt_bg(pft,jpngr), &
                                                                                       orgtmp2 &
@@ -156,20 +156,20 @@ contains
       !--------------------------------------------------------------
       ! Calculate labile turnover in this day 
       !--------------------------------------------------------------
-      if (doverbose) print*, 'calling turnover_root() ... '
-      if (doverbose) print*, '              with state variables:'
-      if (doverbose) print*, '              pleaf = ', plabl(:,jpngr)
-      if (doverbose) print*, '              plitt = ', plitt_af(pft,jpngr)
-      if (doverbose) orgtmp  =  plabl(pft,jpngr)
-      if (doverbose) orgtmp2 =  plitt_af(pft,jpngr)
+      if (verbose) print*, 'calling turnover_root() ... '
+      if (verbose) print*, '              with state variables:'
+      if (verbose) print*, '              pleaf = ', plabl(:,jpngr)
+      if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
+      if (verbose) orgtmp  =  plabl(pft,jpngr)
+      if (verbose) orgtmp2 =  plitt_af(pft,jpngr)
       !--------------------------------------------------------------
       if ( dlabl>0.0 )                 call turnover_labl( dlabl, pft, jpngr )
       !--------------------------------------------------------------
-      if (doverbose) print*, '              ==> returned: '
-      if (doverbose) print*, '              plabl = ', plabl(:,jpngr)
-      if (doverbose) print*, '              plitt = ', plitt_af(pft,jpngr)
-      if (doverbose) print*, '              --- balance: '
-      if (doverbose) print*, '                  dlitt - dlabl                = ',  orgminus( &
+      if (verbose) print*, '              ==> returned: '
+      if (verbose) print*, '              plabl = ', plabl(:,jpngr)
+      if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
+      if (verbose) print*, '              --- balance: '
+      if (verbose) print*, '                  dlitt - dlabl                = ',  orgminus( &
                                                                                     orgminus( &
                                                                                       plitt_af(pft,jpngr), &
                                                                                       orgtmp2 &

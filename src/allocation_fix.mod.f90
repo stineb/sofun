@@ -79,15 +79,15 @@ contains
     type( orgpool ) :: bal1, bal2, bald
 
     ! Variables N balance test
-    logical, parameter :: dobaltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
-    logical :: doverbose = .false.  ! set to true to activate doverbose mode
-    logical :: dobaltest
+    logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
+    logical :: verbose = .false.  ! set to true to activate verbose mode
+    logical :: baltest
     type( orgpool ) :: orgtmp1, orgtmp2, orgbal1
     real :: ctmp
 
     !------------------------------------------------------------------
-    dobaltest = .false.
-    doverbose = .false.
+    baltest = .false.
+    verbose = .false.
     !------------------------------------------------------------------
 
     !-------------------------------------------------------------------------
@@ -139,14 +139,14 @@ contains
           !-------------------------------------------------------------------
           ! LEAF ALLOCATION
           !-------------------------------------------------------------------
-          if (dobaltest) orgtmp1 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(drgrow(pft)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
-          if (doverbose) write(0,*) 'calling allocate_leaf() ... '
-          if (doverbose) write(0,*) '              with state variables:'
-          if (doverbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (doverbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (doverbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-          if (doverbose) write(0,*) '              drgrow= ', drgrow(:)
-          if (doverbose) write(0,*) '              dnup  = ', dnup(1)%n14
+          if (baltest) orgtmp1 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(drgrow(pft)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
+          if (verbose) write(0,*) 'calling allocate_leaf() ... '
+          if (verbose) write(0,*) '              with state variables:'
+          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+          if (verbose) write(0,*) '              drgrow= ', drgrow(:)
+          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
           call allocate_leaf( &
             pft, dcleaf(pft), &
             pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
@@ -154,18 +154,18 @@ contains
             solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs, &
             lai_ind(pft,jpngr), dnleaf(pft) &
             )
-          if (doverbose) write(0,*) '              ==> returned: '
-          if (doverbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (doverbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (doverbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-          if (dobaltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) ) / params_plant%growtheff
-          if (doverbose) write(0,*) '              drgrow= ', ctmp
-          if (doverbose) write(0,*) '              dnup  = ', dnup(1)%n14
-          if (dobaltest) orgtmp2 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
-          if (dobaltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
-          if (dobaltest) write(0,*) '       balance A =', orgbal1
-          if (dobaltest .and. abs(orgbal1%c%c12)>eps) stop 'balance A not satisfied for C'
-          if (dobaltest .and. abs(orgbal1%n%n14)>eps) stop 'balance A not satisfied for N'
+          if (verbose) write(0,*) '              ==> returned: '
+          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+          if (baltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) ) / params_plant%growtheff
+          if (verbose) write(0,*) '              drgrow= ', ctmp
+          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
+          if (baltest) orgtmp2 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
+          if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
+          if (baltest) write(0,*) '       balance A =', orgbal1
+          if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance A not satisfied for C'
+          if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance A not satisfied for N'
 
           !-------------------------------------------------------------------  
           ! Update leaf traits
@@ -180,31 +180,31 @@ contains
           !-------------------------------------------------------------------
           ! ROOT ALLOCATION
           !-------------------------------------------------------------------
-          if (dobaltest) orgtmp1 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(drgrow(pft)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
-          if (doverbose) write(0,*) 'calling allocate_root() ... '
-          if (doverbose) write(0,*) '              with state variables:'
-          if (doverbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (doverbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (doverbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-          if (doverbose) write(0,*) '              drgrow= ', drgrow(:)
-          if (doverbose) write(0,*) '              dnup  = ', dnup(1)%n14
+          if (baltest) orgtmp1 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(drgrow(pft)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
+          if (verbose) write(0,*) 'calling allocate_root() ... '
+          if (verbose) write(0,*) '              with state variables:'
+          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+          if (verbose) write(0,*) '              drgrow= ', drgrow(:)
+          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
           call allocate_root( &
             pft, dcroot(pft), dnroot(pft), &
             proot(pft,jpngr)%c%c12, proot(pft,jpngr)%n%n14, &
             plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14  &
             )
-          if (doverbose) write(0,*) '              ==> returned: '
-          if (doverbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (doverbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (doverbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-          if (dobaltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcroot(pft) ) / params_plant%growtheff
-          if (doverbose) write(0,*) '              drgrow= ', ctmp
-          if (doverbose) write(0,*) '              dnup  = ', dnup(1)%n14
-          if (dobaltest) orgtmp2 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
-          if (dobaltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
-          if (dobaltest) write(0,*) '       balance B =', orgbal1
-          if (dobaltest .and. abs(orgbal1%c%c12)>eps) stop 'balance B not satisfied for C'
-          if (dobaltest .and. abs(orgbal1%n%n14)>eps) stop 'balance B not satisfied for N'
+          if (verbose) write(0,*) '              ==> returned: '
+          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
+          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+          if (baltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcroot(pft) ) / params_plant%growtheff
+          if (verbose) write(0,*) '              drgrow= ', ctmp
+          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
+          if (baltest) orgtmp2 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
+          if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
+          if (baltest) write(0,*) '       balance B =', orgbal1
+          if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance B not satisfied for C'
+          if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance B not satisfied for N'
 
           !-------------------------------------------------------------------
           ! GROWTH RESPIRATION, NPP
