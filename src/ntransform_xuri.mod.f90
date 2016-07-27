@@ -128,31 +128,31 @@ contains
     real       :: doc_d                  ! aerobic pools
 
     ! Variables N balance test
-    logical, parameter :: baltest_trans = .false.  ! set to false to do mass conservation test during transient simulation
-    logical :: verbose = .false.  ! set to true to activate verbose mode
-    logical :: baltest
+    logical, parameter :: dobaltest_trans = .false.  ! set to false to do mass conservation test during transient simulation
+    logical :: doverbose = .false.  ! set to true to activate doverbose mode
+    logical :: dobaltest
     real :: nbal_before_1, nbal_after_1, nbal1, nbal_before_2, nbal_after_2, nbal2
     real :: no3bal_0, no3bal_1, nh4bal_0, nh4bal_1
     real, parameter :: eps = 9.999e-8    ! numerical imprecision allowed in mass conservation tests
 
-    if (baltest_trans .and. .not. interface%steering%spinup) then
-      baltest = .true.
-      verbose = .true.
+    if (dobaltest_trans .and. .not. interface%steering%spinup) then
+      dobaltest = .true.
+      doverbose = .true.
     else
-      baltest = .false.
+      dobaltest = .false.
     end if
 
     !-------------------------------------------------------------------------
     ! Record for balances
     !-------------------------------------------------------------------------
     ! all pools plus all losses summed up
-    if (verbose) print*,'              with state variables:'
-    if (verbose) print*,'              ninorg = ', pninorg(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
-    if (verbose) print*,'              nloss  = ', dnloss(1)
-    if (verbose) print*,'              dndep  = ', dndep
-    if (baltest) nbal_before_1 = pninorg(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr) + dndep
-    if (baltest) nbal_before_2 = pninorg(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) + dndep
-    if (verbose) print*,'executing ntransform() ... '
+    if (doverbose) print*,'              with state variables:'
+    if (doverbose) print*,'              ninorg = ', pninorg(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
+    if (doverbose) print*,'              nloss  = ', dnloss(1)
+    if (doverbose) print*,'              dndep  = ', dndep
+    if (dobaltest) nbal_before_1 = pninorg(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr) + dndep
+    if (dobaltest) nbal_before_2 = pninorg(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) + dndep
+    if (doverbose) print*,'executing ntransform() ... '
 
     !///////////////////////////////////////////////////////////////////////
     ! INITIALIZATION 
@@ -201,11 +201,11 @@ contains
       ! Record for balances
       !-------------------------------------------------------------------------
       ! all pools plus all losses summed up
-      if (verbose) print*,'              before:'
-      if (verbose) print*,'              no3 = ', no3
-      if (verbose) print*,'              no4 = ', nh4
-      if (baltest) no3bal_0 = no3
-      if (baltest) nh4bal_0 = nh4
+      if (doverbose) print*,'              before:'
+      if (doverbose) print*,'              no3 = ', no3
+      if (doverbose) print*,'              no4 = ', nh4
+      if (dobaltest) no3bal_0 = no3
+      if (dobaltest) nh4bal_0 = nh4
  
 
       ! must rather be wtot_up which includes water below permanent wilting point (see waterbalance.F).
@@ -290,16 +290,16 @@ contains
       no3_d           = no3_d + no3_inc
             
       ! xxx debug
-      if (baltest) no3bal_1 = no3_w + no3_d - no3_inc
-      if (baltest) nh4bal_1 = nh4_w + nh4_d + dnitr(lu)
+      if (dobaltest) no3bal_1 = no3_w + no3_d - no3_inc
+      if (dobaltest) nh4bal_1 = nh4_w + nh4_d + dnitr(lu)
 
-      if (baltest) nbal1 = no3bal_1 - no3bal_0
-      if (baltest) nbal2 = nh4bal_1 - nh4bal_0
-      if (verbose) print*,'              --- preliminary balance after nitrification '
-      if (verbose) print*,'              ', nbal1
-      if (verbose) print*,'              ', nbal2
-      if (baltest .and. abs(nbal1)>eps) stop 'balance 1 not satisfied'
-      if (baltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
+      if (dobaltest) nbal1 = no3bal_1 - no3bal_0
+      if (dobaltest) nbal2 = nh4bal_1 - nh4bal_0
+      if (doverbose) print*,'              --- preliminary balance after nitrification '
+      if (doverbose) print*,'              ', nbal1
+      if (doverbose) print*,'              ', nbal2
+      if (dobaltest .and. abs(nbal1)>eps) stop 'balance 1 not satisfied'
+      if (dobaltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
 
 
       !///////////////////////////////////////////////////////////////////////
@@ -418,18 +418,18 @@ contains
     ! Test mass conservation
     !-------------------------------------------------------------------------
     ! all pools plus all losses summed up
-    if (baltest) nbal_after_1 = pninorg(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
-    if (baltest) nbal_after_2 = pninorg(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) - no3_inc
-    if (baltest) nbal1 = nbal_after_1 - nbal_before_1
-    if (baltest) nbal2 = nbal_after_2 - nbal_before_2
-    if (verbose) print*,'              ==> returned:'
-    if (verbose) print*,'              ninorg = ', pninorg(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
-    if (verbose) print*,'              nloss  = ', dnloss(1)
-    if (verbose) print*,'   --- balance: '
-    if (verbose) print*,'       d( ninorg + loss )', nbal1
-    if (verbose) print*,'       d( ninorg + loss )', nbal2
-    if (baltest .and. abs(nbal1)>eps) stop 'balance 1 not satisfied'
-    if (baltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
+    if (dobaltest) nbal_after_1 = pninorg(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
+    if (dobaltest) nbal_after_2 = pninorg(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) - no3_inc
+    if (dobaltest) nbal1 = nbal_after_1 - nbal_before_1
+    if (dobaltest) nbal2 = nbal_after_2 - nbal_before_2
+    if (doverbose) print*,'              ==> returned:'
+    if (doverbose) print*,'              ninorg = ', pninorg(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
+    if (doverbose) print*,'              nloss  = ', dnloss(1)
+    if (doverbose) print*,'   --- balance: '
+    if (doverbose) print*,'       d( ninorg + loss )', nbal1
+    if (doverbose) print*,'       d( ninorg + loss )', nbal2
+    if (dobaltest .and. abs(nbal1)>eps) stop 'balance 1 not satisfied'
+    if (dobaltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
 
   end subroutine ntransform
 
