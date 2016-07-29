@@ -509,6 +509,7 @@ subroutine biosphere( c_uptake )
   end do
 
   ! if (interface%steering%forcingyear==1974) stop 'end of year'
+  ! if (interface%steering%year==2) stop 'end of year'
 
   ! xxx insignificant
   c_uptake = 0.0

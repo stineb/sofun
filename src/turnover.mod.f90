@@ -87,7 +87,7 @@ contains
           droot =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
           dleaf =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
-          ! xxx try
+          ! ! xxx try
           ! dleaf = 1.5 / 365.0
           ! droot = 1.5 / 365.0
 
@@ -206,12 +206,7 @@ contains
     real :: cleaf
     real :: dlai
     real :: lai_new
-    real :: diff, tmp1, tmp2
-
-    integer, save :: invoc = 0
-    real, save :: iabs_times_nv
-
-    invoc = invoc + 1
+    real :: diff
 
     ! store leaf C and N before turnover
     lm_init = pleaf(pft,jpngr)
@@ -271,111 +266,6 @@ contains
 
     end if
 
-    ! ! when light conditions change (annual maximum of solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs), 
-    ! ! more N and C may be needed in spite of LAI-turnover > 0.0. 
-    ! ! In this case, calculate LAI as a function of leaf C 
-    ! if ( nleaf>pleaf(pft,jpngr)%n%n14 .or. cleaf>pleaf(pft,jpngr)%c%c12 ) then
-
-    !   lai_new = get_lai( pft, pleaf(pft,jpngr)%c%c12, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
-
-    !   ! update canopy state (only variable fAPAR so far implemented)
-    !   canopy(pft) = get_canopy( lai_new )
-
-    !   ! re-calculate metabolic and structural N, given new LAI and fAPAR
-    !   leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
-
-    !   nleaf = leaftraits(pft)%narea_canopy
-    !   cleaf = leaftraits(pft)%leafc_canopy
-
-    !   print*,'B pleaf before ', pleaf
-    !   print*,'B pleaf after  ', cleaf, nleaf
-
-    !   if ( nleaf>pleaf(pft,jpngr)%n%n14 .or. cleaf>pleaf(pft,jpngr)%c%c12 ) then
-
-    !     diff = min( pleaf(pft,jpngr)%n%n14 / nleaf, pleaf(pft,jpngr)%c%c12 / cleaf )
-
-    !     lai_new = diff**2 * lai_new
-
-    !     ! update canopy state (only variable fAPAR so far implemented)
-    !     canopy(pft) = get_canopy( lai_new )
-
-    !     ! re-calculate metabolic and structural N, given new LAI and fAPAR
-    !     leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
-
-    !     nleaf = leaftraits(pft)%narea_canopy
-    !     cleaf = leaftraits(pft)%leafc_canopy
-
-    !     print*,'B pleaf before ', pleaf
-    !     print*,'B pleaf after  ', cleaf, nleaf
-
-    !     if ( nleaf>pleaf(pft,jpngr)%n%n14 .or. cleaf>pleaf(pft,jpngr)%c%c12 ) then
-    !       stop ' shit '
-    !     end if
-
-    !   end if
-
-    ! end if
-
-! xxxxx
-
-
-    !   if ( invoc > 1 .and. maxval( solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs ) > iabs_times_nv ) then
-    !     ! Light conditions change so that required C and N at current LAI are insufficient. Reduce LAI.
-    !     diff = maxval( solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs ) / iabs_times_nv
-
-    !     ! print*,'diff ', diff
-    !     ! tmp1 = lai_ind(pft,jpngr) * params_plant%kbeer
-    !     ! tmp2 = exp( tmp2 )
-    !     ! dlai = 1.0 / tmp1 * log( diff * tmp2 / (diff * tmp2 - tmp2 + 1.0 ) )
-
-    !     ! try        
-    !     dlai = (1.0 / diff)**2
-    !     lai_new = dlai * lai_ind(pft,jpngr)
-
-    !     print*,'xxxx arrrrggg, dlai = ', dlai
-
-    !     ! update canopy state (only variable fAPAR so far implemented)
-    !     canopy(pft) = get_canopy( lai_new )
-
-    !     ! re-calculate metabolic and structural N, given new LAI and fAPAR
-    !     leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
-
-    !     nleaf = leaftraits(pft)%narea_canopy
-    !     cleaf = leaftraits(pft)%leafc_canopy
-
-    !     ! when light conditions change (annual maximum of solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs), 
-    !     ! more N and C may be needed in spite of LAI-turnover > 0.0. 
-    !     ! In this case, calculate LAI as a function of leaf C 
-    !     if ( nleaf>pleaf(pft,jpngr)%n%n14 .or. cleaf>pleaf(pft,jpngr)%c%c12 ) then
-    !       print*,'nleaf ', nleaf
-    !       print*,'pleaf(pft,jpngr)%n%n14 ', pleaf(pft,jpngr)%n%n14
-    !       stop 'shit'
-    !     endif
-
-    !   else
-
-    !     if ( (cleaf - pleaf(pft,jpngr)%c%c12) > eps ) then
-    !       print*,'dleaf ', dleaf
-    !       print*,'cleaf ', cleaf
-    !       print*,'pleaf(pft,jpngr)%c%c12 ', pleaf(pft,jpngr)%c%c12
-    !       stop 'unknown reason'
-    !     else
-    !       pleaf(pft,jpngr)%c%c12 = cleaf
-    !     end if
-
-    !     if ( (nleaf - pleaf(pft,jpngr)%n%n14) > eps ) then
-    !       print*,'dleaf ', dleaf
-    !       print*,'nleaf ', nleaf
-    !       print*,'pleaf(pft,jpngr)%n%n14 ', pleaf(pft,jpngr)%n%n14
-    !       stop 'unknown reason'
-    !     else
-    !       pleaf(pft,jpngr)%n%n14 = nleaf
-    !     end if
-
-    !   end if
-
-    ! end if
-
     ! update 
     lai_ind(pft,jpngr) = lai_new
     pleaf(pft,jpngr)%c%c12 = cleaf
@@ -405,9 +295,6 @@ contains
     ! rest goes to litter
     call nmvRec( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
     ! call nmv( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr) )
-
-    ! save for next time step
-    iabs_times_nv = maxval( solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs )
 
   end subroutine turnover_leaf
 

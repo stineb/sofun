@@ -197,6 +197,8 @@ contains
       no3 = pninorg(lu,jpngr)%n14 * fno3(lu,jpngr)
       nh4 = pninorg(lu,jpngr)%n14 * (1.0 - fno3(lu,jpngr))
 
+      ! print*,'fno3 ', fno3(lu,jpngr)
+
       !-------------------------------------------------------------------------
       ! Record for balances
       !-------------------------------------------------------------------------
@@ -224,6 +226,7 @@ contains
       nh4        = nh4 - dnvol(lu)
       dnloss(lu) = dnloss(lu) + dnvol(lu)
 
+      ! if (nh4>0.0) print*,'fvol ', dnvol(lu) / nh4 
 
       !///////////////////////////////////////////////////////////////////////
       ! NITRATE LEACHING
@@ -269,6 +272,9 @@ contains
       ! NITRIFICATION in aerobic microsites (ntransform.cpp:123)
       !------------------------------------------------------------------
       ftemp_nitr = max( min( (((70.0-dtemp_soil(lu,jpngr))/(70.0-38.0))**12.0) * exp(12.0*(dtemp_soil(lu,jpngr)-38.0)/(70.0-38.0)), 1.0), 0.0)
+
+      ! print*,'nitrification rate ', fdry * params_ntransform%maxnitr * ftemp_nitr
+      ! print*,'nh4_d              ', nh4_d
 
       ! gross nitrification rate (Eq.1, Tab.8, XP08)
       !------------------------------------------------------------------
@@ -319,6 +325,8 @@ contains
       no2_inc     = min( dnmax * ftemp_denitr * no3_w / ( params_ntransform%kn + no3_w ) * 1000.0, no3_w )
       if (no2_inc>no3_w) stop 'no2_inc > no3_w'
       
+      ! if (no3_w>0.0) print*,'denitrification rate ', fwet * no2_inc / no3_w
+
       no3_w       = no3_w - no2_inc
       no2_w       = no2_w + no2_inc
       ddenitr(lu) = no2_inc

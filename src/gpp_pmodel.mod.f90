@@ -158,7 +158,6 @@ module md_gpp
   real, allocatable, dimension(:,:,:) :: outmtransp ! monthly transpiration [mm]
 
   ! annual
-  real, dimension(npft,maxgrid) :: outagpp          ! annual gross primary production [gC/m2/a]
   real, dimension(npft,maxgrid) :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
   real, dimension(npft,maxgrid) :: outavcmax25      ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
   real, dimension(npft,maxgrid) :: outachi
@@ -1354,10 +1353,6 @@ contains
     !----------------------------------------------------------------
     if (interface%params_siml%loutgpp) then
 
-      ! GPP 
-      filnam=trim(prefix)//'.a.gpp.out'
-      open(310,file=filnam,err=888,status='unknown')
-
       ! VCMAX (annual maximum) (mol m-2 s-1)
       filnam=trim(prefix)//'.a.vcmax.out'
       open(323,file=filnam,err=888,status='unknown')
@@ -1408,7 +1403,6 @@ contains
 
     ! annual
     if (interface%params_siml%loutgpp) then
-      outagpp(:,:)     = 0.0
       outavcmax(:,:)   = 0.0
       outavcmax25(:,:) = 0.0
       outachi(:,:)     = 0.0
@@ -1455,10 +1449,6 @@ contains
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    if (interface%params_siml%loutgpp) then
-      outagpp(:,jpngr) = outagpp(:,jpngr) + dgpp(:)
-    end if
-
     ! store all daily values for outputting annual maximum
     if (npft>1) stop 'getout_annual_gpp not implemented for npft>1'
 
@@ -1544,7 +1534,6 @@ contains
   
       itime = real(interface%steering%outyear)
 
-      write(310,999) itime, sum(outagpp(:,jpngr))
       write(323,999) itime, sum(outavcmax(:,jpngr))
       write(654,999) itime, sum(outavcmax25(:,jpngr))
       write(652,999) itime, sum(outachi(:,jpngr))

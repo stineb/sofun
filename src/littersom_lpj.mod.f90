@@ -300,7 +300,6 @@ contains
         ! move fraction '(1-eff)' of C to heterotrophic respiration
         call ccp( cfrac( (1.0-eff), dlitt%c ), drhet(lu) )
 
-
         ! get average litter -> soil flux for analytical soil C equilibration
         if ( interface%steering%average_soil ) then
           mean_insoil_fs(lu,jpngr) = mean_insoil_fs(lu,jpngr) + eff * params_littersom%fastfrac * dlitt%c%c12
@@ -431,8 +430,16 @@ contains
         ! end if
         ! xxxxxxxx commented this out again
 
-        if ( abs( cton(psoil_fs(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) stop 'B fs: C:N not ok'
-        if ( abs( cton(psoil_sl(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) stop 'B sl: C:N not ok'
+        if ( abs( cton(psoil_fs(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) then
+          write(0,*) 'cton_soil_local', cton_soil_local
+          write(0,*) 'psoil_fs', cton( psoil_fs(lu,jpngr) )
+          stop 'B fs: C:N not ok'
+        end if
+        if ( abs( cton(psoil_sl(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) then
+          write(0,*) 'cton_soil_local', cton_soil_local
+          write(0,*) 'psoil_sl', cton( psoil_sl(lu,jpngr) )
+          stop 'B sl: C:N not ok'
+        end if
 
         ! OUTPUT COLLECTION
         if (interface%params_siml%loutlittersom) then
@@ -499,13 +506,14 @@ contains
       psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%n%n14 - dsoil_fs%n%n14
       psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%n%n14 - dsoil_sl%n%n14
 
-      if ( psoil_fs(lu,jpngr)%c%c12 >0.0 .and. abs( cton( psoil_fs(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-5 ) then
+      if ( psoil_fs(lu,jpngr)%c%c12 > 0.0 .and. abs( cton( psoil_fs(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-4 ) then
         write(0,*) 'cton_soil_local', cton_soil_local
-        write(0,*) 'psoil_fs', psoil_fs(lu,jpngr)
+        write(0,*) 'psoil_fs', cton( psoil_fs(lu,jpngr) )
         stop 'C fs: C:N not ok'
       end if
-      if ( psoil_sl(lu,jpngr)%c%c12 >0.0 .and. abs( cton( psoil_sl(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-5 ) then
-        write(0,*) 'psoil_sl', psoil_fs(lu,jpngr)
+      if ( psoil_sl(lu,jpngr)%c%c12 > 0.0 .and. abs( cton( psoil_sl(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-4 ) then
+        write(0,*) 'cton_soil_local', cton_soil_local
+        write(0,*) 'psoil_sl', cton( psoil_sl(lu,jpngr) )
         stop 'C sl: C:N not ok'
       end if
 

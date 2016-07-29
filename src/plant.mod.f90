@@ -162,6 +162,7 @@ module md_plant
   real, dimension(npft,ndayyear) :: dcton_lm
 
   ! annual
+  real, dimension(npft,maxgrid) :: outagpp
   real, dimension(npft,maxgrid) :: outanpp
   real, dimension(npft,maxgrid) :: outanup
   real, dimension(npft,maxgrid) :: outanup_fix
@@ -743,6 +744,7 @@ contains
 
     ! annual output variables
     if (interface%params_siml%loutplant) then
+      outagpp(:,:)      = 0.0
       outanpp(:,:)      = 0.0
       outanup(:,:)      = 0.0
       outanup_fix(:,:)  = 0.0
@@ -853,6 +855,14 @@ contains
     !----------------------------------------------------------------
     if (interface%params_siml%loutplant) then
 
+      ! GPP 
+      filnam=trim(prefix)//'.a.gpp.out'
+      open(310,file=filnam,err=999,status='unknown')
+
+      ! NPP 
+      filnam=trim(prefix)//'.a.npp.out'
+      open(311,file=filnam,err=999,status='unknown')      
+
       ! C VEGETATION -> LITTER TRANSFER
       filnam=trim(prefix)//'.a.cveg2lit.out'
       open(307,file=filnam,err=999,status='unknown')
@@ -860,10 +870,6 @@ contains
       ! N VEGETATION -> LITTER TRANSFER
       filnam=trim(prefix)//'.a.nveg2lit.out'
       open(308,file=filnam,err=999,status='unknown')
-
-      ! NPP 
-      filnam=trim(prefix)//'.a.npp.out'
-      open(311,file=filnam,err=999,status='unknown')
 
       ! LEAF C
       filnam=trim(prefix)//'.a.cleaf.out'
@@ -936,6 +942,7 @@ contains
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
     use md_interface
+    use md_gpp, only: dgpp
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -953,8 +960,8 @@ contains
     if (interface%params_siml%loutdnpp   ) outdnpp(:,doy,jpngr)   = dnpp(:)%c12
     if (interface%params_siml%loutdnup   ) outdnup(:,doy,jpngr)   = dnup(:)%n14
     if (interface%params_siml%loutdcex   ) outdcex(:,doy,jpngr)   = dcex(:)
-    if (interface%params_siml%loutdCleaf ) outdCleaf(:,doy,jpngr) = pleaf(:,jpngr)%c%c12
-    if (interface%params_siml%loutdCroot ) outdCroot(:,doy,jpngr) = proot(:,jpngr)%c%c12
+    if (interface%params_siml%loutdCleaf .or. interface%params_siml%loutplant ) outdCleaf(:,doy,jpngr) = pleaf(:,jpngr)%c%c12
+    if (interface%params_siml%loutdCroot .or. interface%params_siml%loutplant ) outdCroot(:,doy,jpngr) = proot(:,jpngr)%c%c12
     if (interface%params_siml%loutdClabl ) outdClabl(:,doy,jpngr) = plabl(:,jpngr)%c%c12
     if (interface%params_siml%loutdNlabl ) outdNlabl(:,doy,jpngr) = plabl(:,jpngr)%n%n14
     if (interface%params_siml%loutdClitt ) outdClitt(:,doy,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
@@ -976,6 +983,7 @@ contains
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
     if (interface%params_siml%loutplant) then
+      outagpp(:,jpngr)     = outagpp(:,jpngr) + dgpp(:)
       outanpp(:,jpngr)     = outanpp(:,jpngr) + dnpp(:)%c12
       outanup(:,jpngr)     = outanup(:,jpngr) + dnup(:)%n14
       outanup_fix(:,jpngr) = outanup_fix(:,jpngr) + dnup_fix(:)
@@ -1013,13 +1021,15 @@ contains
         end if
       end do
       
-      outacleaf   (pft,jpngr) = outdCleaf(pft,maxdoy(pft),jpngr)
-      outacroot   (pft,jpngr) = outdCroot(pft,maxdoy(pft),jpngr) 
-      outanarea_mb(pft,jpngr) = dnarea_mb(pft,maxdoy(pft))
-      outanarea_cw(pft,jpngr) = dnarea_cw(pft,maxdoy(pft))
-      outalai     (pft,jpngr) = maxlai(pft)
-      outalma     (pft,jpngr) = dlma(pft,maxdoy(pft))
-      outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy(pft))
+      if (interface%params_siml%loutplant) then
+        outacleaf   (pft,jpngr) = outdCleaf(pft,maxdoy(pft),jpngr)
+        outacroot   (pft,jpngr) = outdCroot(pft,maxdoy(pft),jpngr) 
+        outanarea_mb(pft,jpngr) = dnarea_mb(pft,maxdoy(pft))
+        outanarea_cw(pft,jpngr) = dnarea_cw(pft,maxdoy(pft))
+        outalai     (pft,jpngr) = maxlai(pft)
+        outalma     (pft,jpngr) = dlma(pft,maxdoy(pft))
+        outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy(pft))
+      end if
 
       if (interface%params_siml%loutdClabl) outaclabl(pft,jpngr) = outdClabl(pft,ndayyear,jpngr) ! taken at the end of the year
       if (interface%params_siml%loutdNlabl) outanlabl(pft,jpngr) = outdNlabl(pft,ndayyear,jpngr) ! taken at the end of the year
@@ -1111,6 +1121,7 @@ contains
 
       write(307,999) itime, sum(outaCveg2lit(:,jpngr))
       write(308,999) itime, sum(outaNveg2lit(:,jpngr))
+      write(310,999) itime, sum(outagpp(:,jpngr))
       write(311,999) itime, sum(outanpp(:,jpngr))
       write(312,999) itime, sum(outacleaf(:,jpngr))
       write(324,999) itime, sum(outacroot(:,jpngr))

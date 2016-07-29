@@ -9,12 +9,13 @@ import os.path
 ## - "fluxnet_cnmodel"
 ## - "gcme"
 ## - "campi"
+## - "campi_cmodel"
 ## - "fluxnet_fixalloc"
 ## - "atkin"
 ## - "olson"
 ## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'olson'
+simsuite = 'campi'
 
 ##--------------------------------------------------------------------
 ## Link directories
@@ -30,6 +31,9 @@ if simsuite == 'fluxnet_fixalloc':
 
 if simsuite == 'olson_cmodel':
   simsuite = 'olson'
+
+if simsuite == 'campi_cmodel':
+  simsuite = 'campi'
 
 call(['ln', '-svf', '../../input_' + simsuite + '_sofun/sitedata', 'input'])
 call(['ln', '-svf', '../input_' + simsuite + '_sofun/site_paramfils', '.'])

@@ -33,9 +33,11 @@ contains
     !  year.
     !----------------------------------------------------------------
     use md_classdefs
-    use md_params_core, only: npft
+    use md_params_core, only: npft, eps
     use md_interface
-    use md_plant, only: pleaf, plabl
+    use md_plant, only: pleaf, plabl, leaftraits, canopy, get_canopy, get_leaftraits
+    use md_waterbal, only: solar
+    use md_gpp, only: out_pmodel
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -48,41 +50,69 @@ contains
     ! real, parameter :: dleaf = 0.5
     ! real, parameter :: dlabl = 0.25
 
-    ! xxx try
-    real, parameter :: min_cleaf_left = 28.0
+    real, parameter :: min_lai_left = 0.5
     real :: dleaf
     real :: dlabl
 
+    type( orgpool ) :: lm_init
     type( orgpool ) :: lm_turn
-    type( orgpool ) :: lb_turn
+    type( orgpool ) :: lm_new
+    real :: lai_new
 
+    ! ! xxx debug
+    ! real :: lai_save
 
     do pft=1,npft
 
-      if (plabl(pft,jpngr)%c%c12<0.0) stop 'labile C is neg.'
-      if (plabl(pft,jpngr)%n%n14<0.0) stop 'labile N is neg.'
+      if (plabl(pft,jpngr)%c%c12<0.0) stop 'before SR grharvest: labile C is neg.'
+      if (plabl(pft,jpngr)%n%n14<0.0) stop 'before SR grharvest: labile N is neg.'
 
       if ( params_pft_plant(pft)%grass .and. interface%landuse(jpngr)%do_grharvest(doy) ) then
         ! grasses are harvested
 
         ! print*,'harvest on day ', doy
 
-        if (pleaf(pft,jpngr)%c%c12>min_cleaf_left) then
-          dleaf = ( 1.0 - min_cleaf_left / pleaf(pft,jpngr)%c%c12 )
-          ! dlabl = 0.0
-          dlabl = min( 1.0, max( 0.0, dleaf / 0.5 ) )
+        ! store leaf C and N before turnover
+        lm_init = pleaf(pft,jpngr)
+
+        ! ! xxx debug
+        ! lai_save = lai_ind(pft,jpngr)
+
+        lai_new = min( min_lai_left, lai_ind(pft,jpngr) )
+
+        ! ! xxx debug
+        ! print*,'dlai ', 1.0 - (lai_new / lai_save)        
+
+        ! update canopy state (only variable fAPAR so far implemented)
+        canopy(pft) = get_canopy( lai_new )
+
+        ! re-calculate metabolic and structural N, given new LAI and fAPAR
+        leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+        lm_new = orgpool( carbon(leaftraits(pft)%leafc_canopy), nitrogen(leaftraits(pft)%narea_canopy))
+
+        ! determine C and N turned over
+        lm_turn = orgminus( lm_init, lm_new )
+
+        ! update 
+        lai_ind(pft,jpngr) = lai_new
+        pleaf(pft,jpngr)   = lm_new
+
+        ! ! xxx debug
+        ! print*,'dcleaf ', 1.0 - ( pleaf(pft,jpngr)%c%c12 / lm_init%c%c12), 1.0 - ( pleaf(pft,jpngr)%n%n14 / lm_init%n%n14)        
+
+        if ( lm_turn%c%c12 < -1.0*eps ) then
+          stop 'negative turnover C'
+        else if ( lm_turn%c%c12 < 0.0 ) then
+           lm_turn%c%c12 = 0.0
+        end if
+        if ( lm_turn%n%n14 < -1.0*eps ) then
+          stop 'negative turnover N'
+        else if ( lm_turn%n%n14 < 0.0 ) then
+           lm_turn%n%n14 = 0.0
         end if
 
-        ! determine absolute turnover
-        lm_turn = orgfrac( dleaf, pleaf(pft,jpngr) ) ! leaf turnover
-        lb_turn = orgfrac( dlabl, plabl(pft,jpngr) ) ! leaf turnover
-
-        ! reduce leaf mass and root mass
-        call orgmv( lm_turn, pleaf(pft,jpngr), mharv(pft,jpngr) )
-        call orgmv( lb_turn, plabl(pft,jpngr), mharv(pft,jpngr) )
-
-        ! call orgsub( lm_turn, pleaf(pft,jpngr) )
-        ! call orgsub( lb_turn, plabl(pft,jpngr) )
+        ! copy to harvest pool
+        call orgcp( lm_turn, mharv(pft,jpngr) )
         
         ! ! add harvested biomass to harvest pool (off site decay, 100%/yr)
         ! call orgmvRec( lm_turn, lm_turn, mharv(pft,jpngr), outacharv(pft,jpngr), outanharv(pft,jpngr), scale=nind(pft,jpngr) )

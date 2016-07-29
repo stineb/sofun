@@ -342,9 +342,13 @@ contains
             dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
 
             !-------------------------------------------------------------------
-            ! LEAF ALLOCATION
+            ! LEAF ALLOCATION, definite
             !-------------------------------------------------------------------
             if (dcleaf(pft)>0.0) then
+
+              ! print*,'doy, definite leaf allocation ...', doy
+              ! print*,'with nv* = ', maxval( solar%meanmppfd(:) * out_pmodel(pft,:)%actnv_unitiabs )
+              ! print*,'with LAI = ', lai_ind(pft,jpngr)
 
               call allocate_leaf( &
                 pft, dcleaf(pft), &
@@ -353,6 +357,7 @@ contains
                 solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs, &
                 lai_ind(pft,jpngr), dnleaf(pft), nignore=nignore &
                 )
+              ! print*,'... done'
 
               !-------------------------------------------------------------------  
               ! Update leaf traits
@@ -367,7 +372,7 @@ contains
             end if
 
             !-------------------------------------------------------------------
-            ! ROOT ALLOCATION
+            ! ROOT ALLOCATION, definite
             !-------------------------------------------------------------------
             if (dcroot(pft)>0.0) then
 
@@ -506,6 +511,13 @@ contains
     real :: nleaf0
     real :: dclabl, dnlabl
 
+    ! xxx debug
+    real :: cleaf0
+
+    cleaf0 = cleaf
+
+    ! print*,'should have lai = ', get_lai( pft, cleaf, meanmppfd(:), nv(:) )
+
     ! Calculate LAI as a function of leaf C
     cleaf  = cleaf + mydcleaf
     lai = get_lai( pft, cleaf, meanmppfd(:), nv(:) )
@@ -542,6 +554,14 @@ contains
       end if
     else
       if ( nlabl < -1.0*eps ) then
+        print*,'dcleaf       ', mydcleaf
+        print*,'cleaf before ', cleaf0
+        print*,'cleaf after  ', cleaf
+        print*,'nleaf before ', nleaf0
+        print*,'nleaf after  ', nleaf
+        print*,'C:N before   ', cleaf0 / nleaf0
+        print*,'C:N after    ', cleaf / nleaf
+        print*,'nlabl = ', nlabl
         stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf N'
       else if ( nlabl < 0.0 ) then
         ! numerical imprecision

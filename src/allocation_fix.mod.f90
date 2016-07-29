@@ -43,8 +43,7 @@ contains
     use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
       plabl, drgrow, lai_ind, nind, canopy, leaftraits, &
       get_canopy, get_leaftraits, get_leaftraits_init, &
-      frac_leaf
-    use md_nuptake, only: dnup_fix
+      frac_leaf, dnup_fix
     use md_waterbal, only: solar
     use md_gpp, only: out_pmodel
     use md_soiltemp, only: dtemp_soil

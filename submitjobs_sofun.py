@@ -10,18 +10,25 @@ from subprocess import call
 ## - "fluxnet_cnmodel"
 ## - "gcme"
 ## - "campi"
+## - "campi_cmodel"
 ## - "fluxnet_fixalloc"
 ## - "atkin"
 ## - "olson"
 ## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'olson'
+simsuite = 'campi'
 
 ##--------------------------------------------------------------------
 ## set options
 ##--------------------------------------------------------------------
 ## standard outputs written to file (otherwise to screen)
 out_to_file = True
+
+## overwrite results
+overwrite = True
+
+## define default output variable to check for determining submission, given 'overwrite'
+defaultvar = 'npp' 
 
 ##--------------------------------------------------------------------
 ## set model setup, given simsuite (shorter code below)
@@ -35,7 +42,7 @@ if simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel
     do_cnmodel = True
 
 ## C-model setup (fixed allocation)
-if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'atkin' or simsuite == 'olson_cmodel':
+if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'atkin' or simsuite == 'olson_cmodel' or simsuite == 'campi_cmodel':
     do_cmodel = True
 
 ## P-model setup
@@ -51,6 +58,9 @@ if simsuite == 'fluxnet_fixalloc':
 
 if simsuite == 'olson_cmodel':
   simsuite = 'olson'
+
+if simsuite == 'campi_cmodel':
+  simsuite = 'campi'
 
 ##--------------------------------------------------------------------
 ## Compile
@@ -86,6 +96,16 @@ else:
 ##--------------------------------------------------------------------
 for index, row in siteinfo.iterrows():
 
+    ## set whether simulation should be submitted (and previous output overwritten)
+    outfil = 'output/' + row['expname'] + '.a.' + defaultvar + '.out'
+    if overwrite:
+        do_submit = True
+    else: 
+        if os.path.exists( outfil ):
+            do_submit = False
+        else:
+            do_submit = True
+
     ## select only grasslands
     if simsuite == 'fluxnet_cmodel':
         if row['classid'] == 'GRA':
@@ -94,10 +114,17 @@ for index, row in siteinfo.iterrows():
 
     ## normal case
     else:
-        print 'submitting job for experiment ' + row['expname'] + '...'
-        if out_to_file:
-            cmd = 'echo ' + row['expname'] + '| ./' + exe+ ' >' + row['expname'] + '.out' + ' 2>' + row['expname'] + '.out'
-            os.system( cmd )        
+        if do_submit:
+            print 'submitting job for experiment ' + row['expname'] + '...'
+            if out_to_file:
+                outfile = row['expname'] + '.out'
+                cmd = 'echo ' + row['expname'] + '| ./' + exe+ ' >' + outfile + ' 2>' + outfile
+                os.system( cmd )        
+            else:
+                cmd = 'echo ' + row['expname'] + '| ./' + exe
+                os.system( cmd )   
+
         else:
-            cmd = 'echo ' + row['expname'] + '| ./' + exe
-            os.system( cmd )        
+            print 'NOT submitting for experiment ' + row['expname'] + '...'
+
+
