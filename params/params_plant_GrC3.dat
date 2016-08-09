@@ -12,7 +12,7 @@ k_decay_root                            0.70000
 r_cton_root                             38.0000
 ncw_min                                 0.1
 r_n_cw_v                                0.4
-r_ctostructn_leaf                       60
+r_ctostructn_leaf                       40
 
 #                                      |
 # write value *behind* this position:  |->

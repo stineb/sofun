@@ -47,7 +47,6 @@ contains
     use md_waterbal, only: solar
     use md_gpp, only: out_pmodel
     use md_soiltemp, only: dtemp_soil
-    use md_ntransform, only: pninorg
     use md_params_core, only: eps
 
     ! xxx debug
@@ -55,8 +54,8 @@ contains
     use md_waterbal, only: solar, evap
     use md_gpp, only: calc_dgpp, calc_drd
     use md_npp, only: calc_resp_maint, calc_cexu
-    use md_gpp, only: dgpp, drd 
-    use md_plant, only: dnpp, drleaf, drroot, dcex, dnup
+    use md_gpp, only: drd 
+    use md_plant, only: dgpp, dnpp, drleaf, drroot, dcex, dnup
     use md_interface
 
     ! arguments
@@ -105,6 +104,9 @@ contains
     end if
     !-------------------------------------------------------------------------
 
+    ! xxx debug
+    frac_leaf = 0.4
+
     ! initialise
     dcleaf(:) = 0.0
     dnleaf(:) = 0.0
@@ -134,6 +136,8 @@ contains
           dcleaf(pft) = frac_leaf(pft) * params_plant%growtheff * avl
           dcroot(pft) = (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl
           dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
+
+          ! print*,'         doy, pleaf ', doy,  pleaf
 
           !-------------------------------------------------------------------
           ! LEAF ALLOCATION
@@ -175,6 +179,8 @@ contains
           ! Update fpc_grid and fapar_ind (not lai_ind)
           !-------------------------------------------------------------------  
           canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
+
+          print*,'doy, LMA ', doy, leaftraits(pft)%lma
 
           !-------------------------------------------------------------------
           ! ROOT ALLOCATION

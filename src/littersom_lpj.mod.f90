@@ -94,7 +94,7 @@ contains
       pexud, ddoc
     use md_waterbal, only: soilphys
     use md_soiltemp, only: dtemp_soil
-    use md_ntransform, only: pninorg
+    use md_ntransform, only: pnh4, pno3
 
     ! arguments
     integer, intent(in) :: jpngr                    ! grid cell number
@@ -142,14 +142,6 @@ contains
     real, dimension(nlu,maxgrid), save :: mean_ksoil_fs
     real :: ntoc_save_fs, ntoc_save_sl
 
-    ! xxx debug
-    type( orgpool ) :: orgtmp1, orgtmp2, orgbal1, orgbal2
-    real            :: ntmp1, ntmp2, ctmp1, ctmp2
-
-    ! xxx debug
-    orgtmp1 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
-    ! print*,'C org., Rhet   before   ', orgtmp1%c%c12, drhet(1)
-    ! print*,'N org., inorg. before   ', orgtmp1%n%n14, pninorg(1,jpngr)%n14
 
     !-------------------------------------------------------------------------
     ! Count number of calls (one for each simulation year)
@@ -363,55 +355,48 @@ contains
           !----------------------------------------------------------------    
           ! net N mineralisation
           !----------------------------------------------------------------    
-          pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + netmin_litt
+          pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + netmin_litt
           
         else
-
-          ! ! ! xxx try:
-          ! ! ! >>>>>>>>>>>
-          ! if ( spinup .and. invocation<=spinupyr_phaseinit_2 ) then
-          !   !----------------------------------------------------------------    
-          !   ! N fixation by free-living bacteria in litter to prevent immo-
-          !   ! bilisation.
-          !   !----------------------------------------------------------------    
-          !   req = -1.0 * netmin_litt
-          !   Nfix = req
-          !   req = 0.0
-
-          !   ! ===========
-          ! else
-          ! xxx THIS LEADS TO COMPLETE DIE-OFF: equilibration without immobilisation
           !----------------------------------------------------------------    
-          ! immobilisation
+          ! Immobilisation: first deplete NH4 pool
           !----------------------------------------------------------------    
           req = -1.0 * netmin_litt
-          avl = pninorg(lu,jpngr)%n14
-
-          ! print*,'req, avl',req,avl
+          avl = pnh4(lu,jpngr)%n14
 
           if (avl>=req) then
             ! enough mineral N for immobilisation
-            pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - req
+            pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - req
             req = 0.0
           else
-            ! not enough pninorg for immobilisation
-            pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - avl
+            ! not enough NH4 for immobilisation
+            pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - avl
             req = req - avl
 
             !----------------------------------------------------------------    
-            ! N fixation by free-living bacteria in litter to satisfy remainder
+            ! Immobilisation: second deplete NO3 pool
             !----------------------------------------------------------------    
-            ! Nfix = req
-            req = 0.0
-            ! write(0,*) 'fixing remainder:',Nfix
-            ! stop 'fixing remainder'
+            avl = pno3(lu,jpngr)%n14
 
-            ! end if
-            ! ! <<<<<<<<<<<
-            ! print*,'2.5.1'
+            if (avl>=req) then
+              ! enough mineral N for immobilisation
+              pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - req
+              req = 0.0
+            else
+              ! not enough NO3 for immobilisation
+              pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - avl
+              req = req - avl
+
+              !----------------------------------------------------------------    
+              ! N fixation by free-living bacteria in litter to satisfy remainder
+              !----------------------------------------------------------------    
+              ! Nfix = req
+              req = 0.0
+              stop 'could not get enough N upon immobilisation'
+
+            end if
 
           end if
-
           
         end if
 
@@ -528,10 +513,10 @@ contains
       ! if ( interface%steering%spinup .and. invocation <=  spinupyr_soilequil_1 ) then 
       if ( interface%steering%project_nmin ) then
         ! projected soil N mineralisation
-        if (dlitt%c%c12 > 0.0) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
+        if (dlitt%c%c12 > 0.0) pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
       else
         ! actual soil N mineralisation
-        pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
+        pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
       end if
 
       
@@ -576,23 +561,15 @@ contains
       !----------------------------------------------------------------
       ddoc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
 
-      Nfix = 0.0
-      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + Nfix
+      ! Nfix = 0.0
+      ! pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + Nfix
 
-      
       ! OUTPUT COLLECTION
       if (interface%params_siml%loutlittersom) then
         outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
       end if
-      ! write(0,*) 'e pninorg(lu,jpngr)%n14',pninorg
-      ! print*,'7'
 
     enddo                   !lu
-
-    ! xxx debug
-    orgtmp2 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
-    ! print*,'C org., Rhet   before   ', orgtmp2%c%c12, drhet(1)
-    ! print*,'N org., inorg after     ', orgtmp2%n%n14, pninorg(1,jpngr)%n14
 
   
   end subroutine littersom

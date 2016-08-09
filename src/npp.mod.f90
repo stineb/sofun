@@ -60,7 +60,7 @@ contains
     !-------------------------------------------------------------------------
     use md_params_core, only: npft, ndayyear
     use md_soiltemp, only: dtemp_soil
-    use md_gpp, only: dgpp, drd
+    use md_gpp, only: drd
     use md_turnover, only: turnover_leaf, turnover_root, turnover_labl
     use md_phenology, only: sprout
     use md_interface
@@ -189,6 +189,9 @@ contains
 
       if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
       if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
+
+
+      ! print*,'gpp, dclabl', doy, dgpp(pft), cminus( dnpp(pft), carbon(dcex(pft)) )
 
     end do
 

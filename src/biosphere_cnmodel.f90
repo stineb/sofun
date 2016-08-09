@@ -29,7 +29,7 @@ subroutine biosphere( c_uptake )
   use md_vegdynamics, only: vegdynamics
   use md_littersom, only: getpar_modl_littersom, initio_littersom, initoutput_littersom, &
     getout_annual_littersom, writeout_ascii_littersom, littersom, initdaily_littersom, initglobal_littersom
-  use md_ntransform, only: pninorg, ntransform, getpar_modl_ntransform, initglobal_ntransform, &
+  use md_ntransform, only: pno3, pnh4, ntransform, getpar_modl_ntransform, initglobal_ntransform, &
     initdaily_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, &
     writeout_ascii_ntransform
   use md_nuptake, only: nuptake, getpar_modl_nuptake, initdaily_nuptake, initio_nuptake, &
@@ -116,6 +116,7 @@ subroutine biosphere( c_uptake )
     call initio_nuptake()
     call initio_allocation()
     call initio_landuse()
+    call initio_forcing()
     if (verbose) write(0,*) '... done'
 
   endif 
@@ -134,6 +135,7 @@ subroutine biosphere( c_uptake )
   call initoutput_nuptake()
   call initoutput_allocation()
   call initoutput_landuse()
+  call initoutput_forcing()
   if (verbose) write(0,*) '... done'
 
   !----------------------------------------------------------------
@@ -195,7 +197,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) 'YEAR, DAY ', interface%steering%year, day
         if (verbose) write(0,*) '----------------------'
 
-        ! print*,'a pninorg', pninorg(1,jpngr)
+        ! print*,'a pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !----------------------------------------------------------------
         ! initialise daily updated variables 
         !----------------------------------------------------------------
@@ -234,7 +236,7 @@ subroutine biosphere( c_uptake )
                       )
         if (verbose) write(0,*) '... done'
 
-        ! print*,'b pninorg', pninorg(1,jpngr)
+        ! print*,'b pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !----------------------------------------------------------------
         ! update canopy and stand variables and simulate daily 
         ! establishment / sprouting
@@ -249,7 +251,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) write(0,*) '... done'
 
-        ! print*,'c pninorg', pninorg(1,jpngr)
+        ! print*,'c pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! calculate GPP
         !----------------------------------------------------------------
@@ -272,7 +274,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              drd   = ', drd(:)
         if (verbose) write(0,*) '... done'
 
-        ! print*,'d pninorg', pninorg(1,jpngr)
+        ! print*,'d pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! substract autotrophic respiration to get NPP, remainder is added 
         ! to labile pool (plabl)
@@ -300,33 +302,33 @@ subroutine biosphere( c_uptake )
         if (baltest .and. abs(cbal2)>eps) stop 'balance 2 not satisfied'
         if (verbose) write(0,*) '... done'
 
-        ! print*,'e pninorg', pninorg(1,jpngr)
+        ! print*,'e pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! calculate N acquisition as a function of C exudation
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling nuptake() ... '
         if (verbose) write(0,*) '              with state variables:'
-        if (verbose) write(0,*) '              ninorg = ', pninorg(1,jpngr)%n14
+        if (verbose) write(0,*) '              ninorg = ', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         if (verbose) write(0,*) '              nlabl  = ', plabl(1,jpngr)%n%n14
-        if (baltest) ntmp1 = pninorg(1,jpngr)%n14
+        if (baltest) ntmp1 = pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         if (baltest) ntmp2 = plabl(1,jpngr)%n%n14
         !----------------------------------------------------------------
         call nuptake( jpngr )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '              ==> returned: '
         if (verbose) write(0,*) '              dnup   = ', dnup(:)
-        if (verbose) write(0,*) '              ninorg = ', pninorg(1,jpngr)%n14
+        if (verbose) write(0,*) '              ninorg = ', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         if (verbose) write(0,*) '              nlabl  = ', plabl(1,jpngr)%n%n14
         if (baltest) write(0,*) '    --- balance: '
-        if (baltest) nbal1 = dnup(1)%n14 + ( pninorg(1,jpngr)%n14 - ntmp1 ) 
-        if (baltest) nbal2 = ( plabl(1,jpngr)%n%n14 - ntmp2 ) + ( pninorg(1,jpngr)%n14 - ntmp1 )
+        if (baltest) nbal1 = dnup(1)%n14 + ( pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14 - ntmp1 ) 
+        if (baltest) nbal2 = ( plabl(1,jpngr)%n%n14 - ntmp2 ) + ( pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14 - ntmp1 )
         if (verbose) write(0,*) '        nup - dninorg     = ', nbal1
         if (verbose) write(0,*) '        dnlabl - dninorg  = ', nbal2
         if (baltest .and. abs(nbal1)>eps) stop 'balance 1 not satisfied'
         if (baltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
         if (verbose) write(0,*) '... done'
 
-        ! print*,'f pninorg', pninorg(1,jpngr)
+        ! print*,'f pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! leaf, sapwood, and fine-root turnover
         !----------------------------------------------------------------
@@ -359,7 +361,7 @@ subroutine biosphere( c_uptake )
         if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
-        ! print*,'g pninorg', pninorg(1,jpngr)
+        ! print*,'g pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! grass / crop harvest
         !----------------------------------------------------------------
@@ -386,7 +388,7 @@ subroutine biosphere( c_uptake )
         if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
-        ! print*,'h pninorg', pninorg(1,jpngr)
+        ! print*,'h pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! litter and soil decomposition and N mineralisation
         !----------------------------------------------------------------
@@ -395,11 +397,11 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              plitt tot=  ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
         if (verbose) write(0,*) '              psoil tot = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
         if (verbose) write(0,*) '              pexud     = ', pexud(1,jpngr)
-        if (verbose) write(0,*) '              pninorg=    ', pninorg(1,jpngr)
+        if (verbose) write(0,*) '              pninorg=    ', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         if (verbose) write(0,*) '              drhet     = ', drhet(1)
         if (verbose) write(0,*) '              dnetmin   = ', outdnetmin(1,day,jpngr)
         if (baltest) orgtmp1 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
-        if (baltest) orgtmp2 = orgpool( drhet(1), pninorg(1,jpngr) )
+        if (baltest) orgtmp2 = orgpool( drhet(1), nplus( pnh4(1,jpngr), pno3(1,jpngr) ) )
         if (baltest) ntmp1 = outdnetmin(1,day,jpngr)
         !----------------------------------------------------------------
         call littersom( jpngr, day, interface%climate(jpngr)%dtemp(day) )
@@ -407,12 +409,12 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              ==> returned: '
         if (verbose) write(0,*) '              plitt  = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
         if (verbose) write(0,*) '              psoil  = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
-        if (verbose) write(0,*) '              pninorg= ', pninorg(1,jpngr)
+        if (verbose) write(0,*) '              pninorg= ', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         if (verbose) write(0,*) '              drhet  = ', drhet(1)
         if (verbose) write(0,*) '              dnetmin= ', outdnetmin(1,day,jpngr)
         if (baltest) write(0,*) '   --- balance: '
         if (baltest) orgtmp3 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
-        if (baltest) orgtmp4 = orgpool( drhet(1), pninorg(1,jpngr) )
+        if (baltest) orgtmp4 = orgpool( drhet(1), nplus( pnh4(1,jpngr), pno3(1,jpngr) ) )
         if (baltest) orgbal1 = orgminus( orgplus( orgtmp3, orgtmp4 ), orgplus( orgtmp1, orgtmp2 ) )
         if (baltest) nbal1 = (orgtmp1%n%n14 + ntmp1) - (orgtmp3%n%n14 + outdnetmin(1,day,jpngr))
         if (verbose) write(0,*) '       d( litt + soil ) - d(drhet,ninorg) = ', orgbal1
@@ -422,17 +424,17 @@ subroutine biosphere( c_uptake )
         if (baltest .and. abs(nbal1)>eps)         stop 'balance not satisfied for N, test 1'
         if (verbose) write(0,*) '... done'
 
-        ! print*,'hh pninorg', pninorg(1,jpngr)
+        ! print*,'hh pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! inorganic soil N dynamics (mass balance test only possible inside module)
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling ntransform() ... '
         !----------------------------------------------------------------
-        call ntransform( dm, moy, jpngr, interface%ninput_field(jpngr)%dtot(day), sum(interface%climate(jpngr)%dprec(:)) )
+        call ntransform( dm, moy, jpngr, interface%ninput_field(jpngr)%dnhx(day), interface%ninput_field(jpngr)%dnoy(day), sum(interface%climate(jpngr)%dprec(:)) )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '... done'
 
-        ! print*,'i pninorg', pninorg(1,jpngr)
+        ! print*,'i pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! allocation of labile pools to biomass
         !----------------------------------------------------------------
@@ -461,7 +463,7 @@ subroutine biosphere( c_uptake )
         if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
-        ! print*,'j pninorg', pninorg(1,jpngr)
+        ! print*,'j pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
@@ -474,6 +476,7 @@ subroutine biosphere( c_uptake )
         call getout_daily_ntransform( jpngr, moy, day )
         call getout_daily_nuptake( jpngr, moy, day )
         call getout_daily_allocation( jpngr, moy, day )
+        call getout_daily_forcing( jpngr, moy, day )
         if (verbose) write(0,*) '... done'
 
       end do
@@ -504,6 +507,7 @@ subroutine biosphere( c_uptake )
     call writeout_ascii_allocation( interface%steering%year )
     call writeout_ascii_littersom( interface%steering%year )
     call writeout_ascii_landuse( interface%steering%year )
+    call writeout_ascii_forcing( interface%steering%year )
     if (verbose) write(0,*) '... done'
 
   end do

@@ -171,18 +171,14 @@ program main
                                       )
 
     !----------------------------------------------------------------
-    ! Get prescribed fAPAR if required
+    ! Get prescribed fAPAR if required (otherwise set to dummy value)
     !----------------------------------------------------------------
-    if (interface%params_siml%prescr_monthly_fapar) then
-      interface%mfapar_field(:,:) = getfapar( &
-                                            trim(runname), &
-                                            trim(interface%params_siml%sitename), &
-                                            interface%steering%forcingyear, &
-                                            interface%params_siml%fapar_forcing_source &
-                                            )
-    else
-      interface%mfapar_field(:,:) = dummy
-    end if
+    interface%mfapar_field(:,:) = getfapar( &
+                                          trim(runname), &
+                                          trim(interface%params_siml%sitename), &
+                                          interface%steering%forcingyear, &
+                                          interface%params_siml%fapar_forcing_source &
+                                          )
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 

@@ -15,7 +15,7 @@ import os.path
 ## - "olson"
 ## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'campi'
+simsuite = 'fluxnet_cnmodel'
 
 ##--------------------------------------------------------------------
 ## Link directories

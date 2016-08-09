@@ -51,7 +51,7 @@ module md_allocation
 
   type( paramstype_alloc ) :: params_alloc
 
-  real, parameter :: r_shoot_root = 0.6
+  real, parameter :: r_shoot_root = 0.9
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, PRIVATE VARIABLES

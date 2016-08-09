@@ -57,8 +57,9 @@ module md_nuptake
   real, dimension(npft) :: dnup_ret         ! daily N uptake [gN/m2/d]
 
   type outtype_calc_dnup
-    real :: act
-    real :: fix
+    real :: act_nh4                         ! NH4 acquisition by active uptake [gN/m2/d]
+    real :: act_no3                         ! NO3 acquisition by active uptake [gN/m2/d]
+    real :: fix                             ! N acquisition by fixation [gN/m2/d]
   end type outtype_calc_dnup
 
   !----------------------------------------------------------------
@@ -84,7 +85,7 @@ contains
     !-----------------------------------------------------------------
     use md_classdefs
     use md_plant, only: dcex, dnup, params_pft_plant, plabl, dnup_fix
-    use md_ntransform, only: pninorg
+    use md_ntransform, only: pno3, pnh4
     use md_soiltemp, only: dtemp_soil
 
     ! arguments
@@ -102,11 +103,6 @@ contains
 
     type( outtype_calc_dnup ) :: out_calc_dnup
 
-    ! xxx debug
-    real :: test_eff_bnf
-    real :: test_eff_act
-    real :: pninorg_before
-
     !-------------------------------------------------------------------------
     ! PFT LOOP
     !-------------------------------------------------------------------------
@@ -121,10 +117,11 @@ contains
       !//////////////////////////////////////////////////////////////////////////
       ! INITIALIZATION
       !-------------------------------------------------------------------------
-      n_uptake_pass     = 0.0
-      out_calc_dnup%act = 0.0                          ! active uptake, sum over sub-timesteps
-      out_calc_dnup%fix = 0.0                          ! N fixation, sum over sub-timesteps
-      n_uptake_retrans = 0.0
+      n_uptake_pass         = 0.0
+      out_calc_dnup%act_nh4 = 0.0                          ! active uptake, sum over sub-timesteps
+      out_calc_dnup%act_no3 = 0.0                          ! active uptake, sum over sub-timesteps
+      out_calc_dnup%fix     = 0.0                          ! N fixation, sum over sub-timesteps
+      n_uptake_retrans      = 0.0
 
       if ( dcex(pft)>0.0 ) then
         !//////////////////////////////////////////////////////////////////////////
@@ -149,33 +146,21 @@ contains
         ! n_uptake_pass = ninorg_conc * dtransp(pft) / 1000.0     ! [dtransp] = g H2O; [ninorg_conc] = g N / (mm H2O) = g N / (kg H2O)
         ! n_uptake_pass = min( n_uptake_pass, avail_ninorg )
 
-        ! write(0,*) 'n_uptake_pass ',n_uptake_pass 
-
-        ! Update
-        pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - n_uptake_pass
-        ! avail_ninorg          = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-        ! ninorg_conc           = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-
         !//////////////////////////////////////////////////////////////////////////
         ! ACTIVE UPTAKE
         ! Active N uptake is a function of initial N available and C exuded
         !--------------------------------------------------------------------------
-        pninorg_before = pninorg(lu,jpngr)%n14
-        out_calc_dnup = calc_dnup( dcex(pft), pninorg(lu,jpngr)%n14, params_pft_plant(pft)%nfixer, dtemp_soil(lu,jpngr) )
-        ! if (pninorg(lu,jpngr)%n14 < 0.0) then
-        !   print*,'a pninorg ', pninorg_before
-        !   print*,'b pninorg ', pninorg(lu,jpngr)
-        !   print*,'n uptake  ', out_calc_dnup
-        ! end if
+        out_calc_dnup  = calc_dnup( dcex(pft), pnh4(lu,jpngr)%n14, pno3(lu,jpngr)%n14, params_pft_plant(pft)%nfixer, dtemp_soil(lu,jpngr) )
 
-        if ((out_calc_dnup%act+out_calc_dnup%fix)>0.0) then
-          dmean_cost = dcex(pft)  / (out_calc_dnup%act+out_calc_dnup%fix)
+        if ((out_calc_dnup%act_no3 + out_calc_dnup%act_nh4 + out_calc_dnup%fix)>0.0) then
+          dmean_cost = dcex(pft)  / (out_calc_dnup%act_no3 + out_calc_dnup%act_nh4 + out_calc_dnup%fix)
         else
           dmean_cost = 9999.0
         end if
 
         ! Update
-        pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - out_calc_dnup%act
+        pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - out_calc_dnup%act_no3
+        pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - out_calc_dnup%act_nh4
 
       end if
 
@@ -184,9 +169,9 @@ contains
       ! N-uptake.
       !--------------------------------------------------------------------------
       ! daily
-      dnup(pft)%n14 = n_uptake_pass + out_calc_dnup%act + out_calc_dnup%fix  ! n_uptake_retrans is not considered uptake
+      dnup(pft)%n14 = n_uptake_pass + out_calc_dnup%act_no3 + out_calc_dnup%act_nh4 + out_calc_dnup%fix  ! n_uptake_retrans is not considered uptake
       dnup_pas(pft) = n_uptake_pass
-      dnup_act(pft) = out_calc_dnup%act                   
+      dnup_act(pft) = out_calc_dnup%act_no3 + out_calc_dnup%act_nh4                
       dnup_fix(pft) = out_calc_dnup%fix  
       dnup_ret(pft) = n_uptake_retrans
       if (dnup(pft)%n14>0.0) then
@@ -206,7 +191,7 @@ contains
   end subroutine nuptake
 
 
-  function calc_dnup( cexu, n0, isnfixer, soiltemp ) result( out_calc_dnup )
+  function calc_dnup( cexu, nh4, no3, isnfixer, soiltemp ) result( out_calc_dnup )
     !/////////////////////////////////////////////////////////////////
     ! With a FUN-like approach:
     ! dCexu/dNup = K / (N0 - Nup); K=1/eff_nup
@@ -214,7 +199,8 @@ contains
     !-----------------------------------------------------------------
     ! arguments
     real, intent(in)    :: cexu      ! C exuded (gC/m2/d)
-    real, intent(in)    :: n0        ! initial available N (gN/m2)
+    real, intent(in)    :: nh4       ! initially available NH4 (gN/m2)
+    real, intent(in)    :: no3       ! initially available NO3 (gN/m2)
     logical, intent(in) :: isnfixer  ! true if pft is N-fixer
     real, intent(in)    :: soiltemp  ! soil temperature (deg C)
 
@@ -222,12 +208,23 @@ contains
     type( outtype_calc_dnup ) :: out_calc_dnup
 
     ! local variables
+    real :: n0    ! initially available total inorganic N (gN/m2)
+    real :: fno3  ! NO3 share of total inorganic N (unitless)
+
     real :: mydnup_act
     real :: mydnup_fix
     real :: cost_bnf
     real :: eff_bnf
     real :: cexu_act
     real :: cexu_bnf
+
+    !-----------------------------------------------------------------
+    ! Get total inorganic N. N uptake is assumed to deplete NO3 and NH4
+    ! in proportion to their relative shares.
+    !-----------------------------------------------------------------
+    n0 = nh4 + no3
+    ! if (n0>0.0) then
+    fno3 = no3 / n0
 
     if (isnfixer) then
       !-----------------------------------------------------------------
@@ -261,12 +258,14 @@ contains
         !-----------------------------------------------------------------
         ! N uptake via active uptake
         !-----------------------------------------------------------------
-        out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu_act ) )
+        out_calc_dnup%act_no3 = fno3         * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu_act ) )
+        out_calc_dnup%act_nh4 = (1.0 - fno3) * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu_act ) )
 
       else
 
-        out_calc_dnup%fix = 0.0
-        out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
+        out_calc_dnup%fix     = 0.0
+        out_calc_dnup%act_no3 = fno3         * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
+        out_calc_dnup%act_nh4 = (1.0 - fno3) * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
 
       end if
 
@@ -275,7 +274,8 @@ contains
       ! NOT N FIXER
       !-----------------------------------------------------------------
       ! N uptake function of C exuded
-      out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
+      out_calc_dnup%act_no3 = fno3         * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
+      out_calc_dnup%act_nh4 = (1.0 - fno3) * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
 
       ! no N fixation considered
       out_calc_dnup%fix = 0.0

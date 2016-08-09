@@ -65,7 +65,7 @@ contains
     use md_waterbal, only: solar
     use md_gpp, only: out_pmodel
     use md_soiltemp, only: dtemp_soil
-    use md_ntransform, only: pninorg
+    use md_ntransform, only: pno3, pnh4
     use md_params_core, only: eps
     use md_findroot_fzeroin
 
@@ -74,8 +74,8 @@ contains
     use md_waterbal, only: solar, evap
     use md_gpp, only: calc_dgpp, calc_drd
     use md_npp, only: calc_resp_maint, calc_cexu
-    use md_gpp, only: dgpp, drd 
-    use md_plant, only: dnpp, drleaf, drroot, dcex, dnup
+    use md_gpp, only: drd 
+    use md_plant, only: dgpp, dnpp, drleaf, drroot, dcex, dnup
     use md_interface
 
     ! arguments
@@ -104,7 +104,6 @@ contains
     logical :: cont
     integer, parameter :: nmax = 100
     type(outtype_zeroin)  :: out_zeroin
-    logical :: verbose = .false.
 
     ! xxx debug
     type( orgpool ) :: bal1, bal2, bald
@@ -210,7 +209,7 @@ contains
             ! allocation, defined by newly acquired C and N (NPP-Ra-Cex, Nuptake)
             ! are acquired in the same ratio as is needed for new tissue growth.
             !------------------------------------------------------------------
-            ! print*,'cton in plabl ', cton( plabl(pft,jpngr) )
+            print*,'cton in plabl ', cton( plabl(pft,jpngr) )
             if ( cton( plabl(pft,jpngr) ) > 10.0 * params_pft_plant(pft)%r_cton_root  ) then
               !------------------------------------------------------------------
               ! massive imbalance: too much C -> put all to roots
@@ -218,7 +217,7 @@ contains
               if (maxdc_cavl<maxdc_navl) stop 'surprise'
               frac_leaf(pft) = 0.0
               frac_leaf_opt  = 0.0 
-              ! print*,'safety: all to roots'
+              print*,'safety: all to roots', doy
             
             else if ( ntoc( plabl(pft,jpngr) ) > 10.0 * leaftraits(pft)%r_ntoc_leaf ) then
               !------------------------------------------------------------------
@@ -227,7 +226,7 @@ contains
               if (.not.maxdc_cavl<maxdc_navl) stop 'surprise'
               frac_leaf(pft) = 1.0
               frac_leaf_opt  = 1.0 
-              ! print*,'safety: all to leaves'
+              print*,'safety: all to leaves', doy
             
             else
               !------------------------------------------------------------------
@@ -657,7 +656,7 @@ contains
     use md_npp, only: calc_resp_maint, calc_cexu
     use md_findroot_fzeroin
     use md_waterbal, only: solar, evap
-    use md_ntransform, only: pninorg
+    use md_ntransform, only: pno3, pnh4
 
     ! arguments
     real, intent(in)              :: mydcleaf
@@ -746,8 +745,8 @@ contains
     else
       dc          = acc * (npp - cexu)
     end if
-    out_calc_dnup = calc_dnup( cexu, pninorg(lu,usejpngr)%n14, params_pft_plant(usepft)%nfixer, soiltemp )
-    dn            = acc * (out_calc_dnup%fix + out_calc_dnup%act)
+    out_calc_dnup = calc_dnup( cexu, pnh4(lu,usejpngr)%n14, pno3(lu,usejpngr)%n14, params_pft_plant(usepft)%nfixer, soiltemp )
+    dn            = acc * (out_calc_dnup%fix + out_calc_dnup%act_no3 + out_calc_dnup%act_nh4 )
 
     ! print*,'fapar ', mycanopy%fapar_ind
     ! print*,'cleaf ', cleaf

@@ -40,8 +40,6 @@ module md_params_siml
     character(len=256) :: do_grharvest_forcing_file
     character(len=256) :: fapar_forcing_source
 
-    logical :: prescr_monthly_fapar
-
     ! activated PFTs
     logical :: lTeBS
     logical :: lGrC3
@@ -65,6 +63,7 @@ module md_params_siml
     logical :: loutdfapar
     logical :: loutdninorg    
     logical :: loutdtemp_soil 
+    logical :: loutdtemp
 
     ! booleans defining whether module-specific output variables are to be written to output
     logical :: loutplant
@@ -76,6 +75,7 @@ module md_params_siml
     logical :: loutlittersom
     logical :: loutnuptake
     logical :: loutlanduse
+    logical :: loutforcing
 
   end type paramstype_siml
 
@@ -253,8 +253,7 @@ contains
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_noy_forcing_file', out_getpar_siml%nfert_noy_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_nhx_forcing_file', out_getpar_siml%nfert_nhx_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
-    
-    out_getpar_siml%fapar_forcing_source = 'NA'
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
 
     out_getpar_siml%do_spinup            = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
 
@@ -268,9 +267,7 @@ contains
     out_getpar_siml%firstyeartrend       = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )
     out_getpar_siml%nyeartrend           = getparint( 'run/'//runname//'.sofun.parameter', 'nyeartrend' )
     out_getpar_siml%recycle              = getparint( 'run/'//runname//'.sofun.parameter', 'recycle' )
-    
-    out_getpar_siml%prescr_monthly_fapar = getparlogical( 'run/'//runname//'.sofun.parameter', 'prescr_monthly_fapar' )
-    
+        
     out_getpar_siml%daily_out_startyr    = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_startyr' )
     out_getpar_siml%daily_out_endyr      = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_endyr' )
 
@@ -302,6 +299,7 @@ contains
     out_getpar_siml%loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     out_getpar_siml%loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
+    out_getpar_siml%loutdtemp      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp' )
     
     out_getpar_siml%loutplant      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
     out_getpar_siml%loutalloc      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutalloc' )
@@ -312,6 +310,7 @@ contains
     out_getpar_siml%loutlittersom  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlittersom' )
     out_getpar_siml%loutnuptake    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnuptake' )
     out_getpar_siml%loutlanduse    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlanduse' )
+    out_getpar_siml%loutforcing    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutforcing' )
 
     write(0,*) "... done"
 

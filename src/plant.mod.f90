@@ -9,7 +9,7 @@ module md_plant
 
   private
   public pleaf, proot, psapw, plabl, pexud, plitt_af, plitt_as, plitt_bg, &
-    dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy,       &
+    dgpp, dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy, &
     lai_ind,  &
     fpc_grid, nind, dnup, dnup_fix, &
     params_pft_plant, params_plant, initglobal_plant, initpft,            &
@@ -40,6 +40,7 @@ module md_plant
   type(orgpool), dimension(npft,maxgrid) :: plitt_bg         ! below-ground litter [gC/m2]
 
   ! fluxes
+  real, dimension(npft)                  :: dgpp             ! daily gross primary production [gC/m2/d]
   type(carbon), dimension(npft)          :: dnpp             ! net primary production [gC/m2/d]
   real, dimension(npft)                  :: drgrow           ! growth respiration (growth+maintenance resp. of all compartments), no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
   real, dimension(npft)                  :: drleaf           ! leaf maintenance respiration, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
@@ -51,7 +52,7 @@ module md_plant
   type(nitrogen), dimension(npft)        :: dnup             ! daily N uptake [gN/m2/d]
   real, dimension(npft)                  :: dnup_fix         ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
 
-  real, dimension(npft)                  :: frac_leaf = 0.5  ! fraction of labile C allocated to leaves
+  real, dimension(npft)                  :: frac_leaf = 0.9  ! fraction of labile C allocated to leaves
 
   ! Leaf traits
   type leaftraits_type
@@ -140,6 +141,7 @@ module md_plant
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
+  real, allocatable, dimension(:,:,:) :: outdgpp    ! daily gross primary production [gC/m2/d]
   real, allocatable, dimension(:,:,:) :: outdnpp
   real, allocatable, dimension(:,:,:) :: outdnup
   real, allocatable, dimension(:,:,:) :: outdcex
@@ -697,6 +699,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     !----------------------------------------------------------------
+    dgpp(:)     = 0.0
     dnpp(:)     = carbon(0.0)
     dcex(:)     = 0.0
     dnup(:)     = nitrogen(0.0)
@@ -716,6 +719,7 @@ contains
     !----------------------------------------------------------------
     use md_interface
 
+    if (interface%steering%init .and. interface%params_siml%loutdgpp  ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
     if (interface%steering%init .and. interface%params_siml%loutdnpp  ) allocate( outdnpp      (npft,ndayyear,maxgrid) )
     if (interface%steering%init .and. interface%params_siml%loutdnup  ) allocate( outdnup      (npft,ndayyear,maxgrid) )
     if (interface%steering%init .and. interface%params_siml%loutdcex  ) allocate( outdcex      (npft,ndayyear,maxgrid) )
@@ -730,6 +734,7 @@ contains
     ! this is needed also for other (annual) output variables
     allocate( outdlai(npft,ndayyear,maxgrid) )
     
+    outdgpp  (:,:,:) = 0.0
     outdnpp  (:,:,:) = 0.0
     outdnup  (:,:,:) = 0.0
     outdcex  (:,:,:) = 0.0
@@ -780,6 +785,12 @@ contains
     !////////////////////////////////////////////////////////////////
     ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
     !----------------------------------------------------------------
+    ! GPP
+    if (interface%params_siml%loutdgpp) then
+      filnam=trim(prefix)//'.d.gpp.out'
+      open(101,file=filnam,err=999,status='unknown')
+    end if 
+
     ! NPP
     if (interface%params_siml%loutdnpp) then 
       filnam=trim(prefix)//'.d.npp.out'
@@ -942,7 +953,6 @@ contains
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
     use md_interface
-    use md_gpp, only: dgpp
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -957,6 +967,7 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
+    if (interface%params_siml%loutdgpp   ) outdgpp(:,doy,jpngr)   = dgpp(:)
     if (interface%params_siml%loutdnpp   ) outdnpp(:,doy,jpngr)   = dnpp(:)%c12
     if (interface%params_siml%loutdnup   ) outdnup(:,doy,jpngr)   = dnup(:)%n14
     if (interface%params_siml%loutdcex   ) outdcex(:,doy,jpngr)   = dcex(:)
@@ -1095,6 +1106,7 @@ contains
         ! Define 'itime' as a decimal number corresponding to day in the year + year
         itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
         
+        if (interface%params_siml%loutdgpp  ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
         if (interface%params_siml%loutdnpp  ) write(102,999) itime, sum(outdnpp(:,day,jpngr))
         if (interface%params_siml%loutdCleaf) write(103,999) itime, sum(outdCleaf(:,day,jpngr))
         if (interface%params_siml%loutdnup  ) write(104,999) itime, sum(outdnup(:,day,jpngr))

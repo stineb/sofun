@@ -12,14 +12,15 @@ module md_ntransform
   implicit none
 
   private 
-  public pninorg, ntransform, getpar_modl_ntransform, initglobal_ntransform, initdaily_ntransform, &
+  public pno3, pnh4, ntransform, getpar_modl_ntransform, initglobal_ntransform, initdaily_ntransform, &
     initio_ntransform, initoutput_ntransform, getout_daily_ntransform, writeout_ascii_ntransform
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
   ! pools
-  type( nitrogen ), dimension(nlu,maxgrid) :: pninorg         ! total inorganic N pool (sum of NO3 and NH4) [gC/m2]
+  type( nitrogen ), dimension(nlu,maxgrid) :: pno3   ! soil nitrate pool [gN/m2]
+  type( nitrogen ), dimension(nlu,maxgrid) :: pnh4   ! soil ammonium pool [gN/m2]
 
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
@@ -52,14 +53,14 @@ module md_ntransform
   real, dimension(nlu,maxgrid), save :: n2o_w, n2o_d     ! N2O in wet and dry microsites (split done in ntransform) [gN/m2]
   real, dimension(nlu,maxgrid), save :: n2_w             ! N2 in wet microsites (split done in ntransform) [gN/m2]
   
-  real, dimension(nlu,maxgrid), save :: no2              ! NO2 [gN/m2]
-  real, dimension(nlu,maxgrid), save :: fno3             ! fraction: no3/(no3+nh4)
+  real, dimension(nlu,maxgrid), save :: pno2              ! NO2 [gN/m2]
 
   !----------------------------------------------------------------
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
-  real, allocatable, dimension(:,:,:) :: outdninorg
+  real, allocatable, dimension(:,:,:) :: outdno3
+  real, allocatable, dimension(:,:,:) :: outdnh4
   real, allocatable, dimension(:,:,:) :: outdnloss     ! daily total N loss (gaseous+leacing) (gN/m2/d)
   real, allocatable, dimension(:,:,:) :: outddenitr    ! daily amount of N denitrified (gN/m2/d)
   real, allocatable, dimension(:,:,:) :: outdnitr      ! daily amount of N nitrified (gN/m2/d)
@@ -68,13 +69,15 @@ module md_ntransform
   real, allocatable, dimension(:,:,:) :: outdn2o       ! daily N2O emitted (gN/m2/d)
 
   ! annual
-  real, dimension(nlu,maxgrid) :: outaninorg
-  real, dimension(nlu,maxgrid) :: outanloss              ! annual total N loss (gaseous+leacing) (gN/m2/yr)
-  real, dimension(nlu,maxgrid) :: outan2o                ! annual N2O emitted (gaseous+leacing) (gN/m2/yr)
+  real, dimension(nlu,maxgrid) :: outano3
+  real, dimension(nlu,maxgrid) :: outanh4
+  real, dimension(nlu,maxgrid) :: outanloss            ! annual total N loss (gaseous+leacing) (gN/m2/yr)
+  real, dimension(nlu,maxgrid) :: outadenitr           ! annual denitrified N (gN/m2/yr)
+  real, dimension(nlu,maxgrid) :: outan2o              ! annual N2O emitted (gaseous+leacing) (gN/m2/yr)
 
 contains
 
-  subroutine ntransform( dm, mo, jpngr, dndep, aprec )
+  subroutine ntransform( dm, mo, jpngr, dnhxdep, dnoydep, aprec )
     !////////////////////////////////////////////////////////////////
     !  Litter and SOM decomposition and nitrogen mineralisation.
     !  1st order decay of litter and SOM _pools, governed by temperature
@@ -90,6 +93,10 @@ contains
     use md_plant, only: pexud, ddoc
     use md_interface
 
+    ! xxx try:  
+    ! use md_littersom, only: drhet
+    use md_plant, only: dgpp, dnpp
+
     ! XXX try: this is wrong: dw1 is only plant available water. 
     ! should be water-filled pore space = ( (porosity - ice) - (total fluid water volume) ) / dz
 
@@ -97,7 +104,8 @@ contains
     integer, intent(in) :: mo            ! month
     integer, intent(in) :: dm            ! day of the current month
     integer, intent(in) :: jpngr         ! grid cell number
-    real, intent(in)    :: dndep         ! daily N deposition [gN/d]
+    real, intent(in)    :: dnhxdep       ! daily N deposition as NHx [gN/d]
+    real, intent(in)    :: dnoydep       ! daily N deposition as NOy [gN/d]
     real, intent(in)    :: aprec         ! annual total precipitation [mm/d]
     
     ! local variables
@@ -117,10 +125,7 @@ contains
     
     real       :: no3_inc, n2o_inc, no_inc, no2_inc, n2_inc      ! pool increments, temporary variables
     real       :: tmp                                            ! temporary variable
-    
-    real       :: nh4                    ! ammonium [gN/m2]
-    real       :: no3                    ! nitrate [gN/m2]
-    
+        
     real       :: nh4_w, no3_w, no2_w    ! anaerobic pools
     real       :: nh4_d, no3_d, no2_d    ! aerobic pools
     real       :: doc_w, no, n2o, n2     ! anaerobic pools
@@ -147,11 +152,11 @@ contains
     !-------------------------------------------------------------------------
     ! all pools plus all losses summed up
     if (verbose) print*,'              with state variables:'
-    if (verbose) print*,'              ninorg = ', pninorg(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
+    if (verbose) print*,'              ninorg = ', pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + pno2(1,jpngr)
     if (verbose) print*,'              nloss  = ', dnloss(1)
-    if (verbose) print*,'              dndep  = ', dndep
-    if (baltest) nbal_before_1 = pninorg(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr) + dndep
-    if (baltest) nbal_before_2 = pninorg(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) + dndep
+    if (verbose) print*,'              dndep  = ', dnoydep + dnhxdep
+    if (baltest) nbal_before_1 = pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + pno2(1,jpngr) + dnoydep + dnhxdep
+    if (baltest) nbal_before_2 = pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) + dnoydep + dnhxdep
     if (verbose) print*,'executing ntransform() ... '
 
     !///////////////////////////////////////////////////////////////////////
@@ -181,33 +186,29 @@ contains
       endif
       
     endif
+
+    ! xxx try:
+    ddoc(:) = 1.0 * dgpp(1)
           
     ! LOOP OVER GRIDCELL LAND UNITS
     do lu=1,nlu
 
       !-------------------------------------------------------------------------
-      ! Add N deposition to inorganic pool
+      ! Add N deposition to inorganic pools
       !-------------------------------------------------------------------------
-      ! write(0,*) 'adding N deposition ', dndep(doy)
-      pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dndep
-              
-      !-------------------------------------------------------------------------
-      ! Define NO3 and NH4 from total inorganic N and previous day's shares
-      !-------------------------------------------------------------------------
-      no3 = pninorg(lu,jpngr)%n14 * fno3(lu,jpngr)
-      nh4 = pninorg(lu,jpngr)%n14 * (1.0 - fno3(lu,jpngr))
+      pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 + dnoydep
+      pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + dnhxdep
 
-      ! print*,'fno3 ', fno3(lu,jpngr)
 
       !-------------------------------------------------------------------------
       ! Record for balances
       !-------------------------------------------------------------------------
       ! all pools plus all losses summed up
       if (verbose) print*,'              before:'
-      if (verbose) print*,'              no3 = ', no3
-      if (verbose) print*,'              no4 = ', nh4
-      if (baltest) no3bal_0 = no3
-      if (baltest) nh4bal_0 = nh4
+      if (verbose) print*,'              no3 = ', pno3(lu,jpngr)%n14
+      if (verbose) print*,'              no4 = ', pnh4(lu,jpngr)%n14
+      if (baltest) no3bal_0 = pno3(lu,jpngr)%n14
+      if (baltest) nh4bal_0 = pnh4(lu,jpngr)%n14
  
 
       ! must rather be wtot_up which includes water below permanent wilting point (see waterbalance.F).
@@ -221,10 +222,10 @@ contains
       !-----------------------------------------------------------------------
       ! use mw1 for monthly timestep and wpool for daily, because this is updated daily
       ! XXX nh3max is not considered in the equations presented in the paper! XXX
-      fph        = exp( 2.0 * ( ph_soil - 10.0 ) )
-      dnvol(lu)  = nh3max * ftemp_vol**2 * fph * soilphys(lu)%wscal * ( 1.0 - soilphys(lu)%wscal ) * nh4
-      nh4        = nh4 - dnvol(lu)
-      dnloss(lu) = dnloss(lu) + dnvol(lu)
+      fph                = exp( 2.0 * ( ph_soil - 10.0 ) )
+      dnvol(lu)          = nh3max * ftemp_vol**2 * fph * soilphys(lu)%wscal * ( 1.0 - soilphys(lu)%wscal ) * pnh4(lu,jpngr)%n14
+      pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - dnvol(lu)
+      dnloss(lu)         = dnloss(lu) + dnvol(lu)
 
       ! if (nh4>0.0) print*,'fvol ', dnvol(lu) / nh4 
 
@@ -233,9 +234,9 @@ contains
       !-----------------------------------------------------------------------
       ! Reduce NO3 by fraction dnleach(lu)
       !------------------------------------------------------------------      
-      dnleach(lu) = no3 * soilphys(lu)%fleach
-      no3         = no3 - dnleach(lu)
-      dnloss(lu)  = dnloss(lu) + dnleach(lu)
+      dnleach(lu)        = pno3(lu,jpngr)%n14 * soilphys(lu)%fleach
+      pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - dnleach(lu)
+      dnloss(lu)         = dnloss(lu) + dnleach(lu)
 
 
       !///////////////////////////////////////////////////////////////////////
@@ -247,22 +248,26 @@ contains
       
       ! wet (anaerobic) fraction
       !------------------------------------------------------------------
+      ! print*,'ntransform wscal ', soilphys(lu)%wscal
+
       fwet  = soilphys(lu)%wscal / 3.3
-      nh4_w = fwet * nh4
-      no3_w = fwet * no3
-      no2_w = fwet * no2(lu,jpngr)
+      nh4_w = fwet * pnh4(lu,jpngr)%n14
+      no3_w = fwet * pno3(lu,jpngr)%n14
+      no2_w = fwet * pno2(lu,jpngr)
 
       ! doc_w = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * fwet
       doc_w = ddoc(lu) * fwet
+
+      ! print*,'fwet ', fwet
 
       ! write(0,*) 'mo, dm, ddoc(lu) ', mo, dm, ddoc(lu)
 
       ! dry (aerobic) fraction
       !------------------------------------------------------------------
       fdry  = 1.0 - fwet
-      nh4_d = fdry * nh4
-      no3_d = fdry * no3
-      no2_d = fdry * no2(lu,jpngr)
+      nh4_d = fdry * pnh4(lu,jpngr)%n14
+      no3_d = fdry * pno3(lu,jpngr)%n14
+      no2_d = fdry * pno2(lu,jpngr)
 
       ! doc_d = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * fdry
       doc_d = ddoc(lu) * fdry
@@ -295,6 +300,8 @@ contains
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr) + n2o_inc
       no3_d           = no3_d + no3_inc
             
+      ! print*,'IN: no3_inc ', no3_inc
+
       ! xxx debug
       if (baltest) no3bal_1 = no3_w + no3_d - no3_inc
       if (baltest) nh4bal_1 = nh4_w + nh4_d + dnitr(lu)
@@ -312,20 +319,47 @@ contains
       ! DENITRIFICATION (ntransform.cpp:177) in anaerobic microsites
       !------------------------------------------------------------------
       ! reference temperature: 22°C
+
+      ! xxx try:
+      ! soiltemp = 5.0
+      ! doc_w = 0.2
+      ! no3_w = 1.0
+
       ftemp_denitr = ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=22.0 )
+      ! ftemp_denitr = ftemp( 5.0, "lloyd_and_taylor", ref_temp=22.0 )
       
+      ! print*,'ftemp denitr ', ftemp_denitr
+
       ! Effect of labile carbon availability on denitrification (Eq.2, Tab.9, XP08)
       ! doc is last year's doc because it is only available at the end of the month
       ! while this SR is calculated daily, even when _dailymode==0.
       !------------------------------------------------------------------
+      ! xxx try:
+      ! doc_w = drhet(lu)%c12 * fwet
+
       dnmax = params_ntransform%docmax * doc_w / ( params_ntransform%kdoc + doc_w )                     ! dnmax < 1 for all doc_w 
+      ! print*,'dnmax ', dnmax
+
+      ! xxx try:
+      dnmax = 0.5
+
+      ! print*,'fMM DOC ',  params_ntransform%docmax * doc_w / ( params_ntransform%kdoc + doc_w )
       
       ! Denitrification ratio, NO3->NO2 (Eq.3, Tab.9, XP08)
       !------------------------------------------------------------------
       no2_inc     = min( dnmax * ftemp_denitr * no3_w / ( params_ntransform%kn + no3_w ) * 1000.0, no3_w )
+
+      ! print*,'OUT: no2_inc         ', no2_inc
+      ! stop
+
       if (no2_inc>no3_w) stop 'no2_inc > no3_w'
       
+      ! print*,'fMM NO3 ', no3_w / ( params_ntransform%kn + no3_w ) * 1000.0
+
       ! if (no3_w>0.0) print*,'denitrification rate ', fwet * no2_inc / no3_w
+
+      ! print*,'A denitrification rate ', no2_inc / pno3(lu,jpngr)%n14
+      ! print*,'B denitrification rate ', no2_inc / (no3_w/fwet)
 
       no3_w       = no3_w - no2_inc
       no2_w       = no2_w + no2_inc
@@ -373,16 +407,9 @@ contains
       ! of the sup-_pools (no, n2o and n2) is defined locally and only used
       ! for the diffusion/emission (see below).
       !------------------------------------------------------------------
-      nh4 = nh4_w + nh4_d
-      no3 = no3_w + no3_d
-      no2 = no2_w + no2_d
-
-      pninorg(lu,jpngr)%n14 = nh4 + no3
-      if ( (nh4+no3)>0.0 ) then
-        fno3(lu,jpngr) = no3 / (nh4 + no3)
-      else
-        fno3(lu,jpngr) = 0.0
-      end if
+      pnh4(lu,jpngr)%n14 = nh4_w + nh4_d
+      pno3(lu,jpngr)%n14 = no3_w + no3_d
+      pno2(lu,jpngr)     = no2_w + no2_d
 
       no  = no_w(lu,jpngr) + no_d(lu,jpngr)
       n2o = n2o_w(lu,jpngr) + n2o_d(lu,jpngr)
@@ -426,12 +453,12 @@ contains
     ! Test mass conservation
     !-------------------------------------------------------------------------
     ! all pools plus all losses summed up
-    if (baltest) nbal_after_1 = pninorg(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
-    if (baltest) nbal_after_2 = pninorg(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) - no3_inc
+    if (baltest) nbal_after_1 = pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + pno2(1,jpngr)
+    if (baltest) nbal_after_2 = pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) - no3_inc
     if (baltest) nbal1 = nbal_after_1 - nbal_before_1
     if (baltest) nbal2 = nbal_after_2 - nbal_before_2
     if (verbose) print*,'              ==> returned:'
-    if (verbose) print*,'              ninorg = ', pninorg(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + no2(1,jpngr)
+    if (verbose) print*,'              ninorg = ', pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + pno2(1,jpngr)
     if (verbose) print*,'              nloss  = ', dnloss(1)
     if (verbose) print*,'   --- balance: '
     if (verbose) print*,'       d( ninorg + loss )', nbal1
@@ -478,11 +505,11 @@ contains
     ! Subroutine initialises pool variables
     !----------------------------------------------------------------
     ! public variables
-    pninorg(:,:)  = nitrogen(100.0)  ! start from non-zero to allow growth
+    pnh4(:,:)  = nitrogen(10.0)  ! start from non-zero to allow growth
+    pno3(:,:)  = nitrogen(10.0)  ! start from non-zero to allow growth
 
     ! module-specific variables
-    no2(:,:)      = 0.0
-    fno3(:,:)     = 0.0
+    pno2(:,:)      = 0.0
     no_w(:,:)     = 0.0
     no_d(:,:)     = 0.0
     n2o_w(:,:)    = 0.0
@@ -527,9 +554,13 @@ contains
     !----------------------------------------------------------------
     if (interface%params_siml%loutntransform) then
 
-      ! INORGANIC N (NO3+NH4)
-      filnam=trim(prefix)//'.d.ninorg.out'
+      ! SOIL NO3
+      filnam=trim(prefix)//'.d.no3.out'
       open(107,file=filnam,err=888,status='unknown')
+
+      ! SOIL NH4
+      filnam=trim(prefix)//'.d.nh4.out'
+      open(506,file=filnam,err=888,status='unknown')
 
       ! DAILY TOTAL N LOSS (gN/m2/d)
       filnam=trim(prefix)//'.d.nloss.out'
@@ -562,13 +593,21 @@ contains
       filnam=trim(prefix)//'.a.nloss.out'
       open(550,file=filnam,err=888,status='unknown')
 
+      ! ANNUAL TOTAL DENITRIFIED N (gN/m2/yr)
+      filnam=trim(prefix)//'.a.denitr.out'
+      open(553,file=filnam,err=888,status='unknown')
+
       ! ANNUAL N2O EMISSIONS (gN/m2/yr)
       filnam=trim(prefix)//'.a.n2o.out'
       open(551,file=filnam,err=888,status='unknown')
 
-      ! INORGANIC N (mean over days)
-      filnam=trim(prefix)//'.a.ninorg.out'
+      ! SOIL NO3 (mean over days)
+      filnam=trim(prefix)//'.a.no3.out'
       open(316,file=filnam,err=888,status='unknown')
+
+      ! SOIL NH4 (mean over days)
+      filnam=trim(prefix)//'.a.nh4.out'
+      open(552,file=filnam,err=888,status='unknown')
 
     end if
 
@@ -593,7 +632,8 @@ contains
       if (interface%steering%init) allocate( outdnvol  ( nlu,ndayyear,maxgrid ) ) ! daily amount of N volatilised (gN/m2/d)
       if (interface%steering%init) allocate( outdnleach( nlu,ndayyear,maxgrid ) ) ! daily amount of N leached (gN/m2/d)
       if (interface%steering%init) allocate( outdn2o   ( nlu,ndayyear,maxgrid ) ) ! daily N2O emitted (gN/m2/d)
-      if (interface%steering%init) allocate( outdninorg( nlu,ndayyear,maxgrid ) ) ! daily total inorganic N (gN/m2)
+      if (interface%steering%init) allocate( outdno3   ( nlu,ndayyear,maxgrid ) ) ! daily total inorganic N (gN/m2)
+      if (interface%steering%init) allocate( outdnh4   ( nlu,ndayyear,maxgrid ) ) ! daily total inorganic N (gN/m2)
 
       outdnloss(:,:,:)  = 0.0
       outddenitr(:,:,:) = 0.0
@@ -601,11 +641,14 @@ contains
       outdnvol(:,:,:)   = 0.0
       outdnleach(:,:,:) = 0.0
       outdn2o(:,:,:)    = 0.0
-      outdninorg(:,:,:) = 0.0
+      outdno3(:,:,:)    = 0.0
+      outdnh4(:,:,:)    = 0.0
       
       outanloss(:,:)  = 0.0
+      outadenitr(:,:) = 0.0
       outan2o(:,:)    = 0.0
-      outaninorg(:,:) = 0.0
+      outano3(:,:)    = 0.0
+      outanh4(:,:)    = 0.0
 
     end if
 
@@ -634,15 +677,18 @@ contains
       outdnvol(:,doy,jpngr)   = dnvol(:)
       outdnleach(:,doy,jpngr) = dnleach(:)
       outdn2o(:,doy,jpngr)    = dn2o(:)
-      outdninorg(:,doy,jpngr) = pninorg(:,jpngr)%n14
+      outdno3(:,doy,jpngr)    = pno3(:,jpngr)%n14
+      outdnh4(:,doy,jpngr)    = pnh4(:,jpngr)%n14
 
       !----------------------------------------------------------------
       ! ANNUAL SUM OVER DAILY VALUES
       ! Collect annual output variables as sum of daily values
       !----------------------------------------------------------------
-      outaninorg(:,jpngr)= outaninorg(:,jpngr) + pninorg(:,jpngr)%n14 / ndayyear
-      outanloss(:,jpngr) = outanloss(:,jpngr) + dnloss(:)
-      outan2o(:,jpngr)   = outan2o(:,jpngr) + dn2o(:)
+      outano3(:,jpngr)    = outano3(:,jpngr) + pno3(:,jpngr)%n14 / ndayyear
+      outanh4(:,jpngr)    = outanh4(:,jpngr) + pnh4(:,jpngr)%n14 / ndayyear
+      outanloss(:,jpngr)  = outanloss(:,jpngr) + dnloss(:)
+      outadenitr(:,jpngr) = outadenitr(:,jpngr) + ddenitr(:)
+      outan2o(:,jpngr)    = outan2o(:,jpngr) + dn2o(:)
 
     end if
 
@@ -685,7 +731,8 @@ contains
           if (nlu>1) stop 'writeout_ascii_ntransform: write out lu-area weighted sum'
           if (npft>1) stop 'writeout_ascii_ntransform: think of something for ccost output'
 
-          write(107,999) itime, sum(outdninorg(:,day,jpngr))
+          write(506,999) itime, sum(outdnh4(:,day,jpngr))
+          write(107,999) itime, sum(outdno3(:,day,jpngr))
           write(500,999) itime, sum(outdnloss(:,day,jpngr))
           write(501,999) itime, sum(outdnvol(:,day,jpngr))
           write(502,999) itime, sum(outddenitr(:,day,jpngr))
@@ -703,8 +750,10 @@ contains
       !-------------------------------------------------------------------------
       itime = real(interface%steering%outyear)
 
-      write(316,999) itime, sum(outaninorg(:,jpngr))
+      write(316,999) itime, sum(outano3(:,jpngr))
+      write(552,999) itime, sum(outanh4(:,jpngr))
       write(550,999) itime, sum(outanloss(:,jpngr))
+      write(553,999) itime, sum(outadenitr(:,jpngr))
       write(551,999) itime, sum(outan2o(:,jpngr))
 
     end if

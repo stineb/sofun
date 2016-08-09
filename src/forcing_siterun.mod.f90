@@ -16,7 +16,8 @@ module md_forcing_siterun
   implicit none
 
   private
-  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate_site, getlanduse, landuse_type, climate_type
+  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate_site, &
+    getlanduse, landuse_type, climate_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp
@@ -35,6 +36,7 @@ module md_forcing_siterun
     real, dimension(ndayyear) :: dnhx
     real, dimension(ndayyear) :: dtot
   end type ninput_type
+
 
 contains
 
@@ -166,11 +168,19 @@ contains
     integer :: readyear
     character(len=4) :: faparyear_char
 
-    do jpngr=1,maxgrid
-      ! create 4-digit string for year  
-      write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-      fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_'//trim(fapar_forcing_source)//'_'//trim(sitename)//'_'//faparyear_char//'.txt' )
-    end do
+    if (trim(fapar_forcing_source)=='NA') then
+      ! If in simulation parameter file 'NA' is specified for 'fapar_forcing_source', then set fapar_field to dummy value
+      do jpngr=1,maxgrid
+        fapar_field(:,jpngr) = dummy
+      end do
+
+    else
+      do jpngr=1,maxgrid
+        ! create 4-digit string for year  
+        write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
+        fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_'//trim(fapar_forcing_source)//'_'//trim(sitename)//'_'//faparyear_char//'.txt' )
+      end do
+    end if
 
     return
     999  format (I4.4)

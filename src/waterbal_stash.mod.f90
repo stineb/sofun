@@ -211,6 +211,7 @@ contains
 
       ! water-filled pore space
       soilphys(lu)%wscal = psoilphys(lu,jpngr)%wcont / kWm
+      ! print*,'waterbal wscal ', soilphys(lu)%wscal
 
     end do
 

@@ -86,6 +86,7 @@ contains
 
           droot =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
           dleaf =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
+          dlabl =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
           ! ! xxx try
           ! dleaf = 1.5 / 365.0
@@ -382,6 +383,8 @@ contains
 
       ! detelbine absolute turnover
       lb_turn = orgfrac( dlabl, plabl(pft,jpngr) ) ! labl turnover
+
+      !! xxx think of something more plausible to put the labile C and N to
 
       ! reduce leaf mass and labl mass
       call orgsub( lb_turn, plabl(pft,jpngr) )
