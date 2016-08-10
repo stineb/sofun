@@ -50,7 +50,7 @@ contains
     ! real, parameter :: dleaf = 0.5
     ! real, parameter :: dlabl = 0.25
 
-    real, parameter :: min_lai_left = 0.5
+    real, parameter :: min_lai_left = 0.3
     real :: dleaf
     real :: dlabl
 
@@ -113,6 +113,8 @@ contains
 
         ! copy to harvest pool
         call orgcp( lm_turn, mharv(pft,jpngr) )
+
+        print*,'removing %', lm_turn%c%c12 / lm_init%c%c12
         
         ! ! add harvested biomass to harvest pool (off site decay, 100%/yr)
         ! call orgmvRec( lm_turn, lm_turn, mharv(pft,jpngr), outacharv(pft,jpngr), outanharv(pft,jpngr), scale=nind(pft,jpngr) )

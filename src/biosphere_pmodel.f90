@@ -9,11 +9,14 @@ subroutine biosphere( c_uptake )
   !----------------------------------------------------------------
   use md_interface
   use md_params_core
-  use md_plant, only: getpar_modl_plant
+  use md_plant, only: getpar_modl_plant, initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant, getout_annual_plant, writeout_ascii_plant
   use md_soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
   use md_params_soil, only: paramtype_soil
   use md_waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
   use md_gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, writeout_ascii_gpp
+
+  ! xxx debug
+  use md_waterbal
 
   implicit none
 
@@ -27,10 +30,10 @@ subroutine biosphere( c_uptake )
   ! print* 'WARNING: FAPAR = 1.00 USED IN PMODEL'
   ! write(0,*) 'WARNING IN BIOSPHERE: CAPPED DAILY TEMPERATURE AT 25 DEG C.'
 
-  print*,'temp ', sum( interface%climate(1)%dtemp(:) ) / 365.0
-  print*,'prec ', sum( interface%climate(1)%dprec(:) )
-  print*,'fsun ', sum( interface%climate(1)%dfsun(:) ) / 365.0
-  print*,'vpd ',  sum( interface%climate(1)%dvpd(:) ) / 365.0
+  ! print*,'temp ', sum( interface%climate(1)%dtemp(:) ) / 365.0
+  ! print*,'prec ', sum( interface%climate(1)%dprec(:) )
+  ! print*,'fsun ', sum( interface%climate(1)%dfsun(:) ) / 365.0
+  ! print*,'vpd ',  sum( interface%climate(1)%dvpd(:) ) / 365.0
 
   !----------------------------------------------------------------
   ! INITIALISATIONS
@@ -56,6 +59,7 @@ subroutine biosphere( c_uptake )
     !----------------------------------------------------------------
     call initio_waterbal()
     call initio_soiltemp()
+    call initio_plant()
     call initio_gpp()
 
   endif 
@@ -66,6 +70,7 @@ subroutine biosphere( c_uptake )
   call initoutput_waterbal()
   call initoutput_soiltemp()
   call initoutput_gpp()
+  call initoutput_plant()
 
   !----------------------------------------------------------------
   ! LOOP THROUGH GRIDCELLS
@@ -115,6 +120,7 @@ subroutine biosphere( c_uptake )
         !----------------------------------------------------------------
         call initdaily_waterbal()
         call initdaily_gpp()
+        call initdaily_plant()
 
         !----------------------------------------------------------------
         ! get soil moisture, and runoff
@@ -163,11 +169,19 @@ subroutine biosphere( c_uptake )
         call getout_daily_waterbal( jpngr, moy, day )
         call getout_daily_soiltemp( jpngr, moy, day )
         call getout_daily_gpp( jpngr, moy, day )
+        call getout_daily_plant( jpngr, moy, day )
         ! print* '... done'
 
       end do
 
     end do
+
+    !----------------------------------------------------------------
+    ! collect annually updated output variables
+    !----------------------------------------------------------------
+    ! if (verbose) write(0,*) 'calling getout_annual() ... '
+    call getout_annual_plant( jpngr )
+    ! if (verbose) write(0,*) '... done'
 
     !----------------------------------------------------------------
     ! Write to output
@@ -176,6 +190,7 @@ subroutine biosphere( c_uptake )
     call writeout_ascii_waterbal( interface%steering%year )
     call writeout_ascii_soiltemp( interface%steering%year )
     call writeout_ascii_gpp( interface%steering%year )
+    call writeout_ascii_plant( interface%steering%year )
     ! print*, '... done'
 
   end do

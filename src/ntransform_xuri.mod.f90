@@ -300,7 +300,8 @@ contains
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr) + n2o_inc
       no3_d           = no3_d + no3_inc
             
-      ! print*,'IN: no3_inc ', no3_inc
+      ! if N loss is defined w.r.t. reduction in NH4 and NO3 pools, then this is the correct formulation:
+      dnloss(lu) = dnloss(lu) + n2o_inc + no_inc
 
       ! xxx debug
       if (baltest) no3bal_1 = no3_w + no3_d - no3_inc
@@ -365,6 +366,10 @@ contains
       no2_w       = no2_w + no2_inc
       ddenitr(lu) = no2_inc
       
+      ! if N loss is defined w.r.t. reduction in NH4 and NO3 pools, then this is the correct formulation:
+      dnloss(lu) = dnloss(lu) + no2_inc
+
+
       ! Transformation NO2->N2 (Eq.4., Tab.9, XP08)
       !------------------------------------------------------------------
       n2_inc = min( dnmax * ftemp_denitr * no2_w / ( params_ntransform%kn + no2_w ) * 1000.0, no2_w )
@@ -427,7 +432,8 @@ contains
       dn2o(lu)= ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2o
       dn2(lu) = ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2
 
-      dnloss(lu) = dnloss(lu) + dno(lu) + dn2o(lu) + dn2(lu)
+      ! if N loss is defined w.r.t. gaseous escape, then this is the correct formulation:
+      ! dnloss(lu) = dnloss(lu) + dno(lu) + dn2o(lu) + dn2(lu)
 
       ! Gaseous escape of pools at dry microsites
       !------------------------------------------------------------------

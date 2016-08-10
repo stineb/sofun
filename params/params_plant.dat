@@ -8,7 +8,7 @@ kbeer                                   0.500000
 f_nretain                               0.500000
 fpc_tree_max                            0.950000
 growtheff                               0.600000
-r_root                                  6.000000
+r_root                                  0.900000
 r_sapw                                  0.044000
 exurate                                 0.002000
 cton_soil                               9.770000

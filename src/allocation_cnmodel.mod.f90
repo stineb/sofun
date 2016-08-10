@@ -150,6 +150,7 @@ contains
     dnroot(:) = 0.0
     drgrow(:) = 0.0
 
+    ! print*,'AAA'
 
     do pft=1,npft
 
@@ -158,11 +159,12 @@ contains
       if (params_pft_plant(pft)%grass) then
 
         if ( interface%steering%dofree_alloc ) then
+          ! print*,'1'
           !------------------------------------------------------------------
           ! Free allocation
           !------------------------------------------------------------------
 
-          if ( plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 .and. dtemp(doy)>0.0 ) then
+          if ( plabl(pft,jpngr)%c%c12>eps .and. plabl(pft,jpngr)%n%n14>eps .and. dtemp(doy)>0.0 ) then
             !------------------------------------------------------------------
             ! Calculate maximum C allocatable based on current labile pool size.
             ! Maximum is the lower of all labile C and the C to be matched by all labile N,
@@ -200,6 +202,10 @@ contains
             end if
 
             ! print*,'doy, bnr-frac_leaf', doy, frac_leaf(pft)
+            ! print*,'1.1'
+
+            ! print*,'plabl(pft,jpngr)', plabl(pft,jpngr)
+            ! print*,'ntoc( plabl(pft,jpngr))', ntoc( plabl(pft,jpngr) )
 
             !------------------------------------------------------------------
             ! Safety brakes: if massive imbalance in labile pool accumulates,
@@ -209,26 +215,28 @@ contains
             ! allocation, defined by newly acquired C and N (NPP-Ra-Cex, Nuptake)
             ! are acquired in the same ratio as is needed for new tissue growth.
             !------------------------------------------------------------------
-            print*,'cton in plabl ', cton( plabl(pft,jpngr) )
             if ( cton( plabl(pft,jpngr) ) > 10.0 * params_pft_plant(pft)%r_cton_root  ) then
+              ! print*,'1.1.1'
               !------------------------------------------------------------------
               ! massive imbalance: too much C -> put all to roots
               !------------------------------------------------------------------
               if (maxdc_cavl<maxdc_navl) stop 'surprise'
               frac_leaf(pft) = 0.0
               frac_leaf_opt  = 0.0 
-              print*,'safety: all to roots', doy
+              ! print*,'safety: all to roots', doy
             
             else if ( ntoc( plabl(pft,jpngr) ) > 10.0 * leaftraits(pft)%r_ntoc_leaf ) then
+              ! print*,'1.1.2'
               !------------------------------------------------------------------
               ! massive imbalance: too much N -> put all to leaves
               !------------------------------------------------------------------
               if (.not.maxdc_cavl<maxdc_navl) stop 'surprise'
               frac_leaf(pft) = 1.0
               frac_leaf_opt  = 1.0 
-              print*,'safety: all to leaves', doy
+              ! print*,'safety: all to leaves', doy
             
             else
+              ! print*,'1.1.3'
               !------------------------------------------------------------------
               ! No massive imbalance. determine allocation so that C:N of return is equal to C:N new tissue
               ! test: if flexible allocation returns 1 or 0 for frac_leaf, then test if this is consistent with what it's set to above
@@ -252,6 +260,7 @@ contains
               ! Optimum is between 0.0 (=min_dc) and max_dc. Find root of function 
               ! 'eval_imbalance()' in the interval [0.0, max_dc].
               !------------------------------------------------------------------
+              ! print*,'1.1.4'
               max_dcleaf_n_constraint = min( acc * plabl(pft,jpngr)%n%n14 * leaftraits(pft)%r_cton_leaf, &
                 acc * plabl(pft,jpngr)%n%n14 * params_pft_plant(pft)%r_cton_root )
               max_dc = min( params_plant%growtheff * acc * plabl(pft,jpngr)%c%c12, max_dcleaf_n_constraint )
@@ -270,6 +279,7 @@ contains
                 cont = .false.
                 if (verbose) print*, '* putting all to roots *'
               end if
+              ! print*,'1.1.5'
 
               !------------------------------------------------------------------
               ! Test II: Evaluate balance if all is put to leaves.
@@ -285,6 +295,7 @@ contains
                   if (verbose) print*, '* putting all to leaves *'
                 end if
               end if
+              ! print*,'1.1.6'
 
               !------------------------------------------------------------------
               ! Optimum is between 0.0 (=min_dc) and max_dc. Find root of function 
@@ -323,6 +334,7 @@ contains
               ! stop 'd o b e n i'
 
             end if
+            ! print*,'1.2'
 
             !-------------------------------------------------------------------
             ! Set to "optimal" solution
@@ -339,6 +351,8 @@ contains
             dcroot(pft) = min( (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl, &
               (1.0 - frac_leaf(pft)) * plabl(pft,jpngr)%n%n14 * params_pft_plant(pft)%r_cton_root )
             dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
+
+            ! print*,'1.3'
 
             !-------------------------------------------------------------------
             ! LEAF ALLOCATION, definite
@@ -369,6 +383,7 @@ contains
               canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
 
             end if
+            ! print*,'1.4'
 
             !-------------------------------------------------------------------
             ! ROOT ALLOCATION, definite
@@ -383,6 +398,7 @@ contains
                 )
 
             end if
+            ! print*,'1.5'
 
             !-------------------------------------------------------------------
             ! GROWTH RESPIRATION, NPP
@@ -396,6 +412,7 @@ contains
           end if
 
         else
+          ! print*,'2'
           !------------------------------------------------------------------
           ! Fixed allocation 
           !------------------------------------------------------------------
@@ -476,6 +493,8 @@ contains
       end if
 
     end do
+
+    ! print*,'BBB'
 
     ! print*, '--- END allocation_daily:'
 

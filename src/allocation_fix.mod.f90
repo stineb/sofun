@@ -105,7 +105,7 @@ contains
     !-------------------------------------------------------------------------
 
     ! xxx debug
-    frac_leaf = 0.4
+    frac_leaf = 0.5
 
     ! initialise
     dcleaf(:) = 0.0
@@ -179,8 +179,6 @@ contains
           ! Update fpc_grid and fapar_ind (not lai_ind)
           !-------------------------------------------------------------------  
           canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
-
-          print*,'doy, LMA ', doy, leaftraits(pft)%lma
 
           !-------------------------------------------------------------------
           ! ROOT ALLOCATION

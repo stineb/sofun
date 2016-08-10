@@ -238,7 +238,9 @@ contains
 
       ! print*,'-----------------'
       ! print*,'DOY ', doy
-      ! print*,'dgpp , fa                ', dgpp(pft), calc_fa( evap(lu)%cpa )
+      ! print*,'dgpp                     ', dgpp(pft)
+      ! print*,'evap(:)%cpa              ', evap(1)%cpa
+      ! print*,'fa                       ', calc_fa( evap(1)%cpa )
       ! print*,'fapar                    ', canopy(pft)%fapar_ind
       ! print*,'solar%dppfd(doy)         ', solar%dppfd(doy)
       ! print*,'out_pmodel(pft,moy)%lue  ', out_pmodel(pft,moy)%lue
@@ -370,6 +372,13 @@ contains
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
     my_dgpp = fapar * dppfd * fa * my_mlue * ramp_gpp_lotemp( dtemp ) * c_molmass
+
+    ! print*,'fapar', fapar
+    ! print*,'dppfd', dppfd
+    ! print*,'fa   ', fa
+    ! print*,'my_mlue', my_mlue
+    ! print*,'ramp_gpp_lotemp( dtemp )' , ramp_gpp_lotemp( dtemp )
+    ! print*,'c_molmass', c_molmass
 
   end function calc_dgpp
 
@@ -697,6 +706,8 @@ contains
     params_pft_gpp%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
 
     do pft=1,npft
+
+      print*,'params_pft_plant(pft)%pftname', params_pft_plant(pft)%pftname
 
       ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
       params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )

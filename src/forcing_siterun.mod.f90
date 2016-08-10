@@ -175,12 +175,13 @@ contains
       end do
 
     else
+      ! Prescribed. Read monthly fAPAR value from file
       do jpngr=1,maxgrid
         ! create 4-digit string for year  
         write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
         fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_'//trim(fapar_forcing_source)//'_'//trim(sitename)//'_'//faparyear_char//'.txt' )
       end do
-    end if
+   end if
 
     return
     999  format (I4.4)
@@ -234,6 +235,7 @@ contains
     end do
 
     return
+    
     999  format (I4.4)
 
   end function getclimate_site

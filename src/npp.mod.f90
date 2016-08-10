@@ -76,8 +76,8 @@ contains
     real :: cbal
     real :: avl
 
-    real, parameter :: dleaf_die = 0.01
-    real, parameter :: droot_die = 0.01
+    real, parameter :: dleaf_die = 0.012
+    real, parameter :: droot_die = 0.012
     real, parameter :: dlabl_die = 0.0
 
     logical, save :: check_sprout = .false.
