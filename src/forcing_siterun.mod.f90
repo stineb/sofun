@@ -290,23 +290,24 @@ contains
         ! write(0,*) 'GETLANDUSE: use harvest data for year ', readyear
         tmp(:) = read1year_daily( trim(filnam) )
       else
+        
         ! find first year with data available
         findyear = readyear
         do while ( .not. file_exists .and. findyear<2501 )
-          findyear = findyear + 1
+          findyear = findyear - 1
           write(landuseyear_char,999) findyear
           filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
           inquire( file='./input/'//trim(filnam), exist=file_exists )
           if ( file_exists ) tmp(:) = read1year_daily( trim(filnam) )
         end do   
-        ! write(0,*) 'GETLANDUSE: found harvest data for first year  ', landuseyear_char
+        write(0,*) 'GETLANDUSE: found harvest data for year  ', landuseyear_char
+
       end if
 
       ! translate zeros and ones to boolean
       do doy=1,ndayyear
         if (tmp(doy)==1.0) then
           out_landuse%do_grharvest(doy) = .true.
-          ! out_landuse%do_grharvest(doy) = .false.
         else
           out_landuse%do_grharvest(doy) = .false.
         end if
