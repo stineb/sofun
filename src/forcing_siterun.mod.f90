@@ -9,14 +9,15 @@ module md_forcing_siterun
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu
+  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu, dummy
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
 
   implicit none
 
   private
-  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate_site, getlanduse, landuse_type, climate_type
+  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate_site, &
+    getlanduse, landuse_type, climate_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp
@@ -38,7 +39,7 @@ module md_forcing_siterun
 
 contains
 
-  function getco2( runname, sitename, forcingyear, const_co2, firstyeartrend, co2_forcing_file ) result( pco2 )
+  function getco2( runname, sitename, forcingyear, const_co2_year, firstyeartrend, co2_forcing_file ) result( pco2 )
     !////////////////////////////////////////////////////////////////
     !  Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
@@ -46,7 +47,7 @@ contains
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: forcingyear
-    logical, intent(in) :: const_co2
+    integer, intent(in) :: const_co2_year
     integer, intent(in) :: firstyeartrend
     character(len=*), intent(in) :: co2_forcing_file
 
@@ -56,31 +57,29 @@ contains
     ! local variables 
     integer :: readyear
 
-    if (const_co2) then
-      readyear = firstyeartrend
+    if (const_co2_year/=int(dummy)) then
+      readyear = const_co2_year
     else  
       readyear = forcingyear
     end if
-    write(0,*) 'GETCO2: use CO2 data of year ', readyear
+    ! write(0,*) 'GETCO2: use CO2 data of year ', readyear
     pco2 = getvalreal( 'sitedata/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
 
   end function getco2
 
 
-  function getninput( ntype, runname, sitename, forcingyear, firstyeartrend, const_ninput, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
+  function getninput( ntype, runname, sitename, forcingyear, firstyeartrend, const_ninput_year, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual ninputosition and distributes it
     ! over days according to daily precipitation.
     !----------------------------------------------------------------
-    use md_params_core, only: dummy
-
     ! arguments
     character(len=*), intent(in) :: ntype   ! either "nfert" or "ndep"
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
     integer, intent(in) :: firstyeartrend
-    logical, intent(in) :: const_ninput
+    integer, intent(in) :: const_ninput_year
     character(len=*), intent(in) :: ninput_noy_forcing_file
     character(len=*), intent(in) :: ninput_nhx_forcing_file
     type( climate_type ), dimension(maxgrid), intent(in) :: climate
@@ -97,8 +96,8 @@ contains
     real, dimension(ndayyear) :: dninput_noy
     real, dimension(ndayyear) :: dninput_nhx
     
-    if (const_ninput) then
-      readyear = firstyeartrend
+    if (const_ninput_year/=int(dummy)) then
+      readyear = const_ninput_year
     else  
       readyear = forcingyear
     end if
@@ -106,7 +105,7 @@ contains
     ! xxx try
     if (ntype=="ndep") readyear = min( readyear, 2009 )
     readyear = max( 1850, readyear )
-    write(0,*) 'GETNINPUT: use '//trim(ntype)//' data of year ', readyear, '...'
+    ! write(0,*) 'GETNINPUT: use '//trim(ntype)//' data of year ', readyear, '...'
 
     ! aninput = getvalreal( trim(input_dir)//trim(ninput_forcing_file), readyear )
     aninput_noy = getvalreal( 'sitedata/'//trim(ntype)//'/'//trim(sitename)//'/'//trim(ninput_noy_forcing_file), readyear )
@@ -122,7 +121,7 @@ contains
     end do
 
     ! print*,'out_getninput(jpngr) ', sum(out_getninput(1)%dnoy(:)), sum(out_getninput(1)%dnhx(:)), sum(out_getninput(1)%dtot(:))
-    write(0,*) 'GETNINPUT: done'
+    ! write(0,*) 'GETNINPUT: done'
 
   end function getninput
 
@@ -154,8 +153,6 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
-    use md_params_core, only: dummy
-
     ! arguments
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
@@ -170,11 +167,20 @@ contains
     integer :: readyear
     character(len=4) :: faparyear_char
 
-    do jpngr=1,maxgrid
-      ! create 4-digit string for year  
-      write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-      fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_'//trim(fapar_forcing_source)//'_'//trim(sitename)//'_'//faparyear_char//'.txt' )
-    end do
+    if (trim(fapar_forcing_source)=='NA') then
+      ! If in simulation parameter file 'NA' is specified for 'fapar_forcing_source', then set fapar_field to dummy value
+      do jpngr=1,maxgrid
+        fapar_field(:,jpngr) = dummy
+      end do
+
+    else
+      ! Prescribed. Read monthly fAPAR value from file
+      do jpngr=1,maxgrid
+        ! create 4-digit string for year  
+        write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
+        fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_'//trim(fapar_forcing_source)//'_'//trim(sitename)//'_'//faparyear_char//'.txt' )
+      end do
+   end if
 
     return
     999  format (I4.4)
@@ -201,7 +207,7 @@ contains
     type( climate_type ), dimension(maxgrid) :: out_climate
 
     if (climateyear>2013) then
-      write(0,*) 'GETCLIMATE_SITE: held climate fixed at year 2013'
+      ! write(0,*) 'GETCLIMATE_SITE: held climate fixed at year 2013'
       write(climateyear_char,999) 2013
     else
       ! create 4-digit string for year  
@@ -212,7 +218,7 @@ contains
     ! filnam_dfsun = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt'
     ! filnam_dvapr = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dvapr_'//trim(sitename)//'_'//climateyear_char//'.txt'
     
-    write(0,*) 'GETCLIMATE_SITE: use climate data of year ', climateyear_char
+    ! write(0,*) 'GETCLIMATE_SITE: use climate data of year ', climateyear_char
 
     jpngr = 1
 
@@ -228,12 +234,13 @@ contains
     end do
 
     return
+    
     999  format (I4.4)
 
   end function getclimate_site
 
 
-  function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file, const_lu, firstyeartrend ) result( out_landuse )
+  function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file, const_lu_year, firstyeartrend ) result( out_landuse )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual landuse state and harvesting regime (day of above-ground harvest)
     ! Grass harvest forcing file is read for specific year, if none is available,
@@ -244,7 +251,7 @@ contains
     character(len=*), intent(in) :: sitename
     integer, intent(in)          :: forcingyear
     character(len=*), intent(in), optional :: do_grharvest_forcing_file
-    logical, intent(in) :: const_lu
+    integer, intent(in) :: const_lu_year
     integer, intent(in) :: firstyeartrend
 
     ! local variables
@@ -262,52 +269,44 @@ contains
     ! xxx dummy
     out_landuse%lu_area(lunat) = 1.0
 
-    if (const_lu) then
-      readyear = firstyeartrend
+    if (const_lu_year/=int(dummy)) then
+      readyear = const_lu_year
     else
       readyear = forcingyear
     end if    
 
     ! get harvest data for forcing year
     if (present(do_grharvest_forcing_file)) then
-      if (readyear>2002) then
-        write(0,*) 'GETLANDUSE: held harvest dates fixed after 2002'
-        write(landuseyear_char,999) 2002
-      else
-        ! create 4-digit string for year  
-        write(landuseyear_char,999) readyear
-      end if
-      ! ! create 4-digit string for year  
-      ! write(0,*) 'GETLANDUSE: looking for harvest data for year ', readyear
-      ! write(landuseyear_char,999) readyear
+
+      ! create 4-digit string for year  
+      write(landuseyear_char,999) readyear
 
       filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
       inquire( file='./input/'//trim(filnam), exist=file_exists )
 
       if ( file_exists ) then
         ! found data file
-        write(0,*) 'GETLANDUSE: use harvest data for year ', readyear
+        ! write(0,*) 'GETLANDUSE: use harvest data for year ', readyear
         tmp(:) = read1year_daily( trim(filnam) )
       else
+        
         ! find first year with data available
         findyear = readyear
-        do while ( .not. file_exists )
-          findyear = findyear + 1
+        do while ( .not. file_exists .and. findyear<2501 )
+          findyear = findyear - 1
           write(landuseyear_char,999) findyear
           filnam = 'sitedata/landuse/'//trim(sitename)//'/'//landuseyear_char//'/'//trim(do_grharvest_forcing_file)//'_'//trim(sitename)//'_'//landuseyear_char//'.txt'
           inquire( file='./input/'//trim(filnam), exist=file_exists )
           if ( file_exists ) tmp(:) = read1year_daily( trim(filnam) )
         end do   
-        write(0,*) 'GETLANDUSE: found harvest data for first year  ', findyear
-      end if
+        write(0,*) 'GETLANDUSE: found harvest data for year  ', landuseyear_char
 
-      ! write(0,*) 'GETLANDUSE: forced no harvest  ', findyear
+      end if
 
       ! translate zeros and ones to boolean
       do doy=1,ndayyear
         if (tmp(doy)==1.0) then
           out_landuse%do_grharvest(doy) = .true.
-          ! out_landuse%do_grharvest(doy) = .false.
         else
           out_landuse%do_grharvest(doy) = .false.
         end if
@@ -363,4 +362,3 @@ contains
 
 
 end module md_forcing_siterun
-

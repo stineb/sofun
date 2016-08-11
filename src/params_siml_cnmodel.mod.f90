@@ -21,12 +21,13 @@ module md_params_siml
     integer :: daily_out_startyr! first year where daily output is written
     integer :: daily_out_endyr ! last year where daily output is written
     
-    logical :: do_spinup       ! whether this simulation does spinup 
-    logical :: const_co2       ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
-    logical :: const_ndep      ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
-    logical :: const_nfert     ! is true when using constant N fertilisation, given by first transient year in 'nfert_forcing_file'
-    logical :: const_clim      ! is true when using constant climate, given by year 'firstyeartrend'
-    logical :: const_lu        ! is true when using constant land use, given by year 'firstyeartrend'
+    logical :: do_spinup            ! whether this simulation does spinup 
+    
+    integer :: const_co2_year       ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
+    integer :: const_ndep_year      ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
+    integer :: const_nfert_year     ! is true when using constant N fertilisation, given by first transient year in 'nfert_forcing_file'
+    integer :: const_clim_year      ! is true when using constant climate, given by year 'firstyeartrend'
+    integer :: const_lu_year        ! is true when using constant land use, given by year 'firstyeartrend'
     
     character(len=256) :: runname
     character(len=256) :: sitename
@@ -38,8 +39,6 @@ module md_params_siml
     character(len=256) :: nfert_nhx_forcing_file
     character(len=256) :: do_grharvest_forcing_file
     character(len=256) :: fapar_forcing_source
-
-    logical :: prescr_monthly_fapar
 
     ! activated PFTs
     logical :: lTeBS
@@ -64,11 +63,19 @@ module md_params_siml
     logical :: loutdfapar
     logical :: loutdninorg    
     logical :: loutdtemp_soil 
+    logical :: loutdtemp
 
+    ! booleans defining whether module-specific output variables are to be written to output
+    logical :: loutplant
+    logical :: loutalloc
+    logical :: loutgpp
+    logical :: loutnpp
     logical :: loutntransform
     logical :: loutwaterbal  
     logical :: loutlittersom
     logical :: loutnuptake
+    logical :: loutlanduse
+    logical :: loutforcing
 
   end type paramstype_siml
 
@@ -89,6 +96,8 @@ contains
     !  simulation year (setting booleans for opening files, doing   
     !  spinup etc.)
     !----------------------------------------------------------------
+    use md_params_core, only: dummy
+
     ! arguments
     integer, intent(in) :: year
     type( paramstype_siml ), intent(in) :: params_siml
@@ -114,7 +123,7 @@ contains
         out_steering%spinup = .false.
         out_steering%forcingyear =  year - params_siml%spinupyears + params_siml%firstyeartrend - 1
 
-        if (params_siml%const_clim) then
+        if (params_siml%const_clim_year/=int(dummy)) then
           ! constant climate flag activated
           cycleyear = get_cycleyear( year, params_siml%spinupyears, params_siml%recycle )
           out_steering%climateyear = cycleyear + params_siml%firstyeartrend - 1
@@ -205,23 +214,21 @@ contains
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_noy_forcing_file', out_getpar_siml%nfert_noy_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_nhx_forcing_file', out_getpar_siml%nfert_nhx_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
-    
-    out_getpar_siml%fapar_forcing_source = 'NA'
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
 
     out_getpar_siml%do_spinup            = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
-    out_getpar_siml%const_co2            = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_co2' )
-    out_getpar_siml%const_ndep           = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_ndep' )
-    out_getpar_siml%const_nfert          = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_nfert' )
-    out_getpar_siml%const_clim           = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_clim' )
-    out_getpar_siml%const_lu             = getparlogical( 'run/'//runname//'.sofun.parameter', 'const_lu' )
+
+    out_getpar_siml%const_co2_year       = getparint( 'run/'//runname//'.sofun.parameter', 'const_co2_year' )
+    out_getpar_siml%const_ndep_year      = getparint( 'run/'//runname//'.sofun.parameter', 'const_ndep_year' )
+    out_getpar_siml%const_nfert_year     = getparint( 'run/'//runname//'.sofun.parameter', 'const_nfert_year' )
+    out_getpar_siml%const_clim_year      = getparint( 'run/'//runname//'.sofun.parameter', 'const_clim_year' )
+    out_getpar_siml%const_lu_year        = getparint( 'run/'//runname//'.sofun.parameter', 'const_lu_year' )
     
     out_getpar_siml%spinupyears          = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
     out_getpar_siml%firstyeartrend       = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )
     out_getpar_siml%nyeartrend           = getparint( 'run/'//runname//'.sofun.parameter', 'nyeartrend' )
     out_getpar_siml%recycle              = getparint( 'run/'//runname//'.sofun.parameter', 'recycle' )
-    
-    out_getpar_siml%prescr_monthly_fapar = getparlogical( 'run/'//runname//'.sofun.parameter', 'prescr_monthly_fapar' )
-    
+        
     out_getpar_siml%daily_out_startyr    = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_startyr' )
     out_getpar_siml%daily_out_endyr      = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_endyr' )
 
@@ -253,11 +260,18 @@ contains
     out_getpar_siml%loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     out_getpar_siml%loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
+    out_getpar_siml%loutdtemp      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp' )
     
+    out_getpar_siml%loutplant      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
+    out_getpar_siml%loutalloc      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutalloc' )
+    out_getpar_siml%loutgpp        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutgpp' )
+    out_getpar_siml%loutnpp        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnpp' )
     out_getpar_siml%loutntransform = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutntransform') 
     out_getpar_siml%loutwaterbal   = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal')
     out_getpar_siml%loutlittersom  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlittersom' )
     out_getpar_siml%loutnuptake    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnuptake' )
+    out_getpar_siml%loutlanduse    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlanduse' )
+    out_getpar_siml%loutforcing    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutforcing' )
 
     write(0,*) "... done"
 

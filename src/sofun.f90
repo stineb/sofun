@@ -96,7 +96,7 @@ program main
                             trim(interface%params_siml%sitename), &
                             ! 1993, &
                             interface%steering%forcingyear, &
-                            interface%params_siml%const_co2, &
+                            interface%params_siml%const_co2_year, &
                             interface%params_siml%firstyeartrend,&
                             interface%params_siml%co2_forcing_file&
                             )
@@ -109,7 +109,7 @@ program main
                               ! 1993, &
                               interface%steering%forcingyear, &
                               interface%params_siml%firstyeartrend, &
-                              interface%params_siml%const_ndep, &
+                              interface%params_siml%const_ndep_year, &
                               interface%params_siml%ndep_noy_forcing_file, &
                               interface%params_siml%ndep_nhx_forcing_file, &
                               interface%climate(:)&
@@ -123,7 +123,7 @@ program main
                               ! 1993, &
                               interface%steering%forcingyear, &
                               interface%params_siml%firstyeartrend, &
-                              interface%params_siml%const_nfert, &
+                              interface%params_siml%const_nfert_year, &
                               interface%params_siml%nfert_noy_forcing_file, &
                               interface%params_siml%nfert_nhx_forcing_file, &
                               interface%climate(:)&
@@ -139,23 +139,19 @@ program main
                                       ! 1993, &
                                       interface%steering%forcingyear, &
                                       interface%params_siml%do_grharvest_forcing_file, &
-                                      interface%params_siml%const_lu, &
+                                      interface%params_siml%const_lu_year, &
                                       interface%params_siml%firstyeartrend &
                                       )
 
     !----------------------------------------------------------------
-    ! Get prescribed fAPAR if required
+    ! Get prescribed fAPAR if required (otherwise set to dummy value)
     !----------------------------------------------------------------
-    if (interface%params_siml%prescr_monthly_fapar) then
-      interface%mfapar_field(:,:) = getfapar( &
-                                            trim(runname), &
-                                            trim(interface%params_siml%sitename), &
-                                            interface%steering%forcingyear, &
-                                            interface%params_siml%fapar_forcing_source &
-                                            )
-    else
-      interface%mfapar_field(:,:) = dummy
-    end if
+    interface%mfapar_field(:,:) = getfapar( &
+                                          trim(runname), &
+                                          trim(interface%params_siml%sitename), &
+                                          interface%steering%forcingyear, &
+                                          interface%params_siml%fapar_forcing_source &
+                                          )
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
