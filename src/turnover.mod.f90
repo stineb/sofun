@@ -84,17 +84,14 @@ contains
           ! Alternative turnover function: increase turnover rate towards high LAI
           ! dleaf = (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
-          droot =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
-          dleaf =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
-          dlabl =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
+          ! droot =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
+          ! dleaf =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
+          ! dlabl =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
 
           ! xxx try
-          ! dleaf = 1.5 / 365.0
-          ! droot = 1.5 / 365.0
-          ! dlabl = 1.5 / 365.0
-          ! dleaf = 0.0
-          ! droot = 0.0
-          ! dlabl = 0.0
+          dleaf = 1.5 / 365.0
+          droot = 1.5 / 365.0
+          dlabl = 1.5 / 365.0
 
         end if
 

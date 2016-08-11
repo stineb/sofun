@@ -168,7 +168,7 @@ contains
 
         ! trigger sprouting now that C balance is positive again
         if (check_sprout) then
-          print*,'sprouting next day'
+          ! print*,'sprouting next day'
           sprout(doy+1,pft) = .true.
         end if
         check_sprout = .false.

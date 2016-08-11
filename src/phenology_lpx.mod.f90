@@ -231,7 +231,7 @@ contains
       end do
 
       ! xxx debug
-      print*,'PHENOLOGY: overriding shedleaves'
+      ! print*,'PHENOLOGY: overriding shedleaves'
       shedleaves(:,pft) = .false.
     
       ! ! xxx debug

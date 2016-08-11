@@ -63,7 +63,7 @@ contains
     else  
       readyear = forcingyear
     end if
-    write(0,*) 'GETCO2: use CO2 data of year ', readyear
+    ! write(0,*) 'GETCO2: use CO2 data of year ', readyear
     pco2 = getvalreal( 'sitedata/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
 
   end function getco2
@@ -106,7 +106,7 @@ contains
     ! xxx try
     if (ntype=="ndep") readyear = min( readyear, 2009 )
     readyear = max( 1850, readyear )
-    write(0,*) 'GETNINPUT: use '//trim(ntype)//' data of year ', readyear, '...'
+    ! write(0,*) 'GETNINPUT: use '//trim(ntype)//' data of year ', readyear, '...'
 
     ! aninput = getvalreal( trim(input_dir)//trim(ninput_forcing_file), readyear )
     aninput_noy = getvalreal( 'sitedata/'//trim(ntype)//'/'//trim(sitename)//'/'//trim(ninput_noy_forcing_file), readyear )
@@ -122,7 +122,7 @@ contains
     end do
 
     ! print*,'out_getninput(jpngr) ', sum(out_getninput(1)%dnoy(:)), sum(out_getninput(1)%dnhx(:)), sum(out_getninput(1)%dtot(:))
-    write(0,*) 'GETNINPUT: done'
+    ! write(0,*) 'GETNINPUT: done'
 
   end function getninput
 
@@ -208,7 +208,7 @@ contains
     type( climate_type ), dimension(maxgrid) :: out_climate
 
     if (climateyear>2013) then
-      write(0,*) 'GETCLIMATE_SITE: held climate fixed at year 2013'
+      ! write(0,*) 'GETCLIMATE_SITE: held climate fixed at year 2013'
       write(climateyear_char,999) 2013
     else
       ! create 4-digit string for year  
@@ -219,7 +219,7 @@ contains
     ! filnam_dfsun = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt'
     ! filnam_dvapr = 'sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dvapr_'//trim(sitename)//'_'//climateyear_char//'.txt'
     
-    write(0,*) 'GETCLIMATE_SITE: use climate data of year ', climateyear_char
+    ! write(0,*) 'GETCLIMATE_SITE: use climate data of year ', climateyear_char
 
     jpngr = 1
 
@@ -287,7 +287,7 @@ contains
 
       if ( file_exists ) then
         ! found data file
-        write(0,*) 'GETLANDUSE: use harvest data for year ', readyear
+        ! write(0,*) 'GETLANDUSE: use harvest data for year ', readyear
         tmp(:) = read1year_daily( trim(filnam) )
       else
         ! find first year with data available
@@ -299,7 +299,7 @@ contains
           inquire( file='./input/'//trim(filnam), exist=file_exists )
           if ( file_exists ) tmp(:) = read1year_daily( trim(filnam) )
         end do   
-        write(0,*) 'GETLANDUSE: found harvest data for first year  ', landuseyear_char
+        ! write(0,*) 'GETLANDUSE: found harvest data for first year  ', landuseyear_char
       end if
 
       ! translate zeros and ones to boolean

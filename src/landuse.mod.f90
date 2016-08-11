@@ -114,7 +114,7 @@ contains
         ! copy to harvest pool
         call orgcp( lm_turn, mharv(pft,jpngr) )
 
-        print*,'removing %', lm_turn%c%c12 / lm_init%c%c12
+        ! print*,'removing %', lm_turn%c%c12 / lm_init%c%c12
         
         ! ! add harvested biomass to harvest pool (off site decay, 100%/yr)
         ! call orgmvRec( lm_turn, lm_turn, mharv(pft,jpngr), outacharv(pft,jpngr), outanharv(pft,jpngr), scale=nind(pft,jpngr) )

@@ -90,6 +90,7 @@ module md_params_siml
     logical :: average_soil    ! true in years before analytical soil equilibration, when average in and out are taken
     logical :: project_nmin    ! true in all years before analytical soil equilibration, when projected soil N mineralisation is used
     logical :: dofree_alloc    ! true if allocation is not fixed by 'frac_leaf'
+    logical :: add_ninorg      ! true in the first few years to get it started
   end type
 
 contains
@@ -114,10 +115,17 @@ contains
 
     integer, parameter :: spinupyr_soilequil_1 = 600   ! year of analytical soil equilibration, based on mean litter -> soil input flux
     integer, parameter :: spinupyr_soilequil_2 = 1200  ! year of analytical soil equilibration, based on mean litter -> soil input flux
+    integer, parameter :: spinup_add_ninorg    = 100   ! year until which inorganic N is added to get it started
 
     out_steering%year = year
 
     if (params_siml%do_spinup) then
+
+      if (year<=spinup_add_ninorg) then
+        out_steering%add_ninorg = .true.
+      else
+        out_steering%add_ninorg = .false.
+      end if
 
       if (year<=params_siml%spinupyears) then
         ! during spinup

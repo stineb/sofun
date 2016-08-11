@@ -358,6 +358,9 @@ contains
           pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + netmin_litt
           
         else
+
+          if ( (-1.0 * netmin_litt) > (pnh4(lu,jpngr)%n14 + pno3(lu,jpngr)%n14) ) print*, 'too much immo'
+
           !----------------------------------------------------------------    
           ! Immobilisation: first deplete NH4 pool
           !----------------------------------------------------------------    
@@ -390,9 +393,10 @@ contains
               !----------------------------------------------------------------    
               ! N fixation by free-living bacteria in litter to satisfy remainder
               !----------------------------------------------------------------    
-              ! Nfix = req
+              Nfix = req
+              ! print*,'req ', req
               req = 0.0
-              stop 'could not get enough N upon immobilisation'
+              ! stop 'could not get enough N upon immobilisation'
 
             end if
 
