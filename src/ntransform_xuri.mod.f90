@@ -69,8 +69,9 @@ module md_ntransform
 
   ! annual
   real, dimension(nlu,maxgrid) :: outaninorg
-  real, dimension(nlu,maxgrid) :: outanloss              ! annual total N loss (gaseous+leacing) (gN/m2/yr)
-  real, dimension(nlu,maxgrid) :: outan2o                ! annual N2O emitted (gaseous+leacing) (gN/m2/yr)
+  real, dimension(nlu,maxgrid) :: outanloss            ! annual total N loss (gaseous+leacing) (gN/m2/yr)
+  real, dimension(nlu,maxgrid) :: outadenitr           ! annual denitrified N (gN/m2/yr)
+  real, dimension(nlu,maxgrid) :: outan2o              ! annual N2O emitted (gaseous+leacing) (gN/m2/yr)
 
 contains
 
@@ -191,10 +192,11 @@ contains
       ! NITRATE LEACHING
       !-----------------------------------------------------------------------
       ! Reduce NO3 by fraction dnleach(lu)
-      !------------------------------------------------------------------
-      dnleach(lu) = no3 * soilphys(lu)%ro / psoilphys(lu,jpngr)%wcont
+      !------------------------------------------------------------------      
+      dnleach(lu) = no3 * soilphys(lu)%fleach
       no3         = no3 - dnleach(lu)
       dnloss(lu)  = dnloss(lu) + dnleach(lu)
+
 
       !///////////////////////////////////////////////////////////////////////
       ! SUBSTRATE PARTITIONING (ntransform.cpp:95)
@@ -210,9 +212,8 @@ contains
       no2_w = soilphys(lu)%wscal / 3.3 * no2(lu,jpngr)
 
       doc_w = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * soilphys(lu)%wscal / 3.3
+      print*,'doc_w ', doc_w
       
-      ! write(0,*) 'mo, dm, ddoc(lu) ', mo, dm, ddoc(lu)
-
       ! dry (aerobic) fraction
       !------------------------------------------------------------------
       nh4_d = ( 1.0 - soilphys(lu)%wscal / 3.3 ) * nh4
@@ -233,27 +234,24 @@ contains
       no3_inc    = params_ntransform%maxnitr * ftemp_nitr * nh4_d
       dnitr(lu)  = no3_inc
       nh4_d      = nh4_d - no3_inc   
-      ! dnloss(lu) = dnloss(lu) ! + no3_inc XXXX NOOOOO this is not lost 
-
       
       ! NO from nitrification (Eq.3, Tab.8, XP08)
       !------------------------------------------------------------------
       no_inc         = params_ntransform%non * no3_inc
-      no3_inc        = no3_inc - no_inc
-      
+      no3_inc        = no3_inc - no_inc      
       no_d(lu,jpngr) = no_d(lu,jpngr) + no_inc
-
       
       ! N2O from nitrification (Eq.4, Tab.8, XP08)
       !------------------------------------------------------------------
       n2o_inc         = params_ntransform%n2on * no3_inc
       no3_inc         = no3_inc - n2o_inc
-      
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr) + n2o_inc
       no3_d           = no3_d + no3_inc
-      
-      dn2o(lu) = n2o_inc
-      
+            
+      ! if N loss is defined w.r.t. reduction in NH4 and NO3 pools, then this is the correct formulation:
+      dnloss(lu) = dnloss(lu) + n2o_inc + no_inc
+
+
       !///////////////////////////////////////////////////////////////////////
       ! DENITRIFICATION (ntransform.cpp:177) in anaerobic microsites
       !------------------------------------------------------------------
@@ -276,16 +274,17 @@ contains
       no3_w       = no3_w - no2_inc
       no2_w       = no2_w + no2_inc
       ddenitr(lu) = no2_inc
-      dnloss(lu)  = dnloss(lu) + no2_inc
-
       
+      ! if N loss is defined w.r.t. reduction in NH4 and NO3 pools, then this is the correct formulation:
+      dnloss(lu) = dnloss(lu) + no2_inc
+
+
       ! Transformation NO2->N2 (Eq.4., Tab.9, XP08)
       !------------------------------------------------------------------
       n2_inc = min( dnmax * ftemp_denitr * no2_w / ( params_ntransform%kn + no2_w ) * 1000.0, no2_w )
       if (n2_inc>no2_w) stop 'n2_inc > no2_w'
 
       no2_w = no2_w - n2_inc
-
       
       ! N2O from denitrification (Eq.6, Tab.9, XP08)
       !------------------------------------------------------------------
@@ -295,10 +294,7 @@ contains
       ! XXX try: Changed this to from 0.21 to 1.0 in order to get plausible results
       n2o_inc = params_ntransform%dnitr2n2o * ftemp_denitr * ( 1.01 - 0.8 * soilphys(lu)%wscal ) * n2_inc
       n2_inc  = n2_inc - n2o_inc
-      
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr) + n2o_inc
-      dn2o(lu) = dn2o(lu) + n2o_inc
-
 
       ! NO from denitrification (Eq.5, Tab.9, XP08)
       !------------------------------------------------------------------
@@ -306,10 +302,8 @@ contains
       ! XXX try: Changed this to from 0.21 to 1.0 in order to get plausible results
       no_inc = 0.0001 * ftemp_denitr * ( 1.01 - 0.8 * soilphys(lu)%wscal ) * n2_inc
       n2_inc = n2_inc - no_inc
-
       no_w(lu,jpngr) = no_w(lu,jpngr) + no_inc
 
-      
       ! N2 from denitrification
       !------------------------------------------------------------------
       n2_w(lu,jpngr) = n2_w(lu,jpngr) + n2_inc
@@ -342,14 +336,22 @@ contains
       n2o = n2o_w(lu,jpngr) + n2o_d(lu,jpngr)
       n2  = n2_w(lu,jpngr)
 
-              
       !///////////////////////////////////////////////////////////////////////
       ! Diffusion of NO, N2O and N2 from the soil (ntransform.cpp:281)
       !------------------------------------------------------------------
       ! reference temperature: 25°C. Corresponds to Eq.1, Tab.10, Xu-Ri & Prentice, 2008
       ftemp_diffus = min( 1.0, ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=25.0 ))
 
-      ! Nitrification _fluxes
+      ! Total gaseous escape
+      !------------------------------------------------------------------
+      dno(lu) = ftemp_diffus*(1.0-soilphys(lu)%wscal)*no
+      dn2o(lu)= ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2o
+      dn2(lu) = ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2
+
+      ! if N loss is defined w.r.t. gaseous escape, then this is the correct formulation:
+      ! dnloss(lu) = dnloss(lu) + dno(lu) + dn2o(lu) + dn2(lu)
+
+      ! Gaseous escape of pools at dry microsites
       !------------------------------------------------------------------
       tmp = ftemp_diffus*(1.0-soilphys(lu)%wscal)*no_d(lu,jpngr)
       no_d(lu,jpngr) = no_d(lu,jpngr)-tmp
@@ -357,8 +359,7 @@ contains
       tmp = ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2o_d(lu,jpngr)
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr)-tmp
 
-      
-      ! Denitrification _fluxes
+      ! Gaseous escape of pools at wet microsites
       !------------------------------------------------------------------
       tmp = ftemp_diffus*(1.0-soilphys(lu)%wscal)*no_w(lu,jpngr)
       no_w(lu,jpngr) = no_w(lu,jpngr)-tmp
@@ -366,18 +367,7 @@ contains
       tmp = ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2o_w(lu,jpngr)
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr)-tmp
                  
-
-      ! xxx try: soilphys(lu)%wscal was always too high therefore no n2o escaped
-      ! ! Total _fluxes (XXX should be equal to sum of nitrification and
-      ! ! denitrification _fluxes. XXX)
-      ! !------------------------------------------------------------------
-      ! dno(lu) = ftemp_diffus*(1.0-soilphys(lu)%wscal)*no
-      ! dn2o(lu)= ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2o
-      ! dn2(lu) = ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2
-
-      ! write(0,*) 'n2o ', n2o
-
-      n2_w(lu,jpngr) = n2_w(lu,jpngr)-dn2(lu)
+      n2_w(lu,jpngr) = n2_w(lu,jpngr) - dn2(lu)
       
     enddo                                                 ! lu
 
@@ -495,22 +485,30 @@ contains
       filnam=trim(prefix)//'.d.n2o.out'
       open(505,file=filnam,err=888,status='unknown')
 
+      !----------------------------------------------------------------
+      ! ANNUAL OUTPUT
+      !----------------------------------------------------------------
+      ! ANNUAL TOTAL N LOSS (gN/m2/yr)
+      filnam=trim(prefix)//'.a.nloss.out'
+      open(550,file=filnam,err=888,status='unknown')
+
+      ! ANNUAL TOTAL DENITRIFIED N (gN/m2/yr)
+      filnam=trim(prefix)//'.a.denitr.out'
+      open(553,file=filnam,err=888,status='unknown')
+
+      ! ANNUAL N2O EMISSIONS (gN/m2/yr)
+      filnam=trim(prefix)//'.a.n2o.out'
+      open(551,file=filnam,err=888,status='unknown')
+
+      ! SOIL NO3 (mean over days)
+      filnam=trim(prefix)//'.a.no3.out'
+      open(316,file=filnam,err=888,status='unknown')
+
+      ! SOIL NH4 (mean over days)
+      filnam=trim(prefix)//'.a.nh4.out'
+      open(552,file=filnam,err=888,status='unknown')
+
     end if
-
-    !----------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    !----------------------------------------------------------------
-    ! ANNUAL TOTAL N LOSS (gN/m2/yr)
-    filnam=trim(prefix)//'.a.nloss.out'
-    open(550,file=filnam,err=888,status='unknown')
-
-    ! ANNUAL N2O EMISSIONS (gN/m2/yr)
-    filnam=trim(prefix)//'.a.n2o.out'
-    open(551,file=filnam,err=888,status='unknown')
-
-    ! INORGANIC N (mean over days)
-    filnam=trim(prefix)//'.a.ninorg.out'
-    open(316,file=filnam,err=888,status='unknown')
 
     return
 
@@ -542,12 +540,13 @@ contains
       outdnleach(:,:,:) = 0.0
       outdn2o(:,:,:)    = 0.0
       outdninorg(:,:,:) = 0.0
+      
+      outanloss(:,:)  = 0.0
+      outadenitr(:,:) = 0.0
+      outan2o(:,:)    = 0.0
+      outaninorg(:,:) = 0.0
 
     end if
-      
-    outanloss(:,:)  = 0.0
-    outan2o(:,:)    = 0.0
-    outaninorg(:,:) = 0.0
 
   end subroutine initoutput_ntransform
 
@@ -563,11 +562,11 @@ contains
     integer, intent(in) :: moy    
     integer, intent(in) :: doy    
 
-    !----------------------------------------------------------------
-    ! DAILY
-    ! Collect daily output variables
-    !----------------------------------------------------------------
     if (interface%params_siml%loutntransform) then
+      !----------------------------------------------------------------
+      ! DAILY
+      ! Collect daily output variables
+      !----------------------------------------------------------------
       outdnloss(:,doy,jpngr)  = dnloss(:)
       outddenitr(:,doy,jpngr) = ddenitr(:)
       outdnitr(:,doy,jpngr)   = dnitr(:)
@@ -575,15 +574,17 @@ contains
       outdnleach(:,doy,jpngr) = dnleach(:)
       outdn2o(:,doy,jpngr)    = dn2o(:)
       outdninorg(:,doy,jpngr) = pninorg(:,jpngr)%n14
-    end if
 
-    !----------------------------------------------------------------
-    ! ANNUAL SUM OVER DAILY VALUES
-    ! Collect annual output variables as sum of daily values
-    !----------------------------------------------------------------
-    outaninorg(:,jpngr)= outaninorg(:,jpngr) + pninorg(:,jpngr)%n14 / ndayyear
-    outanloss(:,jpngr) = outanloss(:,jpngr) + dnloss(:)
-    outan2o(:,jpngr)   = outan2o(:,jpngr) + dn2o(:)
+      !----------------------------------------------------------------
+      ! ANNUAL SUM OVER DAILY VALUES
+      ! Collect annual output variables as sum of daily values
+      !----------------------------------------------------------------
+      outaninorg(:,jpngr) = outaninorg(:,jpngr) + pninorg(:,jpngr)%n14 / ndayyear
+      outanloss(:,jpngr)  = outanloss(:,jpngr) + dnloss(:)
+      outadenitr(:,jpngr) = outadenitr(:,jpngr) + ddenitr(:)
+      outan2o(:,jpngr)    = outan2o(:,jpngr) + dn2o(:)
+
+    end if
 
   end subroutine getout_daily_ntransform
 
@@ -600,52 +601,54 @@ contains
 
     ! local variables
     real :: itime
-    integer :: myday, myjpngr
+    integer :: day, jpngr
 
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii_ntransform: think of something ...'
-    myjpngr = 1
+    jpngr = 1
 
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
     if (interface%params_siml%loutntransform) then
+
       if ( .not. interface%steering%spinup &
         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
         ! Write daily output only during transient simulation
-        do myday=1,ndayyear
+        do day=1,ndayyear
 
           ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears) + real(myday-1)/real(ndayyear)
+          itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
 
           if (nlu>1) stop 'writeout_ascii_ntransform: write out lu-area weighted sum'
           if (npft>1) stop 'writeout_ascii_ntransform: think of something for ccost output'
 
-          write(107,999) itime, sum(outdninorg(:,myday,myjpngr))
-          write(500,999) itime, sum(outdnloss(:,myday,myjpngr))
-          write(501,999) itime, sum(outdnvol(:,myday,myjpngr))
-          write(502,999) itime, sum(outddenitr(:,myday,myjpngr))
-          write(503,999) itime, sum(outdnitr(:,myday,myjpngr))
-          write(504,999) itime, sum(outdnleach(:,myday,myjpngr))
-          write(505,999) itime, sum(outdn2o(:,myday,myjpngr))
+          write(107,999) itime, sum(outdninorg(:,day,jpngr))
+          write(500,999) itime, sum(outdnloss(:,day,jpngr))
+          write(501,999) itime, sum(outdnvol(:,day,jpngr))
+          write(502,999) itime, sum(outddenitr(:,day,jpngr))
+          write(503,999) itime, sum(outdnitr(:,day,jpngr))
+          write(504,999) itime, sum(outdnleach(:,day,jpngr))
+          write(505,999) itime, sum(outdn2o(:,day,jpngr))
 
         end do
       end if
+
+      !-------------------------------------------------------------------------
+      ! ANNUAL OUTPUT
+      ! Write annual value, summed over all PFTs / LUs
+      ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+      !-------------------------------------------------------------------------
+      itime = real(interface%steering%outyear)
+
+      write(316,999) itime, sum(outdninorg(:,jpngr))
+      write(550,999) itime, sum(outanloss(:,jpngr))
+      write(553,999) itime, sum(outadenitr(:,jpngr))
+      write(551,999) itime, sum(outan2o(:,jpngr))
+
     end if
-
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
-
-    write(316,999) itime, sum(outaninorg(:,myjpngr))
-    write(550,999) itime, sum(outanloss(:,myjpngr))
-    write(551,999) itime, sum(outan2o(:,myjpngr))
-
-    ! write(0,*) 'outan2o written to output ', sum(outan2o(:,myjpngr))
 
     return
     

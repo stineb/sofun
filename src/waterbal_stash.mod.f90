@@ -47,6 +47,7 @@ module md_waterbal
     real :: ro         ! daily runoff (mm)
     real :: sw         ! evaporative supply rate (mm/h)
     real :: wscal      ! water filled pore space (unitless)
+    real :: fleach     ! NO3 leaching fraction (unitless)
   end type soilphystype
 
   type( soilphystype ), dimension(nlu) :: soilphys(nlu)
@@ -74,6 +75,7 @@ module md_waterbal
   real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
   real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
   real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
+  real, allocatable, dimension(:,:,:) :: outdfleach         ! daily NO3 leaching fraction, (unitless)
   real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
   real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm
   real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm
@@ -154,6 +156,9 @@ contains
     integer :: idx                       ! day of year corresponding to yesterday
     integer :: dm                        ! day of month
 
+    ! xxx debug
+    integer, save :: leaching_events = 0
+
     ! Reset monthly totals
     !call initmonthly
 
@@ -173,22 +178,34 @@ contains
 
       ! Bucket model for runoff generation
       if (psoilphys(lu,jpngr)%wcont>kWm) then
+        ! -----------------------------------
         ! Bucket is full 
-        ! * set soil moisture to capacity
+        ! -----------------------------------
+        ! * determine NO3 leaching fraction 
+        soilphys(lu)%fleach = 1.0 - kWm / psoilphys(lu,jpngr)%wcont
+        ! print*,'fleach ', soilphys(lu)%fleach
+        ! leaching_events = leaching_events + 1
+
         ! * add remaining water to monthly runoff total
-        soilphys(lu)%ro           = psoilphys(lu,jpngr)%wcont - kWm
+        soilphys(lu)%ro = psoilphys(lu,jpngr)%wcont - kWm
+
+        ! * set soil moisture to capacity
         psoilphys(lu,jpngr)%wcont = kWm
 
       elseif (psoilphys(lu,jpngr)%wcont<0.0) then
+        ! -----------------------------------
         ! Bucket is empty
+        ! -----------------------------------
         ! * set soil moisture to zero
         evap(lu)%aet              = evap(lu)%aet + psoilphys(lu,jpngr)%wcont
         psoilphys(lu,jpngr)%wcont = 0.0
         soilphys(lu)%ro           = 0.0
+        soilphys(lu)%fleach       = 0.0
 
       else
         ! No runoff occurrs
-        soilphys(lu)%ro = 0.0
+        soilphys(lu)%ro     = 0.0
+        soilphys(lu)%fleach = 0.0
 
       end if
 
@@ -1133,6 +1150,10 @@ contains
       filnam=trim(prefix)//'.d.ro.out'
       open(257,file=filnam,err=888,status='unknown')
 
+      ! FLEACH: daily leaching fraction, (unitless)
+      filnam=trim(prefix)//'.d.fleach.out'
+      open(263,file=filnam,err=888,status='unknown')
+
       ! eet: daily equilibrium ET, mm
       filnam=trim(prefix)//'.d.eet.out'
       open(258,file=filnam,err=888,status='unknown')
@@ -1205,22 +1226,24 @@ contains
       if (interface%steering%init) allocate( outdayl(ndayyear,maxgrid)     ) ! daily day length, h
       if (interface%steering%init) allocate( outdcn (ndayyear,maxgrid)     ) ! daily condensation water, mm
       if (interface%steering%init) allocate( outdro (nlu,ndayyear,maxgrid) ) ! daily runoff, mm
+      if (interface%steering%init) allocate( outdfleach (nlu,ndayyear,maxgrid) ) ! daily leaching fraction, (unitless)
       if (interface%steering%init) allocate( outdeet(ndayyear,maxgrid)     ) ! daily equilibrium ET, mm
       if (interface%steering%init) allocate( outdpet(ndayyear,maxgrid)     ) ! daily potential ET, mm
       if (interface%steering%init) allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
       if (interface%steering%init) allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
 
-      outdwcont(:,:,:) = 0.0
-      outdra(:,:)      = 0.0
-      outdrn(:,:)      = 0.0
-      outdppfd(:,:)    = 0.0
-      outdayl(:,:)     = 0.0
-      outdcn(:,:)      = 0.0
-      outdro(:,:,:)    = 0.0
-      outdeet(:,:)     = 0.0
-      outdpet(:,:)     = 0.0
-      outdaet(:,:,:)   = 0.0
-      outdcpa(:,:,:)   = 0.0
+      outdwcont(:,:,:)  = 0.0
+      outdra(:,:)       = 0.0
+      outdrn(:,:)       = 0.0
+      outdppfd(:,:)     = 0.0
+      outdayl(:,:)      = 0.0
+      outdcn(:,:)       = 0.0
+      outdro(:,:,:)     = 0.0
+      outdfleach(:,:,:) = 0.0
+      outdeet(:,:)      = 0.0
+      outdpet(:,:)      = 0.0
+      outdaet(:,:,:)    = 0.0
+      outdcpa(:,:,:)    = 0.0
 
     end if
 
@@ -1242,19 +1265,20 @@ contains
     ! xxx add lu-dimension and jpngr-dimension
     if (interface%params_siml%loutwaterbal) then
 
-      outdra(doy,jpngr)     = solar%dra(doy)
-      outdppfd(doy,jpngr)   = solar%dppfd(doy)
-      outdayl(doy,jpngr)    = solar%dayl(doy)
-
-      outdrn(doy,jpngr)     = evap(1)%rn
-      outdeet(doy,jpngr)    = evap(1)%eet
-      outdpet(doy,jpngr)    = evap(1)%pet
-      outdcn(doy,jpngr)     = evap(1)%cn
-      outdaet(:,doy,jpngr)  = evap(:)%aet
-      outdcpa(:,doy,jpngr)  = evap(:)%cpa
-
-      outdwcont(:,doy,jpngr)= psoilphys(:,jpngr)%wcont
-      outdro(:,doy,jpngr)   = soilphys(:)%ro
+      outdra(doy,jpngr)       = solar%dra(doy)
+      outdppfd(doy,jpngr)     = solar%dppfd(doy)
+      outdayl(doy,jpngr)      = solar%dayl(doy)
+      
+      outdrn(doy,jpngr)       = evap(1)%rn
+      outdeet(doy,jpngr)      = evap(1)%eet
+      outdpet(doy,jpngr)      = evap(1)%pet
+      outdcn(doy,jpngr)       = evap(1)%cn
+      outdaet(:,doy,jpngr)    = evap(:)%aet
+      outdcpa(:,doy,jpngr)    = evap(:)%cpa
+      
+      outdwcont(:,doy,jpngr)  = psoilphys(:,jpngr)%wcont
+      outdro(:,doy,jpngr)     = soilphys(:)%ro
+      outdfleach(:,doy,jpngr) = soilphys(:)%fleach
 
     end if
 
@@ -1305,6 +1329,7 @@ contains
           write(254,999) itime, outdcn(day,jpngr)
           write(255,999) itime, outdwcont(1,day,jpngr)
           write(257,999) itime, outdro(1,day,jpngr)
+          write(263,999) itime, outdfleach(1,day,jpngr)
           write(258,999) itime, outdeet(day,jpngr)
           write(259,999) itime, outdpet(day,jpngr)
           write(260,999) itime, outdaet(1,day,jpngr)
