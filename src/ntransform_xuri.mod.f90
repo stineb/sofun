@@ -190,8 +190,15 @@ contains
       !-------------------------------------------------------------------------
       ! Add N deposition to inorganic pools
       !-------------------------------------------------------------------------
+      ! pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 + dnoydep
+      ! pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + dnhxdep
+
       pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 + dnoydep
       pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + dnhxdep
+
+      ! xxx try: 
+      ! pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 + 10.0 / 365.0
+      ! pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + 10.0 / 365.0
 
 
       !-------------------------------------------------------------------------
