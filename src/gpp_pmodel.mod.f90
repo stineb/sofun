@@ -537,11 +537,11 @@ contains
     type(outtype_pmodel) :: out_pmodel
 
     ! local variables
-    real :: iabs                     ! absorbed photosynthetically active radiation (mol/m2)
+    real :: ppfdabs                  ! absorbed photosynthetically active radiation (mol/m2)
     real :: patm                     ! atmospheric pressure as a function of elevation (Pa)
-    real :: ca                       ! ambient CO2 partial pression (Pa)
-    real :: ci                       ! leaf-internal CO2 partial pression, (Pa)
-    real :: chi                      ! leaf-internal to ambient CO2 partial pression, ci/ca (unitless)
+    real :: ca                       ! ambient CO2 partial pressure (Pa)
+    real :: ci                       ! leaf-internal CO2 partial pressure, (Pa)
+    real :: chi                      ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: gs                       ! stomatal conductance
     real :: gstar                    ! photorespiratory compensation point - Gamma-star (Pa)
     real :: fa                       ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
@@ -553,28 +553,28 @@ contains
     real :: n
     real :: gpp                      ! assimilation (mol m-2 s-1)
     real :: lue                      ! Light use efficiency
-    real :: vcmax                    ! Vcmax per unit ground area (mol m-2 s-1)
-    real :: vcmax_unitfapar
-    real :: vcmax_unitiabs
-    real :: vcmax25                  ! Vcmax25 (vcmax normalized to 25 deg C)
-    real :: vcmax25_unitfapar
-    real :: vcmax25_unitiabs
-    real :: rd                       ! Dark respiration (mol m-2 s-1)
-    real :: rd_unitfapar 
-    real :: rd_unitiabs 
+    real :: vcmax                    ! Vcmax per unit ground area (mol CO2 m-2 s-1)
+    real :: vcmax_unitfapar          ! Vcmax per fAPAR (mol CO2 m-2 s-1)
+    real :: vcmax_unitiabs           ! Vcmax per unit absorbed light (mol CO2 m-2 s-1 [mol PPFD]-1)
+    real :: vcmax25                  ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
+    real :: vcmax25_unitfapar        ! Vcmax25 per fAPAR (mol CO2 m-2 s-1)
+    real :: vcmax25_unitiabs         ! Vcmax25 per unit absorbed light
+    real :: rd                       ! Dark respiration (mol CO2 m-2 s-1)
+    real :: rd_unitfapar             ! Dark respiration per fAPAR (mol CO2 m-2 s-1)
+    real :: rd_unitiabs              ! Dark respiration per unit absorbed light (mol CO2 m-2 s-1)
     real :: factor25_vcmax           ! correction factor to normalise Vcmax to 25 deg C
     real :: actnv 
     real :: actnv_unitfapar 
     real :: actnv_unitiabs 
-    real :: transp          
-    real :: transp_unitfapar
-    real :: transp_unitiabs 
+    real :: transp                   ! transpiration [g H2O (mol photons)-1]
+    real :: transp_unitfapar         ! transpiration per unit fAPAR [g H2O (mol photons)-1]
+    real :: transp_unitiabs          ! transpiration per unit light absorbed light [g H2O (mol photons)-1]
 
     type(outtype_lue) :: out_lue
 
 
     ! absorbed photosynthetically active radiation (mol/m2)
-    iabs = fpar * ppfd
+    ppfdabs = fpar * ppfd
 
     ! atmospheric pressure as a function of elevation (Pa)
     patm = calc_patm( elv )
@@ -654,9 +654,9 @@ contains
     ! and 'm'
     m   = calc_mprime( m )
 
-    gpp = iabs * params_pft_gpp(pft)%kphio * m  ! in mol m-2 s-1
+    gpp = ppfdabs * params_pft_gpp(pft)%kphio * m  ! in mol m-2 s-1
 
-    ! Light use efficiency (gpp per unit iabs)
+    ! Light use efficiency (gpp per unit ppfdabs)
     lue = params_pft_gpp(pft)%kphio * m 
 
     ! ! XXX PMODEL_TEST: ok
@@ -671,12 +671,12 @@ contains
 
     ! Vcmax per unit ground area is the product of the intrinsic quantum 
     ! efficiency, the absorbed PAR, and 'n'
-    vcmax = iabs * params_pft_gpp(pft)%kphio * n
+    vcmax = ppfdabs * params_pft_gpp(pft)%kphio * n
 
     ! Vcmax normalised per unit fAPAR (assuming fAPAR=1)
     vcmax_unitfapar = ppfd * params_pft_gpp(pft)%kphio * n 
 
-    ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1)
+    ! Vcmax normalised per unit absorbed PPFD (assuming ppfdabs=1)
     vcmax_unitiabs = params_pft_gpp(pft)%kphio * n 
 
     ! Vcmax25 (vcmax normalized to 25 deg C)
@@ -705,7 +705,7 @@ contains
     ! - gs = A / (ca (1-chi))
     ! (- chi = ci / ca)
     ! => E = f
-    transp           = (1.6 * iabs * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)   ! gpp = iabs * params_pft_gpp(pft)%kphio * fa * m
+    transp           = (1.6 * ppfdabs * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)   ! gpp = ppfdabs * params_pft_gpp(pft)%kphio * fa * m
     transp_unitfapar = (1.6 * ppfd * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
     transp_unitiabs  = (1.6 * 1.0  * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
 
