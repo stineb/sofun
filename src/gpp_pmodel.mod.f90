@@ -32,31 +32,11 @@ module md_gpp
   !----------------------------------------------------------------
   real, dimension(npft)        :: dtransp          ! daily transpiration [mm]
   real, dimension(npft)        :: drd              ! dark respiration [gC/m2/d]
-  real, dimension(npft)        :: vcmax_canop      ! canopy-level Vcmax
+  real, dimension(npft)        :: dvcmax_canop     ! canopy-level Vcmax [gCO2/m2-ground/s]
+
   real, dimension(npft,nmonth) :: mlue             ! Light use efficiency: (gpp - rd) per unit light absorbed
   real, dimension(npft,nmonth) :: mactnv_unitiabs  ! conversion factor to get from APAR to Rubisco-N
   real, dimension(npft,nmonth) :: mrd_unitiabs     ! dark respiration per unit fAPAR (assuming fAPAR=1)
-
-  !----------------------------------------------------------------
-  ! Module-specific output variables
-  !----------------------------------------------------------------
-  ! daily
-  real, allocatable, dimension(:,:,:) :: outdrd
-  real, allocatable, dimension(:,:,:) :: outdtransp
-
-  ! monthly
-  real, allocatable, dimension(:,:,:) :: outmrd
-  real, allocatable, dimension(:,:,:) :: outmtransp
-
-  ! annual
-  real, dimension(npft,maxgrid) :: outagpp
-  real, dimension(npft,maxgrid) :: outavcmax
-  real, dimension(npft,maxgrid) :: outachi
-  real, dimension(npft,maxgrid) :: outalue
-
-  ! These are stored as dayly variables for annual output
-  ! at day of year when LAI is at its maximum.
-  real, dimension(npft,ndayyear) :: outdvcmax_canop
 
   !-----------------------------------------------------------------------
   ! Known parameters, therefore hard-wired.
@@ -82,7 +62,6 @@ module md_gpp
   ! Uncertain (unknown) parameters. Runtime read-in
   !-----------------------------------------------------------------------
   type paramstype_gpp
-    real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
     real :: beta         ! Unit cost of carboxylation (dimensionless)
   end type paramstype_gpp
 
@@ -91,6 +70,7 @@ module md_gpp
   ! PFT-DEPENDENT PARAMETERS
   type pftparamstype_gpp
     real :: kphio        ! quantum efficiency (Long et al., 1993)  
+    real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
   end type pftparamstype_gpp
 
   type( pftparamstype_gpp ), dimension(npft) :: params_pft_gpp
@@ -169,10 +149,33 @@ module md_gpp
   end type outtype_pmodel
 
   type outtype_lue
-    real :: chi
+    real :: chi                   ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: m
     real :: n
   end type outtype_lue
+
+  !----------------------------------------------------------------
+  ! Module-specific output variables
+  !----------------------------------------------------------------
+  ! daily
+  real, allocatable, dimension(:,:,:) :: outdrd     ! daily dark respiration [gC/m2/d]
+  real, allocatable, dimension(:,:,:) :: outdtransp ! daily transpiration [mm]
+
+  ! ! monthly
+  ! real, allocatable, dimension(:,:,:) :: outmgpp    ! monthly gross primary production [gC/m2/mo.]
+  ! real, allocatable, dimension(:,:,:) :: outmrd     ! monthly dark respiration [gC/m2/mo.]
+  ! real, allocatable, dimension(:,:,:) :: outmtransp ! monthly transpiration [mm]
+
+  ! annual
+  real, dimension(npft,maxgrid) :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  real, dimension(npft,maxgrid) :: outavcmax25      ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  real, dimension(npft,maxgrid) :: outachi
+  real, dimension(npft,maxgrid) :: outalue
+
+  ! These are stored as dayly variables for annual output
+  ! at day of year when LAI is at its maximum.
+  real, dimension(npft,ndayyear) :: outdvcmax
+  real, dimension(npft,ndayyear) :: outdvcmax25
 
 contains
 
@@ -233,15 +236,15 @@ contains
         dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), mtransp_unitiabs(pft,moy), dtemp )
 
         ! Vcmax
-        ! vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), dtemp, evap(lu)%cpa )
-        vcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy), dtemp )
+        ! dvcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
+        dvcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, mvcmax_unitiabs(pft,moy), solar%meanmppfd(moy) )
 
       else  
 
-        dgpp(pft)        = 0.0
-        drd(pft)         = 0.0
-        dtransp(pft)     = 0.0
-        vcmax_canop(pft) = 0.0
+        dgpp(pft)         = 0.0
+        drd(pft)          = 0.0
+        dtransp(pft)      = 0.0
+        dvcmax_canop(pft) = 0.0
 
       end if 
 
@@ -498,32 +501,20 @@ contains
   end function calc_dtransp
 
 
-  function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd, dtemp, cpalpha ) result( my_vcmax )
+  function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd ) result( my_vcmax )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level metabolic N content per unit leaf area as a
-    ! function of Vcmax25.
+    ! Calculates canopy-level carboxylation capacity (Vcmax). To get
+    ! value per unit leaf area, divide by LAI.
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: fapar
     real, intent(in) :: my_vcmax_unitiabs
     real, intent(in) :: meanmppfd
-    real, intent(in) :: dtemp              ! this day's air temperature
-    real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
-    real :: my_vcmax
-
-    ! local variables
-    real :: fa
-
-    if (present(cpalpha)) then
-      fa = calc_fa( cpalpha )
-    else
-      fa = 1.0
-    end if
-
+    real :: my_vcmax    ! canopy-level Vcmax [gCO2/m2-ground/s]
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-    my_vcmax = fapar * meanmppfd * fa * ramp_gpp_lotemp( dtemp ) * my_vcmax_unitiabs
+    my_vcmax = fapar * meanmppfd * my_vcmax_unitiabs
 
   end function calc_vcmax_canop
 
@@ -531,7 +522,7 @@ contains
   function pmodel( pft, fpar, ppfd, co2, tc, vpd, elv, method ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
     ! Output:   gpp (mol/m2/month)   : gross primary production
-    !------------------------------------------------------------------, evap(lu)%cpa
+    !------------------------------------------------------------------
     ! arguments
     integer, intent(in) :: pft         
     real, intent(in)    :: fpar         ! monthly fraction of absorbed photosynthetically active radiation (unitless) 
@@ -695,13 +686,13 @@ contains
     vcmax25_unitiabs  = factor25_vcmax * vcmax_unitiabs
 
     ! Dark respiration
-    rd = params_gpp%rd_to_vcmax * vcmax
+    rd = params_pft_gpp(pft)%rd_to_vcmax * vcmax
 
     ! Dark respiration per unit fAPAR (assuming fAPAR=1)
-    rd_unitfapar = params_gpp%rd_to_vcmax * vcmax_unitfapar
+    rd_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * vcmax_unitfapar
 
-    ! Dark respiration per unit absorbed PPFD (assuming iabs=1)
-    rd_unitiabs = params_gpp%rd_to_vcmax * vcmax_unitiabs
+    ! Dark respiration per unit absorbed PPFD (assuming ppfdabs=1)
+    rd_unitiabs = params_pft_gpp(pft)%rd_to_vcmax * vcmax_unitiabs
 
     ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
     actnv = vcmax25 * n_v
@@ -759,15 +750,15 @@ contains
     params_gpp%beta  = getparreal( 'params/params_gpp_pmodel.dat', 'beta' )
 
     ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
-    params_gpp%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
+    params_pft_gpp%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
 
     do pft=1,npft
 
-      ! ! define PFT-extension used for parameter names in parameter file
-      ! write(char_pftcode, 999) params_pft_plant(pft)%pftcode
+      print*,'params_pft_plant(pft)%pftname', params_pft_plant(pft)%pftname
 
       ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
       params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
+
     end do
 
     return
@@ -1409,21 +1400,25 @@ contains
     !----------------------------------------------------------------
     ! ANNUAL OUTPUT
     !----------------------------------------------------------------
-    ! GPP 
-    filnam=trim(prefix)//'.a.gpp.out'
-    open(310,file=filnam,err=888,status='unknown')
+    if (interface%params_siml%loutgpp) then
 
-    ! VCMAX (annual maximum) (mol m-2 s-1)
-    filnam=trim(prefix)//'.a.vcmax.out'
-    open(323,file=filnam,err=888,status='unknown')
+      ! VCMAX (annual maximum) (mol m-2 s-1)
+      filnam=trim(prefix)//'.a.vcmax.out'
+      open(323,file=filnam,err=888,status='unknown')
 
-    ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
-    filnam=trim(prefix)//'.a.chi.out'
-    open(652,file=filnam,err=888,status='unknown')
+      ! 25degC-normalised VCMAX (annual maximum) (mol m-2 s-1)
+      filnam=trim(prefix)//'.a.vcmax25.out'
+      open(654,file=filnam,err=888,status='unknown')
 
-    ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
-    filnam=trim(prefix)//'.a.lue.out'
-    open(653,file=filnam,err=888,status='unknown')
+      ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
+      filnam=trim(prefix)//'.a.chi.out'
+      open(652,file=filnam,err=888,status='unknown')
+
+      ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
+      filnam=trim(prefix)//'.a.lue.out'
+      open(653,file=filnam,err=888,status='unknown')
+
+    end if
 
     return
 
@@ -1442,19 +1437,24 @@ contains
     ! daily
     if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd       (npft,ndayyear,maxgrid) )
     if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp   (npft,ndayyear,maxgrid) )
-    outdrd(:,:,:)    = 0.0
+    outdrd(:,:,:)     = 0.0
     outdtransp(:,:,:) = 0.0
 
-    ! monthly
-    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outmrd       (npft,nmonth,maxgrid) )
-    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outmtransp   (npft,nmonth,maxgrid) )
-    outmrd(:,:,:)     = 0.0
-    outmtransp(:,:,:) = 0.0
+    ! ! monthly
+    ! if (interface%steering%init.and.interface%params_siml%loutdgpp   ) allocate( outmgpp      (npft,nmonth,maxgrid) )
+    ! if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outmrd       (npft,nmonth,maxgrid) )
+    ! if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outmtransp   (npft,nmonth,maxgrid) )
+    ! outmgpp(:,:,:)    = 0.0
+    ! outmrd(:,:,:)     = 0.0
+    ! outmtransp(:,:,:) = 0.0
 
     ! annual
-    outavcmax(:,:) = 0.0
-    outachi(:,:)   = 0.0
-    outalue(:,:)   = 0.0
+    if (interface%params_siml%loutgpp) then
+      outavcmax(:,:)   = 0.0
+      outavcmax25(:,:) = 0.0
+      outachi(:,:)     = 0.0
+      outalue(:,:)     = 0.0
+    end if
 
   end subroutine initoutput_gpp
 
@@ -1468,6 +1468,7 @@ contains
     ! where they are defined.
     !----------------------------------------------------------------
     use md_interface
+    use md_plant, only: lai_ind
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -1479,24 +1480,31 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (interface%params_siml%loutdrd    ) outdrd(:,doy,jpngr)        = drd(:)
-    if (interface%params_siml%loutdtransp) outdtransp(:,doy,jpngr)    = dtransp(:)
+    if (interface%params_siml%loutdrd    ) outdrd(:,doy,jpngr)     = drd(:)
+    if (interface%params_siml%loutdtransp) outdtransp(:,doy,jpngr) = dtransp(:)
 
-    !----------------------------------------------------------------
-    ! MONTHLY SUM OVER DAILY VALUES
-    ! Collect monthly output variables as sum of daily values
-    !----------------------------------------------------------------
-    if (interface%params_siml%loutdrd    ) outmrd(:,moy,jpngr)     = outmrd(:,moy,jpngr)  + drd(:)
-    if (interface%params_siml%loutdrd    ) outmtransp(:,moy,jpngr) = outmtransp(:,moy,jpngr)  + dtransp(:)
+    ! !----------------------------------------------------------------
+    ! ! MONTHLY SUM OVER DAILY VALUES
+    ! ! Collect monthly output variables as sum of daily values
+    ! !----------------------------------------------------------------
+    ! if (interface%params_siml%loutdgpp   ) outmgpp(:,moy,jpngr)    = outmgpp(:,moy,jpngr) + dgpp(:)
+    ! if (interface%params_siml%loutdrd    ) outmrd(:,moy,jpngr)     = outmrd(:,moy,jpngr)  + drd(:)
+    ! if (interface%params_siml%loutdrd    ) outmtransp(:,moy,jpngr) = outmtransp(:,moy,jpngr)  + dtransp(:)
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-
     ! store all daily values for outputting annual maximum
-    outdvcmax_canop(:,doy) = vcmax_canop(:)
+    if (npft>1) stop 'getout_annual_gpp not implemented for npft>1'
 
+    ! if (lai_ind(1,jpngr)>0.0) then
+    !   outdvcmax(1,doy)   = dvcmax_canop(1) / lai_ind(1,jpngr)
+    !   outdvcmax25(1,doy) = out_pmodel(1,moy)%factor25_vcmax * dvcmax_canop(1) / lai_ind(1,jpngr)
+    ! else
+    !   outdvcmax(1,doy)   = 0.0
+    !   outdvcmax25(1,doy) = 0.0
+    ! end if
 
   end subroutine getout_daily_gpp
 
@@ -1506,14 +1514,22 @@ contains
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
     use md_waterbal, only: solar
+    use md_interface
+    use md_plant, only: maxdoy
 
     ! arguments
     integer, intent(in) :: jpngr
 
+    if (npft>1) stop 'getout_annual_gpp not implemented for npft>1'
+
     ! outanrlarea(jpngr) = anrlarea
-    outavcmax(:,jpngr)   = maxval( outdvcmax_canop(jpngr,:) )
-    outachi(:,jpngr)     = sum( mchi(1,:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
-    outalue(:,jpngr)     = sum( mlue(1,:) * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+    if (interface%params_siml%loutgpp) then
+      outavcmax(1,jpngr)   = outdvcmax(1,maxdoy(1))
+      outavcmax25(1,jpngr) = outdvcmax25(1,maxdoy(1))
+
+      ! outachi(:,jpngr)     = sum( out_pmodel(1,:)%chi * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+      ! outalue(:,jpngr)     = sum( out_pmodel(1,:)%lue * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+    end if
 
   end subroutine getout_annual_gpp
 
@@ -1559,12 +1575,16 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(interface%steering%outyear)
+    if (interface%params_siml%loutgpp) then
+  
+      itime = real(interface%steering%outyear)
 
-    write(310,999) itime, sum(outagpp(:,jpngr))
-    write(323,999) itime, sum(outavcmax(:,jpngr))
-    write(652,999) itime, sum(outachi(:,jpngr))
-    write(653,999) itime, sum(outalue(:,jpngr))
+      write(323,999) itime, sum(outavcmax(:,jpngr))
+      write(654,999) itime, sum(outavcmax25(:,jpngr))
+      write(652,999) itime, sum(outachi(:,jpngr))
+      write(653,999) itime, sum(outalue(:,jpngr))
+
+    end if
 
     return
     
