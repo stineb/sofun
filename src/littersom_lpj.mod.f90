@@ -132,26 +132,20 @@ contains
     real :: netmin_litt                             ! net N mineralisation from litter decomposition
 
     integer, save :: invocation = 0                 ! internally counted simulation year
-    integer, parameter :: spinupyr_soilequil_1 = 600   ! year of analytical soil equilibration, based on mean litter -> soil input flux
-    integer, parameter :: spinupyr_soilequil_2 = 1200  ! year of analytical soil equilibration, based on mean litter -> soil input flux
-    ! integer, parameter :: spinupyr_phaseinit_2 = 900
-    ! integer, parameter :: spinupyr_phaseinit_3 = 1300   ! change this to 9999 to make fully coupled simulation working
-    integer, parameter :: spinupyr_phaseinit_3 = 9999   ! change this to 9999 to make fully coupled simulation working
 
-    ! real :: acc                                     ! soil equilibration acceleration factor
-    ! real :: scal, hi, lo
     real, dimension(nlu,maxgrid), save :: mean_insoil_fs
     real, dimension(nlu,maxgrid), save :: mean_insoil_sl
     real, dimension(nlu,maxgrid), save :: mean_ksoil_sl
     real, dimension(nlu,maxgrid), save :: mean_ksoil_fs
     real :: ntoc_save_fs, ntoc_save_sl
 
+
     !-------------------------------------------------------------------------
     ! Count number of calls (one for each simulation year)
     !-------------------------------------------------------------------------
     if (doy==1) invocation = invocation + 1
 
-    ! initialise 
+    ! initialise average fluxes
     if (invocation==1 .and. doy==1) then
       mean_insoil_fs(:,:) = 0.0
       mean_insoil_sl(:,:) = 0.0
@@ -168,17 +162,8 @@ contains
     ! for a temperate climate (Switzerland). May have to adjust this
     ! for improving performance with a global simulation.
     !-------------------------------------------------------------------------
-    ! if (spinup) then
-    !   acc = max( 1.0, 200.0 - real(invocation) ) 
-    ! else
-    !   acc = 1.0
-    ! end if
-    ! acc = 1.0
 
     do lu=1,nlu
-
-      ! if ( abs( cton(psoil_fs(lu,jpngr)) - cton_soil(1) ) > 1e-5 ) stop 'A fs: C:N not ok'
-      ! if ( abs( cton(psoil_sl(lu,jpngr)) - cton_soil(1) ) > 1e-5 ) stop 'A sl: C:N not ok'
 
       !/////////////////////////////////////////////////////////////////////////
       ! DECAY RATES
@@ -293,7 +278,6 @@ contains
         !----------------------------------------------------------------    
         ! CARBON LITTER -> SOIL TRANSFER
         !----------------------------------------------------------------    
-
         ! record N:C ratio to override later (compensating for numerical imprecision)
         ntoc_save_fs = ntoc( psoil_fs(lu,jpngr), default=0.0 )
         ntoc_save_sl = ntoc( psoil_sl(lu,jpngr), default=0.0 )
@@ -306,25 +290,16 @@ contains
         call ccp( cfrac( (1.0-eff), dlitt%c ), drhet(lu) )
 
         ! get average litter -> soil flux for analytical soil C equilibration
-        if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation <= spinupyr_soilequil_1 &
-          .or. interface%steering%spinup .and. invocation > ( spinupyr_soilequil_2 - interface%params_siml%recycle ) .and. invocation <= spinupyr_soilequil_2) then
+        if ( interface%steering%average_soil ) then
           mean_insoil_fs(lu,jpngr) = mean_insoil_fs(lu,jpngr) + eff * params_littersom%fastfrac * dlitt%c%c12
           mean_insoil_sl(lu,jpngr) = mean_insoil_sl(lu,jpngr) + eff * (1.0-params_littersom%fastfrac) * dlitt%c%c12
         end if
-        ! print*,'2.3'
-
 
         !----------------------------------------------------------------    
         ! N MINERALISATION
         !----------------------------------------------------------------    
         ! N requirement to maintain rS (SOM N:C ratio)
-        ! write(0,*) 'a dlitt%c%c12',dlitt%c%c12
-        ! write(0,*) 'a eff',eff
-        ! write(0,*) 'a cton_soil_local',cton_soil_local
         Nreq_S = dlitt%c%c12 * eff * ntoc_soil_local  ! 1/cton_soil = rS
-
-        ! write(0,*) 'cton_soil      ',cton_soil_local 
-        ! write(0,*) 'cton_crit      ',1.0/ntoc_crit
 
         ! OUTPUT COLLECTION
         outanreq(lu,jpngr)      = outanreq(lu,jpngr)      + Nreq_S
@@ -361,23 +336,18 @@ contains
 
         Nfix = 0.0
 
-        ! write(0,*) 'netmin_litt', netmin_litt
-        ! write(0,*) 'immo direct', dlitt%c%c12 * ( ntoc_crit - dlitt%n%n14 / dlitt%c%c12 )
-
         ! OUTPUT COLLECTION
         if (interface%params_siml%loutlittersom) then
           outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + netmin_litt
           outdnetmin_litt(lu,doy,jpngr) = outdnetmin_litt(lu,doy,jpngr) + netmin_litt
         end if
         
-        outaNimmo(lu,jpngr)           = outaNimmo(lu,jpngr) - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
+        outaNimmo(lu,jpngr)             = outaNimmo(lu,jpngr) - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
 
-        ! print*,'2.5'
+        ! print*,'dlitt%n%n14 ', dlitt%n%n14
+        ! print*,'Nreq_S      ', Nreq_S
+        ! print*,'netmin_litt ', netmin_litt
 
-        ! write(0,*) 'a pninorg(lu,jpngr)%n14',pninorg
-        ! write(0,*) 'a netmin_litt',netmin_litt
-        ! write(0,*) 'a dlitt%n%n14',dlitt%n%n14
-        ! write(0,*) 'a Nreq_S',Nreq_S
         if (netmin_litt>0.0) then
           !----------------------------------------------------------------    
           ! net N mineralisation
@@ -440,26 +410,27 @@ contains
         call ncp( nfrac( params_littersom%fastfrac      , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
         call ncp( nfrac( (1.0-params_littersom%fastfrac), nitrogen(Nreq_S) ), psoil_sl(lu,jpngr)%n )
 
-        ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
-        ! Warning: This may not strictly conserve mass!
-        if (ntoc_save_fs>0.0) then
-          psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_save_fs
-        end if
-        if (ntoc_save_sl>0.0) then
-          psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_save_sl
-        end if
+        ! ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
+        ! ! Warning: This may not strictly conserve mass!
+        ! if (ntoc_save_fs>0.0) then
+        !   psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_save_fs
+        ! end if
+        ! if (ntoc_save_sl>0.0) then
+        !   psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_save_sl
+        ! end if
 
         if ( abs( cton(psoil_fs(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) stop 'B fs: C:N not ok'
         if ( abs( cton(psoil_sl(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) stop 'B sl: C:N not ok'
 
         ! OUTPUT COLLECTION
-        outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
-          
+        if (interface%params_siml%loutlittersom) then
+          outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
+        end if
+
         ! C:N ratio of soil influx
         if ( abs( dlitt%c%c12 * eff / Nreq_S - params_littersom%cton_soil ) > 1e-5 ) stop 'imprecision'
 
       end if
-      ! print*,'3'
 
       !////////////////////////////////////////////////////////////////
       ! EXUDATES DECAY
@@ -515,37 +486,25 @@ contains
         stop 'C sl: C:N not ok'
       end if
 
-      ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
-      ! Warning: this does not strictly conserve mass!
-      psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_soil_local
-      psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_soil_local
-      ! print*,'5'
+      ! ! xxxxxxxx commented this out again
+      ! ! Prevent accumulating deviation of soil C:N ratio due to numerical imprecision.
+      ! ! Warning: this does not strictly conserve mass!
+      ! psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_soil_local
+      ! psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * ntoc_soil_local
+      ! ! xxxxxxxx commented this out again
 
-      ! xxx try:
-      ! >>>>>>>>>>>
-      ! ! to inorganic N pool
-      ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      ! ===========
-      ! if ( spinup .and. invocation <= spinupyr_phaseinit_3 ) then
-      !   if ( dlitt%c%c12 > 0.0 ) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
-      !   ! write(0,*) 'fraction immobilised', (-1.0)*netmin_litt / ( eff * dlitt%c%c12 / cton_soil_local )
-      !   ! ! xxx try:
-      !   ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * (eff * dlitt%c%c12 / cton_soil_local)
-      ! else  
-      !   pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      !   ! write(0,*) 'fraction immobilised', (-1.0)*netmin_litt / ( dsoil_fs%n%n14 + dsoil_sl%n%n14 )
-      !   ! ! xxx try:
-      !   ! pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - 0.02 * ( dsoil_fs%n%n14 + dsoil_sl%n%n14 )
-      ! end if
-      ! xxxxxxxxxxx
-      ! xxx try: use budgeted N mineralisation also after spinup and equilibration to avoid problem (most likely budget violation in turnover)
-      ! print*,'cton_soil_local ', cton_soil_local 
-      if ( dlitt%c%c12 > 0.0 ) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
-      ! <<<<<<<<<<<      
+      ! Spinup trick: use projected soil N mineralisation before soil equilibration
+      if ( interface%steering%project_nmin ) then
+        ! projected soil N mineralisation
+        if (dlitt%c%c12 > 0.0) pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
+      else
+        ! actual soil N mineralisation
+        pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      end if
 
+      
       ! get average litter -> soil flux for analytical soil C equilibration
-      if ( interface%steering%spinup .and. invocation > ( spinupyr_soilequil_1 - interface%params_siml%recycle ) .and. invocation<=spinupyr_soilequil_1 &
-        .or. interface%steering%spinup .and. invocation > ( spinupyr_soilequil_2 - interface%params_siml%recycle ) .and. invocation<=spinupyr_soilequil_2 ) then
+      if ( interface%steering%average_soil ) then
         mean_ksoil_fs(lu,jpngr) = mean_ksoil_fs(lu,jpngr) + ksoil_fs(lu)
         mean_ksoil_sl(lu,jpngr) = mean_ksoil_sl(lu,jpngr) + ksoil_sl(lu)
       end if
@@ -557,9 +516,9 @@ contains
       ! print*,'spinupyr_soilequil_2 ', spinupyr_soilequil_2
       ! print*,'mean_ksoil_fs(lu,jpngr) ', mean_ksoil_fs(lu,jpngr)
 
+
       ! analytical soil C equilibration
-      if ( interface%steering%spinup .and. invocation==spinupyr_soilequil_1 .and. doy==ndayyear &
-        .or. interface%steering%spinup .and. invocation==spinupyr_soilequil_2 .and. doy==ndayyear ) then
+      if ( interface%steering%do_soilequil .and. doy==ndayyear ) then
         psoil_fs(lu,jpngr)%c%c12 = mean_insoil_fs(lu,jpngr) / mean_ksoil_fs(lu,jpngr)
         psoil_sl(lu,jpngr)%c%c12 = mean_insoil_sl(lu,jpngr) / mean_ksoil_sl(lu,jpngr)
         psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * ntoc_save_fs
@@ -580,32 +539,23 @@ contains
       ! print*,'mean_ksoil_fs(lu,jpngr) ', mean_ksoil_fs(lu,jpngr)
       ! print*,'6'
 
-      ! ! Record monthly (daily) soil turnover flux (labile carbon availability)
-      ! ! xxx try: replace this with exudates pool 
-      ! !----------------------------------------------------------------
+      ! Record monthly (daily) soil turnover flux (labile carbon availability)
+      ! xxx try: replace this with exudates pool 
+      !----------------------------------------------------------------
       ! ddoc(lu) = dsoil_fs%c%c12 + dsoil_sl%c%c12
 
-      !----------------------------------------------------------------
-      ! XXX debug: add constant N fixation 0.5 gN/m2/yr)
-      !----------------------------------------------------------------
-      ! if (invocation<200) then
-      !   Nfix = 5.0/365.0
-      ! else
-      !   Nfix = 1.0/365.0
-      ! end if
-      Nfix = 1.0 / 365.0
-      ! Nfix = 0.0
+      ! Nfix = 1.0 / 365.0
+      Nfix = 0.0
       pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 + Nfix
 
       ! OUTPUT COLLECTION
       if (interface%params_siml%loutlittersom) then
         outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
       end if
-      ! write(0,*) 'e pninorg(lu,jpngr)%n14',pninorg
-      ! print*,'7'
 
     enddo                   !lu
 
+  
   end subroutine littersom
 
 
@@ -829,19 +779,22 @@ contains
     if ( .not. interface%steering%spinup &
       .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
       .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
       ! Write daily output only during transient simulation
       do day=1,ndayyear
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears) + real(day-1)/real(ndayyear)
+        itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
 
         if (nlu>1) stop 'writeout_ascii_littersom: write out lu-area weighted sum'
 
         ! xxx lu-area weighted sum if nlu>0
-        if (interface%params_siml%loutlittersom) write(106,999) itime, sum(outdnetmin(:,day,jpngr))
-        if (interface%params_siml%loutlittersom) write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
-        if (interface%params_siml%loutlittersom) write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))
-        if (interface%params_siml%loutlittersom) write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
+        if (interface%params_siml%loutlittersom) then
+          write(106,999) itime, sum(outdnetmin(:,day,jpngr))
+          write(116,999) itime, sum(outdnetmin_litt(:,day,jpngr))
+          write(117,999) itime, sum(outdnetmin_soil(:,day,jpngr))
+          write(108,999) itime, sum(outdnfixfree(:,day,jpngr))
+        end if
 
       end do
     end if
@@ -851,16 +804,20 @@ contains
     ! Write annual value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears)
+    if (interface%params_siml%loutlittersom) then
+    
+      itime = real(interface%steering%outyear)
 
-    if (interface%params_siml%loutlittersom) write(301,999) itime, sum(outaclitt(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(302,999) itime, sum(outacsoil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(304,999) itime, sum(outanreq(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(305,999) itime, sum(outaclit2soil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(306,999) itime, sum(outanlit2soil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(313,999) itime, sum(outaCdsoil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(314,999) itime, sum(outaNdsoil(:,jpngr))
-    if (interface%params_siml%loutlittersom) write(315,999) itime, sum(outaNimmo(:,jpngr))
+      write(301,999) itime, sum(outaclitt(:,jpngr))
+      write(302,999) itime, sum(outacsoil(:,jpngr))
+      write(304,999) itime, sum(outanreq(:,jpngr))
+      write(305,999) itime, sum(outaclit2soil(:,jpngr))
+      write(306,999) itime, sum(outanlit2soil(:,jpngr))
+      write(313,999) itime, sum(outaCdsoil(:,jpngr))
+      write(314,999) itime, sum(outaNdsoil(:,jpngr))
+      write(315,999) itime, sum(outaNimmo(:,jpngr))
+
+    end if
 
     return
     

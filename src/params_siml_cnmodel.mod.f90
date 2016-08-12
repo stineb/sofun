@@ -86,6 +86,11 @@ module md_params_siml
     integer :: outyear         ! year AD written to output
     logical :: spinup          ! is true during spinup
     logical :: init            ! is true in first simulation year
+    logical :: do_soilequil    ! true in year of analytical soil equilibration (during spinup)
+    logical :: average_soil    ! true in years before analytical soil equilibration, when average in and out are taken
+    logical :: project_nmin    ! true in all years before analytical soil equilibration, when projected soil N mineralisation is used
+    logical :: dofree_alloc    ! true if allocation is not fixed by 'frac_leaf'
+    logical :: add_ninorg      ! true in the first few years to get it started
   end type
 
 contains
@@ -102,15 +107,26 @@ contains
     integer, intent(in) :: year
     type( paramstype_siml ), intent(in) :: params_siml
 
-    ! local variables
-    integer :: cycleyear
-
     ! function return variable
     type( outtype_steering ) :: out_steering
 
+    ! local variables
+    integer :: cycleyear
+
+    integer, parameter :: spinupyr_soilequil_1 = 600   ! year of analytical soil equilibration, based on mean litter -> soil input flux
+    integer, parameter :: spinupyr_soilequil_2 = 1200  ! year of analytical soil equilibration, based on mean litter -> soil input flux
+    integer, parameter :: spinup_add_ninorg    = 100   ! year until which inorganic N is added to get it started
+
     out_steering%year = year
-    
+
     if (params_siml%do_spinup) then
+
+      if (year<=spinup_add_ninorg) then
+        out_steering%add_ninorg = .true.
+      else
+        out_steering%add_ninorg = .false.
+      end if
+
       if (year<=params_siml%spinupyears) then
         ! during spinup
         out_steering%spinup = .true.
@@ -124,12 +140,12 @@ contains
         out_steering%forcingyear =  year - params_siml%spinupyears + params_siml%firstyeartrend - 1
 
         if (params_siml%const_clim_year/=int(dummy)) then
-          ! constant climate flag activated
+          ! constant climate year specified
           cycleyear = get_cycleyear( year, params_siml%spinupyears, params_siml%recycle )
-          out_steering%climateyear = cycleyear + params_siml%firstyeartrend - 1
+          out_steering%climateyear = cycleyear + params_siml%const_clim_year - 1
         
         else
-          ! constant climate flag not activated
+          ! constant climate year not specified
           out_steering%climateyear = out_steering%forcingyear
         
         end if
@@ -137,8 +153,39 @@ contains
       endif
       out_steering%outyear = year + params_siml%firstyeartrend - params_siml%spinupyears - 1
 
+      if ( year > 3 ) then
+      ! if (year > (spinupyr_soilequil_1 + 1) ) then
+      ! if (out_steering%forcingyear > 2003 ) then
+        out_steering%dofree_alloc = .true.
+      else
+        out_steering%dofree_alloc = .false.
+      end if
+
+      if ( (year==spinupyr_soilequil_1 .or. year==spinupyr_soilequil_2 ) .and. year<=params_siml%spinupyears) then
+        out_steering%do_soilequil = .true.
+      else
+        out_steering%do_soilequil = .false.
+      end if
+
+      if ( year<=params_siml%spinupyears .and. ( year > ( spinupyr_soilequil_1 - params_siml%recycle ) .and. year <= spinupyr_soilequil_1 &
+              .or. year > ( spinupyr_soilequil_2 - params_siml%recycle ) .and. year <= spinupyr_soilequil_2 ) ) then
+        out_steering%average_soil = .true.
+      else
+        out_steering%average_soil = .false.
+      end if
+
+      if ( year<=params_siml%spinupyears .and. year <= spinupyr_soilequil_1 ) then
+        out_steering%project_nmin = .true.
+      else
+        out_steering%project_nmin = .false.
+      end if
+
     else
 
+      out_steering%dofree_alloc = .false.
+      out_steering%do_soilequil = .false.
+      out_steering%average_soil = .false.
+      out_steering%project_nmin = .false.
       out_steering%forcingyear = year + params_siml%firstyeartrend - 1 
       out_steering%climateyear = out_steering%forcingyear
       out_steering%outyear = year + params_siml%firstyeartrend - 1
@@ -278,4 +325,3 @@ contains
   end function getpar_siml
 
 end module md_params_siml
-
