@@ -67,7 +67,7 @@ contains
     use md_classdefs
     use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
       plabl, drgrow, lai_ind, nind, canopy, leaftraits, &
-      get_canopy, break_after_alloc
+      get_canopy, break_after_alloc, get_leaftraits, get_lai
     use md_waterbal, only: solar
     use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
     use md_findroot_fzeroin
@@ -450,7 +450,7 @@ contains
     ! - reduce labile pool by C and N increments
     !-------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant
+    use md_plant, only: params_plant, get_lai, get_leaf_n_canopy
 
     ! arguments
     integer, intent(in)                 :: pft
@@ -547,53 +547,6 @@ contains
   end subroutine allocate_root
 
 
-  function get_lai( pft, cleaf, meanmppfd, nv ) result( lai )
-    !////////////////////////////////////////////////////////////////
-    ! XXX problem with 'calc_wapr' and therefore with 'get_lai' for
-    ! small 'cleaf'.
-    !----------------------------------------------------------------
-    use md_lambertw, only: calc_wapr
-    use md_plant, only: params_pft_plant, params_plant
-
-    ! arguments
-    integer, intent(in)                 :: pft
-    real, intent(in)                    :: cleaf
-    real, dimension(nmonth), intent(in) :: meanmppfd
-    real, dimension(nmonth), intent(in) :: nv 
-
-    ! function return variable
-    real :: lai
-
-    ! local variables
-    real    :: alpha, beta, gamma ! variable substitutes
-    real    :: maxnv
-    real    :: arg_to_lambertw
-    integer :: nerror
-
-
-    if (cleaf>0.0) then
-
-      ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
-      ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
-      maxnv = maxval( meanmppfd(:) * nv(:) )
-
-      alpha = maxnv * params_pft_plant(pft)%r_n_cw_v
-      beta  = params_pft_plant(pft)%ncw_min
-      gamma = cleaf / ( c_molmass * params_pft_plant(pft)%r_ctostructn_leaf ) 
-
-      arg_to_lambertw = alpha * params_plant%kbeer / beta * exp( (alpha - gamma) * params_plant%kbeer / beta )
-
-      lai = 1.0 / (beta * params_plant%kbeer ) * ( -alpha * params_plant%kbeer + gamma * params_plant%kbeer + beta * calc_wapr( arg_to_lambertw, 0, nerror, 9999 ) )
-
-    else
-
-      lai = 0.0
-
-    end if
-    
-  end function get_lai
-
-
   function get_rcton_init( pft, meanmppfd, nv ) result( rcton )
     !////////////////////////////////////////////////////////////////
     ! Calculates initial guess based on Taylor approximation of 
@@ -637,156 +590,6 @@ contains
       ) / ( n_molmass * ( maxnv * params_plant%kbeer * ( params_pft_plant(pft)%r_n_cw_v + 1.0 ) + params_pft_plant(pft)%ncw_min ) )
 
   end function get_rcton_init
-
-
-  function get_leaf_n_metabolic_canopy( mylai, meanmppfd, nv ) result( mynleaf_metabolic )
-    !////////////////////////////////////////////////////////////////
-    ! Calculates initial guess based on Taylor approximation of 
-    ! LAI * n_metabolic = nv * Iabs
-    ! Iabs = meanmppfd * (1-exp(-kbeer*LAI))
-    !----------------------------------------------------------------
-    ! use md_params_core, only: nmonth
-    use md_plant, only: get_fapar
-
-    ! arguments
-    real, intent(in)                    :: mylai
-    real, dimension(nmonth), intent(in) :: meanmppfd
-    real, dimension(nmonth), intent(in) :: nv
-
-    ! function return variable
-    real :: mynleaf_metabolic  ! mol N 
-
-    ! local variables
-    real :: maxnv
-
-    ! Metabolic N is predicted and is optimised at a monthly time scale. 
-    ! Leaf traits are calculated based on metabolic N => cellwall N => cellwall C / LMA
-    ! Leaves get thinner at the bottom of the canopy => increasing LAI through the season comes at a declining C and N cost
-    ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
-    ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
-    maxnv = maxval( meanmppfd(:) * nv(:) )
-
-    mynleaf_metabolic = maxnv * get_fapar( mylai )
-
-  end function get_leaf_n_metabolic_canopy
-
-
-  function get_leaf_n_structural_canopy( pft, mylai, mynleaf_metabolic ) result( mynleaf_structural )
-    !////////////////////////////////////////////////////////////////
-    ! Calculates initial guess based on Taylor approximation of 
-    ! LAI * n_structural = nv * Iabs
-    ! Iabs = meanmppfd * (1-exp(-kbeer*LAI))
-    !----------------------------------------------------------------
-    use md_plant, only: params_pft_plant
-
-    ! arguments
-    integer, intent(in) :: pft
-    real, intent(in)    :: mylai
-    real, intent(in)    :: mynleaf_metabolic
-
-    ! function return variable
-    real :: mynleaf_structural  ! mol N 
-
-    mynleaf_structural = mynleaf_metabolic * params_pft_plant(pft)%r_n_cw_v + mylai * params_pft_plant(pft)%ncw_min
-
-    ! print*, '--- in get_leaf_n_structural_canopy'
-    ! print*, 'mylai ', mylai
-    ! print*, 'mynleaf_metabolic ', mynleaf_metabolic
-    ! print*, 'params_pft_plant(pft)%r_n_cw_v ', params_pft_plant(pft)%r_n_cw_v
-    ! print*, 'params_pft_plant(pft)%ncw_min ', params_pft_plant(pft)%ncw_min
-    ! print*, 'mynleaf_structural ', mynleaf_structural
-    ! print*, '-------------------------------'
-
-  end function get_leaf_n_structural_canopy
-
-
-  function get_leaf_n_canopy( pft, mylai, meanmppfd, nv ) result( mynleaf )
-    !////////////////////////////////////////////////////////////////
-    ! Calculates initial guess based on Taylor approximation of 
-    ! Cleaf and Nleaf function around cleaf=0.
-    ! Nleaf = LAI * (n_metabolic + n_cellwall) * n_molmass
-    ! LAI * n_metabolic = nv * Iabs
-    ! Iabs = meanmppfd * (1-exp(-kbeer*LAI))
-    ! LAI * n_cellwall = LAI * (params_pft_plant(pft)%ncw_min + params_pft_plant(pft)%r_n_cw_v * n_metabolic)
-    ! ==> Nleaf = n_molmass * [ meanmppfd * (1-exp(-kbeer*LAI)) * nv * (params_pft_plant(pft)%r_n_cw_v + 1) + LAI * params_pft_plant(pft)%ncw_min ]
-    !----------------------------------------------------------------
-    ! use md_params_core, only: nmonth
-
-    ! arguments
-    integer, intent(in)                 :: pft
-    real, intent(in)                    :: mylai
-    real, dimension(nmonth), intent(in) :: meanmppfd
-    real, dimension(nmonth), intent(in) :: nv
-
-    ! function return variable
-    real :: mynleaf ! g N
-
-    ! local variables
-    real :: nleaf_metabolic   ! mol N m-2
-    real :: nleaf_structural  ! mol N m-2
-
-    nleaf_metabolic  = get_leaf_n_metabolic_canopy(  mylai, meanmppfd, nv )
-    nleaf_structural = get_leaf_n_structural_canopy( pft, mylai, nleaf_metabolic )
-    mynleaf          = n_molmass * ( nleaf_metabolic + nleaf_structural )
-
-    ! print*, '--- in get_leaf_n_canopy'
-    ! print*, 'nleaf_metabolic ', nleaf_metabolic
-    ! print*, 'nleaf_structural ', nleaf_structural
-    ! print*, 'mynleaf ', mynleaf
-    ! print*, '-------------------------------'
-
-    ! mynleaf = n_molmass * ( maxnv * get_fapar( mylai ) * ( 1.0 + params_pft_plant(pft)%r_n_cw_v ) + mylai * params_pft_plant(pft)%ncw_min )
-
-  end function get_leaf_n_canopy
-
-
-  function get_leaftraits( pft, mylai, meanmppfd, nv ) result( out_traits )
-    !////////////////////////////////////////////////////////////////
-    ! Calculates leaf traits based on (predicted) metabolic Narea and
-    ! (prescribed) parameters that relate structural to metabolic
-    ! Narea and Carea to structural Narea:
-    ! Narea_metabolic  = predicted
-    ! Narea_structural = a + b * Narea_metabolic
-    ! Carea            = c * Narea_structural
-    !----------------------------------------------------------------
-    use md_params_core, only: c_content_of_biomass
-    use md_plant, only: leaftraits_type, params_pft_plant
-
-    ! arguments
-    integer, intent(in)                 :: pft
-    real, intent(in)                    :: mylai
-    real, dimension(nmonth), intent(in) :: meanmppfd
-    real, dimension(nmonth), intent(in) :: nv
-
-    ! function return variable
-    type( leaftraits_type ) :: out_traits
-
-    ! local variables
-    real :: mynarea_metabolic_canop   ! mol N m-2-ground
-    real :: mynarea_structural_canop  ! mol N m-2-ground
-
-    mynarea_metabolic_canop  = get_leaf_n_metabolic_canopy(  mylai, meanmppfd(:), nv(:) )     ! mol N m-2-ground    
-    mynarea_structural_canop = get_leaf_n_structural_canopy( pft, mylai, mynarea_metabolic_canop ) ! mol N m-2-ground
-    
-    if (mylai==0.0) then
-      out_traits%narea_metabolic  = 0.0
-      out_traits%narea_structural = 0.0
-      out_traits%narea            = 0.0
-      out_traits%lma              = 0.0
-      out_traits%nmass            = 0.0
-      out_traits%r_cton_leaf      = 0.0
-      out_traits%r_ntoc_leaf      = 0.0
-    else
-      out_traits%narea_metabolic  = n_molmass * mynarea_metabolic_canop / mylai   ! g N m-2-leaf
-      out_traits%narea_structural = n_molmass * mynarea_structural_canop / mylai  ! g N m-2-leaf
-      out_traits%narea            = n_molmass * ( mynarea_metabolic_canop + mynarea_structural_canop ) / mylai ! g N m-2-leaf
-      out_traits%lma              = c_molmass * params_pft_plant(pft)%r_ctostructn_leaf * mynarea_structural_canop / mylai 
-      out_traits%nmass            = out_traits%narea / ( out_traits%lma / c_content_of_biomass )
-      out_traits%r_cton_leaf      = out_traits%lma / out_traits%narea
-      out_traits%r_ntoc_leaf      = 1.0 / out_traits%r_cton_leaf
-    end if
-
-  end function get_leaftraits
 
 
   subroutine initio_allocation()
