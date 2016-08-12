@@ -23,14 +23,13 @@ module md_gpp
   implicit none
 
   private
-  public dgpp, dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
+  public dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
     initdaily_gpp, gpp, getlue, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp, mlue, &
     mactnv_unitiabs, mrd_unitiabs, ramp_gpp_lotemp, calc_dgpp, calc_drd
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
-  real, dimension(npft)        :: dgpp             ! gross primary production [gC/m2/d]
   real, dimension(npft)        :: dtransp          ! daily transpiration [mm]
   real, dimension(npft)        :: drd              ! dark respiration [gC/m2/d]
   real, dimension(npft)        :: vcmax_canop      ! canopy-level Vcmax
@@ -42,12 +41,10 @@ module md_gpp
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
-  real, allocatable, dimension(:,:,:) :: outdgpp
   real, allocatable, dimension(:,:,:) :: outdrd
   real, allocatable, dimension(:,:,:) :: outdtransp
 
   ! monthly
-  real, allocatable, dimension(:,:,:) :: outmgpp
   real, allocatable, dimension(:,:,:) :: outmrd
   real, allocatable, dimension(:,:,:) :: outmtransp
 
@@ -191,7 +188,7 @@ contains
     !
     !------------------------------------------------------------------
     use md_params_core, only: dummy
-    use md_plant, only: canopy, params_pft_plant
+    use md_plant, only: canopy, params_pft_plant, dgpp
     use md_waterbal, only: solar, evap
 
     ! arguments
@@ -1354,7 +1351,6 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Initialise daily variables with zero
     !----------------------------------------------------------------
-    dgpp(:)    = 0.0
     dtransp(:) = 0.0
     drd(:)     = 0.0
 
@@ -1376,12 +1372,6 @@ contains
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------
-    ! GPP
-    if (interface%params_siml%loutdgpp) then
-      filnam=trim(prefix)//'.d.gpp.out'
-      open(101,file=filnam,err=888,status='unknown')
-    end if 
-
     ! RD
     if (interface%params_siml%loutdrd) then
       filnam=trim(prefix)//'.d.rd.out'
@@ -1450,23 +1440,18 @@ contains
     use md_interface
 
     ! daily
-    if (interface%steering%init.and.interface%params_siml%loutdgpp   ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
     if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd       (npft,ndayyear,maxgrid) )
     if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp   (npft,ndayyear,maxgrid) )
-    outdgpp(:,:,:)    = 0.0
     outdrd(:,:,:)    = 0.0
     outdtransp(:,:,:) = 0.0
 
     ! monthly
-    if (interface%steering%init.and.interface%params_siml%loutdgpp   ) allocate( outmgpp      (npft,nmonth,maxgrid) )
     if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outmrd       (npft,nmonth,maxgrid) )
     if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outmtransp   (npft,nmonth,maxgrid) )
-    outmgpp(:,:,:)    = 0.0
     outmrd(:,:,:)     = 0.0
     outmtransp(:,:,:) = 0.0
 
     ! annual
-    outagpp(:,:)   = 0.0
     outavcmax(:,:) = 0.0
     outachi(:,:)   = 0.0
     outalue(:,:)   = 0.0
@@ -1494,7 +1479,6 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (interface%params_siml%loutdgpp   ) outdgpp(:,doy,jpngr)       = dgpp(:)
     if (interface%params_siml%loutdrd    ) outdrd(:,doy,jpngr)        = drd(:)
     if (interface%params_siml%loutdtransp) outdtransp(:,doy,jpngr)    = dtransp(:)
 
@@ -1502,7 +1486,6 @@ contains
     ! MONTHLY SUM OVER DAILY VALUES
     ! Collect monthly output variables as sum of daily values
     !----------------------------------------------------------------
-    if (interface%params_siml%loutdgpp   ) outmgpp(:,moy,jpngr)    = outmgpp(:,moy,jpngr) + dgpp(:)
     if (interface%params_siml%loutdrd    ) outmrd(:,moy,jpngr)     = outmrd(:,moy,jpngr)  + drd(:)
     if (interface%params_siml%loutdrd    ) outmtransp(:,moy,jpngr) = outmtransp(:,moy,jpngr)  + dtransp(:)
 
@@ -1510,7 +1493,6 @@ contains
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    outagpp(:,jpngr) = outagpp(:,jpngr) + dgpp(:)
 
     ! store all daily values for outputting annual maximum
     outdvcmax_canop(:,doy) = vcmax_canop(:)
@@ -1565,7 +1547,6 @@ contains
         ! Define 'itime' as a decimal number corresponding to day in the year + year
         itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
 
-        if (interface%params_siml%loutdgpp   ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
         if (interface%params_siml%loutdrd    ) write(135,999) itime, sum(outdrd(:,day,jpngr))
         if (interface%params_siml%loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
 

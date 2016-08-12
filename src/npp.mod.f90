@@ -60,7 +60,7 @@ contains
     !-------------------------------------------------------------------------
     use md_params_core, only: npft, ndayyear
     use md_soiltemp, only: dtemp_soil
-    use md_gpp, only: dgpp, drd
+    use md_gpp, only: drd
     use md_turnover, only: turnover_leaf, turnover_root
     use md_phenology, only: sprout
     use md_interface
