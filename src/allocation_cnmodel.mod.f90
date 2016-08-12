@@ -301,7 +301,7 @@ contains
       canopy_type, get_canopy
     use md_gpp, only: calc_dgpp, calc_drd, mactnv_unitiabs, mlue, mrd_unitiabs
     use md_nuptake, only: calc_dnup, outtype_calc_dnup
-    use md_npp, only: calc_resp_maint, calc_cexu, deactivate_root
+    use md_npp, only: calc_resp_maint, calc_cexu
     use md_findroot_fzeroin
     use md_waterbal, only: solar, evap
     use md_ntransform, only: pno3, pnh4
@@ -398,12 +398,13 @@ contains
     mresp_root    = calc_resp_maint( croot, params_plant%r_root, airtemp )
     npp           = gpp - rd - mresp_root
     cexu          = calc_cexu( croot, airtemp ) 
-    avl           = clabl + npp - cexu
-    if (avl<0.0) then
-       proot_tmp = orgpool(carbon(croot),nitrogen(nroot))
-       call deactivate_root( gpp, rd, clabl, proot_tmp, mresp_root, npp, cexu, airtemp )
+
+    if ((clabl + npp - cexu)<0.0 .or. (npp - cexu)<0.0) then
+      dc          = 0.0
+    else
+      dc          = npp - cexu
     end if
-    dc            = npp - cexu
+
     out_calc_dnup = calc_dnup( cexu, pnh4(lu,usejpngr)%n14, pno3(lu,usejpngr)%n14, params_pft_plant(usepft)%nfixer, soiltemp )
     dn            = out_calc_dnup%fix + out_calc_dnup%act_nh4 + out_calc_dnup%act_no3
 

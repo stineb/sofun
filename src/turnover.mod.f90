@@ -27,7 +27,7 @@ module md_turnover
   implicit none
 
   private
-  public turnover
+  public turnover, turnover_leaf, turnover_root
 
 contains
 
