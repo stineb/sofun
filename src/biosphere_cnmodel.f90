@@ -24,7 +24,7 @@ subroutine biosphere( c_uptake )
   use md_phenology, only: gettempphenology, getpar_modl_phenology
   use md_gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, &
     getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp
-  use md_npp, only: npp
+  use md_npp, only: npp, initoutput_npp, initio_npp, getout_daily_npp, writeout_ascii_npp
   use md_turnover, only: turnover
   use md_vegdynamics, only: vegdynamics
   use md_littersom, only: getpar_modl_littersom, initio_littersom, initoutput_littersom, &
@@ -110,11 +110,13 @@ subroutine biosphere( c_uptake )
     call initio_soiltemp()
     call initio_gpp()
     call initio_plant()
+    call initio_npp()
     call initio_littersom()
     call initio_ntransform()
     call initio_nuptake()
     call initio_allocation()
     call initio_landuse()
+    call initio_forcing()
     if (verbose) write(0,*) '... done'
 
   endif 
@@ -127,11 +129,13 @@ subroutine biosphere( c_uptake )
   call initoutput_soiltemp()
   call initoutput_gpp()
   call initoutput_plant()
+  call initoutput_npp()
   call initoutput_littersom()
   call initoutput_ntransform()
   call initoutput_nuptake()
   call initoutput_allocation()
   call initoutput_landuse()
+  call initoutput_forcing()
   if (verbose) write(0,*) '... done'
 
   !----------------------------------------------------------------
@@ -193,6 +197,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) 'YEAR, DAY ', interface%steering%year, day
         if (verbose) write(0,*) '----------------------'
 
+        ! print*,'a pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !----------------------------------------------------------------
         ! initialise daily updated variables 
         !----------------------------------------------------------------
@@ -200,7 +205,6 @@ subroutine biosphere( c_uptake )
         call initdaily_plant()
         call initdaily_waterbal()
         call initdaily_gpp()
-        call initdaily_plant()
         call initdaily_littersom()
         call initdaily_ntransform()
         call initdaily_nuptake()
@@ -231,14 +235,22 @@ subroutine biosphere( c_uptake )
                       )
         if (verbose) write(0,*) '... done'
 
+        ! print*,'b pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !----------------------------------------------------------------
         ! update canopy and stand variables and simulate daily 
         ! establishment / sprouting
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling vegdynamics() ... '
+        if (verbose) write(0,*) '              with state variables:'
+        if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        !----------------------------------------------------------------
         call vegdynamics( jpngr, day ) 
+        !----------------------------------------------------------------
+        if (verbose) write(0,*) '              ==> returned: '
+        if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) write(0,*) '... done'
 
+        ! print*,'c pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! calculate GPP
         !----------------------------------------------------------------
@@ -246,7 +258,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              with state variables:'
         if (verbose) write(0,*) '              fapar = ', canopy(:)%fapar_ind
         if (verbose) write(0,*) '              dppfd = ', solar%dppfd(day)
-        ! if (verbose) write(0,*) '              lue   = ', mlue(1,moy)
+        if (verbose) write(0,*) '              lue   = ', out_pmodel(1,moy)%lue
         if (verbose) write(0,*) '              temp  = ', interface%climate(jpngr)%dtemp(day)
         if (verbose) write(0,*) '              CPA   = ', evap(1)%cpa
         !----------------------------------------------------------------
@@ -261,6 +273,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              drd   = ', drd(:)
         if (verbose) write(0,*) '... done'
 
+        ! print*,'d pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! substract autotrophic respiration to get NPP, remainder is added 
         ! to labile pool (plabl)
@@ -270,7 +283,7 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
         if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-        if (verbose) orgtmp1 =  plabl(1,jpngr)
+        if (baltest) orgtmp1 =  plabl(1,jpngr)
         !----------------------------------------------------------------
         call npp( jpngr, interface%climate(jpngr)%dtemp(day), day )
         !----------------------------------------------------------------
@@ -279,15 +292,16 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              dcex  = ', dcex(:)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) write(0,*) '              dlabl = ', orgminus( plabl(1,jpngr), orgtmp1 )
-        if (verbose) write(0,*) '    --- balance: '
-        if (verbose) cbal1 = dgpp(1) - dnpp(1)%c12 - drleaf(1) - drroot(1)
-        if (verbose) cbal2 = dgpp(1) - ( plabl(1,jpngr)%c%c12 - orgtmp1%c%c12 ) - dcex(1) - drleaf(1) - drroot(1)
+        if (baltest) write(0,*) '    --- balance: '
+        if (baltest) cbal1 = dgpp(1) - dnpp(1)%c12 - drleaf(1) - drroot(1)
+        if (baltest) cbal2 = dgpp(1) - ( plabl(1,jpngr)%c%c12 - orgtmp1%c%c12 ) - dcex(1) - drleaf(1) - drroot(1)
         if (verbose) write(0,*) '        gpp - npp - ra_maint          = ', cbal1
         if (verbose) write(0,*) '        gpp - dlabl - dcex - ra_maint = ', cbal2
-        if (verbose .and. baltest .and. abs(cbal1)>eps) stop 'balance 1 not satisfied'
-        if (verbose .and. baltest .and. abs(cbal2)>eps) stop 'balance 2 not satisfied'
+        if (baltest .and. abs(cbal1)>eps) stop 'balance 1 not satisfied'
+        if (baltest .and. abs(cbal2)>eps) stop 'balance 2 not satisfied'
         if (verbose) write(0,*) '... done'
 
+        ! print*,'e pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! calculate N acquisition as a function of C exudation
         !----------------------------------------------------------------
@@ -322,9 +336,12 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
         if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-        if (verbose) write(0,*) '              plitt = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
-        if (verbose) orgtmp1 = orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )
-        if (verbose) orgtmp2 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
+        if (verbose) write(0,*) '              plitt af = ', plitt_af(1,jpngr)
+        if (verbose) write(0,*) '              plitt as = ', plitt_as(1,jpngr)
+        if (verbose) write(0,*) '              plitt bg = ', plitt_bg(1,jpngr)
+        if (verbose) write(0,*) '              plitt tot = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
+        if (baltest) orgtmp1 = orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )
+        if (baltest) orgtmp2 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
         !----------------------------------------------------------------
         call turnover( jpngr, day )
         !----------------------------------------------------------------
@@ -332,14 +349,18 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
         if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+        if (verbose) write(0,*) '              plitt af = ', plitt_af(1,jpngr)
+        if (verbose) write(0,*) '              plitt as = ', plitt_as(1,jpngr)
+        if (verbose) write(0,*) '              plitt bg = ', plitt_bg(1,jpngr)
         if (verbose) write(0,*) '              plitt = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
-        if (verbose) write(0,*) '   --- balance: '
-        if (verbose) orgbal1 = orgminus( orgminus(   orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) ),   orgtmp2   ), orgminus(   orgtmp1,   orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )   ) )
+        if (baltest) write(0,*) '   --- balance: '
+        if (baltest) orgbal1 = orgminus( orgminus(   orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) ),   orgtmp2   ), orgminus(   orgtmp1,   orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )   ) )
         if (verbose) write(0,*) '       dlitt - dplant                = ', orgbal1
-        if (verbose .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
-        if (verbose .and. baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
+        ! print*,'g pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! grass / crop harvest
         !----------------------------------------------------------------
@@ -349,8 +370,8 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) write(0,*) '              mharv = ', mharv(:,jpngr)
-        if (verbose) orgtmp1 =  orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )
-        if (verbose) orgtmp2 =  mharv(1,jpngr)
+        if (baltest) orgtmp1 =  orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) )
+        if (baltest) orgtmp2 =  mharv(1,jpngr)
         !----------------------------------------------------------------
         call grharvest( jpngr, day )
         !----------------------------------------------------------------
@@ -359,30 +380,28 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) write(0,*) '              mharv = ', mharv(:,jpngr)
-        if (verbose) write(0,*) '    --- balance: '
-        if (verbose) orgbal1 = orgminus( orgminus( orgtmp1, orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) ) ), orgminus( mharv(1,jpngr), orgtmp2 ) )
+        if (baltest) write(0,*) '    --- balance: '
+        if (baltest) orgbal1 = orgminus( orgminus( orgtmp1, orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr) ) ), orgminus( mharv(1,jpngr), orgtmp2 ) )
         if (verbose) write(0,*) '        dharv - dplant  = ', orgbal1
-        if (verbose .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
-        if (verbose .and. baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
+        ! print*,'h pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! litter and soil decomposition and N mineralisation
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling littersom() ... '
         if (verbose) write(0,*) '              with state variables:'
-        if (verbose) write(0,*) '              plitt_af =  ', plitt_af(1,jpngr)
-        if (verbose) write(0,*) '              plitt_as =  ', plitt_as(1,jpngr)
-        if (verbose) write(0,*) '              plitt_bg =  ', plitt_bg(1,jpngr)
         if (verbose) write(0,*) '              plitt tot=  ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
-        if (verbose) write(0,*) '              psoil_fs  = ', psoil_fs(1,jpngr)
-        if (verbose) write(0,*) '              psoil_sl  = ', psoil_sl(1,jpngr)
         if (verbose) write(0,*) '              psoil tot = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
         if (verbose) write(0,*) '              pexud     = ', pexud(1,jpngr)
         if (verbose) write(0,*) '              pninorg=    ', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
-        if (verbose) write(0,*) '              drhet  =    ', drhet(1)
-        if (verbose) orgtmp1 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
-        if (verbose) orgtmp2 = orgpool( drhet(1), pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14 )
+        if (verbose) write(0,*) '              drhet     = ', drhet(1)
+        ! if (verbose) write(0,*) '              dnetmin   = ', outdnetmin(1,day,jpngr)
+        if (baltest) orgtmp1 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
+        if (baltest) orgtmp2 = orgpool( drhet(1), nplus( pnh4(1,jpngr), pno3(1,jpngr) ) )
+        ! if (baltest) ntmp1 = outdnetmin(1,day,jpngr)
         !----------------------------------------------------------------
         call littersom( jpngr, day, interface%climate(jpngr)%dtemp(day) )
         !----------------------------------------------------------------
@@ -424,9 +443,8 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) write(0,*) '              drgrow= ', drgrow(:)
-        if (verbose) orgtmp1 =  plabl(1,jpngr)
-        if (verbose) orgtmp2 =  orgplus( pleaf(1,jpngr), proot(1,jpngr) )
-        !----------------------------------------------------------------
+        if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
+        if (baltest) orgtmp1 = orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(1)) )
         if (dm==ndaymonth(moy)) then
           usemoy = moy + 1
           if (usemoy==13) usemoy = 1
@@ -442,28 +460,33 @@ subroutine biosphere( c_uptake )
         call allocation_daily( jpngr, usedoy, usemoy, interface%climate(jpngr)%dtemp(usedoy) )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '              ==> returned: '
-        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr), ' C:N = ', cton( pleaf(1,jpngr), default=0.0 )
-        if (verbose) write(0,*) '              proot = ', proot(:,jpngr), ' C:N = ', cton( proot(1,jpngr), default=0.0 )
+        if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
+        if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
         if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
         if (verbose) write(0,*) '              drgrow= ', drgrow(:)
+        if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
         if (verbose) write(0,*) '   --- balance: '
-        if (verbose) orgbal1 = orgminus( orgminus( orgminus( orgtmp1, plabl(1,jpngr) ), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr) ), orgtmp2 ) )        
-        if (verbose) write(0,*) '       dlabl - drgrow - dleaf - droot=', orgbal1
-        if (verbose .and. baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (baltest) orgtmp2 = orgminus( orgplus( pleaf(1,jpngr), proot(1,jpngr), plabl(1,jpngr), orgpool( carbon(drgrow(1)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(1)) )
+        if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
+        if (baltest) write(0,*) '       d( pleaf + proot + plabl + Nfix ) =', orgbal1
+        if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
         if (verbose) write(0,*) '... done'
 
-
+        ! print*,'j pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !----------------------------------------------------------------
         ! collect from daily updated state variables for annual variables
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling getout_daily_*() ... '
         call getout_daily_waterbal( jpngr, moy, day )
         call getout_daily_soiltemp( jpngr, moy, day )
-        call getout_daily_gpp( jpngr, moy, day )
         call getout_daily_plant( jpngr, moy, day )
+        call getout_daily_gpp( jpngr, moy, day )
+        call getout_daily_npp( jpngr, moy, day )
         call getout_daily_ntransform( jpngr, moy, day )
         call getout_daily_nuptake( jpngr, moy, day )
         call getout_daily_allocation( jpngr, moy, day )
+        call getout_daily_forcing( jpngr, moy, day )
         if (verbose) write(0,*) '... done'
 
       end do
@@ -474,8 +497,8 @@ subroutine biosphere( c_uptake )
     ! collect annually updated output variables
     !----------------------------------------------------------------
     if (verbose) write(0,*) 'calling getout_annual() ... '
-    call getout_annual_gpp( jpngr )
     call getout_annual_plant( jpngr )
+    call getout_annual_gpp( jpngr )   ! warning: getout_daily_plant needs to be called before
     call getout_annual_littersom( jpngr )
     call getout_annual_landuse( jpngr )
     if (verbose) write(0,*) '... done'
@@ -488,14 +511,19 @@ subroutine biosphere( c_uptake )
     call writeout_ascii_soiltemp( interface%steering%year )
     call writeout_ascii_gpp( interface%steering%year )
     call writeout_ascii_plant( interface%steering%year )
+    call writeout_ascii_npp( interface%steering%year )
     call writeout_ascii_ntransform( interface%steering%year )
     call writeout_ascii_nuptake( interface%steering%year )
     call writeout_ascii_allocation( interface%steering%year )
     call writeout_ascii_littersom( interface%steering%year )
     call writeout_ascii_landuse( interface%steering%year )
+    call writeout_ascii_forcing( interface%steering%year )
     if (verbose) write(0,*) '... done'
 
   end do
+
+  ! if (interface%steering%forcingyear==1974) stop 'end of year'
+  ! if (interface%steering%year==2) stop 'end of year'
 
   ! xxx insignificant
   c_uptake = 0.0

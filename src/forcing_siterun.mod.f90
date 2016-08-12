@@ -37,6 +37,7 @@ module md_forcing_siterun
     real, dimension(ndayyear) :: dtot
   end type ninput_type
 
+
 contains
 
   function getco2( runname, sitename, forcingyear, const_co2_year, firstyeartrend, co2_forcing_file ) result( pco2 )
@@ -362,3 +363,5 @@ contains
 
 
 end module md_forcing_siterun
+
+
