@@ -211,8 +211,9 @@ contains
       no3_w = soilphys(lu)%wscal / 3.3 * no3
       no2_w = soilphys(lu)%wscal / 3.3 * no2(lu,jpngr)
 
-      doc_w = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * soilphys(lu)%wscal / 3.3
-      print*,'doc_w ', doc_w
+      doc_w = pexud(lu)%c12 * soilphys(lu)%wscal / 3.3
+
+      ! print*,'doc_w ', doc_w
       
       ! dry (aerobic) fraction
       !------------------------------------------------------------------
@@ -265,6 +266,10 @@ contains
       !------------------------------------------------------------------
       dnmax = params_ntransform%docmax * doc_w / ( params_ntransform%kdoc + doc_w )                     ! dnmax < 1 for all doc_w 
 
+      ! ! xxx try:
+      ! dnmax = 0.5
+
+      ! print*,'fMM DOC ',  params_ntransform%docmax * doc_w / ( params_ntransform%kdoc + doc_w )
       
       ! Denitrification ratio, NO3->NO2 (Eq.3, Tab.9, XP08)
       !------------------------------------------------------------------

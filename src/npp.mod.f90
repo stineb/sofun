@@ -104,7 +104,7 @@ contains
         ! NPP available for growth first enters the labile pool ('plabl ').
         ! XXX Allocation is called here without "paying"  growth respir.?
         !-------------------------------------------------------------------------
-        call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
+        call ccp( carbon( dcex(pft) ), pexud(params_pft_plant(pft)%lu_category,jpngr) )
         call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
 
         if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'

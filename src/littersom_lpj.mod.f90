@@ -471,29 +471,9 @@ contains
       ! This is executed after litter mineralisation as N fixation by 
       ! free-living bacteria is driven by exudates availability.
       !----------------------------------------------------------------                
-      do pft=1,npft
-        if (params_pft_plant(pft)%islu(lu)) then
+      dexu = cfrac( 1.0 - exp(-kexu(lu)), pexud(lu,jpngr) )
+      call cmv( dexu, pexud(lu,jpngr), drsoil(pft) )
 
-          if (pexud(pft,jpngr)%c12<0.0) stop 'A neg. pexud'
-
-          drsoil(pft) = pexud(pft,jpngr)
-          pexud(pft,jpngr) = carbon(0.0)
-
-          ! dexu = cfrac( 1.0-exp(-kexu(lu)), pexud(pft,jpngr) )
-
-          ! print*,  'pexud(pft,jpngr) ', pexud(pft,jpngr)
-          ! print*,  'dexu             ', dexu
-
-          ! call cmv( dexu, pexud(pft,jpngr), drsoil(pft) )
-
-          if (pexud(pft,jpngr)%c12<0.0) stop 'B neg. pexud'
-
-        end if
-
-      end do
-      ! print*,'4'
-
-      ! write(0,*) 'c2 pninorg(lu,jpngr)%n14',pninorg
 
       !////////////////////////////////////////////////////////////////
       ! SOIL DECAY
