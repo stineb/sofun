@@ -67,7 +67,7 @@ contains
     use md_classdefs
     use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
       plabl, drgrow, lai_ind, nind, canopy, leaftraits, &
-      get_canopy, break_after_alloc, get_leaftraits, get_lai
+      get_canopy, get_leaftraits, get_lai
     use md_waterbal, only: solar
     use md_gpp, only: mlue, mrd_unitiabs, mactnv_unitiabs
     use md_findroot_fzeroin
@@ -217,10 +217,10 @@ contains
             if (verbose) print*, 'eval               =', test
             ! if (abs(test)>1e-4) stop 'failed finding a good root'
             if (verbose) print*, '----------------------------------'
-            break_after_alloc = .true.
+            ! break_after_alloc = .true.
             ! stop 'after finding root'
           else
-            break_after_alloc = .false.
+            ! break_after_alloc = .false.
           end if
 
           !-------------------------------------------------------------------
