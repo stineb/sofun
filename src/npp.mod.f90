@@ -62,7 +62,7 @@ contains
     !-------------------------------------------------------------------------
     do pft=1,npft
 
-      if ( ispresent(pft,jpngr) ) then
+      ! if ( ispresent(pft,jpngr) ) then
 
         if (plabl(pft,jpngr)%c%c12<0.0) stop 'before npp labile C is neg.'
         if (plabl(pft,jpngr)%n%n14<0.0) stop 'before npp labile N is neg.'
@@ -110,15 +110,15 @@ contains
         if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
         if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
 
-      else
+      ! else
 
-        dnpp(pft)   = carbon(0.0)
-        drleaf(pft) = 0.0
-        drroot(pft) = 0.0
-        drsapw(pft) = 0.0
-        dcex(pft)   = 0.0
+      !   dnpp(pft)   = carbon(0.0)
+      !   drleaf(pft) = 0.0
+      !   drroot(pft) = 0.0
+      !   drsapw(pft) = 0.0
+      !   dcex(pft)   = 0.0
 
-      endif
+      ! endif
     end do
 
     ! print*, '---- finished npp'

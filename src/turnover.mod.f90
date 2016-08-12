@@ -58,7 +58,7 @@ contains
       if (plabl(pft,jpngr)%c%c12<0.0) stop 'before turnover labile C is neg.'
       if (plabl(pft,jpngr)%n%n14<0.0) stop 'before turnover labile N is neg.'
 
-      if (ispresent(pft,jpngr)) then
+      ! if (ispresent(pft,jpngr)) then
         !--------------------------------------------------------------
         ! Get turnover fractions
         ! Turnover-rates are reciprocals of tissue longevity
@@ -134,7 +134,7 @@ contains
                                                                                         ) &
                                                                                       )
 
-      endif                   !present
+      ! endif                   !present
     enddo                     !pft
 
   end subroutine turnover

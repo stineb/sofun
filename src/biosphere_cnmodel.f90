@@ -29,7 +29,7 @@ subroutine biosphere( c_uptake )
   use md_vegdynamics, only: vegdynamics
   use md_littersom, only: getpar_modl_littersom, initio_littersom, initoutput_littersom, &
     getout_annual_littersom, writeout_ascii_littersom, littersom, initdaily_littersom, initglobal_littersom
-  use md_ntransform, only: pninorg, ntransform, getpar_modl_ntransform, initglobal_ntransform, &
+  use md_ntransform, only: pno3, pnh4, ntransform, getpar_modl_ntransform, initglobal_ntransform, &
     initdaily_ntransform, initio_ntransform, initoutput_ntransform, getout_daily_ntransform, &
     writeout_ascii_ntransform
   use md_nuptake, only: nuptake, getpar_modl_nuptake, initdaily_nuptake, initio_nuptake, &
@@ -57,11 +57,19 @@ subroutine biosphere( c_uptake )
   integer :: dm, moy, jpngr, day, usemoy, usedoy
 
   ! Variables used for verbose mode and mass conservation test 'baltest'
-  logical, parameter :: verbose = .false.  ! set to true to activate verbose mode
-  logical, parameter :: baltest = .false.  ! set to true to do mass conservation test
-  real            :: cbal1, cbal2
-  type( orgpool ) :: orgtmp1, orgtmp2, orgbal1, orgbal2
-  real :: eps = 9.999e-8                   ! numerical imprecision allowed in mass conservation tests
+  logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
+  logical :: verbose = .false.  ! set to true to activate verbose mode
+  logical :: baltest
+  real            :: cbal1, cbal2, nbal1, nbal2
+  type( orgpool ) :: orgtmp1, orgtmp2, orgtmp3, orgtmp4, orgbal1, orgbal2
+  real            :: ntmp1, ntmp2, ctmp1, ctmp2
+
+  if (baltest_trans .and. .not. interface%steering%spinup) then
+    baltest = .true.
+    verbose = .true.
+  else
+    baltest = .false.
+  end if
 
   !----------------------------------------------------------------
   ! INITIALISATIONS
@@ -285,16 +293,27 @@ subroutine biosphere( c_uptake )
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling nuptake() ... '
         if (verbose) write(0,*) '              with state variables:'
-        if (verbose) write(0,*) '              dcex  = ', dcex(:)
+        if (verbose) write(0,*) '              ninorg = ', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
+        if (verbose) write(0,*) '              nlabl  = ', plabl(1,jpngr)%n%n14
+        if (baltest) ntmp1 = pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
+        if (baltest) ntmp2 = plabl(1,jpngr)%n%n14
         !----------------------------------------------------------------
         call nuptake( jpngr )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '              ==> returned: '
-        if (verbose) write(0,*) '              dnup  = ', dnup(:)
+        if (verbose) write(0,*) '              dnup   = ', dnup(:)
+        if (verbose) write(0,*) '              ninorg = ', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
+        if (verbose) write(0,*) '              nlabl  = ', plabl(1,jpngr)%n%n14
+        if (baltest) write(0,*) '    --- balance: '
+        if (baltest) nbal1 = dnup(1)%n14 + ( pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14 - ntmp1 ) 
+        if (baltest) nbal2 = ( plabl(1,jpngr)%n%n14 - ntmp2 ) + ( pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14 - ntmp1 )
+        if (verbose) write(0,*) '        nup - dninorg     = ', nbal1
+        if (verbose) write(0,*) '        dnlabl - dninorg  = ', nbal2
+        if (baltest .and. abs(nbal1)>eps) stop 'balance 1 not satisfied'
+        if (baltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
         if (verbose) write(0,*) '... done'
 
-        ! if (break_after_alloc) stop 'check quantities after allocation'
-
+        ! print*,'f pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! leaf, sapwood, and fine-root turnover
         !----------------------------------------------------------------
@@ -360,39 +379,42 @@ subroutine biosphere( c_uptake )
         if (verbose) write(0,*) '              psoil_sl  = ', psoil_sl(1,jpngr)
         if (verbose) write(0,*) '              psoil tot = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
         if (verbose) write(0,*) '              pexud     = ', pexud(1,jpngr)
-        if (verbose) write(0,*) '              pninorg=    ', pninorg(1,jpngr)
+        if (verbose) write(0,*) '              pninorg=    ', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         if (verbose) write(0,*) '              drhet  =    ', drhet(1)
         if (verbose) orgtmp1 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
-        if (verbose) orgtmp2 = orgpool( drhet(1), pninorg(1,jpngr) )
+        if (verbose) orgtmp2 = orgpool( drhet(1), pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14 )
         !----------------------------------------------------------------
         call littersom( jpngr, day, interface%climate(jpngr)%dtemp(day) )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '              ==> returned: '
         if (verbose) write(0,*) '              plitt  = ', orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr) )
         if (verbose) write(0,*) '              psoil  = ', orgplus( psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
-        if (verbose) write(0,*) '              pninorg= ', pninorg(1,jpngr)
+        if (verbose) write(0,*) '              pninorg= ', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         if (verbose) write(0,*) '              drhet  = ', drhet(1)
-        if (verbose) write(0,*) '   --- balance: '
-        if (verbose) write(0,*) '       d( litt + soil ) - d(drhet,ninorg) = ', orgminus( &
-                                                                                          orgminus( &
-                                                                                            orgtmp1, &
-                                                                                            orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) ) &
-                                                                                            ), &
-                                                                                          orgminus( &
-                                                                                            orgpool( drhet(1), pninorg(1,jpngr) ), &
-                                                                                            orgtmp2 ) &
-                                                                                          )
+        ! if (verbose) write(0,*) '              dnetmin= ', outdnetmin(1,day,jpngr)
+        if (baltest) write(0,*) '   --- balance: '
+        if (baltest) orgtmp3 = orgplus( plitt_af(1,jpngr), plitt_as(1,jpngr), plitt_bg(1,jpngr), psoil_fs(1,jpngr), psoil_sl(1,jpngr) )
+        if (baltest) orgtmp4 = orgpool( drhet(1), nplus( pnh4(1,jpngr), pno3(1,jpngr) ) )
+        if (baltest) orgbal1 = orgminus( orgplus( orgtmp3, orgtmp4 ), orgplus( orgtmp1, orgtmp2 ) )
+        ! if (baltest) nbal1 = (orgtmp1%n%n14 + ntmp1) - (orgtmp3%n%n14 + outdnetmin(1,day,jpngr))
+        if (verbose) write(0,*) '       d( litt + soil ) - d(drhet,ninorg) = ', orgbal1
+        if (verbose) write(0,*) '       d( litt + soil ) - netmin          = ', nbal1
+        if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+        if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
+        if (baltest .and. abs(nbal1)>eps)         stop 'balance not satisfied for N, test 1'
         if (verbose) write(0,*) '... done'
 
+        ! print*,'hh pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
-        ! inorganic soil N dynamics
+        ! inorganic soil N dynamics (mass balance test only possible inside module)
         !----------------------------------------------------------------
         if (verbose) write(0,*) 'calling ntransform() ... '
         !----------------------------------------------------------------
-        call ntransform( dm, moy, jpngr, interface%ninput_field(jpngr)%dtot(day), sum(interface%climate(jpngr)%dprec(:)) )
+        call ntransform( dm, moy, jpngr, interface%ninput_field(jpngr)%dnhx(day), interface%ninput_field(jpngr)%dnoy(day), sum(interface%climate(jpngr)%dprec(:)) )
         !----------------------------------------------------------------
         if (verbose) write(0,*) '... done'
 
+        ! print*,'i pninorg', pnh4(1,jpngr)%n14 + pno3(1,jpngr)%n14
         !/////////////////////////////////////////////////////////////////
         ! allocation of labile pools to biomass
         !----------------------------------------------------------------

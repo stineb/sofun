@@ -54,12 +54,12 @@ module md_nuptake
   real, dimension(npft) :: dccost           ! daily mean C cost of N uptake [gC/gN] 
   real, dimension(npft) :: dnup_pas         ! daily passive N uptake [gN/m2/d]
   real, dimension(npft) :: dnup_act         ! daily active N uptake [gN/m2/d]  
-  real, dimension(npft) :: dnup_fix         ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
   real, dimension(npft) :: dnup_ret         ! daily N uptake [gN/m2/d]
 
   type outtype_calc_dnup
-    real :: act
-    real :: fix
+    real :: act_nh4                         ! NH4 acquisition by active uptake [gN/m2/d]
+    real :: act_no3                         ! NO3 acquisition by active uptake [gN/m2/d]
+    real :: fix                             ! N acquisition by fixation [gN/m2/d]
   end type outtype_calc_dnup
 
   !----------------------------------------------------------------
@@ -84,8 +84,8 @@ contains
     ! transpiration stream.
     !-----------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: dcex, dnup, params_pft_plant, ispresent, plabl
-    use md_ntransform, only: pninorg
+    use md_plant, only: dcex, dnup, params_pft_plant, plabl, dnup_fix
+    use md_ntransform, only: pno3, pnh4
     use md_soiltemp, only: dtemp_soil
 
     ! arguments
@@ -103,108 +103,87 @@ contains
 
     type( outtype_calc_dnup ) :: out_calc_dnup
 
-    ! xxx debug
-    real :: test_eff_bnf
-    real :: test_eff_act
-
     !-------------------------------------------------------------------------
     ! PFT LOOP
     !-------------------------------------------------------------------------
     do pft=1,npft
 
-      if ( ispresent(pft,jpngr) ) then
+      lu = params_pft_plant(pft)%lu_category
 
-        lu = params_pft_plant(pft)%lu_category
+      ! xxx think about this: order in which PFTs get access to Ninorg matters!
+      
+      ! write(0,*) '---- in nuptake:'
 
-        ! xxx think about this: order in which PFTs get access to Ninorg matters!
-        
-        ! write(0,*) '---- in nuptake:'
+      !//////////////////////////////////////////////////////////////////////////
+      ! INITIALIZATION
+      !-------------------------------------------------------------------------
+      n_uptake_pass         = 0.0
+      out_calc_dnup%act_nh4 = 0.0                          ! active uptake, sum over sub-timesteps
+      out_calc_dnup%act_no3 = 0.0                          ! active uptake, sum over sub-timesteps
+      out_calc_dnup%fix     = 0.0                          ! N fixation, sum over sub-timesteps
+      n_uptake_retrans      = 0.0
+
+      if ( dcex(pft)>0.0 ) then
+        !//////////////////////////////////////////////////////////////////////////
+        ! USE STORED N (RETRANSLOCATION)
+        !--------------------------------------------------------------------------
+        ! As opposed to original FUN model, in which N is retranslocated at a
+        ! variable cost during leaf fall (turnover), a fraction of N is retained here
+        ! from turnover. It is stored at the end of the last year and available to
+        ! cover N demand during next year.
+        ! Just reduce the demand by amount retranslocated, not the labile N pool itself
+        !--------------------------------------------------------------------------
+        ! xxx debug
+        ! n_uptake_retrans = min( n_demand, plabl(pft,jpngr)%n%n14 )
+        ! n_demand_remaining = n_demand_remaining - n_uptake_retrans
+
+
+        ! !//////////////////////////////////////////////////////////////////////////
+        ! ! PASSIVE UPTAKE
+        ! ! No active control on passive uptake - always occurrs even if the unmet N
+        ! ! demand is zero.
+        ! !--------------------------------------------------------------------------
+        ! n_uptake_pass = ninorg_conc * dtransp(pft) / 1000.0     ! [dtransp] = g H2O; [ninorg_conc] = g N / (mm H2O) = g N / (kg H2O)
+        ! n_uptake_pass = min( n_uptake_pass, avail_ninorg )
 
         !//////////////////////////////////////////////////////////////////////////
-        ! INITIALIZATION
-        !-------------------------------------------------------------------------
-        n_uptake_pass     = 0.0
-        out_calc_dnup%act = 0.0                          ! active uptake, sum over sub-timesteps
-        out_calc_dnup%fix = 0.0                          ! N fixation, sum over sub-timesteps
-        n_uptake_retrans = 0.0
+        ! ACTIVE UPTAKE
+        ! Active N uptake is a function of initial N available and C exuded
+        !--------------------------------------------------------------------------
+        out_calc_dnup  = calc_dnup( dcex(pft), pnh4(lu,jpngr)%n14, pno3(lu,jpngr)%n14, params_pft_plant(pft)%nfixer, dtemp_soil(lu,jpngr) )
 
-        if ( dcex(pft)>0.0 ) then
-          !//////////////////////////////////////////////////////////////////////////
-          ! USE STORED N (RETRANSLOCATION)
-          !--------------------------------------------------------------------------
-          ! As opposed to original FUN model, in which N is retranslocated at a
-          ! variable cost during leaf fall (turnover), a fraction of N is retained here
-          ! from turnover. It is stored at the end of the last year and available to
-          ! cover N demand during next year.
-          ! Just reduce the demand by amount retranslocated, not the labile N pool itself
-          !--------------------------------------------------------------------------
-          ! xxx debug
-          ! n_uptake_retrans = min( n_demand, plabl(pft,jpngr)%n%n14 )
-          ! n_demand_remaining = n_demand_remaining - n_uptake_retrans
-
-
-          ! !//////////////////////////////////////////////////////////////////////////
-          ! ! PASSIVE UPTAKE
-          ! ! No active control on passive uptake - always occurrs even if the unmet N
-          ! ! demand is zero.
-          ! !--------------------------------------------------------------------------
-          ! n_uptake_pass = ninorg_conc * dtransp(pft) / 1000.0     ! [dtransp] = g H2O; [ninorg_conc] = g N / (mm H2O) = g N / (kg H2O)
-          ! n_uptake_pass = min( n_uptake_pass, avail_ninorg )
-
-          ! write(0,*) 'n_uptake_pass ',n_uptake_pass 
-
-          ! Update
-          pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - n_uptake_pass
-          ! avail_ninorg          = calc_avail_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-          ! ninorg_conc           = calc_conc_ninorg( pninorg(lu,jpngr)%n14, dwtot(lu,jpngr) )   
-
-          ! write(0,*) 'avail_ninorg',avail_ninorg
-          ! write(0,*) 'ninorg_conc ',ninorg_conc 
-
-          !//////////////////////////////////////////////////////////////////////////
-          ! ACTIVE UPTAKE
-          ! Active N uptake is a function of initial N available and C exuded
-          !--------------------------------------------------------------------------
-          out_calc_dnup = calc_dnup( dcex(pft), pninorg(lu,jpngr)%n14, params_pft_plant(pft)%nfixer, dtemp_soil(lu,jpngr) )
-
-          ! write(0,*) 'dcex(pft)      ', dcex(pft)      
-          ! write(0,*) 'in SR nuptake: dcex(pft)            ',dcex(pft)      
-          ! write(0,*) 'in SR nuptake: dNacq_act          ',dNacq_act 
-          ! write(0,*) 'in SR nuptake: pninorg(lu,jpngr)%n14 ',pninorg(lu,jpngr)%n14 
-
-          if ((out_calc_dnup%act+out_calc_dnup%fix)>0.0) then
-            dmean_cost = dcex(pft)  / (out_calc_dnup%act+out_calc_dnup%fix)
-          else
-            dmean_cost = 9999.0
-          end if
-
-          ! Update
-          pninorg(lu,jpngr)%n14 = pninorg(lu,jpngr)%n14 - out_calc_dnup%act
-
+        if ((out_calc_dnup%act_no3 + out_calc_dnup%act_nh4 + out_calc_dnup%fix)>0.0) then
+          dmean_cost = dcex(pft)  / (out_calc_dnup%act_no3 + out_calc_dnup%act_nh4 + out_calc_dnup%fix)
+        else
+          dmean_cost = 9999.0
         end if
 
-        !--------------------------------------------------------------------------
-        ! Update N-uptake of this PFT. N-retranslocation is not considered
-        ! N-uptake.
-        !--------------------------------------------------------------------------
-        ! daily
-        dnup(pft)%n14 = n_uptake_pass + out_calc_dnup%act + out_calc_dnup%fix  ! n_uptake_retrans is not considered uptake
-        dnup_pas(pft) = n_uptake_pass
-        dnup_act(pft) = out_calc_dnup%act                   
-        dnup_fix(pft) = out_calc_dnup%fix  
-        dnup_ret(pft) = n_uptake_retrans
-        if (dnup(pft)%n14>0.0) then
-          dccost(pft) = dmean_cost       
-        else
-          dccost(pft) = 0.0
-        endif
+        ! Update
+        pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - out_calc_dnup%act_no3
+        pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - out_calc_dnup%act_nh4
 
-        !--------------------------------------------------------------------------
-        ! N acquisition to labile pool
-        !--------------------------------------------------------------------------
-        call ncp( dnup(pft), plabl(pft,jpngr)%n )
+      end if
 
-      end if 
+      !--------------------------------------------------------------------------
+      ! Update N-uptake of this PFT. N-retranslocation is not considered
+      ! N-uptake.
+      !--------------------------------------------------------------------------
+      ! daily
+      dnup(pft)%n14 = n_uptake_pass + out_calc_dnup%act_no3 + out_calc_dnup%act_nh4 + out_calc_dnup%fix  ! n_uptake_retrans is not considered uptake
+      dnup_pas(pft) = n_uptake_pass
+      dnup_act(pft) = out_calc_dnup%act_no3 + out_calc_dnup%act_nh4                
+      dnup_fix(pft) = out_calc_dnup%fix  
+      dnup_ret(pft) = n_uptake_retrans
+      if (dnup(pft)%n14>0.0) then
+        dccost(pft) = dmean_cost       
+      else
+        dccost(pft) = 0.0
+      endif
+
+      !--------------------------------------------------------------------------
+      ! N acquisition to labile pool
+      !--------------------------------------------------------------------------
+      call ncp( dnup(pft), plabl(pft,jpngr)%n )
 
     end do
     ! write(0,*) '---- finished nuptake'
@@ -212,7 +191,7 @@ contains
   end subroutine nuptake
 
 
-  function calc_dnup( cexu, n0, isnfixer, soiltemp ) result( out_calc_dnup )
+  function calc_dnup( cexu, nh4, no3, isnfixer, soiltemp ) result( out_calc_dnup )
     !/////////////////////////////////////////////////////////////////
     ! With a FUN-like approach:
     ! dCexu/dNup = K / (N0 - Nup); K=1/eff_nup
@@ -220,7 +199,8 @@ contains
     !-----------------------------------------------------------------
     ! arguments
     real, intent(in)    :: cexu      ! C exuded (gC/m2/d)
-    real, intent(in)    :: n0        ! initial available N (gN/m2)
+    real, intent(in)    :: nh4       ! initially available NH4 (gN/m2)
+    real, intent(in)    :: no3       ! initially available NO3 (gN/m2)
     logical, intent(in) :: isnfixer  ! true if pft is N-fixer
     real, intent(in)    :: soiltemp  ! soil temperature (deg C)
 
@@ -228,12 +208,23 @@ contains
     type( outtype_calc_dnup ) :: out_calc_dnup
 
     ! local variables
+    real :: n0    ! initially available total inorganic N (gN/m2)
+    real :: fno3  ! NO3 share of total inorganic N (unitless)
+
     real :: mydnup_act
     real :: mydnup_fix
     real :: cost_bnf
     real :: eff_bnf
     real :: cexu_act
     real :: cexu_bnf
+
+    !-----------------------------------------------------------------
+    ! Get total inorganic N. N uptake is assumed to deplete NO3 and NH4
+    ! in proportion to their relative shares.
+    !-----------------------------------------------------------------
+    n0 = nh4 + no3
+    ! if (n0>0.0) then
+    fno3 = no3 / n0
 
     if (isnfixer) then
       !-----------------------------------------------------------------
@@ -267,12 +258,14 @@ contains
         !-----------------------------------------------------------------
         ! N uptake via active uptake
         !-----------------------------------------------------------------
-        out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu_act ) )
+        out_calc_dnup%act_no3 = fno3         * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu_act ) )
+        out_calc_dnup%act_nh4 = (1.0 - fno3) * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu_act ) )
 
       else
 
-        out_calc_dnup%fix = 0.0
-        out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
+        out_calc_dnup%fix     = 0.0
+        out_calc_dnup%act_no3 = fno3         * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
+        out_calc_dnup%act_nh4 = (1.0 - fno3) * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
 
       end if
 
@@ -281,7 +274,8 @@ contains
       ! NOT N FIXER
       !-----------------------------------------------------------------
       ! N uptake function of C exuded
-      out_calc_dnup%act = n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
+      out_calc_dnup%act_no3 = fno3         * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
+      out_calc_dnup%act_nh4 = (1.0 - fno3) * n0 * ( 1.0 - exp( - params_nuptake%eff_nup * cexu ) )
 
       ! no N fixation considered
       out_calc_dnup%fix = 0.0
@@ -365,7 +359,6 @@ contains
     !----------------------------------------------------------------
     dnup_pas(:)    = 0.0
     dnup_act(:)    = 0.0
-    dnup_fix(:)    = 0.0
     dnup_ret(:)    = 0.0
 
   end subroutine initdaily_nuptake
@@ -475,6 +468,7 @@ contains
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
     use md_interface
+    use md_plant, only: dnup_fix
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -520,6 +514,7 @@ contains
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
     if (interface%params_siml%loutnuptake) then
+    
       if ( .not. interface%steering%spinup &
         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
@@ -528,7 +523,7 @@ contains
         do day=1,ndayyear
 
           ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(year) + real(interface%params_siml%firstyeartrend) - real(interface%params_siml%spinupyears) + real(day-1)/real(ndayyear)
+          itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
 
           if (nlu>1) stop 'writeout_ascii_nuptake: write out lu-area weighted sum'
           if (npft>1) stop 'writeout_ascii_nuptake: think of something for ccost output'

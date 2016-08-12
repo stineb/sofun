@@ -9,9 +9,9 @@ module md_plant
 
   private
   public pleaf, proot, psapw, plabl, pexud, plitt_af, plitt_as, plitt_bg, &
-    dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy,       &
-    lai_ind,      &
-    ispresent, fpc_grid, nind, dnup,        &
+    dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy, &
+    lai_ind,  &
+    fpc_grid, nind, dnup, dnup_fix, &
     params_pft_plant, params_plant, initglobal_plant, initpft,            &
     initdaily_plant, outdnpp, outdnup, outdCleaf, outdCroot, outdClabl,   &
     outdNlabl, outdClitt, outdNlitt, outdCsoil, outdNsoil, outdlai,       &
@@ -49,6 +49,9 @@ module md_plant
   real, dimension(npft)                  :: dcex             ! labile C exudation for N uptake, no explicit isotopic signature as it is identical to the signature of GPP [gC/m2/d]
 
   type(nitrogen), dimension(npft)        :: dnup             ! daily N uptake [gN/m2/d]
+  real, dimension(npft)                  :: dnup_fix         ! daily N uptake by plant symbiotic N fixation [gN/m2/d]
+
+  real, dimension(npft)                  :: frac_leaf = 0.9  ! fraction of labile C allocated to leaves
 
   ! Leaf traits
   type leaftraits_type
