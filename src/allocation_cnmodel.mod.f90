@@ -59,7 +59,7 @@ module md_allocation
 
 contains
 
-  subroutine allocation_daily( jpngr, usedoy, usemoy, dtemp )
+  subroutine allocation_daily( jpngr, doy, dm, moy, dtemp )
     !//////////////////////////////////////////////////////////////////
     ! Finds optimal shoot:root growth ratio to balance C:N stoichiometry
     ! of a grass (no wood allocation).
@@ -75,14 +75,17 @@ contains
     use md_ntransform, only: pno3, pnh4
 
     ! arguments
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: usedoy     ! day of year
-    integer, intent(in) :: usemoy     ! month of year
-    real,    intent(in) :: dtemp   ! air temperaure, deg C
+    integer, intent(in)                   :: jpngr
+    integer, intent(in)                   :: dm      ! day of month
+    integer, intent(in)                   :: doy     ! day of year
+    integer, intent(in)                   :: moy     ! month of year
+    real, dimension(ndayyear), intent(in) :: dtemp   ! air temperaure, deg C
 
     ! local variables
     integer :: lu
     integer :: pft
+    integer :: usemoy        ! MOY in climate vectors to use for allocation
+    integer :: usedoy        ! DOY in climate vectors to use for allocation
     logical :: cont          ! true if allocation to leaves (roots) is not 100% and not 0%
     real    :: max_dcleaf_n_constraint
     real    :: max_dcroot_n_constraint
@@ -118,13 +121,29 @@ contains
     !   ! print*, 'WARNING: FIXED ALLOCATION'
     ! end if
 
+    !-------------------------------------------------------------------------
+    ! Determine day of year (DOY) and month of year (MOY) to use in climate vectors
+    !-------------------------------------------------------------------------
+    if (dm==ndaymonth(moy)) then
+      usemoy = moy + 1
+      if (usemoy==13) usemoy = 1
+    else
+      usemoy = moy
+    end if
+    if (doy==ndayyear) then
+      usedoy = 1
+    else
+      usedoy = doy + 1
+    end if
+
+
     do pft=1,npft
 
       lu = params_pft_plant(pft)%lu_category
 
       if (params_pft_plant(pft)%grass) then
 
-        if ( plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 .and. dtemp>0.0 ) then
+        if ( plabl(pft,jpngr)%c%c12>0.0 .and. plabl(pft,jpngr)%n%n14>0.0 .and. dtemp(doy)>0.0 ) then
 
           ! print*,'allocation on day, month ', usedoy, usemoy
 
@@ -139,7 +158,7 @@ contains
           state_eval_imbalance%usemoy   = usemoy
           state_eval_imbalance%usedoy   = usedoy
           state_eval_imbalance%usejpngr = jpngr
-          state_eval_imbalance%airtemp  = dtemp
+          state_eval_imbalance%airtemp  = dtemp(usedoy)
           state_eval_imbalance%soiltemp = dtemp_soil(lu,jpngr)
 
           !------------------------------------------------------------------
