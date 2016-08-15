@@ -59,7 +59,7 @@ contains
     integer :: lu
 
     ! xxx try
-    real, parameter :: min_cleaf_left = 50.0
+    real, parameter :: min_cleaf_left = 30.0
 
     do pft=1,npft
 
