@@ -61,7 +61,7 @@ contains
     use md_params_core, only: npft, ndayyear
     use md_soiltemp, only: dtemp_soil
     use md_gpp, only: drd
-    use md_turnover, only: turnover_leaf, turnover_root
+    use md_turnover, only: turnover_leaf, turnover_root, turnover_labl
     use md_phenology, only: sprout
     use md_interface
 
@@ -76,7 +76,7 @@ contains
 
     real, parameter :: dleaf_die = 0.012
     real, parameter :: droot_die = 0.012
-    ! real, parameter :: dlabl_die = 0.0
+    real, parameter :: dlabl_die = 0.0
 
     logical, save :: check_sprout = .false.
 
@@ -129,9 +129,9 @@ contains
         call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
       end if
 
-      !-------------------------------------------------------------------------
-      ! the alternative formulation with shutting all fluxes down and decaying
-      !-------------------------------------------------------------------------
+      ! ! -------------------------------------------------------------------------
+      ! ! the alternative formulation with shutting all fluxes down and decaying
+      ! ! -------------------------------------------------------------------------
       ! if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
       !   ! stop exuding
       !   dcex(pft) = 0.0

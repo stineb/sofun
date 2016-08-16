@@ -20,7 +20,9 @@ module md_littersom
   public psoil_fs, psoil_sl, drhet, getpar_modl_littersom, initio_littersom, &
     initoutput_littersom, &
     getout_annual_littersom, writeout_ascii_littersom, &
-    littersom, initdaily_littersom, initglobal_littersom
+    littersom, initdaily_littersom, initglobal_littersom, &
+    outdnetmin ! xxx debug
+
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables

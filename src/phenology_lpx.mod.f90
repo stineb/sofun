@@ -237,6 +237,10 @@ contains
         end if
 
       end do
+
+      ! xxx debug
+      ! print*,'PHENOLOGY: overriding shedleaves'
+      shedleaves(:,pft) = .false.
     
     return
 
