@@ -17,10 +17,8 @@ contains
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
     use md_params_core, only: npft
-    use md_phenology, only: dtphen, sprout
-
-    ! xxx debug
-    use md_plant, only: ispresent
+    use md_phenology, only: sprout, params_pft_pheno
+    use md_plant, only: params_pft_plant
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -29,12 +27,9 @@ contains
     ! local variables
     integer :: pft
 
-
     do pft=1,npft
 
-      ! print*, 'xxx try: do nothing in vegdynamics'
-
-      ! if (params_pft_pheno(pft)%summergreen) then
+      ! if (params_pft_plant(pft)%grass) then
       !   !----------------------------------------------------------
       !   ! GRASSES, summergreen
       !   !----------------------------------------------------------
@@ -43,8 +38,12 @@ contains
       !     !----------------------------------------------------------
       !     ! beginning of season
       !     !----------------------------------------------------------
-      !     print*, 'starting to grow on day ',doy
+      !     ! print*, 'starting to grow on day ',doy
       !     call estab_daily( pft, jpngr, doy )
+
+      !     ! stop 'adding a seed'
+
+      !   end if
 
       ! else
 
@@ -62,22 +61,21 @@ contains
     ! Calculates leaf-level metabolic N content per unit leaf area as a
     ! function of Vcmax25.
     !------------------------------------------------------------------
-    use md_plant, only: initpft, params_pft_plant, ispresent, nind
+    use md_plant, only: initpft, params_pft_plant, nind, frac_leaf
+    use md_interface
 
     ! arguments
     integer, intent(in) :: pft
     integer, intent(in) :: jpngr
     integer, intent(in) :: doy
 
-    ! initialise all pools of this PFT with zero
-    call initpft( pft, jpngr )
+    ! ! initialise all pools of this PFT with zero
+    ! call initpft( pft, jpngr )
 
     ! add C (and N) to labile pool (available for allocation)
     call add_seed( pft, jpngr )
+    if ( .not. interface%steering%dofree_alloc ) frac_leaf(pft) = 0.5
     
-    ! set other state variables: 'ispresent' and 'nind'
-    ispresent(pft,jpngr) = .true.
-
     if (params_pft_plant(pft)%grass) then
       nind(pft,jpngr) = 1.0
     else
@@ -99,7 +97,7 @@ contains
     integer, intent(in) :: pft
     integer, intent(in) :: jpngr
 
-    plabl(pft,jpngr) = seed
+    plabl(pft,jpngr) = orgplus( plabl(pft,jpngr), seed )
 
   end subroutine add_seed
 

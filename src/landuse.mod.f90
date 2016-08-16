@@ -27,7 +27,6 @@ module md_landuse
 
 contains
 
-
   subroutine grharvest( jpngr, doy )
     !////////////////////////////////////////////////////////////////
     !  Annual vegetation biomass turnover, called at the end of the
@@ -253,9 +252,15 @@ contains
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
-    ! annual output variables
-    outacharv(:,:) = 0.0
-    outanharv(:,:) = 0.0
+    use md_interface
+
+    if (interface%params_siml%loutlanduse) then
+
+      ! annual output variables   
+      outacharv(:,:) = 0.0
+      outanharv(:,:) = 0.0
+
+    end if
 
   end subroutine initoutput_landuse
 
@@ -265,7 +270,6 @@ contains
     ! Opens input/output files.
     !----------------------------------------------------------------
     use md_interface
-    ! use md_params_siml, only: runname
 
     ! local variables
     character(len=256) :: prefix
@@ -273,17 +277,20 @@ contains
 
     prefix = "./output/"//trim(interface%params_siml%runname)
 
-    !////////////////////////////////////////////////////////////////
-    ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
-    !----------------------------------------------------------------
+    if (interface%params_siml%loutlanduse) then
+      !////////////////////////////////////////////////////////////////
+      ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
+      !----------------------------------------------------------------
 
-    ! HARVESTED C
-    filnam=trim(prefix)//'.a.charv.out'
-    open(360,file=filnam,err=999,status='unknown')
+      ! HARVESTED C
+      filnam=trim(prefix)//'.a.charv.out'
+      open(360,file=filnam,err=999,status='unknown')
 
-    ! HARVESTED N
-    filnam=trim(prefix)//'.a.nharv.out'
-    open(361,file=filnam,err=999,status='unknown')
+      ! HARVESTED N
+      filnam=trim(prefix)//'.a.nharv.out'
+      open(361,file=filnam,err=999,status='unknown')
+
+    end if
 
     return
 
@@ -296,14 +303,17 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
+    use md_interface
     use md_params_core, only: ndayyear, npft
 
     ! arguments
     integer, intent(in) :: jpngr
 
     ! Output annual value at day of peak LAI
-    outacharv(:,:) = mharv(:,:)%c%c12
-    outanharv(:,:) = mharv(:,:)%n%n14
+    if (interface%params_siml%loutlanduse) then
+      outacharv(:,:) = mharv(:,:)%c%c12
+      outanharv(:,:) = mharv(:,:)%n%n14
+    end if
 
   end subroutine getout_annual_landuse
 
@@ -332,15 +342,18 @@ contains
 
     if (nlu>1) stop 'Output only for one LU category implemented.'
 
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    itime = real(interface%steering%outyear)
+    if (interface%params_siml%loutlanduse) then
+      !-------------------------------------------------------------------------
+      ! ANNUAL OUTPUT
+      ! Write annual value, summed over all PFTs / LUs
+      ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+      !-------------------------------------------------------------------------
+      itime = real(interface%steering%outyear)
 
-    write(360,999) itime, sum(outacharv(:,jpngr))
-    write(361,999) itime, sum(outanharv(:,jpngr))
+      write(360,999) itime, sum(outacharv(:,jpngr))
+      write(361,999) itime, sum(outanharv(:,jpngr))
+
+    end if
 
     return
 
