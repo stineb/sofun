@@ -180,7 +180,7 @@ contains
     !
     !------------------------------------------------------------------
     use md_params_core, only: dummy
-    use md_plant, only: canopy, params_pft_plant, dgpp
+    use md_plant, only: dgpp, canopy, params_pft_plant
     use md_waterbal, only: solar, evap
 
     ! arguments
@@ -1432,13 +1432,13 @@ contains
     ! store all daily values for outputting annual maximum
     if (npft>1) stop 'getout_annual_gpp not implemented for npft>1'
 
-    ! if (lai_ind(1,jpngr)>0.0) then
-    !   outdvcmax(1,doy)   = dvcmax_canop(1) / lai_ind(1,jpngr)
-    !   outdvcmax25(1,doy) = out_pmodel(1,moy)%factor25_vcmax * dvcmax_canop(1) / lai_ind(1,jpngr)
-    ! else
-    !   outdvcmax(1,doy)   = 0.0
-    !   outdvcmax25(1,doy) = 0.0
-    ! end if
+    if (lai_ind(1,jpngr)>0.0) then
+      outdvcmax(1,doy)   = dvcmax_canop(1) / lai_ind(1,jpngr)
+      outdvcmax25(1,doy) = out_pmodel(1,moy)%factor25_vcmax * dvcmax_canop(1) / lai_ind(1,jpngr)
+    else
+      outdvcmax(1,doy)   = 0.0
+      outdvcmax25(1,doy) = 0.0
+    end if
 
   end subroutine getout_daily_gpp
 
