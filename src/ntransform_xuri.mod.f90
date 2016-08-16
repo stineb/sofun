@@ -90,12 +90,9 @@ contains
     use md_rates
     use md_waterbal, only: soilphys, psoilphys
     use md_soiltemp, only: dtemp_soil
-    use md_plant, only: pexud, ddoc
+    use md_plant, only: pexud
     use md_interface
 
-    ! xxx try:  
-    ! use md_littersom, only: drhet
-    use md_plant, only: dgpp, dnpp
 
     ! XXX try: this is wrong: dw1 is only plant available water. 
     ! should be water-filled pore space = ( (porosity - ice) - (total fluid water volume) ) / dz
@@ -186,9 +183,6 @@ contains
       endif
       
     endif
-
-    ! xxx try:
-    ddoc(:) = 1.0 * dgpp(1)
           
     ! LOOP OVER GRIDCELL LAND UNITS
     do lu=1,nlu
@@ -255,12 +249,7 @@ contains
       no3_w = fwet * pno3(lu,jpngr)%n14
       no2_w = fwet * pno2(lu,jpngr)
 
-      ! doc_w = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * fwet
-      doc_w = ddoc(lu) * fwet
-
-      ! print*,'fwet ', fwet
-
-      ! write(0,*) 'mo, dm, ddoc(lu) ', mo, dm, ddoc(lu)
+      doc_w = pexud(lu,jpngr)%c12 * fwet
 
       ! dry (aerobic) fraction
       !------------------------------------------------------------------
@@ -270,7 +259,7 @@ contains
       no2_d = fdry * pno2(lu,jpngr)
 
       ! doc_d = sum( pexud(pft_start(lu):pft_end(lu),jpngr)%c12 ) * fdry
-      doc_d = ddoc(lu) * fdry
+      doc_d = pexud(lu,jpngr)%c12 * fdry
 
 
       !///////////////////////////////////////////////////////////////////////
@@ -278,9 +267,7 @@ contains
       !------------------------------------------------------------------
       ftemp_nitr = max( min( (((70.0-dtemp_soil(lu,jpngr))/(70.0-38.0))**12.0) * exp(12.0*(dtemp_soil(lu,jpngr)-38.0)/(70.0-38.0)), 1.0), 0.0)
 
-      ! print*,'nitrification rate ', fdry * params_ntransform%maxnitr * ftemp_nitr
-      ! print*,'nh4_d              ', nh4_d
-
+      
       ! gross nitrification rate (Eq.1, Tab.8, XP08)
       !------------------------------------------------------------------
       no3_inc    = params_ntransform%maxnitr * ftemp_nitr * nh4_d
@@ -320,48 +307,29 @@ contains
       ! DENITRIFICATION (ntransform.cpp:177) in anaerobic microsites
       !------------------------------------------------------------------
       ! reference temperature: 22°C
-
-      ! xxx try:
-      ! soiltemp = 5.0
-      ! doc_w = 0.2
-      ! no3_w = 1.0
-
       ftemp_denitr = ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor", ref_temp=22.0 )
       ! ftemp_denitr = ftemp( 5.0, "lloyd_and_taylor", ref_temp=22.0 )
       
       ! print*,'ftemp denitr ', ftemp_denitr
 
+      
       ! Effect of labile carbon availability on denitrification (Eq.2, Tab.9, XP08)
       ! doc is last year's doc because it is only available at the end of the month
       ! while this SR is calculated daily, even when _dailymode==0.
       !------------------------------------------------------------------
-      ! xxx try:
-      ! doc_w = drhet(lu)%c12 * fwet
-
       dnmax = params_ntransform%docmax * doc_w / ( params_ntransform%kdoc + doc_w )                     ! dnmax < 1 for all doc_w 
       ! print*,'dnmax ', dnmax
 
-      ! xxx try:
-      dnmax = 0.5
+      ! ! xxx try:
+      ! dnmax = 0.5
 
       ! print*,'fMM DOC ',  params_ntransform%docmax * doc_w / ( params_ntransform%kdoc + doc_w )
       
       ! Denitrification ratio, NO3->NO2 (Eq.3, Tab.9, XP08)
       !------------------------------------------------------------------
       no2_inc     = min( dnmax * ftemp_denitr * no3_w / ( params_ntransform%kn + no3_w ) * 1000.0, no3_w )
-
-      ! print*,'OUT: no2_inc         ', no2_inc
-      ! stop
-
       if (no2_inc>no3_w) stop 'no2_inc > no3_w'
       
-      ! print*,'fMM NO3 ', no3_w / ( params_ntransform%kn + no3_w ) * 1000.0
-
-      ! if (no3_w>0.0) print*,'denitrification rate ', fwet * no2_inc / no3_w
-
-      ! print*,'A denitrification rate ', no2_inc / pno3(lu,jpngr)%n14
-      ! print*,'B denitrification rate ', no2_inc / (no3_w/fwet)
-
       no3_w       = no3_w - no2_inc
       no2_w       = no2_w + no2_inc
       ddenitr(lu) = no2_inc
