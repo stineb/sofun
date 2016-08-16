@@ -68,15 +68,15 @@ contains
       !--------------------------------------------------------------
       if (params_pft_plant(pft)%grass) then
 
-        ! if (shedleaves(doy,pft)) then
+        if (shedleaves(doy,pft)) then
 
-        !   droot = 1.0
-        !   dleaf = 1.0
-        !   dlabl = 1.0
+          droot = 1.0
+          dleaf = 1.0
+          dlabl = 1.0
 
-        !   stop 'shedding the fucking leaves'
+          stop 'shedding the fucking leaves'
           
-        ! else
+        else
 
           ! dlabl = 0.01
           dlabl = 0.0
@@ -95,7 +95,7 @@ contains
           ! droot = 2.5 / 365.0
           ! dlabl = 2.5 / 365.0
 
-        ! end if
+        end if
 
       else
 
