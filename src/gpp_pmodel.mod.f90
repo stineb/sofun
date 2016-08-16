@@ -663,6 +663,18 @@ contains
     out_pmodel%transp_unitfapar = transp_unitfapar
     out_pmodel%transp_unitiabs  = transp_unitiabs 
 
+    ! ! for monthly mean temperatures below 0 deg C:
+    ! if (tc<0.0) then
+    !   out_pmodel%gpp              = 0.0
+    !   out_pmodel%rd               = 0.0
+    !   out_pmodel%rd_unitfapar     = 0.0 
+    !   out_pmodel%rd_unitiabs      = 0.0 
+    !   out_pmodel%lue              = 0.0
+    !   out_pmodel%transp           = 0.0          
+    !   out_pmodel%transp_unitfapar = 0.0
+    !   out_pmodel%transp_unitiabs  = 0.0 
+    ! end if
+
   end function pmodel
 
 

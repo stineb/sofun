@@ -169,6 +169,7 @@ contains
             ! print*,'option B: ', max_dc_buffr_constraint
 
             ! >>>> OPTION C:
+            ! works fine with freserve = 0.004
             max_dc_buffr_constraint = max( 0.0, params_plant%growtheff * ( plabl(pft,jpngr)%c%c12 - freserve * ( proot(pft,jpngr)%c%c12 ) ) )
 
             max_dc = min( max_dc_buffr_constraint, max_dcleaf_n_constraint, max_dcroot_n_constraint )

@@ -125,6 +125,7 @@ contains
       !     pool (negative values), shut down organism (zero GPP, NPP, etc., 
       !     but continuing turnover).
       !-------------------------------------------------------------------------
+      ! This option (deactivate_root) leads to good results, the alternative leads to on-off growth. Unclear why.
       if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
         call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
       end if
