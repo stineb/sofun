@@ -161,16 +161,16 @@ contains
 
             ! XXX THIS MAKES A HUGE DIFFERENCE
             ! >>>> OPTION A (WORKS NICELY):
-            ! max_dc_buffr_constraint = max( 0.0, params_plant%growtheff * ( plabl(pft,jpngr)%c%c12 - ( params_plant%r_root + params_plant%exurate ) * proot(pft,jpngr)%c%c12 ) )
+            max_dc_buffr_constraint = max( 0.0, params_plant%growtheff * ( plabl(pft,jpngr)%c%c12 - ( params_plant%r_root + params_plant%exurate ) * proot(pft,jpngr)%c%c12 ) )
             ! print*,'option A: ', max_dc_buffr_constraint
 
             ! ! >>>> OPTION B (PRODUCES NON-SENSICAL ROOT RESULTS):
             ! max_dc_buffr_constraint = params_plant%growtheff * plabl(pft,jpngr)%c%c12
-            ! print*,'option B: ', max_dc_buffr_constraint
+            ! ! print*,'option B: ', max_dc_buffr_constraint
 
-            ! >>>> OPTION C:
-            ! works fine with freserve = 0.004
-            max_dc_buffr_constraint = max( 0.0, params_plant%growtheff * ( plabl(pft,jpngr)%c%c12 - freserve * ( proot(pft,jpngr)%c%c12 ) ) )
+            ! ! >>>> OPTION C:
+            ! ! works fine with freserve = 0.004
+            ! max_dc_buffr_constraint = max( 0.0, params_plant%growtheff * ( plabl(pft,jpngr)%c%c12 - freserve * ( proot(pft,jpngr)%c%c12 ) ) )
 
             max_dc = min( max_dc_buffr_constraint, max_dcleaf_n_constraint, max_dcroot_n_constraint )
             min_dc = 0.0
