@@ -53,12 +53,12 @@ module md_params_siml
     logical :: loutdnpp       
     logical :: loutdnup       
     logical :: loutdcex       
-    logical :: loutdCleaf     
-    logical :: loutdCroot     
-    logical :: loutdClabl     
-    logical :: loutdNlabl     
-    logical :: loutdClitt     
-    logical :: loutdNlitt     
+    logical :: loutdcleaf     
+    logical :: loutdcroot     
+    logical :: loutdclabl     
+    logical :: loutdnlabl     
+    logical :: loutdclitt     
+    logical :: loutdnlitt     
     logical :: loutdlai       
     logical :: loutdfapar
     logical :: loutdninorg    
@@ -297,12 +297,12 @@ contains
     out_getpar_siml%loutdnpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnpp' )
     out_getpar_siml%loutdnup       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnup' )
     out_getpar_siml%loutdcex       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdcex' )
-    out_getpar_siml%loutdCleaf     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCleaf' )
-    out_getpar_siml%loutdCroot     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCroot' )
-    out_getpar_siml%loutdClabl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdClabl' )
-    out_getpar_siml%loutdNlabl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNlabl' )
-    out_getpar_siml%loutdClitt     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdClitt' )
-    out_getpar_siml%loutdNlitt     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNlitt' )
+    out_getpar_siml%loutdcleaf     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCleaf' )
+    out_getpar_siml%loutdcroot     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCroot' )
+    out_getpar_siml%loutdclabl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdClabl' )
+    out_getpar_siml%loutdnlabl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNlabl' )
+    out_getpar_siml%loutdclitt     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdClitt' )
+    out_getpar_siml%loutdnlitt     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNlitt' )
     out_getpar_siml%loutdlai       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdlai' )
     out_getpar_siml%loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     out_getpar_siml%loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
