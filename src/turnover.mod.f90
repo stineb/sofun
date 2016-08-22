@@ -79,7 +79,7 @@ contains
         else
 
           ! dlabl = 0.01
-          dlabl = 2.0 / 365.5
+          dlabl = 0.0
 
           ! Alternative turnover function: increase turnover rate towards high LAI
           ! dleaf = (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
