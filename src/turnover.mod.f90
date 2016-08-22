@@ -79,7 +79,7 @@ contains
         else
 
           ! dlabl = 0.01
-          dlabl = 0.0
+          dlabl = 2.0 / 365.5
 
           ! Alternative turnover function: increase turnover rate towards high LAI
           ! dleaf = (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
@@ -337,19 +337,16 @@ contains
     ! local variables
     type(orgpool) :: lb_turn
 
-    if (dlabl>0.0) then
+    ! detelbine absolute turnover
+    lb_turn = orgfrac( dlabl, plabl(pft,jpngr) ) ! labl turnover
 
-      ! detelbine absolute turnover
-      lb_turn = orgfrac( dlabl, plabl(pft,jpngr) ) ! labl turnover
+    !! xxx think of something more plausible to put the labile C and N to
 
-      !! xxx think of something more plausible to put the labile C and N to
+    ! reduce leaf mass and labl mass
+    call orgsub( lb_turn, plabl(pft,jpngr) )
 
-      ! reduce leaf mass and labl mass
-      call orgsub( lb_turn, plabl(pft,jpngr) )
+    call orgmvRec( lb_turn, lb_turn, plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr))
 
-      call orgmvRec( lb_turn, lb_turn, plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr))
-
-    end if
 
   end subroutine turnover_labl
 
