@@ -122,8 +122,6 @@ contains
     type(orgpool) :: dsoil_fs                       ! (= cflux_fast_atmos)
    
     ! temporary variables
-    real :: cton_soil_local
-    real :: ntoc_soil_local
     real :: eff                                     ! microbial growth efficiency 
     real :: ntoc_crit                               ! critical N:C ratio below which immobilisation occurrs  
     real :: Nreq_S                                  ! N required in litter decomposition to maintain SOM C:N
@@ -243,16 +241,13 @@ contains
       !----------------------------------------------------------------
       if ( dlitt%c%c12 > 0.0 ) then
 
-        cton_soil_local = params_littersom%cton_soil
-        ntoc_soil_local = 1.0 / cton_soil_local
-
         !////////////////////////////////////////////////////////////////
         ! ATMOSPHERIC FRACTION ~ 1 - MICROBIAL GROWTH EFFICIENCY
         ! critical C:N ratio for net mineralisation is a function of C:N
         ! ratio of decomposing litter. Eq. 9 in Xu-Ri & Prentice, 2014
         !----------------------------------------------------------------
         ntoc_crit = params_littersom%ntoc_crit1 * ntoc( dlitt, default=0.0 ) ** params_littersom%ntoc_crit2  ! = rCR
-        eff = ntoc_crit * cton_soil_local
+        eff = ntoc_crit * params_littersom%cton_soil
 
         !////////////////////////////////////////////////////////////////
         ! LITTER -> SOIL FLUX AND NET MINERALISATION/IMMOBILISATION
@@ -282,7 +277,7 @@ contains
         ! N MINERALISATION
         !----------------------------------------------------------------    
         ! N requirement to maintain rS (SOM N:C ratio)
-        Nreq_S = dlitt%c%c12 * eff * ntoc_soil_local  ! 1/cton_soil = rS
+        Nreq_S = dlitt%c%c12 * eff * params_littersom%ntoc_soil  ! 1/cton_soil = rS
 
         ! OUTPUT COLLECTION
         outanreq(lu,jpngr)      = outanreq(lu,jpngr)      + Nreq_S
@@ -372,12 +367,10 @@ contains
         call ncp( nfrac( (1.0-params_littersom%fastfrac), nitrogen(Nreq_S) ), psoil_sl(lu,jpngr)%n )
 
         if ( abs( cton(psoil_fs(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) then
-          write(0,*) 'cton_soil_local', cton_soil_local
           write(0,*) 'psoil_fs', cton( psoil_fs(lu,jpngr) )
           stop 'B fs: C:N not ok'
         end if
         if ( abs( cton(psoil_sl(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) then
-          write(0,*) 'cton_soil_local', cton_soil_local
           write(0,*) 'psoil_sl', cton( psoil_sl(lu,jpngr) )
           stop 'B sl: C:N not ok'
         end if
@@ -429,19 +422,17 @@ contains
       ! Spinup trick: use projected soil N mineralisation before soil equilibration
       if ( interface%steering%project_nmin ) then
         ! projected soil N mineralisation
-        if (dlitt%c%c12 > 0.0) pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + eff * dlitt%c%c12 / cton_soil_local
+        if (dlitt%c%c12 > 0.0) pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + eff * dlitt%c%c12 / params_littersom%cton_soil
       else
         ! actual soil N mineralisation
         pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
       end if
 
-      if ( psoil_fs(lu,jpngr)%c%c12 > 0.0 .and. abs( cton( psoil_fs(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-4 ) then
-        write(0,*) 'cton_soil_local', cton_soil_local
+      if ( psoil_fs(lu,jpngr)%c%c12 > 0.0 .and. abs( cton( psoil_fs(lu,jpngr), default=0.0 ) - params_littersom%cton_soil ) > 1e-4 ) then
         write(0,*) 'psoil_fs', cton( psoil_fs(lu,jpngr) )
         stop 'C fs: C:N not ok'
       end if
-      if ( psoil_sl(lu,jpngr)%c%c12 > 0.0 .and. abs( cton( psoil_sl(lu,jpngr), default=0.0 ) - cton_soil_local ) > 1e-4 ) then
-        write(0,*) 'cton_soil_local', cton_soil_local
+      if ( psoil_sl(lu,jpngr)%c%c12 > 0.0 .and. abs( cton( psoil_sl(lu,jpngr), default=0.0 ) - params_littersom%cton_soil ) > 1e-4 ) then
         write(0,*) 'psoil_sl', cton( psoil_sl(lu,jpngr) )
         stop 'C sl: C:N not ok'
       end if
