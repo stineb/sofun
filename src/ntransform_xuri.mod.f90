@@ -324,9 +324,7 @@ contains
       dnmax = params_ntransform%docmax * doc_w / ( params_ntransform%kdoc + doc_w )                     ! dnmax < 1 for all doc_w 
 
       ! ! xxx try:
-      ! dnmax = 0.5
-
-      ! print*,'fMM DOC ',  params_ntransform%docmax * doc_w / ( params_ntransform%kdoc + doc_w )
+      ! dnmax = 0.2
       
       ! Denitrification ratio, NO3->NO2 (Eq.3, Tab.9, XP08)
       !------------------------------------------------------------------

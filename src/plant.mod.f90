@@ -127,6 +127,7 @@ module md_plant
     real    :: k_decay_leaf_width  ! shape parameter for turnover function if LAI
     real    :: k_decay_sapw        ! sapwood decay constant [year-1]
     real    :: k_decay_root        ! root decay constant [year-1]
+    real    :: k_decay_labl        ! labile pool decay constant [year-1]
     real    :: r_cton_root         ! C:N ratio in roots (gC/gN)
     real    :: r_ntoc_root         ! N:C ratio in roots (inverse of 'r_cton_root', gN/gC)
     real    :: ncw_min             ! y-axis intersection in the relationship of non-metabolic versus metabolic N per leaf area    
@@ -595,6 +596,9 @@ contains
     ! root decay constant [days], read in as [years-1], central value: 1.04 (Shan et al., 1993; see Li et al., 2014)
     out_getpftparams%k_decay_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_root' ) / ndayyear 
 
+    ! root decay constant [days], read in as [years-1]
+    out_getpftparams%k_decay_labl = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_labl' ) / ndayyear 
+
     ! root C:N and N:C ratio (gC/gN and gN/gC)
     out_getpftparams%r_cton_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'r_cton_root' )
     out_getpftparams%r_ntoc_root = 1.0 / out_getpftparams%r_cton_root
@@ -994,8 +998,8 @@ contains
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
     if (interface%params_siml%loutplant) then
-      outacleaf(:,jpngr)   = outdcleaf(:,doy,jpngr) / ndayyear
-      outacroot(:,jpngr)   = outdcroot(:,doy,jpngr) / ndayyear
+      outacleaf(:,jpngr)   = outacleaf(:,jpngr) + pleaf(:,jpngr)%c%c12 / ndayyear
+      outacroot(:,jpngr)   = outacroot(:,jpngr) + proot(:,jpngr)%c%c12 / ndayyear
       outagpp(:,jpngr)     = outagpp(:,jpngr) + dgpp(:)
       outanpp(:,jpngr)     = outanpp(:,jpngr) + dnpp(:)%c12
       outanup(:,jpngr)     = outanup(:,jpngr) + dnup(:)%n14

@@ -380,10 +380,6 @@ contains
           outdnfixfree(lu,doy,jpngr) = outdnfixfree(lu,doy,jpngr) + Nfix
         end if
 
-        ! C:N ratio of soil influx
-        ! print*,"actual: ", dlitt%c%c12 * eff / Nreq_S, "target: ", params_littersom%cton_soil
-        if ( abs( dlitt%c%c12 * eff / Nreq_S - params_littersom%cton_soil ) > 1e-5 ) stop 'imprecision'
-
       end if
 
       !////////////////////////////////////////////////////////////////
@@ -417,7 +413,7 @@ contains
       psoil_sl(lu,jpngr) = orgminus( psoil_sl(lu,jpngr), dsoil_sl )
       
       ! C to heterotrophic respiration
-      drhet(lu)%c12 = drhet(lu)%c12 + dsoil_fs%c%c12 + dsoil_sl%c%c12
+      drhet(lu) = cplus( drhet(lu), dsoil_fs%c, dsoil_sl%c )
 
       ! Spinup trick: use projected soil N mineralisation before soil equilibration
       if ( interface%steering%project_nmin ) then
