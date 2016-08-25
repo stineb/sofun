@@ -105,7 +105,7 @@ contains
     !-------------------------------------------------------------------------
 
     ! xxx debug
-    frac_leaf = 0.5
+    r_shoot_root = 0.5
 
     ! initialise
     dcleaf(:) = 0.0
@@ -133,23 +133,13 @@ contains
 
           ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
           avl = max( 0.0, plabl(pft,jpngr)%c%c12 - freserve * pleaf(pft,jpngr)%c%c12 )
-          dcleaf(pft) = frac_leaf(pft) * params_plant%growtheff * avl
-          dcroot(pft) = (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl
+          dcleaf(pft) = r_shoot_root(pft) * params_plant%growtheff * avl
+          dcroot(pft) = (1.0 - r_shoot_root(pft)) * params_plant%growtheff * avl
           dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
-
-          ! print*,'         doy, pleaf ', doy,  pleaf
 
           !-------------------------------------------------------------------
           ! LEAF ALLOCATION
           !-------------------------------------------------------------------
-          if (baltest) orgtmp1 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(drgrow(pft)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
-          if (verbose) write(0,*) 'calling allocate_leaf() ... '
-          if (verbose) write(0,*) '              with state variables:'
-          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-          if (verbose) write(0,*) '              drgrow= ', drgrow(:)
-          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
           call allocate_leaf( &
             pft, dcleaf(pft), &
             pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
@@ -157,18 +147,6 @@ contains
             solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs, &
             lai_ind(pft,jpngr), dnleaf(pft) &
             )
-          if (verbose) write(0,*) '              ==> returned: '
-          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-          if (baltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) ) / params_plant%growtheff
-          if (verbose) write(0,*) '              drgrow= ', ctmp
-          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
-          if (baltest) orgtmp2 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
-          if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
-          if (baltest) write(0,*) '       balance A =', orgbal1
-          if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance A not satisfied for C'
-          if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance A not satisfied for N'
 
           !-------------------------------------------------------------------  
           ! Update leaf traits
@@ -183,31 +161,11 @@ contains
           !-------------------------------------------------------------------
           ! ROOT ALLOCATION
           !-------------------------------------------------------------------
-          if (baltest) orgtmp1 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(drgrow(pft)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
-          if (verbose) write(0,*) 'calling allocate_root() ... '
-          if (verbose) write(0,*) '              with state variables:'
-          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-          if (verbose) write(0,*) '              drgrow= ', drgrow(:)
-          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
           call allocate_root( &
             pft, dcroot(pft), dnroot(pft), &
             proot(pft,jpngr)%c%c12, proot(pft,jpngr)%n%n14, &
             plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14  &
             )
-          if (verbose) write(0,*) '              ==> returned: '
-          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-          if (baltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcroot(pft) ) / params_plant%growtheff
-          if (verbose) write(0,*) '              drgrow= ', ctmp
-          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
-          if (baltest) orgtmp2 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
-          if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
-          if (baltest) write(0,*) '       balance B =', orgbal1
-          if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance B not satisfied for C'
-          if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance B not satisfied for N'
 
           !-------------------------------------------------------------------
           ! GROWTH RESPIRATION, NPP
@@ -232,6 +190,16 @@ contains
     ! print*, '--- END allocation_daily:'
 
   end subroutine allocation_daily
+
+
+  subroutine allocate_leafarea( pft, dlai, ... )
+
+
+    .....
+
+
+  end subroutine allocate_leafarea
+
 
 
   subroutine allocate_leaf( pft, mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd, nv, lai, mydnleaf )

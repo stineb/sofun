@@ -10,7 +10,7 @@ fpc_tree_max                            0.950000
 growtheff                               0.600000
 r_root                                  0.91300
 r_sapw                                  0.04400
-exurate                                 0.003000
+exurate                                 0.000000
 cton_soil                               9.77000
 
 #                                      |

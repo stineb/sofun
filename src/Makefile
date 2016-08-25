@@ -21,6 +21,10 @@ PMODEL_SOURCES=sofun.f90 biosphere_pmodel.f90
 CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 interface_biosphere.mod.f90 rates.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 lambertw.mod.f90 plant.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 turnover.mod.f90 npp.mod.f90 vegdynamics_fix.mod.f90 ntransform_xuri.mod.f90 littersom_lpj.mod.f90 nuptake.mod.f90 allocation_fix.mod.f90 landuse.mod.f90
 CMODEL_SOURCES=sofun.f90 biosphere_cnmodel.f90
 
+# List of source code files for reduced setup, executing the C-only model: XXX UNDER CONSTRUCTION XXX
+TMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 interface_biosphere.mod.f90 rates.mod.f90 waterbal_stash.mod.f90 lambertw.mod.f90 plant.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 turnover.mod.f90 npp.mod.f90 vegdynamics_fix.mod.f90 allocation_tmodel.mod.f90
+TMODEL_SOURCES=sofun.f90 biosphere_tmodel.f90
+
 # List of source code files for reduced setup, executing the full CN-only model:
 CNMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 interface_biosphere.mod.f90 rates.mod.f90 waterbal_stash.mod.f90 soiltemp_sitch.mod.f90 lambertw.mod.f90 plant.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 turnover.mod.f90 npp.mod.f90 vegdynamics_fix.mod.f90 ntransform_xuri.mod.f90 littersom_lpj.mod.f90 nuptake.mod.f90 allocation_cnmodel.mod.f90 landuse.mod.f90
 CNMODEL_SOURCES=sofun.f90 biosphere_cnmodel.f90
@@ -48,6 +52,11 @@ CMODEL_OBJS=$(CMODEL_SOURCES:.f90=.o)
 CMODEL_MODOBJS=$(CMODEL_MODS:.f90=.o)
 DBGCMODEL_OBJS=$(CMODEL_SOURCES:.f90=.do)
 DBGCMODEL_MODOBJS=$(CMODEL_MODS:.f90=.do)
+
+TMODEL_OBJS=$(TMODEL_SOURCES:.f90=.o)
+TMODEL_MODOBJS=$(TMODEL_MODS:.f90=.o)
+DBGTMODEL_OBJS=$(TMODEL_SOURCES:.f90=.do)
+DBGTMODEL_MODOBJS=$(TMODEL_MODS:.f90=.do)
 
 CNMODEL_OBJS=$(CNMODEL_SOURCES:.f90=.o)
 CNMODEL_MODOBJS=$(CNMODEL_MODS:.f90=.o)
@@ -118,6 +127,20 @@ dbgcmodel: $(DBGCMODEL_MODOBJS) $(DBGCMODEL_OBJS)
 	-rm $(ARCHIVE)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(DBGCMODEL_MODOBJS) $(DBGCMODEL_OBJS) 
+
+# reduced model setup: T-model only
+tmodel: $(TMODEL_MODOBJS) $(TMODEL_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(TMODEL_MODOBJS) $(TMODEL_OBJS) 
+
+# reduced model setup: C-model only
+dbgtmodel: $(DBGTMODEL_MODOBJS) $(DBGTMODEL_OBJS) 
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(DBGTMODEL_MODOBJS) $(DBGTMODEL_OBJS) 
 
 # full model setup: CN-model
 cnmodel: $(CNMODEL_MODOBJS) $(CNMODEL_OBJS)
@@ -194,6 +217,18 @@ $(DBGCMODEL_MODOBJS): %.do: %.f
 $(DBGCMODEL_OBJS): %.do: %.f
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
+$(TMODEL_MODOBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
+$(TMODEL_OBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
+$(DBGTMODEL_MODOBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+
+$(DBGTMODEL_OBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+
 $(CNMODEL_MODOBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
@@ -207,7 +242,7 @@ $(DBGCNMODEL_OBJS): %.do: %.f
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
 # don't delete the intermediate *.f files
-.SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f) $(CMODEL_SOURCES:.f90=.f) $(CNMODEL_SOURCES:.f90=.f)
+.SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f) $(CMODEL_SOURCES:.f90=.f) $(TMODEL_SOURCES:.f90=.f) $(CNMODEL_SOURCES:.f90=.f)
 
 # clean: remove .f, .o, .do, and .stb files
 .PHONY: clean
