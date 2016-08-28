@@ -27,8 +27,6 @@ module md_interface
     type( paramstype_siml )                           :: params_siml
   end type interfacetype_biosphere
 
-  type( interfacetype_biosphere ) :: interface
-
   !----------------------------------------------------------------
   ! Module-specific daily output variables
   !----------------------------------------------------------------

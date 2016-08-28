@@ -25,7 +25,7 @@ module md_gpp
   private
   public dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
     initdaily_gpp, gpp, getlue, getout_daily_gpp, getout_annual_gpp, &
-    writeout_ascii_gpp, out_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd
+    writeout_ascii_gpp, outtype_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -93,22 +93,6 @@ module md_gpp
   ! set of improvements, which, as I far as I know, will be based on this uni-
   ! versal value of β.
   !-----------------------------------------------------------------------
-  
-  ! parameters for Narea -- under construction
-  ! sla = 0.0014       ! specific leaf area (m2/gC)
-
-  ! N in cell walls: Slope of WN~LMA is 0.0002 mol N / g leaf mass (Hikosaka&Shigeno, 2009)
-  ! With 0.5 g C / g leaf mass and 14 g N / mol N: n_cw = 0.0056 g N / g C
-
-  ! real, parameter :: ncw = 0.0056          ! N:C ratio in cell walls, working hypothesis: leaf N is solely determined by Vcmax25
-  ! n_v  = 1.0/40.96    ! gN µmol-1 s-1. Value 40.96 is 'sv' in Table 2 in Kattge et al., 2009, GCB, C3 herbaceous
-  ! -- under construction
-
-  ! DAILY OUTPUT VARIABLES
-  ! xxx add jpngr dim
-
-  ! MONTHLY OUTPUT VARIABLES
-  ! xxx add jpngr dim
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, PRIVATE VARIABLES
@@ -134,8 +118,6 @@ module md_gpp
     real :: transp_unitfapar      ! transpiration per unit fAPAR [g H2O (mol photons)-1]
     real :: transp_unitiabs       ! transpiration per unit light absorbed light [g H2O (mol photons)-1]
   end type outtype_pmodel
-
-  type(outtype_pmodel), dimension(npft,nmonth) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
 
   type outtype_lue
     real :: chi                   ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
@@ -236,22 +218,12 @@ contains
 
       end if 
 
-      ! print*,'-----------------'
-      ! print*,'DOY ', doy
-      ! print*,'dgpp                     ', dgpp(pft)
-      ! print*,'evap(:)%cpa              ', evap(1)%cpa
-      ! print*,'fa                       ', calc_fa( evap(1)%cpa )
-      ! print*,'fapar                    ', canopy(pft)%fapar_ind
-      ! print*,'solar%dppfd(doy)         ', solar%dppfd(doy)
-      ! print*,'out_pmodel(pft,moy)%lue  ', out_pmodel(pft,moy)%lue
-      ! print*,'dtemp                    ', dtemp
-
     end do
 
   end subroutine gpp
 
 
-  subroutine getlue( jpngr, co2, dtemp, dvpd, elv )
+  function getlue( co2, dtemp, dvpd, elv ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
     ! Calculates the monthly acclimated photosynthetic parameters for 
     ! assimilation, Vcmax, and dark respiration per unit light absorbed.
@@ -264,87 +236,43 @@ contains
     use md_sofunutils, only: daily2monthly
 
     ! arguments
-    integer, intent(in)                   :: jpngr    ! gridcell number
     real, intent(in)                      :: co2      ! atmospheric CO2 (ppm)
     real, dimension(ndayyear), intent(in) :: dtemp    ! daily air temperature (deg C)
     real, dimension(ndayyear), intent(in) :: dvpd     ! daily vapour pressure deficit (Pa)
     real, intent(in)                      :: elv      ! elevation above sea level (m)
 
+    ! function return variable
+    type( outtype_pmodel ), dimension(npft,nmonth) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
+
     ! local variables
     real, dimension(ndayyear) :: mydtemp
     real, dimension(nmonth)   :: mtemp      ! monthly air temperature (deg C)
     real, dimension(nmonth)   :: mvpd       ! monthly vapour pressure deficit (Pa)
-    integer                   :: moy, lu, pft
+    integer                   :: moy, pft
     integer                   :: doy
 
     ! locally used daily temperature (may be different from globally used one)
     mydtemp(:) = dtemp(:)
 
-    ! ! xxx try
-    ! write(0,*) 'WARNING IN GETLUE: CAPPED DAILY TEMPERATURE AT 25 DEG C.'
-    ! do doy=1,ndayyear
-    !   mydtemp(doy) = min( mydtemp(doy), 25.0 )
-    ! end do
-
     ! Get monthly averages
     mtemp(:) = daily2monthly( mydtemp(:), "mean" )
     mvpd(:)  = daily2monthly( dvpd(:), "mean" )
 
-    ! xxx try out: -- THIS WORKS PERFECTLY -- 
-    ! print*, 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
-    ! co2   = 376.0
-    ! elv   = 450.0
-    ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
-    ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
-    ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
+    do pft=1,npft
+      do moy=1,nmonth
 
-    ! print*, 'co2'
-    ! print*, co2
-    ! print*, 'mtemp'
-    ! print*, mtemp
-    ! print*, 'mvpd'
-    ! print*, mvpd
-    ! stop
+        if ( params_pft_plant(pft)%c4 ) then
+          ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
+          out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
+        else
+          ! C3
+          out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
+        end if
 
-    ! Run P-model for monthly averages and store monthly variables 
-    ! per unit absorbed light (not corrected for soil moisture)
-
-    ! ! XXX PMODEL_TEST
-    ! print*, 'WARNING: ONLY C3 PHOTOSYNTHESIS USED IN PMODEL'
-
-    do lu=1,nlu
-
-      if (lu>1) stop 'in GETLUE(): think of something about LU and PFTs!'
-
-      do pft=1,npft
-
-        do moy=1,nmonth
-
-          ! ! XXX PMODEL_TEST
-          ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
-
-          ! ! xxx debug
-          ! print*,'calling P-model with:'
-          ! print*,'pft   ', pft
-          ! print*,'moy   ', moy
-          ! print*,'mtemp ', mtemp(moy)
-          ! print*,'mvpd  ', mvpd(moy)
-          ! print*,'elv   ', elv
-          ! print*,'C4    ', params_pft_plant(pft)%c4
-
-          if ( params_pft_plant(pft)%c4 ) then
-            ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
-            out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
-          else
-            ! C3
-            out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
-          end if
-
-        end do
       end do
     end do
 
-  end subroutine getlue
+  end function getlue
 
 
   function calc_dgpp( fapar, dppfd, my_mlue, dtemp, cpalpha ) result( my_dgpp )

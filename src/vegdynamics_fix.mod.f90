@@ -2,104 +2,54 @@ module md_vegdynamics
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
 
-  use md_params_core
-
   implicit none
 
   private
   public vegdynamics
 
+  real, parameter :: diam_inc_init = 0.001 ! m
+
 contains
 
-  subroutine vegdynamics( jpngr, doy )
+  subroutine vegdynamics( tile, plant, solar, out_pmodel )
     !//////////////////////////////////////////////////////////////////
-    ! Updates canopy and stand variables and calls 'estab_daily' to 
+    ! Updates canopy and tile variables and calls 'estab' to 
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
     use md_params_core, only: npft
-    use md_phenology, only: sprout, params_pft_pheno
-    use md_plant, only: params_pft_plant
 
     ! arguments
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: doy
+    type( tile_type ), intent(inout) :: tile
+    type( solartype )                :: solar
+    type( outtype_pmodel )           :: out_pmodel
 
     ! local variables
     integer :: pft
 
-    do pft=1,npft
+    if (tile%fpc_grid = 0.0) then
 
-      ! if (params_pft_plant(pft)%grass) then
-      !   !----------------------------------------------------------
-      !   ! GRASSES, summergreen
-      !   !----------------------------------------------------------
+      do lu=1,nlu
+        do pft=1,npft
+          if (params_pft_plant(pft)%lu_category==lu) then
 
-      !   if ( sprout(doy,pft) ) then
-      !     !----------------------------------------------------------
-      !     ! beginning of season
-      !     !----------------------------------------------------------
-      !     ! print*, 'starting to grow on day ',doy
-      !     call estab_daily( pft, jpngr, doy )
+            ! initialise all pools of this PFT with zero
+            call initpft( pft, jpngr )
 
-      !     ! stop 'adding a seed'
+            ! get annually updated leaf traits (vary because of variations in light and CO2)
+            call get_leaftraits( tree, pft, solar%meanmppfd(:), out_pmodel%actnv_unitiabs(:) )
 
-      !   end if
+            ! add a "seed" by forcing initial diameter increment
+            call update_tree( tree, diam_inc_init )
 
-      ! else
+            ! xxx needs to be done: add implicit C and N fluxes to NPP and N-uptake
 
-      !   stop 'estab_daily not implemented for non-summergreen'
+          end if
+        end do
+      end do
 
-      ! end if
-
-    end do
-
-  end subroutine vegdynamics
-
-
-  subroutine estab_daily( pft, jpngr, doy )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level metabolic N content per unit leaf area as a
-    ! function of Vcmax25.
-    !------------------------------------------------------------------
-    use md_plant, only: initpft, params_pft_plant, nind, frac_leaf
-    use md_interface
-
-    ! arguments
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: doy
-
-    ! ! initialise all pools of this PFT with zero
-    ! call initpft( pft, jpngr )
-
-    ! add C (and N) to labile pool (available for allocation)
-    call add_seed( pft, jpngr )
-    if ( .not. interface%steering%dofree_alloc ) frac_leaf(pft) = 0.5
-    
-    if (params_pft_plant(pft)%grass) then
-      nind(pft,jpngr) = 1.0
-    else
-      stop 'estab_daily not implemented for trees'
     end if
 
-
-  end subroutine estab_daily
-
-
-  subroutine add_seed( pft, jpngr )
-    !//////////////////////////////////////////////////////////////////
-    ! To initialise plant pools, add "sapling" mass
-    !------------------------------------------------------------------
-    use md_classdefs
-    use md_plant, only: plabl, seed, dnpp
-
-    ! arguments
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
-
-    plabl(pft,jpngr) = orgplus( plabl(pft,jpngr), seed )
-
-  end subroutine add_seed
+  end subroutine vegdynamics
 
 
 end module md_vegdynamics

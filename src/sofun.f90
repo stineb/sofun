@@ -6,7 +6,7 @@ program main
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_interface
+  use md_interface, only: interfacetype_biosphere
   use md_params_siml, only: getpar_siml, getsteering
   use md_params_site, only: getpar_site
   use md_grid, only: getgrid
@@ -17,6 +17,7 @@ program main
   implicit none
 
   ! local variables
+  type( interfacetype_biosphere ) :: interface
   integer :: yr           ! simulation year
   real    :: c_uptake     ! annual net global C uptake by biosphere
   character(len=245) :: runname
@@ -161,7 +162,7 @@ program main
 
     !----------------------------------------------------------------
     !----------------------------------------------------------------
-    call biosphere( c_uptake ) 
+    c_uptake = biosphere_annual( interface ) 
     !----------------------------------------------------------------
     !----------------------------------------------------------------
 

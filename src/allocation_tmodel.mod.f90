@@ -5,14 +5,12 @@ module md_allocation
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_classdefs
-  use md_params_core, only: npft, nlu, maxgrid, ndaymonth, ndayyear, &
-    c_molmass, n_molmass, nmonth
+  use md_params_core, only: npft, nlu, maxgrid
 
   implicit none
 
   private 
-  public allocation_daily, initio_allocation, initoutput_allocation, &
+  public allocation_annual, initio_allocation, initoutput_allocation, &
     getout_daily_allocation, writeout_ascii_allocation
 
   !----------------------------------------------------------------
@@ -22,6 +20,19 @@ module md_allocation
   real, dimension(npft) :: dnleaf
   real, dimension(npft) :: dcroot
   real, dimension(npft) :: dnroot
+
+  !----------------------------------------------------------------
+  ! Module-specific parameters (PFT dependent)
+  !----------------------------------------------------------------
+  type params_tmodel_type 
+    real :: a_par          ! initial slope of the relationship between height and diameter
+    real :: cr_par         ! initial ratio of crown area to stem cross - sectional area ('c')
+    real :: maxheight      ! asymptotic maximum height
+    real :: rho            ! density of wood
+    real :: z_par          ! Ratio of fine-root mass to foliage area (0.17 kg C m-2; White et al. (2000))
+    real :: lai_ind        ! Leaf area index within the crown of an individual
+  end type params_tmodel_type
+  type( params_tmodel_type ), dimension(npft) :: params_tmodel
 
   !----------------------------------------------------------------
   ! Module-specific output variables
@@ -34,77 +45,24 @@ module md_allocation
 
 contains
 
-  subroutine allocation_daily( jpngr, doy, dm, moy, dtemp )
+  subroutine allocation_annual( tree )
     !//////////////////////////////////////////////////////////////////
     ! Finds optimal shoot:root growth ratio to balance C:N stoichiometry
     ! of a grass (no wood allocation).
     !------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
-      plabl, drgrow, lai_ind, nind, canopy, leaftraits, &
-      get_canopy, get_leaftraits, get_leaftraits_init, &
-      frac_leaf, dnup_fix
-    use md_waterbal, only: solar
-    use md_gpp, only: out_pmodel
-    use md_soiltemp, only: dtemp_soil
-    use md_params_core, only: eps
-
-    ! xxx debug
-    use md_nuptake, only: calc_dnup, outtype_calc_dnup
-    use md_waterbal, only: solar, evap
-    use md_gpp, only: calc_dgpp, calc_drd
-    use md_npp, only: calc_resp_maint, calc_cexu
-    use md_gpp, only: drd 
-    use md_plant, only: dgpp, dnpp, drleaf, drroot, dcex, dnup
-    use md_interface
+    use md_plant, only: params_plant, params_pft_plant, plant_type
+    use md_params_core, only: pi, eps
 
     ! arguments
-    integer, intent(in)                   :: jpngr
-    integer, intent(in)                   :: dm      ! day of month
-    integer, intent(in)                   :: doy     ! day of year
-    integer, intent(in)                   :: moy     ! month of year
-    real, dimension(ndayyear), intent(in) :: dtemp   ! air temperaure, deg C
+    type( plant_type ) :: tree 
 
     ! local variables
-    integer :: lu
-    integer :: pft
-    integer :: usemoy        ! MOY in climate vectors to use for allocation
-    integer :: usedoy        ! DOY in climate vectors to use for allocation
-    real :: avl
-    real, parameter :: freserve = 0.0
-
-    ! xxx debug
-    type( orgpool ) :: bal1, bal2, bald
-
-    ! Variables N balance test
-    logical, parameter :: baltest_trans = .false.  ! set to true to do mass conservation test during transient simulation
-    logical :: verbose = .false.  ! set to true to activate verbose mode
-    logical :: baltest
-    type( orgpool ) :: orgtmp1, orgtmp2, orgbal1
-    real :: ctmp
-
-    !------------------------------------------------------------------
-    baltest = .false.
-    verbose = .false.
-    !------------------------------------------------------------------
-
-    !-------------------------------------------------------------------------
-    ! Determine day of year (DOY) and month of year (MOY) to use in climate vectors
-    !-------------------------------------------------------------------------
-    if (dm==ndaymonth(moy)) then
-      usemoy = moy + 1
-      if (usemoy==13) usemoy = 1
-    else
-      usemoy = moy
-    end if
-    if (doy==ndayyear) then
-      usedoy = 1
-    else
-      usedoy = doy + 1
-    end if
-    !-------------------------------------------------------------------------
-
-    r_shoot_root = 0.5
+    type( plant_type ) :: before    ! tree before allocation
+    real              :: diam_inc  ! diameter increment (m)
+    real              :: calloc    ! C to be allocated to new growth (gC)
+    integer           :: lu
+    integer           :: pft
 
     ! initialise
     dcleaf(:) = 0.0
@@ -117,88 +75,212 @@ contains
 
       lu = params_pft_plant(pft)%lu_category
 
-      if (params_pft_plant(pft)%grass) then
+      ! save tree instance before allocation
+      before = tree
 
-        if ( plabl(pft,jpngr)%c%c12>0.0 .and. dtemp(doy)>0.0 ) then
+      !/////////////////////////////////////////////////////////////////////////
+      ! Get allocatable C
+      !------------------------------------------------------------------------
+      calloc = params_plant%growtheff * tree(pft,jpngr)%plabl%c%c12 * 1e-3   ! conversion from gC to kgC 
 
-          !------------------------------------------------------------------
-          ! Calculate maximum C allocatable based on current labile pool size.
-          ! Maximum is the lower of all labile C and the C to be matched by all labile N,
-          ! discounted by the yield factor.
-          !------------------------------------------------------------------
-          if (pleaf(pft,jpngr)%c%c12==0.0) then
-            leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
-          end if
 
-          ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
-          avl = max( 0.0, plabl(pft,jpngr)%c%c12 - freserve * pleaf(pft,jpngr)%c%c12 )
-          dcleaf(pft) = r_shoot_root(pft) * params_plant%growtheff * avl
-          dcroot(pft) = (1.0 - r_shoot_root(pft)) * params_plant%growtheff * avl
-          dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
+      !/////////////////////////////////////////////////////////////////////////
+      ! Get geometric relationships given current state variables
+      !------------------------------------------------------------------------
+      dWs_per_dD = get_dWs_per_dD( tree, pft )
+      dHP_per_dD = get_dHP_per_dD( tree, pft )
 
-          !-------------------------------------------------------------------
-          ! LEAF ALLOCATION
-          !-------------------------------------------------------------------
-          call allocate_leaf( &
-            pft, dcleaf(pft), &
-            pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
-            plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
-            solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs, &
-            lai_ind(pft,jpngr), dnleaf(pft) &
-            )
 
-          !-------------------------------------------------------------------  
-          ! Update leaf traits
-          !-------------------------------------------------------------------  
-          leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+      !/////////////////////////////////////////////////////////////////////////
+      ! Calculate change in diameter, stem mass and height
+      !------------------------------------------------------------------------
+      ! change in diameter
+      diam_inc = calloc / ( dHP_per_dD + dWs_per_dD )
 
-          !-------------------------------------------------------------------  
-          ! Update fpc_grid and fapar_ind (not lai_ind)
-          !-------------------------------------------------------------------  
-          canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
 
-          !-------------------------------------------------------------------
-          ! ROOT ALLOCATION
-          !-------------------------------------------------------------------
-          call allocate_root( &
-            pft, dcroot(pft), dnroot(pft), &
-            proot(pft,jpngr)%c%c12, proot(pft,jpngr)%n%n14, &
-            plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14  &
-            )
+      !/////////////////////////////////////////////////////////////////////////
+      ! Update state variables
+      !------------------------------------------------------------------------
+      call update_tree( tree, diam_inc )
 
-          !-------------------------------------------------------------------
-          ! GROWTH RESPIRATION, NPP
-          !-------------------------------------------------------------------
-          ! add growth respiration to autotrophic respiration and substract from NPP
-          ! (note that NPP is added to plabl in and growth resp. is implicitly removed
-          ! from plabl above)
-          drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
 
-          if ( plabl(pft,jpngr)%n%n14<0.0 ) plabl(pft,jpngr)%n%n14 = 0.0
+      !/////////////////////////////////////////////////////////////////////////
+      ! Calculate change in C and N pool sizes
+      !------------------------------------------------------------------------
+      dcleaf(pft) = tree%pleaf%c%c12 - before%pleaf%c%c12
+      dcroot(pft) = tree%proot%c%c12 - before%proot%c%c12
+      dcsapw(pft) = tree%psapw%c%c12 - before%psapw%c%c12
+      dcwood(pft) = tree%pwood%c%c12 - before%pwood%c%c12
 
+      dnleaf(pft) = tree%pleaf%n%n14 - before%pleaf%n%n14
+      dnroot(pft) = tree%proot%n%n14 - before%proot%n%n14
+      dnsapw(pft) = tree%psapw%n%n14 - before%psapw%n%n14
+      dnwood(pft) = tree%pwood%n%n14 - before%pwood%n%n14
+
+      ! test if it makes sense
+      if ( abs((dWs_per_dD * diam_inc) - dcwood(pft)) > eps ) stop 'stem mass increment not equal to change in wood C'
+      if ( abs((dHP_per_dD * diam_inc) - (dcleaf(pft) + dcroot(pft))) > eps ) stop 'actual root and foliage growth not equal to change in sum of pools'
+
+      drgrow(pft) = 
+
+
+
+
+
+
+
+
+
+        !------------------------------------------------------------------
+        ! Calculate maximum C allocatable based on current labile pool size.
+        ! Maximum is the lower of all labile C and the C to be matched by all labile N,
+        ! discounted by the yield factor.
+        !------------------------------------------------------------------
+        if (pleaf(pft,jpngr)%c%c12==0.0) then
+          leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
         end if
 
-      else
+        ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
+        avl = max( 0.0, plabl(pft,jpngr)%c%c12 - freserve * pleaf(pft,jpngr)%c%c12 )
+        dcleaf(pft) = r_shoot_root(pft) * params_plant%growtheff * avl
+        dcroot(pft) = (1.0 - r_shoot_root(pft)) * params_plant%growtheff * avl
+        dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
 
-        stop 'allocation_daily not implemented for trees'
+        !-------------------------------------------------------------------
+        ! LEAF ALLOCATION
+        !-------------------------------------------------------------------
+        call allocate_leaf( &
+          pft, dcleaf(pft), &
+          pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
+          plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
+          solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs, &
+          lai_ind(pft,jpngr), dnleaf(pft) &
+          )
+
+        !-------------------------------------------------------------------  
+        ! Update leaf traits
+        !-------------------------------------------------------------------  
+        leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+
+        !-------------------------------------------------------------------  
+        ! Update fpc_grid and fapar_ind (not lai_ind)
+        !-------------------------------------------------------------------  
+        canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
+
+        !-------------------------------------------------------------------
+        ! ROOT ALLOCATION
+        !-------------------------------------------------------------------
+        call allocate_root( &
+          pft, dcroot(pft), dnroot(pft), &
+          proot(pft,jpngr)%c%c12, proot(pft,jpngr)%n%n14, &
+          plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14  &
+          )
+
+        !-------------------------------------------------------------------
+        ! GROWTH RESPIRATION, NPP
+        !-------------------------------------------------------------------
+        ! add growth respiration to autotrophic respiration and substract from NPP
+        ! (note that NPP is added to plabl in and growth resp. is implicitly removed
+        ! from plabl above)
+        drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+
+        if ( plabl(pft,jpngr)%n%n14<0.0 ) plabl(pft,jpngr)%n%n14 = 0.0
 
       end if
 
     end do
 
-    ! print*, '--- END allocation_daily:'
+    ! print*, '--- END allocation_annual:'
 
-  end subroutine allocation_daily
-
-
-  subroutine allocate_leafarea( pft, dlai, ... )
+  end subroutine allocation_annual
 
 
-    .....
+  subroutine update_tree( tree, diam_inc )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Updates tree pools, given diameter increment following geometry rules by
+    ! T-model.
+    !-------------------------------------------------------------------------
+    use md_plant, only: params_pft_plant, plant_type
+    use md_params_core, only: pi
+
+    ! arguments
+    type( plant_type ), intent(inout) :: tree
+    real,              intent(in)    :: diam_inc
+
+    !-------------------------------------------------------------------------
+    ! Geometric relationships from T-model
+    !-------------------------------------------------------------------------
+    ! Change in diameter, determined from previous year; is zero in first year
+    tree%diam = tree%diam + diam_inc
+
+    ! update height (Eq. 4)
+    tree%height = params_tmodel(pft)%maxheight * ( 1.0 - exp( -1.0 * params_tmodel(pft)%a_par * tree%diam / params_tmodel(pft)%maxheight ) )
+
+    ! update crown fraction ("thickness of crown as a fraction of total height", Eq. 11)
+    tree%fcrown = tree%height / ( params_tmodel(pft)%a_par * tree%diam ) 
+
+    ! update projected crown area (Eq. 8)
+    tree%acrown = ( ( pi * params_tmodel(pft)%cr_par ) / ( 4.0 * params_tmodel(pft)%a_par) ) * tree%diam * tree%height
+
+    ! update total stem mass (Eq. 6)
+    tree%pwood%c%c12 = ( pi / 8.0 ) * ( tree%diam**2.0 ) * tree%height * params_tmodel(pft)%rho
+
+    ! update foliage mass (ss is specific leaf area)
+    tree%pleaf%c%c12 = tree%acrown * params_tmodel(pft)%lai_ind / params_tmodel(pft)%lma
+
+    ! update sapwood mass (tree%acrown/cr = As; As:= sapwood cross-sectional area; Eq. 14; L*cr*v=1; Hf=H(1-tree%fcrown/2))
+    tree%psapw%c%c12 = tree%acrown * params_tmodel(pft)%rho * tree%height * ( 1.0 - tree%fcrown / 2.0 ) / params_tmodel(pft)%cr_par
+
+    ! update root mass
+    tree%proot%c%c12 = params_tmodel(pft)%z_par * params_tmodel(pft)%lma * tree%pleaf%c%c12
+
+    !-------------------------------------------------------------------------
+    ! Update N in pools with fixed stoichiometry
+    !-------------------------------------------------------------------------
+    tree%proot%n%n14 = params_pft_plant(pft)%r_ntoc_root
+    tree%psapw%n%n14 = params_pft_plant(pft)%r_ntoc_wood
+    tree%pwood%n%n14 = params_pft_plant(pft)%r_ntoc_wood
 
 
-  end subroutine allocate_leafarea
+  end subroutine update_tree
 
+
+  function get_dWs_per_dD( tree, pft ) result( dWs_per_dD )
+    !///////////////////////////////////////////////////////////////////
+    ! Returns stem mass increment proportionality to diameter increment 
+    ! Based on Eq. 7, using Eq. 5 in Li et al., 2014
+    !-------------------------------------------------------------------
+    use md_params_core, only: pi
+
+    ! arguments
+    type( plant_type ), intent(in) :: tree
+    integer,           intent(in) :: pft
+
+    ! function return variable
+    real :: dWs_per_dD
+
+    dWs_per_dD = pi / 8.0 * params_tmodel(pft)%rho * tree%diam * ( params_tmodel(pft)%a_par * tree%diam * (1.0 - ( tree%height / params_tmodel(pft)%maxheight) ) + 2.0 * tree%height )
+
+  end function get_dWs_per_dD
+    
+
+  function get_dHP_per_dD( tree, pft ) result( dHP_per_dD )
+    !///////////////////////////////////////////////////////////////////
+    ! Returns "root and foliage allocation" per unit diameter increment.
+    ! Corresponds to second term in Eq. 16 without dD/dt in Li et al., 2014
+    !-------------------------------------------------------------------
+    use md_params_core, only: pi
+
+    ! arguments
+    type( plant_type ), intent(in) :: tree
+    integer,           intent(in) :: pft
+
+    ! function return variable
+    real :: dHP_per_dD
+
+    dHP_per_dD = params_tmodel(pft)%lai_ind * ( ( pi * params_tmodel(pft)%cr_par) / ( 4.0 * params_tmodel(pft)%a_par) ) * ( params_tmodel(pft)%a_par * tree%diam * ( 1.0 - ( tree%height / params_tmodel(pft)%maxheight ) + tree%height ) ) * ( 1.0 / params_tmodel(pft)%lma + params_tmodel(pft)%z_par ) 
+  
+  end function get_dWs_per_dD
 
 
   subroutine allocate_leaf( pft, mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd, nv, lai, mydnleaf )
@@ -322,6 +404,36 @@ contains
     ! end if
   
   end subroutine allocate_root
+
+
+  subroutine getpar_tree()
+    !////////////////////////////////////////////////////////////////
+    !  Subroutine reads model parameters from input file.
+    !  It was necessary to separate this SR from module md_plant
+    !  because this SR uses module md_waterbal, which also uses
+    !  _plant.
+    ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
+    ! contact: b.stocker@imperial.ac.uk
+    !----------------------------------------------------------------    
+    use md_sofunutils, only: getparreal
+    use md_interface
+
+    ! local variables
+    integer :: pft
+    integer :: npft_site
+
+
+    !----------------------------------------------------------------
+    ! PFT DEPENDENT PARAMETERS
+    ! read parameter input file and store values in single array
+    ! important: Keep this order of reading PFT parameters fixed.
+    !----------------------------------------------------------------
+    do pft=1,npft
+      params_tmodel(pft) = getpftparams( pftname )
+    end do
+
+
+  end subroutine getpar_tree
 
 
   subroutine initio_allocation()

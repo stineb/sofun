@@ -12,16 +12,16 @@ module md_phenology
   implicit none
 
   private
-  public dtphen, gettempphenology, sprout, shedleaves, params_pft_pheno, &
-    getpar_modl_phenology
+  public phenology_type, gettempphenology, getpar_modl_phenology
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
-  real, dimension(ndayyear,npft)    :: dtphen       ! daily temperature-driven phenology (=dphen_t in LPX)
-  logical, dimension(ndayyear,npft) :: sprout       ! boolean whether PFT is present
-  logical, dimension(ndayyear,npft) :: shedleaves   ! boolean whether PFT is present
-
+  type phenology_type
+    real,    dimension(ndayyear) :: dtphen       ! daily temperature-driven phenology (=dphen_t in LPX)
+    logical, dimension(ndayyear) :: sprout       ! boolean whether PFT is present
+    logical, dimension(ndayyear) :: shedleaves   ! boolean whether PFT is present
+  end type phenology_type
 
   !----------------------------------------------------------------
   ! Module-specific output variables
@@ -49,7 +49,7 @@ module md_phenology
 
 contains
 
-  subroutine gettempphenology( jpngr, dtemp )
+  function gettempphenology( jpngr, dtemp ) result( pheno )
     !//////////////////////////////////////////////////////////
     ! Defines dtphen, the temperature-driven phenology
     !----------------------------------------------------------
@@ -61,6 +61,9 @@ contains
     integer, intent(in) :: jpngr
     real, dimension(ndayyear), intent(in) :: dtemp
 
+    ! function return variable
+    type( phenology_type ), dimension(npft) :: pheno
+
     ! local variables
     integer :: warmest, coldest, month, midsummer, firstday, d, pft, day
     real    :: leafon_n, aphen, gdd
@@ -69,32 +72,32 @@ contains
     real, dimension(ndayyear)       :: dtemp_int   ! daily temperature as linearly interpolated from monthly temperature
     logical, save :: firstcall = .true.
 
-    dtphen(:,:)     = 0.0
-    sprout(:,:)     = .false.
-    shedleaves(:,:) = .false.
+    do pft=1,npft
 
-    ! Phenology is driven by monthly temperatures and daily temperatures
-    ! as interpolated from monthly temperatures to remove day-to-day
-    ! variability
-    mtemp = daily2monthly( dtemp, "mean" )
-    if (firstcall) then
-      mtemp_pvy(:,jpngr) = mtemp(:)
-      firstcall = .false.
-    end if
-    dtemp_int = monthly2daily( mtemp, "interpol", .false., mtemp_pvy )
+      pheno(pft)%dtphen(:)     = 0.0
+      pheno(pft)%sprout(:)     = .false.
+      pheno(pft)%shedleaves(:) = .false.
 
-    ! First find warmest and coldest month and mid-summer day
-    warmest=1
-    do month=1,nmonth
-      if (mtemp(month)>mtemp(warmest)) warmest=month
-    enddo
-    coldest=1
-    do month=1,nmonth
-      if (mtemp(month)<mtemp(coldest)) coldest=month
-    enddo
-    midsummer = middaymonth( warmest )
+      ! Phenology is driven by monthly temperatures and daily temperatures
+      ! as interpolated from monthly temperatures to remove day-to-day
+      ! variability
+      mtemp = daily2monthly( dtemp, "mean" )
+      if (firstcall) then
+        mtemp_pvy(:,jpngr) = mtemp(:)
+        firstcall = .false.
+      end if
+      dtemp_int = monthly2daily( mtemp, "interpol", .false., mtemp_pvy )
 
-    ! do pft=1,npft
+      ! First find warmest and coldest month and mid-summer day
+      warmest=1
+      do month=1,nmonth
+        if (mtemp(month)>mtemp(warmest)) warmest=month
+      enddo
+      coldest=1
+      do month=1,nmonth
+        if (mtemp(month)<mtemp(coldest)) coldest=month
+      enddo
+      midsummer = middaymonth( warmest )
 
       if (npft>1) stop 'in phenology: think of something nice'
       pft = 1
@@ -114,78 +117,40 @@ contains
         ! summergreen TAXA
         !----------------------------------------------------------
         if (firstday==midsummer) then 
-          dtphen(:,pft)=1.0     ! no leaf abscission
+          pheno(pft)%dtphen(:,pft)=1.0     ! no leaf abscission
         else
           gdd=0.0               ! accumulated growing degree days
           day=firstday+1
           if (day>ndayyear) day=1
-          ! print*,'firstday ', firstday
-          ! print*,'day ', day
           do while (day/=firstday)
             if (dtemp_int(day)>params_pheno%gddbase) then ! growing day
               gdd = gdd + dtemp_int(day) - params_pheno%gddbase
               if (params_pft_pheno(pft)%ramp>0.0) then
-                dtphen(day,pft) = min( gdd / params_pft_pheno(pft)%ramp, 1.0 )
+                pheno(pft)%dtphen(day) = min( gdd / params_pft_pheno(pft)%ramp, 1.0 )
               else
-                dtphen(day,pft) = 1.0
+                pheno(pft)%dtphen(day) = 1.0
               endif
             endif
-            ! print*,'dtphen_tmp ', dtphen_tmp(day,pft)
             day=day+1
             if (day>ndayyear) day=1
           enddo
         endif
         
-
-        ! if (params_pft_plant(pft)%tree) then
-        !   !----------------------------------------------------------
-        !   ! TREES
-        !   !----------------------------------------------------------
-        !   aphen=sum(dtphen_tmp(:))
-        !   if (aphen>210) then 
-        !     do d=middaymonth(coldest),middaymonth(coldest)+75
-        !       if (d<=ndayyear) then
-        !         day=d
-        !       else
-        !         day=d-ndayyear      
-        !       endif
-        !       dtphen_tmp(day,pft)=0.0
-        !     enddo
-        !     do d=middaymonth(coldest)-75,middaymonth(coldest)
-        !       if (d>=1) then
-        !         day=d
-        !       else
-        !         day=ndayyear+d
-        !       endif
-        !       dtphen_tmp(day,pft)=0.0
-        !     enddo
-        !   endif
-        ! endif
-
       else
         !----------------------------------------------------------
         ! NON-summergreen TAXA
         !----------------------------------------------------------
-        dtphen(:,pft)=1.0
+        pheno(pft)%dtphen(:,pft)=1.0
 
       endif
-      
-      ! print*, 'gettempphenology: dtphen_tmp(day,pft) '
-      ! print*, dtphen(:,pft)
-      ! print*, 'a' 
-      ! stop
+        
+      ! save monthly temperature for next year
+      mtemp_pvy(:,jpngr) = mtemp(:)
 
-
-    ! save monthly temperature for next year
-    mtemp_pvy(:,jpngr) = mtemp(:)
-
-    ! do pft=1,npft
-
-      ! xxx try: really weird: when appplying a loop over pft, dtphen, sprout, 
+      ! xxx try: really weird: when appplying a loop over pft, pheno(pft)%dtphen, sprout, 
       ! and shedleaves are all set to false after finishing each iteration
       ! therefore set to pft=1 here.
       if (npft>1) stop 'in phenology: think of something nice'
-      pft = 1
 
       do day=2,ndayyear
 
@@ -194,38 +159,38 @@ contains
           ! temperature-driven phenology summergreen
           !----------------------------------------------------------
 
-          if ( dtphen(day,pft) > 0.0 .and. dtphen(day-1,pft) == 0.0 ) then
+          if ( pheno(pft)%dtphen(day) > 0.0 .and. pheno(pft)%dtphen(day-1) == 0.0 ) then
             !----------------------------------------------------------
             ! beginning of season (spring)
             !----------------------------------------------------------
-            sprout(day,pft) = .true.
-            shedleaves(day,pft) = .false.
+            pheno(pft)%sprout(day) = .true.
+            pheno(pft)%shedleaves(day) = .false.
             ! print*, 'sprouting on day ', day 
             ! print*, sprout(38,pft)
 
-          else if ( dtphen(day,pft) > 0.0 ) then
+          else if ( pheno(pft)%dtphen(day) > 0.0 ) then
             !----------------------------------------------------------
             ! during season (after spring and before autumn)
             !----------------------------------------------------------
-            sprout(day,pft) = .false.
-            shedleaves(day,pft) = .false.
+            pheno(pft)%sprout(day) = .false.
+            pheno(pft)%shedleaves(day) = .false.
             ! print*, 'active on day ', day
 
-          else if ( dtphen(day,pft) == 0.0 .and. dtphen(day-1,pft) > 0.0 ) then
+          else if ( pheno(pft)%dtphen(day) == 0.0 .and. pheno(pft)%dtphen(day-1) > 0.0 ) then
             !----------------------------------------------------------
             ! end of season (autumn)
             !----------------------------------------------------------
-            sprout(day,pft) = .false.
-            shedleaves(day,pft) = .true.
+            pheno(pft)%sprout(day) = .false.
+            pheno(pft)%shedleaves(day) = .true.
             ! print*, 'shedding leaves on day ', day 
             ! print*, shedleaves(345,pft)
 
-          else if ( dtphen(day,pft) == 0.0 ) then
+          else if ( pheno(pft)%dtphen(day) == 0.0 ) then
             !----------------------------------------------------------
             ! during dormant season (after autumn and before spring)
             !----------------------------------------------------------
-            sprout(day,pft) = .false.
-            shedleaves(day,pft) = .false.
+            pheno(pft)%sprout(day) = .false.
+            pheno(pft)%shedleaves(day) = .false.
             ! print*, 'dormant on day ', day
 
           end if
@@ -240,11 +205,11 @@ contains
 
       ! xxx debug
       ! print*,'PHENOLOGY: overriding shedleaves'
-      shedleaves(:,pft) = .false.
-    
-    return
+      pheno(pft)%shedleaves(:) = .false.
 
-  end subroutine gettempphenology
+    end do
+
+  end function gettempphenology
 
 
   subroutine getpar_modl_phenology()

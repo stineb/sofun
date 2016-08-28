@@ -22,12 +22,11 @@ module md_waterbal
   ! ...
   !----------------------------------------------------------------
   use md_params_core, only: ndayyear, nmonth, nlu, maxgrid
-  ! use md_params_siml, only: interface%params_siml%loutwaterbal
 
   implicit none
 
   private
-  public psoilphys, soilphys, solar, evap, waterbal, getsolar_alldays, &
+  public soilphys, evap, waterbal, getsolar, &
     initdaily_waterbal, initglobal_waterbal, initio_waterbal,          &
     getout_daily_waterbal, initoutput_waterbal,                        &
     getpar_modl_waterbal, writeout_ascii_waterbal
@@ -39,8 +38,6 @@ module md_waterbal
   type psoilphystype
     real :: wcont      ! soil water mass [mm = kg/m2]
   end type psoilphystype
-
-  type( psoilphystype ), dimension(nlu,maxgrid) :: psoilphys
 
   ! Collection of physical soil variables used across modules
   type soilphystype
@@ -62,8 +59,6 @@ module md_waterbal
     real, dimension(nmonth)   :: mppfd       ! monthly total PPFD (mol m-2 month-1)
     real, dimension(nmonth)   :: meanmppfd   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
   end type solartype
-
-  type( solartype ) :: solar
 
   !----------------------------------------------------------------
   ! Module-specific output variables
@@ -215,21 +210,6 @@ contains
     end do
 
   end subroutine waterbal
-
-
-  subroutine getsolar_alldays( lat, elv, sf )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Subroutine to get variables stored in derived type 'solar' (belongs
-    ! to module only, not core variable).
-    !-------------------------------------------------------------------------  
-    ! arguments
-    real, intent(in)                      :: lat           ! latitude, degrees
-    real, intent(in)                      :: elv           ! elevation, metres
-    real, dimension(ndayyear), intent(in) :: sf            ! fraction of sunshine hours 
-
-    solar = getsolar( lat, elv, sf(:) )
-
-  end subroutine getsolar_alldays
 
 
   function getsolar( lat, elv, sf ) result( out_solar )
@@ -1095,10 +1075,13 @@ contains
   end subroutine initdaily_waterbal
 
 
-  subroutine initglobal_waterbal()
+  subroutine initglobal_waterbal( psoilphys )
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables within derived type 'psoilphys'.
     !----------------------------------------------------------------
+    ! argument
+    type( psoilphystype ), dimension(nlu,maxgrid), inout  :: psoilphys
+    
     ! xxx try
     psoilphys(:,:)%wcont = 50.0 
 
