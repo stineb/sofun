@@ -8,10 +8,9 @@ module md_plant
   implicit none
 
   private
-  public pleaf, proot, psapw, plabl, pexud, plitt_af, plitt_as, plitt_bg, &
-    dgpp, dnpp, drgrow, drleaf, drroot, drsapw, dcex, leaftraits, canopy, &
-    lai_ind,                                                              &
-    fpc_grid, nind, dnup, dnup_fix,                                       &
+  public plant_type, pexud, plitt_af, plitt_as, plitt_bg,                 &
+    dgpp, dnpp, drgrow, drleaf, drroot, drsapw, dcex,                     &
+    dnup, dnup_fix,                                                       &
     params_pft_plant, params_plant, initglobal_plant, initpft,            &
     initdaily_plant, outdnpp, outdnup, outdcleaf, outdcroot, outdclabl,   &
     outdnlabl, outdclitt, outdNlitt, outdCsoil, outdNsoil, outdlai,       &
@@ -19,14 +18,17 @@ module md_plant
     dnarea_mb, dnarea_cw, dlma, dcton_lm, get_fapar,                      &
     initoutput_plant, initio_plant, getout_daily_plant,                   &
     getout_annual_plant, writeout_ascii_plant, getpar_modl_plant,         &
-    leaftraits_type, get_leaftraits, canopy_type,                         & 
-    get_canopy, seed, get_leaftraits_init, frac_leaf,                     &
-    maxlai, maxdoy, outaCveg2lit, outaNveg2lit
+    get_leaftraits,                                                       & 
+    outacveg2lit, outanveg2lit
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
   type plant_type
+
+    ! PFT index that goes along with this instance of 'plant'
+    integer :: pftno
+
     ! pools
     type(orgpool) :: pleaf      ! leaf biomass [gC/ind.] (=lm_ind)
     type(orgpool) :: proot      ! root biomass [gC/ind.] (=rm_ind)
@@ -41,7 +43,8 @@ module md_plant
     real :: fcrown              ! crown fraction of tree height (unitless)
 
     ! canopy
-    real :: fapar               ! fraction of absorbed photosynthetically active radiation
+    real :: lai_ind             ! fraction of absorbed photosynthetically active radiation
+    real :: fapar_ind           ! fraction of absorbed photosynthetically active radiation
 
     ! leaf traits
     real :: narea               ! total leaf N per unit leaf area (gN m-2)
@@ -56,9 +59,6 @@ module md_plant
   end type plant_type
 
 
-  real, dimension(npft,maxgrid) :: fpc_grid                  ! area fraction within gridcell occupied by PFT
-  real, dimension(npft,maxgrid) :: nind                      ! number of individuals [1/m2]
-  
   type(carbon),  dimension(nlu,maxgrid)  :: pexud            ! exudates pool (very short turnover) [gC/m2]
   
   type(orgpool), dimension(npft,maxgrid) :: plitt_af         ! above-ground litter, fast turnover [gC/m2]
@@ -153,8 +153,8 @@ module md_plant
   real, dimension(npft,maxgrid) :: outanup
   real, dimension(npft,maxgrid) :: outanup_fix
   real, dimension(npft,maxgrid) :: outacex
-  real, dimension(npft,maxgrid) :: outaCveg2lit
-  real, dimension(npft,maxgrid) :: outaNveg2lit
+  real, dimension(npft,maxgrid) :: outacveg2lit
+  real, dimension(npft,maxgrid) :: outanveg2lit
   real, dimension(npft,maxgrid) :: outanarea_mb
   real, dimension(npft,maxgrid) :: outanarea_cw
   real, dimension(npft,maxgrid) :: outalai
@@ -180,7 +180,7 @@ contains
     ! function return variable
     real :: fapar
 
-    fapar = ( 1.0 - exp( -1.0 * params_plant%kbeer * lai) )
+    fapar = ( 1.0 - exp( -1.0 * params_plant%kbeer * lai ) )
 
   end function get_fapar
 
@@ -221,7 +221,7 @@ contains
   end function get_leaf_n_metabolic_canopy
 
 
-  subroutine get_leaftraits( tree, pft, meanmppfd, nv )
+  subroutine get_leaftraits( plant, meanmppfd, nv )
     !////////////////////////////////////////////////////////////////
     ! Calculates leaf traits based on (predicted) metabolic Narea and
     ! (prescribed) parameters that relate structural to metabolic
@@ -232,30 +232,25 @@ contains
     use md_params_core, only: c_content_of_biomass, nmonth, n_molmass, c_molmass
 
     ! arguments
-    type( plant_type ), intent(inout)    :: tree
-    integer, intent(in)                 :: pft
+    type( plant_type ), intent(inout)   :: plant
     real, dimension(nmonth), intent(in) :: meanmppfd
     real, dimension(nmonth), intent(in) :: nv
 
-    ! function return variable
-    type( leaftraits_type ) :: out_traits
-
     ! local variables
-    real :: mynarea_metabolic_canop   ! mol N m-2-ground
-    real :: mynarea_structural_canop  ! mol N m-2-ground
+    real :: narea_metabolic_canopy   ! g N m-2-ground
 
     ! canopy-level, in units of gN / m2-ground 
-    narea_metabolic_canopy  = n_molmass * get_leaf_n_metabolic_canopy(  params_pft_plant(pft)%lai_ind, meanmppfd(:), nv(:) )
+    narea_metabolic_canopy  = n_molmass * get_leaf_n_metabolic_canopy(  params_pft_plant(plant%pftno)%lai_ind, meanmppfd(:), nv(:) )
 
     ! leaf-level, in units of gN / m2-leaf 
-    tree%narea_metabolic  = narea_metabolic_canopy / params_pft_plant(pft)%lai_ind
-    tree%narea_structural = params_pft_plant(pft)%r_ntolma * params_pft_plant(pft)%lma
-    tree%narea            = tree%narea_metabolic + tree%narea_structural
+    plant%narea_metabolic  = narea_metabolic_canopy / params_pft_plant(plant%pftno)%lai_ind
+    plant%narea_structural = params_pft_plant(plant%pftno)%r_ntolma * params_pft_plant(plant%pftno)%lma
+    plant%narea            = plant%narea_metabolic + plant%narea_structural
 
     ! additional traits
-    tree%nmass            = tree%narea / ( tree%lma / c_content_of_biomass )
-    tree%r_cton_leaf      = params_pft_plant(pft)%lma / tree%narea
-    tree%r_ntoc_leaf      = 1.0 / tree%r_cton_leaf
+    plant%nmass            = plant%narea / ( plant%lma / c_content_of_biomass )
+    plant%r_cton_leaf      = params_pft_plant(plant%pftno)%lma / plant%narea
+    plant%r_ntoc_leaf      = 1.0 / plant%r_cton_leaf
 
   end subroutine get_leaftraits
 
@@ -270,7 +265,7 @@ contains
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------    
     use md_sofunutils, only: getparreal
-    use md_interface
+    use md_interface, only: interface
 
     ! local variables
     integer :: pft
@@ -429,7 +424,7 @@ contains
     use md_params_core, only: npft, maxgrid
 
     ! argument
-    integer, intent(inout) :: plant
+    type( plant_type ), dimension(npft,maxgrid), intent(inout) :: plant
 
     ! local variables
     integer :: pft
@@ -441,6 +436,7 @@ contains
     do jpngr=1,maxgrid
       do pft=1,npft
         call initpft( plant(pft,jpngr) )
+        plant(pft,jpngr)%pftno = pft
       end do
     end do
  
@@ -462,40 +458,34 @@ contains
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     ! argument
-    integer, intent(inout) :: plant
+    type( plant_type ), intent(inout) :: plant
 
-    if (params_pft_plant(pft)%tree) then
+    ! initialise all pools with zero
+    plant%pleaf = orgpool(carbon(0.0),nitrogen(0.0))
+    plant%proot = orgpool(carbon(0.0),nitrogen(0.0))
+    plant%psapw = orgpool(carbon(0.0),nitrogen(0.0))
+    plant%pwood = orgpool(carbon(0.0),nitrogen(0.0))
+    plant%plabl = orgpool(carbon(0.0),nitrogen(0.0))
 
-      ! initialise all pools with zero
-      plant%pleaf = orgpool(carbon(0.0),nitrogen(0.0))
-      plant%proot = orgpool(carbon(0.0),nitrogen(0.0))
-      plant%psapw = orgpool(carbon(0.0),nitrogen(0.0))
-      plant%pwood = orgpool(carbon(0.0),nitrogen(0.0))
-      plant%plabl = orgpool(carbon(0.0),nitrogen(0.0))
+    ! geometry
+    plant%height = 0.0
+    plant%diam   = 0.0
+    plant%acrown = 0.0
+    plant%fcrown = 0.0
 
-      ! geometry
-      plant%height = 0.0
-      plant%diam   = 0.0
-      plant%acrown = 0.0
-      plant%fcrown = 0.0
+    ! canpopy state variables
+    plant%narea            = 0.0
+    plant%narea_metabolic  = 0.0
+    plant%narea_structural = 0.0
+    plant%lma              = 0.0
+    plant%sla              = 0.0
+    plant%nmass            = 0.0
+    plant%r_cton_leaf      = 0.0
+    plant%r_ntoc_leaf      = 0.0
 
-      ! canpopy state variables
-      plant%narea            = 0.0
-      plant%narea_metabolic  = 0.0
-      plant%narea_structural = 0.0
-      plant%lma              = 0.0
-      plant%sla              = 0.0
-      plant%nmass            = 0.0
-      plant%r_cton_leaf      = 0.0
-      plant%r_ntoc_leaf      = 0.0
-
-      ! canopy variables
-      plant%fapar = 0.0
-
-      ! number of individuals
-      plant%nind  = 1.0 
-
-    end if
+    ! canopy variables, fixed in T-model for an individual
+    plant%lai_ind   = params_pft_plant(plant%pftno)%lai_ind
+    plant%fapar_ind = get_fapar( plant%lai_ind )
 
   end subroutine initpft
 
@@ -522,7 +512,7 @@ contains
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
-    use md_interface
+    use md_interface, only: interface
 
     if (interface%steering%init .and. interface%params_siml%loutdgpp  ) allocate( outdgpp      (npft,ndayyear,maxgrid) )
     if (interface%steering%init .and. interface%params_siml%loutdnpp  ) allocate( outdnpp      (npft,ndayyear,maxgrid) )
@@ -559,8 +549,8 @@ contains
       outanup(:,:)      = 0.0
       outanup_fix(:,:)  = 0.0
       outacex(:,:)      = 0.0
-      outaCveg2lit(:,:) = 0.0
-      outaNveg2lit(:,:) = 0.0
+      outacveg2lit(:,:) = 0.0
+      outanveg2lit(:,:) = 0.0
       outanarea_mb(:,:) = 0.0
       outanarea_cw(:,:) = 0.0
       outalai     (:,:) = 0.0
@@ -579,7 +569,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Opens input/output files.
     !----------------------------------------------------------------
-    use md_interface
+    use md_interface, only: interface
 
     ! local variables
     character(len=256) :: prefix
@@ -748,7 +738,7 @@ contains
   end subroutine initio_plant
 
 
-  subroutine getout_daily_plant( jpngr, moy, doy )
+  subroutine getout_daily_plant( plant, jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
     ! Note that output variables are collected only for those variables
@@ -757,11 +747,12 @@ contains
     ! where they are defined.
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
-    use md_interface
+    use md_interface, only: interface
 
     ! arguments
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: moy
+    type( plant_type ), dimension(npft), intent(in) :: plant
+    integer, intent(in)                             :: jpngr
+    integer, intent(in)                             :: moy
     integer, intent(in) :: doy
 
     ! LOCAL VARIABLES
@@ -776,22 +767,22 @@ contains
     if (interface%params_siml%loutdnpp   ) outdnpp(:,doy,jpngr)   = dnpp(:)%c12
     if (interface%params_siml%loutdnup   ) outdnup(:,doy,jpngr)   = dnup(:)%n14
     if (interface%params_siml%loutdcex   ) outdcex(:,doy,jpngr)   = dcex(:)
-    if (interface%params_siml%loutdcleaf .or. interface%params_siml%loutplant ) outdcleaf(:,doy,jpngr) = pleaf(:,jpngr)%c%c12
-    if (interface%params_siml%loutdcroot .or. interface%params_siml%loutplant ) outdcroot(:,doy,jpngr) = proot(:,jpngr)%c%c12
-    if (interface%params_siml%loutdclabl ) outdclabl(:,doy,jpngr) = plabl(:,jpngr)%c%c12
-    if (interface%params_siml%loutdnlabl ) outdnlabl(:,doy,jpngr) = plabl(:,jpngr)%n%n14
+    if (interface%params_siml%loutdcleaf .or. interface%params_siml%loutplant ) outdcleaf(:,doy,jpngr) = plant(:)%pleaf%c%c12
+    if (interface%params_siml%loutdcroot .or. interface%params_siml%loutplant ) outdcroot(:,doy,jpngr) = plant(:)%proot%c%c12
+    if (interface%params_siml%loutdclabl ) outdclabl(:,doy,jpngr) = plant(:)%plabl%c%c12
+    if (interface%params_siml%loutdnlabl ) outdnlabl(:,doy,jpngr) = plant(:)%plabl%n%n14
     if (interface%params_siml%loutdclitt ) outdclitt(:,doy,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
     if (interface%params_siml%loutdnlitt ) outdNlitt(:,doy,jpngr) = plitt_af(:,jpngr)%n%n14 + plitt_as(:,jpngr)%n%n14 + plitt_bg(:,jpngr)%n%n14
-    if (interface%params_siml%loutdfapar ) outdfapar(:,doy,jpngr) = canopy(:)%fapar_ind
+    if (interface%params_siml%loutdfapar ) outdfapar(:,doy,jpngr) = plant(:)%fapar_ind
 
     ! this is needed also for other (annual) output variables
-    outdlai(:,doy,jpngr) = lai_ind(:,jpngr)
+    outdlai(:,doy,jpngr) = plant(:)%lai_ind
       
     if (interface%params_siml%loutplant) then
-      dnarea_mb(:,doy) = leaftraits(:)%narea_metabolic
-      dnarea_cw(:,doy) = leaftraits(:)%narea_structural
-      dcton_lm(:,doy)  = leaftraits(:)%r_cton_leaf
-      dlma(:,doy)      = leaftraits(:)%lma
+      dnarea_mb(:,doy) = plant(:)%narea_metabolic 
+      dnarea_cw(:,doy) = plant(:)%narea_structural
+      dcton_lm(:,doy)  = plant(:)%r_cton_leaf
+      dlma(:,doy)      = plant(:)%lma
     end if
 
     !----------------------------------------------------------------
@@ -799,8 +790,8 @@ contains
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
     if (interface%params_siml%loutplant) then
-      outacleaf(:,jpngr)   = outacleaf(:,jpngr) + pleaf(:,jpngr)%c%c12 / ndayyear
-      outacroot(:,jpngr)   = outacroot(:,jpngr) + proot(:,jpngr)%c%c12 / ndayyear
+      outacleaf(:,jpngr)   = outacleaf(:,jpngr) + plant(:)%pleaf%c%c12 / ndayyear
+      outacroot(:,jpngr)   = outacroot(:,jpngr) + plant(:)%proot%c%c12 / ndayyear
       outagpp(:,jpngr)     = outagpp(:,jpngr) + dgpp(:)
       outanpp(:,jpngr)     = outanpp(:,jpngr) + dnpp(:)%c12
       outanup(:,jpngr)     = outanup(:,jpngr) + dnup(:)%n14
@@ -811,69 +802,44 @@ contains
   end subroutine getout_daily_plant
 
 
-  subroutine getout_annual_plant( jpngr )
+  subroutine getout_annual_plant( plant, jpngr )
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
-    use md_interface
+    use md_interface, only: interface
 
     ! arguments
-    integer, intent(in) :: jpngr
+    type( plant_type ), dimension(npft), intent(in) :: plant
+    integer, intent(in)                             :: jpngr
 
     ! local variables
     integer :: pft
     integer :: doy
 
-    maxlai(:) = 0.0
-    maxdoy(:) = 1
-
     ! Output annual value at day of peak LAI
-    do pft=1,npft
-      maxdoy(pft) = 1
-      maxlai(pft) = outdlai(pft,1,jpngr)
-      do doy=2,ndayyear
-        if ( outdlai(pft,doy,jpngr) > maxlai(pft) ) then
-          maxlai(pft) = outdlai(pft,doy,jpngr)
-          maxdoy(pft) = doy
-        end if
-      end do
-      
-      if (interface%params_siml%loutplant) then
-        outanarea_mb(pft,jpngr) = dnarea_mb(pft,maxdoy(pft))
-        outanarea_cw(pft,jpngr) = dnarea_cw(pft,maxdoy(pft))
-        outalai     (pft,jpngr) = maxlai(pft)
-        outalma     (pft,jpngr) = dlma(pft,maxdoy(pft))
-        outacton_lm (pft,jpngr) = dcton_lm(pft,maxdoy(pft))
-      end if
+    if (interface%params_siml%loutplant) then
+      outanarea_mb(:,jpngr) = plant(:)%narea_metabolic 
+      outanarea_cw(:,jpngr) = plant(:)%narea_structural
+      outalai     (:,jpngr) = plant(:)%lai_ind
+      outalma     (:,jpngr) = plant(:)%lma
+      outacton_lm (:,jpngr) = plant(:)%r_cton_leaf
+    end if
 
-      if (interface%params_siml%loutdclabl) outaclabl(pft,jpngr) = outdclabl(pft,ndayyear,jpngr) ! taken at the end of the year
-      if (interface%params_siml%loutdnlabl) outanlabl(pft,jpngr) = outdnlabl(pft,ndayyear,jpngr) ! taken at the end of the year
-
-    end do
-
-    ! open(unit=666,file='cton_vs_lai.log',status='unknown')
-    ! do doy=1,ndayyear
-    !   write(666,*) outdlai(1,doy,1), ",", dcton_lm(1,doy)
-    ! end do
-    ! close(unit=666)
+    if (interface%params_siml%loutdclabl) outaclabl(:,jpngr) = outdclabl(:,ndayyear,jpngr) ! taken at the end of the year
+    if (interface%params_siml%loutdnlabl) outanlabl(:,jpngr) = outdnlabl(:,ndayyear,jpngr) ! taken at the end of the year
 
   end subroutine getout_annual_plant
 
 
-  subroutine writeout_ascii_plant( year )
+  subroutine writeout_ascii_plant()
     !/////////////////////////////////////////////////////////////////////////
     ! Write daily ASCII output
     ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
     ! contact: b.stocker@imperial.ac.uk
     !-------------------------------------------------------------------------
-    ! use md_params_siml, only: spinup, interface%params_siml%daily_out_startyr, &
-    !   interface%params_siml%daily_out_endyr, outyear
     use md_params_core, only: ndayyear
-    use md_interface
-
-    ! arguments
-    integer, intent(in) :: year       ! simulation year
+    use md_interface, only: interface
 
     ! local variables
     real :: itime
@@ -936,8 +902,8 @@ contains
 
       itime = real(interface%steering%outyear)
 
-      write(307,999) itime, sum(outaCveg2lit(:,jpngr))
-      write(308,999) itime, sum(outaNveg2lit(:,jpngr))
+      write(307,999) itime, sum(outacveg2lit(:,jpngr))
+      write(308,999) itime, sum(outanveg2lit(:,jpngr))
       write(310,999) itime, sum(outagpp(:,jpngr))
       write(311,999) itime, sum(outanpp(:,jpngr))
       write(312,999) itime, sum(outacleaf(:,jpngr))

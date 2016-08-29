@@ -1,0 +1,15 @@
+###############################################################
+# T-MODEL PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+a_par                                   116.0
+cr_par                                  390.43
+maxheight                               25.33
+rho                                     200.0
+z_par                                   0.17
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 

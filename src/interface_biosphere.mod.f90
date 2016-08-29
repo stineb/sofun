@@ -27,6 +27,8 @@ module md_interface
     type( paramstype_siml )                           :: params_siml
   end type interfacetype_biosphere
 
+  type( interfacetype_biosphere ) :: interface
+
   !----------------------------------------------------------------
   ! Module-specific daily output variables
   !----------------------------------------------------------------
@@ -41,12 +43,15 @@ module md_interface
 
 contains
 
-  subroutine initoutput_forcing()
+  subroutine initoutput_forcing( interface )
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, maxgrid
+
+    ! argument
+    type( interfacetype_biosphere ), intent(in) :: interface
 
     ! Allocate memory for daily output variables
     if (interface%steering%init .and. interface%params_siml%loutdtemp  ) allocate( outdtemp(ndayyear,maxgrid) )
@@ -61,10 +66,12 @@ contains
   end subroutine initoutput_forcing
 
 
-  subroutine initio_forcing()
+  subroutine initio_forcing( interface )
     !////////////////////////////////////////////////////////////////
     ! Opens input/output files.
     !----------------------------------------------------------------
+    ! argument
+    type( interfacetype_biosphere ), intent(in) :: interface
 
     ! local variables
     character(len=256) :: prefix
@@ -103,7 +110,7 @@ contains
   end subroutine initio_forcing
 
 
-  subroutine getout_daily_forcing( jpngr, moy, doy )
+  subroutine getout_daily_forcing( interface, jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
     ! Note that output variables are collected only for those variables
@@ -114,6 +121,7 @@ contains
     use md_params_core, only: ndayyear, npft
 
     ! arguments
+    type( interfacetype_biosphere ), intent(in) :: interface
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy
     integer, intent(in) :: doy
@@ -140,18 +148,16 @@ contains
   end subroutine getout_daily_forcing
 
 
-  subroutine writeout_ascii_forcing( year )
+  subroutine writeout_ascii_forcing( interface )
     !/////////////////////////////////////////////////////////////////////////
     ! Write daily ASCII output
     ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
     ! contact: b.stocker@imperial.ac.uk
     !-------------------------------------------------------------------------
-    ! use md_params_siml, only: spinup, interface%params_siml%daily_out_startyr, &
-    !   interface%params_siml%daily_out_endyr, outyear
     use md_params_core, only: ndayyear
 
     ! arguments
-    integer, intent(in) :: year       ! simulation year
+    type( interfacetype_biosphere ), intent(in) :: interface
 
     ! local variables
     real :: itime

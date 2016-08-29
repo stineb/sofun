@@ -100,7 +100,6 @@ contains
       midsummer = middaymonth( warmest )
 
       if (npft>1) stop 'in phenology: think of something nice'
-      pft = 1
 
       !----------------------------------------------------------
       ! Find day of leaf abscission ('firstday') at end of summer
@@ -117,7 +116,7 @@ contains
         ! summergreen TAXA
         !----------------------------------------------------------
         if (firstday==midsummer) then 
-          pheno(pft)%dtphen(:,pft)=1.0     ! no leaf abscission
+          pheno(pft)%dtphen(:)=1.0     ! no leaf abscission
         else
           gdd=0.0               ! accumulated growing degree days
           day=firstday+1
@@ -140,7 +139,7 @@ contains
         !----------------------------------------------------------
         ! NON-summergreen TAXA
         !----------------------------------------------------------
-        pheno(pft)%dtphen(:,pft)=1.0
+        pheno(pft)%dtphen(:)=1.0
 
       endif
         

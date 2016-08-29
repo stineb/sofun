@@ -21,13 +21,12 @@ module md_npp
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use md_classdefs
-  use md_plant
   use md_params_core, only: npft, maxgrid
 
   implicit none
 
   private
-  public npp, calc_cexu, calc_resp_maint, initoutput_npp, &
+  public npp, calc_resp_maint, initoutput_npp, &
     initio_npp, getout_daily_npp, writeout_ascii_npp
 
   !----------------------------------------------------------------
@@ -46,7 +45,7 @@ module md_npp
 
 contains
 
-  subroutine npp( jpngr, dtemp, doy )
+  subroutine npp( plant, tile, dtemp, doy )
     !/////////////////////////////////////////////////////////////////////////
     ! NET PRIMARY PRODUCTIVITY
     ! Calculate maintenance and growth respiration and substract this from GPP 
@@ -58,17 +57,17 @@ contains
     ! ('rsoil'). This implies that growth respiration is "paid" also on exu-
     ! dates. 
     !-------------------------------------------------------------------------
-    use md_params_core, only: npft, ndayyear
-    use md_soiltemp, only: dtemp_soil
+    use md_params_core, only: npft, ndayyear, nlu
     use md_gpp, only: drd
-    use md_turnover, only: turnover_leaf, turnover_root, turnover_labl
-    use md_phenology, only: sprout
-    use md_interface
+    use md_plant, only: plant_type, params_pft_plant, params_plant, &
+      drleaf, drroot, drgrow, dnpp, dgpp, drsapw
+    use md_tile, only: tile_type
 
     ! arguments
-    integer, intent(in) :: jpngr
-    real, intent(in)    :: dtemp      ! air temperature at this day
-    integer, intent(in) :: doy
+    type( plant_type ), dimension(npft), intent(inout) :: plant
+    type( tile_type ), dimension(nlu), intent(in)      :: tile
+    real, intent(in)                                   :: dtemp      ! air temperature at this day
+    integer, intent(in)                                :: doy
 
     ! local variables
     integer :: pft
@@ -80,15 +79,13 @@ contains
 
     logical, save :: check_sprout = .false.
 
-    ! print*, '---- in npp:'
-
     !-------------------------------------------------------------------------
     ! PFT LOOP
     !-------------------------------------------------------------------------
     do pft=1,npft
 
-      if (plabl(pft,jpngr)%c%c12<0.0) stop 'before npp labile C is neg.'
-      if (plabl(pft,jpngr)%n%n14<0.0) stop 'before npp labile N is neg.'
+      if (plant(pft)%plabl%c%c12<0.0) stop 'before npp labile C is neg.'
+      if (plant(pft)%plabl%n%n14<0.0) stop 'before npp labile N is neg.'
 
       lu = params_pft_plant(pft)%lu_category
       
@@ -98,9 +95,9 @@ contains
       !-------------------------------------------------------------------------
       ! fine roots should have a higher repsiration coefficient than other tissues (Franklin et al., 2007).
       drleaf(pft) = drd(pft)  ! leaf respiration is given by dark respiration as calculated in P-model.       
-      drroot(pft) = calc_resp_maint( proot(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_root, dtemp )
+      drroot(pft) = calc_resp_maint( plant(pft)%proot%c%c12 * tile(lu)%nind(pft), params_plant%r_root, dtemp )
       if (params_pft_plant(pft)%tree) then
-        drsapw(pft) = calc_resp_maint( psapw(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_sapw, dtemp )
+        drsapw(pft) = calc_resp_maint( plant(pft)%psapw%c%c12 * tile(lu)%nind(pft), params_plant%r_sapw, dtemp )
       else
         drsapw(pft) = 0.0
       endif
@@ -123,16 +120,12 @@ contains
       ! NPP available for growth first enters the labile pool ('plabl ').
       ! XXX Allocation is called here without "paying"  growth respir.?
       !-------------------------------------------------------------------------
-      call ccp( dnpp(pft), plabl(pft,jpngr)%c )
+      call ccp( dnpp(pft), plant(pft)%plabl%c )
 
-      if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
-      if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
-
-      ! print*,'gpp, dclabl', doy, dgpp(pft), cminus( dnpp(pft), carbon(dcex(pft)) )
+      if (plant(pft)%plabl%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
+      if (plant(pft)%plabl%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
 
     end do
-
-    ! print*, '---- finished npp'
 
   end subroutine npp
 
@@ -166,7 +159,7 @@ contains
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
     use md_params_core, only: npft, ndayyear, maxgrid
-    use md_interface
+    use md_interface, only: interface
 
     if (interface%params_siml%loutnpp) then
 
@@ -194,7 +187,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Opens input/output files.
     !----------------------------------------------------------------
-    use md_interface
+    use md_interface, only: interface
 
     ! local variables
     character(len=256) :: prefix
@@ -254,7 +247,8 @@ contains
     ! where they are defined.
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
-    use md_interface
+    use md_interface, only: interface
+    use md_plant, only: drleaf, drroot, drgrow
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -291,7 +285,7 @@ contains
     ! contact: b.stocker@imperial.ac.uk
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, nlu
-    use md_interface
+    use md_interface, only: interface
 
     ! arguments
     integer, intent(in) :: year       ! simulation year
