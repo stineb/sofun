@@ -16,7 +16,7 @@ from subprocess import call
 ## - "olson"
 ## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'swissface'
+simsuite = 'fluxnet'
 
 ##--------------------------------------------------------------------
 ## set options

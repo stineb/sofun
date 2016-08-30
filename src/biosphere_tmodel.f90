@@ -9,7 +9,7 @@ module md_biosphere
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp
   use md_npp, only: npp
   use md_turnover, only: turnover
-  use md_allocation, only: allocation_annual, initio_allocation, initoutput_allocation
+  use md_allocation, only: allocation_annual, initio_allocation, initoutput_allocation, getpar_modl_allocation
   use md_vegdynamics, only: vegdynamics
   use md_tile, only: tile_type, initglobal_tile
 
@@ -66,6 +66,7 @@ contains
       call getpar_modl_waterbal()
       call getpar_modl_gpp()
       call getpar_modl_phenology()
+      call getpar_modl_allocation()
 
       !----------------------------------------------------------------
       ! Initialise pool variables and/or read from restart file (not implemented)
@@ -103,11 +104,13 @@ contains
       ! This is not compatible with a daily biosphere-climate coupling. I.e., 
       ! there is a daily loop within 'getsolar'!
       !----------------------------------------------------------------
-      solar = getsolar( &
-        interface%grid(jpngr)%lat, & 
-        interface%grid(jpngr)%elv, & 
-        interface%climate(jpngr)%dfsun(:) & 
-        )
+       if (verbose) write(0,*) 'getsolar() ...'
+       solar = getsolar( &
+          interface%grid(jpngr)%lat, & 
+          interface%grid(jpngr)%elv, & 
+          interface%climate(jpngr)%dfsun(:) & 
+          )
+      if (verbose) write(0,*) '... done'
 
       !----------------------------------------------------------------
       ! Get monthly light use efficiency, and Rd per unit of light absorbed
@@ -115,12 +118,18 @@ contains
       ! This is not compatible with a daily biosphere-climate coupling. I.e., 
       ! there is a monthly loop within 'getlue'!
       !----------------------------------------------------------------
+      if (verbose) write(0,*) 'getlue() ...'
+      print*,'co2  ', interface%pco2
+      print*,'dtemp', interface%climate(jpngr)%dtemp(:)
+      print*,'dvpd ', interface%climate(jpngr)%dvpd(:)
+      print*,'elv  ', interface%grid(jpngr)%elv
       out_pmodel(:,:) = getlue( &
         interface%pco2, & 
         interface%climate(jpngr)%dtemp(:), & 
         interface%climate(jpngr)%dvpd(:), & 
         interface%grid(jpngr)%elv & 
         )
+      if (verbose) write(0,*) '... done'
 
       !----------------------------------------------------------------
       ! Get radiation based on daily temperature, sunshine fraction, and 
@@ -149,14 +158,17 @@ contains
           !----------------------------------------------------------------
           ! initialise daily updated variables 
           !----------------------------------------------------------------
+          if (verbose) write(0,*) 'initdaily() ...'
           call initdaily_plant()
           call initdaily_waterbal()
           call initdaily_gpp()
           call initdaily_plant()
+          if (verbose) write(0,*) '... done'
 
           !----------------------------------------------------------------
           ! get soil moisture, and runoff
           !----------------------------------------------------------------
+          if (verbose) write(0,*) 'waterbal() ...'
           call waterbal( &
             psoilphys(:,jpngr), &
             day, & 
@@ -166,39 +178,50 @@ contains
             interface%climate(jpngr)%dtemp(day), & 
             interface%climate(jpngr)%dfsun(day)  &
             )
+          if (verbose) write(0,*) '... done'
 
           !----------------------------------------------------------------
           ! update canopy and tile variables and simulate daily 
           ! establishment / sprouting
           !----------------------------------------------------------------
+          if (verbose) write(0,*) 'vegdynamics() ...'
           call vegdynamics( tile(:,jpngr), plant(:,jpngr), solar, out_pmodel(:,:) )
+          if (verbose) write(0,*) '... done'
 
           !/////////////////////////////////////////////////////////////////
           ! calculate GPP
           !----------------------------------------------------------------
+          if (verbose) write(0,*) 'gpp() ...'
           call gpp( &
             out_pmodel(:,moy), solar, plant(:,jpngr), tile(:,jpngr), day, moy, &
             interface%climate(jpngr)%dtemp(day), & 
             interface%mfapar_field(moy,jpngr) &
             )
+          if (verbose) write(0,*) '... done'
 
           !/////////////////////////////////////////////////////////////////
           ! substract autotrophic respiration to get NPP, remainder is added 
           ! to labile pool (plabl)
           !----------------------------------------------------------------
+          if (verbose) write(0,*) 'npp() ...'
           call npp( plant(:,jpngr), tile(:,jpngr), interface%climate(jpngr)%dtemp(day), day )
+          if (verbose) write(0,*) '... done'
 
           !----------------------------------------------------------------
           ! leaf, sapwood, and fine-root turnover
           !----------------------------------------------------------------
+          if (verbose) write(0,*) 'turnover() ...'
           call turnover( plant(:,jpngr), tile(:,jpngr), jpngr )
+          if (verbose) write(0,*) '... done'
 
           !----------------------------------------------------------------
           ! collect from daily updated state variables for annual variables
           !----------------------------------------------------------------
+          if (verbose) write(0,*) 'getout_daily() ...'
           call getout_daily_waterbal( jpngr, moy, day, solar, psoilphys(:,jpngr) )
           call getout_daily_gpp( out_pmodel(:,moy), jpngr, day )
           call getout_daily_plant( plant(:,jpngr), jpngr, moy, day )
+          if (verbose) write(0,*) '... done'
 
         end do
 
@@ -207,20 +230,26 @@ contains
       !----------------------------------------------------------------
       ! allocation of labile pools to biomass
       !----------------------------------------------------------------
+      if (verbose) write(0,*) 'allocation_annual() ...'
       call allocation_annual( plant(:,jpngr) )
+      if (verbose) write(0,*) '... done'
 
       !----------------------------------------------------------------
       ! collect annual output
       !----------------------------------------------------------------
+      if (verbose) write(0,*) 'getout_annual() ...'
       call getout_annual_plant( plant(:,jpngr), jpngr )
       call getout_annual_gpp( jpngr )
+      if (verbose) write(0,*) '... done'
 
       !----------------------------------------------------------------
       ! Write to output
       !----------------------------------------------------------------
+      if (verbose) write(0,*) 'writeout_ascii() ...'
       call writeout_ascii_waterbal()
       call writeout_ascii_gpp()
       call writeout_ascii_plant()
+      if (verbose) write(0,*) '... done'
 
     end do
 

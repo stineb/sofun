@@ -246,8 +246,6 @@ contains
     plant%narea_metabolic  = narea_metabolic_canopy / params_pft_plant(plant%pftno)%lai_ind
     plant%narea_structural = params_pft_plant(plant%pftno)%r_ntolma * params_pft_plant(plant%pftno)%lma
     plant%narea            = plant%narea_metabolic + plant%narea_structural
-
-    ! additional traits
     plant%nmass            = plant%narea / ( plant%lma / c_content_of_biomass )
     plant%r_cton_leaf      = params_pft_plant(plant%pftno)%lma / plant%narea
     plant%r_ntoc_leaf      = 1.0 / plant%r_cton_leaf
@@ -477,8 +475,8 @@ contains
     plant%narea            = 0.0
     plant%narea_metabolic  = 0.0
     plant%narea_structural = 0.0
-    plant%lma              = 0.0
-    plant%sla              = 0.0
+    plant%lma              = params_pft_plant(plant%pftno)%lma
+    plant%sla              = params_pft_plant(plant%pftno)%sla
     plant%nmass            = 0.0
     plant%r_cton_leaf      = 0.0
     plant%r_ntoc_leaf      = 0.0

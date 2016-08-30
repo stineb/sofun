@@ -13,7 +13,7 @@ module md_allocation
   private 
   public allocation_annual, update_tree, initio_allocation, &
     initoutput_allocation, getout_daily_allocation,         &
-    writeout_ascii_allocation
+    writeout_ascii_allocation, getpar_modl_allocation
 
   !----------------------------------------------------------------
   ! Module-specific (private) variables
@@ -233,7 +233,7 @@ contains
   end function get_dHP_per_dD
 
 
-  subroutine getpar_tree()
+  subroutine getpar_modl_allocation()
     !////////////////////////////////////////////////////////////////
     !  Subroutine reads model parameters from input file.
     !  It was necessary to separate this SR from module md_plant
@@ -258,7 +258,7 @@ contains
       params_tmodel(pft) = getpftparams( params_pft_plant(pft)%pftname )
     end do
 
-  end subroutine getpar_tree
+  end subroutine getpar_modl_allocation
 
   function getpftparams( pftname ) result( out_getpar )
     !----------------------------------------------------------------

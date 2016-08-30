@@ -22,7 +22,7 @@ CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml
 CMODEL_SOURCES=sofun.f90 biosphere_cnmodel.f90
 
 # List of source code files for reduced setup, executing the C-only model: XXX UNDER CONSTRUCTION XXX
-TMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 interface_biosphere.mod.f90 rates.mod.f90 waterbal_stash.mod.f90 tile.mod.f90 plant.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 turnover.mod.f90 npp.mod.f90 allocation_tmodel.mod.f90 vegdynamics_fix.mod.f90 biosphere_tmodel.f90
+TMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 rates.mod.f90 waterbal_stash.mod.f90 tile.mod.f90 plant.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 turnover.mod.f90 npp.mod.f90 allocation_tmodel.mod.f90 vegdynamics_fix.mod.f90 biosphere_tmodel.f90
 TMODEL_SOURCES=sofun.f90
 
 # List of source code files for reduced setup, executing the full CN-only model:

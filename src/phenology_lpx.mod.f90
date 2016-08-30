@@ -194,10 +194,6 @@ contains
 
           end if
 
-        else
-
-          stop 'estab_daily not implemented for trees'
-
         end if
 
       end do
