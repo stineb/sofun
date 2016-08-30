@@ -1343,7 +1343,7 @@ contains
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
     ! store all daily values for outputting annual maximum
-    if (npft>1) stop 'getout_annual_gpp not implemented for npft>1'
+    if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
 
     outdvcmax(1,doy)   = dvcmax_canop(1)
     outdvcmax25(1,doy) = out_pmodel(1)%factor25_vcmax * dvcmax_canop(1)

@@ -16,9 +16,12 @@ contains
     ! Updates canopy and tile variables and calls 'estab' to 
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
-    use md_params_core, only: npft, nlu
-    use md_plant, only: initpft, get_leaftraits
+    use md_params_core, only: npft, nlu, nmonth
+    use md_plant, only: initpft, get_leaftraits, plant_type, params_pft_plant
     use md_allocation, only: update_tree
+    use md_tile, only: tile_type
+    use md_waterbal, only: solartype
+    use md_gpp, only: outtype_pmodel
 
     ! arguments
     type( tile_type ), dimension(nlu), intent(inout)           :: tile
@@ -27,10 +30,10 @@ contains
     type( outtype_pmodel ), dimension(npft,nmonth), intent(in) :: out_pmodel
 
     ! local variables
-    integer :: pft
+    integer :: pft, lu
 
     do lu=1,nlu
-      if (tile(lu)%fpc_grid = 0.0) then
+      if (tile(lu)%fpc_grid == 0.0) then
         !------------------------------------------------------------------
         ! Add individuals
         !------------------------------------------------------------------
@@ -41,7 +44,7 @@ contains
             call initpft( plant(pft) )
 
             ! get annually updated leaf traits (vary because of variations in light and CO2)
-            call get_leaftraits( plant(pft), solar%meanmppfd(:), out_pmodel%actnv_unitiabs(:) )
+            call get_leaftraits( plant(pft), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
 
             ! add a "seed" by forcing initial diameter increment
             call update_tree( plant(pft), diam_inc_init )

@@ -1,18 +1,22 @@
 module md_biosphere
 
   use md_params_core
+  use md_classdefs
   use md_plant, only: plant_type, initdaily_plant, initglobal_plant, getout_daily_plant, getpar_modl_plant, initoutput_plant, writeout_ascii_plant, initio_plant, getout_annual_plant
-  use md_soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
   use md_params_soil, only: paramtype_soil
-  use md_waterbal, only: waterbal, getsolar, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
-  use md_phenology, only: gettempphenology, getpar_modl_phenology
-  use md_gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, writeout_ascii_gpp
+  use md_waterbal, only: solartype, psoilphystype, waterbal, getsolar, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
+  use md_phenology, only: phenology_type, gettempphenology, getpar_modl_phenology
+  use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp
   use md_npp, only: npp
   use md_turnover, only: turnover
-  use md_allocation, only: allocation_daily
+  use md_allocation, only: allocation_annual, initio_allocation, initoutput_allocation
   use md_vegdynamics, only: vegdynamics
+  use md_tile, only: tile_type, initglobal_tile
 
   implicit none
+
+  private
+  public biosphere_annual
 
   !----------------------------------------------------------------
   ! Module-specific (private) variables
@@ -74,7 +78,6 @@ contains
       ! Open input/output files
       !----------------------------------------------------------------
       call initio_waterbal()
-      call initio_soiltemp()
       call initio_gpp()
       call initio_plant()
       call initio_allocation()
@@ -85,7 +88,6 @@ contains
     ! Initialise output variables for this year
     !----------------------------------------------------------------
     call initoutput_waterbal()
-    call initoutput_soiltemp()
     call initoutput_gpp()
     call initoutput_plant()
     call initoutput_allocation()
@@ -114,7 +116,6 @@ contains
       ! there is a monthly loop within 'getlue'!
       !----------------------------------------------------------------
       out_pmodel(:,:) = getlue( &
-        jpngr, & 
         interface%pco2, & 
         interface%climate(jpngr)%dtemp(:), & 
         interface%climate(jpngr)%dvpd(:), & 
@@ -157,7 +158,7 @@ contains
           ! get soil moisture, and runoff
           !----------------------------------------------------------------
           call waterbal( &
-            psoilphys(:,jpngr) &
+            psoilphys(:,jpngr), &
             day, & 
             interface%grid(jpngr)%lat, & 
             interface%grid(jpngr)%elv, & 
@@ -175,8 +176,8 @@ contains
           !/////////////////////////////////////////////////////////////////
           ! calculate GPP
           !----------------------------------------------------------------
-          call gpp( 
-            out_pmodel(:,moy), solar, plant(:,jpngr), tile(:,jpngr), doy, moy, 
+          call gpp( &
+            out_pmodel(:,moy), solar, plant(:,jpngr), tile(:,jpngr), day, moy, &
             interface%climate(jpngr)%dtemp(day), & 
             interface%mfapar_field(moy,jpngr) &
             )
@@ -206,7 +207,7 @@ contains
       !----------------------------------------------------------------
       ! allocation of labile pools to biomass
       !----------------------------------------------------------------
-      call allocation_annual( jpngr, day, moy, dm )
+      call allocation_annual( plant(:,jpngr) )
 
       !----------------------------------------------------------------
       ! collect annual output
@@ -217,9 +218,7 @@ contains
       !----------------------------------------------------------------
       ! Write to output
       !----------------------------------------------------------------
-      ! print*, 'calling writeout_ascii_() ... '
       call writeout_ascii_waterbal()
-      call writeout_ascii_soiltemp()
       call writeout_ascii_gpp()
       call writeout_ascii_plant()
 

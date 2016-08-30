@@ -13,6 +13,7 @@ program main
   use md_params_soil, only: getsoil_field
   use md_forcing_siterun, only: getclimate_site, getninput, ninput_type, gettot_ninput, getfapar, getlanduse, getco2
   use md_params_core, only: dummy, maxgrid
+  use md_biosphere, only: biosphere_annual
 
   implicit none
 
@@ -162,7 +163,7 @@ program main
 
     !----------------------------------------------------------------
     !----------------------------------------------------------------
-    c_uptake = biosphere_annual( interface ) 
+    c_uptake = biosphere_annual() 
     !----------------------------------------------------------------
     !----------------------------------------------------------------
 

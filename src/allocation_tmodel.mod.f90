@@ -218,6 +218,7 @@ contains
     ! Corresponds to second term in Eq. 16 without dD/dt in Li et al., 2014
     !-------------------------------------------------------------------
     use md_params_core, only: pi
+    use md_plant, only: params_pft_plant
 
     ! arguments
     type( plant_type ), intent(in) :: tree
@@ -227,7 +228,7 @@ contains
 
     dHP_per_dD = params_pft_plant(tree%pftno)%lai_ind * ( ( pi * params_tmodel(tree%pftno)%cr_par) / ( 4.0 * params_tmodel(tree%pftno)%a_par) ) &
       * ( params_tmodel(tree%pftno)%a_par * tree%diam * ( 1.0 - ( tree%height / params_tmodel(tree%pftno)%maxheight ) + tree%height ) )      &
-      * ( 1.0 / params_tmodel(tree%pftno)%lma + params_tmodel(tree%pftno)%z_par ) 
+      * ( 1.0 / tree%lma + params_tmodel(tree%pftno)%z_par ) 
   
   end function get_dHP_per_dD
 
@@ -242,7 +243,7 @@ contains
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------    
     use md_sofunutils, only: getparreal
-    use md_interface
+    use md_plant, only: params_pft_plant
 
     ! local variables
     integer :: pft
