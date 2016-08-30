@@ -16,7 +16,8 @@ contains
     ! Updates canopy and tile variables and calls 'estab' to 
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
-    use md_params_core, only: npft, nlu, nmonth
+    use md_classdefs
+    use md_params_core, only: npft, nlu, nmonth, ndayyear
     use md_plant, only: initpft, get_leaftraits, plant_type, params_pft_plant
     use md_allocation, only: update_tree
     use md_tile, only: tile_type
@@ -48,6 +49,12 @@ contains
 
             ! add a "seed" by forcing initial diameter increment
             call update_tree( plant(pft), diam_inc_init )
+
+            ! give it some labile C and N to pay for turnover this year (until allocation at the end of year)
+            plant(pft)%plabl = orgplus( &
+              orgfrac( params_pft_plant(pft)%k_decay_leaf_base * ndayyear, plant(pft)%pleaf ), &
+              orgfrac( params_pft_plant(pft)%k_decay_root * ndayyear, plant(pft)%proot ) &
+              ) 
 
             ! xxx needs to be done: add implicit C and N fluxes to NPP and N-uptake
 

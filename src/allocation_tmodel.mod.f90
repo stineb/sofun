@@ -116,6 +116,8 @@ contains
       dnwood(pft) = tree(pft)%pwood%n%n14 - before%pwood%n%n14
 
       ! test if it makes sense
+      print*,'dcwood(pft)', dcwood(pft)
+      print*,'dWs_per_dD * diam_inc', dWs_per_dD * diam_inc
       if ( abs((dWs_per_dD * diam_inc) - dcwood(pft)) > eps ) stop 'stem mass increment not equal to change in wood C'
       if ( abs((dHP_per_dD * diam_inc) - (dcleaf(pft) + dcroot(pft))) > eps ) stop 'actual root and foliage growth not equal to change in sum of pools'
 
@@ -130,6 +132,8 @@ contains
       dclabl = drgrow(pft) + dcleaf(pft) + dcroot(pft) + dcwood(pft)
 
       ! labile pool should be depleted to zero
+      print*,'plabl ', tree(pft)%plabl%c%c12
+      print*,'dclabl', dclabl
       if ( abs( tree(pft)%plabl%c%c12 - dclabl ) > eps ) stop 'did not deplete labile N pool'
 
       tree(pft)%plabl%c%c12 = 0.0
