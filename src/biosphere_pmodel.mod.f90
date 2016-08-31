@@ -164,6 +164,11 @@ contains
           ! calculate GPP
           !----------------------------------------------------------------
           if (verbose) write(0,*) 'calling gpp() ... '
+          ! print*,'nind', tile(1,1)%nind
+          ! print*,'acrown', plant(1,1)%acrown
+          ! print*,'in biosphere: fapar', plant(1,1)%fapar_ind
+          ! print*,'in biosphere: acrown', plant(1,1)%acrown
+          ! print*,'in biosphere: nind', tile(1,1)%nind
           call gpp( &
             out_pmodel(:,moy), solar, plant(:,jpngr), tile(:,jpngr), day, moy, &
             interface%climate(jpngr)%dtemp(day) &

@@ -363,6 +363,9 @@ contains
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
     use md_interface, only: interface
+
+    if ( interface%steering%init .and. interface%params_siml%loutdgpp ) allocate( outdgpp(npft,ndayyear,maxgrid) )
+
     outdgpp  (:,:,:) = 0.0
     
     ! annual output variables
@@ -458,7 +461,7 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (interface%params_siml%loutdgpp ) outdgpp(:,doy,jpngr) = dgpp(:)
+    if ( interface%params_siml%loutdgpp ) outdgpp(:,doy,jpngr) = dgpp(:)
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES

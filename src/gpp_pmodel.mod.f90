@@ -183,6 +183,15 @@ contains
     ! CALCULATE PREDICTED GPP FROM P-model
     ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
     !----------------------------------------------------------------
+    ! print*,'in GPP: plant(pft)%fapar_ind', plant(pft)%fapar_ind
+    ! print*,'in GPP: plant(pft)%acrown', plant(pft)%acrown
+    ! print*,'in GPP: tile(lu)%nind', tile(1)%nind
+    ! print*,'plant(pft)%acrown' , plant(pft)%acrown
+    ! print*,'tile(lu)%nind(pft)', tile(lu)%nind(pft)
+    ! print*,'solar%dppfd(doy)', solar%dppfd(doy)
+    ! print*,'out_pmodel(pft)%lue', out_pmodel(pft)%lue
+
+
     do pft=1,npft
 
       lu = params_pft_plant(pft)%lu_category
@@ -211,7 +220,7 @@ contains
       end if 
 
     end do
-
+    
   end subroutine gpp
 
 
