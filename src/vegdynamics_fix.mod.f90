@@ -2,104 +2,72 @@ module md_vegdynamics
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
 
-  use md_params_core
-
   implicit none
 
   private
   public vegdynamics
 
+  real, parameter :: diam_inc_init = 0.001 ! m
+
 contains
 
-  subroutine vegdynamics( jpngr, doy )
+  subroutine vegdynamics( tile, plant, solar, out_pmodel )
     !//////////////////////////////////////////////////////////////////
-    ! Updates canopy and stand variables and calls 'estab_daily' to 
+    ! Updates canopy and tile variables and calls 'estab' to 
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
-    use md_params_core, only: npft
-    use md_phenology, only: sprout, params_pft_pheno
-    use md_plant, only: params_pft_plant
+    use md_classdefs
+    use md_params_core, only: npft, nlu, nmonth, ndayyear
+    use md_plant, only: initpft, get_leaftraits, plant_type, params_pft_plant
+    use md_allocation, only: update_tree
+    use md_tile, only: tile_type
+    use md_waterbal, only: solartype
+    use md_gpp, only: outtype_pmodel
 
     ! arguments
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: doy
+    type( tile_type ), dimension(nlu), intent(inout)           :: tile
+    type( plant_type ), dimension(npft), intent(in)            :: plant ! npft counts over PFTs in all land units (tiles)
+    type( solartype ), intent(in)                              :: solar
+    type( outtype_pmodel ), dimension(npft,nmonth), intent(in) :: out_pmodel
 
     ! local variables
-    integer :: pft
+    integer :: pft, lu
 
-    do pft=1,npft
+    do lu=1,nlu
+      if (tile(lu)%fpc_grid == 0.0) then
+        !------------------------------------------------------------------
+        ! Add individuals
+        !------------------------------------------------------------------
+        do pft=1,npft
+          if (params_pft_plant(pft)%lu_category==lu) then
 
-      ! if (params_pft_plant(pft)%grass) then
-      !   !----------------------------------------------------------
-      !   ! GRASSES, summergreen
-      !   !----------------------------------------------------------
+            ! initialise all pools of this PFT with zero
+            call initpft( plant(pft) )
 
-      !   if ( sprout(doy,pft) ) then
-      !     !----------------------------------------------------------
-      !     ! beginning of season
-      !     !----------------------------------------------------------
-      !     ! print*, 'starting to grow on day ',doy
-      !     call estab_daily( pft, jpngr, doy )
+            ! get annually updated leaf traits (vary because of variations in light and CO2)
+            call get_leaftraits( plant(pft), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
 
-      !     ! stop 'adding a seed'
+            ! add a "seed" by forcing initial diameter increment
+            call update_tree( plant(pft), diam_inc_init )
 
-      !   end if
+            ! give it some labile C and N to pay for turnover this year (until allocation at the end of year)
+            plant(pft)%plabl = orgplus( &
+              orgfrac( params_pft_plant(pft)%k_decay_leaf_base * ndayyear, plant(pft)%pleaf ), &
+              orgfrac( params_pft_plant(pft)%k_decay_root * ndayyear, plant(pft)%proot ) &
+              ) 
 
-      ! else
+            ! xxx needs to be done: add implicit C and N fluxes to NPP and N-uptake
 
-      !   stop 'estab_daily not implemented for non-summergreen'
+            ! Set number of individuals (XXX change this to m-2)
+            tile(lu)%nind(pft)  = 1.0 
+            tile%fpc_grid = tile(lu)%nind(pft) * plant(pft)%acrown
 
-      ! end if
-
+          end if
+        end do
+      end if
     end do
 
   end subroutine vegdynamics
 
-
-  subroutine estab_daily( pft, jpngr, doy )
-    !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level metabolic N content per unit leaf area as a
-    ! function of Vcmax25.
-    !------------------------------------------------------------------
-    use md_plant, only: initpft, params_pft_plant, nind, frac_leaf
-    use md_interface
-
-    ! arguments
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: doy
-
-    ! ! initialise all pools of this PFT with zero
-    ! call initpft( pft, jpngr )
-
-    ! add C (and N) to labile pool (available for allocation)
-    call add_seed( pft, jpngr )
-    if ( .not. interface%steering%dofree_alloc ) frac_leaf(pft) = 0.5
-    
-    if (params_pft_plant(pft)%grass) then
-      nind(pft,jpngr) = 1.0
-    else
-      stop 'estab_daily not implemented for trees'
-    end if
-
-
-  end subroutine estab_daily
-
-
-  subroutine add_seed( pft, jpngr )
-    !//////////////////////////////////////////////////////////////////
-    ! To initialise plant pools, add "sapling" mass
-    !------------------------------------------------------------------
-    use md_classdefs
-    use md_plant, only: plabl, seed, dnpp
-
-    ! arguments
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
-
-    plabl(pft,jpngr) = orgplus( plabl(pft,jpngr), seed )
-
-  end subroutine add_seed
-
-
 end module md_vegdynamics
+

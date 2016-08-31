@@ -61,7 +61,7 @@ contains
     else  
       readyear = forcingyear
     end if
-    write(0,*) 'GETCO2: use CO2 data of year ', readyear
+    ! write(0,*) 'GETCO2: use CO2 data of year ', readyear
     pco2 = getvalreal( 'sitedata/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
 
   end function getco2
@@ -181,9 +181,9 @@ contains
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
-    write(0,*) 'prescribe daily climate (temp, prec, fsun, vpd) for ', trim(sitename), ' yr ', climateyear_char,'...'
+    ! write(0,*) 'prescribe daily climate (temp, prec, fsun, vpd) for ', trim(sitename), ' yr ', climateyear_char,'...'
     
-    write(0,*) 'GETCLIMATE_SITE: use climate data of year ', climateyear_char
+    ! write(0,*) 'GETCLIMATE_SITE: use climate data of year ', climateyear_char
 
     jpngr = 1
 
@@ -197,11 +197,6 @@ contains
     do day=1,ndayyear
       out_climate(jpngr)%dvpd(day) = calc_vpd( out_climate(jpngr)%dtemp(day), dvapr(day) )
     end do
-    
-    ! print*,'VPD'
-    ! print*,out_climate(jpngr)%dvpd(:)
-
-    write(0,*) '... done. Good job, beni.'
 
     return
     999  format (I4.4)

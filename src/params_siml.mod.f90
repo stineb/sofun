@@ -41,7 +41,7 @@ module md_params_siml
     character(len=256) :: fapar_forcing_source
 
     ! activated PFTs
-    logical :: lTeBS
+    logical :: lTeBE
     logical :: lGrC3
     logical :: lGNC3
     logical :: lGrC4
@@ -286,7 +286,7 @@ contains
       out_getpar_siml%spinupyears = 0
     endif
 
-    out_getpar_siml%lTeBS          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTeBS' )
+    out_getpar_siml%lTeBE          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTeBE' )
     out_getpar_siml%lGrC3          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGrC3' )
     out_getpar_siml%lGNC3          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGNC3' )
     out_getpar_siml%lGrC4          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGrC4' )
