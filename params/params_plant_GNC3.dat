@@ -10,10 +10,11 @@ k_decay_leaf_width                      0.00000
 k_decay_sapw                            9999999
 k_decay_root                            1.20000
 k_decay_labl                            2.00000
-r_cton_root                             17.0000
-ncw_min                                 0.10000
-r_n_cw_v                                0.40000
-r_ctostructn_leaf                       14.0000
+r_cton_root                             37.0000
+r_cton_wood                             100.000
+lma                                     50.0000
+r_ntolma                                35.0000
+lai_ind                                 1.80000
 
 #                                      |
 # write value *behind* this position:  |->

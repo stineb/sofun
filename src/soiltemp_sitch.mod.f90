@@ -210,15 +210,12 @@ contains
   end subroutine getout_daily_soiltemp
 
 
-  subroutine writeout_ascii_soiltemp( year )
+  subroutine writeout_ascii_soiltemp()
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE soiltemp-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear
     use md_interface
-
-    ! arguments
-    integer, intent(in) :: year       ! simulation year
 
     ! Local variables
     real :: itime
