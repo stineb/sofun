@@ -34,7 +34,7 @@ contains
     ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use md_interface
+    use md_interface, only: interface
   
     ! return variable
     real :: c_uptake   ! annual net global C uptake by biosphere (gC/yr)
@@ -87,7 +87,7 @@ contains
     !----------------------------------------------------------------
     ! LOOP THROUGH GRIDCELLS
     !----------------------------------------------------------------
-    do jpngr=1,maxgrid
+    gridcellloop: do jpngr=1,maxgrid
 
       !----------------------------------------------------------------
       ! Get radiation based on daily temperature, sunshine fraction, and 
@@ -118,12 +118,12 @@ contains
       ! LOOP THROUGH MONTHS
       !----------------------------------------------------------------
       day=0
-      do moy=1,nmonth
+      monthloop: do moy=1,nmonth
 
         !----------------------------------------------------------------
         ! LOOP THROUGH DAYS
         !----------------------------------------------------------------
-        do dm=1,ndaymonth(moy)
+        dayloop: do dm=1,ndaymonth(moy)
           day=day+1
 
           if (verbose) write(0,*) '----------------------'
@@ -184,9 +184,9 @@ contains
           call getout_daily_plant( plant(:,jpngr), jpngr, moy, day )
           if (verbose) write(0,*) '... done'
 
-        end do
+        end do dayloop
 
-      end do
+      end do monthloop
 
       !----------------------------------------------------------------
       ! collect annual output
@@ -201,7 +201,7 @@ contains
       call writeout_ascii_gpp()
       call writeout_ascii_plant()
 
-    end do
+    end do gridcellloop
 
     ! xxx insignificant
     c_uptake = 0.0

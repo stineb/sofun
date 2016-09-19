@@ -13,10 +13,11 @@ from subprocess import call
 ## - "campi_cmodel"
 ## - "fluxnet_fixalloc"
 ## - "atkin"
+## - "atkinfull"
 ## - "olson"
 ## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'swissface'
+simsuite = 'atkinfull'
 
 ##--------------------------------------------------------------------
 ## set options
@@ -28,7 +29,7 @@ out_to_file = True
 overwrite = True
 
 ## define default output variable to check for determining submission, given 'overwrite'
-defaultvar = 'npp' 
+defaultvar = 'gpp' 
 
 ##--------------------------------------------------------------------
 ## set model setup, given simsuite (shorter code below)
@@ -46,7 +47,7 @@ if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'atk
     do_cmodel = True
 
 ## P-model setup
-if simsuite == 'fluxnet' or simsuite == 'pmodel_test':
+if simsuite == 'fluxnet' or simsuite == 'pmodel_test' or simsuite == 'atkinfull':
     do_pmodel = True
 
 

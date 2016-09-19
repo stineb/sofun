@@ -183,13 +183,13 @@ contains
     ! CALCULATE PREDICTED GPP FROM P-model
     ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
     !----------------------------------------------------------------
-    ! print*,'in GPP: plant(pft)%fapar_ind', plant(pft)%fapar_ind
-    ! print*,'in GPP: plant(pft)%acrown', plant(pft)%acrown
-    ! print*,'in GPP: tile(lu)%nind', tile(1)%nind
-    ! print*,'plant(pft)%acrown' , plant(pft)%acrown
-    ! print*,'tile(lu)%nind(pft)', tile(lu)%nind(pft)
+    ! print*,'in GPP: plant(1)%fapar_ind', plant(1)%fapar_ind
+    ! print*,'in GPP: plant(1)%acrown', plant(1)%acrown
+    ! print*,'in GPP: tile(1)%nind', tile(1)%nind
+    ! print*,'plant(1)%acrown' , plant(1)%acrown
+    ! print*,'tile(1)%nind(1)', tile(1)%nind(1)
     ! print*,'solar%dppfd(doy)', solar%dppfd(doy)
-    ! print*,'out_pmodel(pft)%lue', out_pmodel(pft)%lue
+    ! print*,'in GPP: out_pmodel(1)%lue', out_pmodel(1)%lue
 
 
     do pft=1,npft
@@ -199,10 +199,10 @@ contains
       if ( plant(pft)%fapar_ind>0.0 ) then
 
         ! GPP
-        dgpp(pft)    = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )
+        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )
 
         ! Dark respiration
-        drd(pft)     = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, evap(lu)%cpa )
+        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, evap(lu)%cpa )
 
         ! transpiration
         dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, evap(lu)%cpa )
@@ -1433,8 +1433,8 @@ contains
     ! outanrlarea(jpngr) = anrlarea
     if (interface%params_siml%loutgpp) then
       ! xxx to do: get vcmax at annual maximum (of monthly values)
-      outavcmax(1,jpngr)   = outdvcmax(1,1)
-      outavcmax25(1,jpngr) = outdvcmax25(1,1)
+      outavcmax(1,jpngr)   = maxval(outdvcmax(1,:))
+      outavcmax25(1,jpngr) = maxval(outdvcmax25(1,:))
     end if
 
   end subroutine getout_annual_gpp
