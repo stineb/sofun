@@ -4,7 +4,7 @@
 #                                      |
 # write value behind this position:    |->
 
-beta                                    244.033
+beta                                    146.0
 rd_to_vcmax                             0.015
 kphio_GrC3                              0.093
 kphio_GNC3                              0.093
