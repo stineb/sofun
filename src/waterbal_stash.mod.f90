@@ -22,11 +22,12 @@ module md_waterbal
   ! ...
   !----------------------------------------------------------------
   use md_params_core, only: ndayyear, nmonth, nlu, maxgrid
+  ! use md_params_siml, only: interface%params_siml%loutwaterbal
 
   implicit none
 
   private
-  public solartype, psoilphystype, soilphys, evap, waterbal, getsolar, &
+  public psoilphys, soilphys, solar, evap, waterbal, getsolar_alldays, &
     initdaily_waterbal, initglobal_waterbal, initio_waterbal,          &
     getout_daily_waterbal, initoutput_waterbal,                        &
     getpar_modl_waterbal, writeout_ascii_waterbal
@@ -38,6 +39,8 @@ module md_waterbal
   type psoilphystype
     real :: wcont      ! soil water mass [mm = kg/m2]
   end type psoilphystype
+
+  type( psoilphystype ), dimension(nlu,maxgrid) :: psoilphys
 
   ! Collection of physical soil variables used across modules
   type soilphystype
@@ -59,6 +62,8 @@ module md_waterbal
     real, dimension(nmonth)   :: mppfd       ! monthly total PPFD (mol m-2 month-1)
     real, dimension(nmonth)   :: meanmppfd   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
   end type solartype
+
+  type( solartype ) :: solar
 
   !----------------------------------------------------------------
   ! Module-specific output variables
@@ -130,20 +135,20 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( psoilphys, doy, lat, elv, pr, tc, sf )
+  subroutine waterbal( jpngr, doy, lat, elv, pr, tc, sf )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, ndaymonth, nlu
 
     ! arguments
-    type( psoilphystype ), dimension(nlu), intent(inout) :: psoilphys
-    integer, intent(in)                                  :: doy       ! day of year
-    real, intent(in)                                     :: lat       ! latitude (degrees)
-    real, intent(in)                                     :: elv       ! altitude (m)
-    real, intent(in)                                     :: pr        ! daily precip (mm) 
-    real, intent(in)                                     :: tc        ! mean monthly temperature (deg C)
-    real, intent(in)                                     :: sf        ! mean monthly sunshine fraction (unitless)
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: doy    ! day of year
+    real, intent(in) :: lat       ! latitude (degrees)
+    real, intent(in) :: elv                          ! altitude (m)
+    real, intent(in) :: pr        ! daily precip (mm) 
+    real, intent(in) :: tc        ! mean monthly temperature (deg C)
+    real, intent(in) :: sf        ! mean monthly sunshine fraction (unitless)
 
     ! local variables
     integer :: lu                        ! land unit (gridcell tile)
@@ -161,7 +166,7 @@ contains
     do lu=1,nlu
 
       ! Calculate evaporative supply rate, mm/h
-      soilphys(lu)%sw = kCw * psoilphys(lu)%wcont / kWm
+      soilphys(lu)%sw = kCw * psoilphys(lu,jpngr)%wcont / kWm
 
       ! Calculate radiation and evaporation quantities
       ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soilphys(lu)%sw
@@ -169,31 +174,31 @@ contains
       ! print*,'... done'
 
       ! Update soil moisture
-      psoilphys(lu)%wcont = psoilphys(lu)%wcont + pr + evap(lu)%cn - evap(lu)%aet
+      psoilphys(lu,jpngr)%wcont = psoilphys(lu,jpngr)%wcont + pr + evap(lu)%cn - evap(lu)%aet
 
       ! Bucket model for runoff generation
-      if (psoilphys(lu)%wcont>kWm) then
+      if (psoilphys(lu,jpngr)%wcont>kWm) then
         ! -----------------------------------
         ! Bucket is full 
         ! -----------------------------------
         ! * determine NO3 leaching fraction 
-        soilphys(lu)%fleach = 1.0 - kWm / psoilphys(lu)%wcont
+        soilphys(lu)%fleach = 1.0 - kWm / psoilphys(lu,jpngr)%wcont
         ! print*,'fleach ', soilphys(lu)%fleach
         ! leaching_events = leaching_events + 1
 
         ! * add remaining water to monthly runoff total
-        soilphys(lu)%ro = psoilphys(lu)%wcont - kWm
+        soilphys(lu)%ro = psoilphys(lu,jpngr)%wcont - kWm
 
         ! * set soil moisture to capacity
-        psoilphys(lu)%wcont = kWm
+        psoilphys(lu,jpngr)%wcont = kWm
 
-      elseif (psoilphys(lu)%wcont<0.0) then
+      elseif (psoilphys(lu,jpngr)%wcont<0.0) then
         ! -----------------------------------
         ! Bucket is empty
         ! -----------------------------------
         ! * set soil moisture to zero
-        evap(lu)%aet              = evap(lu)%aet + psoilphys(lu)%wcont
-        psoilphys(lu)%wcont = 0.0
+        evap(lu)%aet              = evap(lu)%aet + psoilphys(lu,jpngr)%wcont
+        psoilphys(lu,jpngr)%wcont = 0.0
         soilphys(lu)%ro           = 0.0
         soilphys(lu)%fleach       = 0.0
 
@@ -205,11 +210,26 @@ contains
       end if
 
       ! water-filled pore space
-      soilphys(lu)%wscal = psoilphys(lu)%wcont / kWm
+      soilphys(lu)%wscal = psoilphys(lu,jpngr)%wcont / kWm
 
     end do
 
   end subroutine waterbal
+
+
+  subroutine getsolar_alldays( lat, elv, sf )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Subroutine to get variables stored in derived type 'solar' (belongs
+    ! to module only, not core variable).
+    !-------------------------------------------------------------------------  
+    ! arguments
+    real, intent(in)                      :: lat           ! latitude, degrees
+    real, intent(in)                      :: elv           ! elevation, metres
+    real, dimension(ndayyear), intent(in) :: sf            ! fraction of sunshine hours 
+
+    solar = getsolar( lat, elv, sf(:) )
+
+  end subroutine getsolar_alldays
 
 
   function getsolar( lat, elv, sf ) result( out_solar )
@@ -1075,13 +1095,10 @@ contains
   end subroutine initdaily_waterbal
 
 
-  subroutine initglobal_waterbal( psoilphys )
+  subroutine initglobal_waterbal()
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables within derived type 'psoilphys'.
     !----------------------------------------------------------------
-    ! argument
-    type( psoilphystype ), dimension(nlu,maxgrid), intent(out)  :: psoilphys
-    
     ! xxx try
     psoilphys(:,:)%wcont = 50.0 
 
@@ -1092,7 +1109,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
     !----------------------------------------------------------------
-    use md_interface, only: interface
+    use md_interface
 
     ! local variables
     character(len=256) :: prefix
@@ -1198,7 +1215,7 @@ contains
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
-    use md_interface, only: interface
+    use md_interface
 
     if (interface%params_siml%loutwaterbal) then
 
@@ -1233,18 +1250,16 @@ contains
   end subroutine initoutput_waterbal
 
 
-  subroutine getout_daily_waterbal( jpngr, moy, doy, solar, psoilphys )
+  subroutine getout_daily_waterbal( jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
-    use md_interface, only: interface
+    use md_interface
 
-    ! argument
-    integer, intent(in)                               :: jpngr
-    integer, intent(in)                               :: moy    
-    integer, intent(in)                               :: doy    
-    type( solartype ), intent(in)                     :: solar
-    type( psoilphystype ), dimension(nlu), intent(in) :: psoilphys
+    ! arguments
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: moy    
+    integer, intent(in) :: doy    
 
     ! Save the daily totals:
     ! xxx add lu-dimension and jpngr-dimension
@@ -1261,7 +1276,7 @@ contains
       outdaet(:,doy,jpngr)    = evap(:)%aet
       outdcpa(:,doy,jpngr)    = evap(:)%cpa
       
-      outdwcont(:,doy,jpngr)  = psoilphys(:)%wcont
+      outdwcont(:,doy,jpngr)  = psoilphys(:,jpngr)%wcont
       outdro(:,doy,jpngr)     = soilphys(:)%ro
       outdfleach(:,doy,jpngr) = soilphys(:)%fleach
 
@@ -1270,12 +1285,17 @@ contains
   end subroutine getout_daily_waterbal
 
 
-  subroutine writeout_ascii_waterbal()
+  subroutine writeout_ascii_waterbal( year )
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, nmonth
-    use md_interface, only: interface
+    use md_interface
+    ! use md_params_siml, only: spinup, firstyeartrend, spinupyears, interface%params_siml%daily_out_startyr, &
+    !   interface%params_siml%daily_out_endyr, outyear
+
+    ! arguments
+    integer, intent(in) :: year       ! simulation year
 
     ! Local variables
     real :: itime

@@ -18,14 +18,14 @@ module md_gpp
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_params_core, only: nmonth, npft, nlu, c_molmass, h2o_molmass, maxgrid, ndayyear
+  use md_params_core, only: nmonth, npft, c_molmass, h2o_molmass, maxgrid, ndayyear
 
   implicit none
 
   private
   public dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
     initdaily_gpp, gpp, getlue, getout_daily_gpp, getout_annual_gpp, &
-    writeout_ascii_gpp, outtype_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd
+    writeout_ascii_gpp, out_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -93,6 +93,22 @@ module md_gpp
   ! set of improvements, which, as I far as I know, will be based on this uni-
   ! versal value of β.
   !-----------------------------------------------------------------------
+  
+  ! parameters for Narea -- under construction
+  ! sla = 0.0014       ! specific leaf area (m2/gC)
+
+  ! N in cell walls: Slope of WN~LMA is 0.0002 mol N / g leaf mass (Hikosaka&Shigeno, 2009)
+  ! With 0.5 g C / g leaf mass and 14 g N / mol N: n_cw = 0.0056 g N / g C
+
+  ! real, parameter :: ncw = 0.0056          ! N:C ratio in cell walls, working hypothesis: leaf N is solely determined by Vcmax25
+  ! n_v  = 1.0/40.96    ! gN µmol-1 s-1. Value 40.96 is 'sv' in Table 2 in Kattge et al., 2009, GCB, C3 herbaceous
+  ! -- under construction
+
+  ! DAILY OUTPUT VARIABLES
+  ! xxx add jpngr dim
+
+  ! MONTHLY OUTPUT VARIABLES
+  ! xxx add jpngr dim
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, PRIVATE VARIABLES
@@ -118,6 +134,8 @@ module md_gpp
     real :: transp_unitfapar      ! transpiration per unit fAPAR [g H2O (mol photons)-1]
     real :: transp_unitiabs       ! transpiration per unit light absorbed light [g H2O (mol photons)-1]
   end type outtype_pmodel
+
+  type(outtype_pmodel), dimension(npft,nmonth) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
 
   type outtype_lue
     real :: chi                   ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
@@ -150,7 +168,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( out_pmodel, solar, plant, tile, doy, moy, dtemp )
+  subroutine gpp( jpngr, doy, moy, dtemp, fapar_prescr )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -162,53 +180,52 @@ contains
     !
     !------------------------------------------------------------------
     use md_params_core, only: dummy
-    use md_plant, only: dgpp, params_pft_plant, plant_type
-    use md_tile, only: tile_type
-    use md_waterbal, only: evap, solartype
+    use md_plant, only: dgpp, canopy, params_pft_plant
+    use md_waterbal, only: solar, evap
 
     ! arguments
-    type( outtype_pmodel ), dimension(npft) :: out_pmodel
-    type( solartype )                       :: solar
-    type( plant_type ), dimension(npft)     :: plant
-    type( tile_type ), dimension(nlu)       :: tile
-    integer, intent(in)                     :: doy       ! day of year and month of year
-    integer, intent(in)                     :: moy       ! month of year and month of year
-    real,    intent(in)                     :: dtemp     ! this day's air temperature
+    integer, intent(in) :: jpngr     ! gridcell number
+    integer, intent(in) :: doy       ! day of year and month of year
+    integer, intent(in) :: moy       ! month of year and month of year
+    real,    intent(in) :: dtemp     ! this day's air temperature
+
+    ! arguments (may be dummy)
+    real, intent(in) :: fapar_prescr
 
     ! local variables
     integer :: pft
     integer :: lu
 
+    ! ! XXX PMODEL_TEST
+    ! if (doy==1) print*, 'WARNING: CRAMER-PRENTICE ALPHA = 1.26 USED IN PMODEL'
+
     !----------------------------------------------------------------
     ! CALCULATE PREDICTED GPP FROM P-model
     ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
     !----------------------------------------------------------------
-    ! print*,'in GPP: plant(1)%fapar_ind', plant(1)%fapar_ind
-    ! print*,'in GPP: plant(1)%acrown', plant(1)%acrown
-    ! print*,'in GPP: tile(1)%nind', tile(1)%nind
-    ! print*,'plant(1)%acrown' , plant(1)%acrown
-    ! print*,'tile(1)%nind(1)', tile(1)%nind(1)
-    ! print*,'solar%dppfd(doy)', solar%dppfd(doy)
-    ! print*,'in GPP: out_pmodel(1)%lue', out_pmodel(1)%lue
-
-
     do pft=1,npft
 
       lu = params_pft_plant(pft)%lu_category
 
-      if ( plant(pft)%fapar_ind>0.0 ) then
+      ! Override interactively simulated fAPAR with data
+      if (fapar_prescr/=dummy) canopy(pft)%fapar_ind = fapar_prescr
+
+      if ( canopy(pft)%fapar_ind>0.0 ) then
 
         ! GPP
-        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )
+        dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), out_pmodel(pft,moy)%lue, dtemp, evap(lu)%cpa )
+        ! dgpp(pft)    = calc_dgpp( canopy(pft)%fapar_ind, solar%dppfd(doy), out_pmodel(pft,moy)%lue, dtemp )
 
         ! Dark respiration
-        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, evap(lu)%cpa )
+        drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), out_pmodel(pft,moy)%rd_unitiabs, dtemp, evap(lu)%cpa )
+        ! drd(pft)     = calc_drd( canopy(pft)%fapar_ind, solar%meanmppfd(moy), out_pmodel(pft,moy)%rd_unitiabs, dtemp )
 
         ! transpiration
-        dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, evap(lu)%cpa )
+        dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), out_pmodel(pft,moy)%transp_unitiabs, dtemp, evap(lu)%cpa )
+        ! dtransp(pft) = calc_dtransp( canopy(pft)%fapar_ind, solar%dppfd(doy), out_pmodel(pft,moy)%transp_unitiabs, dtemp )
 
         ! Vcmax (actually changes only monthly)
-        dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
+        dvcmax_canop(pft) = calc_vcmax_canop( canopy(pft)%fapar_ind, out_pmodel(pft,moy)%vcmax_unitiabs, solar%meanmppfd(moy) )
 
       else  
 
@@ -219,12 +236,22 @@ contains
 
       end if 
 
+      ! print*,'-----------------'
+      ! print*,'DOY ', doy
+      ! print*,'dgpp                     ', dgpp(pft)
+      ! print*,'evap(:)%cpa              ', evap(1)%cpa
+      ! print*,'fa                       ', calc_fa( evap(1)%cpa )
+      ! print*,'fapar                    ', canopy(pft)%fapar_ind
+      ! print*,'solar%dppfd(doy)         ', solar%dppfd(doy)
+      ! print*,'out_pmodel(pft,moy)%lue  ', out_pmodel(pft,moy)%lue
+      ! print*,'dtemp                    ', dtemp
+
     end do
-    
+
   end subroutine gpp
 
 
-  function getlue( co2, dtemp, dvpd, elv ) result( out_pmodel )
+  subroutine getlue( jpngr, co2, dtemp, dvpd, elv )
     !//////////////////////////////////////////////////////////////////
     ! Calculates the monthly acclimated photosynthetic parameters for 
     ! assimilation, Vcmax, and dark respiration per unit light absorbed.
@@ -237,23 +264,27 @@ contains
     use md_sofunutils, only: daily2monthly
 
     ! arguments
+    integer, intent(in)                   :: jpngr    ! gridcell number
     real, intent(in)                      :: co2      ! atmospheric CO2 (ppm)
     real, dimension(ndayyear), intent(in) :: dtemp    ! daily air temperature (deg C)
     real, dimension(ndayyear), intent(in) :: dvpd     ! daily vapour pressure deficit (Pa)
     real, intent(in)                      :: elv      ! elevation above sea level (m)
 
-    ! function return variable
-    type( outtype_pmodel ), dimension(npft,nmonth) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
-
     ! local variables
     real, dimension(ndayyear) :: mydtemp
     real, dimension(nmonth)   :: mtemp      ! monthly air temperature (deg C)
     real, dimension(nmonth)   :: mvpd       ! monthly vapour pressure deficit (Pa)
-    integer                   :: moy, pft
+    integer                   :: moy, lu, pft
     integer                   :: doy
 
     ! locally used daily temperature (may be different from globally used one)
     mydtemp(:) = dtemp(:)
+
+    ! ! xxx try
+    ! write(0,*) 'WARNING IN GETLUE: CAPPED DAILY TEMPERATURE AT 25 DEG C.'
+    ! do doy=1,ndayyear
+    !   mydtemp(doy) = min( mydtemp(doy), 25.0 )
+    ! end do
 
     ! Get monthly averages
     mtemp(:) = daily2monthly( mydtemp(:), "mean" )
@@ -281,47 +312,50 @@ contains
     ! ! XXX PMODEL_TEST
     ! print*, 'WARNING: ONLY C3 PHOTOSYNTHESIS USED IN PMODEL'
 
-    do pft=1,npft
+    do lu=1,nlu
 
-      do moy=1,nmonth
+      if (lu>1) stop 'in GETLUE(): think of something about LU and PFTs!'
 
-        ! ! XXX PMODEL_TEST
-        ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
+      do pft=1,npft
 
-        ! ! xxx debug
-        ! print*,'calling P-model with:'
-        ! print*,'pft   ', pft
-        ! print*,'moy   ', moy
-        ! print*,'mtemp ', mtemp(moy)
-        ! print*,'mvpd  ', mvpd(moy)
-        ! print*,'elv   ', elv
-        ! print*,'C4    ', params_pft_plant(pft)%c4
+        do moy=1,nmonth
 
-        if ( params_pft_plant(pft)%c4 ) then
-          ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
-          out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
-        else
-          ! C3
-          out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
-        end if
+          ! ! XXX PMODEL_TEST
+          ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
 
+          ! ! xxx debug
+          ! print*,'calling P-model with:'
+          ! print*,'pft   ', pft
+          ! print*,'moy   ', moy
+          ! print*,'mtemp ', mtemp(moy)
+          ! print*,'mvpd  ', mvpd(moy)
+          ! print*,'elv   ', elv
+          ! print*,'C4    ', params_pft_plant(pft)%c4
+
+          if ( params_pft_plant(pft)%c4 ) then
+            ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
+            out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
+          else
+            ! C3
+            out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
+          end if
+
+        end do
       end do
     end do
 
-  end function getlue
+  end subroutine getlue
 
 
-  function calc_dgpp( fapar, acrown, nind, dppfd, my_mlue, dtemp, cpalpha ) result( my_dgpp )
+  function calc_dgpp( fapar, dppfd, my_mlue, dtemp, cpalpha ) result( my_dgpp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: fapar
-    real, intent(in)           :: acrown
-    real, intent(in)           :: nind
-    real, intent(in)           :: dppfd
-    real, intent(in)           :: my_mlue
-    real, intent(in)           :: dtemp              ! this day's air temperature
+    real, intent(in) :: fapar
+    real, intent(in) :: dppfd
+    real, intent(in) :: my_mlue
+    real, intent(in) :: dtemp              ! this day's air temperature
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
@@ -337,23 +371,21 @@ contains
     end if
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dgpp = fapar * acrown * nind * dppfd * fa * my_mlue * ramp_gpp_lotemp( dtemp ) * c_molmass
+    my_dgpp = fapar * dppfd * fa * my_mlue * ramp_gpp_lotemp( dtemp ) * c_molmass
 
   end function calc_dgpp
 
 
-  function calc_drd( fapar, acrown, nind, meanmppfd, my_mrd_unitiabs, dtemp, cpalpha ) result( my_drd )
+  function calc_drd( fapar, meanmppfd, my_mrd_unitiabs, dtemp, cpalpha ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: fapar           ! fraction of absorbed PAR (unitless)
-    real, intent(in)           :: acrown
-    real, intent(in)           :: nind
-    real, intent(in)           :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
-    real, intent(in)           :: my_mrd_unitiabs
-    real, intent(in)           :: dtemp              ! this day's air temperature
+    real, intent(in) :: fapar           ! fraction of absorbed PAR (unitless)
+    real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
+    real, intent(in) :: my_mrd_unitiabs
+    real, intent(in) :: dtemp              ! this day's air temperature
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
@@ -369,22 +401,20 @@ contains
     end if
 
     ! Dark respiration takes place during night and day (24 hours)
-    my_drd = fapar * acrown * nind * meanmppfd * fa * my_mrd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * meanmppfd * fa * my_mrd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
 
   end function calc_drd
 
 
-  function calc_dtransp( fapar, acrown, nind, dppfd, my_transp_unitiabs, dtemp, cpalpha ) result( my_dtransp )
+  function calc_dtransp( fapar, dppfd, my_transp_unitiabs, dtemp, cpalpha ) result( my_dtransp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: fapar
-    real, intent(in)           :: acrown
-    real, intent(in)           :: nind
-    real, intent(in)           :: dppfd
-    real, intent(in)           :: my_transp_unitiabs
-    real, intent(in)           :: dtemp              ! this day's air temperature
+    real, intent(in) :: fapar
+    real, intent(in) :: dppfd
+    real, intent(in) :: my_transp_unitiabs
+    real, intent(in) :: dtemp              ! this day's air temperature
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
@@ -400,7 +430,7 @@ contains
     end if
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dtransp = fapar * acrown * nind * dppfd * fa * my_transp_unitiabs * ramp_gpp_lotemp( dtemp ) * h2o_molmass
+    my_dtransp = fapar * dppfd * fa * my_transp_unitiabs * ramp_gpp_lotemp( dtemp ) * h2o_molmass
 
   end function calc_dtransp
 
@@ -1375,7 +1405,7 @@ contains
   end subroutine initoutput_gpp
 
 
-  subroutine getout_daily_gpp( out_pmodel, jpngr, doy )
+  subroutine getout_daily_gpp( jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
     ! Note that output variables are collected only for those variables
@@ -1384,11 +1414,12 @@ contains
     ! where they are defined.
     !----------------------------------------------------------------
     use md_interface
+    use md_plant, only: lai_ind
 
-    ! argument
-    type( outtype_pmodel ), dimension(npft), intent(in) :: out_pmodel
-    integer, intent(in)                                 :: jpngr
-    integer, intent(in)                                 :: doy
+    ! arguments
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: moy
+    integer, intent(in) :: doy
 
     !----------------------------------------------------------------
     ! DAILY
@@ -1411,10 +1442,15 @@ contains
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
     ! store all daily values for outputting annual maximum
-    if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
+    if (npft>1) stop 'getout_annual_gpp not implemented for npft>1'
 
-    outdvcmax(1,doy)   = dvcmax_canop(1)
-    outdvcmax25(1,doy) = out_pmodel(1)%factor25_vcmax * dvcmax_canop(1)
+    if (lai_ind(1,jpngr)>0.0) then
+      outdvcmax(1,doy)   = dvcmax_canop(1) / lai_ind(1,jpngr)
+      outdvcmax25(1,doy) = out_pmodel(1,moy)%factor25_vcmax * dvcmax_canop(1) / lai_ind(1,jpngr)
+    else
+      outdvcmax(1,doy)   = 0.0
+      outdvcmax25(1,doy) = 0.0
+    end if
 
   end subroutine getout_daily_gpp
 
@@ -1423,7 +1459,9 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
+    use md_waterbal, only: solar
     use md_interface
+    use md_plant, only: maxdoy
 
     ! arguments
     integer, intent(in) :: jpngr
@@ -1432,19 +1470,24 @@ contains
 
     ! outanrlarea(jpngr) = anrlarea
     if (interface%params_siml%loutgpp) then
-      ! xxx to do: get vcmax at annual maximum (of monthly values)
-      outavcmax(1,jpngr)   = maxval(outdvcmax(1,:))
-      outavcmax25(1,jpngr) = maxval(outdvcmax25(1,:))
+      outavcmax(1,jpngr)   = outdvcmax(1,maxdoy(1))
+      outavcmax25(1,jpngr) = outdvcmax25(1,maxdoy(1))
+
+      ! outachi(:,jpngr)     = sum( out_pmodel(1,:)%chi * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
+      ! outalue(:,jpngr)     = sum( out_pmodel(1,:)%lue * solar%meanmppfd(:) ) / sum( solar%meanmppfd(:) )
     end if
 
   end subroutine getout_annual_gpp
 
 
-  subroutine writeout_ascii_gpp()
+  subroutine writeout_ascii_gpp( year )
     !/////////////////////////////////////////////////////////////////////////
     ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
     !-------------------------------------------------------------------------
     use md_interface
+
+    ! arguments
+    integer, intent(in) :: year       ! simulation year
 
     ! local variables
     real :: itime

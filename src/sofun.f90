@@ -6,14 +6,13 @@ program main
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_interface, only: interface
+  use md_interface
   use md_params_siml, only: getpar_siml, getsteering
   use md_params_site, only: getpar_site
   use md_grid, only: getgrid
   use md_params_soil, only: getsoil_field
   use md_forcing_siterun, only: getclimate_site, getninput, ninput_type, gettot_ninput, getfapar, getlanduse, getco2
   use md_params_core, only: dummy, maxgrid
-  use md_biosphere, only: biosphere_annual
 
   implicit none
 
@@ -162,7 +161,7 @@ program main
 
     !----------------------------------------------------------------
     !----------------------------------------------------------------
-    c_uptake = biosphere_annual() 
+    call biosphere( c_uptake ) 
     !----------------------------------------------------------------
     !----------------------------------------------------------------
 
