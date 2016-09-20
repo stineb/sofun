@@ -17,15 +17,20 @@ module md_littersom
   implicit none
   
   private 
-  public drhet, getpar_modl_littersom, initio_littersom, &
+  public psoil_fs, psoil_sl, drhet, getpar_modl_littersom, initio_littersom, &
     initoutput_littersom, &
     getout_annual_littersom, writeout_ascii_littersom, &
     littersom, initdaily_littersom, initglobal_littersom, &
     outdnetmin ! xxx debug
 
+
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
+  ! pools
+  type(orgpool), dimension(nlu,maxgrid)  :: psoil_sl        ! soil organic matter, fast turnover [gC/m2]
+  type(orgpool), dimension(nlu,maxgrid)  :: psoil_fs        ! soil organic matter, slow turnover [gC/m2]
+
   ! fluxes
   type(carbon), dimension(nlu) :: drsoil   ! soil respiration (only from exudates decomp.) [gC/m2/d]
   type(carbon), dimension(nlu) :: drhet    ! heterotrophic respiration [gC/m2/d]
@@ -71,7 +76,7 @@ module md_littersom
 
 contains
 
-  subroutine littersom( soil, out_waterbal, jpngr, doy, dtemp )
+  subroutine littersom( jpngr, doy, dtemp )
     !////////////////////////////////////////////////////////////////
     !  Litter and SOM decomposition and nitrogen mineralisation.
     !  1st order decay of litter and SOM _pools, governed by temperature
@@ -86,16 +91,14 @@ contains
     use md_classdefs
     use md_rates, only: ftemp, fmoist
     use md_plant, only: params_pft_plant, plitt_af, plitt_as, plitt_bg, pexud
-    use md_waterbal, only: out_waterbal
+    use md_waterbal, only: soilphys
     use md_soiltemp, only: dtemp_soil
     use md_ntransform, only: pnh4, pno3
 
     ! arguments
-    type( soil_type ), dimension(nlu), intent(inout)      :: soil
-    type( out_waterbal_type ), dimension(nlu), intent(in) :: out_waterbal
-    integer, intent(in)                                   :: jpngr                    ! grid cell number
-    integer, intent(in)                                   :: doy                      ! day of year
-    real, intent(in)                                      :: dtemp                    ! daily temperature (deg C)
+    integer, intent(in) :: jpngr                    ! grid cell number
+    integer, intent(in) :: doy                      ! day of year
+    real, intent(in)    :: dtemp                    ! daily temperature (deg C)
 
     ! local variables
     integer :: lu                                   ! counter variable for landuse class
@@ -188,10 +191,10 @@ contains
           ! Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
           !-------------------------------------------------------------------------
           ! define decomposition _rates for current soil temperature and moisture 
-          klitt_af(lu) = params_littersom%klitt_af10 * ftemp( dtemp,                "lloyd_and_taylor" ) * fmoist( out_waterbal(lu)%wscal, "foley" ) ! alternative: "gerten"
-          klitt_as(lu) = params_littersom%klitt_as10 * ftemp( dtemp,                "lloyd_and_taylor" ) * fmoist( out_waterbal(lu)%wscal, "foley" ) ! alternative: "gerten"
-          klitt_bg(lu) = params_littersom%klitt_bg10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( out_waterbal(lu)%wscal, "foley" ) ! alternative: "gerten"
-          kexu(lu)     = params_littersom%kexu10     * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( out_waterbal(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_af(lu) = params_littersom%klitt_af10 * ftemp( dtemp,                "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_as(lu) = params_littersom%klitt_as10 * ftemp( dtemp,                "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_bg(lu) = params_littersom%klitt_bg10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          kexu(lu)     = params_littersom%kexu10     * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
 
         end if
       end do
@@ -202,8 +205,8 @@ contains
       ! Moisture: Foley, 1995; Fang and Moncrieff, 1999; Gerten et al., 2004;
       !           Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
       !-------------------------------------------------------------------------
-      ksoil_fs(lu) = params_littersom%ksoil_fs10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( out_waterbal(lu)%wscal, "foley" )     ! alternative: "gerten"
-      ksoil_sl(lu) = params_littersom%ksoil_sl10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( out_waterbal(lu)%wscal, "foley" )     ! alternative: "gerten"
+      ksoil_fs(lu) = params_littersom%ksoil_fs10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
+      ksoil_sl(lu) = params_littersom%ksoil_sl10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
 
       !-------------------------------------------------------------------------
       ! Initialisation of decomposing pool 

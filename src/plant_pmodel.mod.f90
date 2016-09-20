@@ -1,9 +1,9 @@
 module md_plant
   !////////////////////////////////////////////////////////////////
-  ! Module contains (constrainable) model parameters.
-  ! Model parameters adopted here are from LPX C3 grass PFT
-  ! Litter and soil turnover parameters are divided by 365 to 
-  ! convert from [1/yr] to [1/d].
+  !  Module contains (constrainable) model parameters.
+  !  Model parameters adopted here are from LPX C3 grass PFT
+  !  Litter and soil turnover parameters are divided by 365 to 
+  !  convert from [1/yr] to [1/d].
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
@@ -183,10 +183,10 @@ contains
 
   subroutine getpar_modl_plant()
     !////////////////////////////////////////////////////////////////
-    ! Subroutine reads model parameters from input file.
-    ! It was necessary to separate this SR from module md_plant
-    ! because this SR uses module md_waterbal, which also uses
-    ! _plant.
+    !  Subroutine reads model parameters from input file.
+    !  It was necessary to separate this SR from module md_plant
+    !  because this SR uses module md_waterbal, which also uses
+    !  _plant.
     ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------    
@@ -297,10 +297,10 @@ contains
 
   subroutine initglobal_plant( plant )
     !////////////////////////////////////////////////////////////////
-    ! Initialisation of all _pools on all gridcells at the beginning
-    ! of the simulation.
-    ! June 2014
-    ! b.stocker@imperial.ac.uk
+    !  Initialisation of all _pools on all gridcells at the beginning
+    !  of the simulation.
+    !  June 2014
+    !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     use md_params_core, only: npft, maxgrid
 
@@ -326,9 +326,9 @@ contains
 
   subroutine initpft( plant )
     !////////////////////////////////////////////////////////////////
-    ! Initialisation of specified PFT on specified gridcell
-    ! June 2014
-    ! b.stocker@imperial.ac.uk
+    !  Initialisation of specified PFT on specified gridcell
+    !  June 2014
+    !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     ! argument
     type( plant_type ), intent(inout) :: plant
@@ -476,7 +476,7 @@ contains
 
   subroutine getout_annual_plant( plant, jpngr )
     !////////////////////////////////////////////////////////////////
-    ! SR called once a year to gather annual output variables.
+    !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
     use md_interface, only: interface
