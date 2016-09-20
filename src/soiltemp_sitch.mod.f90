@@ -40,20 +40,22 @@ module md_soiltemp
 
 contains
 
-  subroutine soiltemp( jpngr, moy, day, dtemp ) 
+  subroutine soiltemp( tile, jpngr, moy, day, dtemp ) 
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates soil temperature based on.
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, nlu, maxgrid, ndaymonth, pi
     use md_sofunutils, only: running, daily2monthly
     use md_waterbal, only: soilphys
+    use md_tile, only: tile_type
     use md_interface
 
     ! arguments
-    integer, intent(in)                   :: jpngr
-    integer, intent(in)                   :: moy
-    integer, intent(in)                   :: day                            ! current day of year
-    real, dimension(ndayyear), intent(in) :: dtemp        ! daily temperature (deg C)
+    type( tile_type ), dimension(nlu), intent(inout) :: tile
+    integer, intent(in)                              :: jpngr
+    integer, intent(in)                              :: moy
+    integer, intent(in)                              :: day                            ! current day of year
+    real, dimension(ndayyear), intent(in)            :: dtemp        ! daily temperature (deg C)
 
     ! local variables
     real, dimension(ndayyear,maxgrid), save     :: dtemp_pvy    ! daily temperature of previous year (deg C)
@@ -113,7 +115,7 @@ contains
 
       ! In case of zero soil water, return with soil temp = air temp
       if (meanw1==0.0) then
-        dtemp_soil(lu,jpngr) = dtemp(day)
+        tile(lu)%soil%phy%temp = dtemp(day)
         return
       endif
           
@@ -141,7 +143,7 @@ contains
       lagtemp = ( tempthismonth - templastmonth ) * ( 1.0 - lag ) + templastmonth
           
       ! Adjust amplitude of lagged air temp to give estimated soil temp
-      dtemp_soil(lu,jpngr) = avetemp + amp * ( lagtemp - avetemp )
+      tile(lu)%soil%phy%temp = avetemp + amp * ( lagtemp - avetemp )
 
     end do
 

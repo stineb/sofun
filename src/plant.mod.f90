@@ -26,18 +26,39 @@ module md_plant
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
-  ! pools
-  type(orgpool), dimension(npft,maxgrid) :: pleaf            ! leaf biomass [gC/ind.] (=lm_ind)
-  type(orgpool), dimension(npft,maxgrid) :: proot            ! root biomass [gC/ind.] (=rm_ind)
-  type(orgpool), dimension(npft,maxgrid) :: psapw            ! sapwood biomass [gC/ind.] (=sm_ind)
-  type(orgpool), dimension(npft,maxgrid) :: pwood            ! heartwood (non-living) biomass [gC/ind.] (=hm_ind)
-  type(orgpool), dimension(npft,maxgrid) :: plabl            ! labile pool, temporary storage of N and C [gC/ind.] (=bm_inc but contains also N) 
-  
-  type(carbon),  dimension(nlu,maxgrid)  :: pexud            ! exudates pool (very short turnover) [gC/m2]
-  
-  type(orgpool), dimension(npft,maxgrid) :: plitt_af         ! above-ground litter, fast turnover [gC/m2]
-  type(orgpool), dimension(npft,maxgrid) :: plitt_as         ! above-ground litter, slow turnover [gC/m2]
-  type(orgpool), dimension(npft,maxgrid) :: plitt_bg         ! below-ground litter [gC/m2]
+  type plant_type
+
+    ! pools
+    type(orgpool) :: leaf       ! leaf biomass [gC/ind.] (=lm_ind)
+    type(orgpool) :: root       ! root biomass [gC/ind.] (=rm_ind)
+    type(orgpool) :: sapw       ! sapwood biomass [gC/ind.] (=sm_ind)
+    type(orgpool) :: wood       ! heartwood (non-living) biomass [gC/ind.] (=hm_ind)
+    type(orgpool) :: labl       ! labile pool, temporary storage of N and C [gC/ind.] (=bm_inc but contains also N) 
+    
+    ! PFT index that goes along with this instance of 'plant'
+    integer :: pftno    
+
+    ! canopy
+    real :: lai_ind             ! fraction of absorbed photosynthetically active radiation
+    real :: fapar_ind           ! fraction of absorbed photosynthetically active radiation
+    real :: acrown              ! crown area
+
+    ! leaf traits
+    real :: leafc_canopy              ! g C m-2-ground, canopy-level
+    real :: narea_canopy              ! g N m-2-ground, canopy-level
+    real :: narea_metabolic_canopy    ! g N m-2-ground, canopy-level
+    real :: narea_structural_canopy   ! g N m-2-ground, canopy-level
+    real :: narea               ! total leaf N per unit leaf area (gN m-2)
+    real :: narea_metabolic     ! metabolic leaf N per unit leaf area (gN m-2)
+    real :: narea_structural    ! structural leaf N per unit leaf area (gN m-2)
+    real :: lma                 ! leaf mass per area (gC m-2)
+    real :: sla                 ! specific leaf area (m2 gC-1)
+    real :: nmass               ! leaf N per unit leaf mass, g N / g-dry mass
+    real :: r_cton_leaf         ! leaf C:N ratio [gC/gN] 
+    real :: r_ntoc_leaf         ! leaf N:C ratio [gN/gC]
+
+  end type plant_type
+
 
   ! fluxes
   real, dimension(npft)                  :: dgpp             ! daily gross primary production [gC/m2/d]
@@ -54,32 +75,6 @@ module md_plant
 
   real, dimension(npft)                  :: frac_leaf = 0.9  ! fraction of labile C allocated to leaves
 
-  ! Leaf traits
-  type leaftraits_type
-    real :: leafc_canopy              ! g C m-2-ground, canopy-level
-    real :: narea_canopy              ! g N m-2-ground, canopy-level
-    real :: narea_metabolic_canopy    ! g N m-2-ground, canopy-level
-    real :: narea_structural_canopy   ! g N m-2-ground, canopy-level
-    real :: narea                     ! g N m-2-leaf, leaf-level
-    real :: narea_metabolic           ! g N m-2-leaf, leaf-level
-    real :: narea_structural          ! g N m-2-leaf, leaf-level
-    real :: lma                       ! leaf mass per area [gC/m2]. C, NOT DRY-MASS!
-    real :: sla                       ! specific leaf area [m2/gC]. C, NOT DRY-MASS!
-    real :: nmass                     ! g N / g-dry mass
-    real :: r_cton_leaf               ! leaf C:N ratio [gC/gN] 
-    real :: r_ntoc_leaf               ! leaf N:C ratio [gN/gC]
-  end type leaftraits_type
-
-  type( leaftraits_type ), dimension(npft) :: leaftraits
-
-  ! Canopy state variables (does not include LAI!)
-  type canopy_type
-    real :: fapar_ind
-    ! real :: height              ! tree height (m)
-    ! real :: crownarea           ! individual's tree crown area
-  end type canopy_type
-
-  type( canopy_type ), dimension(npft)   :: canopy
 
   logical, dimension(npft,maxgrid) :: isgrowing        ! true as long as the PFT is growing (positive C balance after respiration and C export)
   logical, dimension(npft,maxgrid) :: isdying          ! true when PFT is dying (labile C pool depleted)
@@ -615,7 +610,7 @@ contains
   end function getpftparams
 
 
-  subroutine initglobal_plant()
+  subroutine initglobal_plant( plant )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of all _pools on all gridcells at the beginning
     !  of the simulation.
@@ -623,6 +618,9 @@ contains
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     use md_params_core, only: npft, maxgrid
+
+    ! argument
+    type( plant_type ), dimension(npft,jpngr), intent(out) :: plant
 
     ! local variables
     integer :: pft
@@ -633,68 +631,51 @@ contains
     !-----------------------------------------------------------------------------
     do jpngr=1,maxgrid
       do pft=1,npft
-        call initpft( pft, jpngr )
+        call initpft( plant(pft,jpngr) )
       end do
     end do
- 
-    ! initialise all PFT-specific non-plant pools with zero (not done in 'initpft')
-    pexud(:,:)    = carbon(0.0)                           ! exudates in soil, carbon pool [gC/m2]
-
-    plitt_af(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! above-ground fine   litter, organic pool [gC/m2 and gN/m2]
-    plitt_as(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! above-ground coarse litter, organic pool [gC/m2 and gN/m2]
-    plitt_bg(:,:) = orgpool(carbon(0.0),nitrogen(0.0))    ! below-ground fine   litter, organic pool [gC/m2 and gN/m2]
-
 
   end subroutine initglobal_plant
 
 
-  subroutine initpft( pft, jpngr )
+  subroutine initpft( plant )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of specified PFT on specified gridcell
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
+    ! argument
+    type( plant_type ), intent(out) :: plant
 
     ! initialise all _pools with zero
-    pleaf(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-    proot(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
+    plant%leaf = orgpool(carbon(0.0),nitrogen(0.0))
+    plant%root = orgpool(carbon(0.0),nitrogen(0.0))
+    plant%sapw = orgpool(carbon(0.0),nitrogen(0.0))
+    plant%wood = orgpool(carbon(0.0),nitrogen(0.0))
     
     if (params_pft_plant(pft)%grass) then
       ! xxx try: for grass add seed only at initialisation
       write(0,*) 'INITPFT: initialising plabl with seed'
-      plabl(pft,jpngr) = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
-      nind(pft,jpngr) = 1.0
+      plant%labl    = seed  ! orgpool(carbon(0.0),nitrogen(0.0))
+      plant%nind    = 1.0
+      plant%acrown  = 1.0
     else
       stop 'in initpft: not implemented for trees'
     end if
-    ! plabl(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-    
-    if (params_pft_plant(pft)%grass) then
-      nind(pft,jpngr) = 1.0
-    else if (params_pft_plant(pft)%tree) then
-      psapw(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-      pwood(pft,jpngr) = orgpool(carbon(0.0),nitrogen(0.0))
-    endif
-
-    ! initialise other properties
-    lai_ind(pft,jpngr) = 0.0
-
-    ! Leaf traits
-    leaftraits(:)%narea            = 0.0
-    leaftraits(:)%narea_metabolic  = 0.0
-    leaftraits(:)%narea_structural = 0.0
-    leaftraits(:)%lma              = 0.0
-    leaftraits(:)%sla              = 0.0
-    leaftraits(:)%nmass            = 0.0
-    leaftraits(:)%r_cton_leaf      = 0.0
-    leaftraits(:)%r_ntoc_leaf      = 0.0
 
     ! canopy variables
-    canopy(:)%fapar_ind = 0.0
-    ! canopy(:)%height    = 0.0
-    ! canopy(:)%crownarea = 0.0
+    plant%lai_ind   = 0.0
+    plant%fapar_ind = 0.0
+
+    ! Leaf traits
+    plant%narea            = 0.0
+    plant%narea_metabolic  = 0.0
+    plant%narea_structural = 0.0
+    plant%lma              = 0.0
+    plant%sla              = 0.0
+    plant%nmass            = 0.0
+    plant%r_cton_leaf      = 0.0
+    plant%r_ntoc_leaf      = 0.0
 
   end subroutine initpft
 
@@ -947,7 +928,7 @@ contains
   end subroutine initio_plant
 
 
-  subroutine getout_daily_plant( jpngr, moy, doy )
+  subroutine getout_daily_plant( plant, jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
     ! Note that output variables are collected only for those variables
