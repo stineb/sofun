@@ -13,9 +13,9 @@ source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 source( paste( myhome, "sofun/getin/write_sofunformatted.R", sep="" ) )
 source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 
-overwrite <- TRUE
+overwrite <- FALSE
 
-simsuite <- "swissface"
+simsuite <- "fluxnet2015"
 
 ##--------------------------------------------------------------------
 ##--------------------------------------------------------------------
@@ -33,6 +33,7 @@ siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_
 nsites <- dim(siteinfo)[1]
 
 for (idx in seq(nsites)){
+# for (idx in 1:1){
 
   sitename <- as.character(siteinfo$mysitename[idx])
   lon      <- siteinfo$lon[idx]

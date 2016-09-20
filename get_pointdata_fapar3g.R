@@ -16,6 +16,9 @@ get_pointdata_fapar3g <- function( lon, lat ){
     system( cmd )
     out <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
 
+    ## replace NA by zero (in the original files, some gridcells are NA: high northern in winter or in mid-desert). Assume that fAPAR is zero then and there
+    out[ is.na(out) ] <- 0.0
+
   } else {
 
     print( paste( "file", filn, "does not exist." ) )

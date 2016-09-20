@@ -11,7 +11,7 @@ ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)
 nmonth <- length(ndaymonth)
 
-simsuite <- "fluxnet_cnmodel"
+simsuite <- "atkinfull"
 
 fapar_year_start <- 1982
 fapar_year_end   <- 2011
@@ -22,12 +22,12 @@ nsites <- dim(siteinfo)[1]
 
 ## create data frame holding data for all sites
 df_fapar_allsites <- data.frame( year=rep( seq( fapar_year_start, fapar_year_end ), each=nmonth ), mo=rep(1:nmonth,nyears) )
-path_fapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite,"_sofun/sitedata/fapar/fapar_modis_allsites.csv", sep="" )
+path_fapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite,"_sofun/sitedata/fapar/fapar_fapar3g_allsites.csv", sep="" )
 
-overwrite <- FALSE
+overwrite <- TRUE
 
 for (idx in seq(nsites)){
-# for (idx in 1:2){
+# for (idx in 1:1){
 
   sitename <- as.character(siteinfo$mysitename[idx])
   lon      <- siteinfo$lon[idx]
