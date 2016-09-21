@@ -8,7 +8,7 @@ This repository holds scripts to process input data into a standard format, read
 ### Get climate data
 To retrieve daily (and quasi-daily based on monthly) input data for variables temperature, precipitation, and vapour pressure, run the following R script:
 ```R
-  source( "get_climate.R" )
+source( "get_climate.R" )
 ```
 When working on Imperial's server CX1, make sure to load the following modules beforehand:
 ```sh

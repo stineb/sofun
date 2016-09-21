@@ -56,16 +56,16 @@ for (idx in seq(nsites)){
       }
     }
 
-    # ##--------------------------------------------------------------------
-    # ## add dummy year 1999 with median of each month in all subsequent years
-    # ##--------------------------------------------------------------------
-    # dummy_1999 <- df_modis[ 1:12, ]
-    # for (imo in 1:nmonth){
-    #   dummy_1999$evi[imo] <- median( df_modis$evi[ df_modis$moy==imo ] )
-    #   dummy_1999$yr[imo] <- 1999 
-    #   dummy_1999$flag[imo] <- 1
-    # }
-    # df_modis <- rbind( dummy_1999, df_modis )
+    ##--------------------------------------------------------------------
+    ## add dummy year 1999 with median of each month in all subsequent years
+    ##--------------------------------------------------------------------
+    dummy_1999 <- df_modis[ 1:12, ]
+    for (imo in 1:nmonth){
+      dummy_1999$evi[imo] <- median( df_modis$evi[ df_modis$moy==imo ] )
+      dummy_1999$yr[imo] <- 1999 
+      dummy_1999$flag[imo] <- 1
+    }
+    df_modis <- rbind( dummy_1999, df_modis )
 
     ##--------------------------------------------------------------------
     ## Reduce data
