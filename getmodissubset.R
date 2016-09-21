@@ -82,7 +82,9 @@ get_evi_modis_250m <- function( sitename, lon, lat ){
   ##--------------------------------------
   ## Get dates for which data is available
   ##--------------------------------------
+  print( paste("lon", lon, "lat", lat))
   dates <- data.frame( dates=GetDates( Product = "MOD13Q1", Lat = lat, Long = lon ) )
+  print("done")
   dates$yr  <- as.numeric( substr( dates$dates, start=2, stop=5 ))
   dates$doy <- as.numeric( substr( dates$dates, start=6, stop=8 ))
   dates$start <- as.POSIXlt( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy - 1 )

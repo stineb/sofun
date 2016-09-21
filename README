@@ -1,5 +1,0 @@
-This repository holds scripts to retrieve climate input data simulations with Fortan and Python versions of unified model.
-This is illustrated on https://docs.google.com/presentation/d/1XcZldCMMCRMk2pwlHinod5-8Q1PvCMH2ccZZO9h4U3A/edit?usp=sharing
-Run in R by 
-
-  source( "get_climate.R" )
