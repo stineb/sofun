@@ -2,7 +2,7 @@ getmodissubset_evi <- function( sitename, lon, lat, start.date, end.date, savedi
 
   library( MODISTools )
 
-  if (!file.exists(savedir)){
+  if (length(list.files(savedir))!=4){
 
     print( paste( "==========================="))
     print( paste( "DOWNLOADING MODIS DATA FOR:"))
@@ -15,34 +15,34 @@ getmodissubset_evi <- function( sitename, lon, lat, start.date, end.date, savedi
     system( paste( "mkdir ", savedir, sep="" ) )  
 
     modis.subset <- data.frame(  
-      lat=lat, 
-      long=lon, 
-      start.date=start.date, 
-      end.date=end.date
+      lat        = lat, 
+      long       = lon, 
+      start.date = start.date, 
+      end.date   = end.date
       )
 
     MODISSubsets(
-      LoadDat = modis.subset, 
-      Products = "MOD13Q1",
-      Bands = c("250m_16_days_EVI", "250m_16_days_pixel_reliability"),
-      Size = c(0,0),
+      LoadDat   = modis.subset, 
+      Products  = "MOD13Q1",
+      Bands     = c("250m_16_days_EVI", "250m_16_days_pixel_reliability"),
+      Size      = c(0,0),
       StartDate = TRUE,
-      SaveDir = savedir
+      SaveDir   = savedir
       )
 
     MODISSummaries(
-      LoadDat = modis.subset, 
-      Dir = savedir,
-      Product = "MOD13Q1", 
-      Bands = "250m_16_days_EVI",
-      ValidRange = c(-2000,10000), 
-      NoDataFill = -3000, 
-      StartDate = TRUE,
-      Yield = TRUE,
-      Interpolate = TRUE, 
-      ScaleFactor = 0.0001,
-      QualityScreen = TRUE, 
-      QualityBand = "250m_16_days_pixel_reliability",
+      LoadDat          = modis.subset, 
+      Dir              = savedir,
+      Product          = "MOD13Q1", 
+      Bands            = "250m_16_days_EVI",
+      ValidRange       = c(-2000,10000), 
+      NoDataFill       = -3000, 
+      StartDate        = TRUE,
+      Yield            = TRUE,
+      Interpolate      = TRUE, 
+      ScaleFactor      = 0.0001,
+      QualityScreen    = TRUE, 
+      QualityBand      = "250m_16_days_pixel_reliability",
       QualityThreshold = 0
       )
     
