@@ -104,6 +104,11 @@ for (idx in seq(nsites)){
     # clim_cru_monthly$wetd <- rep( 5.0, dim(clim_cru_monthly)[1] )
 
     ##--------------------------------------------------------------------
+    ## irradiance
+    ##--------------------------------------------------------------------
+    clim_cru_monthly$irad <- rep( NA, dim(clim_cru_monthly)[1] )
+
+    ##--------------------------------------------------------------------
     ## expanding to daily data (interpolating temp, and generating prec)
     ##--------------------------------------------------------------------
     print( paste( "expanding to daily data for station", sitename, "..." ) )
@@ -128,6 +133,7 @@ for (idx in seq(nsites)){
     clim_daily$prec <- rep( NA, dim(clim_daily)[1] )
     clim_daily$ccov <- rep( NA, dim(clim_daily)[1] )
     clim_daily$vapr <- rep( NA, dim(clim_daily)[1] )
+    clim_daily$irad <- rep( NA, dim(clim_daily)[1] )
     clim_daily$source <- rep( "cru", dim(clim_daily)[1] )
 
     imo <- 1
@@ -174,7 +180,13 @@ for (idx in seq(nsites)){
       mvapr_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$vapr
       clim_daily$vapr[ idxs ] <- monthly2daily( mvapr, "polynom", mvapr_pvy[nmonth], mvapr_nxt[1] )
 
+      ##--------------------------------------------------------------------
+      ## irradiance - nothing done yet. Is this identical to WATCH SW-DOWN (+LW-DOWN)? 
+      ## (Long-wave downwards surface radiation W/m2 flux (average over previous 3 hours))
+      ##--------------------------------------------------------------------
+
       imo <- imo + nmonth
+
     }
 
     ## Reduce CCOV to a maximum 100%
@@ -195,7 +207,8 @@ for (idx in seq(nsites)){
         }
         tmp <- get_pointdata_prec_wfdei( lon, lat, moy, yr )
         if (!is.na(tmp[1])) { 
-         clim_daily$prec[ which( clim_daily$year==yr & clim_daily$moy==moy ) ] <- tmp 
+          useidx <- which( clim_daily$year==yr & clim_daily$moy==moy )
+          clim_daily$prec[ useidx ] <- tmp 
         }
       }
     }
@@ -223,11 +236,18 @@ for (idx in seq(nsites)){
           print("PROBLEM: found no corresponding indeces for ...")
           print(paste("year =", meteo$year[jdx], "moy =", meteo$moy[jdx], "dom =", meteo$dom[jdx] ) )           
         }
-        if (!is.na(meteo$temp_mean[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp_mean[jdx] }
+
+        ## temperature
+        if (!is.na(meteo$temp_mean[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp[jdx] }
         if (!is.na(meteo$temp_mean[jdx])) { clim_daily$source[ putjdx ] <- "temp_sitedata" }
 
-        if (!is.na(meteo$rainfall[jdx])) { clim_daily$prec[ putjdx ]   <- meteo$rainfall[jdx] }
+        ## precipitation
+        if (!is.na(meteo$rainfall[jdx])) { clim_daily$prec[ putjdx ]   <- meteo$prec[jdx] }
         if (!is.na(meteo$rainfall[jdx])) { clim_daily$source[ putjdx ] <- "prec_sitedata" }
+
+        ## irradiance
+        if (!is.na(meteo$rainfall[jdx])) { clim_daily$irad[ putjdx ]   <- meteo$rad[jdx] }
+        if (!is.na(meteo$rainfall[jdx])) { clim_daily$source[ putjdx ] <- "irad_sitedata" }
 
       }
 
@@ -267,6 +287,9 @@ for (idx in seq(nsites)){
 
     filnam <- paste( dirnam, "dvapr_", sitename, "_", yr, ".txt", sep="" )
     write_sofunformatted( filnam, clim_daily$vapr[ which( clim_daily$year==yr ) ] )
+
+    filnam <- paste( dirnam, "dirad_", sitename, "_", yr, ".txt", sep="" )
+    write_sofunformatted( filnam, clim_daily$irad[ which( clim_daily$year==yr ) ] )
 
   }
 
