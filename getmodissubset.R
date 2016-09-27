@@ -6,8 +6,9 @@ getmodissubset_evi <- function( sitename, lon, lat, start.date, end.date, savedi
 
     print( paste( "==========================="))
     print( paste( "DOWNLOADING MODIS DATA FOR:"))
-    print( paste( "lon  :", lon) )
-    print( paste( "lat  :", lat) )
+    print( paste( "site :", sitename ) )
+    print( paste( "lon  :", lon ) )
+    print( paste( "lat  :", lat ) )
     print( paste( "start:", start.date ) )
     print( paste( "end  :", end.date ) )
     print( paste( "---------------------------"))
@@ -32,7 +33,7 @@ getmodissubset_evi <- function( sitename, lon, lat, start.date, end.date, savedi
 
     MODISSummaries(
       LoadDat          = modis.subset, 
-      Dir              = savedir,
+      Dir              =  savedir,
       Product          = "MOD13Q1", 
       Bands            = "250m_16_days_EVI",
       ValidRange       = c(-2000,10000), 
@@ -50,6 +51,7 @@ getmodissubset_evi <- function( sitename, lon, lat, start.date, end.date, savedi
 
     print( paste( "==========================="))
     print( paste( "FOUND DATA FOR:"))
+    print( paste( "site :", sitename ) )
     print( paste( "lon  :", lon) )
     print( paste( "lat  :", lat) )
     print( paste( "start:", start.date ) )
@@ -107,6 +109,7 @@ get_evi_modis_250m <- function( sitename, lon, lat ){
   ## Collect data for all available dates
   ##--------------------------------------
   modis <- subset( dates, select=c(yr,doy,start,end,absday) )
+  # print(dim(modis))
   modis$evi <- rep( NA, dim(modis)[1] )
 
   for (idx in 1:dim(modis)[1]){
@@ -116,7 +119,7 @@ get_evi_modis_250m <- function( sitename, lon, lat ){
                                     sitename, lon, lat, modis$start[idx], modis$end[idx], 
                                     paste( 
                                             myhome,
-                                            "data/modis_fluxnet_cutouts/data_",
+                                            "data/modis_fluxnet_cutouts/", sitename,"/data_",
                                             sitename, 
                                             "_", 
                                             as.Date(modis$start[idx]), 
@@ -163,7 +166,9 @@ get_evi_modis_250m <- function( sitename, lon, lat ){
 
   dfm$evi <- approx( modis$absday, modis$evi, xout=dfm$absday )$y
 
-  return(dfm)
+  out_get_evi_modis_250m <- list( dfm=dfm, df_origdates=modis )
+
+  return( out_get_evi_modis_250m )
 
 }
 

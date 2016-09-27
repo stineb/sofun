@@ -15,7 +15,7 @@ source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 
 overwrite <- FALSE
 
-simsuite <- "fluxnet2015"
+simsuite <- "swbm"
 
 ##--------------------------------------------------------------------
 ##--------------------------------------------------------------------
@@ -29,7 +29,7 @@ staryr_wfdei <- 1979
 endyr_wfdei  <- 2012
 
 ## load meta data file for site simulation
-siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
+siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
 nsites <- dim(siteinfo)[1]
 
 for (idx in seq(nsites)){
@@ -209,8 +209,8 @@ for (idx in seq(nsites)){
       print( paste( "file name", filn))
       meteo <- read.csv( filn )
       
-      meteo$moy <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mon + 1
-      meteo$dom <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mday
+      if ( is.null(meteo$moy) ) { meteo$moy <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mon + 1 }
+      if ( is.null(meteo$dom) ) { meteo$dom <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mday }
 
       for (jdx in 1:dim(meteo)[1]){
 

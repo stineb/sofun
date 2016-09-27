@@ -1,7 +1,5 @@
 # Input processing for SOFUN
 
-Beni Stocker, 20 Sep 2016
-
 This repository holds scripts to process input data into a standard format, readable by SOFUN. Data is retrieved from original data files available on CX1 and is stored into a local standardised directory tree from where it's accessed by SOFUN. This is illustrated on https://docs.google.com/presentation/d/1XcZldCMMCRMk2pwlHinod5-8Q1PvCMH2ccZZO9h4U3A/edit?usp=sharing
 
 ## Get site-scale data

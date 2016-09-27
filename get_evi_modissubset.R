@@ -37,47 +37,53 @@ for (idx in seq(nsites)){
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
   dirnam_fapar_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", sep="" )
-  filnam_fapar_csv <- paste( dirnam_fapar_csv, "fapar_evi_modissubset_", sitename, ".csv", sep="" )
+  filnam_fapar_csv <- paste( dirnam_fapar_csv, "mfapar_evi_modissubset_", sitename, ".csv", sep="" )
 
   if (!file.exists(filnam_fapar_csv)||overwrite){
 
     ##--------------------------------------------------------------------
-    df_modis <- get_evi_modis_250m( sitename, lon, lat )
+    out_get_evi_modis_250m <- get_evi_modis_250m( sitename, lon, lat )
     ##--------------------------------------------------------------------
+
+    ##--------------------------------------------------------------------
+    # get dataframe with data interpolated to monthly values
+    ##--------------------------------------------------------------------
+    df_monthly   <- out_get_evi_modis_250m$dfm
+    df_origdates <- out_get_evi_modis_250m$df_origdates
 
     ##--------------------------------------------------------------------
     ## gap-fill data with median of corresponding months
     ##--------------------------------------------------------------------
-    df_modis$flag <- rep(0,dim(df_modis)[1])
-    for (idx in 1:dim(df_modis)[1]){
-      if (is.na(df_modis$evi[idx])){
-        df_modis$evi[idx] <- median( df_modis$evi[ df_modis$moy==df_modis$moy[idx] ], na.rm=TRUE )
-        df_modis$flag[idx] <- 1
+    df_monthly$flag <- rep(0,dim(df_monthly)[1])
+    for (idx in 1:dim(df_monthly)[1]){
+      if (is.na(df_monthly$evi[idx])){
+        df_monthly$evi[idx] <- median( df_monthly$evi[ df_monthly$moy==df_monthly$moy[idx] ], na.rm=TRUE )
+        df_monthly$flag[idx] <- 1
       }
     }
 
     ##--------------------------------------------------------------------
     ## add dummy year 1999 with median of each month in all subsequent years
     ##--------------------------------------------------------------------
-    dummy_1999 <- df_modis[ 1:12, ]
+    dummy_1999 <- df_monthly[ 1:12, ]
     for (imo in 1:nmonth){
-      dummy_1999$evi[imo] <- median( df_modis$evi[ df_modis$moy==imo ] )
+      dummy_1999$evi[imo] <- median( df_monthly$evi[ df_monthly$moy==imo ] )
       dummy_1999$yr[imo] <- 1999 
       dummy_1999$flag[imo] <- 1
     }
-    df_modis <- rbind( dummy_1999, df_modis )
+    df_monthly <- rbind( dummy_1999, df_monthly )
 
     ##--------------------------------------------------------------------
     ## Reduce data
     ##--------------------------------------------------------------------
-    df_modis <- subset( df_modis, select=c(yr,moy,evi))
+    df_monthly <- subset( df_monthly, select=c( yr, moy, evi ) )
 
     ##--------------------------------------------------------------------
     ## Save data frames as CSV files
     ##--------------------------------------------------------------------
     print( paste( "writing fapar data frame into CSV file ", filnam_fapar_csv, "...") )
     system( paste( "mkdir -p", dirnam_fapar_csv ) )   
-    write.csv( df_modis, file=filnam_fapar_csv, row.names=FALSE )
+    write.csv( df_monthly, file=filnam_fapar_csv, row.names=FALSE )
 
   } else {
 
@@ -85,14 +91,14 @@ for (idx in seq(nsites)){
     ## Read CSV file directly for this site
     ##--------------------------------------------------------------------
     print( "monthly fapar data already available in CSV file ...")
-    df_modis <- read.csv( filnam_fapar_csv )
+    df_monthly <- read.csv( filnam_fapar_csv )
 
   }
 
   ##--------------------------------------------------------------------
   ## Attach to data frame for all sites
   ##--------------------------------------------------------------------
-  df_modis_allsites[[ sitename ]] <- df_modis$evi
+  df_modis_allsites[[ sitename ]] <- df_monthly$evi
 
   ##--------------------------------------------------------------------
   ## Write to Fortran-formatted output for each variable and year separately
@@ -100,14 +106,14 @@ for (idx in seq(nsites)){
   print( "writing formatted input files ..." )
 
   ## in separate formatted file 
-  for (yr in unique(df_modis$yr)){
+  for (yr in unique(df_monthly$yr)){
 
     print( paste("... for year", yr))
     dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(yr), "/", sep="" )
     system( paste( "mkdir -p", dirnam ) )
 
     filnam <- paste( dirnam, "fapar_evi_modissubset_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, df_modis$evi[ which( df_modis$yr==yr ) ] )
+    write_sofunformatted( filnam, df_monthly$evi[ which( df_monthly$yr==yr ) ] )
     
   }
   
