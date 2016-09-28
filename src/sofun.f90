@@ -40,6 +40,7 @@ program main
   ! GET SIMULATION PARAMETERS FROM FILE <runname>.sofun.parameter
   ! SR getpar_siml is defined in _params_siml.mod.F
   !----------------------------------------------------------------
+  print*,'starting'
   interface%params_siml = getpar_siml( trim(runname) )
 
   !----------------------------------------------------------------

@@ -7,6 +7,7 @@ from subprocess import call
 ## Simulation suite
 ## - "swissface"
 ## - "fluxnet"
+## - "fluxnet2015"
 ## - "fluxnet_cnmodel"
 ## - "gcme"
 ## - "campi"
@@ -17,7 +18,7 @@ from subprocess import call
 ## - "olson"
 ## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'atkinfull'
+simsuite = 'fluxnet2015'
 
 ##--------------------------------------------------------------------
 ## set options
@@ -47,7 +48,7 @@ if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'atk
     do_cmodel = True
 
 ## P-model setup
-if simsuite == 'fluxnet' or simsuite == 'pmodel_test' or simsuite == 'atkinfull':
+if simsuite == 'fluxnet' or simsuite == 'pmodel_test' or simsuite == 'atkinfull' or simsuite == 'fluxnet2015':
     do_pmodel = True
 
 

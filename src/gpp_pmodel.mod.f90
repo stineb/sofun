@@ -297,6 +297,7 @@ contains
         ! print*,'elv   ', elv
         ! print*,'C4    ', params_pft_plant(pft)%c4
 
+        ! print*,'calling pmodel to get LUE ...'
         if ( params_pft_plant(pft)%c4 ) then
           ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
           out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
@@ -304,7 +305,8 @@ contains
           ! C3
           out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
         end if
-
+        ! print*,'... done'
+        
       end do
     end do
 

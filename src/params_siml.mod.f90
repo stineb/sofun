@@ -279,6 +279,7 @@ contains
     out_getpar_siml%daily_out_startyr    = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_startyr' )
     out_getpar_siml%daily_out_endyr      = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_endyr' )
 
+
     if (out_getpar_siml%do_spinup) then
       out_getpar_siml%runyears = out_getpar_siml%nyeartrend + out_getpar_siml%spinupyears
     else

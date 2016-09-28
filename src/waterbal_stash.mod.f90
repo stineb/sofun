@@ -313,11 +313,16 @@ contains
     end do
 
     ! Calculate monthly average daylight PPFD 
-    daysecs(:)   = out_solar%dayl(:) * 60.0 * 60.0              ! conversion of daylight hours to seconds
-    monsecs(:)   = daily2monthly( daysecs(:), "sum" )
+    daysecs(:)         = out_solar%dayl(:) * 60.0 * 60.0              ! conversion of daylight hours to seconds
+    monsecs(:)         = daily2monthly( daysecs(:), "sum" )
+    out_solar%mppfd(:) = daily2monthly( out_solar%dppfd(:), "sum" )   ! mol m-2 month-1
 
-    out_solar%mppfd(:)     = daily2monthly( out_solar%dppfd(:), "sum" )   ! mol m-2 month-1
-    out_solar%meanmppfd(:) = out_solar%mppfd(:) / monsecs(:)              ! mol m-2 s-1
+    ! In polar regions, 'monsecs' an be zero in winter months. PPFD is zero then too.
+    where ( monsecs(:) > 0.0 )
+      out_solar%meanmppfd(:) = out_solar%mppfd(:) / monsecs(:) ! mol m-2 s-1
+    elsewhere
+      out_solar%meanmppfd(:) = 0.0
+    end where
 
     !-------------------------------------------------------------   
     ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 

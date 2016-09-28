@@ -95,11 +95,16 @@ contains
       ! This is not compatible with a daily biosphere-climate coupling. I.e., 
       ! there is a daily loop within 'getsolar'!
       !----------------------------------------------------------------
+      if (verbose) write(0,*) 'calling getsolar() ... '
+      if (verbose) write(0,*) '    with argument lat   = ', interface%grid(jpngr)%lat
+      if (verbose) write(0,*) '    with argument elv   = ', interface%grid(jpngr)%elv
+      if (verbose) write(0,*) '    with argument dfsun = ', interface%climate(jpngr)%dfsun
       solar = getsolar( &
         interface%grid(jpngr)%lat, & 
         interface%grid(jpngr)%elv, & 
         interface%climate(jpngr)%dfsun(:) & 
         )
+      if (verbose) write(0,*) '... done'
 
       !----------------------------------------------------------------
       ! Get monthly light use efficiency, and Rd per unit of light absorbed
@@ -107,12 +112,14 @@ contains
       ! This is not compatible with a daily biosphere-climate coupling. I.e., 
       ! there is a monthly loop within 'getlue'!
       !----------------------------------------------------------------
+      if (verbose) write(0,*) 'calling getlue() ... '
       out_pmodel(:,:) = getlue( &
         interface%pco2, & 
         interface%climate(jpngr)%dtemp(:), & 
         interface%climate(jpngr)%dvpd(:), & 
         interface%grid(jpngr)%elv & 
         )
+      if (verbose) write(0,*) '... done'
 
       !----------------------------------------------------------------
       ! LOOP THROUGH MONTHS
