@@ -96,9 +96,9 @@ contains
       ! there is a daily loop within 'getsolar'!
       !----------------------------------------------------------------
       if (verbose) write(0,*) 'calling getsolar() ... '
-      if (verbose) write(0,*) '    with argument lat   = ', interface%grid(jpngr)%lat
-      if (verbose) write(0,*) '    with argument elv   = ', interface%grid(jpngr)%elv
-      if (verbose) write(0,*) '    with argument dfsun = ', interface%climate(jpngr)%dfsun
+      if (verbose) write(0,*) '    with argument lat = ', interface%grid(jpngr)%lat
+      if (verbose) write(0,*) '    with argument elv = ', interface%grid(jpngr)%elv
+      if (verbose) write(0,*) '    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
       solar = getsolar( &
         interface%grid(jpngr)%lat, & 
         interface%grid(jpngr)%elv, & 

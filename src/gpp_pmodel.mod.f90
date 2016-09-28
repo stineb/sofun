@@ -288,16 +288,16 @@ contains
         ! ! XXX PMODEL_TEST
         ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
 
-        ! ! xxx debug
-        ! print*,'calling P-model with:'
-        ! print*,'pft   ', pft
-        ! print*,'moy   ', moy
-        ! print*,'mtemp ', mtemp(moy)
-        ! print*,'mvpd  ', mvpd(moy)
-        ! print*,'elv   ', elv
-        ! print*,'C4    ', params_pft_plant(pft)%c4
+        ! xxx debug
+        print*,'calling P-model with:'
+        print*,'pft   ', pft
+        print*,'moy   ', moy
+        print*,'mtemp ', mtemp(moy)
+        print*,'mvpd  ', mvpd(moy)
+        print*,'elv   ', elv
+        print*,'C4    ', params_pft_plant(pft)%c4
 
-        ! print*,'calling pmodel to get LUE ...'
+        print*,'calling pmodel to get LUE ...'
         if ( params_pft_plant(pft)%c4 ) then
           ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
           out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
@@ -305,8 +305,8 @@ contains
           ! C3
           out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
         end if
-        ! print*,'... done'
-        
+        print*,'... done'
+
       end do
     end do
 
@@ -478,174 +478,188 @@ contains
 
     type(outtype_lue) :: out_lue
 
+    ! xxx discuss this: approapriate?
+    if (tc > 0.0) then
 
-    ! absorbed photosynthetically active radiation (mol/m2)
-    ppfdabs = fpar * ppfd
+      ! absorbed photosynthetically active radiation (mol/m2)
+      ppfdabs = fpar * ppfd
 
-    ! atmospheric pressure as a function of elevation (Pa)
-    patm = calc_patm( elv )
+      ! atmospheric pressure as a function of elevation (Pa)
+      patm = calc_patm( elv )
 
-    ! ambient CO2 partial pression (Pa)
-    ca = co2_to_ca( co2, patm )
+      ! ambient CO2 partial pression (Pa)
+      ca = co2_to_ca( co2, patm )
 
-    ! photorespiratory compensation point - Gamma-star (Pa)
-    gstar = calc_gstar( tc )
+      ! photorespiratory compensation point - Gamma-star (Pa)
+      gstar = calc_gstar( tc )
 
-    ! ! XXX PMODEL_TEST: ok
-    ! print*, 'gstar ', gstar
+      ! ! XXX PMODEL_TEST: ok
+      ! print*, 'gstar ', gstar
 
-    ! Michaelis-Menten coef. (Pa)
-    kmm  = calc_k( tc, patm )
+      ! Michaelis-Menten coef. (Pa)
+      kmm  = calc_k( tc, patm )
 
-    ! ! XXX PMODEL_TEST: ok
-    ! print*, 'kmm ', kmm
+      ! ! XXX PMODEL_TEST: ok
+      ! print*, 'kmm ', kmm
 
-    ! viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
-    ns      = calc_viscosity_h2o( tc, patm )  ! Pa s 
-    ns25    = calc_viscosity_h2o( kTo, kPo )  ! Pa s 
-    ns_star = ns / ns25                       ! (unitless)
+      ! viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
+      ns      = calc_viscosity_h2o( tc, patm )  ! Pa s 
+      ns25    = calc_viscosity_h2o( kTo, kPo )  ! Pa s 
+      ns_star = ns / ns25                       ! (unitless)
 
-    ! ! XXX PMODEL_TEST: ok
-    ! print*, 'ns ', ns
+      ! ! XXX PMODEL_TEST: ok
+      ! print*, 'ns ', ns
 
-    select case (method)
+      select case (method)
 
-      case ("approx")
-        !-----------------------------------------------------------------------
-        ! A. APPROXIMATIVE METHOD
-        !-----------------------------------------------------------------------
-        out_lue = lue_approx( tc, vpd, elv, ca, gstar, ns, kmm )
-                  
-      case ("C3_simpl")
-        !-----------------------------------------------------------------------
-        ! B.1 SIMPLIFIED FORMULATION 
-        !-----------------------------------------------------------------------
-        out_lue = lue_vpd_c3_simpl( kmm, gstar, ns, ca, vpd )
+        case ("approx")
+          !-----------------------------------------------------------------------
+          ! A. APPROXIMATIVE METHOD
+          !-----------------------------------------------------------------------
+          out_lue = lue_approx( tc, vpd, elv, ca, gstar, ns, kmm )
+                    
+        case ("C3_simpl")
+          !-----------------------------------------------------------------------
+          ! B.1 SIMPLIFIED FORMULATION 
+          !-----------------------------------------------------------------------
+          out_lue = lue_vpd_c3_simpl( kmm, gstar, ns, ca, vpd )
 
-      case ("C3_full")
-        !-----------------------------------------------------------------------
-        ! B.2 FULL FORMULATION
-        !-----------------------------------------------------------------------
-        out_lue = lue_vpd_c3_full( kmm, gstar, ns_star, ca, vpd )
+        case ("C3_full")
+          !-----------------------------------------------------------------------
+          ! B.2 FULL FORMULATION
+          !-----------------------------------------------------------------------
+          out_lue = lue_vpd_c3_full( kmm, gstar, ns_star, ca, vpd )
 
-      case ("C4")
-        !-----------------------------------------------------------------------
-        ! B.2 FULL FORMULATION
-        !-----------------------------------------------------------------------
-        out_lue = lue_c4()
+        case ("C4")
+          !-----------------------------------------------------------------------
+          ! B.2 FULL FORMULATION
+          !-----------------------------------------------------------------------
+          out_lue = lue_c4()
 
-      case default
+        case default
 
-        stop 'PMODEL: select valid method'
+          stop 'PMODEL: select valid method'
 
-    end select
+      end select
 
-    ! LUE-functions return m, n, and chi
-    m   = out_lue%m
-    n   = out_lue%n
-    chi = out_lue%chi
+      ! LUE-functions return m, n, and chi
+      m   = out_lue%m
+      n   = out_lue%n
+      chi = out_lue%chi
 
-    ! ! XXX PMODEL_TEST: ok
-    ! print*, 'm ', m
+      ! ! XXX PMODEL_TEST: ok
+      ! print*, 'm ', m
 
-    ! ! XXX PMODEL_TEST: ok
-    ! print*, 'chi ', chi
+      ! ! XXX PMODEL_TEST: ok
+      ! print*, 'chi ', chi
 
-    !-----------------------------------------------------------------------
-    ! Calculate function return variables
-    !-----------------------------------------------------------------------
+      !-----------------------------------------------------------------------
+      ! Calculate function return variables
+      !-----------------------------------------------------------------------
 
-    ! GPP per unit ground area is the product of the intrinsic quantum 
-    ! efficiency, the absorbed PAR, the function of alpha (drought-reduction),
-    ! and 'm'
-    m   = calc_mprime( m )
+      ! GPP per unit ground area is the product of the intrinsic quantum 
+      ! efficiency, the absorbed PAR, the function of alpha (drought-reduction),
+      ! and 'm'
+      m   = calc_mprime( m )
 
-    gpp = ppfdabs * params_pft_gpp(pft)%kphio * m  ! in mol m-2 s-1
+      gpp = ppfdabs * params_pft_gpp(pft)%kphio * m  ! in mol m-2 s-1
 
-    ! Light use efficiency (gpp per unit ppfdabs)
-    lue = params_pft_gpp(pft)%kphio * m 
+      ! Light use efficiency (gpp per unit ppfdabs)
+      lue = params_pft_gpp(pft)%kphio * m 
 
-    ! ! XXX PMODEL_TEST: ok
-    ! print*, 'lue ', lue
-    ! print*, 'chi ', chi
+      ! ! XXX PMODEL_TEST: ok
+      ! print*, 'lue ', lue
+      ! print*, 'chi ', chi
 
-    ! leaf-internal CO2 partial pressure (Pa)
-    ci = chi * ca
+      ! leaf-internal CO2 partial pressure (Pa)
+      ci = chi * ca
 
-    ! stomatal conductance
-    gs = gpp  / ( ca - ci )
+      ! stomatal conductance
+      gs = gpp  / ( ca - ci )
 
-    ! Vcmax per unit ground area is the product of the intrinsic quantum 
-    ! efficiency, the absorbed PAR, and 'n'
-    vcmax = ppfdabs * params_pft_gpp(pft)%kphio * n
+      ! Vcmax per unit ground area is the product of the intrinsic quantum 
+      ! efficiency, the absorbed PAR, and 'n'
+      vcmax = ppfdabs * params_pft_gpp(pft)%kphio * n
 
-    ! Vcmax normalised per unit fAPAR (assuming fAPAR=1)
-    vcmax_unitfapar = ppfd * params_pft_gpp(pft)%kphio * n 
+      ! Vcmax normalised per unit fAPAR (assuming fAPAR=1)
+      vcmax_unitfapar = ppfd * params_pft_gpp(pft)%kphio * n 
 
-    ! Vcmax normalised per unit absorbed PPFD (assuming ppfdabs=1)
-    vcmax_unitiabs = params_pft_gpp(pft)%kphio * n 
+      ! Vcmax normalised per unit absorbed PPFD (assuming ppfdabs=1)
+      vcmax_unitiabs = params_pft_gpp(pft)%kphio * n 
 
-    ! Vcmax25 (vcmax normalized to 25 deg C)
-    factor25_vcmax    = calc_vcmax25( 1.0, tc )
-    vcmax25           = factor25_vcmax * vcmax
-    vcmax25_unitfapar = factor25_vcmax * vcmax_unitfapar
-    vcmax25_unitiabs  = factor25_vcmax * vcmax_unitiabs
+      ! Vcmax25 (vcmax normalized to 25 deg C)
+      factor25_vcmax    = calc_vcmax25( 1.0, tc )
+      vcmax25           = factor25_vcmax * vcmax
+      vcmax25_unitfapar = factor25_vcmax * vcmax_unitfapar
+      vcmax25_unitiabs  = factor25_vcmax * vcmax_unitiabs
 
-    ! Dark respiration
-    rd = params_pft_gpp(pft)%rd_to_vcmax * vcmax
+      ! Dark respiration
+      rd = params_pft_gpp(pft)%rd_to_vcmax * vcmax
 
-    ! Dark respiration per unit fAPAR (assuming fAPAR=1)
-    rd_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * vcmax_unitfapar
+      ! Dark respiration per unit fAPAR (assuming fAPAR=1)
+      rd_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * vcmax_unitfapar
 
-    ! Dark respiration per unit absorbed PPFD (assuming ppfdabs=1)
-    rd_unitiabs = params_pft_gpp(pft)%rd_to_vcmax * vcmax_unitiabs
+      ! Dark respiration per unit absorbed PPFD (assuming ppfdabs=1)
+      rd_unitiabs = params_pft_gpp(pft)%rd_to_vcmax * vcmax_unitiabs
 
-    ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
-    actnv = vcmax25 * n_v
-    actnv_unitfapar = vcmax25_unitfapar * n_v
-    actnv_unitiabs  = vcmax25_unitiabs  * n_v
+      ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
+      actnv = vcmax25 * n_v
+      actnv_unitfapar = vcmax25_unitfapar * n_v
+      actnv_unitiabs  = vcmax25_unitiabs  * n_v
 
-    ! Transpiration (E)
-    ! Using 
-    ! - E = 1.6 gs D
-    ! - gs = A / (ca (1-chi))
-    ! (- chi = ci / ca)
-    ! => E = f
-    transp           = (1.6 * ppfdabs * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)   ! gpp = ppfdabs * params_pft_gpp(pft)%kphio * fa * m
-    transp_unitfapar = (1.6 * ppfd * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
-    transp_unitiabs  = (1.6 * 1.0  * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
+      ! Transpiration (E)
+      ! Using 
+      ! - E = 1.6 gs D
+      ! - gs = A / (ca (1-chi))
+      ! (- chi = ci / ca)
+      ! => E = f
+      transp           = (1.6 * ppfdabs * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)   ! gpp = ppfdabs * params_pft_gpp(pft)%kphio * fa * m
+      transp_unitfapar = (1.6 * ppfd * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
+      transp_unitiabs  = (1.6 * 1.0  * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
 
-    ! Construct derived type for output
-    out_pmodel%gpp              = gpp
-    out_pmodel%gstar            = gstar
-    out_pmodel%chi              = chi
-    out_pmodel%vcmax            = vcmax
-    out_pmodel%vcmax25          = vcmax25
-    out_pmodel%vcmax_unitfapar  = vcmax_unitfapar
-    out_pmodel%vcmax_unitiabs   = vcmax_unitiabs
-    out_pmodel%factor25_vcmax   = factor25_vcmax
-    out_pmodel%rd               = rd
-    out_pmodel%rd_unitfapar     = rd_unitfapar 
-    out_pmodel%rd_unitiabs      = rd_unitiabs 
-    out_pmodel%actnv            = actnv 
-    out_pmodel%actnv_unitfapar  = actnv_unitfapar 
-    out_pmodel%actnv_unitiabs   = actnv_unitiabs 
-    out_pmodel%lue              = lue
-    out_pmodel%transp           = transp          
-    out_pmodel%transp_unitfapar = transp_unitfapar
-    out_pmodel%transp_unitiabs  = transp_unitiabs 
+      ! Construct derived type for output
+      out_pmodel%gpp              = gpp
+      out_pmodel%gstar            = gstar
+      out_pmodel%chi              = chi
+      out_pmodel%vcmax            = vcmax
+      out_pmodel%vcmax25          = vcmax25
+      out_pmodel%vcmax_unitfapar  = vcmax_unitfapar
+      out_pmodel%vcmax_unitiabs   = vcmax_unitiabs
+      out_pmodel%factor25_vcmax   = factor25_vcmax
+      out_pmodel%rd               = rd
+      out_pmodel%rd_unitfapar     = rd_unitfapar 
+      out_pmodel%rd_unitiabs      = rd_unitiabs 
+      out_pmodel%actnv            = actnv 
+      out_pmodel%actnv_unitfapar  = actnv_unitfapar 
+      out_pmodel%actnv_unitiabs   = actnv_unitiabs 
+      out_pmodel%lue              = lue
+      out_pmodel%transp           = transp          
+      out_pmodel%transp_unitfapar = transp_unitfapar
+      out_pmodel%transp_unitiabs  = transp_unitiabs 
 
-    ! ! for monthly mean temperatures below 0 deg C:
-    ! if (tc<0.0) then
-    !   out_pmodel%gpp              = 0.0
-    !   out_pmodel%rd               = 0.0
-    !   out_pmodel%rd_unitfapar     = 0.0 
-    !   out_pmodel%rd_unitiabs      = 0.0 
-    !   out_pmodel%lue              = 0.0
-    !   out_pmodel%transp           = 0.0          
-    !   out_pmodel%transp_unitfapar = 0.0
-    !   out_pmodel%transp_unitiabs  = 0.0 
-    ! end if
+    else
+
+      ! for monthly mean temperatures below 0 deg C:
+      out_pmodel%gpp              = 0.0
+      out_pmodel%gstar            = 0.0
+      out_pmodel%chi              = 0.0
+      out_pmodel%vcmax            = 0.0
+      out_pmodel%vcmax25          = 0.0
+      out_pmodel%vcmax_unitfapar  = 0.0
+      out_pmodel%vcmax_unitiabs   = 0.0
+      out_pmodel%factor25_vcmax   = 0.0
+      out_pmodel%rd               = 0.0
+      out_pmodel%rd_unitfapar     = 0.0
+      out_pmodel%rd_unitiabs      = 0.0
+      out_pmodel%actnv            = 0.0
+      out_pmodel%actnv_unitfapar  = 0.0
+      out_pmodel%actnv_unitiabs   = 0.0
+      out_pmodel%lue              = 0.0
+      out_pmodel%transp           = 0.0
+      out_pmodel%transp_unitfapar = 0.0
+      out_pmodel%transp_unitiabs  = 0.0
+
+    end if
 
   end function pmodel
 
