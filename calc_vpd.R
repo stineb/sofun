@@ -1,4 +1,4 @@
-calc_vpd <- function( vap, temp, tmin=NA, tmax=NA ){
+calc_vpd <- function( vap, tc, tmin=NA, tmax=NA ){
   ##-----------------------------------------------------------------------
   ## Output:   mean monthly vapor pressure deficit, Pa (vpd)
   ## Features: Returns mean monthly vapor pressure deficit

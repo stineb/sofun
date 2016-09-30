@@ -1,3 +1,29 @@
+##--------------------------------------------------------------------
+## This script processes standard input data for SOFUN, reading from
+## original data files sitting on Imperial's CX1.
+## Reading from NetCDF maps uses NCO command 'ncks' (see extract_pointdata_byfil.sh)
+## First, a monthly data frame is created holding all months given in 
+## the CRU TS data (currently CRU TS 3.22), covering years 1901-2013
+## Second, monthly data is interpolated using a weather generator for 
+## precip and a polyonmial interpolation (conserving monthly averages)
+## for other variables.
+## Third actual daily data for temp. and precip. is read from WATCH-WFDEI 
+## daily NetCDF data.
+## Fourth, actual daiy site-specific data is read if given
+## Fifth, the (massive) dataframe is written to a CSV file for each station.
+## Finally, for SOFUN-read-in, text files for each station, year, and 
+## variable are written.
+##
+## Standard (required) SOFUN input variables are:
+## - air temerature (deg C)
+## - precipitation (mm d-1)
+## - cloud cover (fraction)
+## - VPD (Pa)
+##
+## Optional SOFUN input variables (required if resp. simulation parameter is true):
+## - PPFD (mol d-1 m-2)
+## - net radiation (W m-2)
+##--------------------------------------------------------------------
 library(plyr)
 # library(dplyr)
 
@@ -15,11 +41,15 @@ source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 source( paste( myhome, "sofun/getin/calc_vpd.R", sep="" ) )
 
 overwrite <- FALSE
+ingest_meteodata <- TRUE
 
-simsuite <- "swbm"
+simsuite <- "fluxnet2015"
 
-##--------------------------------------------------------------------
-##--------------------------------------------------------------------
+in_ppfd   <- FALSE
+in_netrad <- FALSE
+
+startyear_override <- 1980
+
 ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)
 nmonth <- length(ndaymonth)
@@ -28,6 +58,46 @@ endyr_cru   <- 2013
 nyrs_cru    <- length(startyr_cru:endyr_cru)
 staryr_wfdei <- 1979
 endyr_wfdei  <- 2012
+
+get_meteo_fluxnet2015 <- function( path ){
+  ##--------------------------------------------------------------------
+  ## Function returns a dataframe containing all the data of flux-derived
+  ## GPP for the station implicitly given by path (argument).
+  ## Specific for FLUXNET 2015 data
+  ##--------------------------------------------------------------------
+  ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
+  ndayyear <- sum(ndaymonth)
+  nmonth <- length(ndaymonth)
+
+  ## from flux to energy conversion, umol/J (Meek et al., 1984), same as used in SPLASH (see Eq.50 in spash_doc.pdf)
+  kfFEC <- 2.04
+
+  ## get daily meteo data
+  meteo <- read.csv( path, na.strings="-9999" )  
+
+  ## add three columns: year, month, day in month
+  meteo$year <- as.numeric(substr(meteo$TIMESTAMP,start=1,stop=4))
+  meteo$moy  <- as.numeric(substr(meteo$TIMESTAMP,start=5,stop=6))
+  meteo$dom  <- as.numeric(substr(meteo$TIMESTAMP,start=7,stop=8))
+
+  meteo$year_dec <- meteo$year + (meteo$moy-1)/nmonth + (meteo$dom-1)/sum(ndaymonth)
+
+  ## rename variables (columns)
+  meteo <- rename( meteo, c( "TA_F"="temp", "VPD_F"="vpd", "P_F"="prec", "NETRAD"="nrad" ) ) #, "LW_IN_F"="lwin", "SW_IN_F"="swin" ) )
+
+  ## Take only net PPFD (=in - out)
+  meteo$ppfd <- meteo$PPFD_IN  #- meteo$PPFD_OUT
+
+  ## convert units
+  meteo$vpd  <- meteo$vpd  * 1e2  # given in hPa, required in Pa
+  meteo$ppfd <- meteo$ppfd * 1.0e-6 * kfFEC * 60 * 60 * 24  # given in W m-2, required in mol m-2 d-1 
+  meteo$nrad <- meteo$nrad * 60 * 60 * 24  # given in W m-2 (avg.), required in J m-2 (daily total)
+
+  meteo <- select( meteo, year, moy, dom, year_dec, temp, prec, vpd, ppfd, nrad ) 
+
+  return( meteo )
+
+}
 
 ## load meta data file for site simulation
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
@@ -101,17 +171,25 @@ for (idx in seq(nsites)){
     ## monthly value which is then to be attached to the monthly dataframe 
     ## (at the right location).
     vap <- get_pointdata_monthly_cru( "vap", lon_look, lat )
-    clim_cru_monthly$vpd <- calc_vpd( vap, clim_cru_monthly$temp )
+    clim_cru_monthly$vpd <- rep( NA, dim(clim_cru_monthly)[1] )
+    for (kdx in 1:dim(clim_cru_monthly)[1]){
+      clim_cru_monthly$vpd[kdx] <- calc_vpd( vap[kdx], clim_cru_monthly$temp[kdx] )      
+    }
 
-    ##--------------------------------------------------------------------
-    ## irradiance
-    ##--------------------------------------------------------------------
-    clim_cru_monthly$irad <- rep( NA, dim(clim_cru_monthly)[1] )
+    # ##--------------------------------------------------------------------
+    # ## irradiance
+    # ##--------------------------------------------------------------------
+    # clim_cru_monthly$irad <- rep( NA, dim(clim_cru_monthly)[1] )
 
     ##--------------------------------------------------------------------
     ## expanding to daily data (interpolating temp, and generating prec)
     ##--------------------------------------------------------------------
     print( paste( "expanding to daily data for station", sitename, "..." ) )
+
+    ## Reducing years
+    startyr <- max( startyear_override, startyr_cru )
+    nyrs    <- length( startyr:endyr_cru )
+    clim_cru_monthly <- clim_cru_monthly[ clim_cru_monthly$year >= startyr, ]
 
     dm   <- rep( NA, sum(ndaymonth)*length(startyr_cru:endyr_cru) )
     jdx <- 0
@@ -124,23 +202,23 @@ for (idx in seq(nsites)){
       }
     }
     clim_daily <- data.frame( 
-      doy=rep( seq(ndayyear), nyrs_cru ), 
-      moy=rep( rep( seq(nmonth), times=ndaymonth ), times=nyrs_cru ),
+      doy=rep( seq(ndayyear), nyrs ), 
+      moy=rep( rep( seq(nmonth), times=ndaymonth ), times=nyrs ),
       dom=dm,
-      year=rep( startyr_cru:endyr_cru, each=ndayyear ) 
+      year=rep( startyr:endyr_cru, each=ndayyear ) 
     )
 
     clim_daily$temp <- rep( NA, dim(clim_daily)[1] )
     clim_daily$prec <- rep( NA, dim(clim_daily)[1] )
     clim_daily$ccov <- rep( NA, dim(clim_daily)[1] )
     clim_daily$vpd  <- rep( NA, dim(clim_daily)[1] )
-    clim_daily$irad <- rep( NA, dim(clim_daily)[1] )
+    # clim_daily$irad <- rep( NA, dim(clim_daily)[1] )
 
     clim_daily$source_temp <- rep( "NA", dim(clim_daily)[1] )
     clim_daily$source_prec <- rep( "NA", dim(clim_daily)[1] )
     clim_daily$source_ccov <- rep( "NA", dim(clim_daily)[1] )
     clim_daily$source_vpd  <- rep( "NA", dim(clim_daily)[1] )
-    clim_daily$source_irad <- rep( "NA", dim(clim_daily)[1] )
+    # clim_daily$source_irad <- rep( "NA", dim(clim_daily)[1] )
 
     imo <- 1
     for (iyr in seq( length(clim_cru_monthly$prec)/nmonth ) ){
@@ -209,30 +287,100 @@ for (idx in seq(nsites)){
     for ( yr in staryr_wfdei:endyr_wfdei ){
       for ( moy in seq(nmonth) ){
         print( paste( "... found data for year and month:", yr, moy ) )
+
+        ## temperature
         tmp <- get_pointdata_temp_wfdei( lon, lat, moy, yr )
         if (!is.na(tmp[1])) { 
           useidx <- which( clim_daily$year==yr & clim_daily$moy==moy )
           clim_daily$temp[ useidx ]   <- tmp 
           clim_daily$source_temp[ useidx ] <- "WATCH-WFDEI" 
         }
+
+        ## precipitation
         tmp <- get_pointdata_prec_wfdei( lon, lat, moy, yr )
         if (!is.na(tmp[1])) { 
           useidx <- which( clim_daily$year==yr & clim_daily$moy==moy )
           clim_daily$prec[ useidx ] <- tmp 
           clim_daily$source_prec[ useidx ] <- "WATCH-WFDEI" 
         }
+
+        ## VPD to be calculated from Qair data available through WATCH-WFDEI
+
+        ## PPFD to be calculated from SWdown data available through WATCH-WFDEI
+
       }
     }
 
     ##--------------------------------------------------------------------
+    ## Save (massive) daily and monthly climate data frames as CSV files
+    ##--------------------------------------------------------------------
+    print( paste( "writing climate data frame into CSV file ", filnam_clim_csv, "..." ) )
+    system( paste( "mkdir -p", dirnam_clim_csv ) )   
+    write.csv( clim_daily, file=filnam_clim_csv, row.names=FALSE )
+
+  }
+
+}
+
+# for (idx in seq(nsites)){
+for (idx in 1:1){
+
+  sitename <- as.character(siteinfo$mysitename[idx])
+  lon      <- siteinfo$lon[idx]
+  lat      <- siteinfo$lat[idx]
+  print( paste( "collecting monthly data for station", sitename, "..." ) )
+
+  dirnam_clim_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", sep="" )
+  filnam_clim_csv <- paste( dirnam_clim_csv, "clim_daily_", sitename, ".csv", sep="" )
+
+  ##--------------------------------------------------------------------
+  ## Read daily data from CSV that may not contain site-specific meteo data yet
+  ##--------------------------------------------------------------------
+  print( "daily climate data already available in CSV file ...")
+  clim_daily <- read.csv( filnam_clim_csv, as.is=TRUE )
+
+  ## Reducing years
+  startyr <- max( startyear_override, startyr_cru )
+  nyrs    <- length( startyr:endyr_cru )
+  clim_daily <- clim_daily[ clim_daily$year >= startyr, ]
+
+  ## if data source column is not yet variable-specific, add info. (column 'source' should be avilable)
+  print( "adding source information for each variable ...")
+  if ( is.null( clim_daily$source_temp ) ) { clim_daily$source_temp <- clim_daily$source }
+  if ( is.null( clim_daily$source_prec ) ) { clim_daily$source_prec <- clim_daily$source }
+  if ( is.null( clim_daily$source_vpd  ) ) { clim_daily$source_vpd  <- clim_daily$source }
+
+  ## previous version had 'vapr' and not 'vpd'. convert now.
+  print( "calculating VPD ...")
+  if ( is.null( clim_daily$vpd ) && !is.null( clim_daily$vapr )) { 
+    clim_daily$vpd <- rep( NA, dim(clim_daily)[1] )
+    for (kdx in 1:dim(clim_daily)[1]){
+      clim_daily$vpd[kdx] <- calc_vpd( clim_daily$vapr[kdx], clim_daily$temp[kdx] )      
+    }
+  }      
+
+  if ( ingest_meteodata ){
+    ##--------------------------------------------------------------------
     ## Get site-specific meto data for separate (site-specific) file
     ##--------------------------------------------------------------------
-    if (!is.null(siteinfo$meteosource)){
+    if ( !is.null( siteinfo$meteosource ) || simsuite=="fluxnet2015" ){
       print("Using site-specific meteo data from separate file ...")
-      filn <- paste( "../../", as.character(siteinfo$meteosource[idx] ), sep="" )
-      print( paste( "file name", filn))
-      meteo <- read.csv( filn )
-      
+      if ( simsuite=="fluxnet2015" ){
+
+        dirnam_obs <- "../../data/FLUXNET-2015_Tier1/20160128/point-scale_none_1d/original/unpacked/"
+        allfiles <- list.files( dirnam_obs )
+        filnam_obs <- allfiles[ which( grepl( sitename, allfiles ) ) ]
+        path <- paste( dirnam_obs, filnam_obs, sep="" )
+        meteo <- try( get_meteo_fluxnet2015( path ) ) 
+
+      } else {
+
+        filn <- paste( "../../", as.character(siteinfo$meteosource[idx] ), sep="" )
+        print( paste( "file name", filn))
+        meteo <- read.csv( filn, as.is=TRUE )
+
+      }
+
       if ( is.null(meteo$moy) ) { meteo$moy <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mon + 1 }
       if ( is.null(meteo$dom) ) { meteo$dom <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mday }
 
@@ -255,30 +403,25 @@ for (idx in seq(nsites)){
         if (!is.na(meteo$temp[jdx])) { clim_daily$source_temp[ putjdx ] <- "temp. sitedata" }
 
         ## precipitation
-        if (!is.na(meteo$prec[jdx])) { clim_daily$prec[ putjdx ]   <- meteo$prec[jdx] }
+        if (!is.na(meteo$prec[jdx])) { clim_daily$prec[ putjdx ] <- meteo$prec[jdx] }
         if (!is.na(meteo$prec[jdx])) { clim_daily$source_prec[ putjdx ] <- "prec. sitedata" }
 
-        ## irradiance
-        if (!is.na(meteo$rad[jdx])) { clim_daily$irad[ putjdx ]   <- meteo$rad[jdx] }
-        if (!is.na(meteo$rad[jdx])) { clim_daily$source_irad[ putjdx ] <- "irad. sitedata" }
+        ## VPD
+        if (!is.na(meteo$vpd[jdx])) { clim_daily$vpd[ putjdx ] <- meteo$vpd[jdx] }
+        if (!is.na(meteo$vpd[jdx])) { clim_daily$source_irad[ putjdx ] <- "VPD sitedata" }
 
       }
 
     }
 
-    ##--------------------------------------------------------------------
-    ## Save (massive) daily and monthly climate data frames as CSV files
-    ##--------------------------------------------------------------------
-    print( paste( "writing climate data frame into CSV file ", filnam_clim_csv, "..." ) )
-    system( paste( "mkdir -p", dirnam_clim_csv ) )   
-    write.csv( clim_daily, file=filnam_clim_csv, row.names=FALSE )
-
-  } else {
-
-    print( "daily climate data already available in CSV file ...")
-    clim_daily <- read.csv( filnam_clim_csv )
-
   }
+
+  ##--------------------------------------------------------------------
+  ## Save (massive) daily and monthly climate data frames as CSV files
+  ##--------------------------------------------------------------------
+  print( paste( "writing climate data frame into CSV file ", filnam_clim_csv, "..." ) )
+  system( paste( "mkdir -p", dirnam_clim_csv ) )   
+  write.csv( clim_daily, file=filnam_clim_csv, row.names=FALSE )
 
   ##--------------------------------------------------------------------
   ## Write to Fortran-formatted output for each variable and year separately
@@ -301,8 +444,8 @@ for (idx in seq(nsites)){
     filnam <- paste( dirnam, "dvpd_", sitename, "_", yr, ".txt", sep="" )
     write_sofunformatted( filnam, clim_daily$vpd[ which( clim_daily$year==yr ) ] )
 
-    filnam <- paste( dirnam, "dirad_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, clim_daily$irad[ which( clim_daily$year==yr ) ] )
+    # filnam <- paste( dirnam, "dirad_", sitename, "_", yr, ".txt", sep="" )
+    # write_sofunformatted( filnam, clim_daily$irad[ which( clim_daily$year==yr ) ] )
 
   }
 
