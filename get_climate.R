@@ -17,7 +17,7 @@
 ## Standard (required) SOFUN input variables are:
 ## - air temerature (deg C)
 ## - precipitation (mm d-1)
-## - cloud cover (fraction)
+## - cloud cover (%)
 ## - VPD (Pa)
 ##
 ## Optional SOFUN input variables (required if resp. simulation parameter is true):
@@ -103,8 +103,8 @@ get_meteo_fluxnet2015 <- function( path ){
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
 nsites <- dim(siteinfo)[1]
 
-for (idx in seq(nsites)){
-# for (idx in 1:1){
+# for (idx in seq(nsites)){
+for (idx in 1:1){
 
   sitename <- as.character(siteinfo$mysitename[idx])
   lon      <- siteinfo$lon[idx]
@@ -238,7 +238,7 @@ for (idx in seq(nsites)){
       #mtemp_nxt <- select( filter( clim_cru_monthly, year==min(endyr_cru,use_year+1) ), temp )$temp
       mtemp_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$temp
       clim_daily$temp[ idxs ] <- monthly2daily( mtemp, "polynom", mtemp_pvy[nmonth], mtemp_nxt[1] )
-      clim_daily$source_temp[ idx ] <- "CRU monthly interpolated (polynom)"
+      clim_daily$source_temp[ idxs ] <- "CRU monthly interpolated (polynom)"
 
       ##--------------------------------------------------------------------
       ## precipitation: interpolate weather generator
@@ -248,7 +248,7 @@ for (idx in seq(nsites)){
       #mwetd <- select( filter( clim_cru_monthly, year==use_year ), wetd )$wetd
       mwetd <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$wetd
       clim_daily$prec[ idxs ] <- get_daily_prec( mprec, mwetd )
-      clim_daily$source_prec[ idx ] <- "CRU monthly (weather gen. from mon. precip., mon. wetd.)"
+      clim_daily$source_prec[ idxs ] <- "CRU monthly (weather gen. from mon. precip., mon. wetd.)"
 
       ##--------------------------------------------------------------------
       ## cloud cover: interpolate using polynomial
@@ -257,7 +257,7 @@ for (idx in seq(nsites)){
       mccov_pvy <- clim_cru_monthly[ clim_cru_monthly$year==use_year_pvy, ]$ccov
       mccov_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$ccov
       clim_daily$ccov[ idxs ] <- monthly2daily( mccov, "polynom", mccov_pvy[nmonth], mccov_nxt[1] )
-      clim_daily$source_ccov[ idx ] <- "CRU monthly interpolated (polynom)"
+      clim_daily$source_ccov[ idxs ] <- "CRU monthly interpolated (polynom)"
 
       ##--------------------------------------------------------------------
       ## VPD: interpolate using polynomial
@@ -266,7 +266,7 @@ for (idx in seq(nsites)){
       mvpd_pvy <- clim_cru_monthly[ clim_cru_monthly$year==use_year_pvy, ]$vpd
       mvpd_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$vpd
       clim_daily$vpd[ idxs ] <- monthly2daily( mvpd, "polynom", mvpd_pvy[nmonth], mvpd_nxt[1] )
-      clim_daily$source_vpd[ idx ] <- "function of CRU vap., monthly interpolated (polynom)"
+      clim_daily$source_vpd[ idxs ] <- "function of CRU vap., monthly interpolated (polynom)"
 
       ##--------------------------------------------------------------------
       ## irradiance - nothing done yet. Is this identical to WATCH SW-DOWN (+LW-DOWN)? 
@@ -409,7 +409,7 @@ for (idx in 1:1){
 
         ## VPD
         if (!is.na(meteo$vpd[jdx])) { clim_daily$vpd[ putjdx ] <- meteo$vpd[jdx] }
-        if (!is.na(meteo$vpd[jdx])) { clim_daily$source_irad[ putjdx ] <- "VPD sitedata" }
+        if (!is.na(meteo$vpd[jdx])) { clim_daily$source_vpd[ putjdx ] <- "VPD sitedata" }
 
       }
 
