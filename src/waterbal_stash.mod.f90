@@ -320,7 +320,7 @@ contains
     ! In polar regions, 'monsecs' an be zero in winter months. PPFD is zero then too.
     where ( monsecs(:) > 0.0 )
       out_solar%meanmppfd(:) = out_solar%mppfd(:) / monsecs(:) ! mol m-2 s-1
-    elsewhere
+    else where
       out_solar%meanmppfd(:) = 0.0
     end where
 

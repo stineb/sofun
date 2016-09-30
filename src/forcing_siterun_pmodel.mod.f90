@@ -23,6 +23,7 @@ module md_forcing_siterun
     real, dimension(ndayyear) :: dprec
     real, dimension(ndayyear) :: dfsun
     real, dimension(ndayyear) :: dvpd
+    real, dimension(ndayyear) :: drad
   end type climate_type
 
   type landuse_type
