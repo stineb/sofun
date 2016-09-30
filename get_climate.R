@@ -191,9 +191,9 @@ for (idx in seq(nsites)){
     nyrs    <- length( startyr:endyr_cru )
     clim_cru_monthly <- clim_cru_monthly[ clim_cru_monthly$year >= startyr, ]
 
-    dm   <- rep( NA, sum(ndaymonth)*length(startyr_cru:endyr_cru) )
+    dm   <- rep( NA, sum(ndaymonth)*length(startyr:endyr_cru) )
     jdx <- 0
-    for (yr in startyr_cru:endyr_cru ){
+    for (yr in startyr:endyr_cru ){
       for (imoy in 1:nmonth){
         for (idm in 1:ndaymonth[imoy]){
           jdx <- jdx + 1 
