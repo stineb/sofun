@@ -93,7 +93,8 @@ get_meteo_fluxnet2015 <- function( path ){
   meteo$ppfd <- meteo$ppfd * 1.0e-6 * kfFEC * 60 * 60 * 24  # given in W m-2, required in mol m-2 d-1 
   meteo$nrad <- meteo$nrad * 60 * 60 * 24  # given in W m-2 (avg.), required in J m-2 (daily total)
 
-  meteo <- select( meteo, year, moy, dom, year_dec, temp, prec, vpd, ppfd, nrad ) 
+  # meteo <- select( meteo, year, moy, dom, year_dec, temp, prec, vpd, ppfd, nrad ) 
+  meteo <- subset( meteo, select=c( year, moy, dom, year_dec, temp, prec, vpd, ppfd, nrad ) )
 
   return( meteo )
 
