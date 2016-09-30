@@ -9,7 +9,7 @@ source( paste( syshome, "/.Rprofile", sep="" ) )
 source( paste( myhome, "sofun/getin/write_sofunformatted.R", sep="" ) )
 source( paste( myhome, "sofun/getin/getmodissubset.R", sep="" ) )
 
-simsuite <- "fluxnet2015"
+simsuite <- "fluxnet"
 
 ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)

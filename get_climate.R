@@ -129,12 +129,18 @@ for (idx in seq(nsites)){
       dom=dm,
       year=rep( startyr_cru:endyr_cru, each=ndayyear ) 
     )
+
     clim_daily$temp <- rep( NA, dim(clim_daily)[1] )
     clim_daily$prec <- rep( NA, dim(clim_daily)[1] )
     clim_daily$ccov <- rep( NA, dim(clim_daily)[1] )
     clim_daily$vapr <- rep( NA, dim(clim_daily)[1] )
     clim_daily$irad <- rep( NA, dim(clim_daily)[1] )
-    clim_daily$source <- rep( "cru", dim(clim_daily)[1] )
+
+    clim_daily$source_temp <- rep( "NA", dim(clim_daily)[1] )
+    clim_daily$source_prec <- rep( "NA", dim(clim_daily)[1] )
+    clim_daily$source_ccov <- rep( "NA", dim(clim_daily)[1] )
+    clim_daily$source_vapr <- rep( "NA", dim(clim_daily)[1] )
+    clim_daily$source_irad <- rep( "NA", dim(clim_daily)[1] )
 
     imo <- 1
     for (iyr in seq( length(clim_cru_monthly$prec)/nmonth ) ){
@@ -154,6 +160,7 @@ for (idx in seq(nsites)){
       #mtemp_nxt <- select( filter( clim_cru_monthly, year==min(endyr_cru,use_year+1) ), temp )$temp
       mtemp_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$temp
       clim_daily$temp[ idxs ] <- monthly2daily( mtemp, "polynom", mtemp_pvy[nmonth], mtemp_nxt[1] )
+      clim_daily$source_temp[ idx ] <- "CRU monthly interpolated (polynom)"
 
       ##--------------------------------------------------------------------
       ## precipitation: interpolate weather generator
@@ -163,6 +170,7 @@ for (idx in seq(nsites)){
       #mwetd <- select( filter( clim_cru_monthly, year==use_year ), wetd )$wetd
       mwetd <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$wetd
       clim_daily$prec[ idxs ] <- get_daily_prec( mprec, mwetd )
+      clim_daily$source_prec[ idx ] <- "CRU monthly (weather gen. from mon. precip., mon. wetd.)"
 
       ##--------------------------------------------------------------------
       ## cloud cover: interpolate using polynomial
@@ -171,6 +179,7 @@ for (idx in seq(nsites)){
       mccov_pvy <- clim_cru_monthly[ clim_cru_monthly$year==use_year_pvy, ]$ccov
       mccov_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$ccov
       clim_daily$ccov[ idxs ] <- monthly2daily( mccov, "polynom", mccov_pvy[nmonth], mccov_nxt[1] )
+      clim_daily$source_ccov[ idx ] <- "CRU monthly interpolated (polynom)"
 
       ##--------------------------------------------------------------------
       ## water vapour: interpolate using polynomial
@@ -179,6 +188,7 @@ for (idx in seq(nsites)){
       mvapr_pvy <- clim_cru_monthly[ clim_cru_monthly$year==use_year_pvy, ]$vapr
       mvapr_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$vapr
       clim_daily$vapr[ idxs ] <- monthly2daily( mvapr, "polynom", mvapr_pvy[nmonth], mvapr_nxt[1] )
+      clim_daily$source_vapr[ idx ] <- "CRU monthly interpolated (polynom)"
 
       ##--------------------------------------------------------------------
       ## irradiance - nothing done yet. Is this identical to WATCH SW-DOWN (+LW-DOWN)? 
@@ -201,14 +211,15 @@ for (idx in seq(nsites)){
         print( paste( "... found data for year and month:", yr, moy ) )
         tmp <- get_pointdata_temp_wfdei( lon, lat, moy, yr )
         if (!is.na(tmp[1])) { 
-         useidx <- which( clim_daily$year==yr & clim_daily$moy==moy )
-         clim_daily$temp[ useidx ]   <- tmp 
-         clim_daily$source[ useidx ] <- "wfdei" 
+          useidx <- which( clim_daily$year==yr & clim_daily$moy==moy )
+          clim_daily$temp[ useidx ]   <- tmp 
+          clim_daily$source_temp[ useidx ] <- "WATCH-WFDEI" 
         }
         tmp <- get_pointdata_prec_wfdei( lon, lat, moy, yr )
         if (!is.na(tmp[1])) { 
           useidx <- which( clim_daily$year==yr & clim_daily$moy==moy )
           clim_daily$prec[ useidx ] <- tmp 
+          clim_daily$source_prec[ useidx ] <- "WATCH-WFDEI" 
         }
       }
     }
@@ -229,6 +240,8 @@ for (idx in seq(nsites)){
 
         putjdx <- which( clim_daily$year==meteo$year[jdx] & clim_daily$moy==meteo$moy[jdx] & clim_daily$dom==meteo$dom[jdx] )
 
+        print(paste("Ingesting meteo data for year, moy, dom", meteo$year[jdx], meteo$moy[jdx], meteo$dom[jdx] ))
+
         if (length(putjdx)>1) { 
           print("PROBLEM: found multiple corresponding indeces for ...")
           print(paste("year =", meteo$year[jdx], "moy =", meteo$moy[jdx], "dom =", meteo$dom[jdx] ) ) 
@@ -238,16 +251,16 @@ for (idx in seq(nsites)){
         }
 
         ## temperature
-        if (!is.na(meteo$temp_mean[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp[jdx] }
-        if (!is.na(meteo$temp_mean[jdx])) { clim_daily$source[ putjdx ] <- "temp_sitedata" }
+        if (!is.na(meteo$temp[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp[jdx] }
+        if (!is.na(meteo$temp[jdx])) { clim_daily$source_temp[ putjdx ] <- "temp. sitedata" }
 
         ## precipitation
-        if (!is.na(meteo$rainfall[jdx])) { clim_daily$prec[ putjdx ]   <- meteo$prec[jdx] }
-        if (!is.na(meteo$rainfall[jdx])) { clim_daily$source[ putjdx ] <- "prec_sitedata" }
+        if (!is.na(meteo$prec[jdx])) { clim_daily$prec[ putjdx ]   <- meteo$prec[jdx] }
+        if (!is.na(meteo$prec[jdx])) { clim_daily$source_prec[ putjdx ] <- "prec. sitedata" }
 
         ## irradiance
-        if (!is.na(meteo$rainfall[jdx])) { clim_daily$irad[ putjdx ]   <- meteo$rad[jdx] }
-        if (!is.na(meteo$rainfall[jdx])) { clim_daily$source[ putjdx ] <- "irad_sitedata" }
+        if (!is.na(meteo$rad[jdx])) { clim_daily$irad[ putjdx ]   <- meteo$rad[jdx] }
+        if (!is.na(meteo$rad[jdx])) { clim_daily$source_irad[ putjdx ] <- "irad. sitedata" }
 
       }
 
