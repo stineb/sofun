@@ -12,6 +12,7 @@ source( paste( myhome, "sofun/getin/get_daily_prec.R", sep="" ) )
 source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 source( paste( myhome, "sofun/getin/write_sofunformatted.R", sep="" ) )
 source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
+source( paste( myhome, "sofun/getin/calc_vpd.R", sep="" ) )
 
 overwrite <- FALSE
 
@@ -74,7 +75,6 @@ for (idx in seq(nsites)){
     ## monthly value which is then to be attached to the monthly dataframe 
     ## (at the right location).
     clim_cru_monthly$prec <- get_pointdata_monthly_cru( "pre", lon_look, lat )
-    # clim_cru_monthly$prec <- rep( 50.0, dim(clim_cru_monthly)[1] )
 
     ##--------------------------------------------------------------------
     ## wet days
@@ -83,7 +83,6 @@ for (idx in seq(nsites)){
     ## monthly value which is then to be attached to the monthly dataframe 
     ## (at the right location).
     clim_cru_monthly$wetd <- get_pointdata_monthly_cru( "wet", lon_look, lat )
-    # clim_cru_monthly$wetd <- rep( 5.0, dim(clim_cru_monthly)[1] )
 
     ##--------------------------------------------------------------------
     ## cloud cover
@@ -92,16 +91,17 @@ for (idx in seq(nsites)){
     ## monthly value which is then to be attached to the monthly dataframe 
     ## (at the right location).
     clim_cru_monthly$ccov <- get_pointdata_monthly_cru( "cld", lon_look, lat )
-    # clim_cru_monthly$wetd <- rep( 5.0, dim(clim_cru_monthly)[1] )
 
     ##--------------------------------------------------------------------
-    ## water vapour 
+    ## VPD 
+    ## calculated as a function of vapour pressure and temperature, vapour
+    ## pressure is given by CRU data.
     ##--------------------------------------------------------------------
     ## Extract data from monthly files and sum up each of these into one 
     ## monthly value which is then to be attached to the monthly dataframe 
     ## (at the right location).
-    clim_cru_monthly$vapr <- get_pointdata_monthly_cru( "vap", lon_look, lat )
-    # clim_cru_monthly$wetd <- rep( 5.0, dim(clim_cru_monthly)[1] )
+    vap <- get_pointdata_monthly_cru( "vap", lon_look, lat )
+    clim_cru_monthly$vpd <- calc_vpd( vap, clim_cru_monthly$temp )
 
     ##--------------------------------------------------------------------
     ## irradiance
@@ -133,13 +133,13 @@ for (idx in seq(nsites)){
     clim_daily$temp <- rep( NA, dim(clim_daily)[1] )
     clim_daily$prec <- rep( NA, dim(clim_daily)[1] )
     clim_daily$ccov <- rep( NA, dim(clim_daily)[1] )
-    clim_daily$vapr <- rep( NA, dim(clim_daily)[1] )
+    clim_daily$vpd  <- rep( NA, dim(clim_daily)[1] )
     clim_daily$irad <- rep( NA, dim(clim_daily)[1] )
 
     clim_daily$source_temp <- rep( "NA", dim(clim_daily)[1] )
     clim_daily$source_prec <- rep( "NA", dim(clim_daily)[1] )
     clim_daily$source_ccov <- rep( "NA", dim(clim_daily)[1] )
-    clim_daily$source_vapr <- rep( "NA", dim(clim_daily)[1] )
+    clim_daily$source_vpd  <- rep( "NA", dim(clim_daily)[1] )
     clim_daily$source_irad <- rep( "NA", dim(clim_daily)[1] )
 
     imo <- 1
@@ -175,20 +175,20 @@ for (idx in seq(nsites)){
       ##--------------------------------------------------------------------
       ## cloud cover: interpolate using polynomial
       ##--------------------------------------------------------------------
-      mccov <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$ccov
+      mccov     <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$ccov
       mccov_pvy <- clim_cru_monthly[ clim_cru_monthly$year==use_year_pvy, ]$ccov
       mccov_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$ccov
       clim_daily$ccov[ idxs ] <- monthly2daily( mccov, "polynom", mccov_pvy[nmonth], mccov_nxt[1] )
       clim_daily$source_ccov[ idx ] <- "CRU monthly interpolated (polynom)"
 
       ##--------------------------------------------------------------------
-      ## water vapour: interpolate using polynomial
+      ## VPD: interpolate using polynomial
       ##--------------------------------------------------------------------
-      mvapr <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$vapr
-      mvapr_pvy <- clim_cru_monthly[ clim_cru_monthly$year==use_year_pvy, ]$vapr
-      mvapr_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$vapr
-      clim_daily$vapr[ idxs ] <- monthly2daily( mvapr, "polynom", mvapr_pvy[nmonth], mvapr_nxt[1] )
-      clim_daily$source_vapr[ idx ] <- "CRU monthly interpolated (polynom)"
+      mvpd     <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$vpd
+      mvpd_pvy <- clim_cru_monthly[ clim_cru_monthly$year==use_year_pvy, ]$vpd
+      mvpd_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$vpd
+      clim_daily$vpd[ idxs ] <- monthly2daily( mvpd, "polynom", mvpd_pvy[nmonth], mvpd_nxt[1] )
+      clim_daily$source_vpd[ idx ] <- "function of CRU vap., monthly interpolated (polynom)"
 
       ##--------------------------------------------------------------------
       ## irradiance - nothing done yet. Is this identical to WATCH SW-DOWN (+LW-DOWN)? 
@@ -298,8 +298,8 @@ for (idx in seq(nsites)){
     filnam <- paste( dirnam, "dfsun_", sitename, "_", yr, ".txt", sep="" )
     write_sofunformatted( filnam, ( 100.0 - clim_daily$ccov[ which( clim_daily$year==yr ) ] ) / 100.0 )
 
-    filnam <- paste( dirnam, "dvapr_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, clim_daily$vapr[ which( clim_daily$year==yr ) ] )
+    filnam <- paste( dirnam, "dvpd_", sitename, "_", yr, ".txt", sep="" )
+    write_sofunformatted( filnam, clim_daily$vpd[ which( clim_daily$year==yr ) ] )
 
     filnam <- paste( dirnam, "dirad_", sitename, "_", yr, ".txt", sep="" )
     write_sofunformatted( filnam, clim_daily$irad[ which( clim_daily$year==yr ) ] )
