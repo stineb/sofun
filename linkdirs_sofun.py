@@ -6,6 +6,7 @@ import os.path
 ## Simulation suite. Chose any of
 ## - "swissface"
 ## - "fluxnet"
+## - "fluxnet2015"
 ## - "fluxnet_cnmodel"
 ## - "gcme"
 ## - "campi"
@@ -16,7 +17,7 @@ import os.path
 ## - "olson"
 ## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet'
+simsuite = 'fluxnet2015'
 
 ##--------------------------------------------------------------------
 ## Link directories
