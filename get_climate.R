@@ -48,7 +48,7 @@ simsuite <- "fluxnet2015"
 in_ppfd   <- FALSE
 in_netrad <- FALSE
 
-startyear_override <- 1980
+startyr_override <- 1980
 
 ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)
@@ -187,7 +187,7 @@ for (idx in seq(nsites)){
     print( paste( "expanding to daily data for station", sitename, "..." ) )
 
     ## Reducing years
-    startyr <- max( startyear_override, startyr_cru )
+    startyr <- max( startyr_override, startyr_cru )
     nyrs    <- length( startyr:endyr_cru )
     clim_cru_monthly <- clim_cru_monthly[ clim_cru_monthly$year >= startyr, ]
 
@@ -284,7 +284,8 @@ for (idx in seq(nsites)){
     ## Get daily WFDEI data where available
     ##--------------------------------------------------------------------
     print( "getting daily data from WFDEI ...")
-    for ( yr in staryr_wfdei:endyr_wfdei ){
+    startyr <- max( startyr_override, staryr_wfdei )
+    for ( yr in startyr:endyr_wfdei ){
       for ( moy in seq(nmonth) ){
         print( paste( "... found data for year and month:", yr, moy ) )
 
@@ -340,7 +341,7 @@ for (idx in 1:1){
   clim_daily <- read.csv( filnam_clim_csv, as.is=TRUE )
 
   ## Reducing years
-  startyr <- max( startyear_override, startyr_cru )
+  startyr <- max( startyr_override, startyr_cru )
   nyrs    <- length( startyr:endyr_cru )
   clim_daily <- clim_daily[ clim_daily$year >= startyr, ]
 
