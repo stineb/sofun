@@ -7,7 +7,7 @@ get_pointdata_monthly_cru <- function( varnam, lon, lat, yr=NA ){
   syshome <- Sys.getenv( "HOME" )
   source( paste( syshome, "/.Rprofile", sep="" ) )
 
-  filn   <- paste( paste( myhome, "data/cru/ts_3.22/cru_ts3.22.1901.2013.", sep=""), varnam, ".dat.nc", sep="" )
+  filn   <- paste( paste( myhome, "data/cru/ts_3.23/cru_ts3.23.1901.2014.", sep=""), varnam, ".dat.nc", sep="" )
   if (!is.na(yr)){
     istart <- max( 1     , (yr - 1901) * nmonth + 1 )
     iend   <- max( nmonth, (yr - 1901) * nmonth + nmonth )    
