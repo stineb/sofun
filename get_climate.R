@@ -60,6 +60,12 @@ nyrs_cru    <- length(startyr_cru:endyr_cru)
 staryr_wfdei <- 1979
 endyr_wfdei  <- 2012
 
+## load meta data file for site simulation
+siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
+nsites <- dim(siteinfo)[1]
+# do.sites <- seq(nsites)
+do.sites <- 3:3
+
 get_meteo_fluxnet2015 <- function( path ){
   ##--------------------------------------------------------------------
   ## Function returns a dataframe containing all the data of flux-derived
@@ -104,12 +110,6 @@ get_meteo_fluxnet2015 <- function( path ){
   return( meteo )
 
 }
-
-## load meta data file for site simulation
-siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
-nsites <- dim(siteinfo)[1]
-# do.sites <- seq(nsites)
-do.sites <- 19:19
 
 for (idx in do.sites ){
 # for (idx in 2:2){
