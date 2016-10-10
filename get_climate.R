@@ -41,6 +41,8 @@ source( paste( myhome, "sofun/getin/write_sofunformatted.R", sep="" ) )
 source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 source( paste( myhome, "sofun/getin/calc_vpd.R", sep="" ) )
 source( paste( myhome, "sofun/getin/get_meteo_fluxnet2015.R", sep="" ) )
+source( paste( myhome, "sofun/getin/get_meteo_swbm_meteoschweiz.R", sep="" ) )
+source( paste( myhome, "sofun/getin/calc_netrad_orth.R", sep="" ) )
 
 overwrite <- FALSE
 ingest_meteodata <- TRUE
@@ -365,6 +367,11 @@ for (idx in do.sites ){
           found <- FALSE 
         }
 
+      } else if ( simsuite=="swbm" ) {
+
+        ## METEOSCHWEIZ DATA (for station Payerne, SWBM simsuite only)
+        meteo <- get_meteo_swbm_meteoschweiz( paste( myhome, as.character(siteinfo$meteosource[idx] ), sep="" ) )
+
       } else {
 
         ## OTHER METEO DATA
@@ -424,6 +431,11 @@ for (idx in do.sites ){
 
         }
 
+        if ( in_netrad && !is.null( meteo$rad ) ){ 
+          clim_daily$netrad <- rep( NA, dim(clim_daily)[1]) 
+          clim_daily$source_netrad <- rep( NA, dim(clim_daily)[1]) 
+        }
+
         for (jdx in 1:dim(meteo)[1]){
 
           putjdx <- which( clim_daily$year==meteo$year[jdx] & clim_daily$moy==meteo$moy[jdx] & clim_daily$dom==meteo$dom[jdx] )
@@ -449,6 +461,12 @@ for (idx in do.sites ){
             ## VPD
             if (!is.null(meteo$vpd[jdx])) { clim_daily$vpd[ putjdx ] <- meteo$vpd[jdx] }
             if (!is.null(meteo$vpd[jdx])) { clim_daily$source_vpd[ putjdx ] <- "VPD sitedata" }
+
+            ## Net radiation
+            if ( in_netrad && !is.null( meteo$rad ) ){
+              if (!is.null(meteo$rad[jdx])) { clim_daily$netrad[ putjdx ] <- calc_netrad_orth(  meteo$rad[jdx] ) }
+              if (!is.null(meteo$rad[jdx])) { clim_daily$source_netrad[ putjdx ] <- "irradiance sitedata, translated to NetRad" }              
+            }
 
           }
 
