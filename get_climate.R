@@ -42,7 +42,7 @@ source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 source( paste( myhome, "sofun/getin/calc_vpd.R", sep="" ) )
 source( paste( myhome, "sofun/getin/get_meteo_fluxnet2015.R", sep="" ) )
 
-overwrite <- TRUE
+overwrite <- FALSE
 ingest_meteodata <- TRUE
 
 simsuite <- "swbm"
@@ -346,10 +346,14 @@ for (idx in do.sites ){
     ## Get site-specific meto data for separate (site-specific) file
     ##--------------------------------------------------------------------
     print(paste("Ingesting meteo data"))
+    
     if ( !is.null( siteinfo$meteosource ) || simsuite=="fluxnet2015" ){
+  
       print("Using site-specific meteo data from separate file ...")
+  
       if ( simsuite=="fluxnet2015" ){
 
+        ## FLUXNET 2015 METEO DATA
         dirnam_obs <- paste( myhome, "data/FLUXNET-2015_Tier1/20160128/point-scale_none_1d/original/unpacked/", sep="" )
         allfiles <- list.files( dirnam_obs )
         filnam_obs <- allfiles[ which( grepl( sitename, allfiles ) ) ]
@@ -363,6 +367,7 @@ for (idx in do.sites ){
 
       } else {
 
+        ## OTHER METEO DATA
         filn <- paste( myhome, as.character(siteinfo$meteosource[idx] ), sep="" )
         meteo <- read.csv( filn, as.is=TRUE )
         found <- TRUE
@@ -379,8 +384,6 @@ for (idx in do.sites ){
         if ( max(clim_daily$year) < max(meteo$year) ){
 
           print( paste( "adding years up to ", max(meteo$year), "..." ) )
-
-          # colnames(clim_daily)[5:length(colnames(clim_daily))]
 
           ## Reducing years
           startyr <- max(clim_daily$year) + 1
@@ -436,16 +439,16 @@ for (idx in do.sites ){
           } else {
 
             ## temperature
-            if (!is.na(meteo$temp[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp[jdx] }
-            if (!is.na(meteo$temp[jdx])) { clim_daily$source_temp[ putjdx ] <- "temp. sitedata" }
+            if (!is.null(meteo$temp[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp[jdx] }
+            if (!is.null(meteo$temp[jdx])) { clim_daily$source_temp[ putjdx ] <- "temp. sitedata" }
 
             ## precipitation
-            if (!is.na(meteo$prec[jdx])) { clim_daily$prec[ putjdx ] <- meteo$prec[jdx] }
-            if (!is.na(meteo$prec[jdx])) { clim_daily$source_prec[ putjdx ] <- "prec. sitedata" }
+            if (!is.null(meteo$prec[jdx])) { clim_daily$prec[ putjdx ] <- meteo$prec[jdx] }
+            if (!is.null(meteo$prec[jdx])) { clim_daily$source_prec[ putjdx ] <- "prec. sitedata" }
 
             ## VPD
-            if (!is.na(meteo$vpd[jdx])) { clim_daily$vpd[ putjdx ] <- meteo$vpd[jdx] }
-            if (!is.na(meteo$vpd[jdx])) { clim_daily$source_vpd[ putjdx ] <- "VPD sitedata" }
+            if (!is.null(meteo$vpd[jdx])) { clim_daily$vpd[ putjdx ] <- meteo$vpd[jdx] }
+            if (!is.null(meteo$vpd[jdx])) { clim_daily$source_vpd[ putjdx ] <- "VPD sitedata" }
 
           }
 
