@@ -1,5 +1,5 @@
 #!/bin/sh
-#PBS -l walltime=99:00:00,mem=1gb
+#PBS -l walltime=09:00:00,mem=1gb
 ## This tells the batch manager to limit the walltime for the job to XX hours, YY minutes and ZZ second
 ## and use PP gb of memory.
 

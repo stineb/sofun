@@ -63,8 +63,8 @@ endyr_wfdei  <- 2012
 ## load meta data file for site simulation
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
 nsites <- dim(siteinfo)[1]
-# do.sites <- seq(nsites)
-do.sites <- 3:3
+do.sites <- seq(nsites)
+# do.sites <- 35:35
 
 get_meteo_fluxnet2015 <- function( path ){
   ##--------------------------------------------------------------------
@@ -395,7 +395,7 @@ for (idx in do.sites ){
       print("Using site-specific meteo data from separate file ...")
       if ( simsuite=="fluxnet2015" ){
 
-        dirnam_obs <- "../../data/FLUXNET-2015_Tier1/20160128/point-scale_none_1d/original/unpacked/"
+        dirnam_obs <- paste( myhome, "data/FLUXNET-2015_Tier1/20160128/point-scale_none_1d/original/unpacked/", sep="" )
         allfiles <- list.files( dirnam_obs )
         filnam_obs <- allfiles[ which( grepl( sitename, allfiles ) ) ]
         filn <- paste( dirnam_obs, filnam_obs, sep="" )
@@ -408,7 +408,7 @@ for (idx in do.sites ){
 
       } else {
 
-        filn <- paste( "../../", as.character(siteinfo$meteosource[idx] ), sep="" )
+        filn <- paste( myhome, as.character(siteinfo$meteosource[idx] ), sep="" )
         meteo <- read.csv( filn, as.is=TRUE )
         found <- TRUE
 
