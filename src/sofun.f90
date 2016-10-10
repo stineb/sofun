@@ -175,4 +175,4 @@ program main
 ! 888  write(0,*) 'error opening file'
 777  format (F20.8,F20.8)
 
-end program
+end program main

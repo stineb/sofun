@@ -19,10 +19,10 @@ module md_forcing_siterun
   public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate_site, getlanduse, landuse_type, climate_type
 
   type climate_type
-    real, dimension(ndayyear) :: dtemp
-    real, dimension(ndayyear) :: dprec
-    real, dimension(ndayyear) :: dfsun
-    real, dimension(ndayyear) :: dvpd
+    real, dimension(ndayyear) :: dtemp  ! deg C
+    real, dimension(ndayyear) :: dprec  ! mm d-1
+    real, dimension(ndayyear) :: dfsun  ! unitless
+    real, dimension(ndayyear) :: dvpd   ! Pa
   end type climate_type
 
   type landuse_type
