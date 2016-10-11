@@ -40,6 +40,10 @@ module md_params_siml
     character(len=256) :: do_grharvest_forcing_file
     character(len=256) :: fapar_forcing_source
 
+    ! optionally prescribed variables (if false, then simulated internally)
+    logical :: in_netrad    ! net radiation
+    logical :: in_ppfd      ! photosynthetic photon flux density 
+
     ! activated PFTs
     logical :: lTeBE
     logical :: lGrC3
@@ -263,21 +267,24 @@ contains
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
 
-    out_getpar_siml%do_spinup            = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
-
-    out_getpar_siml%const_co2_year       = getparint( 'run/'//runname//'.sofun.parameter', 'const_co2_year' )
-    out_getpar_siml%const_ndep_year      = getparint( 'run/'//runname//'.sofun.parameter', 'const_ndep_year' )
-    out_getpar_siml%const_nfert_year     = getparint( 'run/'//runname//'.sofun.parameter', 'const_nfert_year' )
-    out_getpar_siml%const_clim_year      = getparint( 'run/'//runname//'.sofun.parameter', 'const_clim_year' )
-    out_getpar_siml%const_lu_year        = getparint( 'run/'//runname//'.sofun.parameter', 'const_lu_year' )
+    out_getpar_siml%in_netrad         = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_netrad' )
+    out_getpar_siml%in_ppfd           = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_ppfd' )
     
-    out_getpar_siml%spinupyears          = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
-    out_getpar_siml%firstyeartrend       = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )
-    out_getpar_siml%nyeartrend           = getparint( 'run/'//runname//'.sofun.parameter', 'nyeartrend' )
-    out_getpar_siml%recycle              = getparint( 'run/'//runname//'.sofun.parameter', 'recycle' )
-        
-    out_getpar_siml%daily_out_startyr    = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_startyr' )
-    out_getpar_siml%daily_out_endyr      = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_endyr' )
+    out_getpar_siml%do_spinup         = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
+    
+    out_getpar_siml%const_co2_year    = getparint( 'run/'//runname//'.sofun.parameter', 'const_co2_year' )
+    out_getpar_siml%const_ndep_year   = getparint( 'run/'//runname//'.sofun.parameter', 'const_ndep_year' )
+    out_getpar_siml%const_nfert_year  = getparint( 'run/'//runname//'.sofun.parameter', 'const_nfert_year' )
+    out_getpar_siml%const_clim_year   = getparint( 'run/'//runname//'.sofun.parameter', 'const_clim_year' )
+    out_getpar_siml%const_lu_year     = getparint( 'run/'//runname//'.sofun.parameter', 'const_lu_year' )
+    
+    out_getpar_siml%spinupyears       = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
+    out_getpar_siml%firstyeartrend    = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )
+    out_getpar_siml%nyeartrend        = getparint( 'run/'//runname//'.sofun.parameter', 'nyeartrend' )
+    out_getpar_siml%recycle           = getparint( 'run/'//runname//'.sofun.parameter', 'recycle' )
+    
+    out_getpar_siml%daily_out_startyr = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_startyr' )
+    out_getpar_siml%daily_out_endyr   = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_endyr' )
 
 
     if (out_getpar_siml%do_spinup) then

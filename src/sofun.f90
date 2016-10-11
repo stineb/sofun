@@ -159,7 +159,7 @@ program main
     ! Call SR biosphere at an annual time step but with vectors 
     ! containing data for each day of this year.
     !----------------------------------------------------------------
-    write(0,100) 'sim. year, year AD, pco2', yr, interface%steering%forcingyear, interface%pco2
+    write(0,100) 'sim. year, year AD', yr, interface%steering%forcingyear
 
     !----------------------------------------------------------------
     !----------------------------------------------------------------
