@@ -347,182 +347,184 @@ for (idx in do.sites ){
         clim_daily$vpd[kdx] <- calc_vpd( clim_daily$vapr[kdx], clim_daily$temp[kdx] )      
       }
     }      
-  }
+  
 
-  if ( ingest_meteodata ){
-    ##--------------------------------------------------------------------
-    ## Get site-specific meto data for separate (site-specific) file
-    ##--------------------------------------------------------------------
-    print(paste("Ingesting meteo data"))
+    if ( ingest_meteodata ){
+      ##--------------------------------------------------------------------
+      ## Get site-specific meto data for separate (site-specific) file
+      ##--------------------------------------------------------------------
+      print(paste("Ingesting meteo data"))
+      
+      if ( !is.null( siteinfo$meteosource ) || simsuite=="fluxnet2015" ){
     
-    if ( !is.null( siteinfo$meteosource ) || simsuite=="fluxnet2015" ){
-  
-      print("Using site-specific meteo data from separate file ...")
-  
-      if ( simsuite=="fluxnet2015" ){
+        print("Using site-specific meteo data from separate file ...")
+    
+        if ( simsuite=="fluxnet2015" ){
 
-        ## FLUXNET 2015 METEO DATA
-        dirnam_obs <- paste( myhome, "data/FLUXNET-2015_Tier1/20160128/point-scale_none_1d/original/unpacked/", sep="" )
-        allfiles <- list.files( dirnam_obs )
-        filnam_obs <- allfiles[ which( grepl( sitename, allfiles ) ) ]
-        filn <- paste( dirnam_obs, filnam_obs, sep="" )
-        if ( length(filnam_obs)>0 ){ 
-          found <- TRUE 
-          meteo <- try( get_meteo_fluxnet2015( filn ) ) 
-        } else { 
-          found <- FALSE 
+          ## FLUXNET 2015 METEO DATA
+          dirnam_obs <- paste( myhome, "data/FLUXNET-2015_Tier1/20160128/point-scale_none_1d/original/unpacked/", sep="" )
+          allfiles <- list.files( dirnam_obs )
+          filnam_obs <- allfiles[ which( grepl( sitename, allfiles ) ) ]
+          filn <- paste( dirnam_obs, filnam_obs, sep="" )
+          if ( length(filnam_obs)>0 ){ 
+            found <- TRUE 
+            meteo <- try( get_meteo_fluxnet2015( filn ) ) 
+          } else { 
+            found <- FALSE 
+          }
+
+        } else if ( simsuite=="swbm" ) {
+
+          ## METEOSCHWEIZ DATA (for station Payerne, SWBM simsuite only)
+          meteo <- get_meteo_swbm_meteoschweiz( paste( myhome, as.character(siteinfo$meteosource[idx] ), sep="" ) )
+
+        } else {
+
+          ## OTHER METEO DATA
+          filn <- paste( myhome, as.character(siteinfo$meteosource[idx] ), sep="" )
+          meteo <- read.csv( filn, as.is=TRUE )
+          found <- TRUE
+
         }
 
-      } else if ( simsuite=="swbm" ) {
+        if ( found ){
 
-        ## METEOSCHWEIZ DATA (for station Payerne, SWBM simsuite only)
-        meteo <- get_meteo_swbm_meteoschweiz( paste( myhome, as.character(siteinfo$meteosource[idx] ), sep="" ) )
+          ## add MOY and DOM
+          if ( is.null(meteo$moy) ) { meteo$moy <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mon + 1 }
+          if ( is.null(meteo$dom) ) { meteo$dom <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mday }
 
-      } else {
+          ## if site data goes beyond 2014, add rows
+          endyr_bysit <- max(meteo$year)
+          if ( max(clim_daily$year) < endyr_bysit ){
 
-        ## OTHER METEO DATA
-        filn <- paste( myhome, as.character(siteinfo$meteosource[idx] ), sep="" )
-        meteo <- read.csv( filn, as.is=TRUE )
-        found <- TRUE
+            print( paste( "adding years up to ", endyr_bysit, "..." ) )
 
-      }
+            ## Reducing years
+            startyr <- max(clim_daily$year) + 1
+            endyr   <- endyr_bysit
+            nyrs    <- length( startyr:endyr )
 
-      if ( found ){
-
-        ## add MOY and DOM
-        if ( is.null(meteo$moy) ) { meteo$moy <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mon + 1 }
-        if ( is.null(meteo$dom) ) { meteo$dom <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mday }
-
-        ## if site data goes beyond 2014, add rows
-        endyr_bysit <- max(meteo$year)
-        if ( max(clim_daily$year) < endyr_bysit ){
-
-          print( paste( "adding years up to ", endyr_bysit, "..." ) )
-
-          ## Reducing years
-          startyr <- max(clim_daily$year) + 1
-          endyr   <- endyr_bysit
-          nyrs    <- length( startyr:endyr )
-
-          dm  <- rep( NA, sum(ndaymonth)*length(startyr:endyr) )
-          jdx <- 0
-          for (yr in startyr:endyr_bysit ){
-            for (imoy in 1:nmonth){
-              for (idm in 1:ndaymonth[imoy]){
-                jdx <- jdx + 1 
-                dm[jdx]   <- idm
+            dm  <- rep( NA, sum(ndaymonth)*length(startyr:endyr) )
+            jdx <- 0
+            for (yr in startyr:endyr_bysit ){
+              for (imoy in 1:nmonth){
+                for (idm in 1:ndaymonth[imoy]){
+                  jdx <- jdx + 1 
+                  dm[jdx]   <- idm
+                }
               }
             }
+            addrows <- data.frame( 
+              doy         =rep( seq(ndayyear), nyrs ), 
+              moy         =rep( rep( seq(nmonth), times=ndaymonth ), times=nyrs ),
+              dom         =dm,
+              year        =rep( startyr:endyr_bysit, each=ndayyear ),
+              temp        =rep( NA, nyrs*ndayyear ),
+              prec        =rep( NA, nyrs*ndayyear ),
+              ccov        =rep( NA, nyrs*ndayyear ),
+              vapr        =rep( NA, nyrs*ndayyear ),
+              source      =rep( NA, nyrs*ndayyear ),
+              source_temp =rep( NA, nyrs*ndayyear ),
+              source_prec =rep( NA, nyrs*ndayyear ),
+              source_vpd  =rep( NA, nyrs*ndayyear ),
+              vpd         =rep( NA, nyrs*ndayyear )
+            )
+
+            ## add rows to clim_daily
+            addrows[,5:dim(clim_daily)[2]] <- NA
+
+            ## add additional rows to clim_daily
+            clim_daily <- rbind( clim_daily, addrows )
+
           }
-          addrows <- data.frame( 
-            doy         =rep( seq(ndayyear), nyrs ), 
-            moy         =rep( rep( seq(nmonth), times=ndaymonth ), times=nyrs ),
-            dom         =dm,
-            year        =rep( startyr:endyr_bysit, each=ndayyear ),
-            temp        =rep( NA, nyrs*ndayyear ),
-            prec        =rep( NA, nyrs*ndayyear ),
-            ccov        =rep( NA, nyrs*ndayyear ),
-            vapr        =rep( NA, nyrs*ndayyear ),
-            source      =rep( NA, nyrs*ndayyear ),
-            source_temp =rep( NA, nyrs*ndayyear ),
-            source_prec =rep( NA, nyrs*ndayyear ),
-            source_vpd  =rep( NA, nyrs*ndayyear ),
-            vpd         =rep( NA, nyrs*ndayyear )
-          )
 
-          ## add rows to clim_daily
-          addrows[,5:dim(clim_daily)[2]] <- NA
+          if ( in_netrad && !is.null( meteo$rad ) ){ 
+            clim_daily$netrad <- rep( NA, dim(clim_daily)[1]) 
+            clim_daily$source_netrad <- rep( NA, dim(clim_daily)[1]) 
+          }
 
-          ## add additional rows to clim_daily
-          clim_daily <- rbind( clim_daily, addrows )
+          for (jdx in 1:dim(meteo)[1]){
 
-        }
+            putjdx <- which( clim_daily$year==meteo$year[jdx] & clim_daily$moy==meteo$moy[jdx] & clim_daily$dom==meteo$dom[jdx] )
 
-        if ( in_netrad && !is.null( meteo$rad ) ){ 
-          clim_daily$netrad <- rep( NA, dim(clim_daily)[1]) 
-          clim_daily$source_netrad <- rep( NA, dim(clim_daily)[1]) 
-        }
+            if (length(putjdx)>1) { 
+              print("PROBLEM: found multiple corresponding indeces for ...")
+              print(paste("year =", meteo$year[jdx], "moy =", meteo$moy[jdx], "dom =", meteo$dom[jdx] ) ) 
+            
+            } else if (length(putjdx)==0){
+              print("PROBLEM: found no corresponding indeces for ...")
+              print(paste("year =", meteo$year[jdx], "moy =", meteo$moy[jdx], "dom =", meteo$dom[jdx] ) )           
+            
+            } else {
 
-        for (jdx in 1:dim(meteo)[1]){
+              ## temperature
+              if (!is.null(meteo$temp[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp[jdx] }
+              if (!is.null(meteo$temp[jdx])) { clim_daily$source_temp[ putjdx ] <- "temp. sitedata" }
 
-          putjdx <- which( clim_daily$year==meteo$year[jdx] & clim_daily$moy==meteo$moy[jdx] & clim_daily$dom==meteo$dom[jdx] )
+              ## precipitation
+              if (!is.null(meteo$prec[jdx])) { clim_daily$prec[ putjdx ] <- meteo$prec[jdx] }
+              if (!is.null(meteo$prec[jdx])) { clim_daily$source_prec[ putjdx ] <- "prec. sitedata" }
 
-          if (length(putjdx)>1) { 
-            print("PROBLEM: found multiple corresponding indeces for ...")
-            print(paste("year =", meteo$year[jdx], "moy =", meteo$moy[jdx], "dom =", meteo$dom[jdx] ) ) 
-          
-          } else if (length(putjdx)==0){
-            print("PROBLEM: found no corresponding indeces for ...")
-            print(paste("year =", meteo$year[jdx], "moy =", meteo$moy[jdx], "dom =", meteo$dom[jdx] ) )           
-          
-          } else {
+              ## VPD
+              if (!is.null(meteo$vpd[jdx])) { clim_daily$vpd[ putjdx ] <- meteo$vpd[jdx] }
+              if (!is.null(meteo$vpd[jdx])) { clim_daily$source_vpd[ putjdx ] <- "VPD sitedata" }
 
-            ## temperature
-            if (!is.null(meteo$temp[jdx])) { clim_daily$temp[ putjdx ] <- meteo$temp[jdx] }
-            if (!is.null(meteo$temp[jdx])) { clim_daily$source_temp[ putjdx ] <- "temp. sitedata" }
+              ## Net radiation
+              if ( in_netrad && !is.null( meteo$rad ) ){
+                if (!is.null(meteo$rad[jdx])) { clim_daily$netrad[ putjdx ] <- calc_netrad_orth(  meteo$rad[jdx] ) }
+                if (!is.null(meteo$rad[jdx])) { clim_daily$source_netrad[ putjdx ] <- "irradiance sitedata, translated to NetRad" }              
+              }
 
-            ## precipitation
-            if (!is.null(meteo$prec[jdx])) { clim_daily$prec[ putjdx ] <- meteo$prec[jdx] }
-            if (!is.null(meteo$prec[jdx])) { clim_daily$source_prec[ putjdx ] <- "prec. sitedata" }
-
-            ## VPD
-            if (!is.null(meteo$vpd[jdx])) { clim_daily$vpd[ putjdx ] <- meteo$vpd[jdx] }
-            if (!is.null(meteo$vpd[jdx])) { clim_daily$source_vpd[ putjdx ] <- "VPD sitedata" }
-
-            ## Net radiation
-            if ( in_netrad && !is.null( meteo$rad ) ){
-              if (!is.null(meteo$rad[jdx])) { clim_daily$netrad[ putjdx ] <- calc_netrad_orth(  meteo$rad[jdx] ) }
-              if (!is.null(meteo$rad[jdx])) { clim_daily$source_netrad[ putjdx ] <- "irradiance sitedata, translated to NetRad" }              
             }
 
           }
 
+        } else {
+
+          print( paste( "WARNING: did not find file", filn ) )
+
         }
 
-      } else {
-
-        print( paste( "WARNING: did not find file", filn ) )
-
       }
+
+      startyr_act <- min( clim_daily$year )
+      endyr_act   <- max( clim_daily$year )
+
+      ##--------------------------------------------------------------------
+      ## Save (massive) daily now containing station-specific data to CSV file
+      ##--------------------------------------------------------------------
+      print( paste( "writing climate data frame into CSV file ", filnam_clim_byst_csv, "..." ) )
+      system( paste( "mkdir -p", dirnam_clim_csv ) )   
+      write.csv( clim_daily, file=filnam_clim_byst_csv, row.names=FALSE )
 
     }
 
-    startyr_act <- min( clim_daily$year )
-    endyr_act   <- max( clim_daily$year )
+    ##--------------------------------------------------------------------
+    ## Write to Fortran-formatted output for each variable and year separately
+    ##--------------------------------------------------------------------
+    print( "writing formatted input files ..." )
+    for ( yr in startyr_act:endyr_act ){
 
-  }
+      dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
+      system( paste( "mkdir -p", dirnam ) )
 
-  ##--------------------------------------------------------------------
-  ## Save (massive) daily and monthly climate data frames as CSV files
-  ##--------------------------------------------------------------------
-  print( paste( "writing climate data frame into CSV file ", filnam_clim_byst_csv, "..." ) )
-  system( paste( "mkdir -p", dirnam_clim_csv ) )   
-  write.csv( clim_daily, file=filnam_clim_byst_csv, row.names=FALSE )
+      filnam <- paste( dirnam, "dtemp_", sitename, "_", yr, ".txt", sep="" )
+      write_sofunformatted( filnam, clim_daily$temp[ which( clim_daily$year==yr ) ] )
+      
+      filnam <- paste( dirnam, "dprec_", sitename, "_", yr, ".txt", sep="" )
+      write_sofunformatted( filnam, clim_daily$prec[ which( clim_daily$year==yr ) ] )
 
-  ##--------------------------------------------------------------------
-  ## Write to Fortran-formatted output for each variable and year separately
-  ##--------------------------------------------------------------------
-  print( "writing formatted input files ..." )
-  for ( yr in startyr_act:endyr_act ){
+      filnam <- paste( dirnam, "dfsun_", sitename, "_", yr, ".txt", sep="" )
+      write_sofunformatted( filnam, ( 100.0 - clim_daily$ccov[ which( clim_daily$year==yr ) ] ) / 100.0 )
 
-    dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
-    system( paste( "mkdir -p", dirnam ) )
+      filnam <- paste( dirnam, "dvpd_", sitename, "_", yr, ".txt", sep="" )
+      write_sofunformatted( filnam, clim_daily$vpd[ which( clim_daily$year==yr ) ] )
 
-    filnam <- paste( dirnam, "dtemp_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, clim_daily$temp[ which( clim_daily$year==yr ) ] )
-    
-    filnam <- paste( dirnam, "dprec_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, clim_daily$prec[ which( clim_daily$year==yr ) ] )
+      if (in_netrad){
+        filnam <- paste( dirnam, "dnetrad_", sitename, "_", yr, ".txt", sep="" )
+        write_sofunformatted( filnam, clim_daily$netrad[ which( clim_daily$year==yr ) ] )
+      }
 
-    filnam <- paste( dirnam, "dfsun_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, ( 100.0 - clim_daily$ccov[ which( clim_daily$year==yr ) ] ) / 100.0 )
-
-    filnam <- paste( dirnam, "dvpd_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, clim_daily$vpd[ which( clim_daily$year==yr ) ] )
-
-    if (in_netrad){
-      filnam <- paste( dirnam, "dnetrad_", sitename, "_", yr, ".txt", sep="" )
-      write_sofunformatted( filnam, clim_daily$netrad[ which( clim_daily$year==yr ) ] )
     }
 
   }
