@@ -76,97 +76,112 @@ get_evi_modis_250m <- function( sitename, lon, lat ){
   ## months. Interpolated to mid-months
   ## from original 16-daily data.
   ##--------------------------------------
-
   library( MODISTools )
   syshome <- Sys.getenv( "HOME" )
   source( paste( syshome, "/.Rprofile", sep="" ) )
+  source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
+  source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 
   ##--------------------------------------
   ## Get dates for which data is available
   ##--------------------------------------
-  print( paste("lon", lon, "lat", lat))
-  dates <- data.frame( dates=GetDates( Product = "MOD13Q1", Lat = lat, Long = lon ) )
-  print("done")
-  dates$yr  <- as.numeric( substr( dates$dates, start=2, stop=5 ))
-  dates$doy <- as.numeric( substr( dates$dates, start=6, stop=8 ))
-  dates$start <- as.POSIXlt( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy - 1 )
-  dates$end   <- as.POSIXlt( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy + 15 )
+    print( paste("lon", lon, "lat", lat))
+    dates <- data.frame( dates=GetDates( Product = "MOD13Q1", Lat = lat, Long = lon ) )
+    print("done")
+    dates$yr  <- as.numeric( substr( dates$dates, start=2, stop=5 ))
+    dates$doy <- as.numeric( substr( dates$dates, start=6, stop=8 ))
+    dates$start <- as.POSIXlt( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy - 1 )
+    dates$end   <- as.POSIXlt( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy + 15 )
 
-  ## add absolute day (since 1. Jan. 2000)
-  dates$ndayyear <- rep( 0, dim(dates)[1] )
-  for (idx in 2:dim(dates)[1]){
-    if (dates$yr[idx]>dates$yr[idx-1]){
-      if ((dates$yr[idx-1]-2000)%%4==0){
-        dates$ndayyear[idx] <- 366
-      } else {
-        dates$ndayyear[idx] <- 365
+    ## add absolute day (since 1. Jan. 2000)
+    dates$ndayyear <- rep( 0, dim(dates)[1] )
+    for (idx in 2:dim(dates)[1]){
+      if (dates$yr[idx]>dates$yr[idx-1]){
+        if ((dates$yr[idx-1]-2000)%%4==0){
+          dates$ndayyear[idx] <- 366
+        } else {
+          dates$ndayyear[idx] <- 365
+        }
       }
     }
-  }
-  dates$absday <- cumsum(dates$ndayyear) + dates$doy
+    dates$absday <- cumsum(dates$ndayyear) + dates$doy
 
   ##--------------------------------------
   ## Collect data for all available dates
   ##--------------------------------------
-  modis <- subset( dates, select=c(yr,doy,start,end,absday) )
-  # print(dim(modis))
-  modis$evi <- rep( NA, dim(modis)[1] )
+    modis <- subset( dates, select=c(yr,doy,start,end,absday) )
+    # print(dim(modis))
+    modis$evi <- rep( NA, dim(modis)[1] )
 
-  for (idx in 1:dim(modis)[1]){
-    
-    tmp2 <- try(
-                getmodissubset_evi( 
-                                    sitename, lon, lat, modis$start[idx], modis$end[idx], 
-                                    paste( 
-                                            myhome,
-                                            "data/modis_fluxnet_cutouts/", sitename,"/data_",
-                                            sitename, 
-                                            "_", 
-                                            as.Date(modis$start[idx]), 
-                                            "/", 
-                                            sep=""
-                                            )
-                                    )
-                )
+    for (idx in 1:dim(modis)[1]){
+      
+      tmp2 <- try(
+                  getmodissubset_evi( 
+                                      sitename, lon, lat, modis$start[idx], modis$end[idx], 
+                                      paste( 
+                                              myhome,
+                                              "data/modis_fluxnet_cutouts/", sitename,"/data_",
+                                              sitename, 
+                                              "_", 
+                                              as.Date(modis$start[idx]), 
+                                              "/", 
+                                              sep=""
+                                              )
+                                      )
+                  )
 
-    if (class(tmp2)=="try-error") {
-      modis$evi[idx] <- NA
-    } else {
-      modis$evi[idx] <- tmp2$mean.band
-    } 
-  
-  }
-
-  ##--------------------------------------
-  ## Interpolate data to mid-months
-  ##--------------------------------------
-  middaymonth <- c(16,44,75,105,136,166,197,228,258,289,319,350)
-
-  yrstart <- dates$yr[1]
-  yrend   <- dates$yr[dim(dates)[1]]
-
-  dfm <- data.frame( 
-    yr=rep(yrstart:yrend,each=12) , 
-    moy=rep(1:12,length(yrstart:yrend)), 
-    doy=rep(middaymonth,length(yrstart:yrend))
-    )
-  dfm$date <- as.POSIXlt( as.Date( paste( as.character(dfm$yr), "-01-01", sep="" ) ) + dfm$doy - 1 )
-
-  dfm$ndayyear <- rep( 0, dim(dfm)[1] )
-  for (idx in 2:dim(dfm)[1]){
-    if (dfm$yr[idx]>dfm$yr[idx-1]){
-      if ((dfm$yr[idx-1]-2000)%%4==0){
-        dfm$ndayyear[idx] <- 366
+      if (class(tmp2)=="try-error") {
+        modis$evi[idx] <- NA
       } else {
-        dfm$ndayyear[idx] <- 365
+        modis$evi[idx] <- tmp2$mean.band
+      } 
+    
+    }
+
+  ##--------------------------------------
+  ## MONTHLY DATAFRAME, Interpolate data to mid-months
+  ##--------------------------------------
+    middaymonth <- c(16,44,75,105,136,166,197,228,258,289,319,350)
+
+    yrstart <- dates$yr[1]
+    yrend   <- dates$yr[dim(dates)[1]]
+
+    mdf <- data.frame( 
+      yr=rep(yrstart:yrend,each=12) , 
+      moy=rep(1:12,length(yrstart:yrend)), 
+      doy=rep(middaymonth,length(yrstart:yrend))
+      )
+    mdf$date <- as.POSIXlt( as.Date( paste( as.character(mdf$yr), "-01-01", sep="" ) ) + mdf$doy - 1 )
+
+    mdf$ndayyear <- rep( 0, dim(mdf)[1] )
+    for (idx in 2:dim(mdf)[1]){
+      if (mdf$yr[idx]>mdf$yr[idx-1]){
+        if ((mdf$yr[idx-1]-2000)%%4==0){
+          mdf$ndayyear[idx] <- 366
+        } else {
+          mdf$ndayyear[idx] <- 365
+        }
       }
     }
-  }
-  dfm$absday <- cumsum(dfm$ndayyear) + dfm$doy
+    mdf$absday <- cumsum(mdf$ndayyear) + mdf$doy
 
-  dfm$evi <- approx( modis$absday, modis$evi, xout=dfm$absday )$y
+    mdf$evi <- approx( modis$absday, modis$evi, xout=mdf$absday )$y
 
-  out_get_evi_modis_250m <- list( dfm=dfm, df_origdates=modis )
+
+  # ##--------------------------------------
+  # ## DAILY DATAFRAME, Interpolate from 
+  # ## 16-day interval to daily using a polynom
+  # ##--------------------------------------
+  # yrstart  <- dates$yr[1]
+  # yrend    <- dates$yr[dim(dates)[1]]
+
+  # ddf <- init_daily_dataframe( yrstart, yrend )
+
+  #     clim_daily$temp[ idxs ] <- monthly2daily( mtemp, "polynom", mtemp_pvy[nmonth], mtemp_nxt[1] )
+
+
+
+  out_get_evi_modis_250m <- list( dfm=mdf, df_origdates=modis )
 
   return( out_get_evi_modis_250m )
 

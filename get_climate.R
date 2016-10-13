@@ -47,10 +47,10 @@ source( paste( myhome, "sofun/getin/calc_netrad_orth.R", sep="" ) )
 overwrite <- FALSE
 ingest_meteodata <- TRUE
 
-simsuite <- "swbm"
+simsuite <- "fluxnet2015"
 
 in_ppfd   <- FALSE
-in_netrad <- TRUE
+in_netrad <- FALSE
 
 startyr_override <- 1980
 
@@ -62,6 +62,10 @@ endyr_cru   <- 2014
 nyrs_cru    <- length(startyr_cru:endyr_cru)
 staryr_wfdei <- 1979
 endyr_wfdei  <- 2012
+
+## before knowing whether site data is available beyond CRU, assume...
+endyr_act <- endyr_cru
+startyr_act <- startyr_override
 
 ## load meta data file for site simulation
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
@@ -77,6 +81,7 @@ for (idx in do.sites ){
 
   dirnam_clim_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", sep="" )
   filnam_clim_csv <- paste( dirnam_clim_csv, "clim_daily_", sitename, ".csv", sep="" )
+  filnam_clim_byst_csv <- paste( dirnam_clim_csv, "clim_daily_byst_", sitename, ".csv", sep="" )
 
   if (overwrite || !file.exists(filnam_clim_csv)){
   
@@ -299,6 +304,7 @@ for (idx in do.sites ){
 
   dirnam_clim_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", sep="" )
   filnam_clim_csv <- paste( dirnam_clim_csv, "clim_daily_", sitename, ".csv", sep="" )
+  filnam_clim_byst_csv <- paste( dirnam_clim_csv, "clim_daily_byst_", sitename, ".csv", sep="" )
 
   if ( file.exists( filnam_clim_csv ) ) {
     ##--------------------------------------------------------------------
@@ -388,18 +394,19 @@ for (idx in do.sites ){
         if ( is.null(meteo$dom) ) { meteo$dom <- as.POSIXlt( meteo$date, format="%d/%m/%Y" )$mday }
 
         ## if site data goes beyond 2014, add rows
-        if ( max(clim_daily$year) < max(meteo$year) ){
+        endyr_bysit <- max(meteo$year)
+        if ( max(clim_daily$year) < endyr_bysit ){
 
-          print( paste( "adding years up to ", max(meteo$year), "..." ) )
+          print( paste( "adding years up to ", endyr_bysit, "..." ) )
 
           ## Reducing years
           startyr <- max(clim_daily$year) + 1
-          endyr   <- max(meteo$year)
+          endyr   <- endyr_bysit
           nyrs    <- length( startyr:endyr )
 
           dm  <- rep( NA, sum(ndaymonth)*length(startyr:endyr) )
           jdx <- 0
-          for (yr in startyr:max(meteo$year) ){
+          for (yr in startyr:endyr_bysit ){
             for (imoy in 1:nmonth){
               for (idm in 1:ndaymonth[imoy]){
                 jdx <- jdx + 1 
@@ -411,7 +418,7 @@ for (idx in do.sites ){
             doy         =rep( seq(ndayyear), nyrs ), 
             moy         =rep( rep( seq(nmonth), times=ndaymonth ), times=nyrs ),
             dom         =dm,
-            year        =rep( startyr:max(meteo$year), each=ndayyear ),
+            year        =rep( startyr:endyr_bysit, each=ndayyear ),
             temp        =rep( NA, nyrs*ndayyear ),
             prec        =rep( NA, nyrs*ndayyear ),
             ccov        =rep( NA, nyrs*ndayyear ),
@@ -480,20 +487,23 @@ for (idx in do.sites ){
 
     }
 
+    startyr_act <- min( clim_daily$year )
+    endyr_act   <- max( clim_daily$year )
+
   }
 
   ##--------------------------------------------------------------------
   ## Save (massive) daily and monthly climate data frames as CSV files
   ##--------------------------------------------------------------------
-  print( paste( "writing climate data frame into CSV file ", filnam_clim_csv, "..." ) )
+  print( paste( "writing climate data frame into CSV file ", filnam_clim_byst_csv, "..." ) )
   system( paste( "mkdir -p", dirnam_clim_csv ) )   
-  write.csv( clim_daily, file=filnam_clim_csv, row.names=FALSE )
+  write.csv( clim_daily, file=filnam_clim_byst_csv, row.names=FALSE )
 
   ##--------------------------------------------------------------------
   ## Write to Fortran-formatted output for each variable and year separately
   ##--------------------------------------------------------------------
   print( "writing formatted input files ..." )
-  for ( yr in startyr_cru:endyr_cru ){
+  for ( yr in startyr_act:endyr_act ){
 
     dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
     system( paste( "mkdir -p", dirnam ) )
@@ -510,8 +520,10 @@ for (idx in do.sites ){
     filnam <- paste( dirnam, "dvpd_", sitename, "_", yr, ".txt", sep="" )
     write_sofunformatted( filnam, clim_daily$vpd[ which( clim_daily$year==yr ) ] )
 
-    # filnam <- paste( dirnam, "dirad_", sitename, "_", yr, ".txt", sep="" )
-    # write_sofunformatted( filnam, clim_daily$irad[ which( clim_daily$year==yr ) ] )
+    if (in_netrad){
+      filnam <- paste( dirnam, "dnetrad_", sitename, "_", yr, ".txt", sep="" )
+      write_sofunformatted( filnam, clim_daily$netrad[ which( clim_daily$year==yr ) ] )
+    }
 
   }
 
