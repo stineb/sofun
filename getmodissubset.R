@@ -11,6 +11,9 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
 
   if (length(filn)==0||overwrite){
 
+    print( paste( "deleting existing file", filn ) )
+    system( paste( "rm ", savedir, filn, sep="" ) )
+
     print( paste( "==========================="))
     print( paste( "DOWNLOADING MODIS DATA FOR:"))
     print( paste( "lon  :", lon ) )
@@ -32,7 +35,7 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
       LoadDat   = modis.subset, 
       Products  = "MOD13Q1",
       Bands     = c("250m_16_days_EVI", "250m_16_days_pixel_reliability"),
-      Size      = c(0,0),   # change this to c(1,1) to get all pixels +/- 1 km around the centre
+      Size      = c(1,1),   # c(1,1) to get all pixels +/- 1 km around the centre = 81 pixels in total; c(0,0) to get only centre pixel
       StartDate = TRUE,
       SaveDir   = savedir
       )
@@ -86,7 +89,6 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   # filn <- list.files( path=savedir, pattern="*asc" )
   # ######################
 
-
   library( MODISTools )
   library( plyr )
 
@@ -108,16 +110,49 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
 
   ## get number of products for which data is in ascii file (not used)
   nprod <- dim(crude)[1] / ntsteps
+
   if ((dim(crude)[1]/nprod)!=ntsteps) { print("problem") }
 
   ## re-arrange data
-  if ( dim(crude)[2]==11 && expand_x==0 && expand_y==0 ){
+  if ( dim(crude)[2]==11 && expand_x!=0 && expand_y!=0 ){
+
+    # ---------------------------------------------------------------
+    ## more data required than downloaded (additional pixels surrounding centre)
+    #---------------------------------------------------------------
+    print( "Only centre pixel downloaded, re-download data with surrounding pixels" )
+    filn <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=TRUE ) )
+
+    ## re-read crude date
+    crude   <- read.csv( paste( savedir, filn, sep="" ), header = FALSE, as.is = TRUE )
+    crude   <- rename( crude, c( "V1"="nrows", "V2"="ncols", "V3"="modislon_ll", "V4"="modislat_ll", "V5"="dxy_m", "V6"="id", "V7"="MODISprod", "V8"="yeardoy", "V9"="coord", "V10"="MODISprocessdatetime" ) )
+
+    ## this is just read to get length of time series and dates
+    tseries    <- MODISTimeSeries( savedir, Band = "250m_16_days_EVI" )
+    ntsteps    <- dim(tseries[[1]])[1]
+    tmp        <- rownames( tseries[[1]] )
+    time       <- data.frame( yr=as.numeric( substr( tmp, start=2, stop=5 )), doy=as.numeric( substr( tmp, start=6, stop=8 )) )
+    time$dates <- as.POSIXlt( as.Date( paste( as.character(time$yr), "-01-01", sep="" ) ) + time$doy - 1 )
+    time$yr_dec<- time$yr + ( time$doy - 1 ) / ndayyear
+
+    ## get number of products for which data is in ascii file (not used)
+    nprod <- dim(crude)[1] / ntsteps
+
+    nice_all      <- ExtractTile( Data = crude[1:ntsteps,11:dim(crude)[2]] * ScaleFactor, Rows = c(crude$nrows[1],expand_y), Cols = c(crude$ncols[1],expand_x), Grid = TRUE )
+    nice_qual_flg <- ExtractTile( Data = crude[(ntsteps+1):(2*ntsteps),11:dim(crude)[2]], Rows = c(crude$nrows[1],expand_y), Cols = c(crude$ncols[1],expand_x), Grid = TRUE )
+
+  } else if ( dim(crude)[2]==11 && expand_x==0 && expand_y==0 ){
+
+    # ---------------------------------------------------------------
     ## only one pixel downloaded
+    # ---------------------------------------------------------------
     nice_all      <- as.matrix( crude$V11[1:ntsteps], dim(1,1,ntsteps) ) * ScaleFactor     ## EVI data
     nice_qual_flg <- as.matrix( crude$V11[(ntsteps+1):(2*ntsteps)], dim(1,1,ntsteps) )     ## pixel reliability data
 
   } else if ( dim(crude)[2]>11 ){
+    
+    # ---------------------------------------------------------------
     ## multiple pixels downloaded
+    # ---------------------------------------------------------------
     # nice <- ExtractTile( Data = tseries, Rows = c(crude$nrows,expand_y), Cols = c(crude$ncols,expand_x), Grid = TRUE )    ## > is not working: applying ExtractTile to return of MODISTimeSeries
     nice_all      <- ExtractTile( Data = crude[1:ntsteps,11:dim(crude)[2]] * ScaleFactor, Rows = c(crude$nrows[1],expand_y), Cols = c(crude$ncols[1],expand_x), Grid = TRUE )
     nice_qual_flg <- ExtractTile( Data = crude[(ntsteps+1):(2*ntsteps),11:dim(crude)[2]], Rows = c(crude$nrows[1],expand_y), Cols = c(crude$ncols[1],expand_x), Grid = TRUE )
@@ -128,19 +163,20 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
 
   }
 
-  ## Clean data for centre pixel: in case quality flag is not '0', use mean of all 8 surrounding pixels
-  if ( expand_x==1 && expand_y==1 ){
-    nice_centre <- nice_all[2,2,]
-    nice_centre[ which( nice_qual_flg[2,2,]!=0 ) ] <- apply( nice_all[,,which( nice_qual_flg[2,2,]!=0 )], c(3), FUN=mean)
-    # for (idx in 1:ntsteps){
-    #   if (nice_qual_flg[2,2,idx]!=0){
-    #     nice_centre[idx] <- mean( nice_all[,,idx], na.rm=TRUE )
-    #   }
-    # }
-    modis <- list( nice_all=nice_all, nice_centre=nice_centre, nice_qual_flg=nice_qual_flg, time=time )
-  } else {
-    modis <- list( nice_all=nice_all, nice_qual_flg=nice_qual_flg, time=time )
-  }
+  # ## Clean data for centre pixel: in case quality flag is not '0', use mean of all 8 surrounding pixels
+  # if ( expand_x==1 && expand_y==1 ){
+  #   # nice_centre <- nice_all[2,2,]
+  #   # nice_centre[ which( nice_qual_flg[2,2,]!=0 ) ] <- apply( nice_all[,,which( nice_qual_flg[2,2,]!=0 )], c(3), FUN=mean )
+  #   # for (idx in 1:ntsteps){
+  #   #   if (nice_qual_flg[2,2,idx]!=0){
+  #   #     nice_centre[idx] <- mean( nice_all[,,idx], na.rm=TRUE )
+  #   #   }
+  #   # }
+  #   modis <- list( nice_all=nice_all, nice_centre=nice_centre, nice_qual_flg=nice_qual_flg, time=time )
+  # } else {
+  #   modis <- list( nice_all=nice_all, nice_qual_flg=nice_qual_flg, time=time )
+  # }
+  modis <- list( nice_all=nice_all, nice_qual_flg=nice_qual_flg, time=time )
 
   return( modis )
 
@@ -161,8 +197,8 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   # sitename <- "AT-Neu"
   # lon <- 11.3175
   # lat <- 47.1167
-  # expand_x <- 0
-  # expand_y <- 0 
+  # expand_x <- 1
+  # expand_y <- 1 
   # ######################
 
   library( MODISTools )
@@ -214,12 +250,19 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
       savedir <- paste( myhome, "data/modis_fluxnet_cutouts/", sitename,"/data_", sitename, "_", as.Date(modis$start[idx]), "/", sep="" )
 
       ##--------------------------------------------------------------------
-      filn    <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=FALSE ) )
-      out     <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
+      filn <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=FALSE ) )
+      out  <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
       ##--------------------------------------------------------------------
 
-      modis$evi[idx]          <- out$nice_all[1,1]
-      modis$qual[idx]         <- out$nice_qual_flg[1,1]
+      modis$qual[idx] <- out$nice_qual_flg[2,2,1]
+
+      ## if quality flag is not 0, use mean of surrounding pixels
+      if (modis$qual[idx]==0){
+        modis$evi[idx] <- out$nice_all[2,2,1]
+      } else {
+        modis$evi[idx] <- mean( out$nice_all[,,1] )
+      }
+      
       modis$yr_read[idx]      <- out$time$yr[1]
       modis$doy_read[idx]     <- out$time$doy[1]
       modis$date_read[idx]    <- out$time$dates[1]
