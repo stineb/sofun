@@ -12,7 +12,7 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
   if (length(filn)==0||overwrite){
 
     print( paste( "deleting existing file", filn ) )
-    system( paste( "rm ", savedir, filn, sep="" ) )
+    if (length(filn)>0) { system( paste( "rm ", savedir, filn, sep="" ) ) }
 
     print( paste( "==========================="))
     print( paste( "DOWNLOADING MODIS DATA FOR:"))
@@ -21,8 +21,6 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
     print( paste( "start:", start.date ) )
     print( paste( "end  :", end.date ) )
     print( paste( "---------------------------"))
-
-    system( paste( "mkdir ", savedir, sep="" ) )  
 
     modis.subset <- data.frame(  
       lat        = lat, 
@@ -108,6 +106,13 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   time$dates <- as.POSIXlt( as.Date( paste( as.character(time$yr), "-01-01", sep="" ) ) + time$doy - 1 )
   time$yr_dec<- time$yr + ( time$doy - 1 ) / ndayyear
 
+  ## this may arise for some odd reason
+  if (ntsteps!=1) {
+    crude   <- crude[1,]
+    ntsteps <-1
+    time    <- time[1,]
+  }
+
   ## get number of products for which data is in ascii file (not used)
   nprod <- dim(crude)[1] / ntsteps
 
@@ -120,7 +125,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
     ## more data required than downloaded (additional pixels surrounding centre)
     #---------------------------------------------------------------
     print( "Only centre pixel downloaded, re-download data with surrounding pixels" )
-    filn <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=TRUE ) )
+    filn <- try( download_subset_modis( lon, lat, time$dates, time$dates, savedir, overwrite=TRUE ) )
 
     ## re-read crude date
     crude   <- read.csv( paste( savedir, filn, sep="" ), header = FALSE, as.is = TRUE )
@@ -160,6 +165,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   } else {
 
     print( "Not sufficient data downloaded. Adjust expand_x and expand_y.")
+    print( paste("dimension length of crude ", dim(crude) ) )
 
   }
 
@@ -176,6 +182,13 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   # } else {
   #   modis <- list( nice_all=nice_all, nice_qual_flg=nice_qual_flg, time=time )
   # }
+  
+  if (ntsteps==1 && length(dim(nice_all))==3 ) {
+    nice_all <- nice_all[,,1]
+    nice_qual_flg <- nice_qual_flg[,,1]
+    time <- time[1,]
+  }
+
   modis <- list( nice_all=nice_all, nice_qual_flg=nice_qual_flg, time=time )
 
   return( modis )
@@ -193,12 +206,19 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
 
   # ######################
   # ## for debugging:
-  # overwrite <- FALSE
-  # sitename <- "AT-Neu"
-  # lon <- 11.3175
-  # lat <- 47.1167
+  # # overwrite <- FALSE
+  # # sitename <- "AT-Neu"
+  # # lon <- 11.3175
+  # # lat <- 47.1167
+  # # sitename <- "AR-SLu"
+  # # lon <- -66.46
+  # # lat <- -33.46
+  # sitename <- "AR-Vir"
+  # lon <- -56.1886
+  # lat <- -28.2395
   # expand_x <- 1
   # expand_y <- 1 
+  # overwrite <- TRUE
   # ######################
 
   library( MODISTools )
@@ -218,7 +238,7 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
     dates$yr  <- as.numeric( substr( dates$dates, start=2, stop=5 ))
     dates$doy <- as.numeric( substr( dates$dates, start=6, stop=8 ))
     dates$start <- as.POSIXlt( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy - 1 )
-    dates$end   <- as.POSIXlt( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy + 15 )
+    dates$end   <- as.POSIXlt( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy + 10 )
 
     ## add absolute day (since 1. Jan. 2000)
     dates$ndayyear <- rep( 0, dim(dates)[1] )
@@ -248,21 +268,40 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
     for (idx in 1:dim(modis)[1]){
       
       savedir <- paste( myhome, "data/modis_fluxnet_cutouts/", sitename,"/data_", sitename, "_", as.Date(modis$start[idx]), "/", sep="" )
+      system( paste( "mkdir -p ", savedir, sep="" ) )  
 
       ##--------------------------------------------------------------------
-      filn <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=FALSE ) )
+      filn <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=overwrite ) )
       out  <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
       ##--------------------------------------------------------------------
 
-      modis$qual[idx] <- out$nice_qual_flg[2,2,1]
+      if ( is.null( dim( out$nice_all ) ) && expand_x==0 && expand_y==0 ){
 
-      ## if quality flag is not 0, use mean of surrounding pixels
-      if (modis$qual[idx]==0){
-        modis$evi[idx] <- out$nice_all[2,2,1]
+        modis$qual[idx] <- out$nice_qual_flg
+        modis$evi[idx]  <- out$nice_all
+
+      } else if ( dim(out$nice_all)==c(3,3) ){
+
+        modis$qual[idx] <- out$nice_qual_flg[2,2]
+
+        ## if quality flag is not 0, use mean of surrounding pixels (from 3x3 matrix)
+        if (modis$qual[idx]==0){
+          modis$evi[idx] <- out$nice_all[2,2]
+        } else {
+          modis$evi[idx] <- mean( out$nice_all[,] )
+        }
+                
+      } else if ( dim(out$nice_all)==c(1,1) && expand_x==0 && expand_y==0 ) { 
+
+        modis$qual[idx] <- out$nice_qual_flg[1,1]
+        modis$evi[idx]  <- out$nice_all[1,1]
+     
       } else {
-        modis$evi[idx] <- mean( out$nice_all[,,1] )
-      }
+
+        print("weird...")
       
+      }
+
       modis$yr_read[idx]      <- out$time$yr[1]
       modis$doy_read[idx]     <- out$time$doy[1]
       modis$date_read[idx]    <- out$time$dates[1]
@@ -301,3 +340,4 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   # ######################
 
 }
+

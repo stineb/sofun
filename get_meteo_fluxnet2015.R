@@ -22,7 +22,13 @@ get_meteo_fluxnet2015 <- function( path ){
   meteo$year_dec <- meteo$year + (meteo$moy-1)/nmonth + (meteo$dom-1)/sum(ndaymonth)
 
   ## rename variables (columns)
-  meteo <- rename( meteo, c( "TA_F"="temp", "VPD_F"="vpd", "P_F"="prec", "NETRAD"="nrad" ) ) #, "LW_IN_F"="lwin", "SW_IN_F"="swin" ) )
+  if (!is.null(meteo$NETRAD)){
+    meteo <- rename( meteo, c( "TA_F"="temp", "VPD_F"="vpd", "P_F"="prec", "NETRAD"="nrad" ) ) #, "LW_IN_F"="lwin", "SW_IN_F"="swin" ) )    
+    meteo$nrad <- meteo$nrad * 60 * 60 * 24  # given in W m-2 (avg.), required in J m-2 (daily total)
+  } else {
+    meteo <- rename( meteo, c( "TA_F"="temp", "VPD_F"="vpd", "P_F"="prec" ) ) #, "LW_IN_F"="lwin", "SW_IN_F"="swin" ) )   
+    meteo$nrad <- rep( NA, dim(meteo)[1] ) 
+  }
 
   ## Take only net PPFD (=in - out)
   if (!is.null(meteo$PPFD_IN) && !is.null(meteo$PPFD_OUT)){
@@ -34,7 +40,6 @@ get_meteo_fluxnet2015 <- function( path ){
   ## convert units
   meteo$vpd  <- meteo$vpd  * 1e2  # given in hPa, required in Pa
   meteo$ppfd <- meteo$ppfd * 1.0e-6 * kfFEC * 60 * 60 * 24  # given in W m-2, required in mol m-2 d-1 
-  meteo$nrad <- meteo$nrad * 60 * 60 * 24  # given in W m-2 (avg.), required in J m-2 (daily total)
 
   # meteo <- select( meteo, year, moy, dom, year_dec, temp, prec, vpd, ppfd, nrad ) 
   meteo <- subset( meteo, select=c( year, moy, dom, year_dec, temp, prec, vpd, ppfd, nrad ) )

@@ -28,10 +28,11 @@ ddf_modis_allsites <- init_daily_dataframe( fapar_year_start, fapar_year_end )
 path_mfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite,"_sofun/sitedata/fapar/mfapar_evi_modissubset_allsites.csv", sep="")
 path_dfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite,"_sofun/sitedata/fapar/dfapar_evi_modissubset_allsites.csv", sep="")
 
-overwrite <- TRUE
+overwrite_csv <- TRUE
 
-do.sites <- seq(nsites)
+# do.sites <- seq(nsites)
 # do.sites <- 3:10
+do.sites <- 1:1
 
 for (idx in do.sites ){
 
@@ -45,10 +46,10 @@ for (idx in do.sites ){
   filnam_monthly_fapar_csv <- paste( dirnam_fapar_csv, "mfapar_evi_modissubset_", sitename, ".csv", sep="" )
   filnam_daily_fapar_csv   <- paste( dirnam_fapar_csv, "dfapar_evi_modissubset_", sitename, ".csv", sep="" )
 
-  if ( !file.exists(filnam_daily_fapar_csv) || !file.exists(filnam_monthly_fapar_csv) || overwrite ){
+  if ( !file.exists(filnam_daily_fapar_csv) || !file.exists(filnam_monthly_fapar_csv) || overwrite_csv ){
 
     ##--------------------------------------------------------------------
-    out <- interpolate_modis( sitename, lon, lat, expand_x=1, expand_y=1, overwrite=overwrite  )
+    out <- interpolate_modis( sitename, lon, lat, expand_x=1, expand_y=1, overwrite=FALSE  )
     df_monthly <- out$modis_monthly
     df_daily   <- out$modis_daily
     ##--------------------------------------------------------------------
