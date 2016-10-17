@@ -13,8 +13,6 @@ download_subset_modis <- function( lon, lat, TimeSeriesLength, end.date, savedir
 
   library( MODISTools )
 
-  print( paste('overwrite ', overwrite))
-
   ## Find file from which (crude) data is read
   filn <- list.files( path=savedir, pattern="*asc" )
 
@@ -184,34 +182,34 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
     # modis <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
     ##--------------------------------------------------------------------
 
-  # ##--------------------------------------
-  # ## MONTHLY DATAFRAME, Interpolate data to mid-months
-  # ##--------------------------------------
-  #   middaymonth <- c(16,44,75,105,136,166,197,228,258,289,319,350)
+  ##--------------------------------------
+  ## MONTHLY DATAFRAME, Interpolate data to mid-months
+  ##--------------------------------------
+    middaymonth <- c(16,44,75,105,136,166,197,228,258,289,319,350)
 
-  #   yrstart  <- min( modis$time$yr )
-  #   yrend    <- max( modis$time$yr )
+    yrstart  <- min( modis$time$yr )
+    yrend    <- max( modis$time$yr )
 
-  #   modis_monthly <- init_monthly_dataframe( yrstart, yrend )
+    modis_monthly <- init_monthly_dataframe( yrstart, yrend )
 
-  #   modis_monthly <- modis_monthly[ which( modis_monthly$year_dec>=modis$time$yr_dec[1] ), ]
-  #   modis_monthly <- modis_monthly[ which( modis_monthly$year_dec<=modis$time$yr_dec[dim(modis$time)[1]] ), ]
+    modis_monthly <- modis_monthly[ which( modis_monthly$year_dec>=modis$time$yr_dec[1] ), ]
+    modis_monthly <- modis_monthly[ which( modis_monthly$year_dec<=modis$time$yr_dec[dim(modis$time)[1]] ), ]
 
-  #   modis_monthly$evi <- approx( modis$time$yr_dec, modis$nice_centre, modis_monthly$year_dec )$y
+    modis_monthly$evi <- approx( modis$time$yr_dec, modis$nice_centre, modis_monthly$year_dec )$y
 
 
-  # ##--------------------------------------
-  # ## DAILY DATAFRAME
-  # ##--------------------------------------
-  #   yrstart  <- min( modis$time$yr )
-  #   yrend    <- max( modis$time$yr )
+  ##--------------------------------------
+  ## DAILY DATAFRAME
+  ##--------------------------------------
+    yrstart  <- min( modis$time$yr )
+    yrend    <- max( modis$time$yr )
 
-  #   modis_daily <- init_daily_dataframe( yrstart, yrend )
+    modis_daily <- init_daily_dataframe( yrstart, yrend )
     
-  #   modis_daily <- modis_daily[ which( modis_daily$year_dec>=modis$time$yr_dec[1] ), ]
-  #   modis_daily <- modis_daily[ which( modis_daily$year_dec<=modis$time$yr_dec[dim(modis$time)[1]] ), ]
+    modis_daily <- modis_daily[ which( modis_daily$year_dec>=modis$time$yr_dec[1] ), ]
+    modis_daily <- modis_daily[ which( modis_daily$year_dec<=modis$time$yr_dec[dim(modis$time)[1]] ), ]
 
-  #   modis_daily$evi <- approx( modis$time$yr_dec, modis$nice_centre, modis_daily$year_dec )$y
+    modis_daily$evi <- approx( modis$time$yr_dec, modis$nice_centre, modis_daily$year_dec )$y
 
 
   # return( list( modis=modis, modis_daily=modis_daily, modis_monthly=modis_monthly ) )

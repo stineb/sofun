@@ -10,6 +10,7 @@ init_monthly_dataframe <- function( yrstart, yrend ){
     doy=rep(middaymonth,nyrs)
     )
   mdf$date <- as.POSIXlt( as.Date( paste( as.character(mdf$year), "-01-01", sep="" ) ) + mdf$doy - 1 )
+  mdf$year_dec <- mdf$year + ( mdf$doy - 1 ) / sum( ndaymonth )
 
   return( mdf)
 

@@ -1,12 +1,18 @@
-getmodissubset_evi <- function( sitename, lon, lat, start.date, end.date, savedir ){
+download_subset_modis <- function( lon, lat, start.date, end.date, savedir, overwrite ){
+  #///////////////////////////////////////////////////////////////
+  # Downloads a MODIS subset for the specified location (lon, lat)
+  # and date (start.date, end.date)
+  #---------------------------------------------------------------
 
   library( MODISTools )
 
-  if (length(list.files(savedir))!=4){
+  ## Find file from which (crude) data is read
+  filn <- list.files( path=savedir, pattern="*asc" )
+
+  if (length(filn)==0||overwrite){
 
     print( paste( "==========================="))
     print( paste( "DOWNLOADING MODIS DATA FOR:"))
-    print( paste( "site :", sitename ) )
     print( paste( "lon  :", lon ) )
     print( paste( "lat  :", lat ) )
     print( paste( "start:", start.date ) )
@@ -26,32 +32,17 @@ getmodissubset_evi <- function( sitename, lon, lat, start.date, end.date, savedi
       LoadDat   = modis.subset, 
       Products  = "MOD13Q1",
       Bands     = c("250m_16_days_EVI", "250m_16_days_pixel_reliability"),
-      Size      = c(0,0),
+      Size      = c(0,0),   # change this to c(1,1) to get all pixels +/- 1 km around the centre
       StartDate = TRUE,
       SaveDir   = savedir
       )
 
-    MODISSummaries(
-      LoadDat          = modis.subset, 
-      Dir              =  savedir,
-      Product          = "MOD13Q1", 
-      Bands            = "250m_16_days_EVI",
-      ValidRange       = c(-2000,10000), 
-      NoDataFill       = -3000, 
-      StartDate        = TRUE,
-      Yield            = TRUE,
-      Interpolate      = TRUE, 
-      ScaleFactor      = 0.0001,
-      QualityScreen    = TRUE, 
-      QualityBand      = "250m_16_days_pixel_reliability",
-      QualityThreshold = 0
-      )
+    filn <- list.files( path=savedir, pattern="*asc" )
     
   } else {
 
     print( paste( "==========================="))
     print( paste( "FOUND DATA FOR:"))
-    print( paste( "site :", sitename ) )
     print( paste( "lon  :", lon) )
     print( paste( "lat  :", lat) )
     print( paste( "start:", start.date ) )
@@ -60,26 +51,126 @@ getmodissubset_evi <- function( sitename, lon, lat, start.date, end.date, savedi
 
   }
 
-  out <- read.csv( paste( savedir, list.files( path=savedir, pattern="MODIS_Summary*" ), sep="" ), as.is = TRUE )
-  out$mystart <- start.date ## coincides with MODIS dates
-  out$myend   <- end.date
+  return( filn[1] )
 
-  return(out)
+}
+
+read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
+  #///////////////////////////////////////////////////////////////
+  # Reads MODIS data from downloaded ASCII file and returns
+  # value, quality flag and associated date
+  # arguments:
+  # filn: file name of ASCII file holding MODIS "crude" data
+  # savedir: directory, where to look for that file
+  # expand_x : number of pixels to the right and left of centre
+  # expand_y : number of pixels to the top and bottom of centre
+  # 
+  # Quality flag codes:
+  # -1  Fill/No Data  Not Processed
+  # 0 Good Data Use with confidence
+  # 1 Marginal data Useful, but look at other QA information
+  # 2 Snow/Ice  Target covered with snow/ice
+  # 3 Cloudy  Target not visible, covered with cloud
+  #---------------------------------------------------------------
+
+  # ######################
+  # for debugging:
+  # end.date <- Sys.Date()
+  # savedir <- paste( "/alphadata01/bstocker/data/modis_fluxnet_cutouts/AT-Neu/data_AT-Neu_2000-02-18/", sep="" )
+  # overwrite <- FALSE
+  # sitename <- "AT-Neu"
+  # lon <- 11.3175
+  # lat <- 47.1167
+  # expand_x <- 0
+  # expand_y <- 0 
+  # filn <- list.files( path=savedir, pattern="*asc" )
+  # ######################
+
+
+  library( MODISTools )
+  library( plyr )
+
+  ScaleFactor <- 1e-4  # applied to output variable, in ascii file EVI value is multiplied by 1e4
+  ndayyear    <- 365
+
+  ## Read dowloaded ASCII file
+  print( paste( "reading file ", paste( savedir, filn, sep="" ) ) )
+  crude   <- read.csv( paste( savedir, filn, sep="" ), header = FALSE, as.is = TRUE )
+  crude   <- rename( crude, c( "V1"="nrows", "V2"="ncols", "V3"="modislon_ll", "V4"="modislat_ll", "V5"="dxy_m", "V6"="id", "V7"="MODISprod", "V8"="yeardoy", "V9"="coord", "V10"="MODISprocessdatetime" ) )
+
+  ## this is just read to get length of time series and dates
+  tseries    <- MODISTimeSeries( savedir, Band = "250m_16_days_EVI" )
+  ntsteps    <- dim(tseries[[1]])[1]
+  tmp        <- rownames( tseries[[1]] )
+  time       <- data.frame( yr=as.numeric( substr( tmp, start=2, stop=5 )), doy=as.numeric( substr( tmp, start=6, stop=8 )) )
+  time$dates <- as.POSIXlt( as.Date( paste( as.character(time$yr), "-01-01", sep="" ) ) + time$doy - 1 )
+  time$yr_dec<- time$yr + ( time$doy - 1 ) / ndayyear
+
+  ## get number of products for which data is in ascii file (not used)
+  nprod <- dim(crude)[1] / ntsteps
+  if ((dim(crude)[1]/nprod)!=ntsteps) { print("problem") }
+
+  ## re-arrange data
+  if ( dim(crude)[2]==11 && expand_x==0 && expand_y==0 ){
+    ## only one pixel downloaded
+    nice_all      <- as.matrix( crude$V11[1:ntsteps], dim(1,1,ntsteps) ) * ScaleFactor     ## EVI data
+    nice_qual_flg <- as.matrix( crude$V11[(ntsteps+1):(2*ntsteps)], dim(1,1,ntsteps) )     ## pixel reliability data
+
+  } else if ( dim(crude)[2]>11 ){
+    ## multiple pixels downloaded
+    # nice <- ExtractTile( Data = tseries, Rows = c(crude$nrows,expand_y), Cols = c(crude$ncols,expand_x), Grid = TRUE )    ## > is not working: applying ExtractTile to return of MODISTimeSeries
+    nice_all      <- ExtractTile( Data = crude[1:ntsteps,11:dim(crude)[2]] * ScaleFactor, Rows = c(crude$nrows[1],expand_y), Cols = c(crude$ncols[1],expand_x), Grid = TRUE )
+    nice_qual_flg <- ExtractTile( Data = crude[(ntsteps+1):(2*ntsteps),11:dim(crude)[2]], Rows = c(crude$nrows[1],expand_y), Cols = c(crude$ncols[1],expand_x), Grid = TRUE )
+
+  } else {
+
+    print( "Not sufficient data downloaded. Adjust expand_x and expand_y.")
+
+  }
+
+  ## Clean data for centre pixel: in case quality flag is not '0', use mean of all 8 surrounding pixels
+  if ( expand_x==1 && expand_y==1 ){
+    nice_centre <- nice_all[2,2,]
+    nice_centre[ which( nice_qual_flg[2,2,]!=0 ) ] <- apply( nice_all[,,which( nice_qual_flg[2,2,]!=0 )], c(3), FUN=mean)
+    # for (idx in 1:ntsteps){
+    #   if (nice_qual_flg[2,2,idx]!=0){
+    #     nice_centre[idx] <- mean( nice_all[,,idx], na.rm=TRUE )
+    #   }
+    # }
+    modis <- list( nice_all=nice_all, nice_centre=nice_centre, nice_qual_flg=nice_qual_flg, time=time )
+  } else {
+    modis <- list( nice_all=nice_all, nice_qual_flg=nice_qual_flg, time=time )
+  }
+
+  return( modis )
 
 }
 
 
-get_evi_modis_250m <- function( sitename, lon, lat ){
+interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite ){
   ##--------------------------------------
   ## Returns data frame containing EVI 
   ## (and year, moy, doy) for all available
   ## months. Interpolated to mid-months
   ## from original 16-daily data.
   ##--------------------------------------
+
+  # ######################
+  # ## for debugging:
+  # overwrite <- FALSE
+  # sitename <- "AT-Neu"
+  # lon <- 11.3175
+  # lat <- 47.1167
+  # expand_x <- 0
+  # expand_y <- 0 
+  # ######################
+
   library( MODISTools )
+  library( dplyr )
   syshome <- Sys.getenv( "HOME" )
   source( paste( syshome, "/.Rprofile", sep="" ) )
   source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
+  source( paste( myhome, "sofun/getin/init_monthly_dataframe.R", sep="" ) )
   source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 
   ##--------------------------------------
@@ -109,81 +200,61 @@ get_evi_modis_250m <- function( sitename, lon, lat ){
   ##--------------------------------------
   ## Collect data for all available dates
   ##--------------------------------------
-    modis <- subset( dates, select=c(yr,doy,start,end,absday) )
+    modis <- subset( dates, select=c( yr, doy, start, end, absday ) )
     # print(dim(modis))
-    modis$evi <- rep( NA, dim(modis)[1] )
+    modis$evi         <- rep( NA, dim(modis)[1] )
+    modis$qual        <- rep( NA, dim(modis)[1] )
+    modis$yr_read     <- rep( NA, dim(modis)[1] )
+    modis$doy_read    <- rep( NA, dim(modis)[1] )
+    modis$date_read   <- rep( NA, dim(modis)[1] )
+    modis$yr_dec_read <- rep( NA, dim(modis)[1] )
 
     for (idx in 1:dim(modis)[1]){
       
-      tmp2 <- try(
-                  getmodissubset_evi( 
-                                      sitename, lon, lat, modis$start[idx], modis$end[idx], 
-                                      paste( 
-                                              myhome,
-                                              "data/modis_fluxnet_cutouts/", sitename,"/data_",
-                                              sitename, 
-                                              "_", 
-                                              as.Date(modis$start[idx]), 
-                                              "/", 
-                                              sep=""
-                                              )
-                                      )
-                  )
+      savedir <- paste( myhome, "data/modis_fluxnet_cutouts/", sitename,"/data_", sitename, "_", as.Date(modis$start[idx]), "/", sep="" )
 
-      if (class(tmp2)=="try-error") {
-        modis$evi[idx] <- NA
-      } else {
-        modis$evi[idx] <- tmp2$mean.band
-      } 
+      ##--------------------------------------------------------------------
+      filn    <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=FALSE ) )
+      out     <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
+      ##--------------------------------------------------------------------
+
+      modis$evi[idx]          <- out$nice_all[1,1]
+      modis$qual[idx]         <- out$nice_qual_flg[1,1]
+      modis$yr_read[idx]      <- out$time$yr[1]
+      modis$doy_read[idx]     <- out$time$doy[1]
+      modis$date_read[idx]    <- out$time$dates[1]
+      modis$yr_dec_read[idx]  <- out$time$yr_dec[1]
     
     }
 
   ##--------------------------------------
   ## MONTHLY DATAFRAME, Interpolate data to mid-months
   ##--------------------------------------
-    middaymonth <- c(16,44,75,105,136,166,197,228,258,289,319,350)
+    yrstart  <- min( modis$yr_read )
+    yrend    <- max( modis$yr_read )
 
-    yrstart <- dates$yr[1]
-    yrend   <- dates$yr[dim(dates)[1]]
+    modis_monthly <- init_monthly_dataframe( yrstart, yrend )
 
-    mdf <- data.frame( 
-      yr=rep(yrstart:yrend,each=12) , 
-      moy=rep(1:12,length(yrstart:yrend)), 
-      doy=rep(middaymonth,length(yrstart:yrend))
-      )
-    mdf$date <- as.POSIXlt( as.Date( paste( as.character(mdf$yr), "-01-01", sep="" ) ) + mdf$doy - 1 )
-
-    mdf$ndayyear <- rep( 0, dim(mdf)[1] )
-    for (idx in 2:dim(mdf)[1]){
-      if (mdf$yr[idx]>mdf$yr[idx-1]){
-        if ((mdf$yr[idx-1]-2000)%%4==0){
-          mdf$ndayyear[idx] <- 366
-        } else {
-          mdf$ndayyear[idx] <- 365
-        }
-      }
-    }
-    mdf$absday <- cumsum(mdf$ndayyear) + mdf$doy
-
-    mdf$evi <- approx( modis$absday, modis$evi, xout=mdf$absday )$y
+    modis_monthly$evi <- approx( modis$yr_dec_read, modis$evi, modis_monthly$year_dec )$y
 
 
-  # ##--------------------------------------
-  # ## DAILY DATAFRAME, Interpolate from 
-  # ## 16-day interval to daily using a polynom
-  # ##--------------------------------------
-  # yrstart  <- dates$yr[1]
-  # yrend    <- dates$yr[dim(dates)[1]]
+  ##--------------------------------------
+  ## DAILY DATAFRAME
+  ##--------------------------------------
+    yrstart  <- min( modis$yr_read )
+    yrend    <- max( modis$yr_read )
 
-  # ddf <- init_daily_dataframe( yrstart, yrend )
+    modis_daily <- init_daily_dataframe( yrstart, yrend )
+    
+    modis_daily$evi <- approx( modis$yr_dec_read, modis$evi, modis_daily$year_dec )$y
 
-  #     clim_daily$temp[ idxs ] <- monthly2daily( mtemp, "polynom", mtemp_pvy[nmonth], mtemp_nxt[1] )
+  return( list( modis=modis, modis_daily=modis_daily, modis_monthly=modis_monthly ) )
 
-
-
-  out_get_evi_modis_250m <- list( dfm=mdf, df_origdates=modis )
-
-  return( out_get_evi_modis_250m )
+  # ######################
+  # ## for debugging:
+  # plot(  modis$yr_dec_read, modis$evi, type="l" )
+  # lines( modis_monthly$year_dec, modis_monthly$evi, col="green" )
+  # lines( modis_daily$year_dec, modis_daily$evi, col="blue" )
+  # ######################
 
 }
-

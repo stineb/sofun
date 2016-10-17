@@ -22,6 +22,7 @@ init_daily_dataframe <- function( yrstart, yrend ){
     year=rep( yrstart:yrend, each=ndayyear ) 
   )
   ddf$date <- as.POSIXlt( as.Date( paste( as.character(ddf$year), "-01-01", sep="" ) ) + ddf$doy - 1 )
+  ddf$year_dec <- ddf$year + ( ddf$doy - 1 ) / sum( ndaymonth )
 
   return( ddf )
 }
