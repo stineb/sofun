@@ -112,20 +112,25 @@ module md_waterbal
     real :: rn         ! daily net radiation (J/m2)
     real :: rnn        ! nighttime net radiation (J/m^2)
     real :: rnl        ! net longwave radiation (W/m^2)
-    real :: eet        ! daily EET (mm)
-    real :: pet        ! daily PET (mm)
-    real :: cn         ! daily condensation (mm)
-    real :: aet        ! daily AET (mm)
+    real :: eet        ! daily EET (mm d-1)
+    real :: pet        ! daily PET (mm d-1)
+    real :: cn         ! daily condensation (mm d-1)
+    real :: aet        ! daily AET (mm d-1)
+    real :: daet       ! derivative of AET w.r.t. soil moisture (mm d-1 mm-1)
     real :: cpa        ! Cramer-Prentice-Alpha = AET / EET (unitless)
   end type evaptype
 
   ! SPLASH state variables
   type( evaptype ) , dimension(nlu) :: evap
 
+  !----------------------------------------------------------------
+  ! MODULE-SPECIFIC, KNOWN PARAMETERS
+  !----------------------------------------------------------------
+  real, parameter :: secs_per_day = 86400.0
 
 contains
 
-  subroutine waterbal( phy, doy, lat, elv, pr, tc, sf )
+  subroutine waterbal( phy, doy, lat, elv, pr, tc, sf, netrad )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
@@ -134,12 +139,13 @@ contains
 
     ! arguments
     type( psoilphystype ), dimension(nlu), intent(inout) :: phy
-    integer, intent(in)                                  :: doy       ! day of year
-    real, intent(in)                                     :: lat       ! latitude (degrees)
-    real, intent(in)                                     :: elv       ! altitude (m)
-    real, intent(in)                                     :: pr        ! daily precip (mm) 
-    real, intent(in)                                     :: tc        ! mean monthly temperature (deg C)
-    real, intent(in)                                     :: sf        ! mean monthly sunshine fraction (unitless)
+    integer, intent(in)                                  :: doy    ! day of year
+    real, intent(in)                                     :: lat    ! latitude (degrees)
+    real, intent(in)                                     :: elv    ! altitude (m)
+    real, intent(in)                                     :: pr     ! daily precip (mm) 
+    real, intent(in)                                     :: tc     ! mean monthly temperature (deg C)
+    real, intent(in)                                     :: sf     ! mean monthly sunshine fraction (unitless)
+    real, intent(in)                                     :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
 
     ! local variables
     integer :: lu                        ! land unit (gridcell tile)
@@ -161,7 +167,7 @@ contains
 
       ! Calculate radiation and evaporation quantities
       ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soilphys(lu)%sw
-      evap(lu) = getevap( lat, doy, elv, sf, tc, soilphys(lu)%sw )
+      evap(lu) = getevap( lat, doy, elv, sf, tc, soilphys(lu)%sw, netrad )
       ! print*,'... done'
 
       ! Update soil moisture
@@ -293,7 +299,7 @@ contains
       ! 7. Calculate daily extraterrestrial solar radiation (dra), J/m^2
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 1.10.3, Duffy & Beckman (1993)
-      out_solar%dra(doy) = ( 86400.0 / pi ) * kGsc * dr * ( radians(ru) * hs + rv * dgsin(hs) )
+      out_solar%dra(doy) = ( secs_per_day / pi ) * kGsc * dr * ( radians(ru) * hs + rv * dgsin(hs) )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 8. Calculate transmittivity (tau), unitless
@@ -369,7 +375,7 @@ contains
   end function getsolar
 
 
-  function getevap( lat, doy, elv, sf, tc, sw ) result( out_evap )
+  function getevap( lat, doy, elv, sf, tc, sw, netrad ) result( out_evap )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily evaporation quantities. Code is 
     ! adopted from the evap() function in GePiSaT (Python version). 
@@ -388,10 +394,11 @@ contains
     ! arguments
     real,    intent(in) :: lat           ! latitude, degrees
     integer, intent(in) :: doy           ! day of the year (formerly 'n')
-    real,    intent(in) :: elv ! elevation, metres
-    real,    intent(in) :: sf  ! fraction of sunshine hours
-    real,    intent(in) :: tc  ! mean daily air temperature, C
-    real,    intent(in) :: sw  ! evaporative supply rate, mm/hr
+    real,    intent(in) :: elv           ! elevation, metres
+    real,    intent(in) :: sf            ! fraction of sunshine hours
+    real,    intent(in) :: tc            ! mean daily air temperature, C
+    real,    intent(in) :: sw            ! evaporative supply rate, mm/hr
+    real,    intent(in) :: netrad        ! net radiation (W m-2)
 
     ! function return variable
     type( evaptype )  :: out_evap
@@ -470,13 +477,13 @@ contains
     ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 53, STASH 2.0 Documentation
-    out_evap%rn = (86400.0/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
+    out_evap%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 56, STASH 2.0 Documentation
-    out_evap%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + out_evap%rnl*(pi - 2.0*radians(hs) + radians(hn)))
+    out_evap%rnn = (secs_per_day/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + out_evap%rnl*(pi - 2.0*radians(hs) + radians(hn)))
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 15. Calculate water-to-energy conversion (econ), m^3/J
@@ -494,19 +501,19 @@ contains
     econ = s/(lv*pw*(s + g))
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 16. Calculate daily condensation (out_evap%cn), mm
+    ! 16. Calculate daily condensation (out_evap%cn), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 68, STASH 2.0 Documentation
     out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 17. Estimate daily EET (out_evap%eet), mm
+    ! 17. Estimate daily EET (out_evap%eet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 70, STASH 2.0 Documentation
     out_evap%eet = 1000.0 * econ * out_evap%rn
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 18. Estimate daily PET (out_evap%pet), mm
+    ! 18. Estimate daily PET (out_evap%pet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 72, STASH 2.0 Documentation
     out_evap%pet = ( 1.0 + kw ) * out_evap%eet
@@ -514,12 +521,12 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rx = 1000.0*3600.0*(1.0+kw)*econ
+    rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * econ
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 20. Calculate the intersection hour angle (hi), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    cos_hi = sw/(rw*rv*rx) + out_evap%rnl/(rw*rv) - ru/rv
+    cos_hi = sw/(rw*rv*rx) + out_evap%rnl/(rw*rv) - ru/rv   ! sw contains info of soil moisture (evaporative supply rate)
     if (cos_hi >= 1.0) then
       ! Supply exceeds demand:
       hi = 0.0
@@ -531,7 +538,7 @@ contains
     end if
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 21. Estimate daily AET (out_evap%aet), mm
+    ! 21. Estimate daily AET (out_evap%aet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 81, STASH 2.0 Documentation
     out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))

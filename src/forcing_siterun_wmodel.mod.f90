@@ -128,7 +128,7 @@ contains
     ! arguments
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
-    integer, intent(in) :: forcingyear
+    integer, intent(in)          :: forcingyear
     character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
@@ -147,7 +147,7 @@ contains
   end function getfapar
 
 
-  function getclimate_site( sitename, climateyear ) result ( out_climate )
+  function getclimate_site( sitename, climateyear, in_netrad ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
     ! Read year-2013 data after 2013
@@ -155,6 +155,7 @@ contains
     ! arguments
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: climateyear
+    logical, intent(in) :: in_netrad
 
     ! local variables
     integer :: day
@@ -172,8 +173,12 @@ contains
     out_climate(jpngr)%dtemp(:)   = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt')
     out_climate(jpngr)%dprec(:)   = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt')
     out_climate(jpngr)%dfsun(:)   = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')
-    out_climate(jpngr)%dvpd(:)    = -9999.9
-    out_climate(jpngr)%dnetrad(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dnetrad_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    out_climate(jpngr)%dvpd(:)    = dummy
+    if (in_netrad) then
+      out_climate(jpngr)%dnetrad(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dnetrad_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    else
+      out_climate(jpngr)%dnetrad(:) = dummy
+    end if
 
     return
     999  format (I4.4)

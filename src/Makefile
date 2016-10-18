@@ -107,6 +107,13 @@ swbm: $(SWBM_MODOBJS) $(SWBM_OBJS)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(SWBM_MODOBJS) $(SWBM_OBJS) 
 
+# reduced model setup: only SWBM
+dbgswbm: $(DBGSWBM_MODOBJS) $(DBGSWBM_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(DBGSWBM_MODOBJS) $(DBGSWBM_OBJS) 
+
 # reduced model setup: only SPLASH and PMODEL
 pmodel: $(PMODEL_MODOBJS) $(PMODEL_OBJS)
 	# $(MAKE) -C cdfcode
@@ -190,6 +197,12 @@ $(SWBM_MODOBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
 $(SWBM_OBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
+$(DBGSWBM_MODOBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
+$(DBGSWBM_OBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
 $(PMODEL_MODOBJS): %.o: %.f

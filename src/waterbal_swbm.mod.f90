@@ -180,8 +180,6 @@ contains
     ! Loop over gricell tiles
     do lu=1,nlu
 
-      ! print*,'1'
-
       ! Calculate evaporative supply rate, mm/h
       soilphys(lu)%sw = kCw * phy(lu)%wcont / kWm
 
@@ -190,16 +188,12 @@ contains
       evap(lu) = getevap( lat, doy, elv, sf, tc, phy(lu)%wcont, soilphys(lu)%sw, netrad )
       ! print*,'... done'
 
-      ! print*,'2'
-
       ! Update soil moisture and snow pack
       out_snow_rain = get_snow_rain( pr + evap(lu)%cn, tc, phy(lu)%snow )
       phy(lu)%snow  = out_snow_rain%snow_updated 
-      ! print*,'3'
 
       ! get infiltration rate
       out_get_infiltr = get_infiltr( out_snow_rain%liquid_to_soil, phy(lu)%wcont )
-      ! print*,'4'
 
       ! XXX is 5.0 a permanent wilting point parameter? ==> should be moved to evap()
       evap(lu)%aet = min( evap(lu)%aet, phy(lu)%wcont - 5.0 )
@@ -207,35 +201,21 @@ contains
       ! Update soil moisture, implicit solution, see Eq. 7 in Orth et al., 2013
       wcont_prev    = phy(lu)%wcont
       phy(lu)%wcont = phy(lu)%wcont + ( ( out_get_infiltr%infiltr - evap(lu)%aet ) / ( 1.0 + evap(lu)%daet - out_get_infiltr%dinfiltr ) )
-      ! print*,'5'
 
       ! calculate runoff
       if ( phy(lu)%wcont < 0.0 ) then 
-        print*,'phy(lu)%wcont ', phy(lu)%wcont
-        print*,'( 1.0 + evap(lu)%daet - out_get_infiltr%dinfiltr )', ( 1.0 + evap(lu)%daet - out_get_infiltr%dinfiltr )
-        print*,'( out_get_infiltr%infiltr - evap(lu)%aet )', ( out_get_infiltr%infiltr - evap(lu)%aet )
-        print*,'out_get_infiltr%infiltr', out_get_infiltr%infiltr 
-        print*,'evap(lu)%aet', evap(lu)%aet
-        stop
+        stop 'WATERBAL: negative soil moisture'
       end if
-      ! print*,'exp_runoff ', exp_runoff
-      ! print*,'out_snow_rain%liquid_to_soil ', out_snow_rain%liquid_to_soil
       soilphys(lu)%ro = ( min( 1.0, ( ( phy(lu)%wcont / kWm )**exp_runoff ) ) ) * out_snow_rain%liquid_to_soil
-      ! print*,'5.5'
 
       ! re-calculate AET
       evap(lu)%aet = evap(lu)%aet + ( phy(lu)%wcont - wcont_prev ) * evap(lu)%daet
-      ! print*,'6'
 
       ! leaching fraction
-      ! print*,'wcont_prev + out_snow_rain%liquid_to_soil', wcont_prev + out_snow_rain%liquid_to_soil
       soilphys(lu)%fleach = soilphys(lu)%ro / ( wcont_prev + out_snow_rain%liquid_to_soil )
-      ! print*,'7'
 
       ! water-filled pore space
       soilphys(lu)%wscal = phy(lu)%wcont / kWm
-
-      ! print*,'8'
 
     end do
 
@@ -489,7 +469,7 @@ contains
     real,    intent(in) :: tc            ! mean daily air temperature, C
     real,    intent(in) :: wcont         ! soil moisture (water content), mm
     real,    intent(in) :: sw            ! evaporative supply rate, mm/hr
-    real,    intent(in) :: netrad        ! net radiation (W m-2), optional
+    real,    intent(in) :: netrad        ! net radiation (W m-2)
 
     ! function return variable
     type( evaptype )  :: out_evap
