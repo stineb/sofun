@@ -26,19 +26,14 @@ module md_waterbal
   implicit none
 
   private
-  public solartype, psoilphystype, soilphys, evap, waterbal, getsolar, &
-    initdaily_waterbal, initglobal_waterbal, initio_waterbal,          &
+  public solartype, soilphys, evap, waterbal, getsolar,                &
+    initdaily_waterbal, initio_waterbal,                               &
     getout_daily_waterbal, initoutput_waterbal,                        &
     getpar_modl_waterbal, writeout_ascii_waterbal
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
-  ! Physical soil variables with memory from year to year (pools)
-  type psoilphystype
-    real :: wcont      ! soil water mass [mm = kg/m2]
-  end type psoilphystype
-
   ! Collection of physical soil variables used across modules
   type soilphystype
     real :: ro         ! daily runoff (mm)
@@ -117,33 +112,40 @@ module md_waterbal
     real :: rn         ! daily net radiation (J/m2)
     real :: rnn        ! nighttime net radiation (J/m^2)
     real :: rnl        ! net longwave radiation (W/m^2)
-    real :: eet        ! daily EET (mm)
-    real :: pet        ! daily PET (mm)
-    real :: cn         ! daily condensation (mm)
-    real :: aet        ! daily AET (mm)
+    real :: eet        ! daily EET (mm d-1)
+    real :: pet        ! daily PET (mm d-1)
+    real :: cn         ! daily condensation (mm d-1)
+    real :: aet        ! daily AET (mm d-1)
+    real :: daet       ! derivative of AET w.r.t. soil moisture (mm d-1 mm-1)
     real :: cpa        ! Cramer-Prentice-Alpha = AET / EET (unitless)
   end type evaptype
 
   ! SPLASH state variables
   type( evaptype ) , dimension(nlu) :: evap
 
+  !----------------------------------------------------------------
+  ! MODULE-SPECIFIC, KNOWN PARAMETERS
+  !----------------------------------------------------------------
+  real, parameter :: secs_per_day = 86400.0
 
 contains
 
-  subroutine waterbal( psoilphys, doy, lat, elv, pr, tc, sf )
+  subroutine waterbal( phy, doy, lat, elv, pr, tc, sf, netrad )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, ndaymonth, nlu
+    use md_tile, only: psoilphystype
 
     ! arguments
-    type( psoilphystype ), dimension(nlu), intent(inout) :: psoilphys
-    integer, intent(in)                                  :: doy       ! day of year
-    real, intent(in)                                     :: lat       ! latitude (degrees)
-    real, intent(in)                                     :: elv       ! altitude (m)
-    real, intent(in)                                     :: pr        ! daily precip (mm) 
-    real, intent(in)                                     :: tc        ! mean monthly temperature (deg C)
-    real, intent(in)                                     :: sf        ! mean monthly sunshine fraction (unitless)
+    type( psoilphystype ), dimension(nlu), intent(inout) :: phy
+    integer, intent(in)                                  :: doy    ! day of year
+    real, intent(in)                                     :: lat    ! latitude (degrees)
+    real, intent(in)                                     :: elv    ! altitude (m)
+    real, intent(in)                                     :: pr     ! daily precip (mm) 
+    real, intent(in)                                     :: tc     ! mean monthly temperature (deg C)
+    real, intent(in)                                     :: sf     ! mean monthly sunshine fraction (unitless)
+    real, intent(in)                                     :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
 
     ! local variables
     integer :: lu                        ! land unit (gridcell tile)
@@ -161,39 +163,39 @@ contains
     do lu=1,nlu
 
       ! Calculate evaporative supply rate, mm/h
-      soilphys(lu)%sw = kCw * psoilphys(lu)%wcont / kWm
+      soilphys(lu)%sw = kCw * phy(lu)%wcont / kWm
 
       ! Calculate radiation and evaporation quantities
       ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soilphys(lu)%sw
-      evap(lu) = getevap( lat, doy, elv, sf, tc, soilphys(lu)%sw )
+      evap(lu) = getevap( lat, doy, elv, sf, tc, soilphys(lu)%sw, netrad )
       ! print*,'... done'
 
       ! Update soil moisture
-      psoilphys(lu)%wcont = psoilphys(lu)%wcont + pr + evap(lu)%cn - evap(lu)%aet
+      phy(lu)%wcont = phy(lu)%wcont + pr + evap(lu)%cn - evap(lu)%aet
 
       ! Bucket model for runoff generation
-      if (psoilphys(lu)%wcont>kWm) then
+      if (phy(lu)%wcont>kWm) then
         ! -----------------------------------
         ! Bucket is full 
         ! -----------------------------------
         ! * determine NO3 leaching fraction 
-        soilphys(lu)%fleach = 1.0 - kWm / psoilphys(lu)%wcont
+        soilphys(lu)%fleach = 1.0 - kWm / phy(lu)%wcont
         ! print*,'fleach ', soilphys(lu)%fleach
         ! leaching_events = leaching_events + 1
 
         ! * add remaining water to monthly runoff total
-        soilphys(lu)%ro = psoilphys(lu)%wcont - kWm
+        soilphys(lu)%ro = phy(lu)%wcont - kWm
 
         ! * set soil moisture to capacity
-        psoilphys(lu)%wcont = kWm
+        phy(lu)%wcont = kWm
 
-      elseif (psoilphys(lu)%wcont<0.0) then
+      elseif (phy(lu)%wcont<0.0) then
         ! -----------------------------------
         ! Bucket is empty
         ! -----------------------------------
         ! * set soil moisture to zero
-        evap(lu)%aet              = evap(lu)%aet + psoilphys(lu)%wcont
-        psoilphys(lu)%wcont = 0.0
+        evap(lu)%aet              = evap(lu)%aet + phy(lu)%wcont
+        phy(lu)%wcont = 0.0
         soilphys(lu)%ro           = 0.0
         soilphys(lu)%fleach       = 0.0
 
@@ -205,7 +207,7 @@ contains
       end if
 
       ! water-filled pore space
-      soilphys(lu)%wscal = psoilphys(lu)%wcont / kWm
+      soilphys(lu)%wscal = phy(lu)%wcont / kWm
 
     end do
 
@@ -297,7 +299,7 @@ contains
       ! 7. Calculate daily extraterrestrial solar radiation (dra), J/m^2
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 1.10.3, Duffy & Beckman (1993)
-      out_solar%dra(doy) = ( 86400.0 / pi ) * kGsc * dr * ( radians(ru) * hs + rv * dgsin(hs) )
+      out_solar%dra(doy) = ( secs_per_day / pi ) * kGsc * dr * ( radians(ru) * hs + rv * dgsin(hs) )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 8. Calculate transmittivity (tau), unitless
@@ -373,7 +375,7 @@ contains
   end function getsolar
 
 
-  function getevap( lat, doy, elv, sf, tc, sw ) result( out_evap )
+  function getevap( lat, doy, elv, sf, tc, sw, netrad ) result( out_evap )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily evaporation quantities. Code is 
     ! adopted from the evap() function in GePiSaT (Python version). 
@@ -392,10 +394,11 @@ contains
     ! arguments
     real,    intent(in) :: lat           ! latitude, degrees
     integer, intent(in) :: doy           ! day of the year (formerly 'n')
-    real,    intent(in) :: elv ! elevation, metres
-    real,    intent(in) :: sf  ! fraction of sunshine hours
-    real,    intent(in) :: tc  ! mean daily air temperature, C
-    real,    intent(in) :: sw  ! evaporative supply rate, mm/hr
+    real,    intent(in) :: elv           ! elevation, metres
+    real,    intent(in) :: sf            ! fraction of sunshine hours
+    real,    intent(in) :: tc            ! mean daily air temperature, C
+    real,    intent(in) :: sw            ! evaporative supply rate, mm/hr
+    real,    intent(in) :: netrad        ! net radiation (W m-2)
 
     ! function return variable
     type( evaptype )  :: out_evap
@@ -474,13 +477,13 @@ contains
     ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 53, STASH 2.0 Documentation
-    out_evap%rn = (86400.0/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
+    out_evap%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 56, STASH 2.0 Documentation
-    out_evap%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + out_evap%rnl*(pi - 2.0*radians(hs) + radians(hn)))
+    out_evap%rnn = (secs_per_day/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + out_evap%rnl*(pi - 2.0*radians(hs) + radians(hn)))
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 15. Calculate water-to-energy conversion (econ), m^3/J
@@ -498,19 +501,19 @@ contains
     econ = s/(lv*pw*(s + g))
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 16. Calculate daily condensation (out_evap%cn), mm
+    ! 16. Calculate daily condensation (out_evap%cn), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 68, STASH 2.0 Documentation
     out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 17. Estimate daily EET (out_evap%eet), mm
+    ! 17. Estimate daily EET (out_evap%eet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 70, STASH 2.0 Documentation
     out_evap%eet = 1000.0 * econ * out_evap%rn
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 18. Estimate daily PET (out_evap%pet), mm
+    ! 18. Estimate daily PET (out_evap%pet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 72, STASH 2.0 Documentation
     out_evap%pet = ( 1.0 + kw ) * out_evap%eet
@@ -518,12 +521,12 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rx = 1000.0*3600.0*(1.0+kw)*econ
+    rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * econ
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 20. Calculate the intersection hour angle (hi), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    cos_hi = sw/(rw*rv*rx) + out_evap%rnl/(rw*rv) - ru/rv
+    cos_hi = sw/(rw*rv*rx) + out_evap%rnl/(rw*rv) - ru/rv   ! sw contains info of soil moisture (evaporative supply rate)
     if (cos_hi >= 1.0) then
       ! Supply exceeds demand:
       hi = 0.0
@@ -535,7 +538,7 @@ contains
     end if
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 21. Estimate daily AET (out_evap%aet), mm
+    ! 21. Estimate daily AET (out_evap%aet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 81, STASH 2.0 Documentation
     out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
@@ -1084,19 +1087,6 @@ contains
   end subroutine initdaily_waterbal
 
 
-  subroutine initglobal_waterbal( psoilphys )
-    !////////////////////////////////////////////////////////////////
-    ! Initialises all daily variables within derived type 'psoilphys'.
-    !----------------------------------------------------------------
-    ! argument
-    type( psoilphystype ), dimension(nlu,maxgrid), intent(out)  :: psoilphys
-    
-    ! xxx try
-    psoilphys(:,:)%wcont = 50.0 
-
-  end subroutine initglobal_waterbal
-
-
   subroutine initio_waterbal()
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
@@ -1242,18 +1232,19 @@ contains
   end subroutine initoutput_waterbal
 
 
-  subroutine getout_daily_waterbal( jpngr, moy, doy, solar, psoilphys )
+  subroutine getout_daily_waterbal( jpngr, moy, doy, solar, phy )
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
     use md_interface, only: interface
+    use md_tile, only: psoilphystype
 
     ! argument
     integer, intent(in)                               :: jpngr
     integer, intent(in)                               :: moy    
     integer, intent(in)                               :: doy    
     type( solartype ), intent(in)                     :: solar
-    type( psoilphystype ), dimension(nlu), intent(in) :: psoilphys
+    type( psoilphystype ), dimension(nlu), intent(in) :: phy
 
     ! Save the daily totals:
     ! xxx add lu-dimension and jpngr-dimension
@@ -1270,7 +1261,7 @@ contains
       outdaet(:,doy,jpngr)    = evap(:)%aet
       outdcpa(:,doy,jpngr)    = evap(:)%cpa
       
-      outdwcont(:,doy,jpngr)  = psoilphys(:)%wcont
+      outdwcont(:,doy,jpngr)  = phy(:)%wcont
       outdro(:,doy,jpngr)     = soilphys(:)%ro
       outdfleach(:,doy,jpngr) = soilphys(:)%fleach
 

@@ -1,0 +1,15 @@
+###############################################################
+# SWBM PARAMETERS (for module waterbal_swbm.mod.f90)
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+beta                                    0.66
+maxmeltrate                             3.0
+exp_et                                  0.06
+exp_runoff                              6.4
+kWm                                     220.0 
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 

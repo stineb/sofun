@@ -16,8 +16,9 @@ import os.path
 ## - "atkinfull"
 ## - "olson"
 ## - "olson_cmodel"
+## - "swbm"
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet2015'
+simsuite = 'swbm'
 
 ##--------------------------------------------------------------------
 ## Link directories
