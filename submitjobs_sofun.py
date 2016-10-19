@@ -29,15 +29,19 @@ out_to_file = True
 ## overwrite results
 overwrite = True
 
+## Use SWBM water balance model instead of SPLASH
+swbm = True
+
 ## define default output variable to check for determining submission, given 'overwrite'
 defaultvar = 'gpp' 
 
 ##--------------------------------------------------------------------
 ## set model setup, given simsuite (shorter code below)
 ##--------------------------------------------------------------------
-do_cnmodel = False
-do_pmodel  = False
-do_cmodel  = False
+do_cnmodel     = False
+do_pmodel      = False
+do_pmodel_swbm = False
+do_cmodel      = False
 
 ## C-N model setup
 if simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi' or simsuite == 'olson':
@@ -49,8 +53,10 @@ if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'atk
 
 ## P-model setup
 if simsuite == 'fluxnet' or simsuite == 'pmodel_test' or simsuite == 'atkinfull' or simsuite == 'fluxnet2015':
-    do_pmodel = True
-
+    if swbm:
+        do_pmodel_swbm = True
+    else:
+        do_pmodel = True
 
 ##--------------------------------------------------------------------
 ## in some cases use same experiment info file
@@ -67,7 +73,10 @@ if simsuite == 'campi_cmodel':
 ##--------------------------------------------------------------------
 ## Compile
 ##--------------------------------------------------------------------
-if do_pmodel:
+if do_pmodel_swbm:
+    exe = 'runpmodel_swbm'
+    compiling_opt = 'pmodel_swbm'
+elif do_pmodel:
     exe = 'runpmodel'
     compiling_opt = 'pmodel'
 elif do_cmodel:

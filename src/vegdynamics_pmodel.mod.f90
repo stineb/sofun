@@ -46,9 +46,8 @@ contains
           call initpft( plant(pft) )
 
           ! Set stuff that is required but obsolete for P-model
-          plant(pft)%acrown = 1.0
-          tile(lu)%nind(pft) = 1.0 
-          tile(lu)%fpc_grid  = 1.0
+          plant(pft)%acrown        = 1.0
+          tile(lu)%canopy%fpc_grid = 1.0
 
           ! get annually updated leaf traits (vary because of variations in light and CO2)
           call get_leaftraits( plant(pft), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )

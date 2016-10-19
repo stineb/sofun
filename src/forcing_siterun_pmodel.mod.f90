@@ -23,6 +23,7 @@ module md_forcing_siterun
     real, dimension(ndayyear) :: dprec  ! mm d-1
     real, dimension(ndayyear) :: dfsun  ! unitless
     real, dimension(ndayyear) :: dvpd   ! Pa
+    real, dimension(ndayyear) :: dnetrad! W m-2
   end type climate_type
 
   type landuse_type
@@ -89,9 +90,9 @@ contains
     integer :: jpngr
     
     do jpngr=1,maxgrid
-      out_getninput(jpngr)%dnoy(:) = 0.0
-      out_getninput(jpngr)%dnhx(:) = 0.0
-      out_getninput(jpngr)%dtot(:) = 0.0
+      out_getninput(jpngr)%dnoy(:) = dummy
+      out_getninput(jpngr)%dnhx(:) = dummy
+      out_getninput(jpngr)%dtot(:) = dummy
     end do
 
   end function getninput
@@ -127,7 +128,7 @@ contains
     ! arguments
     character(len=*), intent(in) :: runname
     character(len=*), intent(in) :: sitename
-    integer, intent(in) :: forcingyear
+    integer, intent(in)          :: forcingyear
     character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
@@ -160,7 +161,7 @@ contains
   end function getfapar
 
 
-  function getclimate_site( sitename, climateyear ) result ( out_climate )
+  function getclimate_site( sitename, climateyear, in_netrad ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
     ! Read year-2013 data after 2013
@@ -168,6 +169,7 @@ contains
     ! arguments
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: climateyear
+    logical, intent(in) :: in_netrad
 
     ! local variables
     integer :: day
@@ -180,16 +182,17 @@ contains
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
-    ! write(0,*) 'prescribe daily climate (temp, prec, fsun, vpd) for ', trim(sitename), ' yr ', climateyear_char,'...'
-    
-    ! write(0,*) 'GETCLIMATE_SITE: use climate data of year ', climateyear_char
-
     jpngr = 1
 
     out_climate(jpngr)%dtemp(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt')
     out_climate(jpngr)%dprec(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt')
     out_climate(jpngr)%dfsun(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')
     out_climate(jpngr)%dvpd(:)  = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dvpd_' //trim(sitename)//'_'//climateyear_char//'.txt')
+    if (in_netrad) then
+      out_climate(jpngr)%dnetrad(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dnetrad_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    else
+      out_climate(jpngr)%dnetrad(:) = dummy
+    end if
 
     return
     999  format (I4.4)

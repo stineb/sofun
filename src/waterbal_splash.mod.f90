@@ -1,6 +1,6 @@
 module md_waterbal
   !////////////////////////////////////////////////////////////////
-  ! STASH WATERBALANCE MODULE
+  ! SPLASH WATERBALANCE MODULE
   ! Contains the "main" subroutine 'waterbal' and all necessary 
   ! subroutines for handling input/output. 
   ! Every module that implements 'waterbal' must contain this list 
@@ -309,7 +309,7 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 9. Calculate daily PPFD (dppfd), mol/m^2
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 57, STASH 2.0 Documentation
+      ! Eq. 57, SPLASH 2.0 Documentation
       out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
 
     end do
@@ -416,7 +416,7 @@ contains
     real :: pw                           ! density of water, kg/m^3
     real :: lv                           ! enthalpy of vaporization, J/kg
     real :: g                            ! psychrometric constant, Pa/K
-    real :: econ                         ! Eq. 58, STASH 2.0 Documentation
+    real :: econ                         ! Eq. 58, SPLASH 2.0 Documentation
     real :: rx                           ! variable substitute (mm/hr)/(W/m^2)
     real :: hi, cos_hi                   ! intersection hour angle, degrees
     real, dimension(2) :: out_ru_rv      ! function return variable containing 'ru' and 'rv'.
@@ -476,13 +476,13 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 53, STASH 2.0 Documentation
+    ! Eq. 53, SPLASH 2.0 Documentation
     out_evap%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 56, STASH 2.0 Documentation
+    ! Eq. 56, SPLASH 2.0 Documentation
     out_evap%rnn = (secs_per_day/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + out_evap%rnl*(pi - 2.0*radians(hs) + radians(hn)))
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -497,25 +497,25 @@ contains
     ! Psychrometric constant, Pa/K
     g = psychro(tc, elv2pres(elv))
 
-    ! Eq. 58, STASH 2.0 Documentation
+    ! Eq. 58, SPLASH 2.0 Documentation
     econ = s/(lv*pw*(s + g))
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 16. Calculate daily condensation (out_evap%cn), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 68, STASH 2.0 Documentation
+    ! Eq. 68, SPLASH 2.0 Documentation
     out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 17. Estimate daily EET (out_evap%eet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 70, STASH 2.0 Documentation
+    ! Eq. 70, SPLASH 2.0 Documentation
     out_evap%eet = 1000.0 * econ * out_evap%rn
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 18. Estimate daily PET (out_evap%pet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 72, STASH 2.0 Documentation
+    ! Eq. 72, SPLASH 2.0 Documentation
     out_evap%pet = ( 1.0 + kw ) * out_evap%eet
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -540,7 +540,7 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 21. Estimate daily AET (out_evap%aet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 81, STASH 2.0 Documentation
+    ! Eq. 81, SPLASH 2.0 Documentation
     out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -555,7 +555,6 @@ contains
 
     ! ! xxx override CPA-limitation
     ! out_evap%cpa = 1.26
-
 
     !-------------------------------------------------------------   
     ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 
@@ -722,67 +721,67 @@ contains
     use md_sofunutils, only: getparreal
 
     ! constant for dRnl (Monteith & Unsworth, 1990)
-    kA       = getparreal( 'params/params_waterbal_stash.dat', 'kA' )
+    kA       = getparreal( 'params/params_waterbal_splash.dat', 'kA' )
     
     ! shortwave albedo (Federer, 1968)
-    kalb_sw  = getparreal( 'params/params_waterbal_stash.dat', 'kalb_sw' )
+    kalb_sw  = getparreal( 'params/params_waterbal_splash.dat', 'kalb_sw' )
     
     ! visible light albedo (Sellers, 1985)
-    kalb_vis = getparreal( 'params/params_waterbal_stash.dat', 'kalb_vis' )
+    kalb_vis = getparreal( 'params/params_waterbal_splash.dat', 'kalb_vis' )
     
     ! constant for dRnl (Linacre, 1968)
-    kb       = getparreal( 'params/params_waterbal_stash.dat', 'kb' )
+    kb       = getparreal( 'params/params_waterbal_splash.dat', 'kb' )
     
     ! cloudy transmittivity (Linacre, 1968)
-    kc       = getparreal( 'params/params_waterbal_stash.dat', 'kc' )
+    kc       = getparreal( 'params/params_waterbal_splash.dat', 'kc' )
     
     ! supply constant, mm/hr (Federer, 1982)
-    kCw      = getparreal( 'params/params_waterbal_stash.dat', 'kCw' )
+    kCw      = getparreal( 'params/params_waterbal_splash.dat', 'kCw' )
     
     ! angular coefficient of transmittivity (Linacre, 1968)
-    kd       = getparreal( 'params/params_waterbal_stash.dat', 'kd' )
+    kd       = getparreal( 'params/params_waterbal_splash.dat', 'kd' )
     
     ! eccentricity for 2000 CE (Berger, 1978)
-    ke       = getparreal( 'params/params_waterbal_stash.dat', 'ke' )
+    ke       = getparreal( 'params/params_waterbal_splash.dat', 'ke' )
     
     ! obliquity for 2000 CE, degrees (Berger, 1978)
-    keps     = getparreal( 'params/params_waterbal_stash.dat', 'keps' )
+    keps     = getparreal( 'params/params_waterbal_splash.dat', 'keps' )
     
     ! from flux to energy conversion, umol/J (Meek et al., 1984)
-    kfFEC    = getparreal( 'params/params_waterbal_stash.dat', 'kfFEC' )
+    kfFEC    = getparreal( 'params/params_waterbal_splash.dat', 'kfFEC' )
     
     ! gravitational acceleration, m/s^2 (Allen, 1973)
-    kG       = getparreal( 'params/params_waterbal_stash.dat', 'kG' )
+    kG       = getparreal( 'params/params_waterbal_splash.dat', 'kG' )
     
     ! solar constant, W/m^2 (Kopp & Lean, 2011)
-    kGsc     = getparreal( 'params/params_waterbal_stash.dat', 'kGsc' )
+    kGsc     = getparreal( 'params/params_waterbal_splash.dat', 'kGsc' )
     
     ! temperature lapse rate, K/m (Cavcar, 2000)
-    kL       = getparreal( 'params/params_waterbal_stash.dat', 'kL' )
+    kL       = getparreal( 'params/params_waterbal_splash.dat', 'kL' )
     
     ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
-    kMa      = getparreal( 'params/params_waterbal_stash.dat', 'kMa' )
+    kMa      = getparreal( 'params/params_waterbal_splash.dat', 'kMa' )
     
     ! molecular weight of water vapor, kg/mol (Tsilingiris, 2008)
-    kMv      = getparreal( 'params/params_waterbal_stash.dat', 'kMv' )
+    kMv      = getparreal( 'params/params_waterbal_splash.dat', 'kMv' )
     
     ! standard atmosphere, Pa (Allen, 1973)
-    kPo      = getparreal( 'params/params_waterbal_stash.dat', 'kPo' )
+    kPo      = getparreal( 'params/params_waterbal_splash.dat', 'kPo' )
     
     ! universal gas constant, J/mol/K (Allen, 1973)
-    kR       = getparreal( 'params/params_waterbal_stash.dat', 'kR' )
+    kR       = getparreal( 'params/params_waterbal_splash.dat', 'kR' )
     
     ! base temperature, K (Prentice, unpublished)
-    kTo      = getparreal( 'params/params_waterbal_stash.dat', 'kTo' )
+    kTo      = getparreal( 'params/params_waterbal_splash.dat', 'kTo' )
     
     ! soil moisture capacity, mm (Cramer & Prentice, 1988)
-    kWm      = getparreal( 'params/params_waterbal_stash.dat', 'kWm' )
+    kWm      = getparreal( 'params/params_waterbal_splash.dat', 'kWm' )
     
     ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
-    kw       = getparreal( 'params/params_waterbal_stash.dat', 'kw' )
+    kw       = getparreal( 'params/params_waterbal_splash.dat', 'kw' )
     
     ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
-    komega   = getparreal( 'params/params_waterbal_stash.dat', 'komega' )
+    komega   = getparreal( 'params/params_waterbal_splash.dat', 'komega' )
 
   end subroutine getpar_modl_waterbal
 

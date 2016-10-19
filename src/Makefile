@@ -21,6 +21,10 @@ SWBM_SOURCES=sofun.f90
 PMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 tile_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 plant_pmodel.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
 PMODEL_SOURCES=sofun.f90
 
+# List of source code files for reduced setup, executing SPLASH and P-MODEL:
+PMODEL_SWBM_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 tile_pmodel.mod.f90 waterbal_swbm.mod.f90 soiltemp_sitch.mod.f90 plant_pmodel.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
+PMODEL_SWBM_SOURCES=sofun.f90
+
 # List of source code files for reduced setup, executing the C-only model: XXX UNDER CONSTRUCTION XXX
 CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_soil.mod.f90 params_site.mod.f90 gridvars_siterun.mod.f90 forcing_siterun.mod.f90 interface_biosphere.mod.f90 rates.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 lambertw.mod.f90 plant.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 turnover.mod.f90 npp.mod.f90 vegdynamics_fix.mod.f90 ntransform_xuri.mod.f90 littersom_lpj.mod.f90 nuptake.mod.f90 allocation_fix.mod.f90 landuse.mod.f90
 CMODEL_SOURCES=sofun.f90 biosphere_cnmodel.f90
@@ -52,6 +56,11 @@ PMODEL_OBJS=$(PMODEL_SOURCES:.f90=.o)
 PMODEL_MODOBJS=$(PMODEL_MODS:.f90=.o)
 DBGPMODEL_OBJS=$(PMODEL_SOURCES:.f90=.do)
 DBGPMODEL_MODOBJS=$(PMODEL_MODS:.f90=.do)
+
+PMODEL_SWBM_OBJS=$(PMODEL_SWBM_SOURCES:.f90=.o)
+PMODEL_SWBM_MODOBJS=$(PMODEL_SWBM_MODS:.f90=.o)
+DBGPMODEL_SWBM_OBJS=$(PMODEL_SWBM_SOURCES:.f90=.do)
+DBGPMODEL_SWBM_MODOBJS=$(PMODEL_SWBM_MODS:.f90=.do)
 
 CMODEL_OBJS=$(CMODEL_SOURCES:.f90=.o)
 CMODEL_MODOBJS=$(CMODEL_MODS:.f90=.o)
@@ -127,6 +136,20 @@ dbgpmodel: $(DBGPMODEL_MODOBJS) $DBG(PMODEL_OBJS)
 	-rm $(ARCHIVE)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(DBGPMODEL_MODOBJS) $DBG(PMODEL_OBJS) 
+
+# reduced model setup: only SPLASH and PMODEL
+pmodel_swbm: $(PMODEL_SWBM_MODOBJS) $(PMODEL_SWBM_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(PMODEL_SWBM_MODOBJS) $(PMODEL_SWBM_OBJS) 
+
+# reduced model setup: only SWBM and PMODEL
+dbgpmodel_swbm: $(DBGPMODEL_SWBM_MODOBJS) $DBG(PMODEL_SWBM_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(DBGPMODEL_SWBM_MODOBJS) $DBG(PMODEL_SWBM_OBJS) 
 
 # reduced model setup: C-model only
 cmodel: $(CMODEL_MODOBJS) $(CMODEL_OBJS)
@@ -217,6 +240,18 @@ $(DBGPMODEL_MODOBJS): %.do: %.f
 $(DBGPMODEL_OBJS): %.do: %.f
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
+$(PMODEL_SWBM_MODOBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
+$(PMODEL_SWBM_OBJS): %.o: %.f
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+
+$(DBGPMODEL_SWBM_MODOBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+
+$(DBGPMODEL_SWBM_OBJS): %.do: %.f
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+
 $(CMODEL_MODOBJS): %.o: %.f
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
 
@@ -242,7 +277,7 @@ $(DBGCNMODEL_OBJS): %.do: %.f
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
 
 # don't delete the intermediate *.f files
-.SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(SWBM_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f) $(CMODEL_SOURCES:.f90=.f) $(CNMODEL_SOURCES:.f90=.f)
+.SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(SWBM_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f) $(PMODEL_SWBM_SOURCES:.f90=.f) $(CMODEL_SOURCES:.f90=.f) $(CNMODEL_SOURCES:.f90=.f)
 
 # clean: remove .f, .o, .do, and .stb files
 .PHONY: clean

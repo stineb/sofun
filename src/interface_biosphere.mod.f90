@@ -34,11 +34,11 @@ module md_interface
   !----------------------------------------------------------------
   real, allocatable, dimension(:,:) :: outdtemp
 
-  !----------------------------------------------------------------
-  ! Module-specific annual output variables
-  !----------------------------------------------------------------
-  real, dimension(maxgrid)     :: outatemp
-  real, dimension(nlu,maxgrid) :: outanin
+  ! !----------------------------------------------------------------
+  ! ! Module-specific annual output variables
+  ! !----------------------------------------------------------------
+  ! real, dimension(maxgrid)     :: outatemp
+  ! real, dimension(nlu,maxgrid) :: outanin
 
 
 contains
@@ -51,14 +51,14 @@ contains
     use md_params_core, only: ndayyear, maxgrid
 
     ! Allocate memory for daily output variables
-    if (interface%steering%init .and. interface%params_siml%loutdtemp  ) allocate( outdtemp(ndayyear,maxgrid) )
+    if ( interface%steering%init .and. interface%params_siml%loutdtemp ) allocate( outdtemp(ndayyear,maxgrid) )
     outdtemp(:,:) = 0.0
 
-    ! annual output variables
-    if (interface%params_siml%loutforcing) then
-      outatemp(:) = 0.0
-      outanin (:,:) = 0.0
-    end if
+    ! ! annual output variables
+    ! if (interface%params_siml%loutforcing) then
+    !   outatemp(:) = 0.0
+    !   outanin (:,:) = 0.0
+    ! end if
 
   end subroutine initoutput_forcing
 
@@ -83,20 +83,20 @@ contains
       open(950,file=filnam,err=999,status='unknown')
     end if 
 
-    !////////////////////////////////////////////////////////////////
-    ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
-    !----------------------------------------------------------------
-    if (interface%params_siml%loutforcing) then
+    ! !////////////////////////////////////////////////////////////////
+    ! ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
+    ! !----------------------------------------------------------------
+    ! if (interface%params_siml%loutforcing) then
 
-      ! ANNUAL MEAN TEMPERATURE (DEG C) 
-      filnam=trim(prefix)//'.a.temp.out'
-      open(951,file=filnam,err=999,status='unknown')
+    !   ! ANNUAL MEAN TEMPERATURE (DEG C) 
+    !   filnam=trim(prefix)//'.a.temp.out'
+    !   open(951,file=filnam,err=999,status='unknown')
 
-      ! ANNUAL TOTAL N INPUT 
-      filnam=trim(prefix)//'.a.nin.out'
-      open(952,file=filnam,err=999,status='unknown')
+    !   ! ANNUAL TOTAL N INPUT 
+    !   filnam=trim(prefix)//'.a.nin.out'
+    !   open(952,file=filnam,err=999,status='unknown')
 
-    end if
+    ! end if
 
     return
 
@@ -113,15 +113,10 @@ contains
     ! global just for this, but are collected inside the subroutine 
     ! where they are defined.
     !----------------------------------------------------------------
-    use md_params_core, only: ndayyear, npft
-
     ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy
     integer, intent(in) :: doy
-
-    ! LOCAL VARIABLES
-    integer :: pft
 
     !----------------------------------------------------------------
     ! DAILY
@@ -130,14 +125,14 @@ contains
     !----------------------------------------------------------------
     if (interface%params_siml%loutdtemp) outdtemp(doy,jpngr) = interface%climate(jpngr)%dtemp(doy)
 
-    !----------------------------------------------------------------
-    ! ANNUAL SUM OVER DAILY VALUES
-    ! Collect annual output variables as sum of daily values
-    !----------------------------------------------------------------
-    if (interface%params_siml%loutforcing) then
-      outatemp(jpngr)  = outatemp(jpngr)  + interface%climate(jpngr)%dtemp(doy) / ndayyear
-      outanin(:,jpngr) = outanin(:,jpngr) + interface%ninput_field(jpngr)%dtot(doy)
-    end if
+    ! !----------------------------------------------------------------
+    ! ! ANNUAL SUM OVER DAILY VALUES
+    ! ! Collect annual output variables as sum of daily values
+    ! !----------------------------------------------------------------
+    ! if (interface%params_siml%loutforcing) then
+    !   outatemp(jpngr)  = outatemp(jpngr)  + interface%climate(jpngr)%dtemp(doy) / ndayyear
+    !   outanin(:,jpngr) = outanin(:,jpngr) + interface%ninput_field(jpngr)%dtot(doy)
+    ! end if
 
   end subroutine getout_daily_forcing
 
@@ -194,8 +189,8 @@ contains
 
       itime = real(interface%steering%outyear)
 
-      write(951,999) itime, outatemp(jpngr)
-      write(952,999) itime, sum(outanin(:,jpngr))
+      ! write(951,999) itime, outatemp(jpngr)
+      ! write(952,999) itime, sum(outanin(:,jpngr))
 
     end if
 

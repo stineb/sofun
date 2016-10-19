@@ -150,7 +150,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( out_pmodel, solar, plant, tile, doy, moy, dtemp )
+  subroutine gpp( out_pmodel, solar, plant, doy, moy, dtemp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -163,14 +163,12 @@ contains
     !------------------------------------------------------------------
     use md_params_core, only: dummy
     use md_plant, only: dgpp, params_pft_plant, plant_type
-    use md_tile, only: tile_type
     use md_waterbal, only: evap, solartype
 
     ! arguments
     type( outtype_pmodel ), dimension(npft) :: out_pmodel
     type( solartype )                       :: solar
     type( plant_type ), dimension(npft)     :: plant
-    type( tile_type ), dimension(nlu)       :: tile
     integer, intent(in)                     :: doy       ! day of year and month of year
     integer, intent(in)                     :: moy       ! month of year and month of year
     real,    intent(in)                     :: dtemp     ! this day's air temperature
@@ -185,9 +183,7 @@ contains
     !----------------------------------------------------------------
     ! print*,'in GPP: plant(1)%fapar_ind', plant(1)%fapar_ind
     ! print*,'in GPP: plant(1)%acrown', plant(1)%acrown
-    ! print*,'in GPP: tile(1)%nind', tile(1)%nind
     ! print*,'plant(1)%acrown' , plant(1)%acrown
-    ! print*,'tile(1)%nind(1)', tile(1)%nind(1)
     ! print*,'solar%dppfd(doy)', solar%dppfd(doy)
     ! print*,'in GPP: out_pmodel(1)%lue', out_pmodel(1)%lue
 
@@ -199,13 +195,13 @@ contains
       if ( plant(pft)%fapar_ind>0.0 ) then
 
         ! GPP
-        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )
+        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )
 
         ! Dark respiration
-        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, evap(lu)%cpa )
+        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, evap(lu)%cpa )
 
         ! transpiration
-        dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, tile(lu)%nind(pft), solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, evap(lu)%cpa )
+        dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, evap(lu)%cpa )
 
         ! Vcmax (actually changes only monthly)
         dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
@@ -288,16 +284,16 @@ contains
         ! ! XXX PMODEL_TEST
         ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
 
-        ! xxx debug
-        print*,'calling P-model with:'
-        print*,'pft   ', pft
-        print*,'moy   ', moy
-        print*,'mtemp ', mtemp(moy)
-        print*,'mvpd  ', mvpd(moy)
-        print*,'elv   ', elv
-        print*,'C4    ', params_pft_plant(pft)%c4
+        ! ! xxx debug
+        ! print*,'calling P-model with:'
+        ! print*,'pft   ', pft
+        ! print*,'moy   ', moy
+        ! print*,'mtemp ', mtemp(moy)
+        ! print*,'mvpd  ', mvpd(moy)
+        ! print*,'elv   ', elv
+        ! print*,'C4    ', params_pft_plant(pft)%c4
 
-        print*,'calling pmodel to get LUE ...'
+        ! print*,'calling pmodel to get LUE ...'
         if ( params_pft_plant(pft)%c4 ) then
           ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
           out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
@@ -305,7 +301,7 @@ contains
           ! C3
           out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
         end if
-        print*,'... done'
+        ! print*,'... done'
 
       end do
     end do
@@ -313,14 +309,13 @@ contains
   end function getlue
 
 
-  function calc_dgpp( fapar, acrown, nind, dppfd, my_mlue, dtemp, cpalpha ) result( my_dgpp )
+  function calc_dgpp( fapar, acrown, dppfd, my_mlue, dtemp, cpalpha ) result( my_dgpp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
     real, intent(in)           :: fapar
     real, intent(in)           :: acrown
-    real, intent(in)           :: nind
     real, intent(in)           :: dppfd
     real, intent(in)           :: my_mlue
     real, intent(in)           :: dtemp              ! this day's air temperature
@@ -339,12 +334,12 @@ contains
     end if
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dgpp = fapar * acrown * nind * dppfd * fa * my_mlue * ramp_gpp_lotemp( dtemp ) * c_molmass
+    my_dgpp = fapar * acrown * dppfd * fa * my_mlue * ramp_gpp_lotemp( dtemp ) * c_molmass
 
   end function calc_dgpp
 
 
-  function calc_drd( fapar, acrown, nind, meanmppfd, my_mrd_unitiabs, dtemp, cpalpha ) result( my_drd )
+  function calc_drd( fapar, acrown, meanmppfd, my_mrd_unitiabs, dtemp, cpalpha ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
@@ -352,7 +347,6 @@ contains
     ! arguments
     real, intent(in)           :: fapar           ! fraction of absorbed PAR (unitless)
     real, intent(in)           :: acrown
-    real, intent(in)           :: nind
     real, intent(in)           :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
     real, intent(in)           :: my_mrd_unitiabs
     real, intent(in)           :: dtemp              ! this day's air temperature
@@ -371,19 +365,18 @@ contains
     end if
 
     ! Dark respiration takes place during night and day (24 hours)
-    my_drd = fapar * acrown * nind * meanmppfd * fa * my_mrd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * acrown * meanmppfd * fa * my_mrd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
 
   end function calc_drd
 
 
-  function calc_dtransp( fapar, acrown, nind, dppfd, my_transp_unitiabs, dtemp, cpalpha ) result( my_dtransp )
+  function calc_dtransp( fapar, acrown, dppfd, my_transp_unitiabs, dtemp, cpalpha ) result( my_dtransp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
     real, intent(in)           :: fapar
     real, intent(in)           :: acrown
-    real, intent(in)           :: nind
     real, intent(in)           :: dppfd
     real, intent(in)           :: my_transp_unitiabs
     real, intent(in)           :: dtemp              ! this day's air temperature
@@ -402,7 +395,7 @@ contains
     end if
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dtransp = fapar * acrown * nind * dppfd * fa * my_transp_unitiabs * ramp_gpp_lotemp( dtemp ) * h2o_molmass
+    my_dtransp = fapar * acrown * dppfd * fa * my_transp_unitiabs * ramp_gpp_lotemp( dtemp ) * h2o_molmass
 
   end function calc_dtransp
 
@@ -685,8 +678,6 @@ contains
     params_pft_gpp%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
 
     do pft=1,npft
-
-      print*,'params_pft_plant(pft)%pftname', params_pft_plant(pft)%pftname
 
       ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
       params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
