@@ -50,9 +50,9 @@ for (idx in do.sites ){
 
     ##--------------------------------------------------------------------
     out <- interpolate_modis( sitename, lon, lat, expand_x=1, expand_y=1, overwrite=FALSE  )
+    ##--------------------------------------------------------------------
     df_monthly <- out$modis_monthly
     df_daily   <- out$modis_daily
-    ##--------------------------------------------------------------------
 
     ##--------------------------------------------------------------------
     ## add dummy year 1999 with median of each month in all subsequent years

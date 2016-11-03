@@ -25,8 +25,6 @@
 ## - PPFD (mol d-1 m-2)
 ## - net radiation (W m-2)
 ##--------------------------------------------------------------------
-library(plyr)
-
 syshome <- Sys.getenv( "HOME" )
 source( paste( syshome, "/.Rprofile", sep="" ) )
 
@@ -44,11 +42,11 @@ source( paste( myhome, "sofun/getin/get_meteo_swbm_meteoschweiz.R", sep="" ) )
 source( paste( myhome, "sofun/getin/calc_netrad_orth.R", sep="" ) )
 
 overwrite <- FALSE
-ingest_meteodata <- FALSE
+ingest_meteodata <- TRUE
 
 simsuite <- "fluxnet2015"
 
-in_ppfd   <- FALSE
+in_ppfd   <- TRUE
 in_netrad <- FALSE
 
 startyr_override <- 1980
@@ -69,7 +67,8 @@ startyr_act <- startyr_override
 ## load meta data file for site simulation
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
 nsites <- dim(siteinfo)[1]
-do.sites <- seq(nsites)
+# do.sites <- seq(nsites)
+do.sites <- 1:1
 
 ##--------------------------------------------------------------------
 ## First loop over stations: get monthly CRU data and daily WATCH-WFDEI
@@ -315,11 +314,23 @@ for (idx in do.sites ){
   filnam_clim_csv <- paste( dirnam_clim_csv, "clim_daily_", sitename, ".csv", sep="" )
   filnam_clim_byst_csv <- paste( dirnam_clim_csv, "clim_daily_byst_", sitename, ".csv", sep="" )
 
-  if ( file.exists( filnam_clim_csv ) ) {
+  if ( !ingest_meteodata && file.exists( filnam_clim_byst_csv ) ){
+    ##--------------------------------------------------------------------
+    ## Read daily data including station-specific data from CSV
+    ##--------------------------------------------------------------------
+    print( "daily climate data and meteo data already available in CSV file ...")
+    clim_daily <- read.csv( filnam_clim_byst_csv, as.is=TRUE )
+
+    ## Reducing years
+    startyr <- max( startyr_override, startyr_cru )
+    nyrs    <- length( startyr:endyr_cru )
+    clim_daily <- clim_daily[ clim_daily$year >= startyr, ]
+
+  } else if ( file.exists( filnam_clim_csv ) ) {
     ##--------------------------------------------------------------------
     ## Read daily data from CSV that does not contain site-specific meteo data yet
     ##--------------------------------------------------------------------
-    print( "daily climate data already available in CSV file ...")
+    print( "daily climate data already available in CSV file. Now ingesting meteo data ...")
     clim_daily <- read.csv( filnam_clim_csv, as.is=TRUE )
 
     ## Reducing years
@@ -349,8 +360,8 @@ for (idx in do.sites ){
     if ( is.null( clim_daily$source_vpd  ) ) { clim_daily$source_vpd  <- clim_daily$source }
 
     ## previous version had 'vapr' and not 'vpd'. convert now.
-    print( "calculating VPD ...")
     if ( is.null( clim_daily$vpd ) && !is.null( clim_daily$vapr )) { 
+      print( "calculating VPD ...")
       clim_daily$vpd <- rep( NA, dim(clim_daily)[1] )
       for (kdx in 1:dim(clim_daily)[1]){
         clim_daily$vpd[kdx] <- calc_vpd( clim_daily$vapr[kdx], clim_daily$temp[kdx] )      
@@ -436,7 +447,9 @@ for (idx in do.sites ){
               source_temp =rep( NA, nyrs*ndayyear ),
               source_prec =rep( NA, nyrs*ndayyear ),
               source_vpd  =rep( NA, nyrs*ndayyear ),
-              vpd         =rep( NA, nyrs*ndayyear )
+              vpd         =rep( NA, nyrs*ndayyear ),
+              ppfd        =rep( NA, nyrs*ndayyear ),
+              source_ppfd =rep( NA, nyrs*ndayyear )
             )
 
             ## add rows to clim_daily
@@ -447,9 +460,16 @@ for (idx in do.sites ){
 
           }
 
+          ## add column for netrad in dataframe clim_daily
           if ( in_netrad && !is.null( meteo$rad ) ){ 
             clim_daily$netrad <- rep( NA, dim(clim_daily)[1]) 
             clim_daily$source_netrad <- rep( NA, dim(clim_daily)[1]) 
+          }
+
+          ## add column for ppfd in dataframe clim_daily
+          if ( in_ppfd && !is.null( meteo$ppfd ) ){ 
+            clim_daily$ppfd <- rep( NA, dim(clim_daily)[1]) 
+            clim_daily$source_ppfd <- rep( NA, dim(clim_daily)[1]) 
           }
 
           for (jdx in 1:dim(meteo)[1]){
@@ -477,6 +497,12 @@ for (idx in do.sites ){
               ## VPD
               if (!is.null(meteo$vpd[jdx])) { clim_daily$vpd[ putjdx ] <- meteo$vpd[jdx] }
               if (!is.null(meteo$vpd[jdx])) { clim_daily$source_vpd[ putjdx ] <- "VPD sitedata" }
+
+              ## PPFD
+              if ( in_ppfd && !is.null( meteo$ppfd ) ){
+                if (!is.null(meteo$ppfd[jdx])) { clim_daily$ppfd[ putjdx ] <- meteo$ppfd[jdx] }
+                if (!is.null(meteo$ppfd[jdx])) { clim_daily$source_ppfd[ putjdx ] <- "PPFD sitedata" }              
+              }
 
               ## Net radiation
               if ( in_netrad && !is.null( meteo$rad ) ){
@@ -508,32 +534,73 @@ for (idx in do.sites ){
 
     }
 
-    ##--------------------------------------------------------------------
-    ## Write to Fortran-formatted output for each variable and year separately
-    ##--------------------------------------------------------------------
-    print( "writing formatted input files ..." )
-    for ( yr in startyr_act:endyr_act ){
+  } else {
 
-      dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
-      system( paste( "mkdir -p", dirnam ) )
+    print("no CSV file found")
 
-      filnam <- paste( dirnam, "dtemp_", sitename, "_", yr, ".txt", sep="" )
-      write_sofunformatted( filnam, clim_daily$temp[ which( clim_daily$year==yr ) ] )
-      
-      filnam <- paste( dirnam, "dprec_", sitename, "_", yr, ".txt", sep="" )
-      write_sofunformatted( filnam, clim_daily$prec[ which( clim_daily$year==yr ) ] )
+  }
 
-      filnam <- paste( dirnam, "dfsun_", sitename, "_", yr, ".txt", sep="" )
-      write_sofunformatted( filnam, ( 100.0 - clim_daily$ccov[ which( clim_daily$year==yr ) ] ) / 100.0 )
+  ##--------------------------------------------------------------------
+  ## Gap filling: interpolate linearly (temp and vpd) or set to zero (prec)
+  ##--------------------------------------------------------------------
+  ## temperature
+  if (any(is.na(clim_daily$temp))){
+    year_dec <- init_daily_dataframe( clim_daily$year[1], clim_daily$year[dim(clim_daily)[1]] )$year_dec
+    if (dim(clim_daily)[1]==length(year_dec)){
+      clim_daily$temp <- approx( year_dec, clim_daily$temp, xout=year_dec )$y
+    }
+  }
 
-      filnam <- paste( dirnam, "dvpd_", sitename, "_", yr, ".txt", sep="" )
-      write_sofunformatted( filnam, clim_daily$vpd[ which( clim_daily$year==yr ) ] )
+  ## VPD
+  if (any(is.na(clim_daily$vpd))){
+    year_dec <- init_daily_dataframe( clim_daily$year[1], clim_daily$year[dim(clim_daily)[1]] )$year_dec
+    if (dim(clim_daily)[1]==length(year_dec)){
+      clim_daily$vpd <- approx( year_dec, clim_daily$vpd, xout=year_dec )$y
+    }
+  }
 
-      if (in_netrad){
-        filnam <- paste( dirnam, "dnetrad_", sitename, "_", yr, ".txt", sep="" )
-        write_sofunformatted( filnam, clim_daily$netrad[ which( clim_daily$year==yr ) ] )
-      }
+  ## Precip
+  if (any(is.na(clim_daily$prec))){
+    clim_daily$prec[ is.na(clim_daily$prec) ] <- 0.0
+  }
 
+  ## PPFD
+  if (any(is.na(clim_daily$ppfd))){
+    year_dec <- init_daily_dataframe( clim_daily$year[1], clim_daily$year[dim(clim_daily)[1]] )$year_dec
+    if (dim(clim_daily)[1]==length(year_dec)){
+      clim_daily$ppfd <- approx( year_dec, clim_daily$ppfd, xout=year_dec )$y
+    }
+  }
+
+  ##--------------------------------------------------------------------
+  ## Write to Fortran-formatted output for each variable and year separately
+  ##--------------------------------------------------------------------
+  print( "writing formatted input files ..." )
+  for ( yr in startyr_act:endyr_act ){
+
+    dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
+    system( paste( "mkdir -p", dirnam ) )
+
+    filnam <- paste( dirnam, "dtemp_", sitename, "_", yr, ".txt", sep="" )
+    write_sofunformatted( filnam, clim_daily$temp[ which( clim_daily$year==yr ) ] )
+    
+    filnam <- paste( dirnam, "dprec_", sitename, "_", yr, ".txt", sep="" )
+    write_sofunformatted( filnam, clim_daily$prec[ which( clim_daily$year==yr ) ] )
+
+    filnam <- paste( dirnam, "dfsun_", sitename, "_", yr, ".txt", sep="" )
+    write_sofunformatted( filnam, ( 100.0 - clim_daily$ccov[ which( clim_daily$year==yr ) ] ) / 100.0 )
+
+    filnam <- paste( dirnam, "dvpd_", sitename, "_", yr, ".txt", sep="" )
+    write_sofunformatted( filnam, clim_daily$vpd[ which( clim_daily$year==yr ) ] )
+
+    if (in_netrad){
+      filnam <- paste( dirnam, "dnetrad_", sitename, "_", yr, ".txt", sep="" )
+      write_sofunformatted( filnam, clim_daily$netrad[ which( clim_daily$year==yr ) ] )
+    }
+
+    if (in_ppfd){
+      filnam <- paste( dirnam, "dppfd_", sitename, "_", yr, ".txt", sep="" )
+      write_sofunformatted( filnam, clim_daily$ppfd[ which( clim_daily$year==yr ) ] )
     }
 
   }

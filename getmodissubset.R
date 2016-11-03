@@ -75,7 +75,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   #---------------------------------------------------------------
 
   # ######################
-  # for debugging:
+  # # for debugging:
   # end.date <- Sys.Date()
   # savedir <- paste( "/alphadata01/bstocker/data/modis_fluxnet_cutouts/AT-Neu/data_AT-Neu_2000-02-18/", sep="" )
   # overwrite <- FALSE
@@ -89,6 +89,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
 
   library( MODISTools )
   library( plyr )
+  library( dplyr )
 
   ScaleFactor <- 1e-4  # applied to output variable, in ascii file EVI value is multiplied by 1e4
   ndayyear    <- 365
@@ -96,7 +97,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   ## Read dowloaded ASCII file
   print( paste( "reading file ", paste( savedir, filn, sep="" ) ) )
   crude   <- read.csv( paste( savedir, filn, sep="" ), header = FALSE, as.is = TRUE )
-  crude   <- rename( crude, c( "V1"="nrows", "V2"="ncols", "V3"="modislon_ll", "V4"="modislat_ll", "V5"="dxy_m", "V6"="id", "V7"="MODISprod", "V8"="yeardoy", "V9"="coord", "V10"="MODISprocessdatetime" ) )
+  crude   <- rename( crude, nrows=V1, ncols=V2, modislon_ll=V3, modislat_ll=V4, dxy_m=V5, id=V6, MODISprod=V7, yeardoy=V8, coord=V9, VMODISprocessdatetime=V10 )
 
   ## this is just read to get length of time series and dates
   tseries    <- MODISTimeSeries( savedir, Band = "250m_16_days_EVI" )
@@ -129,7 +130,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
 
     ## re-read crude date
     crude   <- read.csv( paste( savedir, filn, sep="" ), header = FALSE, as.is = TRUE )
-    crude   <- rename( crude, c( "V1"="nrows", "V2"="ncols", "V3"="modislon_ll", "V4"="modislat_ll", "V5"="dxy_m", "V6"="id", "V7"="MODISprod", "V8"="yeardoy", "V9"="coord", "V10"="MODISprocessdatetime" ) )
+    crude   <- rename( crude, nrows=V1, ncols=V2, modislon_ll=V3, modislat_ll=V4, dxy_m=V5, id=V6, MODISprod=V7, yeardoy=V8, coord=V9, MODISprocessdatetime=V10 )
 
     ## this is just read to get length of time series and dates
     tseries    <- MODISTimeSeries( savedir, Band = "250m_16_days_EVI" )

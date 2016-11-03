@@ -23,26 +23,34 @@ get_meteo_fluxnet2015 <- function( path ){
 
   ## rename variables (columns)
   if (!is.null(meteo$NETRAD)){
-    meteo <- rename( meteo, c( "TA_F"="temp", "VPD_F"="vpd", "P_F"="prec", "NETRAD"="nrad" ) ) #, "LW_IN_F"="lwin", "SW_IN_F"="swin" ) )    
+    names(meteo)[names(meteo)=="TA_F"] <- "temp"
+    names(meteo)[names(meteo)=="VPD_F"] <- "vpd"
+    names(meteo)[names(meteo)=="P_F"] <- "prec"
+    names(meteo)[names(meteo)=="NETRAD"] <- "nrad"
+    names(meteo)[names(meteo)=="SW_IN_F"] <- "swin"
+
     meteo$nrad <- meteo$nrad * 60 * 60 * 24  # given in W m-2 (avg.), required in J m-2 (daily total)
   } else {
-    meteo <- rename( meteo, c( "TA_F"="temp", "VPD_F"="vpd", "P_F"="prec" ) ) #, "LW_IN_F"="lwin", "SW_IN_F"="swin" ) )   
+    names(meteo)[names(meteo)=="TA_F"] <- "temp"
+    names(meteo)[names(meteo)=="VPD_F"] <- "vpd"
+    names(meteo)[names(meteo)=="P_F"] <- "prec"
+    names(meteo)[names(meteo)=="SW_IN_F"] <- "swin"
     meteo$nrad <- rep( NA, dim(meteo)[1] ) 
   }
 
-  ## Take only net PPFD (=in - out)
-  if (!is.null(meteo$PPFD_IN) && !is.null(meteo$PPFD_OUT)){
-    meteo$ppfd <- meteo$PPFD_IN - meteo$PPFD_OUT    
+  ## Convert SW in to PPFD
+  if (!is.null(meteo$swin)){
+    meteo$swin <- meteo$swin * 60 * 60 * 24 # given in W m-2, required in mol m-2 d-1 
+    meteo$ppfd <- meteo$swin * kfFEC * 1.0e-6  # convert from J/m2/d to mol/2/d
   } else {
     meteo$ppfd <- rep( NA, dim(meteo)[1] )
   }
 
   ## convert units
   meteo$vpd  <- meteo$vpd  * 1e2  # given in hPa, required in Pa
-  meteo$ppfd <- meteo$ppfd * 1.0e-6 * kfFEC * 60 * 60 * 24  # given in W m-2, required in mol m-2 d-1 
 
   # meteo <- select( meteo, year, moy, dom, year_dec, temp, prec, vpd, ppfd, nrad ) 
-  meteo <- subset( meteo, select=c( year, moy, dom, year_dec, temp, prec, vpd, ppfd, nrad ) )
+  meteo <- subset( meteo, select=c( year, moy, dom, year_dec, temp, prec, vpd, ppfd ) )
 
   return( meteo )
 
