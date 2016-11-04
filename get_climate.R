@@ -67,8 +67,8 @@ startyr_act <- startyr_override
 ## load meta data file for site simulation
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
 nsites <- dim(siteinfo)[1]
-# do.sites <- seq(nsites)
-do.sites <- 1:1
+do.sites <- seq(nsites)
+# do.sites <- 1:10
 
 ##--------------------------------------------------------------------
 ## First loop over stations: get monthly CRU data and daily WATCH-WFDEI

@@ -46,11 +46,18 @@ get_meteo_fluxnet2015 <- function( path ){
     meteo$ppfd <- rep( NA, dim(meteo)[1] )
   }
 
+  ## For comparison, keep PPFD_in from FLUXNET data (not gap-filled/consolidated)
+  if (!is.null(meteo$PPFD_IN)){
+    meteo$ppfd_orig <- meteo$PPFD_IN  * 1.0e-6 * kfFEC * 60 * 60 * 24  # given in W m-2, required in mol m-2 d-1 
+  } else {
+    meteo$ppfd_orig <- rep( NA, dim(meteo)[1] )
+  }
+
   ## convert units
   meteo$vpd  <- meteo$vpd  * 1e2  # given in hPa, required in Pa
 
   # meteo <- select( meteo, year, moy, dom, year_dec, temp, prec, vpd, ppfd, nrad ) 
-  meteo <- subset( meteo, select=c( year, moy, dom, year_dec, temp, prec, vpd, ppfd ) )
+  meteo <- subset( meteo, select=c( year, moy, dom, year_dec, temp, prec, vpd, ppfd, ppfd_orig ) )  #, PPFD_OUT
 
   return( meteo )
 
