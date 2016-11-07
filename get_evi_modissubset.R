@@ -31,7 +31,6 @@ path_dfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite,"_sofun/site
 overwrite_csv <- TRUE
 
 do.sites <- seq(nsites)
-# do.sites <- 3:10
 # do.sites <- 1:1
 
 for (idx in do.sites ){
@@ -103,17 +102,17 @@ for (idx in do.sites ){
   print( "writing formatted input files ..." )
 
   ## in separate formatted file 
-  for (yr in unique(df_monthly$yr)){
+  for (yr in unique(df_monthly$year)){
 
     print( paste("... for year", yr))
     dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(yr), "/", sep="" )
     system( paste( "mkdir -p", dirnam ) )
 
     filnam <- paste( dirnam, "mfapar_evi_modissubset_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, df_monthly$evi[ which( df_monthly$yr==yr ) ] )
+    write_sofunformatted( filnam, df_monthly$evi[ which( df_monthly$year==yr ) ] )
     
     filnam <- paste( dirnam, "dfapar_evi_modissubset_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, df_daily$evi[ which( df_daily$yr==yr ) ] )
+    write_sofunformatted( filnam, df_daily$evi[ which( df_daily$year==yr ) ] )
     
   }
   

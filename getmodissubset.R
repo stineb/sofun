@@ -88,7 +88,6 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   # ######################
 
   library( MODISTools )
-  library( plyr )
   library( dplyr )
 
   ScaleFactor <- 1e-4  # applied to output variable, in ascii file EVI value is multiplied by 1e4
@@ -97,7 +96,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   ## Read dowloaded ASCII file
   print( paste( "reading file ", paste( savedir, filn, sep="" ) ) )
   crude   <- read.csv( paste( savedir, filn, sep="" ), header = FALSE, as.is = TRUE )
-  crude   <- rename( crude, nrows=V1, ncols=V2, modislon_ll=V3, modislat_ll=V4, dxy_m=V5, id=V6, MODISprod=V7, yeardoy=V8, coord=V9, VMODISprocessdatetime=V10 )
+  # crude   <- rename( crude, nrows=V1, ncols=V2, modislon_ll=V3, modislat_ll=V4, dxy_m=V5, id=V6, MODISprod=V7, yeardoy=V8, coord=V9, VMODISprocessdatetime=V10 )
 
   ## this is just read to get length of time series and dates
   tseries    <- MODISTimeSeries( savedir, Band = "250m_16_days_EVI" )
@@ -130,7 +129,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
 
     ## re-read crude date
     crude   <- read.csv( paste( savedir, filn, sep="" ), header = FALSE, as.is = TRUE )
-    crude   <- rename( crude, nrows=V1, ncols=V2, modislon_ll=V3, modislat_ll=V4, dxy_m=V5, id=V6, MODISprod=V7, yeardoy=V8, coord=V9, MODISprocessdatetime=V10 )
+    # crude   <- rename( crude, nrows=V1, ncols=V2, modislon_ll=V3, modislat_ll=V4, dxy_m=V5, id=V6, MODISprod=V7, yeardoy=V8, coord=V9, MODISprocessdatetime=V10 )
 
     ## this is just read to get length of time series and dates
     tseries    <- MODISTimeSeries( savedir, Band = "250m_16_days_EVI" )
@@ -143,8 +142,8 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
     ## get number of products for which data is in ascii file (not used)
     nprod <- dim(crude)[1] / ntsteps
 
-    nice_all      <- ExtractTile( Data = crude[1:ntsteps,11:dim(crude)[2]] * ScaleFactor, Rows = c(crude$nrows[1],expand_y), Cols = c(crude$ncols[1],expand_x), Grid = TRUE )
-    nice_qual_flg <- ExtractTile( Data = crude[(ntsteps+1):(2*ntsteps),11:dim(crude)[2]], Rows = c(crude$nrows[1],expand_y), Cols = c(crude$ncols[1],expand_x), Grid = TRUE )
+    nice_all      <- ExtractTile( Data = crude[1:ntsteps,11:dim(crude)[2]] * ScaleFactor, Rows = c(crude$V1[1],expand_y), Cols = c(crude$V2[1],expand_x), Grid = TRUE )
+    nice_qual_flg <- ExtractTile( Data = crude[(ntsteps+1):(2*ntsteps),11:dim(crude)[2]], Rows = c(crude$V1[1],expand_y), Cols = c(crude$V2[1],expand_x), Grid = TRUE )
 
   } else if ( dim(crude)[2]==11 && expand_x==0 && expand_y==0 ){
 
@@ -159,9 +158,9 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
     # ---------------------------------------------------------------
     ## multiple pixels downloaded
     # ---------------------------------------------------------------
-    # nice <- ExtractTile( Data = tseries, Rows = c(crude$nrows,expand_y), Cols = c(crude$ncols,expand_x), Grid = TRUE )    ## > is not working: applying ExtractTile to return of MODISTimeSeries
-    nice_all      <- ExtractTile( Data = crude[1:ntsteps,11:dim(crude)[2]] * ScaleFactor, Rows = c(crude$nrows[1],expand_y), Cols = c(crude$ncols[1],expand_x), Grid = TRUE )
-    nice_qual_flg <- ExtractTile( Data = crude[(ntsteps+1):(2*ntsteps),11:dim(crude)[2]], Rows = c(crude$nrows[1],expand_y), Cols = c(crude$ncols[1],expand_x), Grid = TRUE )
+    # nice <- ExtractTile( Data = tseries, Rows = c(crude$V1,expand_y), Cols = c(crude$V2,expand_x), Grid = TRUE )    ## > is not working: applying ExtractTile to return of MODISTimeSeries
+    nice_all      <- ExtractTile( Data = crude[1:ntsteps,11:dim(crude)[2]] * ScaleFactor, Rows = c(crude$V1[1],expand_y), Cols = c(crude$V2[1],expand_x), Grid = TRUE )
+    nice_qual_flg <- ExtractTile( Data = crude[(ntsteps+1):(2*ntsteps),11:dim(crude)[2]], Rows = c(crude$V1[1],expand_y), Cols = c(crude$V2[1],expand_x), Grid = TRUE )
 
   } else {
 
@@ -208,18 +207,18 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   # ######################
   # ## for debugging:
   # # overwrite <- FALSE
-  # # sitename <- "AT-Neu"
-  # # lon <- 11.3175
-  # # lat <- 47.1167
+  # sitename <- "AT-Neu"
+  # lon <- 11.3175
+  # lat <- 47.1167
   # # sitename <- "AR-SLu"
   # # lon <- -66.46
   # # lat <- -33.46
-  # sitename <- "AR-Vir"
-  # lon <- -56.1886
-  # lat <- -28.2395
+  # # sitename <- "AR-Vir"
+  # # lon <- -56.1886
+  # # lat <- -28.2395
   # expand_x <- 1
   # expand_y <- 1 
-  # overwrite <- TRUE
+  # overwrite <- FALSE
   # ######################
 
   library( MODISTools )
@@ -286,10 +285,15 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
         modis$qual[idx] <- out$nice_qual_flg[2,2]
 
         ## if quality flag is not 0, use mean of surrounding pixels (from 3x3 matrix)
-        if (modis$qual[idx]==0){
-          modis$evi[idx] <- out$nice_all[2,2]
+        if (modis$qual[idx]!=0 ){
+          if ( sum( out$nice_all[ which( out$nice_qual_flg[,]<2 ) ] )>0 ){
+            ## if >0 pixels around centre have quality flag <2, then use their mean
+            modis$evi[idx] <- mean( out$nice_all[ which( out$nice_qual_flg[,]<2 ) ] )            
+          } else {
+            modis$evi[idx] <- NA        
+          }
         } else {
-          modis$evi[idx] <- mean( out$nice_all[,] )
+          modis$evi[idx] <- out$nice_all[2,2]
         }
                 
       } else if ( dim(out$nice_all)==c(1,1) && expand_x==0 && expand_y==0 ) { 
@@ -311,25 +315,35 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
     }
 
   ##--------------------------------------
-  ## MONTHLY DATAFRAME, Interpolate data to mid-months
+  ## MONTHLY DATAFRAME
   ##--------------------------------------
+    ## Interpolate data to mid-months
     yrstart  <- min( modis$yr_read )
     yrend    <- max( modis$yr_read )
-
     modis_monthly <- init_monthly_dataframe( yrstart, yrend )
-
     modis_monthly$evi <- approx( modis$yr_dec_read, modis$evi, modis_monthly$year_dec )$y
 
+    ## gap-fill with median of corresponding month
+    for (idx in 1:dim(modis_monthly)[1]){
+      if (is.na(modis_monthly$evi[idx])){
+        modis_monthly$evi[idx] <- median( modis_monthly$evi[ which( modis_monthly$moy==modis_monthly$moy[idx]) ], na.rm=TRUE )
+      }
+    }
 
   ##--------------------------------------
   ## DAILY DATAFRAME
   ##--------------------------------------
     yrstart  <- min( modis$yr_read )
     yrend    <- max( modis$yr_read )
-
     modis_daily <- init_daily_dataframe( yrstart, yrend )
-    
     modis_daily$evi <- approx( modis$yr_dec_read, modis$evi, modis_daily$year_dec )$y
+
+    ## gap-fill with median of corresponding month
+    for (idx in 1:dim(modis_daily)[1]){
+      if (is.na(modis_daily$evi[idx])){
+        modis_daily$evi[idx] <- median( modis_daily$evi[ which( modis_daily$moy==modis_daily$moy[idx]) ], na.rm=TRUE )
+      }
+    }
 
   return( list( modis=modis, modis_daily=modis_daily, modis_monthly=modis_monthly ) )
 
