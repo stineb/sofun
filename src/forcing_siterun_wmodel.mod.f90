@@ -23,6 +23,7 @@ module md_forcing_siterun
     real, dimension(ndayyear) :: dprec  ! mm d-1
     real, dimension(ndayyear) :: dfsun  ! unitless
     real, dimension(ndayyear) :: dvpd   ! Pa
+    real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
     real, dimension(ndayyear) :: dnetrad! W m-2
   end type climate_type
 
@@ -147,7 +148,7 @@ contains
   end function getfapar
 
 
-  function getclimate_site( sitename, climateyear, in_netrad ) result ( out_climate )
+  function getclimate_site( sitename, climateyear, in_ppfd, in_netrad ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
     ! Read year-2013 data after 2013
@@ -155,6 +156,7 @@ contains
     ! arguments
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: climateyear
+    logical, intent(in) :: in_ppfd
     logical, intent(in) :: in_netrad
 
     ! local variables
@@ -174,6 +176,11 @@ contains
     out_climate(jpngr)%dprec(:)   = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt')
     out_climate(jpngr)%dfsun(:)   = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')
     out_climate(jpngr)%dvpd(:)    = dummy
+    if (in_ppfd) then
+      out_climate(jpngr)%dppfd(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dppfd_'//trim(sitename)//'_'//climateyear_char//'.txt')
+    else
+      out_climate(jpngr)%dppfd(:) = dummy
+    end if
     if (in_netrad) then
       out_climate(jpngr)%dnetrad(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dnetrad_'//trim(sitename)//'_'//climateyear_char//'.txt')
     else

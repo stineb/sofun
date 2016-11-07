@@ -91,6 +91,7 @@ program main
                                           trim(interface%params_siml%sitename), &
                                           ! 1992 &
                                           interface%steering%climateyear, &
+                                          interface%params_siml%in_ppfd,  &
                                           interface%params_siml%in_netrad &
                                           )
     ! CO2

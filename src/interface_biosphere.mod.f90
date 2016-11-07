@@ -137,18 +137,14 @@ contains
   end subroutine getout_daily_forcing
 
 
-  subroutine writeout_ascii_forcing( year )
+  subroutine writeout_ascii_forcing()
     !/////////////////////////////////////////////////////////////////////////
     ! Write daily ASCII output
     ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
     ! contact: b.stocker@imperial.ac.uk
     !-------------------------------------------------------------------------
     ! use md_params_siml, only: spinup, interface%params_siml%daily_out_startyr, &
-    !   interface%params_siml%daily_out_endyr, outyear
     use md_params_core, only: ndayyear
-
-    ! arguments
-    integer, intent(in) :: year       ! simulation year
 
     ! local variables
     real :: itime
@@ -180,19 +176,19 @@ contains
       end do
     end if
 
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    if (interface%params_siml%loutforcing) then
+    ! !-------------------------------------------------------------------------
+    ! ! ANNUAL OUTPUT
+    ! ! Write annual value, summed over all PFTs / LUs
+    ! ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+    ! !-------------------------------------------------------------------------
+    ! if (interface%params_siml%loutforcing) then
 
-      itime = real(interface%steering%outyear)
+    !   itime = real(interface%steering%outyear)
 
-      ! write(951,999) itime, outatemp(jpngr)
-      ! write(952,999) itime, sum(outanin(:,jpngr))
+    !   ! write(951,999) itime, outatemp(jpngr)
+    !   ! write(952,999) itime, sum(outanin(:,jpngr))
 
-    end if
+    ! end if
 
     return
 

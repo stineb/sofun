@@ -8,7 +8,7 @@ module md_biosphere
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp
   use md_vegdynamics, only: vegdynamics
   use md_tile, only: tile_type, initglobal_tile
-  use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_forcing
+  use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_forcing, writeout_ascii_forcing
 
   implicit none
 
@@ -100,7 +100,8 @@ contains
       solar = getsolar( &
         interface%grid(jpngr)%lat, & 
         interface%grid(jpngr)%elv, & 
-        interface%climate(jpngr)%dfsun(:) & 
+        interface%climate(jpngr)%dfsun(:), & 
+        interface%climate(jpngr)%dppfd(:)  & 
         )
       if (verbose) write(0,*) '... done'
 
@@ -209,6 +210,7 @@ contains
       call writeout_ascii_waterbal()
       call writeout_ascii_gpp()
       call writeout_ascii_plant()
+      call writeout_ascii_forcing()
 
     end do gridcellloop
 

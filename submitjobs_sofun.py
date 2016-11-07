@@ -30,7 +30,7 @@ out_to_file = True
 overwrite = True
 
 ## Use SWBM water balance model instead of SPLASH
-swbm = True
+swbm = False
 
 ## define default output variable to check for determining submission, given 'overwrite'
 defaultvar = 'gpp' 

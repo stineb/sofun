@@ -628,8 +628,8 @@ contains
     ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Ref? XXX
-    if (out_evap%eet>0.0) then 
-      out_evap%cpa = out_evap%aet / out_evap%eet
+    if (rntot_evap>0.0) then 
+      out_evap%cpa = 1.26 * out_evap%aet / ( rntot_evap * beta )
     else
       out_evap%cpa = 1.26
     end if

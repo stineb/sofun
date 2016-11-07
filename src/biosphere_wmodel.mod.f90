@@ -86,7 +86,8 @@ contains
       solar = getsolar( &
         interface%grid(jpngr)%lat, & 
         interface%grid(jpngr)%elv, & 
-        interface%climate(jpngr)%dfsun(:) & 
+        interface%climate(jpngr)%dfsun(:), & 
+        interface%climate(jpngr)%dppfd(:) & 
         )
       if (verbose) write(0,*) '... done'
 
