@@ -1,10 +1,13 @@
-# SOFUN modelling framework for simulating terrestrial ecoystems and their biogeochemistry
-
+# SOFUN 
+Modelling framework for simulating terrestrial ecoystems and their biogeochemistry
 SOFUN stands for Seasonal optimisation of fixation and uptake of nitrogen.
 
 This is a modular framework that serves as a structure for simulating terrestrial ecosystem functioning (radiation, photosynthesis, allocation, soil organic dynamics, inorganic nitrogen dynamics). Code is programmed in Fortran 90 and can be compiled using PGI and Intel compilers.
 Written, developed and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
 
+## Table of Contents
+-------------------
+[TOC]
 
 ## Repository Structure
 ----------------------
@@ -31,15 +34,15 @@ Holds model output files.
 ```bash
   make pmodel
 ```
-To compile the full model, do 
-```bash
-  make
-```
-Adjust Makefile and src/Makefile to use a different compiler.
-To run the program, do
+And execute the P-model by
 ```bash
   echo RUNNAME | ./runpmodel
 ```
+To compile the full model, do 
+```bash
+  make cnmodel
+```
+Adjust Makefile and src/Makefile to use a different compiler.
 Change 'RUNNAME' to any given simulation name. Parameter files containing 'RUNNAME' in their file name need to be adjusted accordingly (replacing the string 'RUNNAME' with your simulation name and adjusting parameter values.).
 
 
