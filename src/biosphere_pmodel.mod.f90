@@ -168,7 +168,7 @@ contains
           ! establishment / sprouting
           !----------------------------------------------------------------
           if (verbose) write(0,*) 'calling vegdynamics() ... '
-          call vegdynamics( tile(:,jpngr), plant(:,jpngr), solar, out_pmodel(:,:), interface%mfapar_field(moy,jpngr) )
+          call vegdynamics( tile(:,jpngr), plant(:,jpngr), solar, out_pmodel(:,:), interface%dfapar_field(doy,jpngr) )
           if (verbose) write(0,*) '... done'
 
           !/////////////////////////////////////////////////////////////////

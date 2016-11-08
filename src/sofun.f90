@@ -150,7 +150,7 @@ program main
     !----------------------------------------------------------------
     ! Get prescribed fAPAR if required (otherwise set to dummy value)
     !----------------------------------------------------------------
-    interface%mfapar_field(:,:) = getfapar( &
+    interface%dfapar_field(:,:) = getfapar( &
                                           trim(runname), &
                                           trim(interface%params_siml%sitename), &
                                           interface%steering%forcingyear, &

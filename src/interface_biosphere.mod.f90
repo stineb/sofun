@@ -1,6 +1,6 @@
 module md_interface
 
-  use md_params_core, only: maxgrid, nmonth, nlu
+  use md_params_core, only: maxgrid, nlu, ndayyear
   use md_grid, only: gridtype
   use md_forcing_siterun, only: landuse_type, climate_type, ninput_type
   use md_params_site, only: paramstype_site
@@ -14,17 +14,17 @@ module md_interface
     getout_daily_forcing, writeout_ascii_forcing
 
   type interfacetype_biosphere
-    integer                                           :: year
-    real                                              :: pco2
-    type( gridtype )      , dimension(maxgrid)        :: grid
-    type( paramtype_soil ), dimension(maxgrid)        :: soilparams
-    type( landuse_type)   , dimension(maxgrid)        :: landuse
-    type( climate_type )  , dimension(maxgrid)        :: climate
-    type( ninput_type)    , dimension(maxgrid)        :: ninput_field
-    real                  , dimension(nmonth,maxgrid) :: mfapar_field
-    type( paramstype_site )                           :: params_site
-    type( outtype_steering )                          :: steering
-    type( paramstype_siml )                           :: params_siml
+    integer                                             :: year
+    real                                                :: pco2
+    type( gridtype )      , dimension(maxgrid)          :: grid
+    type( paramtype_soil ), dimension(maxgrid)          :: soilparams
+    type( landuse_type)   , dimension(maxgrid)          :: landuse
+    type( climate_type )  , dimension(maxgrid)          :: climate
+    type( ninput_type)    , dimension(maxgrid)          :: ninput_field
+    real                  , dimension(ndayyear,maxgrid) :: dfapar_field
+    type( paramstype_site )                             :: params_site
+    type( outtype_steering )                            :: steering
+    type( paramstype_siml )                             :: params_siml
   end type interfacetype_biosphere
 
   type( interfacetype_biosphere ) :: interface

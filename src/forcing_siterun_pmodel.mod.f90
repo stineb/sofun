@@ -133,7 +133,7 @@ contains
     character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
-    real, dimension(nmonth,maxgrid) :: fapar_field
+    real, dimension(ndayyear,maxgrid) :: fapar_field
 
     ! local variables 
     integer :: jpngr
@@ -151,7 +151,7 @@ contains
       do jpngr=1,maxgrid
         ! create 4-digit string for year  
         write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-        fapar_field(:,jpngr) = read1year_monthly( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//'fapar_'//trim(fapar_forcing_source)//'_'//trim(sitename)//'_'//faparyear_char//'.txt' )
+        fapar_field(:,jpngr) = read1year_daily( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//trim(fapar_forcing_source)//'_'//trim(sitename)//'_'//faparyear_char//'.txt' )
       end do
 
     end if
