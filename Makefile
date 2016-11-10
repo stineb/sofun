@@ -10,6 +10,7 @@
 # gfor    - gfortran compiler
 # intel   - ifort compiler
 
+# PROFILE=gfortran
 PROFILE=pgi
 # PROFILE=intel
 
@@ -20,11 +21,26 @@ ifeq ($(PROFILE),pgi)
 # Compiler and options
 FCOM=pgf95
 CPPFLAGS=-E
-COMPFLAGS=-Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
-DPCOMPFLAGS=-r8 -Mextend -Mfreeform  -Mdalign -Kieee -Ktrap=fp -O2
+COMPFLAGS=-r8 -Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
+# COMPFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform  # debug flags, real8
 #COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
 DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
-DPDEBUGFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
+
+# System libraries
+#LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
+endif
+
+#################
+## pgf profile ##
+##################
+ifeq ($(PROFILE),gfortran)
+# Compiler and options
+FCOM=gfortran
+CPPFLAGS=-E
+# COMPFLAGS=-r8 -Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
+# # COMPFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform  # debug flags, real8
+# #COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
+# DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
 
 # System libraries
 #LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
@@ -65,11 +81,14 @@ endif
 #DEBUGFLAGS += -I$(NETCDF_INC)
 
 # name of executable
-EXE        = runsofun
-SPLASH_EXE = runsplash
-PMODEL_EXE = runpmodel
-CMODEL_EXE = runcmodel
-CNMODEL_EXE = runcnmodel
+EXE             = runsofun
+SPLASH_EXE      = runsplash
+SWBM_EXE        = runswbm
+PMODEL_EXE      = runpmodel
+PMODEL_SWBM_EXE = runpmodel_swbm
+CMODEL_EXE      = runcmodel
+TMODEL_EXE      = runtmodel
+CNMODEL_EXE     = runcnmodel
 
 ARCHIVES= ./src/sofun.a
 # ARLPJ= ./lpj/lpj.a (archive names when compiling with different option)
@@ -90,30 +109,39 @@ debug:
 	$(MAKE) debug -C src
 	$(FCOM) -o $(EXE) $(DEBUGFLAGS) $(ARCHIVES) #$(LIBS)
 
-# including double precision flag
-dp: 
-	 $(MAKE) dp -C src
-	 $(FCOM) -o $(EXE) $(DPCOMPFLAGS) $(ARCHIVES)
-
-# code for debugging, including double precision flags:
-dpdebug: 
-	$(MAKE) dpdebug -C src
-	$(FCOM) -o $(EXE) $(DPDEBUGFLAGS) $(ARCHIVES) #$(LIBS)
-
 # reduced model setup: only SPLASH
 splash: 
 	 $(MAKE) splash -C src
 	 $(FCOM) -o $(SPLASH_EXE) $(COMPFLAGS) $(ARCHIVES)
+
+# reduced model setup: only SPLASH
+swbm: 
+	 $(MAKE) swbm -C src
+	 $(FCOM) -o $(SWBM_EXE) $(COMPFLAGS) $(ARCHIVES)
 
 # reduced model setup: only SPLASH and PMODEL
 pmodel: 
 	 $(MAKE) pmodel -C src
 	 $(FCOM) -o $(PMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
 
+# reduced model setup: only SPLASH and PMODEL
+dbgpmodel: 
+	 $(MAKE) pmodel -C src
+	 $(FCOM) -o $(PMODEL_EXE) $(DEBUGFLAGS) $(ARCHIVES)
+
+pmodel_swbm: 
+	 $(MAKE) pmodel_swbm -C src
+	 $(FCOM) -o $(PMODEL_SWBM_EXE) $(COMPFLAGS) $(ARCHIVES)
+
 # reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
 cmodel: 
 	 $(MAKE) cmodel -C src
 	 $(FCOM) -o $(CMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
+
+# reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
+tmodel: 
+	 $(MAKE) tmodel -C src
+	 $(FCOM) -o $(TMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
 
 # full model setup
 cnmodel: 
@@ -123,7 +151,7 @@ cnmodel:
 # clean: remove exe and .o and .do files
 .PHONY: clean
 clean:
-	-rm $(EXE) $(SPLASH_EXE) $(PMODEL_EXE) $(CMODEL_EXE) $(CNMODEL_EXE)
+	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE)
 	$(MAKE) clean -C src
 # include libraries when necessary
 #	$(MAKE) clean -C lpj/cdfcode

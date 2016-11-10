@@ -1,8 +1,5 @@
 # SOFUN 
-Modelling framework for simulating terrestrial ecoystems and their biogeochemistry
-SOFUN stands for Seasonal optimisation of fixation and uptake of nitrogen.
-
-This is a modular framework that serves as a structure for simulating terrestrial ecosystem functioning (radiation, photosynthesis, allocation, soil organic dynamics, inorganic nitrogen dynamics). Code is programmed in Fortran 90 and can be compiled using PGI and Intel compilers.
+Modelling framework for simulating terrestrial ecoystems and their biogeochemistry (radiation, photosynthesis, allocation, soil organic dynamics, inorganic nitrogen dynamics). SOFUN stands for Seasonal optimisation of fixation and uptake of nitrogen. Code is programmed in Fortran 90 and can be compiled using PGI and Intel compilers.
 Written, developed and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
 
 ## Table of Contents
