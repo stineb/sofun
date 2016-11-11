@@ -33,6 +33,9 @@ Holds model output files.
 ```src/```
 This directory holds all source code.
 
+```params/```
+This directory holds model parameter files. These are generally module-specific.
+
 
 ## Usage
 ---------
@@ -120,7 +123,7 @@ One output file is written for each output variable. Output variables have an ac
 - initio.F: Open file for output writing.
 - getout.F: Copy daily updated state variables to according position in output array.
 - writeout_ascii.F: Write output array into file opened by initio.F.
-For module-specific output variables, add according statements contained in SR (named as 'initio_<modulename>') contained within respective module.
+For module-specific output variables, add according statements contained in SR (named as `initio_<modulename>`) contained within respective module.
 
 
 ### Processes
