@@ -8,39 +8,55 @@ Written, developed and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
 
 ## Repository Structure
 ----------------------
-`src/`
-This directory holds all source code.
+This file (README.md) sits in the parent directory of the repository 'sofun'. All model inputs, outputs, and simulation and site parameter files are specific for a simulation suite ('simsuite') and given for all members within the simulation suite. Members are individual simulations, e.g. for a specific site and/or a specific model set up. The descriptor 'simsuite' is to be set by hand accordingly in 'linkdirs_sofun.py' and soft links are created in the parent (present working) directory. These are:
+```input/sitedata/```
+This directory holds all input files to drive the site-scale simulations (ascii format). `./input/sitedata/` is a soft link created by linkdirs_sofun.py pointing to `../input_<simsuite>_sofun/sitedata/`.
 
-`input/`
-This directory holds all input files to drive the simulations.
+  ```    input/sitedata/climate/<sitename>/<simyear>/<var>_<sitename>_<simyear>.txt```
+  Climate input files. Automatically created in SOFUN-format from original data by scripts in the separate repository getin. 
 
-  `input/sitedata/`
-  Holds subdirectories for climate, co2, fapar, and ndep input data; structured for site-scale simulations.
+  ```    input/sitedata/fapar/<sitename>/<simyear>/dfapar_<faparsource>_<sitename>_<simyear>.txt```
+  fAPAR input data used for simulations where this is prescribed (optionally). Automatically created in SOFUN-format from original data by scripts in the separate repository getin. 
 
-`output/`
+  ```    input/sitedata/co2/<sitename>/cCO2_rcp85_const850-1765.dat```
+  CO2 input file
+
+```run/```
+This is a soft link created by linkdirs_sofun.py pointing to `../input_<simsuite>_sofun/run/`. Holds simulation parameter files (`<runname>.sofun.parameter`) defining start year, end year, fAPAR source (`<faparsource>`), output variables, etc. One file for each experiment (run). Multiple experiments (`<runname>`) per site (`<sitename>`) are possible. The target (`../input_<simsuite>_sofun/run/`) is created by `utils_sofun/prepare_input/prepare_paramfils_<simsuite>.R`, available in the separate repository 'utils_sofun'.
+
+```site_paramfils/```
+This is a soft link created by linkdirs_sofun.py pointing to `../input_<simsuite>_sofun/site_paramfils/`. Holds site parameter files (`<sitename>.parameter`) defining (so far only) longitude, latitude, and elevation. One file for each site. One site parameter file may be used by multiple experiments. Created by `utils_sofun/prepare_input/prepare_paramfils_<simsuite>.R`, available in the separate repository 'utils_sofun'.
+
+```output/```
 Holds model output files.
+
+```src/```
+This directory holds all source code.
 
 
 ## Usage
 ---------
-1. Clone git repository into a local directory called 'sofun' by `mkdir sofun; git clone https://<username>@bitbucket.org/labprentice/sofun.git sofun/`
-2. Create input data (see repository 'getin')
-3. Create simulation parameter files (see repository 'utils_sofun/prepare_input')
-4. Compile
-  This can be done at different levels of model integration. For example, to run the P-model setup only, compile only relevant modules for simulating GPP and the soil water balance by
+1. Create soft links to input and simulation and site parameter files by 
+```./linkdirs_sofun.py```
+
+2. Compile. This can be done at different levels of model integration. For example, to run the P-model setup only, compile only relevant modules for simulating GPP and the soil water balance by
 ```bash
   make pmodel
 ```
-And execute the P-model by
+3. Execute the model, e.g., the P-model only compiled by `make pmodel` by
 ```bash
-  echo RUNNAME | ./runpmodel
+  echo <runname> | ./runpmodel
 ```
-To compile the full model, do 
-```bash
-  make cnmodel
-```
-Adjust Makefile and src/Makefile to use a different compiler.
-Change 'RUNNAME' to any given simulation name. Parameter files containing 'RUNNAME' in their file name need to be adjusted accordingly (replacing the string 'RUNNAME' with your simulation name and adjusting parameter values.).
+  Alternatively, compile and execute all simulations (experiments) within a simulation suite at once by `./submitjobs_sofun.py`.
+
+Different levels of model integration may be compiled and executed (see 'Model structure' below). The following are implemented:
+  - `make splash; echo <runname> | ./runsplash` Compiles and executes a simulation of the SPLASH (Davis et al., 2016 GMD) water balance model only (module `./src/waterbal_splash.mod.f90` plus overhead). 
+  - `make swbm;   echo <runname> | ./runswbm` Compiles and executes a simulation of the SWBM (Orth et al., 2013) water balance model only (module `./src/waterbal_swbm.mod.f90` plus overhead). 
+  - `make pmodel; echo <runname> | ./runpmodel` Compiles and executes a simulation of P-model (Wang et al. 2015 BG) photosynthesis model with SPLASH water balance (see `./src/gpp_pmodel.mod.f90`). 
+  - `make pmodel_swbm; echo <runname> | ./runpmodel_swbm` Compiles and executes a simulation of P-model (Wang et al. 2015 BG) photosynthesis model with SWBM water balance (see `./src/gpp_pmodel.mod.f90`). 
+  - `make cmodel; echo <runname> | ./runcmodel` Compiles and executes a simulation of C-model where the a full and closed C balance of vegetation and soil of a grassland (green slime) is simulated with fixed above- vs. belowground allocation. N is simulated along with it but doesn't affect allocation and its balance is not closed (taken up from soil to match requirement).
+  - `make cnmodel; echo <runname> | ./runcnmodel` Compiles and executes a simulation of CN-model where the a full and closed C and N balance of vegetation and soil of a grassland (green slime) is simulated with flexible above- vs. belowground allocation.
+Check `./src/Makefile` to see which source files (modules) are compiled under which option.
 
 
 ## Model structure
