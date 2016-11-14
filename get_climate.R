@@ -66,8 +66,8 @@ startyr_act <- startyr_override
 ## load meta data file for site simulation
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
 nsites <- dim(siteinfo)[1]
-# do.sites <- seq(nsites)
-do.sites <- 14:nsites
+do.sites <- seq(nsites)
+# do.sites <- 14:nsites
 
 get_clim_cru_monthly <- function( lon, lat, startyr_cru, endyr_cru ){
 

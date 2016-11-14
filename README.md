@@ -21,13 +21,16 @@ Use `qsub submit_get_climate.sh` to execute this on the cluster.
 
 ### Get fAPAR data
 #### MODIS EVI cutouts at FLUXNET sites
-Run in R:
+MODIS-EVI data downloaded for subsets around FLUXNET sites (9x9 pixels, 250 m resolution) is available on CX1 (`data/modis_fluxnet_cutouts/`). Download this data and run in R:
+```R
+source( "get_evi_modissubset.R" )
+```
+Otherwise, if the MODIS subset data is not complete (coverage of full time series and all stations), functions from R package 'MODISTools' are used. To load the latest package version from github, do the following in R before executing 'get_evi_modissubset.R':
 ```R
 install.packages("devtools")
 library(devtools)
 install_github("seantuck12/MODISTools", build_vignettes=TRUE)
 library( MODISTools )
-source( "get_evi_modissubset.R" )
 ```
 
 #### FAPAR3G data
