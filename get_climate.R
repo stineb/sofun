@@ -40,8 +40,9 @@ source( paste( myhome, "sofun/getin/calc_vpd.R", sep="" ) )
 source( paste( myhome, "sofun/getin/get_meteo_fluxnet2015.R", sep="" ) )
 source( paste( myhome, "sofun/getin/get_meteo_swbm_meteoschweiz.R", sep="" ) )
 source( paste( myhome, "sofun/getin/calc_netrad_orth.R", sep="" ) )
+source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
 
-overwrite <- FALSE
+overwrite <- TRUE
 overwrite_byst <- TRUE
 
 simsuite <- "fluxnet2015"
@@ -67,7 +68,7 @@ startyr_act <- startyr_override
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
 nsites <- dim(siteinfo)[1]
 do.sites <- seq(nsites)
-# do.sites <- 14:nsites
+# do.sites <- 1:1
 
 get_clim_cru_monthly <- function( lon, lat, startyr_cru, endyr_cru ){
 
@@ -449,6 +450,7 @@ for ( idx in do.sites ){
         ## FLUXNET 2015 METEO DATA
         dirnam_obs <- paste( myhome, "data/FLUXNET-2015_Tier1/20160128/point-scale_none_1d/original/unpacked/", sep="" )
         allfiles <- list.files( dirnam_obs )
+        allfiles <- allfiles[ which( grepl( "FULLSET", allfiles ) ) ]
         filnam_obs <- allfiles[ which( grepl( sitename, allfiles ) ) ]
         filn <- paste( dirnam_obs, filnam_obs, sep="" )
         if ( length(filnam_obs)>0 ){ 
