@@ -9,46 +9,55 @@ Written, developed and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
 ## Repository Structure
 ----------------------
 This file (README.md) sits in the parent directory of the repository 'sofun'. All model inputs, outputs, and simulation and site parameter files are specific for a simulation suite ('simsuite') and given for all members within the simulation suite. Members are individual simulations, e.g. for a specific site and/or a specific model set up. The descriptor 'simsuite' is to be set by hand accordingly in 'linkdirs_sofun.py' and soft links are created in the parent (present working) directory. These are:
+### Input data
 ```
 input/sitedata/
 ```
 This directory holds all input files to drive the site-scale simulations (ascii format). `./input/sitedata/` is a soft link created by linkdirs_sofun.py pointing to `../input_<simsuite>_sofun/sitedata/`.
 
+  #### Climate input files
   ```    
       input/sitedata/climate/<sitename>/<simyear>/<var>_<sitename>_<simyear>.txt
   ```
   Climate input files. Automatically created in SOFUN-format from original data by scripts in the separate repository getin. 
 
+  #### fAPAR input files
   ```
       input/sitedata/fapar/<sitename>/<simyear>/dfapar_<faparsource>_<sitename>_<simyear>.txt
   ```
   fAPAR input data used for simulations where this is prescribed (optionally). Automatically created in SOFUN-format from original data by scripts in the separate repository getin. 
 
+  #### CO2 input files
   ```
       input/sitedata/co2/<sitename>/cCO2_rcp85_const850-1765.dat
   ```
   CO2 input file
 
+### Simulation (experiment) parameter files
 ```
 run/
 ```
 This is a soft link created by linkdirs_sofun.py pointing to `../input_<simsuite>_sofun/run/`. Holds simulation parameter files (`<runname>.sofun.parameter`) defining start year, end year, fAPAR source (`<faparsource>`), output variables, etc. One file for each experiment (run). Multiple experiments (`<runname>`) per site (`<sitename>`) are possible. The target (`../input_<simsuite>_sofun/run/`) is created by `utils_sofun/prepare_input/prepare_paramfils_<simsuite>.R`, available in the separate repository 'utils_sofun'.
 
+### Site parameter files
 ```
 site_paramfils/
 ```
 This is a soft link created by linkdirs_sofun.py pointing to `../input_<simsuite>_sofun/site_paramfils/`. Holds site parameter files (`<sitename>.parameter`) defining (so far only) longitude, latitude, and elevation. One file for each site. One site parameter file may be used by multiple experiments. Created by `utils_sofun/prepare_input/prepare_paramfils_<simsuite>.R`, available in the separate repository 'utils_sofun'.
 
+### Model output 
 ```
 output/
 ```
 Holds model output files.
 
+### Source files
 ```
 src/
 ```
 This directory holds all source code.
 
+### Model parameter files
 ```
 params/
 ```
