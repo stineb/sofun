@@ -191,12 +191,13 @@ contains
 
     out_climate(jpngr)%dtemp(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt')
     out_climate(jpngr)%dprec(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt')
-    out_climate(jpngr)%dfsun(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')
     out_climate(jpngr)%dvpd(:)  = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dvpd_' //trim(sitename)//'_'//climateyear_char//'.txt')
     if (in_ppfd) then
       out_climate(jpngr)%dppfd(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dppfd_'//trim(sitename)//'_'//climateyear_char//'.txt')
+      out_climate(jpngr)%dfsun(:) = dummy
     else
       out_climate(jpngr)%dppfd(:) = dummy
+      out_climate(jpngr)%dfsun(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')
     end if
     if (in_netrad) then
       out_climate(jpngr)%dnetrad(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dnetrad_'//trim(sitename)//'_'//climateyear_char//'.txt')

@@ -558,9 +558,6 @@ contains
       out_evap%cpa = 1.26
     end if
 
-    ! xxx override CPA-limitation
-    out_evap%cpa = 1.26
-
     !-------------------------------------------------------------   
     ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 
     !         reference evapotranspiration estimation, Journal of Irrigation
