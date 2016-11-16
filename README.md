@@ -85,6 +85,16 @@ This directory holds model parameter files. These are generally module-specific.
 
 Different levels of model integration may be compiled and executed (see 'Model structure' below). The following are implemented:
 
+Different levels of model integration may be compiled and executed (see 'Model structure' below). The following are implemented:
+* `make splash; echo <runname> | ./runsplash` Compiles and executes a simulation of the SPLASH (Davis et al., 2016 GMD) water balance model only (module `./src/waterbal_splash.mod.f90` plus overhead). 
+* `make swbm;   echo <runname> | ./runswbm` Compiles and executes a simulation of the SWBM (Orth et al., 2013) water balance model only (module `./src/waterbal_swbm.mod.f90` plus overhead). 
+* `make pmodel; echo <runname> | ./runpmodel` Compiles and executes a simulation of P-model (Wang et al. 2015 BG) photosynthesis model with SPLASH water balance (see `./src/gpp_pmodel.mod.f90`). 
+* `make pmodel_swbm; echo <runname> | ./runpmodel_swbm` Compiles and executes a simulation of P-model (Wang et al. 2015 BG) photosynthesis model with SWBM water balance (see `./src/gpp_pmodel.mod.f90`). 
+* `make cmodel; echo <runname> | ./runcmodel` Compiles and executes a simulation of C-model where the a full and closed C balance of vegetation and soil of a grassland (green slime) is simulated with fixed above- vs. belowground allocation. N is simulated along with it but doesn't affect allocation and its balance is not closed (taken up from soil to match requirement).
+* `make cnmodel; echo <runname> | ./runcnmodel` Compiles and executes a simulation of CN-model where the a full and closed C and N balance of vegetation and soil of a grassland (green slime) is simulated with flexible above- vs. belowground allocation.
+Check `./src/Makefile` to see which source files (modules) are compiled under which option.
+
+(just trying Markdown and table here...)
 | Compiling and execution commands                      | Setup: model integration   | Particular, setup-specific modules compiled  |
 |-------------------------------------------------------|----------------------------|----------------------------------------------|
 | `make splash; echo <runname> | ./runsplash`           | Compiles and executes a simulation of the SPLASH (Davis et al., 2016 GMD) water balance model only | module `./src/waterbal_splash.mod.f90` plus overhead |
