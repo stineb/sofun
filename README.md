@@ -15,19 +15,19 @@ input/sitedata/
 ```
 This directory holds all input files to drive the site-scale simulations (ascii format). `./input/sitedata/` is a soft link created by linkdirs_sofun.py pointing to `../input_<simsuite>_sofun/sitedata/`.
 
-  #### Climate input files
+  * Climate input files
   ```    
       input/sitedata/climate/<sitename>/<simyear>/<var>_<sitename>_<simyear>.txt
   ```
   Climate input files. Automatically created in SOFUN-format from original data by scripts in the separate repository getin. 
 
-  #### fAPAR input files
+  * fAPAR input files
   ```
       input/sitedata/fapar/<sitename>/<simyear>/dfapar_<faparsource>_<sitename>_<simyear>.txt
   ```
   fAPAR input data used for simulations where this is prescribed (optionally). Automatically created in SOFUN-format from original data by scripts in the separate repository getin. 
 
-  #### CO2 input files
+  * CO2 input files
   ```
       input/sitedata/co2/<sitename>/cCO2_rcp85_const850-1765.dat
   ```
