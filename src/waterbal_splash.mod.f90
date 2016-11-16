@@ -310,10 +310,10 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 9. Calculate daily PPFD (dppfd), mol/m^2
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 57, SPLASH 2.0 Documentation
       if (ppfd(1)/=dummy) then
         out_solar%dppfd(doy) = ppfd(doy)
       else
+        ! Eq. 57, SPLASH 2.0 Documentation
         out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
       end if
 

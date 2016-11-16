@@ -258,7 +258,7 @@ contains
   end function get_infiltr
 
 
-  function getsolar( lat, elv, sf ) result( out_solar )
+  function getsolar( lat, elv, sf, ppfd ) result( out_solar )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily PPFD. Code is an extract of the subroutine
     ! 'evap', adopted from the evap() function in GePiSaT (Python version). 
@@ -267,13 +267,14 @@ contains
     ! - daily extraterrestrial solar radiation (dra), J/m^2
     ! - daily PPFD (dppfd), mol/m^2
     !-------------------------------------------------------------------------  
-    use md_params_core, only: ndayyear, pi
+    use md_params_core, only: ndayyear, pi, dummy
     use md_sofunutils, only: daily2monthly
 
     ! arguments
     real, intent(in)                      :: lat           ! latitude, degrees
     real, intent(in)                      :: elv           ! elevation, metres
     real, intent(in), dimension(ndayyear) :: sf            ! fraction of sunshine hours 
+    real, intent(in), dimension(ndayyear) :: ppfd          ! photon flux density (mol m-2 d-1), may be dummy (in which case this is not used)
 
     ! function return variable
     type( solartype ) :: out_solar
@@ -353,8 +354,12 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 9. Calculate daily PPFD (dppfd), mol/m^2
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 57, SPLASH 2.0 Documentation
-      out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
+      if (ppfd(1)/=dummy) then
+        out_solar%dppfd(doy) = ppfd(doy)
+      else
+        ! Eq. 57, SPLASH 2.0 Documentation
+        out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
+      end if
 
     end do
 
