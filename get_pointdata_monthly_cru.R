@@ -24,7 +24,7 @@ get_pointdata_monthly_cru <- function( varnam, lon, lat, yr=NA ){
     }
   } else {
     print( paste( "file", filn, "does not exist." ) )
-    mdata <- NA
+    mdata <- rep( NA, length(1901:2014)*12 )
   }
   return( mdata )
 }

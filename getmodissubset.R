@@ -1,4 +1,4 @@
-download_subset_modis <- function( lon, lat, start.date, end.date, savedir, overwrite ){
+download_subset_modis <- function( lon, lat, start.date, end.date, savedir, overwrite, ignore_missing=FALSE ){
   #///////////////////////////////////////////////////////////////
   # Downloads a MODIS subset for the specified location (lon, lat)
   # and date (start.date, end.date)
@@ -9,11 +9,13 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
   ## Find file from which (crude) data is read
   filn <- list.files( path=savedir, pattern="*asc" )
 
-  if (length(filn)==0||overwrite){
+  if ( (length(filn)==0||overwrite) && !ignore_missing ){
 
     print( paste( "deleting existing file", filn ) )
     if (length(filn)>0) { system( paste( "rm ", savedir, filn, sep="" ) ) }
 
+    print(paste("savedir", savedir))
+    
     print( paste( "==========================="))
     print( paste( "DOWNLOADING MODIS DATA FOR:"))
     print( paste( "lon  :", lon ) )
@@ -39,16 +41,32 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
       )
 
     filn <- list.files( path=savedir, pattern="*asc" )
-    
+
   } else {
 
-    print( paste( "==========================="))
-    print( paste( "FOUND DATA FOR:"))
-    print( paste( "lon  :", lon) )
-    print( paste( "lat  :", lat) )
-    print( paste( "start:", start.date ) )
-    print( paste( "end  :", end.date ) )
-    print( paste( "---------------------------"))
+    if (ignore_missing && length(filn)==0){
+
+      print( paste( "==========================="))
+      print( paste( "IGNORING MISSING DATA FOR:"))
+      print( paste( "lon  :", lon) )
+      print( paste( "lat  :", lat) )
+      print( paste( "start:", start.date ) )
+      print( paste( "end  :", end.date ) )
+      print( paste( "---------------------------"))
+
+
+    } else {
+
+      print( paste( "==========================="))
+      print( paste( "FOUND DATA FOR:"))
+      print( paste( "lon  :", lon) )
+      print( paste( "lat  :", lat) )
+      print( paste( "start:", start.date ) )
+      print( paste( "end  :", end.date ) )
+      print( paste( "---------------------------"))
+
+    }
+
 
   }
 
@@ -196,7 +214,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
 }
 
 
-interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite ){
+interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite, overwrite_dates=FALSE, ignore_missing=FALSE ){
   ##--------------------------------------
   ## Returns data frame containing EVI 
   ## (and year, moy, doy) for all available
@@ -229,9 +247,14 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   source( paste( myhome, "sofun/getin/init_monthly_dataframe.R", sep="" ) )
   source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
 
-  ##--------------------------------------
-  ## Get dates for which data is available
-  ##--------------------------------------
+  dirnam_dates_csv <- paste( myhome, "data/modis_fluxnet_cutouts/", sitename,"/", sep="" )
+  system( paste( "mkdir -p ", dirnam_dates_csv, sep="" ) )  
+  filnam_dates_csv <- paste( dirnam_dates_csv, "dates_MOD13Q1_", sitename, ".csv", sep="" )
+
+  if ( !file.exists(filnam_dates_csv) || overwrite_dates ){
+    ##--------------------------------------
+    ## Get dates for which data is available
+    ##--------------------------------------
     print( paste("lon", lon, "lat", lat))
     dates <- data.frame( dates=GetDates( Product = "MOD13Q1", Lat = lat, Long = lon ) )
     print("done")
@@ -253,6 +276,21 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
     }
     dates$absday <- cumsum(dates$ndayyear) + dates$doy
 
+    ##--------------------------------------------------------------------
+    ## Save dates as CSV files
+    ##--------------------------------------------------------------------
+    print( paste( "writing dates data frame into CSV file ", filnam_dates_csv, "...") )
+    write.csv( dates, file=filnam_dates_csv, row.names=FALSE )
+
+  } else {
+    ##--------------------------------------------------------------------
+    ## Read dates from CSV file
+    ##--------------------------------------------------------------------
+    print( "dates information already available in CSV file ...")
+    dates <- read.csv( filnam_dates_csv, as.is=TRUE )
+
+  }
+
   ##--------------------------------------
   ## Collect data for all available dates
   ##--------------------------------------
@@ -271,82 +309,107 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
       system( paste( "mkdir -p ", savedir, sep="" ) )  
 
       ##--------------------------------------------------------------------
-      filn <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=overwrite ) )
-      out  <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
+      ## Download file with crude data if it's not there yet
+      ##--------------------------------------------------------------------
+      filn <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=overwrite, ignore_missing=ignore_missing ) )
       ##--------------------------------------------------------------------
 
-      if ( is.null( dim( out$nice_all ) ) && expand_x==0 && expand_y==0 ){
+      if ( (ignore_missing && is.na(filn)) ){
 
-        modis$qual[idx] <- out$nice_qual_flg
-        modis$evi[idx]  <- out$nice_all
+        print( paste( "missing file, but ignoring it for site", sitename ) )
 
-      } else if ( dim(out$nice_all)==c(3,3) ){
-
-        modis$qual[idx] <- out$nice_qual_flg[2,2]
-
-        ## if quality flag is not 0, use mean of surrounding pixels (from 3x3 matrix)
-        if (modis$qual[idx]!=0 ){
-          if ( sum( out$nice_all[ which( out$nice_qual_flg[,]<2 ) ] )>0 ){
-            ## if >0 pixels around centre have quality flag <2, then use their mean
-            modis$evi[idx] <- mean( out$nice_all[ which( out$nice_qual_flg[,]<2 ) ] )            
-          } else {
-            modis$evi[idx] <- NA        
-          }
-        } else {
-          modis$evi[idx] <- out$nice_all[2,2]
-        }
-                
-      } else if ( dim(out$nice_all)==c(1,1) && expand_x==0 && expand_y==0 ) { 
-
-        modis$qual[idx] <- out$nice_qual_flg[1,1]
-        modis$evi[idx]  <- out$nice_all[1,1]
-     
       } else {
+        ##--------------------------------------------------------------------
+        ## Read crude data file
+        ##--------------------------------------------------------------------
+        out  <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
+        ##--------------------------------------------------------------------
 
-        print("weird...")
-      
+        if ( is.null( dim( out$nice_all ) ) && expand_x==0 && expand_y==0 ){
+
+          modis$qual[idx] <- out$nice_qual_flg
+          modis$evi[idx]  <- out$nice_all
+
+        } else if ( dim(out$nice_all)==c(3,3) ){
+
+          modis$qual[idx] <- out$nice_qual_flg[2,2]
+
+          ## if quality flag is not 0, use mean of surrounding pixels (from 3x3 matrix)
+          if (modis$qual[idx]!=0 ){
+            if ( sum( out$nice_all[ which( out$nice_qual_flg[,]<2 ) ] )>0 ){
+              ## if >0 pixels around centre have quality flag <2, then use their mean
+              modis$evi[idx] <- mean( out$nice_all[ which( out$nice_qual_flg[,]<2 ) ] )            
+            } else {
+              modis$evi[idx] <- NA        
+            }
+          } else {
+            modis$evi[idx] <- out$nice_all[2,2]
+          }
+                  
+        } else if ( dim(out$nice_all)==c(1,1) && expand_x==0 && expand_y==0 ) { 
+
+          modis$qual[idx] <- out$nice_qual_flg[1,1]
+          modis$evi[idx]  <- out$nice_all[1,1]
+       
+        } else {
+
+          print("weird...")
+        
+        }
+
+        modis$yr_read[idx]      <- out$time$yr[1]
+        modis$doy_read[idx]     <- out$time$doy[1]
+        modis$date_read[idx]    <- out$time$dates[1]
+        modis$yr_dec_read[idx]  <- out$time$yr_dec[1]
+    
       }
 
-      modis$yr_read[idx]      <- out$time$yr[1]
-      modis$doy_read[idx]     <- out$time$doy[1]
-      modis$date_read[idx]    <- out$time$dates[1]
-      modis$yr_dec_read[idx]  <- out$time$yr_dec[1]
-    
     }
 
   ##--------------------------------------
   ## MONTHLY DATAFRAME
   ##--------------------------------------
     ## Interpolate data to mid-months
-    yrstart  <- min( modis$yr_read )
-    yrend    <- max( modis$yr_read )
-    modis_monthly <- init_monthly_dataframe( yrstart, yrend )
-    modis_monthly$evi <- approx( modis$yr_dec_read, modis$evi, modis_monthly$year_dec )$y
-
-    ## gap-fill with median of corresponding month
-    for (idx in 1:dim(modis_monthly)[1]){
-      if (is.na(modis_monthly$evi[idx])){
-        modis_monthly$evi[idx] <- median( modis_monthly$evi[ which( modis_monthly$moy==modis_monthly$moy[idx]) ], na.rm=TRUE )
+    if (any(!is.na(modis$yr_read))){
+      yrstart  <- min( modis$yr_read, na.rm=TRUE )
+      yrend    <- max( modis$yr_read, na.rm=TRUE )
+      modis_monthly <- init_monthly_dataframe( yrstart, yrend )
+      modis_monthly$evi <- approx( modis$yr_dec_read, modis$evi, modis_monthly$year_dec )$y
+      
+      ## gap-fill with median of corresponding month
+      for (idx in 1:dim(modis_monthly)[1]){
+        if (is.na(modis_monthly$evi[idx])){
+          modis_monthly$evi[idx] <- median( modis_monthly$evi[ which( modis_monthly$moy==modis_monthly$moy[idx]) ], na.rm=TRUE )
+        }
       }
+      nodata <- FALSE
+    } else {
+      nodata <- TRUE
     }
 
   ##--------------------------------------
   ## DAILY DATAFRAME
   ##--------------------------------------
-    yrstart  <- min( modis$yr_read )
-    yrend    <- max( modis$yr_read )
-    modis_daily <- init_daily_dataframe( yrstart, yrend )
-    modis_daily$evi <- approx( modis$yr_dec_read, modis$evi, modis_daily$year_dec )$y
-
-    ## gap-fill with median of corresponding month
-    for (idx in 1:dim(modis_daily)[1]){
-      if (is.na(modis_daily$evi[idx])){
-        modis_daily$evi[idx] <- median( modis_daily$evi[ which( modis_daily$moy==modis_daily$moy[idx]) ], na.rm=TRUE )
+    if (any(!is.na(modis$yr_read))){
+      yrstart  <- min( modis$yr_read, na.rm=TRUE )
+      yrend    <- max( modis$yr_read, na.rm=TRUE )
+      modis_daily <- init_daily_dataframe( yrstart, yrend )
+      modis_daily$evi <- approx( modis$yr_dec_read, modis$evi, modis_daily$year_dec )$y
+      
+      ## gap-fill with median of corresponding month
+      for (idx in 1:dim(modis_daily)[1]){
+        if (is.na(modis_daily$evi[idx])){
+          modis_daily$evi[idx] <- median( modis_daily$evi[ which( modis_daily$moy==modis_daily$moy[idx]) ], na.rm=TRUE )
+        }
       }
     }
 
-  return( list( modis=modis, modis_daily=modis_daily, modis_monthly=modis_monthly ) )
-
+    if (nodata){
+      return( list( modis=modis, modis_daily=NA, modis_monthly=NA, nodata=nodata ) )
+    } else {
+      return( list( modis=modis, modis_daily=modis_daily, modis_monthly=modis_monthly, nodata=nodata ) )
+    }
+    
   # ######################
   # ## for debugging:
   # plot(  modis$yr_dec_read, modis$evi, type="l" )

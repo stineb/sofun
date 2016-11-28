@@ -41,7 +41,7 @@ get_meteo_fluxnet2015 <- function( path ){
   ## Convert SW in to PPFD
   if (!is.null(meteo$swin)){
     meteo$swin <- meteo$swin * 60 * 60 * 24 # given in W m-2, required in mol m-2 d-1 
-    meteo$ppfd <- meteo$swin * kfFEC * 1.0e-6  # convert from J/m2/d to mol/2/d
+    meteo$ppfd <- meteo$swin * kfFEC * 1.0e-6  # convert from J/m2/d to mol/m2/d
   } else {
     meteo$ppfd <- rep( NA, dim(meteo)[1] )
   }

@@ -42,7 +42,7 @@ source( paste( myhome, "sofun/getin/get_meteo_swbm_meteoschweiz.R", sep="" ) )
 source( paste( myhome, "sofun/getin/calc_netrad_orth.R", sep="" ) )
 source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
 
-overwrite <- TRUE
+overwrite <- FALSE
 overwrite_byst <- TRUE
 
 simsuite <- "fluxnet2015"
@@ -67,15 +67,15 @@ startyr_act <- startyr_override
 ## load meta data file for site simulation
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
 nsites <- dim(siteinfo)[1]
-do.sites <- seq(nsites)
-# do.sites <- 1:1
+# do.sites <- seq(nsites)
+do.sites <- 21
 
 get_clim_cru_monthly <- function( lon, lat, startyr_cru, endyr_cru ){
 
   ##--------------------------------------------------------------------
   ## get monthly data from CRU
   ##--------------------------------------------------------------------
-  nyrs_cru    <- length(startyr_cru:endyr_cru)
+  nyrs_cru <- length(startyr_cru:endyr_cru)
   clim_cru_monthly <- data.frame( moy=rep( seq(nmonth), nyrs_cru ), year=rep( startyr_cru:endyr_cru, each=nmonth ) )
 
   ##--------------------------------------------------------------------
@@ -352,10 +352,24 @@ fill_gaps_clim_daily <- function( clim_daily ){
       }
     } else {
       if (any(is.na(clim_daily[[ icol ]]))){
+        print( paste( "found gaps for", icol ) )
         year_dec <- init_daily_dataframe( clim_daily$year[1], clim_daily$year[dim(clim_daily)[1]] )$year_dec
         if (dim(clim_daily)[1]==length(year_dec)){
+          # print("using approx() function")
           clim_daily[[ icol ]] <- approx( year_dec, clim_daily[[ icol ]], xout=year_dec )$y
         }
+        ## if there are NAs at the end of the columns, fill with last non-NA value
+        # print("filling gaps at the tail")
+        # print("before:")
+        # print(clim_daily[[ icol ]])
+        for (idx in 1:nrow(clim_daily)){
+          if ( any( is.na( tail( clim_daily[[ icol ]], n=idx ) ) ) && any( !is.na( tail( clim_daily[[ icol ]], n=(idx+1) ) ) ) ){
+            clim_daily[[ icol ]][ (nrow(clim_daily)-idx+1):nrow(clim_daily) ] <- clim_daily[[ icol ]][ (nrow(clim_daily)-idx) ]
+            break
+          }
+        }
+        # print("after:")
+        # print(clim_daily[[ icol ]])
       }          
     }
 
@@ -379,7 +393,7 @@ for ( idx in do.sites ){
   filnam_clim_csv      <- paste( dirnam_clim_csv, "clim_daily_", sitename, ".csv", sep="" )  # NOT containing station-specific meteo data
   filnam_clim_byst_csv <- paste( dirnam_clim_csv, "clim_daily_byst_", sitename, ".csv", sep="" )
 
-  if ( overwrite || !file.exists( filnam_clim_csv )){
+  if ( overwrite || ( !file.exists( filnam_clim_csv ) && !file.exists(filnam_clim_byst_csv) )){
     ##--------------------------------------------------------------------
     ## Get monthly data frame covering all CRU years
     ##--------------------------------------------------------------------
@@ -414,7 +428,13 @@ for ( idx in do.sites ){
     ## Read daily data from CSV 
     ##--------------------------------------------------------------------
     print("reading from available CSV file that has no site-specific data yet")
-    clim_daily <- read.csv( filnam_clim_csv, as.is=TRUE )
+    if (file.exists( filnam_clim_csv )){
+      clim_daily <- read.csv( filnam_clim_csv, as.is=TRUE )
+    } else if (file.exists( filnam_clim_byst_csv )){
+      clim_daily <- read.csv( filnam_clim_byst_csv, as.is=TRUE )      
+    } else {
+      print("I'm in the wrong place.")
+    }
 
     ## XXX das ist nur provisorisch>>>>>>>>>>
     library( dplyr )
@@ -535,7 +555,9 @@ for ( idx in do.sites ){
   ## temperature: 1. meteo, 2. watch, 3. cru_int
   out$temp <- clim_daily$temp_meteo
   out$temp[ which( is.na( out$temp ) ) ] <- clim_daily$temp_watch[ which( is.na( out$temp ) ) ]
-  out$temp[ which( is.na( out$temp ) ) ] <- clim_daily$temp_cru_int[ which( is.na( out$temp ) ) ]
+  if (!is.null(clim_daily$temp_cru_int)){
+    out$temp[ which( is.na( out$temp ) ) ] <- clim_daily$temp_cru_int[ which( is.na( out$temp ) ) ]
+  }
 
   ## precipitation: 1. meteo, 2. watch, 3. cru_gen
   out$prec <- clim_daily$prec_meteo

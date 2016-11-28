@@ -11,7 +11,7 @@ ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)
 nmonth <- length(ndaymonth)
 
-simsuite <- "atkinfull"
+simsuite <- "fluxnet2015"
 
 fapar_year_start <- 1982
 fapar_year_end   <- 2011

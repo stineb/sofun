@@ -6,6 +6,7 @@ get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap=TRUE ){
   ##--------------------------------------------------------------------
   syshome <- Sys.getenv( "HOME" )
   source( paste( syshome, "/.Rprofile", sep="" ) )
+  ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
   
   ## rain
   filn <- paste( myhome, "data/watch_wfdei/Rainf_daily/Rainf_daily_WFDEI_CRU_", sprintf( "%4d", yr ), sprintf( "%02d", mo ), ".nc", sep="" )
@@ -15,7 +16,8 @@ get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap=TRUE ){
     dprec <- read.table( paste( syshome, "/tmp/out.txt", sep="" ) )$V1
     dprec <- dprec*60*60*24 # kg/m2/s -> mm/day
   } else {
-    print( paste( "file", filn, "does not exist." ) )
+    # print( paste( "file", filn, "does not exist." ) )
+    dprec <- rep( NA, ndaymonth[mo] )
   }
   # print( paste( "rain only: ", mprec))
 
@@ -28,9 +30,6 @@ get_pointdata_prec_wfdei <- function( lon, lat, mo, yr, ignore_leap=TRUE ){
     dsnow <- dsnow*60*60*24 # kg/m2/s -> mm/day
     dprec <- dprec + dsnow
     # print( paste( "snow only: ", sum( dprec*60*60*24 )))
-  } else {
-    # print( paste( "file", filn, "does not exist." ) )
-    # print( paste( "snow only: ", 0.0 ) )
   }
 
   ## ignore leap years
