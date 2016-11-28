@@ -67,8 +67,8 @@ module md_waterbal
   real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
   real, allocatable, dimension(:,:,:) :: outdfleach         ! daily NO3 leaching fraction, (unitless)
   real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
-  real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm
-  real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm
+  real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm r J/m2/d depending on 'outenergy'
+  real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm or J/m2/d depending on 'outenergy'
   real, allocatable, dimension(:,:,:) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
 
   !-----------------------------------------------------------------------
@@ -109,15 +109,17 @@ module md_waterbal
 
   ! Radiation variables. aet, sw, and cpa are affected by soil moisture.
   type evaptype
-    real :: rn         ! daily net radiation (J/m2)
-    real :: rnn        ! nighttime net radiation (J/m^2)
+    real :: rn         ! daily net radiation (J/m2/d)
+    real :: rnn        ! nighttime net radiation (J/m^2/d)
     real :: rnl        ! net longwave radiation (W/m^2)
     real :: eet        ! daily EET (mm d-1)
     real :: pet        ! daily PET (mm d-1)
+    ! real :: pet_e      ! daily PET (J m-2 d-1)
     real :: cn         ! daily condensation (mm d-1)
     real :: aet        ! daily AET (mm d-1)
-    real :: daet       ! derivative of AET w.r.t. soil moisture (mm d-1 mm-1)
+    ! real :: aet_e      ! daily AET (J m-2 d-1)
     real :: cpa        ! Cramer-Prentice-Alpha = AET / EET (unitless)
+    real :: econ       ! water-to-energy conversion factor (econ), m^3/J
   end type evaptype
 
   ! SPLASH state variables
@@ -127,6 +129,7 @@ module md_waterbal
   ! MODULE-SPECIFIC, KNOWN PARAMETERS
   !----------------------------------------------------------------
   real, parameter :: secs_per_day = 86400.0
+  logical :: outenergy = .true.
 
 contains
 
@@ -503,30 +506,31 @@ contains
     g = psychro(tc, elv2pres(elv))
 
     ! Eq. 58, SPLASH 2.0 Documentation
-    econ = s/(lv*pw*(s + g))
+    out_evap%econ = s/(lv*pw*(s + g))
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 16. Calculate daily condensation (out_evap%cn), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 68, SPLASH 2.0 Documentation
-    out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
+    out_evap%cn = 1000.0 * out_evap%econ * abs(out_evap%rnn)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 17. Estimate daily EET (out_evap%eet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 70, SPLASH 2.0 Documentation
-    out_evap%eet = 1000.0 * econ * out_evap%rn
+    out_evap%eet = 1000.0 * out_evap%econ * out_evap%rn
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 18. Estimate daily PET (out_evap%pet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 72, SPLASH 2.0 Documentation
-    out_evap%pet = ( 1.0 + kw ) * out_evap%eet
+    out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
+    ! out_evap%pet_e = out_evap%pet / (out_evap%econ * 1000)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * econ
+    rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * out_evap%econ
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 20. Calculate the intersection hour angle (hi), degrees
@@ -546,16 +550,16 @@ contains
     ! 21. Estimate daily AET (out_evap%aet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 81, SPLASH 2.0 Documentation
-    out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
-    
+    out_evap%aet   = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
+    ! out_evap%aet_e = out_evap%aet / (out_evap%econ * 1000)
+
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Ref? XXX
     if (out_evap%eet>0.0) then 
       out_evap%cpa = out_evap%aet / out_evap%eet
     else
-      out_evap%cpa = 1.26
+      out_evap%cpa = 1.0 + kw
     end if
 
     !-------------------------------------------------------------   
@@ -1202,18 +1206,18 @@ contains
 
     if (interface%params_siml%loutwaterbal) then
 
-      if (interface%steering%init) allocate( outdwcont (nlu,ndayyear,maxgrid) ) ! daily soil moisture, mm
-      if (interface%steering%init) allocate( outdra (ndayyear,maxgrid)     ) ! daily solar irradiation, J/m2
-      if (interface%steering%init) allocate( outdrn (ndayyear,maxgrid)     ) ! daily net radiation, J/m2
-      if (interface%steering%init) allocate( outdppfd (ndayyear,maxgrid)   ) ! daily PPFD, mol/m2
-      if (interface%steering%init) allocate( outdayl(ndayyear,maxgrid)     ) ! daily day length, h
-      if (interface%steering%init) allocate( outdcn (ndayyear,maxgrid)     ) ! daily condensation water, mm
-      if (interface%steering%init) allocate( outdro (nlu,ndayyear,maxgrid) ) ! daily runoff, mm
+      if (interface%steering%init) allocate( outdwcont (nlu,ndayyear,maxgrid) )  ! daily soil moisture, mm
+      if (interface%steering%init) allocate( outdra (ndayyear,maxgrid)     )     ! daily solar irradiation, J/m2
+      if (interface%steering%init) allocate( outdrn (ndayyear,maxgrid)     )     ! daily net radiation, J/m2
+      if (interface%steering%init) allocate( outdppfd (ndayyear,maxgrid)   )     ! daily PPFD, mol/m2
+      if (interface%steering%init) allocate( outdayl(ndayyear,maxgrid)     )     ! daily day length, h
+      if (interface%steering%init) allocate( outdcn (ndayyear,maxgrid)     )     ! daily condensation water, mm
+      if (interface%steering%init) allocate( outdro (nlu,ndayyear,maxgrid) )     ! daily runoff, mm
       if (interface%steering%init) allocate( outdfleach (nlu,ndayyear,maxgrid) ) ! daily leaching fraction, (unitless)
-      if (interface%steering%init) allocate( outdeet(ndayyear,maxgrid)     ) ! daily equilibrium ET, mm
-      if (interface%steering%init) allocate( outdpet(ndayyear,maxgrid)     ) ! daily potential ET, mm
-      if (interface%steering%init) allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
-      if (interface%steering%init) allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
+      if (interface%steering%init) allocate( outdeet(ndayyear,maxgrid)     )     ! daily equilibrium ET, mm
+      if (interface%steering%init) allocate( outdpet(ndayyear,maxgrid)     )     ! daily potential ET, mm
+      if (interface%steering%init) allocate( outdaet(nlu,ndayyear,maxgrid) )     ! daily actual ET, mm
+      if (interface%steering%init) allocate( outdcpa(nlu,ndayyear,maxgrid) )     ! daily Cramer-Prentice-Alpha, (unitless)
 
       outdwcont(:,:,:)  = 0.0
       outdra(:,:)       = 0.0
@@ -1265,6 +1269,15 @@ contains
       outdwcont(:,doy,jpngr)  = phy(:)%wcont
       outdro(:,doy,jpngr)     = soilphys(:)%ro
       outdfleach(:,doy,jpngr) = soilphys(:)%fleach
+
+      if (outenergy) then
+        outdpet(doy,jpngr)    = evap(1)%pet / (evap(1)%econ * 1000.0)
+        outdaet(:,doy,jpngr)  = evap(:)%aet / (evap(1)%econ * 1000.0)
+      else 
+        outdpet(doy,jpngr)    = evap(1)%pet
+        outdaet(:,doy,jpngr)  = evap(:)%aet
+      end if
+
 
     end if
 
@@ -1323,6 +1336,7 @@ contains
 
     return
     
+    888 format (F20.8,E20.8)
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_waterbal

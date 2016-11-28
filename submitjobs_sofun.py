@@ -30,7 +30,11 @@ out_to_file = True
 overwrite = True
 
 ## Use SWBM water balance model instead of SPLASH
-swbm = False
+swbm = True
+if swbm:
+    print 'WARNING: submitting jobs with SWBM option!'
+else:
+    print 'WARNING: submitting jobs with SPLASH option!'
 
 ## define default output variable to check for determining submission, given 'overwrite'
 defaultvar = 'gpp' 

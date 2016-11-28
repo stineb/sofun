@@ -318,11 +318,11 @@ contains
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: fapar
-    real, intent(in)           :: acrown
-    real, intent(in)           :: dppfd
-    real, intent(in)           :: my_mlue
-    real, intent(in)           :: dtemp              ! this day's air temperature
+    real, intent(in)           :: fapar    ! fraction of absorbed photosynthetically active radiation
+    real, intent(in)           :: acrown   ! crown area (=1)
+    real, intent(in)           :: dppfd    ! phton flux density, mol/m2/d
+    real, intent(in)           :: my_mlue  ! light use efficiency
+    real, intent(in)           :: dtemp    ! this day's air temperature, deg C
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
@@ -349,12 +349,12 @@ contains
     ! PPFD (assumes acclimation on a monthly time scale).
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: fapar           ! fraction of absorbed PAR (unitless)
-    real, intent(in)           :: acrown
+    real, intent(in)           :: fapar           ! fraction of absorbed photosynthetically active radiation
+    real, intent(in)           :: acrown          ! crown area (=1)
     real, intent(in)           :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
     real, intent(in)           :: my_mrd_unitiabs
-    real, intent(in)           :: dtemp              ! this day's air temperature
-    real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in)           :: dtemp           ! this day's air temperature, deg C
+    real, intent(in), optional :: cpalpha         ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
     real :: my_drd
@@ -1082,7 +1082,7 @@ contains
     real, parameter :: kTo = 298.15   ! base temperature, K (Prentice, unpublished)
     real, parameter :: kL = 0.0065    ! temperature lapse rate, K/m (Allen, 1973)
     real, parameter :: kG = 9.80665   ! gravitational acceleration, m/s**2 (Allen, 1973)
-    real, parameter :: kR = 8.3143    ! universal gas constant, J/mol/K (Allen, 1973)
+    real, parameter :: kR = 8.3145    ! universal gas constant, J/mol/K (Allen, 1973)
     real, parameter :: kMa = 0.028963 ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
 
     ! function return variable
