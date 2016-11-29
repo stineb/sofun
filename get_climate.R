@@ -67,8 +67,8 @@ startyr_act <- startyr_override
 ## load meta data file for site simulation
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
 nsites <- dim(siteinfo)[1]
-# do.sites <- seq(nsites)
-do.sites <- 21
+do.sites <- seq(nsites)
+do.sites <- 21:nsites
 
 get_clim_cru_monthly <- function( lon, lat, startyr_cru, endyr_cru ){
 
@@ -340,28 +340,36 @@ ingest_meteodata <- function( clim_daily, meteo, in_netrad, in_ppfd ){
 
 fill_gaps_clim_daily <- function( clim_daily ){
 
-  print("filling gaps ...")
+  # print("filling gaps ...")
   
   cols <- names( clim_daily )[5:ncol( clim_daily )]
 
   for (icol in cols){
 
     if ( grepl( "prec", icol ) ){
+
       if (any(is.na(clim_daily[[ icol ]]))){
         clim_daily[[ icol ]][ is.na(clim_daily[[ icol ]]) ] <- 0.0
       }
+
     } else {
-      if (any(is.na(clim_daily[[ icol ]]))){
-        print( paste( "found gaps for", icol ) )
+
+      if ( any(is.na(clim_daily[[ icol ]])) && any(!is.na(clim_daily[[ icol ]])) ){
+        # print( paste( "found gaps for", icol ) )
         year_dec <- init_daily_dataframe( clim_daily$year[1], clim_daily$year[dim(clim_daily)[1]] )$year_dec
         if (dim(clim_daily)[1]==length(year_dec)){
           # print("using approx() function")
           clim_daily[[ icol ]] <- approx( year_dec, clim_daily[[ icol ]], xout=year_dec )$y
         }
+      }
+
+      if ( any(is.na(clim_daily[[ icol ]]))  && any(!is.na(clim_daily[[ icol ]])) ){
+        # print( paste( "found gaps for", icol ) )
         ## if there are NAs at the end of the columns, fill with last non-NA value
-        # print("filling gaps at the tail")
+        # print("XXXXX filling gaps at the tail")
+        # print( icol )
         # print("before:")
-        # print(clim_daily[[ icol ]])
+        # print( head( clim_daily[[ icol ]] ) )
         for (idx in 1:nrow(clim_daily)){
           if ( any( is.na( tail( clim_daily[[ icol ]], n=idx ) ) ) && any( !is.na( tail( clim_daily[[ icol ]], n=(idx+1) ) ) ) ){
             clim_daily[[ icol ]][ (nrow(clim_daily)-idx+1):nrow(clim_daily) ] <- clim_daily[[ icol ]][ (nrow(clim_daily)-idx) ]
@@ -369,8 +377,9 @@ fill_gaps_clim_daily <- function( clim_daily ){
           }
         }
         # print("after:")
-        # print(clim_daily[[ icol ]])
-      }          
+        # print( head( clim_daily[[ icol ]] ) )
+      }  
+
     }
 
   }
@@ -388,6 +397,8 @@ for ( idx in do.sites ){
   sitename <- as.character(siteinfo$mysitename[idx])
   lon      <- siteinfo$lon[idx]
   lat      <- siteinfo$lat[idx]
+
+  print( paste("site name", sitename))
 
   dirnam_clim_csv      <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", sep="" )
   filnam_clim_csv      <- paste( dirnam_clim_csv, "clim_daily_", sitename, ".csv", sep="" )  # NOT containing station-specific meteo data
@@ -516,14 +527,9 @@ for ( idx in do.sites ){
       }
 
       ##--------------------------------------------------------------------
-      ## Gap filling: interpolate linearly (temp and vpd) or set to zero (prec)
-      ##--------------------------------------------------------------------
-      clim_daily <- fill_gaps_clim_daily( clim_daily )
-
-      ##--------------------------------------------------------------------
       ## Save (massive) daily now containing station-specific data to CSV file
       ##--------------------------------------------------------------------
-      print( paste( "writing climate data frame with meteo data into CSV file ", filnam_clim_csv, "..." ) )
+      print( paste( "writing climate data frame with meteo data into CSV file ", filnam_clim_byst_csv, "..." ) )
       system( paste( "mkdir -p", dirnam_clim_csv ) )   
       write.csv( clim_daily, file=filnam_clim_byst_csv, row.names=FALSE )
 
@@ -549,9 +555,22 @@ for ( idx in do.sites ){
   startyr_act <- min( clim_daily$year )
   endyr_act   <- max( clim_daily$year )
 
+  ## Get simulation years (equal to years in meteo data if available)
+  if (found){
+    simyears <- unique(meteo$year)
+  } else {
+    simyears <- startyr_act:endyr_act
+  }
+
   ## select priority of sources for SOFUN-formatted files:
   out <- subset( clim_daily, select=c( doy, moy, dom, year ) )
-  
+
+  ## Delete directories that are not needed anymore
+  for (yr in startyr_act:endyr_act){
+    dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
+    system( paste( "rm -rf", dirnam ) )
+  }
+
   ## temperature: 1. meteo, 2. watch, 3. cru_int
   out$temp <- clim_daily$temp_meteo
   out$temp[ which( is.na( out$temp ) ) ] <- clim_daily$temp_watch[ which( is.na( out$temp ) ) ]
@@ -582,31 +601,39 @@ for ( idx in do.sites ){
     out$netrad <- clim_daily$netrad
   }
 
-  for ( yr in startyr_act:endyr_act ){
+  ## reduce data frame
+  out <- out[ is.element(out$year, simyears), ]
+
+  ## write SOFUN-formatted input files
+  for ( yr in simyears ){
+
+    ## Subsetting and gap filling: interpolate linearly (temp and vpd) or set to zero (prec)
+    tmp <- out[ which( out$year==yr ), ]
+    tmp <- fill_gaps_clim_daily( tmp )
 
     dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/climate/", sitename, "/", as.character(yr), "/", sep="" )
     system( paste( "mkdir -p", dirnam ) )
 
     filnam <- paste( dirnam, "dtemp_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, out$temp[ which( out$year==yr ) ] )
+    write_sofunformatted( filnam, tmp$temp )
     
     filnam <- paste( dirnam, "dprec_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, out$prec[ which( out$year==yr ) ] )
+    write_sofunformatted( filnam, tmp$prec )
 
     filnam <- paste( dirnam, "dfsun_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, ( 100.0 - out$ccov[ which( out$year==yr ) ] ) / 100.0 )
+    write_sofunformatted( filnam, ( 100.0 - tmp$ccov ) / 100.0 )
 
     filnam <- paste( dirnam, "dvpd_", sitename, "_", yr, ".txt", sep="" )
-    write_sofunformatted( filnam, out$vpd[ which( out$year==yr ) ] )
+    write_sofunformatted( filnam, tmp$vpd )
 
     if (in_netrad){
       filnam <- paste( dirnam, "dnetrad_", sitename, "_", yr, ".txt", sep="" )
-      write_sofunformatted( filnam, out$netrad[ which( out$year==yr ) ] )
+      write_sofunformatted( filnam, tmp$netrad )
     }
 
     if (in_ppfd){
       filnam <- paste( dirnam, "dppfd_", sitename, "_", yr, ".txt", sep="" )
-      write_sofunformatted( filnam, out$ppfd[ which( out$year==yr ) ] )
+      write_sofunformatted( filnam, tmp$ppfd )
     }
 
   }
