@@ -434,6 +434,13 @@ for ( idx in do.sites ){
     endyr   <- endyr_wfdei
     clim_daily <- add_watch( clim_daily, lon, lat, startyr, endyr )
 
+    ##--------------------------------------------------------------------
+    ## Save daily without station-specific data to CSV file
+    ##--------------------------------------------------------------------
+    print( paste( "writing climate data frame with meteo data into CSV file ", filnam_clim_csv, "..." ) )
+    system( paste( "mkdir -p", dirnam_clim_csv ) )   
+    write.csv( clim_daily, file=filnam_clim_csv, row.names=FALSE )
+
   } else {
     ##--------------------------------------------------------------------
     ## Read daily data from CSV 
