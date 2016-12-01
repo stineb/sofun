@@ -42,7 +42,7 @@ source( paste( myhome, "sofun/getin/get_meteo_swbm_meteoschweiz.R", sep="" ) )
 source( paste( myhome, "sofun/getin/calc_netrad_orth.R", sep="" ) )
 source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
 
-overwrite <- FALSE
+overwrite <- TRUE
 overwrite_byst <- TRUE
 
 simsuite <- "fluxnet2015"
@@ -50,7 +50,7 @@ simsuite <- "fluxnet2015"
 in_ppfd   <- TRUE
 in_netrad <- FALSE
 
-startyr_override <- 1980
+startyr_override <- 1990
 
 ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)
@@ -67,8 +67,9 @@ startyr_act <- startyr_override
 ## load meta data file for site simulation
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ), as.is=TRUE )
 nsites <- dim(siteinfo)[1]
-do.sites <- seq(nsites)
-do.sites <- 21:nsites
+# do.sites <- seq(nsites)
+# do.sites <- 21:nsites
+do.sites <- 1:1
 
 get_clim_cru_monthly <- function( lon, lat, startyr_cru, endyr_cru ){
 
@@ -168,7 +169,7 @@ expand_clim_cru_monthly <- function( clim_cru_monthly ){
   # clim_daily$irad <- rep( NA, dim(clim_daily)[1] )
 
   imo <- 1
-  for (iyr in seq( length(clim_cru_monthly$prec_cru_gen)/nmonth ) ){
+  for (iyr in seq(dim(clim_cru_monthly)[1]/nmonth) ){
 
     use_year <- clim_cru_monthly$year[imo]
     use_year_pvy <- max(startyr_cru,use_year-1)
@@ -178,20 +179,21 @@ expand_clim_cru_monthly <- function( clim_cru_monthly ){
     ##--------------------------------------------------------------------
     ## air temperature: interpolate using polynomial
     ##--------------------------------------------------------------------
-    #mtemp     <- select( filter( clim_cru_monthly, year==use_year ), temp )$temp
     mtemp <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$temp
-    #mtemp_pvy <- select( filter( clim_cru_monthly, year==max(startyr_cru,use_year-1) ), temp )$temp
     mtemp_pvy <- clim_cru_monthly[ clim_cru_monthly$year==use_year_pvy, ]$temp
-    #mtemp_nxt <- select( filter( clim_cru_monthly, year==min(endyr_cru,use_year+1) ), temp )$temp
     mtemp_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$temp
+    if (length(mtemp_pvy)==0){
+      mtemp_pvy <- mtemp
+    }
+    if (length(mtemp_nxt)==0){
+      mtemp_nxt <- mtemp
+    }
     clim_daily$temp_cru_int[ idxs ] <- monthly2daily( mtemp, "polynom", mtemp_pvy[nmonth], mtemp_nxt[1] )
 
     ##--------------------------------------------------------------------
     ## precipitation: interpolate weather generator
     ##--------------------------------------------------------------------
-    #mprec <- select( filter( clim_cru_monthly, year==use_year ), prec )$prec
     mprec <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$prec
-    #mwetd <- select( filter( clim_cru_monthly, year==use_year ), wetd )$wetd
     mwetd <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$wetd
     clim_daily$prec_cru_gen[ idxs ] <- get_daily_prec( mprec, mwetd )
 
@@ -201,10 +203,16 @@ expand_clim_cru_monthly <- function( clim_cru_monthly ){
     mccov     <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$ccov
     mccov_pvy <- clim_cru_monthly[ clim_cru_monthly$year==use_year_pvy, ]$ccov
     mccov_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$ccov
+    if (length(mccov_pvy)==0){
+      mccov_pvy <- mccov
+    }
+    if (length(mccov_nxt)==0){
+      mccov_nxt <- mccov
+    }
     clim_daily$ccov_cru_int[ idxs ] <- monthly2daily( mccov, "polynom", mccov_pvy[nmonth], mccov_nxt[1] )
 
     ## Reduce CCOV to a maximum 100%
-    clim_daily$ccov[ clim_daily$ccov>100.0 ] <- 100.0
+    clim_daily$ccov_cru_int[ clim_daily$ccov_cru_int>100.0 ] <- 100.0
 
     ##--------------------------------------------------------------------
     ## VPD: interpolate using polynomial
@@ -212,13 +220,18 @@ expand_clim_cru_monthly <- function( clim_cru_monthly ){
     mvpd     <- clim_cru_monthly[ clim_cru_monthly$year==use_year, ]$vpd
     mvpd_pvy <- clim_cru_monthly[ clim_cru_monthly$year==use_year_pvy, ]$vpd
     mvpd_nxt <- clim_cru_monthly[ clim_cru_monthly$year==use_year_nxt, ]$vpd
+    if (length(mvpd_pvy)==0){
+      mvpd_pvy <- mvpd
+    }
+    if (length(mvpd_nxt)==0){
+      mvpd_nxt <- mvpd
+    }
     clim_daily$vpd_vap_cru_temp_cru_int[ idxs ] <- monthly2daily( mvpd, "polynom", mvpd_pvy[nmonth], mvpd_nxt[1] )
 
     ##--------------------------------------------------------------------
     ## irradiance - nothing done yet. Is this identical to WATCH SW-DOWN (+LW-DOWN)? 
     ## (Long-wave downwards surface radiation W/m2 flux (average over previous 3 hours))
     ##--------------------------------------------------------------------
-
     imo <- imo + nmonth
 
   }
@@ -421,9 +434,6 @@ for ( idx in do.sites ){
     nyrs    <- length( startyr:endyr_cru )
     clim_cru_monthly <- clim_cru_monthly[ clim_cru_monthly$year >= startyr, ]
 
-    ##--------------------------------------------------------------------
-    ## Expand monthly data frame to a daily data frame by interpolation
-    ##--------------------------------------------------------------------
     clim_daily <- expand_clim_cru_monthly( clim_cru_monthly )
 
     ##--------------------------------------------------------------------
@@ -454,22 +464,22 @@ for ( idx in do.sites ){
       print("I'm in the wrong place.")
     }
 
-    ## XXX das ist nur provisorisch>>>>>>>>>>
-    library( dplyr )
-    if (!is.null(clim_daily$temp) ){
-      clim_daily$temp_watch <- clim_daily$temp
-    }
-    if ( !is.null(clim_daily$prec) ){
-      clim_daily$prec_watch <- clim_daily$prec
-    }
-    if (!is.null(clim_daily$ccov) ){
-      clim_daily$ccov_cru_int <- clim_daily$ccov
-    }
-    if ( !is.null(clim_daily$vpd) ){
-      clim_daily$vpd_vap_cru_temp_cru_int <- clim_daily$vpd
-    }
-    clim_daily <- select( clim_daily, doy, moy, dom, year, temp_watch, prec_watch, ccov_cru_int, vpd_vap_cru_temp_cru_int )      
-    ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # ## XXX das ist nur provisorisch>>>>>>>>>>
+    # library( dplyr )
+    # if (!is.null(clim_daily$temp) ){
+    #   clim_daily$temp_watch <- clim_daily$temp
+    # }
+    # if ( !is.null(clim_daily$prec) ){
+    #   clim_daily$prec_watch <- clim_daily$prec
+    # }
+    # if (!is.null(clim_daily$ccov) ){
+    #   clim_daily$ccov_cru_int <- clim_daily$ccov
+    # }
+    # if ( !is.null(clim_daily$vpd) ){
+    #   clim_daily$vpd_vap_cru_temp_cru_int <- clim_daily$vpd
+    # }
+    # clim_daily <- select( clim_daily, doy, moy, dom, year, temp_watch, prec_watch, ccov_cru_int, vpd_vap_cru_temp_cru_int )      
+    # ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
   }
 
   if ( overwrite_byst || !file.exists( filnam_clim_byst_csv )){
