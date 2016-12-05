@@ -124,7 +124,13 @@ contains
     ! temporary variables
     real :: eff                                     ! microbial growth efficiency 
     real :: ntoc_crit                               ! critical N:C ratio below which immobilisation occurrs  
-    real :: Nreq_S                                  ! N required in litter decomposition to maintain SOM C:N
+    type(carbon)   :: cinsoil_fs, cinsoil_sl        ! C transfer from litter to soil per time step (gC m-2 d-1)
+    type(nitrogen) :: ninsoil_fs, ninsoil_sl        ! N transfer from litter to soil per time step (gN m-2 d-1)
+    type(nitrogen) :: n_immo_litt                   ! gross N immobilisation by litter decomposition (difference between N transfer and N from decomposing litter) (gN m-2 d-1)
+
+    type(nitrogen) :: before_fs, before_sl
+
+    ! real :: Nreq_S                                  ! N required in litter decomposition to maintain SOM C:N
     real :: Nfix                                    ! temporary variable, N fixation implied in litter decomposition,
     real :: rest                                    ! temporary variable
     real :: req                                     ! N required for litter decomposition 
@@ -261,28 +267,66 @@ contains
         ntoc_save_sl = ntoc( psoil_sl(lu,jpngr), default=0.0 )
 
         ! move fraction 'eff' of C from litter to soil
-        call ccp( cfrac( eff*params_littersom%fastfrac      , dlitt%c ), psoil_fs(lu,jpngr)%c )
-        call ccp( cfrac( eff*(1.0-params_littersom%fastfrac), dlitt%c ), psoil_sl(lu,jpngr)%c )
+        cinsoil_fs = cfrac( eff * params_littersom%fastfrac      , dlitt%c )
+        cinsoil_sl = cfrac( eff * (1.0-params_littersom%fastfrac), dlitt%c )
+
+        call ccp( cinsoil_fs, psoil_fs(lu,jpngr)%c )
+        call ccp( cinsoil_sl, psoil_sl(lu,jpngr)%c )
 
         ! move fraction '(1-eff)' of C to heterotrophic respiration
         call ccp( cfrac( (1.0-eff), dlitt%c ), drhet(lu) )
 
         ! get average litter -> soil flux for analytical soil C equilibration
         if ( interface%steering%average_soil ) then
-          mean_insoil_fs(lu,jpngr) = mean_insoil_fs(lu,jpngr) + eff * params_littersom%fastfrac * dlitt%c%c12
-          mean_insoil_sl(lu,jpngr) = mean_insoil_sl(lu,jpngr) + eff * (1.0-params_littersom%fastfrac) * dlitt%c%c12
+          mean_insoil_fs(lu,jpngr) = mean_insoil_fs(lu,jpngr) + cinsoil_fs%c12
+          mean_insoil_sl(lu,jpngr) = mean_insoil_sl(lu,jpngr) + cinsoil_sl%c12
         end if
+
+        !----------------------------------------------------------------    
+        ! NITROGEN LITTER -> SOIL TRANSFER
+        !----------------------------------------------------------------
+        !! hopefully this is numerically robust:
+        before_fs = psoil_fs(lu,jpngr)%n
+        before_sl = psoil_sl(lu,jpngr)%n
+
+        psoil_fs(lu,jpngr)%n%n14 = psoil_fs(lu,jpngr)%c%c12 * params_littersom%ntoc_soil
+        psoil_sl(lu,jpngr)%n%n14 = psoil_sl(lu,jpngr)%c%c12 * params_littersom%ntoc_soil
+
+        ninsoil_fs = nminus( psoil_fs(lu,jpngr)%n, before_fs )
+        ninsoil_sl = nminus( psoil_sl(lu,jpngr)%n, before_sl )
+
+        ! ninsoil = psoil_fs(lu,jpngr)%n%n14 + psoil_sl(lu,jpngr)%n%n14 - before
+        n_immo_litt = nminus( nplus( ninsoil_fs, ninsoil_sl ), dlitt%n )
+
+        ! !! This is numerically imprecise: 
+        ! ! transfer of N is determined by prescribed soil N:C ratio and amount of C added to soil pool
+        ! ninsoil_fs = nitrogen( cinsoil_fs%c12 * params_littersom%ntoc_soil )
+        ! ninsoil_sl = nitrogen( cinsoil_sl%c12 * params_littersom%ntoc_soil )
+
+        ! ! before = ntoc( psoil_fs(lu,jpngr), default=0.0 )
+        ! call ncp( ninsoil_fs, psoil_fs(lu,jpngr)%n )
+        ! call ncp( ninsoil_sl, psoil_sl(lu,jpngr)%n )
+        ! ! after  = ntoc( psoil_fs(lu,jpngr), default=0.0 )
+        ! ! if (abs(after - params_littersom%ntoc_soil)>1.d-5) then
+        ! !   stop 'hmmm'
+        ! ! end if
+        ! print*,'B: psoil_fs', cton( psoil_fs(lu,jpngr), default=0.0 )
+        ! print*,'B: psoil_sl', cton( psoil_sl(lu,jpngr), default=0.0 )
+
+
+        ! ! gross N immobilisation by litter decomposition
+        ! n_immo_litt = nminus( nplus( ninsoil_fs, ninsoil_sl ), dlitt%n )
 
         !----------------------------------------------------------------    
         ! N MINERALISATION
         !----------------------------------------------------------------    
-        ! N requirement to maintain rS (SOM N:C ratio)
-        Nreq_S = dlitt%c%c12 * eff * params_littersom%ntoc_soil  ! 1/cton_soil = rS
+        ! ! N requirement to maintain rS (SOM N:C ratio)
+        ! Nreq_S = ninsoil_fs + ninsoil_sl  ! 1/cton_soil = rS
 
         ! OUTPUT COLLECTION
-        outanreq(lu,jpngr)      = outanreq(lu,jpngr)      + Nreq_S
-        outaclit2soil(lu,jpngr) = outaclit2soil(lu,jpngr) + dlitt%c%c12 * eff
-        outanlit2soil(lu,jpngr) = outanlit2soil(lu,jpngr) + Nreq_S
+        ! outanreq(lu,jpngr)      = outanreq(lu,jpngr)      + ninsoil_fs + ninsoil_sl
+        outaclit2soil(lu,jpngr) = outaclit2soil(lu,jpngr) + cinsoil_fs%c12 + cinsoil_sl%c12
+        outanlit2soil(lu,jpngr) = outanlit2soil(lu,jpngr) + ninsoil_fs%n14 + ninsoil_sl%n14
 
         ! write(0,*) 'outaclit2soil(lu,jpngr)',outaclit2soil(lu,jpngr)
         ! outanlit2soil(pft,jpngr) = outanlit2soil(pft,jpngr) + dlitt%n%n14
@@ -297,13 +341,13 @@ contains
         ! This corresponds to Eq. S3 in Manzoni et al., 2010, but ...
         ! rS takes the place of rB.
         !----------------------------------------------------------------    
-        netmin_litt = dlitt%n%n14 - Nreq_S
+        netmin_litt = -1.0 * n_immo_litt%n14
 
         Nfix = 0.0
 
         ! OUTPUT COLLECTION
         if (interface%params_siml%loutlittersom) then
-          outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr) + netmin_litt
+          outdnetmin(lu,doy,jpngr)      = outdnetmin(lu,doy,jpngr)      + netmin_litt
           outdnetmin_litt(lu,doy,jpngr) = outdnetmin_litt(lu,doy,jpngr) + netmin_litt
         end if
         
@@ -361,10 +405,6 @@ contains
           end if
           
         end if
-
-        ! Nreq_S (= dlitt - netmin) remains in the system: 
-        call ncp( nfrac( params_littersom%fastfrac      , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
-        call ncp( nfrac( (1.0-params_littersom%fastfrac), nitrogen(Nreq_S) ), psoil_sl(lu,jpngr)%n )
 
         if ( abs( cton(psoil_fs(lu,jpngr)) - params_littersom%cton_soil ) > 1e-5 ) then
           write(0,*) 'psoil_fs', cton( psoil_fs(lu,jpngr) )
