@@ -129,6 +129,12 @@ contains
     
     real       :: doc_d                  ! aerobic pools
 
+    ! xxx debug
+    real :: totnin
+    real :: anleach
+    real :: bal0, bal1
+    real :: no3_inc_save
+
     ! Variables N balance test
     logical, parameter :: baltest_trans = .false.  ! set to false to do mass conservation test during transient simulation
     logical :: verbose = .false.  ! set to true to activate verbose mode
@@ -144,17 +150,6 @@ contains
       baltest = .false.
     end if
 
-    !-------------------------------------------------------------------------
-    ! Record for balances
-    !-------------------------------------------------------------------------
-    ! all pools plus all losses summed up
-    if (verbose) print*,'              with state variables:'
-    if (verbose) print*,'              ninorg = ', pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + pno2(1,jpngr)
-    if (verbose) print*,'              nloss  = ', dnloss(1)
-    if (verbose) print*,'              dndep  = ', dnoydep + dnhxdep
-    if (baltest) nbal_before_1 = pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + pno2(1,jpngr) + dnoydep + dnhxdep
-    if (baltest) nbal_before_2 = pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) + dnoydep + dnhxdep
-    if (verbose) print*,'executing ntransform() ... '
 
     !///////////////////////////////////////////////////////////////////////
     ! INITIALIZATION 
@@ -164,6 +159,9 @@ contains
     ddenitr(:) = 0.0
     dnitr(:)   = 0.0
     dnleach(:) = 0.0
+
+    ! xxx debug
+    no3_inc_save = 0.0
     
     if ( dm==1 .and. mo==1 ) then
       !///////////////////////////////////////////////////////////////////////
@@ -182,10 +180,18 @@ contains
         nh3max = 0.00001
       endif
       
+      ! xxx debug
+      totnin = 0.0
+      anleach = 0.0
+
     endif
-          
+
+
     ! LOOP OVER GRIDCELL LAND UNITS
     do lu=1,nlu
+
+      ! xxx debug
+      ! bal0 = pno3(lu,jpngr)%n14 + dnoydep + dnleach(lu) + ddenitr(lu) + no3_inc_save
 
       !-------------------------------------------------------------------------
       ! Add N deposition to inorganic pools
@@ -196,20 +202,26 @@ contains
       pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 + dnoydep
       pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + dnhxdep
 
+      ! xxx debug
+      ! print*,'dnoydep ', dnoydep
+      ! print*,'dnhxdep ', dnhxdep
+      totnin = totnin + dnoydep + dnhxdep
+      ! print*,'totnin ', totnin
+
       ! ! xxx try: 
       ! pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 + 10.0 / 365.0
       ! pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + 10.0 / 365.0
 
 
-      !-------------------------------------------------------------------------
-      ! Record for balances
-      !-------------------------------------------------------------------------
-      ! all pools plus all losses summed up
-      if (verbose) print*,'              before:'
-      if (verbose) print*,'              no3 = ', pno3(lu,jpngr)%n14
-      if (verbose) print*,'              no4 = ', pnh4(lu,jpngr)%n14
-      if (baltest) no3bal_0 = pno3(lu,jpngr)%n14
-      if (baltest) nh4bal_0 = pnh4(lu,jpngr)%n14
+      ! !-------------------------------------------------------------------------
+      ! ! Record for balances
+      ! !-------------------------------------------------------------------------
+      ! ! all pools plus all losses summed up
+      ! if (verbose) print*,'              before:'
+      ! if (verbose) print*,'              no3 = ', pno3(lu,jpngr)%n14
+      ! if (verbose) print*,'              no4 = ', pnh4(lu,jpngr)%n14
+      ! if (baltest) no3bal_0 = pno3(lu,jpngr)%n14
+      ! if (baltest) nh4bal_0 = pnh4(lu,jpngr)%n14
  
 
       ! must rather be wtot_up which includes water below permanent wilting point (see waterbalance.F).
@@ -238,6 +250,22 @@ contains
       dnleach(lu)        = pno3(lu,jpngr)%n14 * soilphys(lu)%fleach
       pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - dnleach(lu)
       dnloss(lu)         = dnloss(lu) + dnleach(lu)
+      ! print*,'soilphys(lu)%fleach', soilphys(lu)%fleach
+
+      ! xxx debug
+      anleach = anleach + dnleach(lu)
+
+      !-------------------------------------------------------------------------
+      ! Record for balances
+      !-------------------------------------------------------------------------
+      ! all pools plus all losses summed up
+      if (verbose) print*,'executing ntransform() ... '
+      if (verbose) print*,'              with state variables:'
+      if (verbose) print*,'              ninorg = ', pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + pno2(1,jpngr)
+      if (verbose) print*,'              nloss  = ', dnloss(1)
+      if (verbose) print*,'              dndep  = ', dnoydep + dnhxdep
+      if (baltest) nbal_before_1 = pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + dnloss(1) + no_w(1,jpngr) + no_d(1,jpngr) + n2o_w(1,jpngr) + n2o_d(1,jpngr) + n2_w(1,jpngr) + pno2(1,jpngr) + dnoydep + dnhxdep
+      if (baltest) nbal_before_2 = pno3(1,jpngr)%n14 + pnh4(1,jpngr)%n14 + ddenitr(1) + dnitr(1) + dnvol(1) + dnleach(1) + dnoydep + dnhxdep
 
 
       !///////////////////////////////////////////////////////////////////////
@@ -293,21 +321,24 @@ contains
       no3_inc         = no3_inc - n2o_inc
       n2o_d(lu,jpngr) = n2o_d(lu,jpngr) + n2o_inc
       no3_d           = no3_d + no3_inc
+
+      ! xxx debug
+      no3_inc_save = no3_inc
             
       ! if N loss is defined w.r.t. reduction in NH4 and NO3 pools, then this is the correct formulation:
       dnloss(lu) = dnloss(lu) + n2o_inc + no_inc
 
-      ! xxx debug
-      if (baltest) no3bal_1 = no3_w + no3_d - no3_inc
-      if (baltest) nh4bal_1 = nh4_w + nh4_d + dnitr(lu)
+      ! ! xxx debug
+      ! if (baltest) no3bal_1 = no3_w + no3_d - no3_inc
+      ! if (baltest) nh4bal_1 = nh4_w + nh4_d + dnitr(lu)
 
-      if (baltest) nbal1 = no3bal_1 - no3bal_0
-      if (baltest) nbal2 = nh4bal_1 - nh4bal_0
-      if (verbose) print*,'              --- preliminary balance after nitrification '
-      if (verbose) print*,'              ', nbal1
-      if (verbose) print*,'              ', nbal2
-      if (baltest .and. abs(nbal1)>eps) stop 'balance 1 not satisfied'
-      if (baltest .and. abs(nbal2)>eps) stop 'balance 2 not satisfied'
+      ! if (baltest) nbal1 = no3bal_1 - no3bal_0
+      ! if (baltest) nbal2 = nh4bal_1 - nh4bal_0
+      ! if (verbose) print*,'              --- preliminary balance after nitrification '
+      ! if (verbose) print*,'              ', nbal1
+      ! if (verbose) print*,'              ', nbal2
+      ! if (baltest .and. abs(nbal1)>eps) stop 'preliminary balance 1 not satisfied'
+      ! if (baltest .and. abs(nbal2)>eps) stop 'preliminary balance 2 not satisfied'
 
 
       !///////////////////////////////////////////////////////////////////////
@@ -385,7 +416,7 @@ contains
       pno3(lu,jpngr)%n14 = no3_w + no3_d
       pno2(lu,jpngr)     = no2_w + no2_d
 
-      no  = no_w(lu,jpngr) + no_d(lu,jpngr)
+      no  = no_w(lu,jpngr)  + no_d(lu,jpngr)
       n2o = n2o_w(lu,jpngr) + n2o_d(lu,jpngr)
       n2  = n2_w(lu,jpngr)
 
@@ -397,9 +428,9 @@ contains
 
       ! Total gaseous escape
       !------------------------------------------------------------------
-      dno(lu) = ftemp_diffus*(1.0-soilphys(lu)%wscal)*no
-      dn2o(lu)= ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2o
-      dn2(lu) = ftemp_diffus*(1.0-soilphys(lu)%wscal)*n2
+      dno(lu) = ftemp_diffus * ( 1.0 - soilphys(lu)%wscal ) * no
+      dn2o(lu)= ftemp_diffus * ( 1.0 - soilphys(lu)%wscal ) * n2o
+      dn2(lu) = ftemp_diffus * ( 1.0 - soilphys(lu)%wscal ) * n2
 
       ! if N loss is defined w.r.t. gaseous escape, then this is the correct formulation:
       ! dnloss(lu) = dnloss(lu) + dno(lu) + dn2o(lu) + dn2(lu)
@@ -421,8 +452,20 @@ contains
       n2o_w(lu,jpngr) = n2o_w(lu,jpngr)-tmp
                  
       n2_w(lu,jpngr) = n2_w(lu,jpngr) - dn2(lu)
+
+      ! xxx debug
+      ! bal1 = pno3(lu,jpngr)%n14 + dnleach(lu) + ddenitr(lu) - no3_inc_save
+      print*,'   --- balance: '
+      print*,'       d( no3 )', bal1 - bal0
+      if (abs(bal1-bal0)>eps) stop 'XXX balance not satisfied'
       
     enddo                                                 ! lu
+
+    ! xxx debug
+    if ( dm==31 .and. mo==12 ) then
+      ! print*,'total actual N input ', totnin
+      print*,'anleach ', anleach
+    end if
 
     !-------------------------------------------------------------------------
     ! Test mass conservation
@@ -662,9 +705,14 @@ contains
       outano3(:,jpngr)    = outano3(:,jpngr) + pno3(:,jpngr)%n14 / ndayyear
       outanh4(:,jpngr)    = outanh4(:,jpngr) + pnh4(:,jpngr)%n14 / ndayyear
       outanloss(:,jpngr)  = outanloss(:,jpngr) + dnloss(:)
+      ! outanloss(:,jpngr)  = outanloss(:,jpngr) + ddenitr(:) + dnitr(:) + dnvol(:) + dnleach(:)
       outadenitr(:,jpngr) = outadenitr(:,jpngr) + ddenitr(:)
       outan2o(:,jpngr)    = outan2o(:,jpngr) + dn2o(:)
 
+    end if
+
+    if (doy==ndayyear) then
+      print*,'annual total N loss :', outanloss(:,jpngr)
     end if
 
   end subroutine getout_daily_ntransform
