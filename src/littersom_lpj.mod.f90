@@ -411,7 +411,7 @@ contains
       ! soil decay
       psoil_fs(lu,jpngr) = orgminus( psoil_fs(lu,jpngr), dsoil_fs )
       psoil_sl(lu,jpngr) = orgminus( psoil_sl(lu,jpngr), dsoil_sl )
-      
+
       ! C to heterotrophic respiration
       drhet(lu) = cplus( drhet(lu), dsoil_fs%c, dsoil_sl%c )
 
