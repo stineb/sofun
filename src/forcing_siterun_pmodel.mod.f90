@@ -199,7 +199,7 @@ contains
     else
       out_climate(jpngr)%dnetrad(:) = dummy
     end if
-    if (in_ppfd .and. in_netrad) then
+    if ( in_netrad .and. in_ppfd ) then
       out_climate(jpngr)%dfsun(:) = dummy
     else
       out_climate(jpngr)%dfsun(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')

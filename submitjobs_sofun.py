@@ -24,7 +24,7 @@ simsuite = 'fluxnet2015'
 ## set options
 ##--------------------------------------------------------------------
 ## standard outputs written to file (otherwise to screen)
-out_to_file = True
+out_to_file = False
 
 ## overwrite results
 overwrite = True
@@ -141,5 +141,8 @@ for index, row in siteinfo.iterrows():
 
         else:
             print 'NOT submitting for experiment ' + row['expname'] + '...'
+
+    # raw_input('Press any key to continue')
+
 
 
