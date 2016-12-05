@@ -20,7 +20,7 @@ ifeq ($(PROFILE),pgi)
 # Compiler and options
 FCOM=pgf95
 CPPFLAGS=-E
-COMPFLAGS=-Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
+COMPFLAGS=-r8 -Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
 DPCOMPFLAGS=-r8 -Mextend -Mfreeform  -Mdalign -Kieee -Ktrap=fp -O2
 #COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
 DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform

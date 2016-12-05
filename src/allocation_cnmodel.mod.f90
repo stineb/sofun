@@ -824,7 +824,16 @@ contains
 
     if (clabl>0.0 .and. nlabl>0.0) then
 
-      ! use remainder for allocation to roots
+      ! XXX TRY SOMETHING ALONG THESE LINES: SHOULD BE NUMERICALLY MORE PRECISE
+      ! ! use remainder for allocation to roots
+      ! print*,'a', params_plant%growtheff * clabl
+      ! print*,'b', params_pft_plant(pft)%r_cton_root * nlabl
+
+      ! mydclabl = min( clabl, 1.0 / params_plant%growtheff * params_pft_plant(pft)%r_cton_root * nlabl )
+      ! mydnlabl = 
+
+      !! XXX THIS IS NUMERICALLY NOT PRECISE UNLESS COMPILED AT DOUBLE PRECISION!
+
       mydcroot = min( params_plant%growtheff * clabl, params_pft_plant(pft)%r_cton_root * nlabl )
       mydnroot = min( mydcroot * params_pft_plant(pft)%r_ntoc_root, nlabl )
 
@@ -840,6 +849,8 @@ contains
       nlabl  = nlabl - mydnroot
 
       if ( clabl < -1.0*eps ) then
+        print*,'clabl ', clabl
+        print*,'dclabl', dclabl
         stop 'ALLOCATE_ROOT: trying to remove too much from labile pool: root C'
       else if ( clabl < 0.0 ) then
         ! numerical imprecision
