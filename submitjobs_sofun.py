@@ -15,8 +15,9 @@ from subprocess import call
 ## - "atkin"
 ## - "olson"
 ## - "olson_cmodel"
+## - "gradstep"
 ##--------------------------------------------------------------------
-simsuite = 'swissface'
+simsuite = 'gradstep'
 
 ##--------------------------------------------------------------------
 ## set options
@@ -38,7 +39,7 @@ do_pmodel  = False
 do_cmodel  = False
 
 ## C-N model setup
-if simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi' or simsuite == 'olson':
+if simsuite == 'gcme' or simsuite == 'swissface' or simsuite == 'fluxnet_cnmodel' or simsuite == 'campi' or simsuite == 'olson' or simsuite == 'gradstep':
     do_cnmodel = True
 
 ## C-model setup (fixed allocation)
