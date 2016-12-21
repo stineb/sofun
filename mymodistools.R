@@ -18,6 +18,7 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
     
     print( paste( "==========================="))
     print( paste( "DOWNLOADING MODIS DATA FOR:"))
+    print( paste( "site :", sitename ) )
     print( paste( "lon  :", lon ) )
     print( paste( "lat  :", lat ) )
     print( paste( "start:", start.date ) )
