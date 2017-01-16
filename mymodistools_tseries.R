@@ -1,4 +1,4 @@
-download_subset_modis <- function( lon, lat, sitename, TimeSeriesLength, end.date, savedir, overwrite, ignore_missing=FALSE ){
+download_subset_modis <- function( lon, lat, bands, prod, sitename, TimeSeriesLength, end.date, savedir, overwrite, ignore_missing=FALSE ){
 
   # ######################
   # end.date <- Sys.Date()
@@ -16,6 +16,10 @@ download_subset_modis <- function( lon, lat, sitename, TimeSeriesLength, end.dat
   ## Find file from which (crude) data is read
   filn <- list.files( path=savedir, pattern="*asc" )
 
+  print(filn)
+  print(overwrite)
+  print(savedir)
+
   if ( (length(filn)==0||overwrite) && !ignore_missing ){
 
     print( paste( "deleting existing file", filn ) )
@@ -31,18 +35,6 @@ download_subset_modis <- function( lon, lat, sitename, TimeSeriesLength, end.dat
     print( paste( "---------------------------"))
 
     # system( paste( "mkdir ", savedir, sep="" ) )  
-
-    # ## FAPAR, LAI
-    # bands <- c("Lai_1km", "Fpar_1km")  
-    # prod  <- "MOD15A2"
-
-    ## GPP
-    bands <- c("Gpp_1km", "Psn_QC_1km")  
-    prod  <- "MOD17A2_51"
-
-    # ## EVI
-    # bands <- c("250m_16_days_EVI", "250m_16_days_pixel_reliability")  
-    # prod  <- "MOD13Q1"
 
     modis.subset <- data.frame(  
       lat        = lat, 
@@ -112,13 +104,13 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   # 3 Cloudy  Target not visible, covered with cloud
   #---------------------------------------------------------------
 
-  ######################
-  # for debugging:
-  savedir <- "/alphadata01/bstocker/data/modis_gpp_fluxnet_cutouts_tseries/AR-SLu/"
-  filn    <- "Lat-33.46480Lon-66.45980Start1990-01-01End2016-12-21___MOD17A2_51.asc"
-  expand_x <- 1
-  expand_y <- 1
-  ######################
+  # ######################
+  # # for debugging:
+  # savedir <- "/alphadata01/bstocker/data/modis_gpp_fluxnet_cutouts_tseries/AR-SLu/"
+  # filn    <- "Lat-33.46480Lon-66.45980Start1990-01-01End2016-12-21___MOD17A2_51.asc"
+  # expand_x <- 1
+  # expand_y <- 1
+  # ######################
 
   library( MODISTools )
   library( dplyr )
@@ -151,11 +143,16 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   tseries$year_dec <- tseries$year + ( tseries$doy - 1 ) / ndayyear
 
   ## for pixels with low quality information, use mean of surroundings
-  for (idx in seq(nrow(tseries))){
-    if (tseries_qc[idx,usecol]!=0) {
-      tseries$data[idx] <- unname( apply( tseries[idx,1:npixels], 1, FUN=mean, na.rm=TRUE ))
+  if (npixels>1){
+    for (idx in seq(nrow(tseries))){
+      if (tseries_qc[idx,usecol]!=0) {
+        tseries$data[idx] <- unname( apply( tseries[idx,1:npixels], 1, FUN=mean, na.rm=TRUE ))
+      }
     }
   }
+
+  ## original ASCII data is scaled and given in kgC m-2. Convert to gC m-2. 
+  tseries$data <- tseries$data * ScaleFactor * 1e3
 
   tseries <- select( tseries, year_dec, year, doy, date, data )
 
@@ -164,7 +161,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
 }
 
 
-interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, outdir, overwrite, ignore_missing=FALSE, do_interpolate=TRUE ){
+interpolate_modis <- function( sitename, lon, lat, bands, prod, expand_x, expand_y, outdir, overwrite, ignore_missing=FALSE, do_interpolate=TRUE ){
   ##--------------------------------------
   ## Returns data frame containing data 
   ## (and year, moy, doy) for all available
@@ -205,8 +202,9 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, outdir, o
     print( savedir )
 
     ##--------------------------------------------------------------------
-    # filn  <- download_subset_modis( lon, lat, TimeSeriesLength=26, end.date=dates$end[dim(dates)[1]], savedir=savedir, overwrite=FALSE )
-    filn  <- download_subset_modis( lon, lat, sitename, TimeSeriesLength=26, end.date=Sys.Date(), savedir=savedir, overwrite=overwrite )
+    # filn  <- download_subset_modis( lon, lat, , bands, prod, TimeSeriesLength=26, end.date=dates$end[dim(dates)[1]], savedir=savedir, overwrite=FALSE )
+    filn  <- download_subset_modis( lon, lat, bands, prod, sitename, TimeSeriesLength=26, end.date=Sys.Date(), savedir=savedir, overwrite=overwrite, ignore_missing=ignore_missing )
+    ##--------------------------------------------------------------------
     modis <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
     ##--------------------------------------------------------------------
 

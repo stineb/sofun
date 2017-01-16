@@ -16,7 +16,21 @@ simsuite="fluxnet2015"
 expand_x=1
 expand_y=1
 overwrite=FALSE
-ignore_missing=FALSE
+ignore_missing=TRUE
+do_interpolate=FALSE
+
+# ## FAPAR, LAI
+# bands <- c("Lai_1km", "Fpar_1km")  
+# prod  <- "MOD15A2"
+
+## GPP
+bands <- c("Gpp_1km", "Psn_QC_1km")  
+prod  <- "MOD17A2_51"
+
+# ## EVI
+# bands <- c("250m_16_days_EVI", "250m_16_days_pixel_reliability")  
+# prod  <- "MOD13Q1"
+
 ##--------------------------------------------------------------------
 
 ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
@@ -31,7 +45,7 @@ siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_
 nsites <- dim(siteinfo)[1]
 
 # do.sites <- seq(nsites)
-do.sites <- 3:3
+do.sites <- 118:nsites
 
 for (idx in do.sites){
 
@@ -41,35 +55,28 @@ for (idx in do.sites){
 
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
-  dirnam_csv <- paste( myhome, "data/modis_gpp_fluxnet_cutouts_tseries/", sitename, "/", sep="" )
-  filnam_modis_csv <- paste( dirnam_csv,   "gpp_8d_modissubset_", sitename, ".csv", sep="" )
+  dirnam_csv         <- paste( myhome, "data/modis_gpp_fluxnet_cutouts_tseries/", sitename, "/", sep="" )
+  filnam_modis_csv   <- paste( dirnam_csv, "gpp_8d_modissubset_", sitename, ".csv", sep="" )
   filnam_monthly_csv <- paste( dirnam_csv, "mgpp_modissubset_", sitename, ".csv", sep="" )
   filnam_daily_csv   <- paste( dirnam_csv, "dgpp_modissubset_", sitename, ".csv", sep="" )
 
   if (!file.exists(filnam_modis_csv)||overwrite){
 
     ##--------------------------------------------------------------------
-    out <- interpolate_modis( sitename, lon, lat, expand_x=expand_x, expand_y=expand_y, outdir="data/modis_gpp_fluxnet_cutouts_tseries/", overwrite=overwrite, do_interpolate=FALSE )
+    out <- interpolate_modis( 
+      sitename, 
+      lon, 
+      lat, 
+      bands, 
+      prod, 
+      expand_x=expand_x, 
+      expand_y=expand_y, 
+      outdir="data/modis_gpp_fluxnet_cutouts_tseries/", 
+      overwrite=overwrite, 
+      do_interpolate=do_interpolate, 
+      ignore_missing=TRUE 
+      )
     ##--------------------------------------------------------------------
-
-    # ##--------------------------------------------------------------------
-    # ## add dummy year 1999 with median of each month in all subsequent years
-    # ##--------------------------------------------------------------------
-    # ## daily data frame
-    # dummy_1999 <- init_daily_dataframe( 1999, 1999 )
-    # dummy_1999$evi <- rep( NA, dim(dummy_1999)[1] )
-    # for (idx in 1:ndayyear){
-    #   dummy_1999$evi[idx] <- median( out$modis_daily$evi[ out$modis_daily$doy==idx ], na.rm=TRUE )
-    # }
-    # out$modis_daily <- rbind( dummy_1999, out$modis_daily )
-
-    # ## monthly data frame
-    # dummy_1999 <- init_monthly_dataframe( 1999, 1999 )
-    # dummy_1999$evi <- rep( NA, dim(dummy_1999)[1] )
-    # for (idx in 1:nmonth){
-    #   dummy_1999$evi[idx] <- median( out$modis_monthly$evi[ out$modis_monthly$moy==idx ], na.rm=TRUE )
-    # }
-    # out$modis_monthly <- rbind( dummy_1999, out$modis_monthly )
 
     ##--------------------------------------------------------------------
     ## Save data frames as CSV files
@@ -93,6 +100,22 @@ for (idx in do.sites){
 
   }
 
+  ##--------------------------------------------------------------------
+  ## Check for some manually downloaded time series 
+  ##--------------------------------------------------------------------
+  # modis_manually <- read.csv( "/alphadata01/bstocker/data/modis_gpp_fluxnet_cutouts_tseries/FR-Pue/fromMODISwebsite/FR-Pue_MODIS.txt" )
+  # modis_manually_gpp <- filter( modis_manually, Band=="Gpp_1km" )
+  # modis_manually_qc <- filter( modis_manually, Band=="Psn_QC_1km" )
+  
+  # tmp <- modis_manually_gpp$Date
+  # modis_manually_gpp$year <- as.numeric( substr( tmp, start=2, stop=5 ))
+  # modis_manually_gpp$doy  <- as.numeric( substr( tmp, start=6, stop=8 ))
+  # modis_manually_gpp$date <- as.POSIXlt( as.Date( paste( as.character(modis_manually_gpp$year), "-01-01", sep="" ) ) + modis_manually_gpp$doy - 1 )
+  # modis_manually_gpp$year_dec <- modis_manually_gpp$year + ( modis_manually_gpp$doy - 1 ) / ndayyear
+
+  plot( out$modis$year_dec, out$modis$data, type='l', main=sitename )
+  # lines( modis_manually_gpp$year_dec, modis_manually_gpp$X25*1e-1, col='red' )
+  
   # ##--------------------------------------------------------------------
   # ## Write to Fortran-formatted output for each variable and year separately
   # ##--------------------------------------------------------------------
