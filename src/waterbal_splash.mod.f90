@@ -507,8 +507,8 @@ contains
     g = psychro(tc, elv2pres(elv))
 
     ! Eq. 51, SPLASH 2.0 Documentation
-    ! out_evap%econ = s/(lv*pw*(s + g))
-    out_evap%econ = 1.0 / ( lv * pw )
+    econ = s/(lv*pw*(s + g))
+    out_evap%econ = 1.0 / ( lv * pw ) ! this is to convert energy into mass (water)
 
     ! print*,'Econ alternative: ', 1.0 / (lv * pw)
 
@@ -516,25 +516,25 @@ contains
     ! 16. Calculate daily condensation (out_evap%cn), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 68, SPLASH 2.0 Documentation
-    out_evap%cn = 1000.0 * out_evap%econ * abs(out_evap%rnn)
+    out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 17. Estimate daily EET (out_evap%eet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 70, SPLASH 2.0 Documentation
-    out_evap%eet = 1000.0 * out_evap%econ * out_evap%rn
+    out_evap%eet = 1000.0 * econ * out_evap%rn
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 18. Estimate daily PET (out_evap%pet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 72, SPLASH 2.0 Documentation
     out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
-    ! out_evap%pet_e = out_evap%pet / (out_evap%econ * 1000)
+    ! out_evap%pet_e = out_evap%pet / (econ * 1000)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * out_evap%econ
+    rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * econ
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 20. Calculate the intersection hour angle (hi), degrees
@@ -555,7 +555,7 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 81, SPLASH 2.0 Documentation
     out_evap%aet   = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
-    ! out_evap%aet_e = out_evap%aet / (out_evap%econ * 1000)
+    ! out_evap%aet_e = out_evap%aet / (econ * 1000)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
