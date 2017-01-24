@@ -489,7 +489,7 @@ contains
       out_evap%rn = netrad * secs_per_day
 
       ! convert net radiation to water equivalents to get potential evapotranspiration
-      out_evap%pet   = out_evap%rn / 2260000.0
+      out_evap%pet   = out_evap%rn / 2260000.0  ! 2.26e6 is in kJ / m = J / mm
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 16.A. Calculate daily condensation (out_evap%cn), mm d-1

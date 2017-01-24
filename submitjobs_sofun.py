@@ -24,13 +24,13 @@ simsuite = 'fluxnet2015'
 ## set options
 ##--------------------------------------------------------------------
 ## standard outputs written to file (otherwise to screen)
-out_to_file = False
+out_to_file = True
 
 ## overwrite results
 overwrite = True
 
 ## Use SWBM water balance model instead of SPLASH
-swbm = True
+swbm = False
 if swbm:
     print 'WARNING: submitting jobs with SWBM option!'
 else:

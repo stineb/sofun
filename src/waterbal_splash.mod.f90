@@ -70,6 +70,7 @@ module md_waterbal
   real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm r J/m2/d depending on 'outenergy'
   real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm or J/m2/d depending on 'outenergy'
   real, allocatable, dimension(:,:,:) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
+  real, allocatable, dimension(:,:)   :: outdecon           ! daily water-to-energy conversion factor m TJ-1 = mm GJ-1
 
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
@@ -505,9 +506,12 @@ contains
     ! Psychrometric constant, Pa/K
     g = psychro(tc, elv2pres(elv))
 
-    ! Eq. 58, SPLASH 2.0 Documentation
-    out_evap%econ = s/(lv*pw*(s + g))
-    
+    ! Eq. 51, SPLASH 2.0 Documentation
+    ! out_evap%econ = s/(lv*pw*(s + g))
+    out_evap%econ = 1.0 / ( lv * pw )
+
+    ! print*,'Econ alternative: ', 1.0 / (lv * pw)
+
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 16. Calculate daily condensation (out_evap%cn), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1161,6 +1165,10 @@ contains
       filnam=trim(prefix)//'.d.cpa.out'
       open(262,file=filnam,err=888,status='unknown')
 
+      ! ECON: daily water-to-energy conversion factor, mm GJ-1 = m TJ-1
+      filnam=trim(prefix)//'.d.econ.out'
+      open(264,file=filnam,err=888,status='unknown')
+
     end if
 
     ! !----------------------------------------------------------------
@@ -1218,6 +1226,7 @@ contains
       if (interface%steering%init) allocate( outdpet(ndayyear,maxgrid)     )     ! daily potential ET, mm
       if (interface%steering%init) allocate( outdaet(nlu,ndayyear,maxgrid) )     ! daily actual ET, mm
       if (interface%steering%init) allocate( outdcpa(nlu,ndayyear,maxgrid) )     ! daily Cramer-Prentice-Alpha, (unitless)
+      if (interface%steering%init) allocate( outdecon(ndayyear,maxgrid) )        ! daily water-to-energy conversion factor
 
       outdwcont(:,:,:)  = 0.0
       outdra(:,:)       = 0.0
@@ -1231,6 +1240,7 @@ contains
       outdpet(:,:)      = 0.0
       outdaet(:,:,:)    = 0.0
       outdcpa(:,:,:)    = 0.0
+      outdecon(:,:)     = 0.0
 
     end if
 
@@ -1278,6 +1288,7 @@ contains
         outdaet(:,doy,jpngr)  = evap(:)%aet
       end if
 
+      outdecon(doy,jpngr)     = evap(1)%econ * 1.0e12 ! converting from m J-1 to mm GJ-1 = m TJ-1
 
     end if
 
@@ -1329,6 +1340,7 @@ contains
           write(260,999) itime, outdaet(1,day,jpngr)
           write(261,999) itime, outdayl(day,jpngr)
           write(262,999) itime, outdcpa(1,day,jpngr)
+          write(264,999) itime, outdecon(day,jpngr)
 
         end do
       end if
