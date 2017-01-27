@@ -41,7 +41,7 @@ overwrite_csv <- TRUE
 
 # do.sites <- seq(nsites)
 # do.sites <- 1:1
-do.sites <- 1:nsites
+do.sites <- 110:nsites
 
 for (idx in do.sites ){
 
@@ -54,8 +54,9 @@ for (idx in do.sites ){
   dirnam_fapar_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", sep="" )
   filnam_monthly_fapar_csv <- paste( dirnam_fapar_csv, "mfapar_evi_modissubset_", sitename, ".csv", sep="" )
   filnam_daily_fapar_csv   <- paste( dirnam_fapar_csv, "dfapar_evi_modissubset_", sitename, ".csv", sep="" )
+  filnam_modisdates_fapar_csv  <- paste( dirnam_fapar_csv, "evi_modissubset_", sitename, ".csv", sep="" )
 
-  if ( !file.exists(filnam_daily_fapar_csv) || !file.exists(filnam_monthly_fapar_csv) || overwrite_csv ){
+  if ( !file.exists(filnam_daily_fapar_csv) || !file.exists(filnam_monthly_fapar_csv) || overwrite_csv || !file.exists(filnam_modisdates_fapar_csv) ){
 
     ##--------------------------------------------------------------------
     out <- interpolate_modis( sitename, lon, lat, expand_x=expand_x, expand_y=expand_y, overwrite=overwrite, overwrite_dates=overwrite_dates, ignore_missing=ignore_missing  )
@@ -65,7 +66,19 @@ for (idx in do.sites ){
       
       df_monthly <- out$modis_monthly
       df_daily   <- out$modis_daily
-      
+
+      ##--------------------------------------------------------------------
+      ## Clean data frame that has MODIS-dates
+      ##--------------------------------------------------------------------
+      df_modis   <- out$modis
+      df_modis$date_read <- unlist(df_modis$date_read)
+      df_modis   <- as.data.frame( df_modis )
+      df_modis$yr_read <- NULL
+      df_modis$doy_read <- NULL
+      df_modis$date_read <- NULL
+      df_modis$yr_dec_read <- NULL
+      df_modis$absday <- NULL
+
       ##--------------------------------------------------------------------
       ## add dummy year 1999 with median of each month in all subsequent years
       ##--------------------------------------------------------------------
@@ -90,8 +103,9 @@ for (idx in do.sites ){
       ##--------------------------------------------------------------------
       print( paste( "writing fapar data frame into CSV file ", filnam_monthly_fapar_csv, "...") )
       system( paste( "mkdir -p", dirnam_fapar_csv ) )   
-      write.csv( df_monthly, file=filnam_monthly_fapar_csv, row.names=FALSE )
-      write.csv( df_daily,   file=filnam_daily_fapar_csv,   row.names=FALSE )
+      write.csv( df_monthly, file=filnam_monthly_fapar_csv,    row.names=FALSE )
+      write.csv( df_daily,   file=filnam_daily_fapar_csv,      row.names=FALSE )
+      write.csv( df_modis,   file=filnam_modisdates_fapar_csv, row.names=FALSE )
       
     }
 
