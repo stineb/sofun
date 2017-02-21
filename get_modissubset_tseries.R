@@ -12,26 +12,53 @@ source( paste( myhome, "sofun/getin/mymodistools_tseries.R", sep="" ) )
 ##--------------------------------------------------------------------
 ## MANUAL SETTINGS
 ##--------------------------------------------------------------------
-simsuite="fluxnet2015"
-expand_x=1
-expand_y=1
-overwrite=FALSE
-ignore_missing=TRUE
-do_interpolate=FALSE
-
-# ## FAPAR, LAI
-# bands <- c("Lai_1km", "Fpar_1km")  
-# prod  <- "MOD15A2"
-
-## GPP
-bands <- c("Gpp_1km", "Psn_QC_1km")  
-prod  <- "MOD17A2_51"
-
-# ## EVI
-# bands <- c("250m_16_days_EVI", "250m_16_days_pixel_reliability")  
-# prod  <- "MOD13Q1"
-
+simsuite       = "fluxnet2015"
+expand_x       = 1
+expand_y       = 1
+overwrite      = FALSE
+ignore_missing = FALSE
+do_interpolate = FALSE
+bundle         = "fapar"
 ##--------------------------------------------------------------------
+
+if (bundle=="fapar"){
+  ##--------------------------------------------------------------------
+  ## FAPAR
+  ##--------------------------------------------------------------------
+  band_var <- "Fpar_1km"
+  band_qc  <- "FparLai_QC"
+  prod     <- "MOD15A2"
+  varnam   <- "fapar"
+
+} else if (bundle=="lai"){
+  ##--------------------------------------------------------------------
+  ## LAI
+  ##--------------------------------------------------------------------
+  band_var <- "Lai_1km"
+  band_qc  <- "FparLai_QC"
+  prod     <- "MOD15A2"
+  varnam   <- "lai"
+
+} else if (bundle=="gpp"){
+  ##--------------------------------------------------------------------
+  ## GPP
+  ##--------------------------------------------------------------------
+  band_var <- "Gpp_1km"
+  band_qc  <- "Psn_QC_1km"
+  prod     <- "MOD17A2_51"
+  varnam   <- "gpp"
+
+} else if (bundle=="evi"){
+  ##--------------------------------------------------------------------
+  ## EVI
+  ##--------------------------------------------------------------------
+  band_var <- "250m_16_days_EVI"
+  band_qc  <- "250m_16_days_pixel_reliability"
+  prod   <- "MOD13Q1"
+  varnam <- "evi"
+
+}
+
 
 ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)
@@ -45,7 +72,7 @@ siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_
 nsites <- dim(siteinfo)[1]
 
 # do.sites <- seq(nsites)
-do.sites <- 118:nsites
+do.sites <- 1:1
 
 for (idx in do.sites){
 
@@ -55,28 +82,33 @@ for (idx in do.sites){
 
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
-  dirnam_csv         <- paste( myhome, "data/modis_gpp_fluxnet_cutouts_tseries/", sitename, "/", sep="" )
-  filnam_modis_csv   <- paste( dirnam_csv, "gpp_8d_modissubset_", sitename, ".csv", sep="" )
-  filnam_monthly_csv <- paste( dirnam_csv, "mgpp_modissubset_", sitename, ".csv", sep="" )
-  filnam_daily_csv   <- paste( dirnam_csv, "dgpp_modissubset_", sitename, ".csv", sep="" )
+  dirnam_csv         <- paste( myhome, "data/modis_", varnam,"_fluxnet_cutouts_tseries/", sitename, "/", sep="" )
+  filnam_modis_csv   <- paste( dirnam_csv, varnam,"_8d_modissubset_", sitename, ".csv", sep="" )
+  filnam_monthly_csv <- paste( dirnam_csv, "m", varnam,"_modissubset_", sitename, ".csv", sep="" )
+  filnam_daily_csv   <- paste( dirnam_csv, "d", varnam,"_modissubset_", sitename, ".csv", sep="" )
+
+  print( paste( "outputs stored in", dirnam_csv ) )
 
   if (!file.exists(filnam_modis_csv)||overwrite){
 
+    ##--------------------------------------------------------------------
+    ## Download data from MODIS, read into a nice dataframe and interpolate
+    ## to daily, monthly, and original time steps.
     ##--------------------------------------------------------------------
     out <- interpolate_modis( 
       sitename, 
       lon, 
       lat, 
-      bands, 
+      band_var,
+      band_qc, 
       prod, 
-      expand_x=expand_x, 
-      expand_y=expand_y, 
-      outdir="data/modis_gpp_fluxnet_cutouts_tseries/", 
-      overwrite=overwrite, 
-      do_interpolate=do_interpolate, 
-      ignore_missing=TRUE 
+      expand_x       = expand_x, 
+      expand_y       = expand_y, 
+      outdir         = dirnam_csv, 
+      overwrite      = overwrite, 
+      do_interpolate = do_interpolate, 
+      ignore_missing = ignore_missing 
       )
-    ##--------------------------------------------------------------------
 
     ##--------------------------------------------------------------------
     ## Save data frames as CSV files

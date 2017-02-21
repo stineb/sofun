@@ -16,16 +16,10 @@ download_subset_modis <- function( lon, lat, bands, prod, sitename, TimeSeriesLe
   ## Find file from which (crude) data is read
   filn <- list.files( path=savedir, pattern="*asc" )
 
-  print(filn)
-  print(overwrite)
-  print(savedir)
-
   if ( (length(filn)==0||overwrite) && !ignore_missing ){
 
     print( paste( "deleting existing file", filn ) )
     if (length(filn)>0) { system( paste( "rm ", savedir, filn, sep="" ) ) }
-
-    print(paste("savedir", savedir))
     
     print( paste( "==========================="))
     print( paste( "DOWNLOADING MODIS DATA FOR:"))
@@ -84,7 +78,7 @@ download_subset_modis <- function( lon, lat, bands, prod, sitename, TimeSeriesLe
 
 }
 
-read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
+read_crude_modis <- function( filn, savedir, band_var, band_qc, expand_x, expand_y ){
   #///////////////////////////////////////////////////////////////
   # Reads MODIS data from downloaded ASCII file and returns
   # value, quality flag and associated date
@@ -125,8 +119,8 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
 
   ## this is just read to get length of time series and dates
   # tseries    <- MODISTimeSeries( savedir, Band = c("250m_16_days_EVI", "Gpp_1km") )
-  tseries    <- as.data.frame( MODISTimeSeries( savedir, Band = "Gpp_1km", Simplify=TRUE ) )   
-  tseries_qc <- as.data.frame( MODISTimeSeries( savedir, Band = "Psn_QC_1km", Simplify=TRUE ) )
+  tseries    <- as.data.frame( MODISTimeSeries( savedir, Band = band_var, Simplify=TRUE ) )   
+  tseries_qc <- as.data.frame( MODISTimeSeries( savedir, Band = band_qc, Simplify=TRUE ) )
 
   ## determine centre pixel's column number in 'tseries'
   usecol <- ( ncol(tseries) - 1 ) / 2 + 1 
@@ -161,7 +155,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
 }
 
 
-interpolate_modis <- function( sitename, lon, lat, bands, prod, expand_x, expand_y, outdir, overwrite, ignore_missing=FALSE, do_interpolate=TRUE ){
+interpolate_modis <- function( sitename, lon, lat, band_var, band_qc, prod, expand_x, expand_y, outdir, overwrite, ignore_missing=FALSE, do_interpolate=TRUE ){
   ##--------------------------------------
   ## Returns data frame containing data 
   ## (and year, moy, doy) for all available
@@ -197,15 +191,15 @@ interpolate_modis <- function( sitename, lon, lat, bands, prod, expand_x, expand
   ##--------------------------------------
     end.date <- Sys.Date()
     # savedir <- paste( myhome, "data/modis_fluxnet_cutouts_tseries/", sitename, "_", end.date, "/", sep="" )
-    savedir <- paste( myhome, outdir, sitename, "/", sep="" )
+    savedir <- paste( outdir, "raw/", sep="" )
     system( paste( "mkdir -p ", savedir ) )
     print( savedir )
 
     ##--------------------------------------------------------------------
     # filn  <- download_subset_modis( lon, lat, , bands, prod, TimeSeriesLength=26, end.date=dates$end[dim(dates)[1]], savedir=savedir, overwrite=FALSE )
-    filn  <- download_subset_modis( lon, lat, bands, prod, sitename, TimeSeriesLength=26, end.date=Sys.Date(), savedir=savedir, overwrite=overwrite, ignore_missing=ignore_missing )
+    filn  <- download_subset_modis( lon, lat, c( band_var, band_qc ), prod, sitename, TimeSeriesLength=26, end.date=Sys.Date(), savedir=savedir, overwrite=overwrite, ignore_missing=ignore_missing )
     ##--------------------------------------------------------------------
-    modis <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
+    modis <- read_crude_modis( filn, savedir, band_var, band_qc, expand_x=expand_x, expand_y=expand_y )
     ##--------------------------------------------------------------------
 
   ##--------------------------------------
