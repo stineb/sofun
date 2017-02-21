@@ -22,26 +22,6 @@ do_interpolate = FALSE
 bundle         = "fapar"
 ##--------------------------------------------------------------------
 
-##----------------------------------------------------------
-## Evaluate arguments provided by R CMD BATCH call
-##----------------------------------------------------------
-## First read in the arguments listed at the command line.
-## Call this by 
-## 'R CMD BATCH --no-save --no-restore '--args sitename="FR-Pue"' get_modissubset_tseries.R get_modissubset_tseries.out &'
-args=(commandArgs(TRUE))
-
-## args is now a list of character vectors
-## First check to see if arguments are passed.
-## Then cycle through each element of the list and evaluate the expressions.
-if (length(args)==0){
-  print("No arguments supplied. Provide at least sitename.")
-} else {
-  for (i in 1:length(args)){
-     eval( parse( text=args[[i]] ) )
-  }
-}
-##----------------------------------------------------------
-
 
 if (bundle=="fapar"){
   ##--------------------------------------------------------------------
@@ -81,7 +61,6 @@ if (bundle=="fapar"){
 
 }
 
-
 ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)
 nmonth <- length(ndaymonth)
@@ -91,94 +70,99 @@ year_end   <- 2016
 nyears <- year_end - year_start + 1
 
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
-print(names(siteinfo))
-siteinfo <- filter( siteinfo, mysitename==sitename )
+nsites <- dim(siteinfo)[1]
+do.sites <- seq(nsites)
 
-lon      <- siteinfo$lon
-lat      <- siteinfo$lat
+for (idx in do.sites){
 
-print( paste( "collecting monthly data for station", sitename, "..." ) )
+  sitename <- as.character(siteinfo$mysitename[idx])
+  lon      <- siteinfo$lon[idx]
+  lat      <- siteinfo$lat[idx]
 
-dirnam_csv         <- paste( myhome, "data/modis_", varnam,"_fluxnet_cutouts_tseries/", sitename, "/", sep="" )
-filnam_modis_csv   <- paste( dirnam_csv, varnam,"_8d_modissubset_", sitename, ".csv", sep="" )
-filnam_monthly_csv <- paste( dirnam_csv, "m", varnam,"_modissubset_", sitename, ".csv", sep="" )
-filnam_daily_csv   <- paste( dirnam_csv, "d", varnam,"_modissubset_", sitename, ".csv", sep="" )
+  print( paste( "collecting monthly data for station", sitename, "..." ) )
 
-print( paste( "outputs stored in", dirnam_csv ) )
+  dirnam_csv         <- paste( myhome, "data/modis_", varnam,"_fluxnet_cutouts_tseries/", sitename, "/", sep="" )
+  filnam_modis_csv   <- paste( dirnam_csv, varnam,"_8d_modissubset_", sitename, ".csv", sep="" )
+  filnam_monthly_csv <- paste( dirnam_csv, "m", varnam,"_modissubset_", sitename, ".csv", sep="" )
+  filnam_daily_csv   <- paste( dirnam_csv, "d", varnam,"_modissubset_", sitename, ".csv", sep="" )
 
-if (!file.exists(filnam_modis_csv)||overwrite){
+  print( paste( "outputs stored in", dirnam_csv ) )
+
+  if (!file.exists(filnam_modis_csv)||overwrite){
+
+    ##--------------------------------------------------------------------
+    ## Download data from MODIS, read into a nice dataframe and interpolate
+    ## to daily, monthly, and original time steps.
+    ##--------------------------------------------------------------------
+    out <- interpolate_modis( 
+      sitename, 
+      lon, 
+      lat, 
+      band_var,
+      band_qc, 
+      prod, 
+      expand_x       = expand_x, 
+      expand_y       = expand_y, 
+      outdir         = dirnam_csv, 
+      overwrite      = overwrite, 
+      do_interpolate = do_interpolate, 
+      ignore_missing = ignore_missing 
+      )
+
+    ##--------------------------------------------------------------------
+    ## Save data frames as CSV files
+    ##--------------------------------------------------------------------
+    print( paste( "writing data frame into CSV file ", filnam_modis_csv, "...") )
+    system( paste( "mkdir -p", dirnam_csv ) )   
+    write.csv( out$modis_monthly, file=filnam_monthly_csv, row.names=FALSE )
+    write.csv( out$modis_daily,   file=filnam_daily_csv,   row.names=FALSE )
+    write.csv( out$modis,         file=filnam_modis_csv,   row.names=FALSE )
+
+  } else {
+
+    ##--------------------------------------------------------------------
+    ## Read CSV file directly for this site
+    ##--------------------------------------------------------------------
+    print( "monthly data already available in CSV file ...")
+    out <- list()
+    out$modis         <- read.csv( filnam_modis_csv )
+    out$modis_daily   <- read.csv( filnam_daily_csv )
+    out$modis_monthly <- read.csv( filnam_monthly_csv )
+
+  }
 
   ##--------------------------------------------------------------------
-  ## Download data from MODIS, read into a nice dataframe and interpolate
-  ## to daily, monthly, and original time steps.
+  ## Check for some manually downloaded time series 
   ##--------------------------------------------------------------------
-  out <- interpolate_modis( 
-    sitename, 
-    lon, 
-    lat, 
-    band_var,
-    band_qc, 
-    prod, 
-    expand_x       = expand_x, 
-    expand_y       = expand_y, 
-    outdir         = dirnam_csv, 
-    overwrite      = overwrite, 
-    do_interpolate = do_interpolate, 
-    ignore_missing = ignore_missing 
-    )
+  # modis_manually <- read.csv( "/alphadata01/bstocker/data/modis_gpp_fluxnet_cutouts_tseries/FR-Pue/fromMODISwebsite/FR-Pue_MODIS.txt" )
+  # modis_manually_gpp <- filter( modis_manually, Band=="Gpp_1km" )
+  # modis_manually_qc <- filter( modis_manually, Band=="Psn_QC_1km" )
 
-  ##--------------------------------------------------------------------
-  ## Save data frames as CSV files
-  ##--------------------------------------------------------------------
-  print( paste( "writing data frame into CSV file ", filnam_modis_csv, "...") )
-  system( paste( "mkdir -p", dirnam_csv ) )   
-  write.csv( out$modis_monthly, file=filnam_monthly_csv, row.names=FALSE )
-  write.csv( out$modis_daily,   file=filnam_daily_csv,   row.names=FALSE )
-  write.csv( out$modis,         file=filnam_modis_csv,   row.names=FALSE )
+  # tmp <- modis_manually_gpp$Date
+  # modis_manually_gpp$year <- as.numeric( substr( tmp, start=2, stop=5 ))
+  # modis_manually_gpp$doy  <- as.numeric( substr( tmp, start=6, stop=8 ))
+  # modis_manually_gpp$date <- as.POSIXlt( as.Date( paste( as.character(modis_manually_gpp$year), "-01-01", sep="" ) ) + modis_manually_gpp$doy - 1 )
+  # modis_manually_gpp$year_dec <- modis_manually_gpp$year + ( modis_manually_gpp$doy - 1 ) / ndayyear
 
-} else {
+  # plot( out$modis$year_dec, out$modis$data, type='l', main=sitename )
+  # lines( modis_manually_gpp$year_dec, modis_manually_gpp$X25*1e-1, col='red' )
 
-  ##--------------------------------------------------------------------
-  ## Read CSV file directly for this site
-  ##--------------------------------------------------------------------
-  print( "monthly data already available in CSV file ...")
-  out <- list()
-  out$modis         <- read.csv( filnam_modis_csv )
-  out$modis_daily   <- read.csv( filnam_daily_csv )
-  out$modis_monthly <- read.csv( filnam_monthly_csv )
+  # ##--------------------------------------------------------------------
+  # ## Write to Fortran-formatted output for each variable and year separately
+  # ##--------------------------------------------------------------------
+  # print( "writing formatted input files ..." )
+
+  # ## in separate formatted file 
+  # for (year in unique(df_monthly$year)){
+
+  #   print( paste("... for year", year))
+  #   dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(year), "/", sep="" )
+  #   system( paste( "mkdir -p", dirnam ) )
+
+  #   filnam <- paste( dirnam, "fapar_evi_modissubset_", sitename, "_", year, ".txt", sep="" )
+  #   write_sofunformatted( filnam, df_monthly$evi[ which( df_monthly$year==year ) ] )
+    
+  # }
 
 }
-
-##--------------------------------------------------------------------
-## Check for some manually downloaded time series 
-##--------------------------------------------------------------------
-# modis_manually <- read.csv( "/alphadata01/bstocker/data/modis_gpp_fluxnet_cutouts_tseries/FR-Pue/fromMODISwebsite/FR-Pue_MODIS.txt" )
-# modis_manually_gpp <- filter( modis_manually, Band=="Gpp_1km" )
-# modis_manually_qc <- filter( modis_manually, Band=="Psn_QC_1km" )
-
-# tmp <- modis_manually_gpp$Date
-# modis_manually_gpp$year <- as.numeric( substr( tmp, start=2, stop=5 ))
-# modis_manually_gpp$doy  <- as.numeric( substr( tmp, start=6, stop=8 ))
-# modis_manually_gpp$date <- as.POSIXlt( as.Date( paste( as.character(modis_manually_gpp$year), "-01-01", sep="" ) ) + modis_manually_gpp$doy - 1 )
-# modis_manually_gpp$year_dec <- modis_manually_gpp$year + ( modis_manually_gpp$doy - 1 ) / ndayyear
-
-plot( out$modis$year_dec, out$modis$data, type='l', main=sitename )
-# lines( modis_manually_gpp$year_dec, modis_manually_gpp$X25*1e-1, col='red' )
-
-# ##--------------------------------------------------------------------
-# ## Write to Fortran-formatted output for each variable and year separately
-# ##--------------------------------------------------------------------
-# print( "writing formatted input files ..." )
-
-# ## in separate formatted file 
-# for (year in unique(df_monthly$year)){
-
-#   print( paste("... for year", year))
-#   dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(year), "/", sep="" )
-#   system( paste( "mkdir -p", dirnam ) )
-
-#   filnam <- paste( dirnam, "fapar_evi_modissubset_", sitename, "_", year, ".txt", sep="" )
-#   write_sofunformatted( filnam, df_monthly$evi[ which( df_monthly$year==year ) ] )
-  
-# }
 

@@ -8,7 +8,7 @@ module unload liblzma
 
 ## This jobs requires the Intel math kernel so we must load it at run time.
 
-R CMD BATCH --no-save --no-restore '--args sitename="XXXXX"' $HOME/sofun/getin/get_modissubset_tseries.R
+R CMD BATCH --no-save --no-restore $HOME/sofun/getin/get_modissubset_tseries.R
 
 ## This tells the batch manager to execute the program lazy from the examples
 ## directory of the users home directory.
