@@ -3,6 +3,13 @@ get_meteo_fluxnet2015 <- function( path ){
   ## Function returns a dataframe containing all the data of flux-derived
   ## GPP for the station implicitly given by path (argument).
   ## Specific for FLUXNET 2015 data
+  ## Returns variables in the following units:
+  ## temp: deg C
+  ## vpd : Pa
+  ## prec: mm d-1
+  ## nrad: J m-2 d-1
+  ## swin: J m-2 d-1
+  ## ppfd: mol m-2 d-1 
   ##--------------------------------------------------------------------
   ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
   ndayyear <- sum(ndaymonth)
@@ -40,7 +47,7 @@ get_meteo_fluxnet2015 <- function( path ){
 
   ## Convert SW in to PPFD
   if (!is.null(meteo$swin)){
-    meteo$swin <- meteo$swin * 60 * 60 * 24 # given in W m-2, required in mol m-2 d-1 
+    meteo$swin <- meteo$swin * 60 * 60 * 24 # given in W m-2, required in J m-2 d-1 
     meteo$ppfd <- meteo$swin * kfFEC * 1.0e-6  # convert from J/m2/d to mol/m2/d
   } else {
     meteo$ppfd <- rep( NA, dim(meteo)[1] )

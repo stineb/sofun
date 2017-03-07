@@ -23,7 +23,8 @@
 ##
 ## Optional SOFUN input variables (required if resp. simulation parameter is true):
 ## - PPFD (mol d-1 m-2)
-## - net radiation (W m-2)
+## - net radiation (J m-2 d-1)
+## - shortwave incoming radiation, swin: J m-2 d-1
 ##--------------------------------------------------------------------
 syshome <- Sys.getenv( "HOME" )
 source( paste( syshome, "/.Rprofile", sep="" ) )
