@@ -5,11 +5,24 @@ get.f.luc <- function( name.nolu, name.lu, dir,
                       grossfluxes=FALSE,
                       byflux=TRUE,
                       mask.id=NA,
-                      offset=FALSE
+                      offset=FALSE,
+                      oldversion=FALSE
                       ) {
+
+  ## ## debug
+  ## name.nolu <- "s2_gcp2014"
+  ## name.lu   <- "s3_gcp2014"
+  ## netcdf    <- TRUE
+  ## dir <- '/alphadata01/bstocker/output_netcdf_gcp2014/'
+  ## monthly=FALSE
+  ## tstart=NA
+  ## tend=NA
+  ## grossfluxes=FALSE
+  ## byflux=TRUE
+  ## mask.id=NA
+  ## offset=FALSE
   
-  if (netcdf){
-    
+  if (netcdf){    
     ## /////////////////////////////////////////////////////////////////
     ## use NetCDF outputs from LPX
     ## -----------------------------------------------------------------
@@ -29,24 +42,28 @@ get.f.luc <- function( name.nolu, name.lu, dir,
     lon <- get.var.ncdf(nc, varid="LONGITUDE")
     lat <- get.var.ncdf(nc, varid="LATITUDE")
     time <- get.var.ncdf(nc, varid="TIME")
-    print("reading with-LU-variable (example) ...")
-    nep.lu <- get.var.ncdf(nc, varid="nep")
+    ludim <- get.var.ncdf( nc, varid="landuse" )
+    fildim <- c( length(lon), length(lat), length(ludim), length(time) )
+    print(paste("file dimensions:",fildim))
+
+    ## print("reading with-LU-variable (example) ...")
+    ## nep.lu <- get.var.ncdf(nc, varid="nep")
 
     ## Determine domain to be read (time)
     if (!is.na(tstart)&&!is.na(tend)){
       print(paste("cutting to years ",tstart,tend))
-      start.lu <- dim(nep.lu)
+      start.lu <- fildim
       start.lu[] <- 1
       start.lu[length(start.lu)] <- which.min(abs(time-tstart))
-      count.lu <- dim(nep.lu)
+      count.lu <- fildim
       count.lu[length(count.lu)] <- which.min(abs(time-tend))-which.min(abs(time-tstart))+1
     } else {
       print(paste("reading all time steps "))
-      start.lu <- dim(nep.lu)
+      start.lu <- fildim
       start.lu[] <- 1
-      count.lu <- dim(nep.lu)
+      count.lu <- fildim
     }
-    rm(nep.lu)
+    #rm(nep.lu)
     gc() # garbage collection
 
     ## Cut time vector to desired length
@@ -64,21 +81,19 @@ get.f.luc <- function( name.nolu, name.lu, dir,
     ## Read with-LU file
     ##------------------------------------------------------------------
     print(paste("LU sim:",name.lu))
+
     print("reading NEP ...")
-    nep.lu <- get.var.ncdf(nc, varid="nep"
-                         ,start=start.lu,count=count.lu
-                         )
+    nep.lu <- get.var.ncdf(nc, varid="nep",start=start.lu,count=count.lu)
     nep.lu[nep.lu==-9999] <- NA
+
     print("reading PRODUCT C FLUX ...")
-    cflux.prod.lu <- get.var.ncdf(nc, varid="acflux_products"
-                                ,start=start.lu,count=count.lu
-                                )
-    cflux.prod.lu[nep.lu==-9999] <- NA
+    cflux.prod.lu <- get.var.ncdf(nc, varid="acflux_products",start=start.lu,count=count.lu)
+    cflux.prod.lu[cflux.prod.lu==-9999] <- NA
+
     print("reading LU_AREA ...")
-    luarea.lu <- get.var.ncdf(nc, varid="lu_area"
-                            ,start=start.lu,count=count.lu
-                            )
-    luarea.lu[nep.lu==-9999] <- NA
+    luarea.lu <- get.var.ncdf(nc, varid="lu_area",start=start.lu,count=count.lu)
+    luarea.lu[luarea.lu==-9999] <- NA
+
     if (offset) {
       count.offset <- count.lu
       count.offset[length(count.offset)] <- 1
@@ -107,23 +122,36 @@ get.f.luc <- function( name.nolu, name.lu, dir,
     }
     print("reading time ...")
     time <- get.var.ncdf(nc, varid="TIME")
-    print("reading without-LU-variable (example) ...")
-    nep.nolu <- get.var.ncdf(nc, varid="nep")
-    nep.nolu[nep.nolu==-9999] <- NA
+    ludim <- get.var.ncdf( nc, varid="landuse" )
+    fildim <- c( length(lon), length(lat), length(ludim), length(time) )
+    print(paste("file dimensions:",fildim))
+
+    ## print("reading without-LU-variable (example) ...")
+    ## nep.nolu <- get.var.ncdf(nc, varid="nep")
+    ## nep.nolu[nep.nolu==-9999] <- NA
     
-    print("dimensions of NEP in no-LU file:")
-    print(dim(nep.nolu))
+    #print("dimensions of NEP in no-LU file:")
+    #print(dim(nep.nolu))
     
     ## determine whether no-landuse simulation has k dimension
-    noludim <- FALSE
-    if (length(dim(nep.nolu))==3){
+    ## noludim <- FALSE
+    ## if (length(dim(nep.nolu))==3){
+    ##   print("no LU dimension in file without LUC")
+    ##   noludim <- TRUE
+    ## } else {
+    ##   print("full LU dimension in file without LUC")
+    ##   llu.nolu <- dim(nep.nolu)[3]
+    ## }
+    if (length(ludim)==1) {
       print("no LU dimension in file without LUC")
       noludim <- TRUE
     } else {
       print("full LU dimension in file without LUC")
-      llu.nolu <- dim(nep.nolu)[3]
+      llu.nolu <- length(ludim)
+      noludim <- FALSE
     }
 
+    
     ## Determine domain to be read (time)
     if (noludim) {
       ## File has LU dimension with length = 1
@@ -135,33 +163,36 @@ get.f.luc <- function( name.nolu, name.lu, dir,
         start.nolu <- rep(1,4)
         start.nolu[length(start.nolu)] <- which.min(abs(time-tstart))
         count.nolu <- start.nolu
-        count.nolu[1:2] <- dim(nep.nolu)[1:2]
+        ##count.nolu[1:2] <- dim(nep.nolu)[1:2]
+        count.nolu[1:2] <- c(length(lon),length(lat))
         count.nolu[length(count.nolu)] <- which.min(abs(time-tend))-which.min(abs(time-tstart))+1
       } else {
         print(paste("reading all time steps "))
         start.nolu <- rep(1,4)
         count.nolu <- start.nolu
-        count.nolu[1:2] <- dim(nep.nolu)[1:2]
-        count.nolu[length(count.nolu)] <- dim(nep.nolu)[length(dim(nep.nolu))]
+        #count.nolu[1:2] <- dim(nep.nolu)[1:2]
+        count.nolu[1:2] <- c(length(lon),length(lat))
+        #count.nolu[length(count.nolu)] <- dim(nep.nolu)[length(dim(nep.nolu))]
+        count.nolu[length(count.nolu)] <- length(time)
       }
     } else {
       ## File has LU dimension with length > 1
       if (!is.na(tstart)&&!is.na(tend)){
         print(paste("cutting to years ",tstart,tend))
-        start.nolu <- dim(nep.nolu)
+        start.nolu <- fildim
         start.nolu[] <- 1
         start.nolu[length(start.nolu)] <- which.min(abs(time-tstart))
-        count.nolu <- dim(nep.nolu)
+        count.nolu <- fildim
         count.nolu[length(count.nolu)] <- which.min(abs(time-tend))-which.min(abs(time-tstart))+1
       } else {
         print(paste("reading all time steps "))
-        start.nolu <- dim(nep.nolu)
+        start.nolu <- fildim
         start.nolu[] <- 1
-        count.nolu <- dim(nep.nolu)
+        count.nolu <- fildim
       }
     }
-    rm(nep.nolu)
-    gc() # garbage collection
+    #rm(nep.nolu)
+    #gc() # garbage collection
     
     ## Cut time vector to desired length
     if (!is.na(tstart)&&!is.na(tend)){
@@ -170,9 +201,7 @@ get.f.luc <- function( name.nolu, name.lu, dir,
   
     ## Now reading variables from non-LU file
     print("reading NEP ...")
-    nep.nolu <- get.var.ncdf(nc, varid="nep"
-                           ,start=start.nolu,count=count.nolu
-                           )
+    nep.nolu <- get.var.ncdf(nc, varid="nep",start=start.nolu,count=count.nolu)
     nep.nolu[nep.nolu==-9999] <- NA
 
     print("reading LU_AREA ...")
@@ -355,26 +384,23 @@ get.f.luc <- function( name.nolu, name.lu, dir,
     out.f.luc$field <- f.luc.field.out
     out.f.luc$lon <- lon
     out.f.luc$lat <- lat
+    out.f.luc$field_luarea <- luarea.lu
     if (offset){
       out.f.luc$offset.field <- offset.field
       out.f.luc$offset.init <- offset.init
     }
-    
-    return(out.f.luc)
-        
+            
   } else {
     ## ////////////////////////////////////////////
     ## use ASCII outputs
     ## --------------------------------------------
-    print("reading LPX ASCII output ...")
+    print("reading LPX ASCII output for fLUC ...")
 
     if (byflux) {
       ## --------------------------------------------
       ## compute by flux (default)
       ## --------------------------------------------
-      
-      tmp      <- read.table( paste( dir, "trans_", name.nolu, ".nep.out", sep="") )
-      print(paste( dir, "trans_", name.nolu, ".nep.out", sep="" ))
+      tmp      <- read.table( paste( dir, "trans_", name.nolu, ".nep.out", sep="" ) )
       time.nolu<- tmp[,1]
       nep.nolu <- tmp[,2]
       if (grossfluxes) {
@@ -386,17 +412,19 @@ get.f.luc <- function( name.nolu, name.lu, dir,
         npp.nolu <- tmp[,2]
       }
 
-      tmp      <- read.table( paste( dir, "trans_", name.lu,   ".nep.out", sep="") )
+      tmp      <- read.table( paste( dir, "trans_", name.lu, ".nep.out", sep="" ) )
       nep.lu   <- tmp[,2]
       time.lu  <- tmp[,1]
-      tmp      <- read.table( paste( dir, "trans_", name.lu, ".cflux_prod.out", sep="") )
-      cflux.prod.lu <- tmp[,2]
+      ## Older LPX versions: C flux (land->atmosphere) from product decay is not included in *.nep.out
+      if ( oldversion ) {
+        tmp <- read.table( paste( dir, "trans_", name.lu, ".cflux_prod.out", sep="" ) )
+        nep.lu <- nep.lu - tmp[,2]
+      }
       if (grossfluxes) {
         tmp      <- read.table( paste( dir, "trans_", name.lu, ".rh.out", sep="") )
         rh.lu    <- tmp[,2]
         tmp      <- read.table( paste( dir, "trans_", name.lu, ".cflux_fire.out", sep="") )
         fire.lu    <- tmp[,2]
-        print(paste("opening ",dir, "trans_", name.lu, ".npp.out", sep=""))
         tmp      <- read.table( paste( dir, "trans_", name.lu, ".npp.out", sep="") )
         npp.lu    <- tmp[,2]
       }
@@ -408,15 +436,19 @@ get.f.luc <- function( name.nolu, name.lu, dir,
       ## --------------------------------------------
       tmp      <- read.table( paste( dir, "trans_", name.nolu, ".totc.out", sep="") )
       time.nolu<- tmp[,1]
-      nep.nolu <- tmp[,2]*NA
-      nep.nolu[2:length(nep.nolu)] <- tmp[1:(length(nep.nolu)-1),2] - tmp[2:length(nep.nolu),2]
+      nep.nolu <- tmp[,2]*0.0
+      nep.nolu[2:length(nep.nolu)] <- tmp[2:length(nep.nolu),2] - tmp[1:(length(nep.nolu)-1),2]
     
       tmp      <- read.table( paste( dir, "trans_", name.lu,   ".totc.out", sep="") )
-      nep.lu   <- tmp[,2]*NA
-      nep.lu[2:length(nep.nolu)] <-tmp[1:(length(nep.nolu)-1),2] - tmp[2:length(nep.nolu),2]
+      nep.lu   <- tmp[,2]*0.0
+      nep.lu[2:length(nep.nolu)] <- tmp[2:length(nep.nolu),2] - tmp[1:(length(nep.nolu)-1),2]
       time.lu  <- tmp[,1]
-      tmp      <- read.table( paste( dir, "trans_", name.lu, ".cflux_prod.out", sep="") )
-      cflux.prod.lu <- tmp[,2]      
+      # tmp      <- read.table( paste( dir, "trans_", name.lu, ".cflux_prod.out", sep="") )
+      tmp      <- read.table( paste( dir, "trans_", name.lu, ".prodc.out", sep="") )
+      cflux.prod.lu <- tmp[,2]*0.0
+      cflux.prod.lu[2:length(nep.nolu)] <- tmp[2:length(nep.nolu),2] - tmp[1:(length(nep.nolu)-1),2]
+      # cflux.prod.lu <- tmp[,2]      
+      # cflux.prod.lu <- tmp[,2] * 0.0      
 
     }
 
@@ -439,7 +471,6 @@ get.f.luc <- function( name.nolu, name.lu, dir,
         }
         nep.nolu  <- nep.nolu[which(time.nolu==tstart):which(time.nolu==tend)]
         nep.lu <- nep.lu[which(time.lu==tstart):which(time.lu==tend)]
-        cflux.prod.lu <- cflux.prod.lu[which(time.lu==tstart):which(time.lu==tend)]
         time.lu <- time.lu[which(time.lu==tstart):which(time.lu==tend)]
         if (grossfluxes) {
           rh.nolu  <- rh.nolu[which(time.nolu==tstart):which(time.nolu==tend)]
@@ -455,7 +486,6 @@ get.f.luc <- function( name.nolu, name.lu, dir,
     } else {
       nep.nolu  <- nep.nolu[which(time.nolu==tstart):which(time.nolu==tend)]
       nep.lu    <- nep.lu[which(time.lu==tstart):which(time.lu==tend)]
-      cflux.prod.lu <- cflux.prod.lu[which(time.lu==tstart):which(time.lu==tend)]
       if (grossfluxes) {
         rh.nolu <- rh.nolu[which(time.nolu==tstart):which(time.nolu==tend)]
         fire.nolu <- fire.nolu[which(time.nolu==tstart):which(time.nolu==tend)]
@@ -469,7 +499,7 @@ get.f.luc <- function( name.nolu, name.lu, dir,
     }
     
     out.f.luc <- list()
-    f.luc <- data.frame( time=time.nolu, f.luc=(nep.nolu - (nep.lu-cflux.prod.lu)), nbp.nolu=nep.nolu, nbp.lu=(nep.lu-cflux.prod.lu) )
+    f.luc <- data.frame( time=time.nolu, f.luc=( nep.nolu - nep.lu ), nbp.nolu=nep.nolu, nbp.lu=nep.lu )
     out.f.luc$tseries <- f.luc
     if (grossfluxes) {
       deforflux <- data.frame( time=time.nolu, deforflux = (nep.nolu-npp.nolu - (nep.lu-npp.lu-cflux.prod.lu)) )
