@@ -7,7 +7,7 @@
 
 ## dx and dy are in units of degrees
 
-area <- function(lat,dx,dy){
+area <- function(lat,dx=1,dy=1){
   r_earth <- 6370000
 
   area <- 4*r_earth^2*0.5*dx*pi/180*

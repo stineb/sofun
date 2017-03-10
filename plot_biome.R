@@ -1,4 +1,4 @@
-plot_biome <- function( biome, time, lon, lat, outyear, plotfil ){
+plot_biome <- function( biome, time, lon, lat, outyear, plotfil, lab="", frame=FALSE, legend=TRUE ){
   ## ----------------------------------------------------------------
   ## PLOT THE NICE BIOME MAP
   ## Use in combination with biomisation algorithm 'biomisation.R'.
@@ -23,19 +23,20 @@ plot_biome <- function( biome, time, lon, lat, outyear, plotfil ){
   library(fields)
   library(sp)
   library(maps)
+  if (frame) { library(caTools) } # for write.gif 
 
   if (dim(biome)[3]!=length(time)) {
     print( "length of time dimension of array 'biome' doesn't correspond to lenth of vector 'time'.")
   }
 
-  iyr <- max( 1, which.min( abs( floor(time)-((outyear+0.5)-30) ) ) )
+  iyr <- max( 1, which.min( abs( floor(time)-((outyear+0.5)) ) ) )
 
   print(paste("plot biomes for year", outyear, "..."))
 
   ## Replace NAs with 0 (ocean)
   biome[ is.na(biome) ] <- 0
 
-    ## 1st Color key
+  ## 1st Color key
   color <- c(
               "grey70",#            Ocean
               "darkgreen",#         Tropical forest
@@ -73,7 +74,11 @@ plot_biome <- function( biome, time, lon, lat, outyear, plotfil ){
   ncols <- 2
   nrows <- 1
   widths <- rep(1.6*magn,ncols)
-  widths[2] <- 0.3*widths[2]
+  if (legend){
+    widths[2] <- 0.3*widths[2]  
+  } else {
+    widths[2] <- 0
+  }
   heights <- rep(magn,nrows)
   order <- matrix(c(1:(nrows*ncols)),nrows,ncols,byrow=TRUE)
 
@@ -83,7 +88,13 @@ plot_biome <- function( biome, time, lon, lat, outyear, plotfil ){
   ## plot only latitudes ...
   ylim <- c( -60, 90 )
 
-  pdf( plotfil, width=sum(widths), height=sum(heights) )
+  if (frame){
+    jpeg( paste( plotfil, ".jpg", sep="" ), width=sum(widths), height=sum(heights), units="cm", res=500, pointsize=4.5 )
+    # cex <- 2.0
+  } else {
+    pdf( paste( plotfil, ".pdf", sep="" ), width=sum(widths), height=sum(heights) )   
+    # cex <- 0.7 
+  }
 
     panel <- layout(
                     order,
@@ -105,11 +116,17 @@ plot_biome <- function( biome, time, lon, lat, outyear, plotfil ){
 
     map( add=TRUE, interior=FALSE )
 
-    ## add legend on the right
-    par( mar=c(1,0,1,0), xaxs="i", yaxs="i", las=1 )
-    plot( (1:14)/14, 1:14, type="n", axes=FALSE )
-    rect( rep(0,14), 0:13, rep(0.25,14), 1:14, col=color )
-    text( rep(0.3,14), (0:13)+0.2, label, adj=c(0,0), cex=0.7 )
+    ## add label inside the map plot
+    text( -170, -45, as.character(outyear), adj=c(0,0), cex=1.0 )
+    text( -170, -55, lab, adj=c(0,0), cex=1.0 )
+
+    if (legend){
+      ## add legend on the right
+      par( mar=c(1,0,1,0), xaxs="i", yaxs="i", las=1 )
+      plot( (1:14)/14, 1:14, type="n", axes=FALSE )
+      rect( rep(0,14), 0:13, rep(0.25,14), 1:14, col=color )
+      text( rep(0.3,14), (0:13)+0.2, label, adj=c(0,0), cex=1.0 )
+    } 
 
   dev.off()
 

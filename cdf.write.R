@@ -18,18 +18,28 @@
 ##
 ## Beni Stocker, 17.06.2013
 ## -------------------------------------------------------------------------
-cdf.write <- function(var,varnam,
+cdf.write <- function(
+                      var,
+                      varnam,
                       lon,lat,
                       filnam,
-                      z_dim=NA,time=NA,
-                      make.zdim=FALSE,make.tdim=FALSE,
-                      nvars=1,
-                      var2=NA,varnam2=NA,
-                      var3=NA,varnam3=NA,
-                      var4=NA,varnam4=NA,
-                      var5=NA,varnam5=NA,
-                      vartype="NC_FLOAT",
-                      verbose=FALSE
+                      z_dim          = NA,
+                      time           = NA,
+                      make.zdim      = FALSE,
+                      make.tdim      = FALSE,
+                      nvars          = 1,
+                      var2           = NA, varnam2= NA,
+                      var3           = NA, varnam3= NA,
+                      var4           = NA, varnam4= NA,
+                      var5           = NA, varnam5= NA,
+                      vartype        = "NC_FLOAT",
+                      verbose        = FALSE,
+                      units_var1     = NA,
+                      units_var2     = NA,
+                      units_time     = NA,
+                      long_name_var1 = NA,
+                      long_name_var2 = NA,
+                      glob_title     = NA
                       ){
   library(RNetCDF)
   
@@ -259,7 +269,28 @@ cdf.write <- function(var,varnam,
     att.put.nc(nc,"Z","units","NC_CHAR","none")
     att.put.nc(nc,"Z","long_name","NC_CHAR","none")
   }
-    
+
+  ## optional attributes passed on as arguments
+  if( !is.na(units_var1)){
+    att.put.nc( nc, varnam, "units", "NC_CHAR", units_var1 )
+  }
+  if( !is.na(units_var2) && nvars>1){
+    att.put.nc( nc, varnam2, "units", "NC_CHAR", units_var2 )
+  }
+  if( !is.na(units_time) && make.tdim){
+    att.put.nc( nc, "TIME", "units", "NC_CHAR", units_time )
+  }
+  if( !is.na(long_name_var1)){
+    att.put.nc( nc, varnam, "long_name", "NC_CHAR", long_name_var1 )
+  }
+  if( !is.na(long_name_var2) && nvars>1){
+    att.put.nc( nc, varnam2, "long_name", "NC_CHAR", long_name_var2 )
+  }
+  if( !is.na(glob_title)){
+    att.put.nc( nc, "NC_GLOBAL", "title", "NC_CHAR", glob_title )
+  }
+
+
   ## Put the data
   if (verbose) {print("put the data...")}
 

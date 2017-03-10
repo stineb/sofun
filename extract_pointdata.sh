@@ -1,4 +1,4 @@
-#!/bin/bash
+  #!/bin/bash
 
 ## Extract values from NetCDF file for one point (gridcell) corresponding to mylon and mylat.
 ## This script is written for processing WATCH forcing data, there each file contains data
