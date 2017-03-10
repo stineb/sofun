@@ -1,11 +1,11 @@
 # README
 ---------------
-* LAST UPDATED: 2014-11-27
+* LAST UPDATED: 2016-10-23
 * TEAM: labprentice
 * REPO: utilities (public)
 
 ## Description
-This repository holds utility and general functionality scripts. 
+This repository holds utility and general functionality scripts.
 
 ## Files
 
@@ -16,7 +16,10 @@ This repository holds utility and general functionality scripts.
 * Ferret script to convert an ASCII file (gridded, geo-referenced data in text format) into NetCDF.
 
 ### batch_audio_cvt.sh
-* Performs batch audio conversions (e.g., lossless m4a to lossy mp3) using VLC Media Player (Unix/Mac OSX)
+* Performs batch audio conversions (e.g., lossless m4a to lossy mp3) using libav-tools and mediainfo (Debian Linux)
+
+### biomisation.R
+* R function returns the biome as a function of GDD, fractional plant cover of 9 PFTs (LPX) and vegetation height.
 
 ### calc_centroids.R
 * Writes CSV file (ID, LAT, LON) of regular grid pixel centroids for given map extents and pixel resolution.
@@ -57,11 +60,14 @@ This repository holds utility and general functionality scripts.
 ### ocr.py
 * This script converts JPG images to text files (e.g., those pesky journal articles online where each page is an image file).
 * Depends on [imagemagick](http://www.imagemagick.org/) (for image processing) and [tesseract](https://code.google.com/p/tesseract-ocr/) (for OCR) software packages.
-* Includes __ocr_example.jpg__ for testing purposes. 
+* Includes __ocr_example.jpg__ for testing purposes.
 
 ### peirce_dev
 * Python (__peirce_dev.py__) and R (__peirce_dev.R__) scripts that remove outliers from observation pairs based on a model fit using Peirce's criterion.
 * Example data is available (__peirce_example.csv__)
+
+### plot_biome.R
+* R function creates a PDF with a nice map of biomes, given biome categorised using function 'biomisation.R'.
 
 ### regrid_landuse.R
 * R function to regrid (remap) landuse data conserving total area in categories cropland, pasture, urban.

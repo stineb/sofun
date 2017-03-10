@@ -5,20 +5,20 @@
 # Imperial College London
 #
 # 2015-02-12 -- created
-# 2015-02-12 -- last updated
+# 2015-11-13 -- last updated
 #
 # ~~~~~~~~~~~~
 # description:
 # ~~~~~~~~~~~~
-# This script provides various functions of state equations for calculating 
+# This script provides various functions of state equations for calculating
 # the density and viscosity of water.
-#
 #
 ###############################################################################
 ## IMPORT MODULES:
 ###############################################################################
 import numpy
 import matplotlib.pyplot as plt
+
 
 ###############################################################################
 ## FUNCTIONS:
@@ -70,6 +70,7 @@ def tumlirz_density(tc, p):
     rho = (1e3/v)
     #
     return rho
+
 
 def chen_density(tc, p):
     """
@@ -123,17 +124,18 @@ def chen_density(tc, p):
     #
     return pw
 
+
 def huber_viscosity(tc, p):
     """
     Name:     huber_viscosity
     Input:    - float, ambient temperature (tc), degrees C
               - float, ambient pressure (p), Pa
     Return:   float, viscosity of water (mu), Pa s
-    Features: Calculates viscosity of water at a given temperature and pressure.
-    Depends:  tumlirz_density 
-    Ref:      Huber, M. L., R. A. Perkins, A. Laesecke, D. G. Friend, J. V. 
-              Sengers, M. J. Assael, ..., K. Miyagawa (2009) New 
-              international formulation for the viscosity of H2O, J. Phys. 
+    Features: Calculates water viscosity at a given temperature and pressure.
+    Depends:  tumlirz_density
+    Ref:      Huber, M. L., R. A. Perkins, A. Laesecke, D. G. Friend, J. V.
+              Sengers, M. J. Assael, ..., K. Miyagawa (2009) New
+              international formulation for the viscosity of H2O, J. Phys.
               Chem. Ref. Data, Vol. 38(2), pp. 101-125.
     """
     # Define reference temperature, density, and pressure values:
@@ -152,9 +154,9 @@ def huber_viscosity(tc, p):
     rbar = rho/rho_ast
     #
     # Calculate mu0 (Eq. 11 & Table 2, Huber et al., 2009):
-    mu0 = 1.67752 
-    mu0 += 2.20462/tbar 
-    mu0 += 0.6366564/tbar2 
+    mu0 = 1.67752
+    mu0 += 2.20462/tbar
+    mu0 += 0.6366564/tbar2
     mu0 += -0.241605/tbar3
     mu0 = 1e2*tbarx/mu0
     #
@@ -167,7 +169,7 @@ def huber_viscosity(tc, p):
     hj5 = (0., 0., 0., 0., 0.00872102, 0.)
     hj6 = (0., 0., 0., -0.00435673, 0., -0.000593264)
     h = hj0 + hj1 + hj2 + hj3 + hj4 + hj5 + hj6
-    h_array = numpy.reshape(numpy.array(h), (7,6))
+    h_array = numpy.reshape(numpy.array(h), (7, 6))
     #
     # Calculate mu1 (Eq. 12 & Table 3, Huber et al., 2009):
     mu1 = 0.
@@ -189,6 +191,7 @@ def huber_viscosity(tc, p):
     #
     return mu
 
+
 def vogel_viscosity(tc):
     """
     Name:     vogel_viscosity
@@ -206,43 +209,44 @@ def vogel_viscosity(tc):
     return mu
 
 ###############################################################################
-# PLOTS:
+# MAIN
 ###############################################################################
-n = 61
-my_temps = [i - 20. for i in xrange(n)]
-my_chen = numpy.zeros((n,))
-my_tumlirz = numpy.zeros((n,))
-my_huber = numpy.zeros((n,))
-my_vogel = numpy.zeros((n,))
-my_press = 101325.
-for i in xrange(n):
-    my_chen[i] = chen_density(my_temps[i], my_press)
-    my_tumlirz[i] = tumlirz_density(my_temps[i], my_press)
-    my_huber[i] = huber_viscosity(my_temps[i], my_press)
-    my_vogel[i] = vogel_viscosity(my_temps[i])
+if __name__ == '__main__':
+    n = 61
+    my_temps = [i - 20. for i in xrange(n)]
+    my_chen = numpy.zeros((n,))
+    my_tumlirz = numpy.zeros((n,))
+    my_huber = numpy.zeros((n,))
+    my_vogel = numpy.zeros((n,))
+    my_press = 101325.
+    for i in xrange(n):
+        my_chen[i] = chen_density(my_temps[i], my_press)
+        my_tumlirz[i] = tumlirz_density(my_temps[i], my_press)
+        my_huber[i] = huber_viscosity(my_temps[i], my_press)
+        my_vogel[i] = vogel_viscosity(my_temps[i])
 
-# Density:
-fig = plt.figure()
-ax1 = fig.add_subplot(111)
-plt.setp(ax1.get_xticklabels(), rotation=0, fontsize=14)
-plt.setp(ax1.get_yticklabels(), rotation=0, fontsize=14)
-ax1.plot(my_temps, my_chen, 'r-', label='Chen et al. (1977)') 
-ax1.plot(my_temps, my_tumlirz, 'k--', label='Tumlirz Equation')
-ax1.set_ylabel('Density of water, kg m$^{-3}$', fontsize=16)
-ax1.set_xlabel('Temperature, $^{\circ}$C', fontsize=16)
-ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
-            ncol=2, mode="expand", borderaxespad=0., fontsize=14)
-plt.show()
+    # Density:
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    plt.setp(ax1.get_xticklabels(), rotation=0, fontsize=14)
+    plt.setp(ax1.get_yticklabels(), rotation=0, fontsize=14)
+    ax1.plot(my_temps, my_chen, 'r-', label='Chen et al. (1977)')
+    ax1.plot(my_temps, my_tumlirz, 'k--', label='Tumlirz Equation')
+    ax1.set_ylabel('Density of water, kg m$^{-3}$', fontsize=16)
+    ax1.set_xlabel('Temperature, $^{\circ}$C', fontsize=16)
+    ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0., fontsize=14)
+    plt.show()
 
-# Viscosity
-fig = plt.figure()
-ax1 = fig.add_subplot(111)
-plt.setp(ax1.get_xticklabels(), rotation=0, fontsize=14)
-plt.setp(ax1.get_yticklabels(), rotation=0, fontsize=14)
-ax1.plot(my_temps, 1e3*my_huber, 'r-', label='Huber et al. (2009)') 
-ax1.plot(my_temps, 1e3*my_vogel, 'k--', label='Vogel Equation')
-ax1.set_ylabel('Viscosity of water, mPa s', fontsize=16)
-ax1.set_xlabel('Temperature, $^{\circ}$C', fontsize=16)
-ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
-            ncol=2, mode="expand", borderaxespad=0., fontsize=14)
-plt.show()
+    # Viscosity
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    plt.setp(ax1.get_xticklabels(), rotation=0, fontsize=14)
+    plt.setp(ax1.get_yticklabels(), rotation=0, fontsize=14)
+    ax1.plot(my_temps, 1e3*my_huber, 'r-', label='Huber et al. (2009)')
+    ax1.plot(my_temps, 1e3*my_vogel, 'k--', label='Vogel Equation')
+    ax1.set_ylabel('Viscosity of water, mPa s', fontsize=16)
+    ax1.set_xlabel('Temperature, $^{\circ}$C', fontsize=16)
+    ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0., fontsize=14)
+    plt.show()

@@ -43,27 +43,29 @@ my $numfiles = scalar( @dirfiles );
 
 if ($numfiles > 0)
 {
-	# If files were found, process them:
-	foreach $file (sort @dirfiles)
-	{
-		# Get file prefix, i.e. remove .txt:
-		$fprefix = substr $file, 0, -4;
-		
-		# Define gzip file:
-		$tarfile = $fprefix . ".gz";
-		
-		# Define command:
-        $command = "tar czvf $tarfile $file";
-		#$command = "gunzip $file";
-		
-		# Debugging: check the command to see if it is right:
-		print "$command\n";
-		
-		# Run the command:
-		system( $command );
-	}
+    # If files were found, process them:
+    foreach $file (sort @dirfiles)
+    {
+        # Get file prefix, i.e. remove .csv:
+        $fprefix = substr $file, 0, -4;
+
+        # Define gzip file:
+        $zfile = $fprefix . ".zip";
+
+        # Define command:
+        $command = "zip $zfile $file";
+        #$command = "unzip $file";
+        # $command = "gzip $file";
+        # $command = "gunzip $file";
+
+        # Debugging: check the command to see if it is right:
+        print "$command\n";
+
+        # Run the command:
+        system( $command );
+    }
 }
 else
 {
-	print "No files found.\n";
+    print "No files found.\n";
 }

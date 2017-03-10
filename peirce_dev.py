@@ -6,7 +6,7 @@
 # Imperial College London
 #
 # created: 2013-07-15
-# updated: 2013-11-27
+# updated: 2015-11-13
 #
 # ------------
 # description:
@@ -25,17 +25,19 @@
 # 05. Return 0 for negative x2 values [13.10.20]
 # 06. Updated peirce_dev variable names [14.11.27]
 # 07. Added remove_outliers function [14.11.27]
+# 08. PEP8 style fixes [15.11.13]
 #
-################################################################################
+###############################################################################
 ## IMPORT MODULES:
-################################################################################
+###############################################################################
 import matplotlib.pyplot as plt
 import numpy
 import scipy.special
 
-################################################################################
+
+###############################################################################
 ## FUNCTIONS:
-################################################################################
+###############################################################################
 def peirce_dev(pN, pn, pm):
     """
     Name:     peirce_dev
@@ -43,15 +45,15 @@ def peirce_dev(pN, pn, pm):
               - int, number of outliers to be removed (pn)
               - int, number of model unknowns (pm)
     Output:   float, squared error threshold (x2)
-    Features: Returns the squared threshold error deviation for outlier 
+    Features: Returns the squared threshold error deviation for outlier
               identification using Peirce's criterion based on Gould's
               methodology
     Ref:      Gould, B. A. (1855), On Peirce's criterion for the rejection of
-                doubtful observations, with tables for facilitating its 
+                doubtful observations, with tables for facilitating its
                 application, Astronomical Journal, 4(11), 81-87.
               Peirce, B. (1852),  Criterion for the rejection of doubtful
                 observations, Astronomical Journal, 2(21), 161-163.
-    """ 
+    """
     # Assign floats to input variables:
     pN = float(pN)
     pn = float(pn)
@@ -68,7 +70,7 @@ def peirce_dev(pN, pn, pm):
         Rnew = 1.0
         Rold = 0.0  # <- Necessary to prompt while loop
         #
-        while ( abs(Rnew - Rold) > (pN*2.0e-16) ):
+        while (abs(Rnew - Rold) > (pN*2.0e-16)):
             # Calculate Lamda (1/(N-n)th root of Gould's equation A'):
             ldiv = Rnew**pn
             if ldiv == 0:
@@ -91,6 +93,7 @@ def peirce_dev(pN, pn, pm):
     else:
         x2 = 0.0
     return x2
+
 
 def remove_outliers(x_data, y_data, y_hat, m):
     """
@@ -154,15 +157,15 @@ def remove_outliers(x_data, y_data, y_hat, m):
     #
     return(x_data_ro, y_data_ro)
 
-################################################################################
+###############################################################################
 ## MAIN PROGRAM:
-################################################################################
+###############################################################################
 my_file = 'peirce_example.csv'
 my_data = numpy.loadtxt(my_file, delimiter=',', skiprows=1,
-                        dtype={'names' : ('x_obs', 'y_obs', 'y_hat'),
-                               'formats' : ('f4', 'f4', 'f4')})
+                        dtype={'names': ('x_obs', 'y_obs', 'y_hat'),
+                               'formats': ('f4', 'f4', 'f4')})
 
-x_ro, y_ro = remove_outliers(my_data['x_obs'], my_data['y_obs'], 
+x_ro, y_ro = remove_outliers(my_data['x_obs'], my_data['y_obs'],
                              my_data['y_hat'], 3)
 
 fig = plt.figure()

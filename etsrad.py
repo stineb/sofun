@@ -6,7 +6,7 @@
 # Imperial College London
 #
 # 2013-09-10 -- created
-# 2014-11-27 -- last updated
+# 2015-11-13 -- last updated
 #
 # ------------
 # description:
@@ -14,7 +14,7 @@
 # This script calculates extraterrestrial solar radiation.
 # * half-hour time series and daily totals
 # * total daylight hours
-# 
+#
 # ----------
 # changelog:
 # ----------
@@ -38,42 +38,44 @@
 # 09. added daylight savings factor to class input [14.10.17]
 # 10. added datetime module [14.10.18]
 # 11. added local_time & solar_time as SOLAR class variables [14.10.18]
-# 12. added check for ds input [14.10.18] 
+# 12. added check for ds input [14.10.18]
 # 13. updated variable names [14.11.27]
 # 14. added figure plot [14.11.27]
+# 15. PEP8 style fixes [15.11.13]
 #
-################################################################################
+###############################################################################
 ## IMPORT MODULES:
-################################################################################
+###############################################################################
 import datetime
 import matplotlib.pyplot as plt
 import numpy
 from sys import exit
 
-################################################################################
+
+###############################################################################
 ## CLASSES:
-################################################################################
+###############################################################################
 class SOLAR:
     """
     Name:     SOLAR
-    Features: This class calculates the half-hourly extraterrestrial PPFD 
+    Features: This class calculates the half-hourly extraterrestrial PPFD
               [umol m-2 s-1], and the daily extraterrestrial PPFD [umol m-2]
               based on the STASH 2.0 methodology
     """
     # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
     # Class Variable Definitions
     # ////////////////////////////////////////////////////////////////////////
-    ke = 0.0167   # eccentricity for 2000 CE (Berger, 1978)
-    keps = 23.44  # obliquity for 2000 CE, degrees (Berger, 1978)
-    kfFEC = 2.04  # From flux to energy conversion, umol/J (Meek et al., 1984)
-    kGsc = 1360.8 # Solar constant, W/m^2 (Kopp & Lean, 2011)
-    komega = 283. # longitude of perihelion for 2000 CE, degrees (Berger, 1978)
+    ke = 0.0167    # eccentricity for 2000 CE (Berger, 1978)
+    keps = 23.44   # obliquity for 2000 CE, degrees (Berger, 1978)
+    kfFEC = 2.04   # from flux to energy conver., umol/J (Meek et al., 1984)
+    kGsc = 1360.8  # Solar constant, W/m^2 (Kopp & Lean, 2011)
+    komega = 283.  # longitude of perihelion for 2000 CE, deg (Berger, 1978)
     #
-    # List of local time at half-hourly time step: 
+    # List of local time at half-hourly time step:
     local_hh = numpy.array([0.5*i for i in xrange(48)])
-    #
+
     # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-    # Class Initialization 
+    # Class Initialization
     # ////////////////////////////////////////////////////////////////////////
     def __init__(self, lon, lat, n, y, dsf=0):
         """
@@ -81,7 +83,7 @@ class SOLAR:
         Input:    - float, longitude, degrees (lon)
                   - float, latitude, degrees (lat)
                   - int, day of year (n)
-                  - int, year 
+                  - int, year
                   - int, daylight savings (ds)
         """
         # Error handle and assign required public variables:
@@ -114,8 +116,8 @@ class SOLAR:
         # 0. Create datetime series
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         self.local_time = numpy.array([
-            datetime.datetime(self.user_year, 1 ,1 ,0, 0, 0) + 
-            datetime.timedelta(days=(n-1)) + 
+            datetime.datetime(self.user_year, 1, 1, 0, 0, 0) +
+            datetime.timedelta(days=(n-1)) +
             datetime.timedelta(hours=i) for i in self.local_hh
         ])
         #
@@ -126,7 +128,7 @@ class SOLAR:
             self.kN = 365
         else:
             self.kN = (
-                self.julian_day((y + 1), 1, 1) - 
+                self.julian_day((y + 1), 1, 1) -
                 self.julian_day(y, 1, 1)
             )
         #
@@ -183,8 +185,8 @@ class SOLAR:
         # 8b. Create solar datetime series
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         self.solar_time = numpy.array([
-            datetime.datetime(self.user_year, 1 ,1 ,0, 0, 0) + 
-            datetime.timedelta(days=(n-1)) + 
+            datetime.datetime(self.user_year, 1, 1, 0, 0, 0) +
+            datetime.timedelta(days=(n-1)) +
             datetime.timedelta(hours=i) for i in self.ts_hh
         ])
         #
@@ -245,7 +247,7 @@ class SOLAR:
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         qo = (1.0e-6)*self.kfFEC*ho
         self.qo_molm2 = qo
-        #
+
     # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
     # Class Function Definitions
     # ////////////////////////////////////////////////////////////////////////
@@ -262,28 +264,28 @@ class SOLAR:
         my_rho = (1.0 - self.ke**2)/(1.0 + self.ke*self.dcos(lon))
         my_dr = (1.0/my_rho)**2
         return(my_dr)
-    #
+
     def berger_tls(self, n):
         """
         Name:     SOLAR.berger_tls
         Input:    int, day of year
-        Output:   tuple, 
+        Output:   tuple,
                   - true anomaly, degrees
                   - true longitude, degrees
         Features: Returns true anomaly and true longitude for a given day
-        Ref:      Berger, A. L. (1978), Long term variations of daily insolation
-                  and quaternary climatic changes, J. Atmos. Sci., 35, 2362-
-                  2367.
+        Ref:      Berger, A. L. (1978), Long term variations of daily
+                  insolation and quaternary climatic changes, J. Atmos. Sci.,
+                  35, 2362-2367.
         """
         # Variable substitutes:
-        xee = self.ke**2 
+        xee = self.ke**2
         xec = self.ke**3
         xse = numpy.sqrt(1.0 - xee)
         #
         # Mean longitude for vernal equinox:
         xlam = (
-            (self.ke/2.0 + xec/8.0)*(1.0 + xse)*self.dsin(self.komega) - 
-            xee/4.0*(0.5 + xse)*self.dsin(2.0*self.komega) + 
+            (self.ke/2.0 + xec/8.0)*(1.0 + xse)*self.dsin(self.komega) -
+            xee/4.0*(0.5 + xse)*self.dsin(2.0*self.komega) +
             xec/8.0*(1.0/3.0 + xse)*self.dsin(3.0*self.komega)
             )
         xlam = numpy.degrees(2.0*xlam)
@@ -296,9 +298,9 @@ class SOLAR:
         ranm = numpy.radians(anm)
         #
         #  True anomaly:
-        ranv = (ranm + (2.0*self.ke - xec/4.0)*numpy.sin(ranm) + 
-            5.0/4.0*xee*numpy.sin(2.0*ranm) + 
-            13.0/12.0*xec*numpy.sin(3.0*ranm))
+        ranv = (ranm + (2.0*self.ke - xec/4.0)*numpy.sin(ranm) +
+                5.0/4.0*xee*numpy.sin(2.0*ranm) +
+                13.0/12.0*xec*numpy.sin(3.0*ranm))
         anv = numpy.degrees(ranv)
         #
         # True longitude:
@@ -307,14 +309,14 @@ class SOLAR:
             my_tls += 360.0
         elif my_tls > 360:
             my_tls -= 360.0
-        # 
+        #
         # True anomaly:
         my_nu = (my_tls - self.komega)
         if my_nu < 0:
             my_nu += 360.0
         #
         return(my_nu, my_tls)
-    #
+
     def dcos(self, x):
         """
         Name:     SOLAR.dcos
@@ -323,7 +325,7 @@ class SOLAR:
         Features: Calculates the cosine of an angle given in degrees
         """
         return numpy.cos(x*numpy.pi/180.0)
-    #
+
     def dsin(self, x):
         """
         Name:     SOLAR.dsin
@@ -332,7 +334,7 @@ class SOLAR:
         Features: Calculates the sine of an angle given in degrees
         """
         return numpy.sin(x*numpy.pi/180.0)
-    #
+
     def julian_day(self, y, m, i):
         """
         Name:     SOLAR.julian_day
@@ -340,9 +342,9 @@ class SOLAR:
                   - int, month (m)
                   - int, day of month (i)
         Output:   float, Julian Ephemeris Day
-        Features: Converts Gregorian date (year, month, day) to Julian 
+        Features: Converts Gregorian date (year, month, day) to Julian
                   Ephemeris Day
-        Ref:      Eq. 7.1, Meeus, J. (1991), Ch.7 "Julian Day," Astronomical 
+        Ref:      Eq. 7.1, Meeus, J. (1991), Ch.7 "Julian Day," Astronomical
                   Algorithms
         """
         if m <= 2.0:
@@ -354,7 +356,7 @@ class SOLAR:
         #
         jde = int(365.25*(y + 4716)) + int(30.6001*(m + 1)) + i + b - 1524.5
         return jde
-    #
+
     def spencer_eot(self, n, P):
         """
         Name:     SOLAR.spencer_eot
@@ -362,34 +364,34 @@ class SOLAR:
                   - int, number of days per year (P)
         Output:   float, equation of time, hours
         Features: Returns the equation of time
-        Ref:      Spencer, J.W. (1971), Fourier series representation of the 
-                  position of the sun, Search, 2 (5), p. 172. 
+        Ref:      Spencer, J.W. (1971), Fourier series representation of the
+                  position of the sun, Search, 2 (5), p. 172.
         """
         B = 2.0*numpy.pi*(n - 1.0)/P
         my_eot = 12.0/(numpy.pi)*(
-            (7.5e-6) + (1.868e-3)*self.dcos(B) - (3.2077e-2)*self.dsin(B) - 
+            (7.5e-6) + (1.868e-3)*self.dcos(B) - (3.2077e-2)*self.dsin(B) -
             (1.4615e-2)*self.dcos(2.0*B) - (4.0849e-2)*self.dsin(2.0*B)
         )
         return(my_eot)
-    #
+
     def woolf_delta(self, lon):
         """
         Name:     SOLAR.woolf_delta
         Input:    float, true longitude, degrees (lon)
         Output:   float, declination angle, degrees
         Features: Returns the declination angle for a given true longitude
-        Ref:      Woolf, H. M. (1968), On the computation of solar evaluation 
-                  angles and the determination of sunrise and sunset times, 
-                  Tech. rep. NASA-TM-X-164, National Aeronautics and Space 
+        Ref:      Woolf, H. M. (1968), On the computation of solar evaluation
+                  angles and the determination of sunrise and sunset times,
+                  Tech. rep. NASA-TM-X-164, National Aeronautics and Space
                   Administration, Washington, DC.
         """
         my_delta = numpy.arcsin(self.dsin(lon)*self.dsin(self.keps))
         my_delta *= (180.0/numpy.pi)
         return(my_delta)
 
-################################################################################
+###############################################################################
 ## MAIN:
-################################################################################
+###############################################################################
 # User options
 my_lat = 51.408
 my_lon = -0.64
