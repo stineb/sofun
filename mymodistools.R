@@ -122,7 +122,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   ntsteps    <- dim(tseries[[1]])[1]
   tmp        <- rownames( tseries[[1]] )
   time       <- data.frame( yr=as.numeric( substr( tmp, start=2, stop=5 )), doy=as.numeric( substr( tmp, start=6, stop=8 )) )
-  time$dates <- as.POSIXlt( as.Date( paste( as.character(time$yr), "-01-01", sep="" ) ) + time$doy - 1 )
+  time$dates <- as.POSIXct( as.Date( paste( as.character(time$yr), "-01-01", sep="" ) ) + time$doy - 1 )
   time$yr_dec<- time$yr + ( time$doy - 1 ) / ndayyear
 
   ## this may arise for some odd reason
@@ -155,7 +155,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
     ntsteps    <- dim(tseries[[1]])[1]
     tmp        <- rownames( tseries[[1]] )
     time       <- data.frame( yr=as.numeric( substr( tmp, start=2, stop=5 )), doy=as.numeric( substr( tmp, start=6, stop=8 )) )
-    time$dates <- as.POSIXlt( as.Date( paste( as.character(time$yr), "-01-01", sep="" ) ) + time$doy - 1 )
+    time$dates <- as.POSIXct( as.Date( paste( as.character(time$yr), "-01-01", sep="" ) ) + time$doy - 1 )
     time$yr_dec<- time$yr + ( time$doy - 1 ) / ndayyear
 
     ## get number of products for which data is in ascii file (not used)
@@ -226,9 +226,9 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   # ######################
   # ## for debugging:
   # # overwrite <- FALSE
-  # sitename <- "AT-Neu"
-  # lon <- 11.3175
-  # lat <- 47.1167
+  # sitename <- "FR-Pue"
+  # lon <- 3.5958
+  # lat <- 43.7414
   # # sitename <- "AR-SLu"
   # # lon <- -66.46
   # # lat <- -33.46
@@ -238,6 +238,7 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   # expand_x <- 1
   # expand_y <- 1 
   # overwrite <- FALSE
+  # overwrite_dates <- FALSE
   # ######################
 
   library( MODISTools )
@@ -247,6 +248,7 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
   source( paste( myhome, "sofun/getin/init_monthly_dataframe.R", sep="" ) )
   source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
+  source( paste( myhome, "sofun/getin/remove_outliers.R", sep="" ) )
 
   dirnam_dates_csv <- paste( myhome, "data/modis_fluxnet_cutouts/", sitename,"/", sep="" )
   system( paste( "mkdir -p ", dirnam_dates_csv, sep="" ) )  
@@ -261,8 +263,8 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
     print("done")
     dates$yr  <- as.numeric( substr( dates$dates, start=2, stop=5 ))
     dates$doy <- as.numeric( substr( dates$dates, start=6, stop=8 ))
-    dates$start <- as.POSIXlt( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy - 1 )
-    dates$end   <- as.POSIXlt( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy + 10 )
+    dates$start <- as.POSIXct( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy - 1 )
+    dates$end   <- as.POSIXct( as.Date( paste( as.character(dates$yr), "-01-01", sep="" ) ) + dates$doy + 10 )
 
     ## add absolute day (since 1. Jan. 2000)
     dates$ndayyear <- rep( 0, dim(dates)[1] )
@@ -295,121 +297,162 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   ##--------------------------------------
   ## Collect data for all available dates
   ##--------------------------------------
-    modis <- subset( dates, select=c( yr, doy, start, end, absday ) )
-    # print(dim(modis))
-    modis$evi         <- rep( NA, dim(modis)[1] )
-    modis$qual        <- rep( NA, dim(modis)[1] )
-    modis$yr_read     <- rep( NA, dim(modis)[1] )
-    modis$doy_read    <- rep( NA, dim(modis)[1] )
-    modis$date_read   <- rep( NA, dim(modis)[1] )
-    modis$yr_dec_read <- rep( NA, dim(modis)[1] )
+  modis <- subset( dates, select=c( yr, doy, start, end, absday ) )
+  # print(dim(modis))
+  modis$evi         <- rep( NA, dim(modis)[1] )
+  modis$evi_meansurr<- rep( NA, dim(modis)[1] )
+  modis$qual        <- rep( NA, dim(modis)[1] )
+  modis$yr_read     <- rep( NA, dim(modis)[1] )
+  modis$doy_read    <- rep( NA, dim(modis)[1] )
+  modis$date_read   <- rep( NA, dim(modis)[1] )
+  modis$yr_dec_read <- rep( NA, dim(modis)[1] )
 
-    for (idx in 1:dim(modis)[1]){
-      
-      savedir <- paste( myhome, "data/modis_fluxnet_cutouts/", sitename,"/data_", sitename, "_", as.Date(modis$start[idx]), "/", sep="" )
-      system( paste( "mkdir -p ", savedir, sep="" ) )  
-
-      ##--------------------------------------------------------------------
-      ## Download file with crude data if it's not there yet
-      ##--------------------------------------------------------------------
-      filn <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=overwrite, ignore_missing=ignore_missing ) )
-      ##--------------------------------------------------------------------
-
-      if ( (ignore_missing && is.na(filn)) ){
-
-        print( paste( "missing file, but ignoring it for site", sitename ) )
-
-      } else {
-        ##--------------------------------------------------------------------
-        ## Read crude data file
-        ##--------------------------------------------------------------------
-        out  <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
-        ##--------------------------------------------------------------------
-
-        if ( is.null( dim( out$nice_all ) ) && expand_x==0 && expand_y==0 ){
-
-          modis$qual[idx] <- out$nice_qual_flg
-          modis$evi[idx]  <- out$nice_all
-
-        } else if ( dim(out$nice_all)==c(3,3) ){
-
-          modis$qual[idx] <- out$nice_qual_flg[2,2]
-
-          ## if quality flag is not 0, use mean of surrounding pixels (from 3x3 matrix)
-          if (modis$qual[idx]!=0 ){
-            if ( sum( out$nice_all[ which( out$nice_qual_flg[,]<2 ) ] )>0 ){
-              ## if >0 pixels around centre have quality flag <2, then use their mean
-              modis$evi[idx] <- mean( out$nice_all[ which( out$nice_qual_flg[,]<2 ) ] )            
-            } else {
-              modis$evi[idx] <- NA        
-            }
-          } else {
-            modis$evi[idx] <- out$nice_all[2,2]
-          }
-                  
-        } else if ( dim(out$nice_all)==c(1,1) && expand_x==0 && expand_y==0 ) { 
-
-          modis$qual[idx] <- out$nice_qual_flg[1,1]
-          modis$evi[idx]  <- out$nice_all[1,1]
-       
-        } else {
-
-          print("weird...")
-        
-        }
-
-        modis$yr_read[idx]      <- out$time$yr[1]
-        modis$doy_read[idx]     <- out$time$doy[1]
-        modis$date_read[idx]    <- out$time$dates[1]
-        modis$yr_dec_read[idx]  <- out$time$yr_dec[1]
+  ## Loop over all dates and get data 
+  for (idx in 1:dim(modis)[1]){
     
+    savedir <- paste( myhome, "data/modis_fluxnet_cutouts/", sitename,"/data_", sitename, "_", as.Date(modis$start[idx]), "/", sep="" )
+    system( paste( "mkdir -p ", savedir, sep="" ) )  
+
+    ##--------------------------------------------------------------------
+    ## Download file with crude data if it's not there yet
+    ##--------------------------------------------------------------------
+    filn <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=overwrite, ignore_missing=ignore_missing ) )
+    ##--------------------------------------------------------------------
+
+    if ( (ignore_missing && is.na(filn)) ){
+
+      print( paste( "missing file, but ignoring it for site", sitename ) )
+
+    } else {
+      ##--------------------------------------------------------------------
+      ## Read crude data file
+      ##--------------------------------------------------------------------
+      out  <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
+      ##--------------------------------------------------------------------
+
+      if ( is.null( dim( out$nice_all ) ) && expand_x==0 && expand_y==0 ){
+
+        modis$qual[idx] <- out$nice_qual_flg
+        modis$evi[idx]  <- out$nice_all
+
+      } else if ( dim(out$nice_all)==c(3,3) ){
+
+        ## get mean of surrounding pixels, first drop all data that is not quality flag 0 for getting mean across surrounding pixels
+        surr <- out$nice_all
+        surr[ which( out$nice_qual_flg!=0 ) ] <- NA
+        modis$evi_meansurr[idx] <- mean( surr, na.rm=TRUE )
+        if (is.nan(modis$evi_meansurr[idx])) { modis$evi_meansurr[idx] <- NA }
+
+        ## save centre pixel
+        modis$evi[idx] <- out$nice_all[2,2]
+
+        ## save quality flag
+        modis$qual[idx] <- out$nice_qual_flg[2,2]
+                
+      } else if ( dim(out$nice_all)==c(1,1) && expand_x==0 && expand_y==0 ) { 
+
+        modis$qual[idx] <- out$nice_qual_flg[1,1]
+        modis$evi[idx]  <- out$nice_all[1,1]
+     
+      } else {
+
+        print("weird...")
+      
       }
 
+      modis$yr_read[idx]      <- out$time$yr[1]
+      modis$doy_read[idx]     <- out$time$doy[1]
+      modis$date_read[idx]    <- out$time$dates[1]
+      modis$yr_dec_read[idx]  <- out$time$yr_dec[1]
+  
     }
+
+  }
+
+  ##--------------------------------------
+  ## CLEAN AND GAP-FILL
+  ##--------------------------------------
+    ## Drop all data with quality flag != 0
+    modis$evi[ which(modis$qual!=0) ] <- NA
+
+    ## Drop all data identified as outliers = lie outside 3*IQR
+    # plot( modis$yr_dec_read, modis$evi, pch=16, col='red', main=savedir )
+    modis$evi <- remove_outliers( modis$evi, coef=3.0 )
+
+    ## aggregate by DOY
+    agg_evi <- aggregate( evi ~ doy, data=modis, FUN=mean, na.rm=TRUE )
+    agg_evi_meansurr <- aggregate( evi_meansurr ~ doy, data=modis, FUN=mean, na.rm=TRUE )
+    if (expand_y>0 || expand_x>0){
+      agg_evi <- agg_evi %>% dplyr::rename( evi_meandoy=evi )
+      agg_evi <- cbind( agg_evi, evi_meansurr_meandoy=agg_evi_meansurr$evi_meansurr )
+    } else {
+      agg_evi <- agg_evi %>% dplyr::rename( evi_meandoy=evi )
+    }
+    modis <- modis %>% left_join( agg_evi )
+
+    idxs <- which( !is.na(modis$evi) )
+    if (expand_y>0 || expand_x>0){
+      ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
+      modis$anom_surr  <- modis$evi_meansurr / modis$evi_meansurr_meandoy
+      modis$evi[-idxs] <- modis$evi_meandoy[-idxs] * modis$anom_surr[-idxs]
+    } else {
+      modis$evi[-idxs] <- modis$evi_meandoy[-idxs]
+    }
+
+    # points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16 )
+    # points( modis$yr_dec_read[-idxs], modis$evi[-idxs], pch=16, col='blue' )
+
+    ## Gap-fill remaining again by mean-by-DOY
+    idxs <- which( is.na(modis$evi) )
+    modis$evi[idxs] <- modis$evi_meandoy[idxs]
+
+    # points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16, col='red' )
+    # lines( modis$yr_dec_read, modis$evi )
+
 
   ##--------------------------------------
   ## MONTHLY DATAFRAME
   ##--------------------------------------
-    ## Interpolate data to mid-months
-    if (any(!is.na(modis$yr_read))){
-      yrstart  <- min( modis$yr_read, na.rm=TRUE )
-      yrend    <- max( modis$yr_read, na.rm=TRUE )
-      modis_monthly <- init_monthly_dataframe( yrstart, yrend )
-      modis_monthly$evi <- approx( modis$yr_dec_read, modis$evi, modis_monthly$year_dec )$y
-      
-      ## gap-fill with median of corresponding month
-      for (idx in 1:dim(modis_monthly)[1]){
-        if (is.na(modis_monthly$evi[idx])){
-          modis_monthly$evi[idx] <- median( modis_monthly$evi[ which( modis_monthly$moy==modis_monthly$moy[idx]) ], na.rm=TRUE )
-        }
+  ## Interpolate data to mid-months
+  if (any(!is.na(modis$yr_read))){
+    yrstart  <- min( modis$yr_read, na.rm=TRUE )
+    yrend    <- max( modis$yr_read, na.rm=TRUE )
+    modis_monthly <- init_monthly_dataframe( yrstart, yrend )
+    modis_monthly$evi <- approx( modis$yr_dec_read, modis$evi, modis_monthly$year_dec )$y
+    
+    ## gap-fill with median of corresponding month
+    for (idx in 1:dim(modis_monthly)[1]){
+      if (is.na(modis_monthly$evi[idx])){
+        modis_monthly$evi[idx] <- median( modis_monthly$evi[ which( modis_monthly$moy==modis_monthly$moy[idx]) ], na.rm=TRUE )
       }
-      nodata <- FALSE
-    } else {
-      nodata <- TRUE
     }
+    nodata <- FALSE
+  } else {
+    nodata <- TRUE
+  }
 
   ##--------------------------------------
   ## DAILY DATAFRAME
   ##--------------------------------------
-    if (any(!is.na(modis$yr_read))){
-      yrstart  <- min( modis$yr_read, na.rm=TRUE )
-      yrend    <- max( modis$yr_read, na.rm=TRUE )
-      modis_daily <- init_daily_dataframe( yrstart, yrend )
-      modis_daily$evi <- approx( modis$yr_dec_read, modis$evi, modis_daily$year_dec )$y
-      
-      ## gap-fill with median of corresponding month
-      for (idx in 1:dim(modis_daily)[1]){
-        if (is.na(modis_daily$evi[idx])){
-          modis_daily$evi[idx] <- median( modis_daily$evi[ which( modis_daily$moy==modis_daily$moy[idx]) ], na.rm=TRUE )
-        }
+  if (any(!is.na(modis$yr_read))){
+    yrstart  <- min( modis$yr_read, na.rm=TRUE )
+    yrend    <- max( modis$yr_read, na.rm=TRUE )
+    modis_daily <- init_daily_dataframe( yrstart, yrend )
+    modis_daily$evi <- approx( modis$yr_dec_read, modis$evi, modis_daily$year_dec )$y
+    
+    ## gap-fill with median of corresponding month
+    for (idx in 1:dim(modis_daily)[1]){
+      if (is.na(modis_daily$evi[idx])){
+        modis_daily$evi[idx] <- median( modis_daily$evi[ which( modis_daily$moy==modis_daily$moy[idx]) ], na.rm=TRUE )
       }
     }
+  }
 
-    if (nodata){
-      return( list( modis=modis, modis_daily=NA, modis_monthly=NA, nodata=nodata ) )
-    } else {
-      return( list( modis=modis, modis_daily=modis_daily, modis_monthly=modis_monthly, nodata=nodata ) )
-    }
+  if (nodata){
+    return( list( modis=modis, modis_daily=NA, modis_monthly=NA, nodata=nodata ) )
+  } else {
+    return( list( modis=modis, modis_daily=modis_daily, modis_monthly=modis_monthly, nodata=nodata ) )
+  }
     
   # ######################
   # ## for debugging:

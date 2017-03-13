@@ -41,7 +41,7 @@ overwrite_csv <- TRUE
 
 # do.sites <- seq(nsites)
 # do.sites <- 1:1
-do.sites <- 110:nsites
+# do.sites <- 88
 
 for (idx in do.sites ){
 
