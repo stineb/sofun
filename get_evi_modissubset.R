@@ -8,6 +8,8 @@ source( paste( syshome, "/.Rprofile", sep="" ) )
 
 source( paste( myhome, "sofun/getin/write_sofunformatted.R", sep="" ) )
 source( paste( myhome, "sofun/getin/mymodistools.R", sep="" ) )
+source( paste( myhome, "sofun/getin/init_monthly_dataframe.R", sep="" ) )
+source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
 
 ##--------------------------------------------------------------------
 ## MANUAL SETTINGS
@@ -39,7 +41,7 @@ path_dfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite,"_sofun/site
 
 overwrite_csv <- TRUE
 
-# do.sites <- seq(nsites)
+do.sites <- seq(nsites)
 # do.sites <- 1:1
 # do.sites <- 88
 
