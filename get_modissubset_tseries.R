@@ -72,6 +72,7 @@ nyears <- year_end - year_start + 1
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 do.sites <- seq(nsites)
+do.sites <- c(88)
 
 for (idx in do.sites){
 
@@ -108,6 +109,10 @@ for (idx in do.sites){
       do_interpolate = do_interpolate, 
       ignore_missing = ignore_missing 
       )
+
+    # ## original ASCII data is scaled and given in kgC m-2. Convert to gC m-2. 
+    # if ()
+    # tseries$data <- tseries$data * ScaleFactor * 1e3
 
     ##--------------------------------------------------------------------
     ## Save data frames as CSV files

@@ -16,6 +16,15 @@ download_subset_modis <- function( lon, lat, bands, prod, sitename, TimeSeriesLe
   ## Find file from which (crude) data is read
   filn <- list.files( path=savedir, pattern="*asc" )
 
+  ## Account for different resolutions of the data
+  if (prod=="MOD13Q1"){
+    ## at 250 m, therefore use 1 km surrounding centre, that is 9x9=81 pixels
+    size=c(1,1)
+  } else if (prod=="MOD15A2"){
+    ## at 1 km, therefore use 3 km surrounding centre, that is 9x9=81 pixels
+    size=c(3,3)    
+  }
+
   if ( (length(filn)==0||overwrite) && !ignore_missing ){
 
     print( paste( "deleting existing file", filn ) )
@@ -41,7 +50,7 @@ download_subset_modis <- function( lon, lat, bands, prod, sitename, TimeSeriesLe
       LoadDat          = modis.subset,
       Products         = prod,
       Bands            = bands,
-      Size             = c(0,0),    ## Get subset for all pixels around centre (defined by input lon/lat), stretching 1km in lon and lat (should be 9 in each direction = 81 in total)
+      Size             = size,    ## Get subset for all pixels around centre (defined by input lon/lat), stretching 1km in lon and lat (should be 9 in each direction = 81 in total)
       StartDate        = FALSE,
       SaveDir          = savedir,
       TimeSeriesLength = TimeSeriesLength       ## 26 years beyond first day of the year in 'end.date'. Will trigger reading longet possible automatially 
@@ -98,12 +107,16 @@ read_crude_modis <- function( filn, savedir, band_var, band_qc, expand_x, expand
   # 3 Cloudy  Target not visible, covered with cloud
   #---------------------------------------------------------------
 
+  source( paste( myhome, "sofun/getin/remove_outliers.R", sep="" ) )
+
   # ######################
   # # for debugging:
-  # savedir <- "/alphadata01/bstocker/data/modis_gpp_fluxnet_cutouts_tseries/AR-SLu/"
-  # filn    <- "Lat-33.46480Lon-66.45980Start1990-01-01End2016-12-21___MOD17A2_51.asc"
+  # savedir <- "/alphadata01/bstocker/data/modis_fapar_fluxnet_cutouts_tseries/FR-Pue/raw/"
+  # filn    <- "Lat43.74140Lon3.59580Start1991-01-01End2017-02-21___MOD15A2.asc"
   # expand_x <- 1
   # expand_y <- 1
+  # band_var <- "Fpar_1km"
+  # band_qc  <- "FparLai_QC"
   # ######################
 
   library( MODISTools )
@@ -113,42 +126,86 @@ read_crude_modis <- function( filn, savedir, band_var, band_qc, expand_x, expand
   ndayyear    <- 365
 
   ## Read dowloaded ASCII file
-  print( paste( "reading file ", paste( savedir, filn, sep="" ) ) )
-  # crude   <- read.csv( paste( savedir, filn, sep="" ), header = FALSE, as.is = TRUE )
-  # crude   <- rename( crude, nrows=V1, ncols=V2, modislon_ll=V3, modislat_ll=V4, dxy_m=V5, id=V6, MODISprod=V7, yeardoy=V8, coord=V9, VMODISprocessdatetime=V10 )
+  path <- paste( savedir, filn, sep="" )
+  print( paste( "reading file ", path ) )
+ 
+  if (file.exists(path)){
+    # crude   <- read.csv( paste( savedir, filn, sep="" ), header = FALSE, as.is = TRUE )
+    # crude   <- rename( crude, nrows=V1, ncols=V2, modislon_ll=V3, modislat_ll=V4, dxy_m=V5, id=V6, MODISprod=V7, yeardoy=V8, coord=V9, VMODISprocessdatetime=V10 )
 
-  ## this is just read to get length of time series and dates
-  # tseries    <- MODISTimeSeries( savedir, Band = c("250m_16_days_EVI", "Gpp_1km") )
-  tseries    <- as.data.frame( MODISTimeSeries( savedir, Band = band_var, Simplify=TRUE ) )   
-  tseries_qc <- as.data.frame( MODISTimeSeries( savedir, Band = band_qc, Simplify=TRUE ) )
+    ## this is just read to get length of time series and dates
+    # tseries    <- MODISTimeSeries( savedir, Band = c("250m_16_days_EVI", "Gpp_1km") )
+    tseries    <- as.data.frame( MODISTimeSeries( savedir, Band = band_var, Simplify=TRUE ) )   
+    tseries_qc <- as.data.frame( MODISTimeSeries( savedir, Band = band_qc,  Simplify=TRUE ) )
 
-  ## determine centre pixel's column number in 'tseries'
-  usecol <- ( ncol(tseries) - 1 ) / 2 + 1 
-  npixels <- ncol( tseries )
-  tseries$data <- tseries[,usecol]
+    ## determine centre pixel's column number in 'tseries'
+    usecol <- ( ncol(tseries) - 1 ) / 2 + 1 
+    npixels <- ncol( tseries )
+    tseries$data    <- tseries[,usecol]
+    tseries_qc$data <- tseries_qc[,usecol]
 
-  # tseries    <- MODISTimeSeries( savedir, Band = c("Lai_1km", "Fpar_1km") )        
-  ntsteps    <- dim(tseries)[1]
-  tmp        <- rownames( tseries )
-  tseries$year <- as.numeric( substr( tmp, start=2, stop=5 ))
-  tseries$doy<- as.numeric( substr( tmp, start=6, stop=8 ))
-  #time       <- data.frame( year=as.numeric( substr( tmp, start=2, stop=5 )), doy=as.numeric( substr( tmp, start=6, stop=8 )) )
-  tseries$date <- as.POSIXlt( as.Date( paste( as.character(tseries$year), "-01-01", sep="" ) ) + tseries$doy - 1 )
-  tseries$year_dec <- tseries$year + ( tseries$doy - 1 ) / ndayyear
+    ntsteps          <- dim(tseries)[1]
+    tmp              <- rownames( tseries )
+    tseries$year     <- as.numeric( substr( tmp, start=2, stop=5 ))
+    tseries$doy      <- as.numeric( substr( tmp, start=6, stop=8 ))
+    tseries$date     <- as.POSIXct( as.Date( paste( as.character(tseries$year), "-01-01", sep="" ) ) + tseries$doy - 1 )
+    tseries$year_dec <- tseries$year + ( tseries$doy - 1 ) / ndayyear
 
-  ## for pixels with low quality information, use mean of surroundings
-  if (npixels>1){
-    for (idx in seq(nrow(tseries))){
-      if (tseries_qc[idx,usecol]!=0) {
-        tseries$data[idx] <- unname( apply( tseries[idx,1:npixels], 1, FUN=mean, na.rm=TRUE ))
-      }
+    tseries_qc <- cbind( tseries_qc, select( tseries, year, doy, date, year_dec ) )
+
+    ## Drop all data with quality flag != 0
+    tseries$data[ which(tseries_qc$data!=0) ] <- NA
+
+    ## Drop all data identified as outliers = lie outside 3*IQR
+    plot( tseries$year_dec, tseries$data*0.1, pch=16, col='red', xlim=c(2005,2008), main=savedir )
+    tseries$data <- remove_outliers( tseries$data, coef=3.0 )
+
+    ## Get mean of surrounding pixels and save in separate column
+    if (npixels>1){
+      tseries$data_meansurr <- unname( apply( tseries[,1:npixels], 1, FUN=mean, na.rm=TRUE ) )
     }
+
+    ## aggregate by DOY
+    agg <- aggregate( data ~ doy, data=tseries, FUN=mean, na.rm=TRUE )
+    if (npixels>1){
+      agg <- agg %>% rename( data_meandoy=data, data_meansurr_meandoy=data_meansurr )
+    } else {
+      agg <- agg %>% rename( data_meandoy=data )
+    }
+    tseries <- tseries %>% left_join( agg )
+
+    idxs <- which( !is.na(tseries$data) )
+    if (npixels>1){
+      ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
+      tseries$anom_surr <- tseries$data_meansurr / tseries$data_meansurr_meandoy
+      tseries$data[-idxs] <- tseries$data_meandoy[-idxs] * tseries$anom_surr[-idxs]
+    } else {
+      tseries$data[-idxs] <- tseries$data_meandoy[-idxs]
+    }
+
+    points( tseries$year_dec[idxs], tseries$data[idxs]*0.1, pch=16 )
+    points( tseries$year_dec[-idxs], tseries$data[-idxs]*0.1, pch=16, col='blue' )
+    lines( tseries$year_dec, tseries$data*0.1 )
+
+    # ## for pixels with low quality information, use mean of surroundings
+    # if (npixels>1){
+    #   for (idx in seq(nrow(tseries))){
+    #     if (tseries_qc[idx,usecol]!=0) {
+    #       tseries$data[idx] <- unname( apply( tseries[idx,1:npixels], 1, FUN=mean, na.rm=TRUE ))
+    #     }
+    #   }
+    # }
+
+    tseries    <- select( tseries,    year_dec, year, doy, date, data )
+    tseries_qc <- select( tseries_qc, year_dec, year, doy, date, data )
+
+
+  } else {
+
+    print("ERROR: raw file not found. Was looking for")
+    print( path )
+
   }
-
-  ## original ASCII data is scaled and given in kgC m-2. Convert to gC m-2. 
-  tseries$data <- tseries$data * ScaleFactor * 1e3
-
-  tseries <- select( tseries, year_dec, year, doy, date, data )
 
   return( tseries )
 
