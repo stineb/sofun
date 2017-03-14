@@ -158,7 +158,7 @@ read_crude_modis <- function( filn, savedir, band_var, band_qc, expand_x, expand
 
     ## Drop all data identified as outliers = lie outside 3*IQR
     plot( tseries$year_dec, tseries$data*0.1, pch=16, col='red', xlim=c(2005,2008), main=savedir )
-    tseries$data <- remove_outliers( tseries$data, coef=3.0 )
+    # tseries$data <- remove_outliers( tseries$data, coef=3.0 )  # too dangerous - remove peaks
 
     ## Get mean of surrounding pixels and save in separate column
     if (npixels>1){

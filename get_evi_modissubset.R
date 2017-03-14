@@ -18,8 +18,8 @@ simsuite="fluxnet2015"
 expand_x=1
 expand_y=1
 overwrite=FALSE
-overwrite_dates=TRUE
-ignore_missing=FALSE
+overwrite_dates=FALSE
+ignore_missing=TRUE
 ##--------------------------------------------------------------------
 
 ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
@@ -36,14 +36,14 @@ nsites <- dim(siteinfo)[1]
 ## create data frame holding data for all sites
 mdf_modis_allsites <- init_monthly_dataframe( fapar_year_start, fapar_year_end )
 ddf_modis_allsites <- init_daily_dataframe( fapar_year_start, fapar_year_end )
-path_mfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite,"_sofun/sitedata/fapar/mfapar_evi_modissubset_allsites.csv", sep="")
-path_dfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite,"_sofun/sitedata/fapar/dfapar_evi_modissubset_allsites.csv", sep="")
+path_mfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/mfapar_evi_modissubset_allsites.csv", sep="")
+path_dfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/dfapar_evi_modissubset_allsites.csv", sep="")
 
 overwrite_csv <- TRUE
 
-do.sites <- seq(nsites)
+# do.sites <- seq(nsites)
 # do.sites <- 1:1
-# do.sites <- 88
+do.sites <- 13
 
 for (idx in do.sites ){
 

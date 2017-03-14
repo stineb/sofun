@@ -226,12 +226,12 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   # ######################
   # ## for debugging:
   # # overwrite <- FALSE
-  # sitename <- "FR-Pue"
-  # lon <- 3.5958
-  # lat <- 43.7414
-  # # sitename <- "AR-SLu"
-  # # lon <- -66.46
-  # # lat <- -33.46
+  # # sitename <- "FR-Pue"
+  # # lon <- 3.5958
+  # # lat <- 43.7414
+  # sitename <- "AT-NEU"
+  # lon <- 11.3175
+  # lat <- 47.1167
   # # sitename <- "AR-Vir"
   # # lon <- -56.1886
   # # lat <- -28.2395
@@ -372,43 +372,65 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   ##--------------------------------------
   ## CLEAN AND GAP-FILL
   ##--------------------------------------
-    ## Drop all data with quality flag != 0
-    modis$evi[ which(modis$qual!=0) ] <- NA
+  ## Replace data points with quality flag = 2 (snow covered) by 0
+  modis$evi [ which(modis$qual==2) ] <- max( min( modis$evi ), 0.0 )
 
-    ## Drop all data identified as outliers = lie outside 3*IQR
-    # plot( modis$yr_dec_read, modis$evi, pch=16, col='red', main=savedir )
-    modis$evi <- remove_outliers( modis$evi, coef=3.0 )
+  ## Drop all data with quality flag != 0
+  modis$evi[ which(modis$qual==3) ]  <- NA  # Target not visible, covered with cloud
+  # modis$evi[ which(modis$qual==1) ]  <- NA  # Useful, but look at other QA information
+  modis$evi[ which(modis$qual==-1) ] <- NA  # Not Processed
 
-    ## aggregate by DOY
-    agg_evi <- aggregate( evi ~ doy, data=modis, FUN=mean, na.rm=TRUE )
-    agg_evi_meansurr <- aggregate( evi_meansurr ~ doy, data=modis, FUN=mean, na.rm=TRUE )
-    if (expand_y>0 || expand_x>0){
-      agg_evi <- agg_evi %>% dplyr::rename( evi_meandoy=evi )
-      agg_evi <- cbind( agg_evi, evi_meansurr_meandoy=agg_evi_meansurr$evi_meansurr )
-    } else {
-      agg_evi <- agg_evi %>% dplyr::rename( evi_meandoy=evi )
-    }
-    modis <- modis %>% left_join( agg_evi )
+  ## Drop all data identified as outliers = lie outside 6*IQR
+  pdf( paste("fig/evi_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
+  plot( modis$yr_dec_read, modis$evi, pch=16, col='red', main=savedir )
+  modis$evi <- remove_outliers( modis$evi, coef=5.0 ) ## too dangerous - removes peaks
 
-    idxs <- which( !is.na(modis$evi) )
-    if (expand_y>0 || expand_x>0){
-      ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
-      modis$anom_surr  <- modis$evi_meansurr / modis$evi_meansurr_meandoy
-      modis$evi[-idxs] <- modis$evi_meandoy[-idxs] * modis$anom_surr[-idxs]
-    } else {
-      modis$evi[-idxs] <- modis$evi_meandoy[-idxs]
-    }
+  ## aggregate by DOY
+  agg_evi          <- aggregate( evi ~ doy,          data=modis, FUN=mean, na.rm=TRUE )
+  agg_evi_meansurr <- aggregate( evi_meansurr ~ doy, data=modis, FUN=mean, na.rm=TRUE )
+  agg_evi <- agg_evi %>% left_join( agg_evi_meansurr ) %>% dplyr::rename( evi_meandoy=evi, evi_meansurr_meandoy=evi_meansurr )
+  modis <- modis %>% left_join( agg_evi )
 
-    # points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16 )
-    # points( modis$yr_dec_read[-idxs], modis$evi[-idxs], pch=16, col='blue' )
+  idxs <- which( !is.na(modis$evi) )
+  if (expand_y>0 || expand_x>0){
+    ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
+    modis$anom_surr  <- modis$evi_meansurr / modis$evi_meansurr_meandoy
+    modis$evi[-idxs] <- modis$evi_meandoy[-idxs] * modis$anom_surr[-idxs]
+  } else {
+    modis$evi[-idxs] <- modis$evi_meandoy[-idxs]
+  }
 
-    ## Gap-fill remaining again by mean-by-DOY
-    idxs <- which( is.na(modis$evi) )
-    modis$evi[idxs] <- modis$evi_meandoy[idxs]
+  points( modis$yr_dec_read[idxs],  modis$evi[idxs],  pch=16 )
+  points( modis$yr_dec_read[-idxs], modis$evi[-idxs], pch=16, col='blue' )
 
-    # points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16, col='red' )
-    # lines( modis$yr_dec_read, modis$evi )
+  # ## points that have unreliable information may be better replaced?
+  # idxs <- which( modis$qual==1 )
+  # if (expand_y>0 || expand_x>0){
+  #   ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
+  #   modis$anom_surr <- modis$evi_meansurr / modis$evi_meansurr_meandoy
+  #   # modis$evi[idxs] <- modis$evi_meandoy[idxs]
+  #   tmp <- modis$evi_meandoy[idxs]
+  # } else {
+  #   # modis$evi[idxs] <- modis$evi_meandoy[idxs] * modis$anom_surr[idxs]
+  #   tmp <- modis$evi_meandoy[idxs] * modis$anom_surr[idxs]
+  # }
 
+  # points( modis$yr_dec_read[idxs], tmp,  pch=16, col='cyan' )
+
+  ## Gap-fill remaining again by mean-by-DOY
+  idxs <- which( is.na(modis$evi) )
+  modis$evi[idxs] <- modis$evi_meandoy[idxs]
+  points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16, col='red' )
+
+  ## Gap-fill still remaining by linear approximation
+  idxs <- which( is.na(modis$evi) )
+  if (length(idxs)>1){
+    modis$evi <- approx( modis$yr_dec_read[-idxs], modis$evi[-idxs], xout=modis$yr_dec_read )$y
+  }
+
+  points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16, col='green' )
+  lines( modis$yr_dec_read, modis$evi )
+  dev.off()
 
   ##--------------------------------------
   ## MONTHLY DATAFRAME
