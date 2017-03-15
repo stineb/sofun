@@ -591,8 +591,18 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
 
   }
 
-  ## select columns
-  modis <- modis %>% rename( year_dec=yr_dec_read, year=yr, date=start ) %>% dplyr::select( year, doy, date, year_dec, absday, centre, centre_meansurr, centre_qc )
+  ## Make nicer
+  modis <- modis %>% 
+
+    ## rename
+    rename( year_dec=yr_dec_read, year=yr, date=start ) %>% 
+
+    ## select only relevant columns
+    dplyr::select( year, doy, date, year_dec, absday, centre, centre_meansurr, centre_qc ) %>% 
+
+    ## remove rows where dates were not read
+    filter( !is.na(year_dec) )
+
 
   return( modis )
 
@@ -726,8 +736,7 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
   #                # lat = -28.2395
   # ######################
 
-  library( MODISTools )
-  library( dplyr )
+  require( dplyr )
   syshome <- Sys.getenv( "HOME" )
   source( paste( syshome, "/.Rprofile", sep="" ) )
   source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
@@ -787,7 +796,7 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     ## Gap-fill still remaining by linear approximation
     idxs <- which( is.na(modis_gapfilled$centre) )
     if (length(idxs)>1){
-      modis_gapfilled$centre <- approx( modis_gapfilled$yr_dec_read[-idxs], modis_gapfilled$centre[-idxs], xout=modis_gapfilled$yr_dec_read )$y
+      modis_gapfilled$centre <- approx( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], xout=modis_gapfilled$yr_dec_read )$y
     }
 
     # points( modis_gapfilled$yr_dec_read[idxs], modis_gapfilled$centre[idxs], pch=16, col='green' )
@@ -802,8 +811,8 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     modis_gapfilled$centre[ which(modis_gapfilled$centre_qc!=0) ] <- NA
 
     ## Drop all data identified as outliers = lie outside 3*IQR
-    pdf( paste("fig/fapar_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
-    plot( modis_gapfilled$year_dec, modis_gapfilled$centre, pch=16, col='red', main=savedir, ylim=c(0,1) )
+    # pdf( paste("fig/fapar_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
+    # plot( modis_gapfilled$year_dec, modis_gapfilled$centre, pch=16, col='red', main=savedir, ylim=c(0,1) )
     # modis_gapfilled$centre <- remove_outliers( modis_gapfilled$centre, coef=3.0 )  # too dangerous - remove peaks
 
     ## aggregate by DOY
@@ -837,9 +846,9 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
       modis_gapfilled$centre <- approx( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], xout=modis_gapfilled$year_dec )$y
     }
 
-    points( modis_gapfilled$year_dec[idxs], modis_gapfilled$centre[idxs], pch=16 )
-    points( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], pch=16, col='blue' )
-    lines(  modis_gapfilled$year_dec, modis_gapfilled$centre )
+    # points( modis_gapfilled$year_dec[idxs], modis_gapfilled$centre[idxs], pch=16 )
+    # points( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], pch=16, col='blue' )
+    # lines(  modis_gapfilled$year_dec, modis_gapfilled$centre )
 
     # ## for pixels with low quality information, use mean of surroundings
     # if (is.element("centre_meansurr", names(modis_gapfilled))){
@@ -850,7 +859,7 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     #   }
     # }
 
-    dev.off()
+    # dev.off()
 
   }
 

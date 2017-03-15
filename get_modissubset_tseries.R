@@ -18,11 +18,6 @@ year_start <- 1999
 year_end   <- 2016
 nyears <- year_end - year_start + 1
 
-siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
-nsites <- dim(siteinfo)[1]
-do.sites <- seq(nsites)
-do.sites <- 14:nsites
-
 ##--------------------------------------------------------------------
 ## MANUAL SETTINGS
 ##--------------------------------------------------------------------
@@ -38,6 +33,10 @@ bundle           = "evi"
 tseries_out      = TRUE
 ##--------------------------------------------------------------------
 
+siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
+nsites <- dim(siteinfo)[1]
+do.sites <- seq(nsites)
+do.sites <- 69:nsites
 
 if (bundle=="fapar"){
   ##--------------------------------------------------------------------
@@ -197,6 +196,7 @@ for (idx in do.sites){
     ##--------------------------------------------------------------------
     ## Write full time series data to nice CSV file
     ##--------------------------------------------------------------------
+    print("writing to raw CSV file...")
     write.csv( modis, file=filnam_modis_raw_csv, row.names=FALSE )
 
 
@@ -204,6 +204,7 @@ for (idx in do.sites){
     ##--------------------------------------------------------------------
     ## Read full data from nice CSV file
     ##--------------------------------------------------------------------
+    print("reading from raw CSV file...")
     modis <- read.csv( filnam_modis_raw_csv )
 
   }
