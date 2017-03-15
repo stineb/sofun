@@ -21,7 +21,7 @@ nyears <- year_end - year_start + 1
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 do.sites <- seq(nsites)
-do.sites <- 106:nsites
+do.sites <- 14:nsites
 
 ##--------------------------------------------------------------------
 ## MANUAL SETTINGS
@@ -32,9 +32,9 @@ expand_y         = 1
 overwrite_raw    = FALSE
 overwrite_rawcsv = TRUE
 overwrite_csv    = TRUE
-ignore_missing   = FALSE
+ignore_missing   = TRUE
 do_interpolate   = TRUE
-bundle           = "fapar"
+bundle           = "evi"
 tseries_out      = TRUE
 ##--------------------------------------------------------------------
 
@@ -73,10 +73,10 @@ if (bundle=="fapar"){
   ##--------------------------------------------------------------------
   ## EVI
   ##--------------------------------------------------------------------
-  band_var <- "250m_16_days_EVI"
-  band_qc  <- "250m_16_days_pixel_reliability"
-  prod     <- "MOD13Q1"
-  varnam   <- "evi"
+  band_var   <- "250m_16_days_EVI"
+  band_qc    <- "250m_16_days_pixel_reliability"
+  prod       <- "MOD13Q1"
+  varnam     <- "fapar"
   productnam <- "evi"
 
 }
@@ -92,8 +92,8 @@ for (idx in do.sites){
   ##--------------------------------------------------------------------
   ## Handle file names
   ##--------------------------------------------------------------------
-  dirnam_csv_from       <- paste( myhome, "data/modis_", varnam, "_fluxnet_cutouts_tseries/", sitename, "/", sep="" )
-  dirnam_csv_from_alt   <- paste( myhome, "data/modis_", varnam, "_fluxnet_cutouts/", sitename, "/", sep="" )
+  dirnam_csv_from       <- paste( myhome, "data/modis_", productnam, "_fluxnet_cutouts_tseries/", sitename, "/", sep="" )
+  dirnam_csv_from_alt   <- paste( myhome, "data/modis_", productnam, "_fluxnet_cutouts/", sitename, "/", sep="" )
   dirnam_csv_to         <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", sep="" )
 
   ## This file is the link for _tseries and split scripts and should contain all the raw data, not gap-filled or interpolated!
@@ -168,8 +168,8 @@ for (idx in do.sites){
                                         band_var, 
                                         band_qc,
                                         prod,
-                                        expand_x=expand_x,
-                                        expand_y=expand_y 
+                                        expand_x = expand_x,
+                                        expand_y = expand_y 
                                         )
 
     } else {
@@ -178,18 +178,18 @@ for (idx in do.sites){
       ## Get all at time steps individually. In this case 'read_crude_modis' is a wrapper
       ##--------------------------------------------------------------------
       modis <- read_crude_modis( 
-                                varnam, 
+                                productnam, 
                                 sitename, 
                                 lon, 
                                 lat, 
                                 band_var, 
                                 band_qc, 
                                 prod, 
-                                expand_x=expand_x,
-                                expand_y=expand_y, 
-                                overwrite=overwrite_raw, 
-                                overwrite_dates=FALSE, 
-                                ignore_missing=FALSE 
+                                expand_x        = expand_x,
+                                expand_y        = expand_y, 
+                                overwrite       = overwrite_raw, 
+                                overwrite_dates = FALSE, 
+                                ignore_missing  = ignore_missing 
                                 )
 
     }

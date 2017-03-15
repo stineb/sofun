@@ -104,12 +104,14 @@ download_subset_modis <- function( lon, lat, bands, prod, start.date, end.date, 
   ## Find file from which (crude) data is read
   filn <- list.files( path=savedir, pattern="*asc" )
 
-  ## Deleting if file is erroneous
-  test <- try( read.table(filn) )
-  if (class(test)=="try-error"){
-    system( paste( "rm ", savedir, filn, sep="" ) )
-    filn <- list.files( path=savedir, pattern="*asc" )    
-  }
+  print( paste("raw ascii file:", filn))
+
+  # ## Deleting if file is erroneous
+  # test <- try( read.table(filn) )
+  # if (class(test)=="try-error"){
+  #   system( paste( "rm ", savedir, filn, sep="" ) )
+  #   filn <- list.files( path=savedir, pattern="*asc" )    
+  # }
 
   ## Account for different resolutions of the data
   if (prod=="MOD13Q1"){
@@ -444,9 +446,13 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
   # # sitename <- "FR-Pue"
   # # lon <- 3.5958
   # # lat <- 43.7414
-  # sitename <- "AT-NEU"
-  # lon <- 11.3175
-  # lat <- 47.1167
+  # varnam <- "evi"
+  # sitename <-  "AR-SLu"
+  # lon <- -66.4598
+  # lat <- -33.4648
+  # # sitename <- "AT-NEU"
+  # # lon <- 11.3175
+  # # lat <- 47.1167
   # # sitename <- "AR-Vir"
   # # lon <- -56.1886
   # # lat <- -28.2395
@@ -514,13 +520,13 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
   ##--------------------------------------
   modis <- subset( dates, select=c( yr, doy, start, end, absday ) )
   # print(dim(modis))
-  modis$evi         <- rep( NA, dim(modis)[1] )
-  modis$evi_meansurr<- rep( NA, dim(modis)[1] )
-  modis$qual        <- rep( NA, dim(modis)[1] )
-  modis$yr_read     <- rep( NA, dim(modis)[1] )
-  modis$doy_read    <- rep( NA, dim(modis)[1] )
-  modis$date_read   <- rep( NA, dim(modis)[1] )
-  modis$yr_dec_read <- rep( NA, dim(modis)[1] )
+  modis$centre         <- rep( NA, dim(modis)[1] )
+  modis$centre_meansurr<- rep( NA, dim(modis)[1] )
+  modis$centre_qc           <- rep( NA, dim(modis)[1] )
+  modis$yr_read        <- rep( NA, dim(modis)[1] )
+  modis$doy_read       <- rep( NA, dim(modis)[1] )
+  modis$date_read      <- rep( NA, dim(modis)[1] )
+  modis$yr_dec_read    <- rep( NA, dim(modis)[1] )
 
   ## Loop over all dates and get data 
   for (idx in 1:dim(modis)[1]){
@@ -548,27 +554,27 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
 
       if ( is.null( dim( out$nice_all ) ) && expand_x==0 && expand_y==0 ){
 
-        modis$qual[idx] <- out$nice_qual_flg
-        modis$evi[idx]  <- out$nice_all
+        modis$centre_qc[idx] <- out$nice_qual_flg
+        modis$centre[idx]    <- out$nice_all
 
       } else if ( dim(out$nice_all)==c(3,3) ){
 
         ## get mean of surrounding pixels, first drop all data that is not quality flag 0 for getting mean across surrounding pixels
         surr <- out$nice_all
         surr[ which( out$nice_qual_flg!=0 ) ] <- NA
-        modis$evi_meansurr[idx] <- mean( surr, na.rm=TRUE )
-        if (is.nan(modis$evi_meansurr[idx])) { modis$evi_meansurr[idx] <- NA }
+        modis$centre_meansurr[idx] <- mean( surr, na.rm=TRUE )
+        if (is.nan(modis$centre_meansurr[idx])) { modis$centre_meansurr[idx] <- NA }
 
         ## save centre pixel
-        modis$evi[idx] <- out$nice_all[2,2]
+        modis$centre[idx] <- out$nice_all[2,2]
 
         ## save quality flag
-        modis$qual[idx] <- out$nice_qual_flg[2,2]
+        modis$centre_qc[idx] <- out$nice_qual_flg[2,2]
                 
       } else if ( dim(out$nice_all)==c(1,1) && expand_x==0 && expand_y==0 ) { 
 
-        modis$qual[idx] <- out$nice_qual_flg[1,1]
-        modis$evi[idx]  <- out$nice_all[1,1]
+        modis$centre_qc[idx]    <- out$nice_qual_flg[1,1]
+        modis$centre[idx]  <- out$nice_all[1,1]
      
       } else {
 
@@ -585,6 +591,9 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
 
   }
 
+  ## select columns
+  modis <- modis %>% rename( year_dec=yr_dec_read, year=yr, date=start ) %>% dplyr::select( year, doy, date, year_dec, absday, centre, centre_meansurr, centre_qc )
+
   return( modis )
 
 
@@ -592,12 +601,12 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
   # ## CLEAN AND GAP-FILL
   # ##--------------------------------------
   # ## Replace data points with quality flag = 2 (snow covered) by 0
-  # modis$evi [ which(modis$qual==2) ] <- max( min( modis$evi ), 0.0 )
+  # modis$evi [ which(modis$centre_qc==2) ] <- max( min( modis$evi ), 0.0 )
 
   # ## Drop all data with quality flag != 0
-  # modis$evi[ which(modis$qual==3) ]  <- NA  # Target not visible, covered with cloud
-  # # modis$evi[ which(modis$qual==1) ]  <- NA  # Useful, but look at other QA information
-  # modis$evi[ which(modis$qual==-1) ] <- NA  # Not Processed
+  # modis$evi[ which(modis$centre_qc==3) ]  <- NA  # Target not visible, covered with cloud
+  # # modis$evi[ which(modis$centre_qc==1) ]  <- NA  # Useful, but look at other QA information
+  # modis$evi[ which(modis$centre_qc==-1) ] <- NA  # Not Processed
 
   # ## Drop all data identified as outliers = lie outside 6*IQR
   # pdf( paste("fig/evi_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
@@ -623,7 +632,7 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
   # points( modis$yr_dec_read[-idxs], modis$evi[-idxs], pch=16, col='blue' )
 
   # # ## points that have unreliable information may be better replaced?
-  # # idxs <- which( modis$qual==1 )
+  # # idxs <- which( modis$centre_qc==1 )
   # # if (expand_y>0 || expand_x>0){
   # #   ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
   # #   modis$anom_surr <- modis$evi_meansurr / modis$evi_meansurr_meandoy
@@ -749,17 +758,19 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     modis_gapfilled$centre <- remove_outliers( modis_gapfilled$centre, coef=5.0 ) ## maybe too dangerous - removes peaks
 
     ## aggregate by DOY
-    agg          <- aggregate( centre ~ doy,          data=modis_gapfilled, FUN=mean, na.rm=TRUE )
-    if (ncol(modis_gapfilled)>8){
+    agg <- aggregate( centre ~ doy, data=modis_gapfilled, FUN=mean, na.rm=TRUE )
+    if (is.element("centre_meansurr", names(modis_gapfilled))){
       agg_meansurr <- aggregate( centre_meansurr ~ doy, data=modis_gapfilled, FUN=mean, na.rm=TRUE )
       agg <- agg %>% left_join( agg_meansurr ) %>% dplyr::rename( centre_meandoy=centre, centre_meansurr_meandoy=centre_meansurr )
+    } else {
+      agg <- agg %>% dplyr::rename( centre_meandoy=centre )      
     }
     modis_gapfilled <- modis_gapfilled %>% left_join( agg )
 
     idxs <- which( !is.na(modis_gapfilled$centre) )
-    if (ncol(modis_gapfilled)>8){
+    if (is.element("centre_meansurr", names(modis_gapfilled))){
       ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
-      modis_gapfilled$anom_surr   <- modis_gapfilled$centre_meansurr / modis_gapfilled$centre_meansurr_meandoy
+      modis_gapfilled$anom_surr     <- modis_gapfilled$centre_meansurr / modis_gapfilled$centre_meansurr_meandoy
       modis_gapfilled$centre[-idxs] <- modis_gapfilled$centre_meandoy[-idxs] * modis_gapfilled$anom_surr[-idxs]
     } else {
       modis_gapfilled$centre[-idxs] <- modis_gapfilled$centre_meandoy[-idxs]
@@ -797,8 +808,9 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
 
     ## aggregate by DOY
     agg <- aggregate( centre ~ doy, data=modis_gapfilled, FUN=mean, na.rm=TRUE )
-    if (ncol(modis)>8){
-      agg <- agg %>% rename( centre_meandoy=centre, centre_meansurr_meandoy=data_meansurr )
+    if (is.element("centre_meansurr", names(modis_gapfilled))){
+      agg_meansurr <- aggregate( centre_meansurr ~ doy, data=modis_gapfilled, FUN=mean, na.rm=TRUE )
+      agg <- agg %>% left_join( agg_meansurr ) %>% dplyr::rename( centre_meandoy=centre, centre_meansurr_meandoy=centre_meansurr )
     } else {
       agg <- agg %>% rename( centre_meandoy=centre )
     }
@@ -809,7 +821,7 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     if (nrow(na_instances)>0){
       for (iinst in 1:nrow(na_instances)){
         idxs <- na_instances$idx_start[iinst]:(na_instances$idx_start[iinst]+na_instances$len[iinst]-1)
-        if (ncol(modis)>8){
+        if (is.element("centre_meansurr", names(modis_gapfilled))){
           ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
           modis_gapfilled$anom_surr    <- modis_gapfilled$centre_meansurr / modis_gapfilled$centre_meansurr_meandoy
           modis_gapfilled$centre[idxs] <- modis_gapfilled$centre_meandoy[idxs] * modis_gapfilled$anom_surr[idxs]
@@ -830,7 +842,7 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     lines(  modis_gapfilled$year_dec, modis_gapfilled$centre )
 
     # ## for pixels with low quality information, use mean of surroundings
-    # if (ncol(modis)>8){
+    # if (is.element("centre_meansurr", names(modis_gapfilled))){
     #   for (idx in seq(nrow(modis_gapfilled))){
     #     if (modis_gapfilled_qc[idx,usecol]!=0) {
     #       modis_gapfilled$centre[idx] <- unname( apply( modis_gapfilled[idx,1:npixels], 1, FUN=mean, na.rm=TRUE ))
