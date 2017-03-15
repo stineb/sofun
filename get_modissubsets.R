@@ -80,7 +80,7 @@ path_dfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sit
 overwrite_csv <- TRUE
 
 do.sites <- seq(nsites)
-do.sites <- 1:1
+#do.sites <- 1:1
 # do.sites <- 100
 
 for (idx in do.sites ){
