@@ -87,7 +87,7 @@ download_subset_modis <- function( lon, lat, bands, prod, start.date, end.date, 
 
 }
 
-read_crude_modis <- function( filn, savedir, band_var, band_qc, expand_x, expand_y ){
+read_crude_modis_tstep <- function( filn, savedir, band_var, band_qc, expand_x, expand_y ){
   #///////////////////////////////////////////////////////////////
   # Reads MODIS data from downloaded ASCII file and returns
   # value, quality flag and associated date
@@ -227,7 +227,7 @@ read_crude_modis <- function( filn, savedir, band_var, band_qc, expand_x, expand
 }
 
 
-interpolate_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, prod, expand_x, expand_y, overwrite, overwrite_dates=FALSE, ignore_missing=FALSE ){
+read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, prod, expand_x, expand_y, overwrite, overwrite_dates=FALSE, ignore_missing=FALSE ){
   ##--------------------------------------
   ## Returns data frame containing EVI 
   ## (and year, moy, doy) for all available
@@ -339,7 +339,7 @@ interpolate_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pr
       ##--------------------------------------------------------------------
       ## Read crude data file
       ##--------------------------------------------------------------------
-      out  <- read_crude_modis( filn, savedir, band_var, band_qc, expand_x=expand_x, expand_y=expand_y )
+      out  <- read_crude_modis_tstep( filn, savedir, band_var, band_qc, expand_x=expand_x, expand_y=expand_y )
       ##--------------------------------------------------------------------
 
       if ( is.null( dim( out$nice_all ) ) && expand_x==0 && expand_y==0 ){
@@ -381,119 +381,116 @@ interpolate_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pr
 
   }
 
-  ##--------------------------------------
-  ## CLEAN AND GAP-FILL
-  ##--------------------------------------
-  ## Replace data points with quality flag = 2 (snow covered) by 0
-  modis$evi [ which(modis$qual==2) ] <- max( min( modis$evi ), 0.0 )
+  return( modis )
 
-  ## Drop all data with quality flag != 0
-  modis$evi[ which(modis$qual==3) ]  <- NA  # Target not visible, covered with cloud
-  # modis$evi[ which(modis$qual==1) ]  <- NA  # Useful, but look at other QA information
-  modis$evi[ which(modis$qual==-1) ] <- NA  # Not Processed
 
-  ## Drop all data identified as outliers = lie outside 6*IQR
-  pdf( paste("fig/evi_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
-  plot( modis$yr_dec_read, modis$evi, pch=16, col='red', main=savedir )
-  modis$evi <- remove_outliers( modis$evi, coef=5.0 ) ## too dangerous - removes peaks
+  # ##--------------------------------------
+  # ## CLEAN AND GAP-FILL
+  # ##--------------------------------------
+  # ## Replace data points with quality flag = 2 (snow covered) by 0
+  # modis$evi [ which(modis$qual==2) ] <- max( min( modis$evi ), 0.0 )
 
-  ## aggregate by DOY
-  agg_evi          <- aggregate( evi ~ doy,          data=modis, FUN=mean, na.rm=TRUE )
-  agg_evi_meansurr <- aggregate( evi_meansurr ~ doy, data=modis, FUN=mean, na.rm=TRUE )
-  agg_evi <- agg_evi %>% left_join( agg_evi_meansurr ) %>% dplyr::rename( evi_meandoy=evi, evi_meansurr_meandoy=evi_meansurr )
-  modis <- modis %>% left_join( agg_evi )
+  # ## Drop all data with quality flag != 0
+  # modis$evi[ which(modis$qual==3) ]  <- NA  # Target not visible, covered with cloud
+  # # modis$evi[ which(modis$qual==1) ]  <- NA  # Useful, but look at other QA information
+  # modis$evi[ which(modis$qual==-1) ] <- NA  # Not Processed
 
-  idxs <- which( !is.na(modis$evi) )
-  if (expand_y>0 || expand_x>0){
-    ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
-    modis$anom_surr  <- modis$evi_meansurr / modis$evi_meansurr_meandoy
-    modis$evi[-idxs] <- modis$evi_meandoy[-idxs] * modis$anom_surr[-idxs]
-  } else {
-    modis$evi[-idxs] <- modis$evi_meandoy[-idxs]
-  }
+  # ## Drop all data identified as outliers = lie outside 6*IQR
+  # pdf( paste("fig/evi_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
+  # plot( modis$yr_dec_read, modis$evi, pch=16, col='red', main=savedir )
+  # modis$evi <- remove_outliers( modis$evi, coef=5.0 ) ## too dangerous - removes peaks
 
-  points( modis$yr_dec_read[idxs],  modis$evi[idxs],  pch=16 )
-  points( modis$yr_dec_read[-idxs], modis$evi[-idxs], pch=16, col='blue' )
+  # ## aggregate by DOY
+  # agg_evi          <- aggregate( evi ~ doy,          data=modis, FUN=mean, na.rm=TRUE )
+  # agg_evi_meansurr <- aggregate( evi_meansurr ~ doy, data=modis, FUN=mean, na.rm=TRUE )
+  # agg_evi <- agg_evi %>% left_join( agg_evi_meansurr ) %>% dplyr::rename( evi_meandoy=evi, evi_meansurr_meandoy=evi_meansurr )
+  # modis <- modis %>% left_join( agg_evi )
 
-  # ## points that have unreliable information may be better replaced?
-  # idxs <- which( modis$qual==1 )
+  # idxs <- which( !is.na(modis$evi) )
   # if (expand_y>0 || expand_x>0){
   #   ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
-  #   modis$anom_surr <- modis$evi_meansurr / modis$evi_meansurr_meandoy
-  #   # modis$evi[idxs] <- modis$evi_meandoy[idxs]
-  #   tmp <- modis$evi_meandoy[idxs]
+  #   modis$anom_surr  <- modis$evi_meansurr / modis$evi_meansurr_meandoy
+  #   modis$evi[-idxs] <- modis$evi_meandoy[-idxs] * modis$anom_surr[-idxs]
   # } else {
-  #   # modis$evi[idxs] <- modis$evi_meandoy[idxs] * modis$anom_surr[idxs]
-  #   tmp <- modis$evi_meandoy[idxs] * modis$anom_surr[idxs]
+  #   modis$evi[-idxs] <- modis$evi_meandoy[-idxs]
   # }
 
-  # points( modis$yr_dec_read[idxs], tmp,  pch=16, col='cyan' )
+  # points( modis$yr_dec_read[idxs],  modis$evi[idxs],  pch=16 )
+  # points( modis$yr_dec_read[-idxs], modis$evi[-idxs], pch=16, col='blue' )
 
-  ## Gap-fill remaining again by mean-by-DOY
-  idxs <- which( is.na(modis$evi) )
-  modis$evi[idxs] <- modis$evi_meandoy[idxs]
-  points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16, col='red' )
+  # # ## points that have unreliable information may be better replaced?
+  # # idxs <- which( modis$qual==1 )
+  # # if (expand_y>0 || expand_x>0){
+  # #   ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
+  # #   modis$anom_surr <- modis$evi_meansurr / modis$evi_meansurr_meandoy
+  # #   # modis$evi[idxs] <- modis$evi_meandoy[idxs]
+  # #   tmp <- modis$evi_meandoy[idxs]
+  # # } else {
+  # #   # modis$evi[idxs] <- modis$evi_meandoy[idxs] * modis$anom_surr[idxs]
+  # #   tmp <- modis$evi_meandoy[idxs] * modis$anom_surr[idxs]
+  # # }
 
-  ## Gap-fill still remaining by linear approximation
-  idxs <- which( is.na(modis$evi) )
-  if (length(idxs)>1){
-    modis$evi <- approx( modis$yr_dec_read[-idxs], modis$evi[-idxs], xout=modis$yr_dec_read )$y
-  }
+  # # points( modis$yr_dec_read[idxs], tmp,  pch=16, col='cyan' )
 
-  points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16, col='green' )
-  lines( modis$yr_dec_read, modis$evi )
-  dev.off()
+  # ## Gap-fill remaining again by mean-by-DOY
+  # idxs <- which( is.na(modis$evi) )
+  # modis$evi[idxs] <- modis$evi_meandoy[idxs]
+  # points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16, col='red' )
 
-  ##--------------------------------------
-  ## MONTHLY DATAFRAME
-  ##--------------------------------------
-  ## Interpolate data to mid-months
-  if (any(!is.na(modis$yr_read))){
-    yrstart  <- min( modis$yr_read, na.rm=TRUE )
-    yrend    <- max( modis$yr_read, na.rm=TRUE )
-    modis_monthly <- init_monthly_dataframe( yrstart, yrend )
-    modis_monthly$evi <- approx( modis$yr_dec_read, modis$evi, modis_monthly$year_dec )$y
+  # ## Gap-fill still remaining by linear approximation
+  # idxs <- which( is.na(modis$evi) )
+  # if (length(idxs)>1){
+  #   modis$evi <- approx( modis$yr_dec_read[-idxs], modis$evi[-idxs], xout=modis$yr_dec_read )$y
+  # }
+
+  # points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16, col='green' )
+  # lines( modis$yr_dec_read, modis$evi )
+  # dev.off()
+
+  # ##--------------------------------------
+  # ## MONTHLY DATAFRAME
+  # ##--------------------------------------
+  # ## Interpolate data to mid-months
+  # if (any(!is.na(modis$yr_read))){
+  #   yrstart  <- min( modis$yr_read, na.rm=TRUE )
+  #   yrend    <- max( modis$yr_read, na.rm=TRUE )
+  #   modis_monthly <- init_monthly_dataframe( yrstart, yrend )
+  #   modis_monthly$evi <- approx( modis$yr_dec_read, modis$evi, modis_monthly$year_dec )$y
     
-    ## gap-fill with median of corresponding month
-    for (idx in 1:dim(modis_monthly)[1]){
-      if (is.na(modis_monthly$evi[idx])){
-        modis_monthly$evi[idx] <- median( modis_monthly$evi[ which( modis_monthly$moy==modis_monthly$moy[idx]) ], na.rm=TRUE )
-      }
-    }
-    nodata <- FALSE
-  } else {
-    nodata <- TRUE
-  }
+  #   ## gap-fill with median of corresponding month
+  #   for (idx in 1:dim(modis_monthly)[1]){
+  #     if (is.na(modis_monthly$evi[idx])){
+  #       modis_monthly$evi[idx] <- median( modis_monthly$evi[ which( modis_monthly$moy==modis_monthly$moy[idx]) ], na.rm=TRUE )
+  #     }
+  #   }
+  #   nodata <- FALSE
+  # } else {
+  #   nodata <- TRUE
+  # }
 
-  ##--------------------------------------
-  ## DAILY DATAFRAME
-  ##--------------------------------------
-  if (any(!is.na(modis$yr_read))){
-    yrstart  <- min( modis$yr_read, na.rm=TRUE )
-    yrend    <- max( modis$yr_read, na.rm=TRUE )
-    modis_daily <- init_daily_dataframe( yrstart, yrend )
-    modis_daily$evi <- approx( modis$yr_dec_read, modis$evi, modis_daily$year_dec )$y
+  # ##--------------------------------------
+  # ## DAILY DATAFRAME
+  # ##--------------------------------------
+  # if (any(!is.na(modis$yr_read))){
+  #   yrstart  <- min( modis$yr_read, na.rm=TRUE )
+  #   yrend    <- max( modis$yr_read, na.rm=TRUE )
+  #   modis_daily <- init_daily_dataframe( yrstart, yrend )
+  #   modis_daily$evi <- approx( modis$yr_dec_read, modis$evi, modis_daily$year_dec )$y
     
-    ## gap-fill with median of corresponding month
-    for (idx in 1:dim(modis_daily)[1]){
-      if (is.na(modis_daily$evi[idx])){
-        modis_daily$evi[idx] <- median( modis_daily$evi[ which( modis_daily$moy==modis_daily$moy[idx]) ], na.rm=TRUE )
-      }
-    }
-  }
+  #   ## gap-fill with median of corresponding month
+  #   for (idx in 1:dim(modis_daily)[1]){
+  #     if (is.na(modis_daily$evi[idx])){
+  #       modis_daily$evi[idx] <- median( modis_daily$evi[ which( modis_daily$moy==modis_daily$moy[idx]) ], na.rm=TRUE )
+  #     }
+  #   }
+  # }
 
-  if (nodata){
-    return( list( modis=modis, modis_daily=NA, modis_monthly=NA, nodata=nodata ) )
-  } else {
-    return( list( modis=modis, modis_daily=modis_daily, modis_monthly=modis_monthly, nodata=nodata ) )
-  }
+  # if (nodata){
+  #   return( list( modis=modis, modis_daily=NA, modis_monthly=NA, nodata=nodata ) )
+  # } else {
+  #   return( list( modis=modis, modis_daily=modis_daily, modis_monthly=modis_monthly, nodata=nodata ) )
+  # }
     
-  # ######################
-  # ## for debugging:
-  # plot(  modis$yr_dec_read, modis$evi, type="l" )
-  # lines( modis_monthly$year_dec, modis_monthly$evi, col="green" )
-  # lines( modis_daily$year_dec, modis_daily$evi, col="blue" )
-  # ######################
 
 }
 
