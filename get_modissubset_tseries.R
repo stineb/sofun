@@ -36,7 +36,7 @@ tseries_out      = TRUE
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 do.sites <- seq(nsites)
-do.sites <- 69:nsites
+do.sites <- 76:nsites
 
 if (bundle=="fapar"){
   ##--------------------------------------------------------------------

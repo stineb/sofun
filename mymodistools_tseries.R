@@ -796,7 +796,7 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     ## Gap-fill still remaining by linear approximation
     idxs <- which( is.na(modis_gapfilled$centre) )
     if (length(idxs)>1){
-      modis_gapfilled$centre <- approx( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], xout=modis_gapfilled$yr_dec_read )$y
+      modis_gapfilled$centre <- approx( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], xout=modis_gapfilled$year_dec )$y
     }
 
     # points( modis_gapfilled$yr_dec_read[idxs], modis_gapfilled$centre[idxs], pch=16, col='green' )
