@@ -16,6 +16,7 @@ source( paste( myhome, "sofun/getin/mymodistools_tseries.R", sep="" ) )
 simsuite       = "fluxnet2015"
 expand_x       = 1
 expand_y       = 1
+overwrite_csv  = TRUE
 overwrite      = FALSE
 ignore_missing = FALSE
 do_interpolate = FALSE
@@ -89,7 +90,7 @@ for (idx in do.sites){
 
   print( paste( "outputs stored in", dirnam_csv ) )
 
-  if (!file.exists(filnam_modis_csv)||overwrite){
+  if (!file.exists(filnam_modis_csv)||overwrite_csv){
 
     ##--------------------------------------------------------------------
     ## Download data from MODIS, read into a nice dataframe and interpolate

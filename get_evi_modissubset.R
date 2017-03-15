@@ -1,5 +1,4 @@
-library(plyr)
-#library(dplyr)
+library(dplyr)
 
 # install.packages("MODISTools")
 
@@ -14,13 +13,52 @@ source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
 ##--------------------------------------------------------------------
 ## MANUAL SETTINGS
 ##--------------------------------------------------------------------
-simsuite="fluxnet2015"
-expand_x=1
-expand_y=1
-overwrite=FALSE
-overwrite_dates=FALSE
-ignore_missing=TRUE
+simsuite        = "fluxnet2015"
+expand_x        = 1
+expand_y        = 1
+overwrite       = FALSE
+overwrite_dates = FALSE
+ignore_missing  = FALSE
+bundle          = "fapar"
 ##--------------------------------------------------------------------
+
+if (bundle=="fapar"){
+  ##--------------------------------------------------------------------
+  ## FAPAR
+  ##--------------------------------------------------------------------
+  band_var <- "Fpar_1km"
+  band_qc  <- "FparLai_QC"
+  prod     <- "MOD15A2"
+  varnam   <- "fapar"
+
+} else if (bundle=="lai"){
+  ##--------------------------------------------------------------------
+  ## LAI
+  ##--------------------------------------------------------------------
+  band_var <- "Lai_1km"
+  band_qc  <- "FparLai_QC"
+  prod     <- "MOD15A2"
+  varnam   <- "lai"
+
+} else if (bundle=="gpp"){
+  ##--------------------------------------------------------------------
+  ## GPP
+  ##--------------------------------------------------------------------
+  band_var <- "Gpp_1km"
+  band_qc  <- "Psn_QC_1km"
+  prod     <- "MOD17A2_51"
+  varnam   <- "gpp"
+
+} else if (bundle=="evi"){
+  ##--------------------------------------------------------------------
+  ## EVI
+  ##--------------------------------------------------------------------
+  band_var <- "250m_16_days_EVI"
+  band_qc  <- "250m_16_days_pixel_reliability"
+  prod   <- "MOD13Q1"
+  varnam <- "evi"
+
+}
 
 ndaymonth <- c(31,28,31,30,31,30,31,31,30,31,30,31)
 ndayyear <- sum(ndaymonth)
@@ -36,14 +74,14 @@ nsites <- dim(siteinfo)[1]
 ## create data frame holding data for all sites
 mdf_modis_allsites <- init_monthly_dataframe( fapar_year_start, fapar_year_end )
 ddf_modis_allsites <- init_daily_dataframe( fapar_year_start, fapar_year_end )
-path_mfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/mfapar_evi_modissubset_allsites.csv", sep="")
-path_dfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/dfapar_evi_modissubset_allsites.csv", sep="")
+path_mfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/mfapar_", varnam, "_modissubset_allsites.csv", sep="")
+path_dfapar_allsites_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/dfapar_", varnam, "_modissubset_allsites.csv", sep="")
 
 overwrite_csv <- TRUE
 
-# do.sites <- seq(nsites)
-# do.sites <- 1:1
-do.sites <- 13
+do.sites <- seq(nsites)
+do.sites <- 1:1
+# do.sites <- 100
 
 for (idx in do.sites ){
 
@@ -54,14 +92,27 @@ for (idx in do.sites ){
   print( paste( "collecting monthly data for station", sitename, "..." ) )
 
   dirnam_fapar_csv <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", sep="" )
-  filnam_monthly_fapar_csv <- paste( dirnam_fapar_csv, "mfapar_evi_modissubset_", sitename, ".csv", sep="" )
-  filnam_daily_fapar_csv   <- paste( dirnam_fapar_csv, "dfapar_evi_modissubset_", sitename, ".csv", sep="" )
+  filnam_monthly_fapar_csv <- paste( dirnam_fapar_csv, "mfapar_", varnam, "_modissubset_", sitename, ".csv", sep="" )
+  filnam_daily_fapar_csv   <- paste( dirnam_fapar_csv, "dfapar_", varnam, "_modissubset_", sitename, ".csv", sep="" )
   filnam_modisdates_fapar_csv  <- paste( dirnam_fapar_csv, "evi_modissubset_", sitename, ".csv", sep="" )
 
   if ( !file.exists(filnam_daily_fapar_csv) || !file.exists(filnam_monthly_fapar_csv) || overwrite_csv || !file.exists(filnam_modisdates_fapar_csv) ){
 
     ##--------------------------------------------------------------------
-    out <- interpolate_modis( sitename, lon, lat, expand_x=expand_x, expand_y=expand_y, overwrite=overwrite, overwrite_dates=overwrite_dates, ignore_missing=ignore_missing  )
+    out <- interpolate_modis(
+        varnam,
+        sitename,
+        lon,
+        lat,
+        band_var,
+        band_qc, 
+        prod, 
+        expand_x=expand_x,
+        expand_y=expand_y,
+        overwrite=overwrite,
+        overwrite_dates=overwrite_dates,
+        ignore_missing=ignore_missing  
+        )
     ##--------------------------------------------------------------------
     
     if (!out$nodata){
@@ -105,9 +156,10 @@ for (idx in do.sites ){
       ##--------------------------------------------------------------------
       print( paste( "writing fapar data frame into CSV file ", filnam_monthly_fapar_csv, "...") )
       system( paste( "mkdir -p", dirnam_fapar_csv ) )   
-      write.csv( df_monthly, file=filnam_monthly_fapar_csv,    row.names=FALSE )
-      write.csv( df_daily,   file=filnam_daily_fapar_csv,      row.names=FALSE )
-      write.csv( df_modis,   file=filnam_modisdates_fapar_csv, row.names=FALSE )
+      print("WARNING: NOT WRITING CSV FILES!!!")
+      # write.csv( df_monthly, file=filnam_monthly_fapar_csv,    row.names=FALSE )
+      # write.csv( df_daily,   file=filnam_daily_fapar_csv,      row.names=FALSE )
+      # write.csv( df_modis,   file=filnam_modisdates_fapar_csv, row.names=FALSE )
       
     }
 
@@ -140,10 +192,10 @@ for (idx in do.sites ){
       dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(yr), "/", sep="" )
       system( paste( "mkdir -p", dirnam ) )
       
-      filnam <- paste( dirnam, "mfapar_evi_modissubset_", sitename, "_", yr, ".txt", sep="" )
+      filnam <- paste( dirnam, "mfapar_", varnam, "_modissubset_", sitename, "_", yr, ".txt", sep="" )
       write_sofunformatted( filnam, df_monthly$evi[ which( df_monthly$year==yr ) ] )
       
-      filnam <- paste( dirnam, "dfapar_evi_modissubset_", sitename, "_", yr, ".txt", sep="" )
+      filnam <- paste( dirnam, "dfapar_", varnam, "_modissubset_", sitename, "_", yr, ".txt", sep="" )
       write_sofunformatted( filnam, df_daily$evi[ which( df_daily$year==yr ) ] )
       
     }

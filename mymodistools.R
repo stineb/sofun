@@ -1,4 +1,4 @@
-download_subset_modis <- function( lon, lat, start.date, end.date, savedir, overwrite, ignore_missing=FALSE ){
+download_subset_modis <- function( lon, lat, bands, prod, start.date, end.date, savedir, overwrite, ignore_missing=FALSE ){
   #///////////////////////////////////////////////////////////////
   # Downloads a MODIS subset for the specified location (lon, lat)
   # and date (start.date, end.date)
@@ -9,6 +9,15 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
   ## Find file from which (crude) data is read
   filn <- list.files( path=savedir, pattern="*asc" )
 
+  ## Account for different resolutions of the data
+  if (prod=="MOD13Q1"){
+    ## at 250 m, therefore use 1 km surrounding centre, that is 9x9=81 pixels
+    size=c(1,1)
+  } else if (prod=="MOD15A2"){
+    ## at 1 km, therefore use 3 km surrounding centre, that is 9x9=81 pixels
+    size=c(3,3)    
+  }
+
   if ( (length(filn)==0||overwrite) && !ignore_missing ){
 
     print( paste( "deleting existing file", filn ) )
@@ -18,6 +27,8 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
     
     print( paste( "==========================="))
     print( paste( "DOWNLOADING MODIS DATA FOR:"))
+    print( paste( "bands:", bands ) )
+    print( paste( "prod :", prod  ) )
     print( paste( "site :", sitename ) )
     print( paste( "lon  :", lon ) )
     print( paste( "lat  :", lat ) )
@@ -28,20 +39,21 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
     modis.subset <- data.frame(  
       lat        = lat, 
       long       = lon, 
-      start.date = start.date, 
-      end.date   = end.date
+      start.date = as.Date(start.date), 
+      end.date   = as.Date(end.date)
       )
 
     MODISSubsets(
       LoadDat   = modis.subset, 
-      Products  = "MOD13Q1",
-      Bands     = c("250m_16_days_EVI", "250m_16_days_pixel_reliability"),
-      Size      = c(1,1),   # c(1,1) to get all pixels +/- 1 km around the centre = 81 pixels in total; c(0,0) to get only centre pixel
+      Products  = prod,
+      Bands     = bands,
+      Size      = size,   # c(1,1) to get all pixels +/- 1 km around the centre = 81 pixels in total; c(0,0) to get only centre pixel
       StartDate = TRUE,
       SaveDir   = savedir
       )
 
     filn <- list.files( path=savedir, pattern="*asc" )
+    print(paste("raw data file name:", filn))
 
   } else {
 
@@ -75,7 +87,7 @@ download_subset_modis <- function( lon, lat, start.date, end.date, savedir, over
 
 }
 
-read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
+read_crude_modis <- function( filn, savedir, band_var, band_qc, expand_x, expand_y ){
   #///////////////////////////////////////////////////////////////
   # Reads MODIS data from downloaded ASCII file and returns
   # value, quality flag and associated date
@@ -96,7 +108,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   # ######################
   # # for debugging:
   # end.date <- Sys.Date()
-  # savedir <- paste( "/alphadata01/bstocker/data/modis_fluxnet_cutouts/AT-Neu/data_AT-Neu_2000-02-18/", sep="" )
+  # savedir <- paste( "/alphadata01/bstocker/data/modis_", varnam, "_fluxnet_cutouts/AT-Neu/data_AT-Neu_2000-02-18/", sep="" )
   # overwrite <- FALSE
   # sitename <- "AT-Neu"
   # lon <- 11.3175
@@ -118,7 +130,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
   # crude   <- rename( crude, nrows=V1, ncols=V2, modislon_ll=V3, modislat_ll=V4, dxy_m=V5, id=V6, MODISprod=V7, yeardoy=V8, coord=V9, VMODISprocessdatetime=V10 )
 
   ## this is just read to get length of time series and dates
-  tseries    <- MODISTimeSeries( savedir, Band = "250m_16_days_EVI" )
+  tseries    <- MODISTimeSeries( savedir, Band = band_var )
   ntsteps    <- dim(tseries[[1]])[1]
   tmp        <- rownames( tseries[[1]] )
   time       <- data.frame( yr=as.numeric( substr( tmp, start=2, stop=5 )), doy=as.numeric( substr( tmp, start=6, stop=8 )) )
@@ -151,7 +163,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
     # crude   <- rename( crude, nrows=V1, ncols=V2, modislon_ll=V3, modislat_ll=V4, dxy_m=V5, id=V6, MODISprod=V7, yeardoy=V8, coord=V9, MODISprocessdatetime=V10 )
 
     ## this is just read to get length of time series and dates
-    tseries    <- MODISTimeSeries( savedir, Band = "250m_16_days_EVI" )
+    tseries    <- MODISTimeSeries( savedir, Band = band_var )
     ntsteps    <- dim(tseries[[1]])[1]
     tmp        <- rownames( tseries[[1]] )
     time       <- data.frame( yr=as.numeric( substr( tmp, start=2, stop=5 )), doy=as.numeric( substr( tmp, start=6, stop=8 )) )
@@ -215,7 +227,7 @@ read_crude_modis <- function( filn, savedir, expand_x, expand_y ){
 }
 
 
-interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite, overwrite_dates=FALSE, ignore_missing=FALSE ){
+interpolate_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, prod, expand_x, expand_y, overwrite, overwrite_dates=FALSE, ignore_missing=FALSE ){
   ##--------------------------------------
   ## Returns data frame containing EVI 
   ## (and year, moy, doy) for all available
@@ -250,7 +262,7 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
   source( paste( myhome, "sofun/getin/remove_outliers.R", sep="" ) )
 
-  dirnam_dates_csv <- paste( myhome, "data/modis_fluxnet_cutouts/", sitename,"/", sep="" )
+  dirnam_dates_csv <- paste( myhome, "data/modis_", varnam, "_fluxnet_cutouts/", sitename,"/", sep="" )
   system( paste( "mkdir -p ", dirnam_dates_csv, sep="" ) )  
   filnam_dates_csv <- paste( dirnam_dates_csv, "dates_MOD13Q1_", sitename, ".csv", sep="" )
 
@@ -310,13 +322,13 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
   ## Loop over all dates and get data 
   for (idx in 1:dim(modis)[1]){
     
-    savedir <- paste( myhome, "data/modis_fluxnet_cutouts/", sitename,"/data_", sitename, "_", as.Date(modis$start[idx]), "/", sep="" )
+    savedir <- paste( myhome, "data/modis_", varnam, "_fluxnet_cutouts/", sitename,"/data_", sitename, "_", as.Date(modis$start[idx]), "/", sep="" )
     system( paste( "mkdir -p ", savedir, sep="" ) )  
 
     ##--------------------------------------------------------------------
     ## Download file with crude data if it's not there yet
     ##--------------------------------------------------------------------
-    filn <- try( download_subset_modis( lon, lat, modis$start[idx], modis$end[idx], savedir, overwrite=overwrite, ignore_missing=ignore_missing ) )
+    filn <- try( download_subset_modis( lon, lat, c( band_var, band_qc ), prod, modis$start[idx], modis$end[idx], savedir, overwrite=overwrite, ignore_missing=ignore_missing ) )
     ##--------------------------------------------------------------------
 
     if ( (ignore_missing && is.na(filn)) ){
@@ -327,7 +339,7 @@ interpolate_modis <- function( sitename, lon, lat, expand_x, expand_y, overwrite
       ##--------------------------------------------------------------------
       ## Read crude data file
       ##--------------------------------------------------------------------
-      out  <- read_crude_modis( filn, savedir, expand_x=expand_x, expand_y=expand_y )
+      out  <- read_crude_modis( filn, savedir, band_var, band_qc, expand_x=expand_x, expand_y=expand_y )
       ##--------------------------------------------------------------------
 
       if ( is.null( dim( out$nice_all ) ) && expand_x==0 && expand_y==0 ){
