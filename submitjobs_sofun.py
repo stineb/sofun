@@ -17,7 +17,7 @@ from subprocess import call
 ## - "olson_cmodel"
 ## - "gradstep"
 ##--------------------------------------------------------------------
-simsuite = 'gradstep'
+simsuite = 'swissface'
 
 ##--------------------------------------------------------------------
 ## set options

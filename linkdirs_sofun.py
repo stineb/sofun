@@ -16,7 +16,7 @@ import os.path
 ## - "olson"
 ## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'gradstep'
+simsuite = 'swissface'
 
 ##--------------------------------------------------------------------
 ## Link directories

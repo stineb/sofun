@@ -150,9 +150,6 @@ contains
     ddenitr(:) = 0.0
     dnitr(:)   = 0.0
     dnleach(:) = 0.0
-
-    ! xxx debug
-    no3_inc_save = 0.0
     
     if ( dm==1 .and. mo==1 ) then
       !///////////////////////////////////////////////////////////////////////
@@ -220,10 +217,7 @@ contains
       dnleach(lu)        = pno3(lu,jpngr)%n14 * soilphys(lu)%fleach
       pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - dnleach(lu)
       dnloss(lu)         = dnloss(lu) + dnleach(lu)
-
-      ! xxx debug
-      anleach = anleach + dnleach(lu)
-
+      
 
       !///////////////////////////////////////////////////////////////////////
       ! SUBSTRATE PARTITIONING (ntransform.cpp:95)
