@@ -36,7 +36,7 @@ tseries_out      = TRUE
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 do.sites <- seq(nsites)
-do.sites <- 76:nsites
+# do.sites <- 3:3
 
 if (bundle=="fapar"){
   ##--------------------------------------------------------------------
@@ -107,9 +107,9 @@ for (idx in do.sites){
   print( paste( "outputs stored in", dirnam_csv_to ) )
 
   # ## Move some files
-  # filnam_modis_csv_from   <- paste( dirnam_csv_from, varnam, "_", productnam, "_8d_modissubset_", sitename, ".csv", sep="" )
-  # filnam_monthly_csv_from <- paste( dirnam_csv_from, "m", varnam, "_", productnam, "_modissubset_", sitename, ".csv", sep="" )
-  # filnam_daily_csv_from   <- paste( dirnam_csv_from, "d", varnam, "_", productnam, "_modissubset_", sitename, ".csv", sep="" )
+  # filnam_modis_csv_from   <- paste( dirnam_csv_from, varnam, "_", "fapar", "_8d_modissubset_", sitename, ".csv", sep="" )
+  # filnam_monthly_csv_from <- paste( dirnam_csv_from, "m", varnam, "_", "fapar", "_modissubset_", sitename, ".csv", sep="" )
+  # filnam_daily_csv_from   <- paste( dirnam_csv_from, "d", varnam, "_", "fapar", "_modissubset_", sitename, ".csv", sep="" )
   # if (file.exists(filnam_modis_csv_from)){
   #   system( paste( "mv", filnam_modis_csv_from, dirnam_csv_to ) )
   # }
@@ -213,6 +213,7 @@ for (idx in do.sites){
     ##--------------------------------------------------------------------
     ## Clean (gapfill and interpolate) full time series data to 8-days, daily, and monthly
     ##--------------------------------------------------------------------
+    print("interpolating...")
     out <- interpolate_modis(
                               modis,
                               sitename, 
@@ -260,22 +261,25 @@ for (idx in do.sites){
   # plot( out$modis$year_dec, out$modis$data, type='l', main=sitename )
   # lines( modis_manually_gpp$year_dec, modis_manually_gpp$X25*1e-1, col='red' )
 
-  # ##--------------------------------------------------------------------
-  # ## Write to Fortran-formatted output for each variable and year separately
-  # ##--------------------------------------------------------------------
-  # print( "writing formatted input files ..." )
+  ##--------------------------------------------------------------------
+  ## Write to Fortran-formatted output for each variable and year separately
+  ##--------------------------------------------------------------------
+  print( "writing formatted input files ..." )
 
-  # ## in separate formatted file 
-  # for (year in unique(df_monthly$year)){
+  ## in separate formatted file 
+  for (year in unique(out$modis_monthly$year)){
 
-  #   print( paste("... for year", year))
-  #   dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(year), "/", sep="" )
-  #   system( paste( "mkdir -p", dirnam ) )
+    print( paste("... for year", year))
+    dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(year), "/", sep="" )
+    system( paste( "mkdir -p", dirnam ) )
 
-  #   filnam <- paste( dirnam, "fapar_evi_modissubset_", sitename, "_", year, ".txt", sep="" )
-  #   write_sofunformatted( filnam, df_monthly$evi[ which( df_monthly$year==year ) ] )
+    filnam <- paste( dirnam, "mfapar_evi_modissubset_", sitename, "_", year, ".txt", sep="" )
+    write_sofunformatted( filnam, out$modis_monthly$data[ which( out$modis_monthly$year==year ) ] )
+
+    filnam <- paste( dirnam, "dfapar_evi_modissubset_", sitename, "_", year, ".txt", sep="" )
+    write_sofunformatted( filnam, out$modis_daily$data[ which( out$modis_daily$year==year ) ] )
     
-  # }
+  }
 
 }
 

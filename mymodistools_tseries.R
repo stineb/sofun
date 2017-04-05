@@ -11,16 +11,16 @@ download_subset_modis_tseries <- function( lon, lat, bands, prod, sitename, Time
   # lat <- -33.4648
   # ######################
 
-  library( MODISTools )
+  require( MODISTools )
 
   ## Find file from which (crude) data is read
   filn <- list.files( path=savedir, pattern="*asc" )
 
-  test <- try( read.table(filn) )
-  if (class(test)=="try-error"){
-    system( paste( "rm ", savedir, filn, sep="" ) )
-    filn <- list.files( path=savedir, pattern="*asc" )    
-  }
+  # test <- try( read.table(filn) )
+  # if (class(test)=="try-error"){
+  #   system( paste( "rm ", savedir, filn, sep="" ) )
+  #   filn <- list.files( path=savedir, pattern="*asc" )    
+  # }
 
   ## Account for different resolutions of the data
   if (prod=="MOD13Q1"){
@@ -99,12 +99,10 @@ download_subset_modis <- function( lon, lat, bands, prod, start.date, end.date, 
   # and date (start.date, end.date)
   #---------------------------------------------------------------
 
-  library( MODISTools )
+  require( MODISTools )
 
   ## Find file from which (crude) data is read
   filn <- list.files( path=savedir, pattern="*asc" )
-
-  print( paste("raw ascii file:", filn))
 
   # ## Deleting if file is erroneous
   # test <- try( read.table(filn) )
@@ -211,6 +209,7 @@ read_crude_modis_tseries <- function( filn, savedir, band_var, band_qc, prod, ex
   # 3 Cloudy  Target not visible, covered with cloud
   #---------------------------------------------------------------
 
+  require( MODISTools )
   require( dplyr )
 
   # ######################
@@ -222,9 +221,6 @@ read_crude_modis_tseries <- function( filn, savedir, band_var, band_qc, prod, ex
   # band_var <- "Fpar_1km"
   # band_qc  <- "FparLai_QC"
   # ######################
-
-  library( MODISTools )
-  library( dplyr )
 
   if (band_var=="Fpar_1km"){
     ScaleFactor <- 1e-2
@@ -324,8 +320,8 @@ read_crude_modis_tstep <- function( filn, savedir, band_var, band_qc, expand_x, 
   # filn <- list.files( path=savedir, pattern="*asc" )
   # ######################
 
-  library( MODISTools )
-  library( dplyr )
+  require( MODISTools )
+  require( dplyr )
 
   ScaleFactor <- 1e-4  # applied to output variable, in ascii file EVI value is multiplied by 1e4
   ndayyear    <- 365
@@ -442,28 +438,30 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
 
   # ######################
   # ## for debugging:
+  # varnam="evi"
+  # overwrite=overwrite_raw
+  # overwrite_dates=FALSE
+  # # # overwrite <- FALSE
+  # # # sitename <- "FR-Pue"
+  # # # lon <- 3.5958
+  # # # lat <- 43.7414
+  # # varnam <- "evi"
+  # # sitename <-  "AR-SLu"
+  # # lon <- -66.4598
+  # # lat <- -33.4648
+  # # # sitename <- "AT-NEU"
+  # # # lon <- 11.3175
+  # # # lat <- 47.1167
+  # # # sitename <- "AR-Vir"
+  # # # lon <- -56.1886
+  # # # lat <- -28.2395
+  # # expand_x <- 1
+  # # expand_y <- 1 
   # # overwrite <- FALSE
-  # # sitename <- "FR-Pue"
-  # # lon <- 3.5958
-  # # lat <- 43.7414
-  # varnam <- "evi"
-  # sitename <-  "AR-SLu"
-  # lon <- -66.4598
-  # lat <- -33.4648
-  # # sitename <- "AT-NEU"
-  # # lon <- 11.3175
-  # # lat <- 47.1167
-  # # sitename <- "AR-Vir"
-  # # lon <- -56.1886
-  # # lat <- -28.2395
-  # expand_x <- 1
-  # expand_y <- 1 
-  # overwrite <- FALSE
-  # overwrite_dates <- FALSE
   # ######################
 
-  library( MODISTools )
-  library( dplyr )
+  require( MODISTools )
+  require( dplyr )
   syshome <- Sys.getenv( "HOME" )
   source( paste( syshome, "/.Rprofile", sep="" ) )
   source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
@@ -522,7 +520,7 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
   # print(dim(modis))
   modis$centre         <- rep( NA, dim(modis)[1] )
   modis$centre_meansurr<- rep( NA, dim(modis)[1] )
-  modis$centre_qc           <- rep( NA, dim(modis)[1] )
+  modis$centre_qc      <- rep( NA, dim(modis)[1] )
   modis$yr_read        <- rep( NA, dim(modis)[1] )
   modis$doy_read       <- rep( NA, dim(modis)[1] )
   modis$date_read      <- rep( NA, dim(modis)[1] )
@@ -549,7 +547,7 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
       ##--------------------------------------------------------------------
       ## Read crude data file
       ##--------------------------------------------------------------------
-      out  <- read_crude_modis_tstep( filn, savedir, band_var, band_qc, expand_x=expand_x, expand_y=expand_y )
+      out <- read_crude_modis_tstep( filn, savedir, band_var, band_qc, expand_x=expand_x, expand_y=expand_y )
       ##--------------------------------------------------------------------
 
       if ( is.null( dim( out$nice_all ) ) && expand_x==0 && expand_y==0 ){
@@ -595,124 +593,16 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
   modis <- modis %>% 
 
     ## rename
-    rename( year_dec=yr_dec_read, year=yr, date=start ) %>% 
+    dplyr::rename( year_dec=yr_dec_read, year=yr, date=start ) %>% 
 
     ## select only relevant columns
     dplyr::select( year, doy, date, year_dec, absday, centre, centre_meansurr, centre_qc ) %>% 
 
     ## remove rows where dates were not read
-    filter( !is.na(year_dec) )
+    dplyr::filter( !is.na(year_dec) )
 
 
   return( modis )
-
-
-  # ##--------------------------------------
-  # ## CLEAN AND GAP-FILL
-  # ##--------------------------------------
-  # ## Replace data points with quality flag = 2 (snow covered) by 0
-  # modis$evi [ which(modis$centre_qc==2) ] <- max( min( modis$evi ), 0.0 )
-
-  # ## Drop all data with quality flag != 0
-  # modis$evi[ which(modis$centre_qc==3) ]  <- NA  # Target not visible, covered with cloud
-  # # modis$evi[ which(modis$centre_qc==1) ]  <- NA  # Useful, but look at other QA information
-  # modis$evi[ which(modis$centre_qc==-1) ] <- NA  # Not Processed
-
-  # ## Drop all data identified as outliers = lie outside 6*IQR
-  # pdf( paste("fig/evi_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
-  # plot( modis$yr_dec_read, modis$evi, pch=16, col='red', main=savedir )
-  # modis$evi <- remove_outliers( modis$evi, coef=5.0 ) ## too dangerous - removes peaks
-
-  # ## aggregate by DOY
-  # agg_evi          <- aggregate( evi ~ doy,          data=modis, FUN=mean, na.rm=TRUE )
-  # agg_evi_meansurr <- aggregate( evi_meansurr ~ doy, data=modis, FUN=mean, na.rm=TRUE )
-  # agg_evi <- agg_evi %>% left_join( agg_evi_meansurr ) %>% dplyr::rename( evi_meandoy=evi, evi_meansurr_meandoy=evi_meansurr )
-  # modis <- modis %>% left_join( agg_evi )
-
-  # idxs <- which( !is.na(modis$evi) )
-  # if (expand_y>0 || expand_x>0){
-  #   ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
-  #   modis$anom_surr  <- modis$evi_meansurr / modis$evi_meansurr_meandoy
-  #   modis$evi[-idxs] <- modis$evi_meandoy[-idxs] * modis$anom_surr[-idxs]
-  # } else {
-  #   modis$evi[-idxs] <- modis$evi_meandoy[-idxs]
-  # }
-
-  # points( modis$yr_dec_read[idxs],  modis$evi[idxs],  pch=16 )
-  # points( modis$yr_dec_read[-idxs], modis$evi[-idxs], pch=16, col='blue' )
-
-  # # ## points that have unreliable information may be better replaced?
-  # # idxs <- which( modis$centre_qc==1 )
-  # # if (expand_y>0 || expand_x>0){
-  # #   ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
-  # #   modis$anom_surr <- modis$evi_meansurr / modis$evi_meansurr_meandoy
-  # #   # modis$evi[idxs] <- modis$evi_meandoy[idxs]
-  # #   tmp <- modis$evi_meandoy[idxs]
-  # # } else {
-  # #   # modis$evi[idxs] <- modis$evi_meandoy[idxs] * modis$anom_surr[idxs]
-  # #   tmp <- modis$evi_meandoy[idxs] * modis$anom_surr[idxs]
-  # # }
-
-  # # points( modis$yr_dec_read[idxs], tmp,  pch=16, col='cyan' )
-
-  # ## Gap-fill remaining again by mean-by-DOY
-  # idxs <- which( is.na(modis$evi) )
-  # modis$evi[idxs] <- modis$evi_meandoy[idxs]
-  # points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16, col='red' )
-
-  # ## Gap-fill still remaining by linear approximation
-  # idxs <- which( is.na(modis$evi) )
-  # if (length(idxs)>1){
-  #   modis$evi <- approx( modis$yr_dec_read[-idxs], modis$evi[-idxs], xout=modis$yr_dec_read )$y
-  # }
-
-  # points( modis$yr_dec_read[idxs], modis$evi[idxs], pch=16, col='green' )
-  # lines( modis$yr_dec_read, modis$evi )
-  # dev.off()
-
-  # ##--------------------------------------
-  # ## MONTHLY DATAFRAME
-  # ##--------------------------------------
-  # ## Interpolate data to mid-months
-  # if (any(!is.na(modis$yr_read))){
-  #   yrstart  <- min( modis$yr_read, na.rm=TRUE )
-  #   yrend    <- max( modis$yr_read, na.rm=TRUE )
-  #   modis_monthly <- init_monthly_dataframe( yrstart, yrend )
-  #   modis_monthly$evi <- approx( modis$yr_dec_read, modis$evi, modis_monthly$year_dec )$y
-    
-  #   ## gap-fill with median of corresponding month
-  #   for (idx in 1:dim(modis_monthly)[1]){
-  #     if (is.na(modis_monthly$evi[idx])){
-  #       modis_monthly$evi[idx] <- median( modis_monthly$evi[ which( modis_monthly$moy==modis_monthly$moy[idx]) ], na.rm=TRUE )
-  #     }
-  #   }
-  #   nodata <- FALSE
-  # } else {
-  #   nodata <- TRUE
-  # }
-
-  # ##--------------------------------------
-  # ## DAILY DATAFRAME
-  # ##--------------------------------------
-  # if (any(!is.na(modis$yr_read))){
-  #   yrstart  <- min( modis$yr_read, na.rm=TRUE )
-  #   yrend    <- max( modis$yr_read, na.rm=TRUE )
-  #   modis_daily <- init_daily_dataframe( yrstart, yrend )
-  #   modis_daily$evi <- approx( modis$yr_dec_read, modis$evi, modis_daily$year_dec )$y
-    
-  #   ## gap-fill with median of corresponding month
-  #   for (idx in 1:dim(modis_daily)[1]){
-  #     if (is.na(modis_daily$evi[idx])){
-  #       modis_daily$evi[idx] <- median( modis_daily$evi[ which( modis_daily$moy==modis_daily$moy[idx]) ], na.rm=TRUE )
-  #     }
-  #   }
-  # }
-
-  # if (nodata){
-  #   return( list( modis=modis, modis_daily=NA, modis_monthly=NA, nodata=nodata ) )
-  # } else {
-  #   return( list( modis=modis, modis_daily=modis_daily, modis_monthly=modis_monthly, nodata=nodata ) )
-  # }
     
 }
 
@@ -754,17 +644,35 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     ## MOD13Q1 contains EVI
 
     ## Replace data points with quality flag = 2 (snow covered) by 0
-    modis_gapfilled$centre [ which(modis_gapfilled$centre_qc==2) ] <- max( min( modis_gapfilled$centre ), 0.0 )
+    # modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==2) ] <- max( min( modis_gapfilled$centre ), 0.0 )
+    modis_gapfilled$centre[ which(modis_gapfilled$centre<0) ] <- 0.0
 
-    ## Drop all data with quality flag != 0
+    ## Drop all data with quality flag 3, 1 or -1
     modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==3) ]  <- NA  # Target not visible, covered with cloud
     # modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==1) ]  <- NA  # Useful, but look at other QA information
     modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==-1) ] <- NA  # Not Processed
 
-    ## Drop all data identified as outliers = lie outside 6*IQR
-    # pdf( paste("fig/evi_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
-    # plot( modis_gapfilled$yr_dec_read, modis_gapfilled$centre, pch=16, col='red', main=savedir, ylim=c(0,1) )
-    modis_gapfilled$centre <- remove_outliers( modis_gapfilled$centre, coef=5.0 ) ## maybe too dangerous - removes peaks
+    ## open plot for illustrating gap-filling
+    pdf( paste("fig/evi_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
+    plot( modis$year_dec, modis$centre, pch=16, col='black', main=sitename, ylim=c(0,1), xlab="year", ylab="MODIS EVI 250 m" )
+    points( modis_gapfilled$year_dec, modis_gapfilled$centre, pch=16, col='red' )
+
+    ## Drop all data identified as outliers = lie outside 3*IQR
+    modis_gapfilled$centre <- remove_outliers( modis_gapfilled$centre, coef=5 ) ## maybe too dangerous - removes peaks
+
+    ## add points to plot opened before
+    points( modis_gapfilled$year_dec, modis_gapfilled$centre, pch=16, col='blue' )
+
+    ##--------------------------------------
+    ## get LOESS spline model for predicting daily values (below)
+    ##--------------------------------------
+    idxs    <- which(!is.na(modis_gapfilled$centre))
+    myloess <- with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=0.01 ) )
+    
+    ##--------------------------------------
+    ## get spline model for predicting daily values (below)
+    ##--------------------------------------
+    spline <- with( modis_gapfilled, smooth.spline( year_dec[idxs], centre[idxs], spar=0.001 ) )
 
     ## aggregate by DOY
     agg <- aggregate( centre ~ doy, data=modis_gapfilled, FUN=mean, na.rm=TRUE )
@@ -776,28 +684,33 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     }
     modis_gapfilled <- modis_gapfilled %>% left_join( agg )
 
+    ## gap-fill by 
     idxs <- which( !is.na(modis_gapfilled$centre) )
     if (is.element("centre_meansurr", names(modis_gapfilled))){
       ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
-      modis_gapfilled$anom_surr     <- modis_gapfilled$centre_meansurr / modis_gapfilled$centre_meansurr_meandoy
-      modis_gapfilled$centre[-idxs] <- modis_gapfilled$centre_meandoy[-idxs] * modis_gapfilled$anom_surr[-idxs]
+      modis_gapfilled$anom_surr    <- modis_gapfilled$centre_meansurr / modis_gapfilled$centre_meansurr_meandoy
+      modis_gapfilled$centre[idxs] <- modis_gapfilled$centre_meandoy[idxs] * modis_gapfilled$anom_surr[idxs]
     } else {
-      modis_gapfilled$centre[-idxs] <- modis_gapfilled$centre_meandoy[-idxs]
+      modis_gapfilled$centre[idxs] <- modis_gapfilled$centre_meandoy[idxs]
     }
+    with( modis_gapfilled, points( year_dec[idx], centre[idx], pch=16, col='green' ) )
+    legend("topright", c("modis", "outliers", "after bad values dropped and outliers removed", "added from mean of surrounding" ), col=c("black", "red", "blue", "green" ), pch=16, bty="n" )
+    # legend("topleft", c("R LOESS smoothing with span=0.01", "R smooth.spline"), col=c("red", "dodgerblue"), lty=1, bty="n" )
+
 
     # points( modis_gapfilled$yr_dec_read[idxs],  modis_gapfilled$centre[idxs],  pch=16 )
     # points( modis_gapfilled$yr_dec_read[-idxs], modis_gapfilled$centre[-idxs], pch=16, col='blue' )
 
-    ## Gap-fill remaining again by mean-by-DOY
-    idxs <- which( is.na(modis_gapfilled$centre) )
-    modis_gapfilled$centre[idxs] <- modis_gapfilled$centre_meandoy[idxs]
-    # points( modis_gapfilled$yr_dec_read[idxs], modis_gapfilled$centre[idxs], pch=16, col='red' )
+    # ## Gap-fill remaining again by mean-by-DOY
+    # idxs <- which( is.na(modis_gapfilled$centre) )
+    # modis_gapfilled$centre[idxs] <- modis_gapfilled$centre_meandoy[idxs]
+    # # points( modis_gapfilled$yr_dec_read[idxs], modis_gapfilled$centre[idxs], pch=16, col='red' )
 
-    ## Gap-fill still remaining by linear approximation
-    idxs <- which( is.na(modis_gapfilled$centre) )
-    if (length(idxs)>1){
-      modis_gapfilled$centre <- approx( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], xout=modis_gapfilled$year_dec )$y
-    }
+    # ## Gap-fill still remaining by linear approximation
+    # idxs <- which( is.na(modis_gapfilled$centre) )
+    # if (length(idxs)>1){
+    #   modis_gapfilled$centre <- approx( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], xout=modis_gapfilled$year_dec )$y
+    # }
 
     # points( modis_gapfilled$yr_dec_read[idxs], modis_gapfilled$centre[idxs], pch=16, col='green' )
     # lines( modis_gapfilled$yr_dec_read, modis_gapfilled$centre )
@@ -840,11 +753,11 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
       }
     }
 
-    ## Gap-fill still remaining by linear approximation
-    idxs <- which( is.na(modis_gapfilled$centre) )
-    if (length(idxs)>1){
-      modis_gapfilled$centre <- approx( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], xout=modis_gapfilled$year_dec )$y
-    }
+    # ## Gap-fill still remaining by linear approximation
+    # idxs <- which( is.na(modis_gapfilled$centre) )
+    # if (length(idxs)>1){
+    #   modis_gapfilled$centre <- approx( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], xout=modis_gapfilled$year_dec )$y
+    # }
 
     # points( modis_gapfilled$year_dec[idxs], modis_gapfilled$centre[idxs], pch=16 )
     # points( modis_gapfilled$year_dec[-idxs], modis_gapfilled$centre[-idxs], pch=16, col='blue' )
@@ -865,6 +778,37 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
 
   modis_gapfilled  <- dplyr::select( modis_gapfilled, year_dec, year, doy, date, centre, centre_qc )
 
+  # ##--------------------------------------
+  # ## LOESS 
+  # ##--------------------------------------
+  # # ## apply smoothing spline - DOESN'T WORK PROPERLY, MISSES EXTREMES
+  # # spline <- with( modis_gapfilled, smooth.spline( year_dec[which(!is.na(centre_loess))], centre_loess[which(!is.na(centre_loess))], spar=0.001 ) )
+  # # modis_gapfilled$centre_loess <- predict( spline, modis_gapfilled$year_dec )$y
+
+  # # ## not possible for prediction
+  # # modis_gapfilled$centre_loess <- with( modis_gapfilled, sgolayfilt( centre_loess[which(!is.na(centre_loess))] ) )
+
+  # ## add loess-splined curve
+  # idxs    <- which(!is.na(modis_gapfilled$centre))
+  # myloess <- with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=0.01 ) )
+  
+  # test    <- try( with( modis_gapfilled, predict( myloess, year_dec ) ) )
+  # lines( modis_gapfilled$year_dec, test, col='red', lwd=2 )
+
+  # # idxs    <- which(!is.na(modis_gapfilled$centre))
+  # # myloess <- with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=0.01 ) )
+  # # test    <- try( with( modis_gapfilled, predict( myloess, year_dec ) ) )
+  # # i <- 0
+  # # while (class(test)=="try-error"){
+  # #   i <- i + 1
+  # #   myloess <- with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=(0.01+0.002*(i-1)) ) )
+  # #   test <- try( with( modis_gapfilled, predict( myloess, year_dec ) ) )
+  # # }
+
+  # # with( modis_gapfilled, lines( year_dec, centre_loessgapfilled, col='red' ) )
+  # # with( modis_gapfilled, points( year_dec, centre, pch=16, col='black' ) )
+
+
   ##--------------------------------------
   ## MONTHLY DATAFRAME, Interpolate data to mid-months
   ##--------------------------------------
@@ -876,8 +820,9 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
   modis_monthly <- modis_monthly[ which( modis_monthly$year_dec>=modis_gapfilled$year_dec[1] ), ]
   modis_monthly <- modis_monthly[ which( modis_monthly$year_dec<=modis_gapfilled$year_dec[dim(modis)[1]] ), ]
 
-  modis_monthly$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_monthly$year_dec )$y
-
+  # modis_monthly$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_monthly$year_dec )$y
+  modis_monthly$data <- with( modis_monthly, predict( myloess, year_dec ) )
+  modis_monthly$data_spline <- with( modis_monthly, predict( spline, year_dec ) )$y
 
   ##--------------------------------------
   ## DAILY DATAFRAME
@@ -891,7 +836,9 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
   modis_daily <- modis_daily[ which( modis_daily$year_dec<=modis_gapfilled$year_dec[dim(modis)[1]] ), ]
 
   if (do_interpolate){
-    modis_daily$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_daily$year_dec )$y
+    # modis_daily$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_daily$year_dec )$y
+    modis_daily$data <- with( modis_daily, predict( myloess, year_dec ) )
+    modis_daily$data_spline <- with( modis_daily, predict( spline, year_dec ) )$y
   } else {
     modis_daily$data <- rep( NA, nrow(modis_daily) )
     for (idx in seq(nrow(modis))){
@@ -899,6 +846,11 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
       modis_daily$data[putidx] <- modis_gapfilled$data[idx]
     }
   }
+
+  ## plot daily smoothed line and close plotting device
+  with( modis_daily, lines( year_dec, data, col='red', lwd=2 ) )
+  # with( modis_daily, lines( year_dec, data_spline, col='dodgerblue', lwd=2 ) )
+  dev.off()
 
   return( list( modis_gapfilled=modis_gapfilled, modis_daily=modis_daily, modis_monthly=modis_monthly ) )
 
