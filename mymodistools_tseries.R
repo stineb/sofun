@@ -667,8 +667,15 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     ## get LOESS spline model for predicting daily values (below)
     ##--------------------------------------
     idxs    <- which(!is.na(modis_gapfilled$centre))
-    myloess <- with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=0.01 ) )
-    
+    myloess <- try( with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=0.01 ) ))
+    i <- 0
+    while (class(myloess)=="try-error"){
+      i <- i + 1
+      print(paste("i=",i))
+      myloess <- try( with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=(0.01+0.002*(i-1)) ) ))
+    }
+    print("ok now...")
+
     ##--------------------------------------
     ## get spline model for predicting daily values (below)
     ##--------------------------------------
@@ -796,14 +803,6 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
   # lines( modis_gapfilled$year_dec, test, col='red', lwd=2 )
 
   # # idxs    <- which(!is.na(modis_gapfilled$centre))
-  # # myloess <- with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=0.01 ) )
-  # # test    <- try( with( modis_gapfilled, predict( myloess, year_dec ) ) )
-  # # i <- 0
-  # # while (class(test)=="try-error"){
-  # #   i <- i + 1
-  # #   myloess <- with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=(0.01+0.002*(i-1)) ) )
-  # #   test <- try( with( modis_gapfilled, predict( myloess, year_dec ) ) )
-  # # }
 
   # # with( modis_gapfilled, lines( year_dec, centre_loessgapfilled, col='red' ) )
   # # with( modis_gapfilled, points( year_dec, centre, pch=16, col='black' ) )
@@ -821,7 +820,12 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
   modis_monthly <- modis_monthly[ which( modis_monthly$year_dec<=modis_gapfilled$year_dec[dim(modis)[1]] ), ]
 
   # modis_monthly$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_monthly$year_dec )$y
-  modis_monthly$data <- with( modis_monthly, predict( myloess, year_dec ) )
+  tmp <- try( with( modis_monthly, predict( myloess, year_dec ) ) )
+  if (class(tmp)!="try-error"){
+    modis_monthly$data <- tmp
+  } else {
+    modis_monthly$data <- with( modis_monthly, predict( spline, year_dec ) )$y
+  }
   modis_monthly$data_spline <- with( modis_monthly, predict( spline, year_dec ) )$y
 
   ##--------------------------------------
@@ -837,7 +841,12 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
 
   if (do_interpolate){
     # modis_daily$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_daily$year_dec )$y
-    modis_daily$data <- with( modis_daily, predict( myloess, year_dec ) )
+    tmp <- try( with( modis_daily, predict( myloess, year_dec ) ) )
+    if (class(tmp)!="try-error"){
+      modis_daily$data <- tmp
+    } else {
+      modis_daily$data <- with( modis_daily, predict( spline, year_dec ) )$y
+    }
     modis_daily$data_spline <- with( modis_daily, predict( spline, year_dec ) )$y
   } else {
     modis_daily$data <- rep( NA, nrow(modis_daily) )
