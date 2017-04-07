@@ -189,7 +189,7 @@ download_subset_modis <- function( lon, lat, bands, prod, start.date, end.date, 
 
 }
 
-read_crude_modis_tseries <- function( filn, savedir, band_var, band_qc, prod, expand_x, expand_y ){
+read_crude_modis_tseries <- function( filn, savedir, band_var, band_qc=NA, expand_x, expand_y ){
   #///////////////////////////////////////////////////////////////
   # Reads MODIS data from downloaded ASCII file and returns
   # value, quality flag and associated date
@@ -237,7 +237,7 @@ read_crude_modis_tseries <- function( filn, savedir, band_var, band_qc, prod, ex
 
     ## this is just read to get length of time series and dates
     tseries    <- as.data.frame( MODISTimeSeries( savedir, Band = band_var, Simplify=TRUE ) )   
-    tseries_qc <- as.data.frame( MODISTimeSeries( savedir, Band = band_qc,  Simplify=TRUE ) )
+    if (!is.na(band_qc)) { tseries_qc <- as.data.frame( MODISTimeSeries( savedir, Band = band_qc,  Simplify=TRUE ) )}
 
     ## determine centre pixel's column number in 'tseries'
     usecol <- ( ncol(tseries) - 1 ) / 2 + 1 
@@ -245,18 +245,18 @@ read_crude_modis_tseries <- function( filn, savedir, band_var, band_qc, prod, ex
 
     ## save centre pixel's info in separate column
     tseries$centre       <- tseries[,usecol] * ScaleFactor
-    tseries_qc$centre_qc <- tseries_qc[,usecol]
+    if (!is.na(band_qc)) { tseries_qc$centre_qc <- tseries_qc[,usecol] }
 
     ## Get mean of surrounding pixels and save in separate column. Take into account the quality flags of surrounding pixels.
-    if (ncol(tseries)>2){
+    if (ncol(tseries)>2 && !is.na(band_qc)){
 
       ## Replace data points with quality flag = 2 (snow covered) by minimum of all pixel's values 
-      tseries[ which( tseries[,1:npixels] == 2 ), 1:npixels ] <- min( tseries[,1:npixels], na.rm=TRUE )
-      tseries[ which( tseries[,1:npixels] < 0.0 ) ] <- 0.0  ## remove negatives
+      tseries[ which( tseries_qc[,1:npixels] == 2 ), 1:npixels ] <- min( tseries[,1:npixels], na.rm=TRUE )
+      tseries[ which( tseries_qc[,1:npixels] < 0.0 ) ] <- 0.0  ## remove negatives
 
       ## Drop all data with quality flag != 0
-      tseries[ which( tseries[,1:npixels] == 3 ),  1:npixels ] <- NA   # Target not visible, covered with cloud
-      tseries[ which( tseries[,1:npixels] == -1 ), 1:npixels ] <- NA   # Not Processed
+      tseries[ which( tseries_qc[,1:npixels] == 3 ),  1:npixels ] <- NA   # Target not visible, covered with cloud
+      tseries[ which( tseries_qc[,1:npixels] == -1 ), 1:npixels ] <- NA   # Not Processed
 
       tseries$centre_meansurr <- unname( apply( tseries[,1:npixels], 1, FUN=mean, na.rm=TRUE ) ) * ScaleFactor
     }
@@ -269,14 +269,17 @@ read_crude_modis_tseries <- function( filn, savedir, band_var, band_qc, prod, ex
     tseries$year_dec <- tseries$year + ( tseries$doy - 1 ) / ndayyear
 
     ## add time information for tseries_qc
-    tmp              <- rownames( tseries_qc )
-    tseries_qc$year     <- as.numeric( substr( tmp, start=2, stop=5 ))
-    tseries_qc$doy      <- as.numeric( substr( tmp, start=6, stop=8 ))
-    tseries_qc$date     <- as.POSIXct( as.Date( paste( as.character(tseries_qc$year), "-01-01", sep="" ) ) + tseries_qc$doy - 1 )
-    tseries_qc$year_dec <- tseries_qc$year + ( tseries_qc$doy - 1 ) / ndayyear
+    if (!is.na(band_qc)){
+      tmp                 <- rownames( tseries_qc )
+      tseries_qc$year     <- as.numeric( substr( tmp, start=2, stop=5 ))
+      tseries_qc$doy      <- as.numeric( substr( tmp, start=6, stop=8 ))
+      tseries_qc$date     <- as.POSIXct( as.Date( paste( as.character(tseries_qc$year), "-01-01", sep="" ) ) + tseries_qc$doy - 1 )
+      tseries_qc$year_dec <- tseries_qc$year + ( tseries_qc$doy - 1 ) / ndayyear
 
-    ## Merge data frames
-    tseries <- tseries %>% left_join( tseries_qc, by=c("date","year","doy","year_dec") )
+      ## Merge data frames
+      tseries <- tseries %>% left_join( tseries_qc, by=c("date","year","doy","year_dec") )
+      
+    }
 
   } else {
 
@@ -638,26 +641,34 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
   ## CLEAN AND GAP-FILL
   ##--------------------------------------
   modis_gapfilled <- modis 
+  error <- FALSE
 
   if (prod=="MOD13Q1"){
-
     ## MOD13Q1 contains EVI
 
+    ##--------------------------------------
+    ## data cleaning
+    ##--------------------------------------
     ## Replace data points with quality flag = 2 (snow covered) by 0
     # modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==2) ] <- max( min( modis_gapfilled$centre ), 0.0 )
     modis_gapfilled$centre[ which(modis_gapfilled$centre<0) ] <- 0.0
 
-    ## Drop all data with quality flag 3, 1 or -1
-    modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==3) ]  <- NA  # Target not visible, covered with cloud
-    # modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==1) ]  <- NA  # Useful, but look at other QA information
-    modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==-1) ] <- NA  # Not Processed
+    if (!is.null(modis_gapfilled$centre_qc)){
+      ## Drop all data with quality flag 3, 1 or -1
+      modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==3) ]  <- NA  # Target not visible, covered with cloud
+      # modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==1) ]  <- NA  # Useful, but look at other QA information
+      modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==-1) ] <- NA  # Not Processed
+    }
 
     ## open plot for illustrating gap-filling
-    pdf( paste("fig/evi_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
-    plot( modis$year_dec, modis$centre, pch=16, col='black', main=sitename, ylim=c(0,1), xlab="year", ylab="MODIS EVI 250 m" )
+    pdf( paste("fig/evi_fill_", sitename, "_", prod, ".pdf", sep="" ), width=10, height=6 )
+    plot( modis$year_dec, modis$centre, pch=16, col='black', main=sitename, ylim=c(0,1), xlab="year", ylab="MODIS EVI 250 m", las=1 )
+    left <- seq(2000, 2016, 2)
+    right <- seq(2001, 2017, 2)
+    rect( left, -99, right, 99, border=NA, col=rgb(0,0,0,0.2) )
     points( modis_gapfilled$year_dec, modis_gapfilled$centre, pch=16, col='red' )
 
-    ## Drop all data identified as outliers = lie outside 3*IQR
+    ## Drop all data identified as outliers = lie outside 5*IQR
     modis_gapfilled$centre <- remove_outliers( modis_gapfilled$centre, coef=5 ) ## maybe too dangerous - removes peaks
 
     ## add points to plot opened before
@@ -669,7 +680,7 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     idxs    <- which(!is.na(modis_gapfilled$centre))
     myloess <- try( with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=0.01 ) ))
     i <- 0
-    while (class(myloess)=="try-error"){
+    while (class(myloess)=="try-error" && i<50){
       i <- i + 1
       print(paste("i=",i))
       myloess <- try( with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=(0.01+0.002*(i-1)) ) ))
@@ -679,7 +690,7 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     ##--------------------------------------
     ## get spline model for predicting daily values (below)
     ##--------------------------------------
-    spline <- with( modis_gapfilled, smooth.spline( year_dec[idxs], centre[idxs], spar=0.001 ) )
+    spline <- try( with( modis_gapfilled, smooth.spline( year_dec[idxs], centre[idxs], spar=0.001 ) ) )
 
     ## aggregate by DOY
     agg <- aggregate( centre ~ doy, data=modis_gapfilled, FUN=mean, na.rm=TRUE )
@@ -724,40 +735,85 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     # dev.off()
 
   } else if (prod=="MOD15A2"){
-
     ## MOD15A2 contains fpar
 
-    ## Drop all data with quality flag != 0
-    modis_gapfilled$centre[ which(modis_gapfilled$centre_qc!=0) ] <- NA
+    ##--------------------------------------
+    ## data cleaning
+    ##--------------------------------------
+    # ## Drop all data with quality flag != 0
+    # if (!is.null(modis_gapfilled$centre_qc)){
+    #   modis_gapfilled$centre[ which(modis_gapfilled$centre_qc!=0) ] <- NA
+    # }
 
-    ## Drop all data identified as outliers = lie outside 3*IQR
-    # pdf( paste("fig/fapar_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
-    # plot( modis_gapfilled$year_dec, modis_gapfilled$centre, pch=16, col='red', main=savedir, ylim=c(0,1) )
-    # modis_gapfilled$centre <- remove_outliers( modis_gapfilled$centre, coef=3.0 )  # too dangerous - remove peaks
+    ## no quality info available for fpar from trevor
 
-    ## aggregate by DOY
-    agg <- aggregate( centre ~ doy, data=modis_gapfilled, FUN=mean, na.rm=TRUE )
-    if (is.element("centre_meansurr", names(modis_gapfilled))){
-      agg_meansurr <- aggregate( centre_meansurr ~ doy, data=modis_gapfilled, FUN=mean, na.rm=TRUE )
-      agg <- agg %>% left_join( agg_meansurr ) %>% dplyr::rename( centre_meandoy=centre, centre_meansurr_meandoy=centre_meansurr )
+    ## remove values that are above 1
+    modis_gapfilled$centre <- replace( modis_gapfilled$centre,  modis_gapfilled$centre>1.0, NA )
+
+    ## open plot for illustrating gap-filling
+    pdf( paste("fig/fpar_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
+    plot( modis$year_dec, modis$centre, pch=16, col='black', main=sitename, ylim=c(0,1), xlab="year", ylab="MODIS FPAR 1 km", las=1 )
+    left <- seq(2000, 2016, 2)
+    right <- seq(2001, 2017, 2)
+    rect( left, -99, right, 99, border=NA, col=rgb(0,0,0,0.2) )
+    points( modis_gapfilled$year_dec, modis_gapfilled$centre, pch=16, col='red' )
+
+    # ## Drop all data identified as outliers = lie outside 5*IQR
+    # modis_gapfilled$centre <- remove_outliers( modis_gapfilled$centre, coef=5 ) ## maybe too dangerous - removes peaks
+
+    ## add points to plot opened before
+    points( modis_gapfilled$year_dec, modis_gapfilled$centre, pch=16, col='springgreen3' )
+
+    ##--------------------------------------
+    ## get LOESS spline model for predicting daily values (below)
+    ##--------------------------------------
+    idxs <- which(!is.na(modis_gapfilled$centre))
+    if (length(idxs)>0){
+      myloess <- try( with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=0.01 ) ))
+      i <- 0
+      while (class(myloess)=="try-error" && i<50){
+        i <- i + 1
+        print(paste("i=",i))
+        myloess <- try( with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=(0.01+0.002*(i-1)) ) ))
+      }
+      print("ok now...")
     } else {
-      agg <- agg %>% rename( centre_meandoy=centre )
+      missing <- TRUE
     }
-    modis_gapfilled <- modis_gapfilled %>% left_join( agg )
 
-    ## get consecutive data gaps and fill only by mean seasonality if more than 3 consecutive dates are missing
-    na_instances <- get_consecutive( is.na(modis_gapfilled$centre), leng_threshold=4, do_merge=FALSE )
-    if (nrow(na_instances)>0){
-      for (iinst in 1:nrow(na_instances)){
-        idxs <- na_instances$idx_start[iinst]:(na_instances$idx_start[iinst]+na_instances$len[iinst]-1)
-        if (is.element("centre_meansurr", names(modis_gapfilled))){
-          ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
-          modis_gapfilled$anom_surr    <- modis_gapfilled$centre_meansurr / modis_gapfilled$centre_meansurr_meandoy
-          modis_gapfilled$centre[idxs] <- modis_gapfilled$centre_meandoy[idxs] * modis_gapfilled$anom_surr[idxs]
-        } else {
-          modis_gapfilled$centre[idxs] <- modis_gapfilled$centre_meandoy[idxs]
+    ##--------------------------------------
+    ## get spline model for predicting daily values (below)
+    ##--------------------------------------
+    if (!missing){
+      spline <- try( with( modis_gapfilled, smooth.spline( year_dec[idxs], centre[idxs], spar=0.001 ) ))
+    }
+
+    if (!missing){
+      ## aggregate by DOY
+      agg <- aggregate( centre ~ doy, data=modis_gapfilled, FUN=mean, na.rm=TRUE )
+      if (is.element("centre_meansurr", names(modis_gapfilled))){
+        agg_meansurr <- aggregate( centre_meansurr ~ doy, data=modis_gapfilled, FUN=mean, na.rm=TRUE )
+        agg <- agg %>% left_join( agg_meansurr ) %>% dplyr::rename( centre_meandoy=centre, centre_meansurr_meandoy=centre_meansurr )
+      } else {
+        agg <- agg %>% dplyr::rename( centre_meandoy=centre )
+      }
+      modis_gapfilled <- modis_gapfilled %>% left_join( agg )
+
+      ## get consecutive data gaps and fill only by mean seasonality if more than 3 consecutive dates are missing
+      na_instances <- get_consecutive( is.na(modis_gapfilled$centre), leng_threshold=4, do_merge=FALSE )
+      if (nrow(na_instances)>0){
+        for (iinst in 1:nrow(na_instances)){
+          idxs <- na_instances$idx_start[iinst]:(na_instances$idx_start[iinst]+na_instances$len[iinst]-1)
+          if (is.element("centre_meansurr", names(modis_gapfilled))){
+            ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
+            modis_gapfilled$anom_surr    <- modis_gapfilled$centre_meansurr / modis_gapfilled$centre_meansurr_meandoy
+            modis_gapfilled$centre[idxs] <- modis_gapfilled$centre_meandoy[idxs] * modis_gapfilled$anom_surr[idxs]
+          } else {
+            modis_gapfilled$centre[idxs] <- modis_gapfilled$centre_meandoy[idxs]
+          }
         }
       }
+
     }
 
     # ## Gap-fill still remaining by linear approximation
@@ -783,30 +839,11 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
 
   }
 
-  modis_gapfilled  <- dplyr::select( modis_gapfilled, year_dec, year, doy, date, centre, centre_qc )
-
-  # ##--------------------------------------
-  # ## LOESS 
-  # ##--------------------------------------
-  # # ## apply smoothing spline - DOESN'T WORK PROPERLY, MISSES EXTREMES
-  # # spline <- with( modis_gapfilled, smooth.spline( year_dec[which(!is.na(centre_loess))], centre_loess[which(!is.na(centre_loess))], spar=0.001 ) )
-  # # modis_gapfilled$centre_loess <- predict( spline, modis_gapfilled$year_dec )$y
-
-  # # ## not possible for prediction
-  # # modis_gapfilled$centre_loess <- with( modis_gapfilled, sgolayfilt( centre_loess[which(!is.na(centre_loess))] ) )
-
-  # ## add loess-splined curve
-  # idxs    <- which(!is.na(modis_gapfilled$centre))
-  # myloess <- with( modis_gapfilled, loess( centre[idxs] ~ year_dec[idxs], span=0.01 ) )
-  
-  # test    <- try( with( modis_gapfilled, predict( myloess, year_dec ) ) )
-  # lines( modis_gapfilled$year_dec, test, col='red', lwd=2 )
-
-  # # idxs    <- which(!is.na(modis_gapfilled$centre))
-
-  # # with( modis_gapfilled, lines( year_dec, centre_loessgapfilled, col='red' ) )
-  # # with( modis_gapfilled, points( year_dec, centre, pch=16, col='black' ) )
-
+  if (!is.null(modis_gapfilled$centre_qc)){
+    modis_gapfilled  <- dplyr::select( modis_gapfilled, year_dec, year, doy, date, centre, centre_qc )
+  } else {
+    modis_gapfilled  <- dplyr::select( modis_gapfilled, year_dec, year, doy, date, centre )
+  }
 
   ##--------------------------------------
   ## MONTHLY DATAFRAME, Interpolate data to mid-months
@@ -819,14 +856,38 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
   modis_monthly <- modis_monthly[ which( modis_monthly$year_dec>=modis_gapfilled$year_dec[1] ), ]
   modis_monthly <- modis_monthly[ which( modis_monthly$year_dec<=modis_gapfilled$year_dec[dim(modis)[1]] ), ]
 
-  # modis_monthly$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_monthly$year_dec )$y
-  tmp <- try( with( modis_monthly, predict( myloess, year_dec ) ) )
-  if (class(tmp)!="try-error"){
-    modis_monthly$data <- tmp
+  if (missing){
+
+    modis_monthly$data <- rep( NA, nrow(modis_monthly) )
+
   } else {
-    modis_monthly$data <- with( modis_monthly, predict( spline, year_dec ) )$y
+
+    # modis_monthly$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_monthly$year_dec )$y
+    tmp <- try( with( modis_monthly, predict( myloess, year_dec ) ) )
+    if (class(tmp)!="try-error"){
+      modis_monthly$data <- tmp
+    } else {
+      tmp <- try( with( modis_monthly, predict( spline, year_dec ) )$y )
+      if (class(tmp)!="try-error"){
+        modis_monthly$data <- tmp
+      } else {
+        modis_monthly$data <- rep( NA, nrow(modis_monthly) )
+      }
+    }
+    tmp <- try( with( modis_monthly, predict( spline, year_dec ) )$y)
+    if (class(tmp)!="try-error"){
+      modis_monthly$data_spline <- tmp
+    } else {
+      modis_monthly$data_spline <- rep( NA, nrow(modis_monthly) )
+    }
+
+    modis_monthly$data         <- replace( modis_monthly$data, modis_monthly$data<0, 0  )
+    modis_monthly$data_spline  <- replace( modis_monthly$data_spline, modis_monthly$data_spline<0, 0  )
+    
+    modis_monthly$data         <- replace( modis_monthly$data, modis_monthly$data>1, 1  )
+    modis_monthly$data_spline  <- replace( modis_monthly$data_spline, modis_monthly$data_spline>1, 1  )
+  
   }
-  modis_monthly$data_spline <- with( modis_monthly, predict( spline, year_dec ) )$y
 
   ##--------------------------------------
   ## DAILY DATAFRAME
@@ -839,27 +900,75 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
   modis_daily <- modis_daily[ which( modis_daily$year_dec>=modis_gapfilled$year_dec[1] ), ]
   modis_daily <- modis_daily[ which( modis_daily$year_dec<=modis_gapfilled$year_dec[dim(modis)[1]] ), ]
 
-  if (do_interpolate){
-    # modis_daily$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_daily$year_dec )$y
-    tmp <- try( with( modis_daily, predict( myloess, year_dec ) ) )
-    if (class(tmp)!="try-error"){
-      modis_daily$data <- tmp
-    } else {
-      modis_daily$data <- with( modis_daily, predict( spline, year_dec ) )$y
-    }
-    modis_daily$data_spline <- with( modis_daily, predict( spline, year_dec ) )$y
-  } else {
+  if (missing){
+
     modis_daily$data <- rep( NA, nrow(modis_daily) )
-    for (idx in seq(nrow(modis))){
-      putidx <- which( modis_daily$year_dec==modis_gapfilled$year_dec[idx] )
-      modis_daily$data[putidx] <- modis_gapfilled$data[idx]
+
+  } else {
+
+    if (do_interpolate){
+      # modis_daily$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_daily$year_dec )$y
+      tmp <- try( with( modis_daily, predict( myloess, year_dec ) ) )
+      if (class(tmp)!="try-error"){
+        modis_daily$data <- tmp
+      } else {
+        tmp <- try( with( modis_daily, predict( spline, year_dec ) )$y )
+        if (class(tmp)!="try-error"){
+          modis_daily$data <- tmp
+        } else {
+          modis_daily$data <- rep( NA, nrow(modis_daily) )
+        }      
+      }
+      tmp <- try( with( modis_daily, predict( spline, year_dec ) )$y)
+      if (class(tmp)!="try-error"){
+        modis_daily$data_spline <- tmp
+      } else {
+        modis_daily$data_spline <- rep( NA, nrow(modis_daily) )
+      }
+
+      ## savitzky golay filter
+      modis_daily            <- modis_daily %>% left_join( select( modis_gapfilled, year, doy, centre ) )
+      modis_daily$interpl    <- approx( modis_daily$year_dec, modis_daily$centre, xout=modis_daily$year_dec )$y 
+      modis_daily$sgfiltered <- rep( NA, nrow(modis_daily) )
+      idxs <- which(!is.na(modis_daily$interpl))
+      modis_daily$sgfiltered[idxs] <- sgolayfilt( modis_daily$interpl[idxs], p=3, n=31 ) 
+      
+      # tmodis_daily <- sgolayfilt( p=3, n=5, modis$centre ) 
+
+    } else {
+      modis_daily$data <- rep( NA, nrow(modis_daily) )
+      for (idx in seq(nrow(modis))){
+        putidx <- which( modis_daily$year_dec==modis_gapfilled$year_dec[idx] )
+        modis_daily$data[putidx] <- modis_gapfilled$data[idx]
+      }
     }
+
+    ## limit to within 0 and 1 (loess spline sometimes "explodes")
+    modis_daily$data         <- replace( modis_daily$data, modis_daily$data<0, 0  )
+    modis_daily$data_spline  <- replace( modis_daily$data_spline, modis_daily$data_spline<0, 0  )
+    
+    modis_daily$data         <- replace( modis_daily$data, modis_daily$data>1, 1  )
+    modis_daily$data_spline  <- replace( modis_daily$data_spline, modis_daily$data_spline>1, 1  )
+
   }
 
   ## plot daily smoothed line and close plotting device
-  with( modis_daily, lines( year_dec, data, col='red', lwd=2 ) )
-  # with( modis_daily, lines( year_dec, data_spline, col='dodgerblue', lwd=2 ) )
+  if (!missing){
+    # with( modis_daily, lines( year_dec, data_spline, col='darkgoldenrod', lwd=1 ) )
+    # with( modis_daily, lines( year_dec, data, col='cyan', lwd=1 ) )
+    # with( modis_monthly, lines( year_dec, data, col='blue', lwd=1 ) )
+    with( modis_daily,   lines( year_dec, sgfiltered, col='red', lwd=1 ) )
+  }
   dev.off()
+
+  ##--------------------------------------
+  ## select standard filtering method for daily data frames
+  ##--------------------------------------
+  if (prod=="MOD15A2" && !missing) { 
+    modis_daily <- modis_daily %>% select( -data ) %>% dplyr::rename( data=sgfiltered ) 
+  }
+
+  print("done with interpolate_modis()")
 
   return( list( modis_gapfilled=modis_gapfilled, modis_daily=modis_daily, modis_monthly=modis_monthly ) )
 

@@ -25,18 +25,21 @@ simsuite         = "fluxnet2015"
 expand_x         = 1
 expand_y         = 1
 overwrite_raw    = FALSE
-overwrite_rawcsv = TRUE
+overwrite_rawcsv = FALSE
 overwrite_csv    = TRUE
 ignore_missing   = TRUE
 do_interpolate   = TRUE
-bundle           = "evi"
+bundle           = "fpar_trevor"
 tseries_out      = TRUE
 ##--------------------------------------------------------------------
 
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
-# do.sites <- seq(nsites)
-do.sites <- 108:nsites
+do.sites <- seq(nsites)
+# do.sites <- 118
+
+trevorread <- FALSE
+missing <- FALSE
 
 if (bundle=="fapar"){
   ##--------------------------------------------------------------------
@@ -77,6 +80,17 @@ if (bundle=="fapar"){
   prod       <- "MOD13Q1"
   varnam     <- "fapar"
   productnam <- "evi"
+
+} else if (bundle=="fpar_trevor"){
+  ##--------------------------------------------------------------------
+  ## MODIS FPAR data that Trevor downloaded 
+  ##--------------------------------------------------------------------
+  trevorread <- TRUE
+  band_var <- "Fpar_1km"
+  band_qc  <- NA
+  prod     <- "MOD15A2"
+  varnam   <- "fapar"
+  productnam <- "fpar"
 
 }
 
@@ -125,160 +139,217 @@ for (idx in do.sites){
   #   filnam_modis_raw_csv <- paste( dirnam_csv_from_alt, varnam, "_", productnam, "_8d_RAW_modissubset_", sitename, ".csv", sep="" )
   # }
 
-  if (!file.exists(filnam_modis_raw_csv)||overwrite_rawcsv){
-    ##--------------------------------------------------------------------
-    ## Check if full time series ascii files are available
-    ##--------------------------------------------------------------------
-    ## Find file from which (crude) data is read
-    savedir <- paste( dirnam_csv_from, "raw/", sep="" )
-    system( paste( "mkdir -p ", savedir ) )
-    filn <- list.files( path=savedir, pattern="*asc" )
+  if (trevorread){
 
-    ## If no raw text files are available, look in single time step directory
-    if ( length(filn)==0 ){
-      savedir <- paste( dirnam_csv_from_alt, "raw/", sep="" )
-      filn <- list.files( path=savedir, pattern="*asc" )
-      tseries_out <- FALSE
+    if (!file.exists(filnam_modis_raw_csv)||overwrite_rawcsv) {
+
+      if (file.exists( paste( myhome, "data/modis_fpar_fluxnet_cutouts_FROMTREVOR/downloadedData/", sitename, "/", sep="" ) )){
+
+        modis <- data.frame()
+        for (iyr in 2000:2016){
+          ##--------------------------------------------------------------------
+          ## Read raw data and create a data frame holding the complete time series
+          ##--------------------------------------------------------------------
+          filn <- list.files( path=paste( myhome, "data/modis_fpar_fluxnet_cutouts_FROMTREVOR/downloadedData/", sitename, "/", as.character(iyr), "/", sep="" ), pattern="*asc" )
+          savedir <- paste( myhome, "data/modis_fpar_fluxnet_cutouts_FROMTREVOR/downloadedData/", sitename, "/", as.character(iyr), "/", sep="" )
+          
+          missing
+          
+          addrow <- read_crude_modis_tseries( 
+                                            filn, 
+                                            savedir, 
+                                            band_var, 
+                                            band_qc=NA,
+                                            expand_x = expand_x,
+                                            expand_y = expand_y 
+                                            )
+          modis <- rbind( modis, addrow )
+
+          ##--------------------------------------------------------------------
+          ## Write full time series data to nice CSV file
+          ##--------------------------------------------------------------------
+          print("writing to raw CSV file...")
+          if (!file.exists(dirnam_csv_from)){ system( paste( "mkdir -p ", dirnam_csv_from ) ) }
+          write.csv( modis, file=filnam_modis_raw_csv, row.names=FALSE )
+
+        }
+
+      } else {
+
+        missing <- TRUE
+
+      }
+
+    } else {
+      ##--------------------------------------------------------------------
+      ## Read full data from nice CSV file
+      ##--------------------------------------------------------------------
+      print("reading from raw CSV file...")
+      modis <- read.csv( filnam_modis_raw_csv )
+
     }
 
-    if (tseries_out){
+  } else {
+
+    if (!file.exists(filnam_modis_raw_csv)||overwrite_rawcsv){
       ##--------------------------------------------------------------------
-      ## Get file name of raw data text file (and download it if they're not there yet)
+      ## Check if full time series ascii files are available
       ##--------------------------------------------------------------------
-      filn  <- download_subset_modis_tseries( 
-                                              lon, 
-                                              lat, 
-                                              c( band_var, band_qc ), 
-                                              prod, 
-                                              sitename, 
-                                              TimeSeriesLength = 26,  # number of years before end.date
-                                              end.date         = Sys.Date(), 
-                                              savedir          = savedir, 
-                                              overwrite        = overwrite_raw, 
-                                              ignore_missing   = ignore_missing 
-                                              )
+      ## Find file from which (crude) data is read
+      savedir <- paste( dirnam_csv_from, "raw/", sep="" )
+      system( paste( "mkdir -p ", savedir ) )
+      filn <- list.files( path=savedir, pattern="*asc" )
+
+      ## If no raw text files are available, look in single time step directory
+      if ( length(filn)==0 ){
+        savedir <- paste( dirnam_csv_from_alt, "raw/", sep="" )
+        filn <- list.files( path=savedir, pattern="*asc" )
+        tseries_out <- FALSE
+      }
+
+      if (tseries_out){
+        ##--------------------------------------------------------------------
+        ## Get file name of raw data text file (and download it if they're not there yet)
+        ##--------------------------------------------------------------------
+        filn  <- download_subset_modis_tseries( 
+                                                lon, 
+                                                lat, 
+                                                c( band_var, band_qc ), 
+                                                prod, 
+                                                sitename, 
+                                                TimeSeriesLength = 26,  # number of years before end.date
+                                                end.date         = Sys.Date(), 
+                                                savedir          = savedir, 
+                                                overwrite        = overwrite_raw, 
+                                                ignore_missing   = ignore_missing 
+                                                )
+
+        ##--------------------------------------------------------------------
+        ## Read raw data and create a data frame holding the complete time series
+        ##--------------------------------------------------------------------
+        modis <- read_crude_modis_tseries( 
+                                          filn, 
+                                          savedir, 
+                                          band_var, 
+                                          band_qc,
+                                          prod,
+                                          expand_x = expand_x,
+                                          expand_y = expand_y 
+                                          )
+
+      } else {
+
+        ##--------------------------------------------------------------------
+        ## Get all at time steps individually. In this case 'read_crude_modis' is a wrapper
+        ##--------------------------------------------------------------------
+        modis <- read_crude_modis( 
+                                  productnam, 
+                                  sitename, 
+                                  lon, 
+                                  lat, 
+                                  band_var, 
+                                  band_qc, 
+                                  prod, 
+                                  expand_x        = expand_x,
+                                  expand_y        = expand_y, 
+                                  overwrite       = overwrite_raw, 
+                                  overwrite_dates = FALSE, 
+                                  ignore_missing  = ignore_missing 
+                                  )
+
+      }
 
       ##--------------------------------------------------------------------
-      ## Read raw data and create a data frame holding the complete time series
+      ## Write full time series data to nice CSV file
       ##--------------------------------------------------------------------
-      modis <- read_crude_modis_tseries( 
-                                        filn, 
-                                        savedir, 
-                                        band_var, 
-                                        band_qc,
-                                        prod,
-                                        expand_x = expand_x,
-                                        expand_y = expand_y 
-                                        )
+      print("writing to raw CSV file...")
+      write.csv( modis, file=filnam_modis_raw_csv, row.names=FALSE )
+
+
+    } else {
+      ##--------------------------------------------------------------------
+      ## Read full data from nice CSV file
+      ##--------------------------------------------------------------------
+      print("reading from raw CSV file...")
+      modis <- read.csv( filnam_modis_raw_csv )
+
+    }
+  }
+
+  if (!missing){
+
+    if (!file.exists(filnam_modis_csv)||overwrite_csv){
+      ##--------------------------------------------------------------------
+      ## Clean (gapfill and interpolate) full time series data to 8-days, daily, and monthly
+      ##--------------------------------------------------------------------
+      print("interpolating...")
+      out <- interpolate_modis(
+                                modis,
+                                sitename, 
+                                lon, 
+                                lat, 
+                                prod,
+                                do_interpolate = do_interpolate
+                                )
+
+      ##--------------------------------------------------------------------
+      ## Save data frames as CSV files
+      ##--------------------------------------------------------------------
+      print( paste( "writing data frame into CSV file ", filnam_modis_csv, "...") )
+      system( paste( "mkdir -p", dirnam_csv_to ) )   
+      write.csv( out$modis_monthly,   file=filnam_monthly_csv, row.names=FALSE )
+      write.csv( out$modis_daily,     file=filnam_daily_csv,   row.names=FALSE )
+      write.csv( out$modis_gapfilled, file=filnam_modis_csv,   row.names=FALSE )
 
     } else {
 
       ##--------------------------------------------------------------------
-      ## Get all at time steps individually. In this case 'read_crude_modis' is a wrapper
+      ## Read CSV file directly for this site
       ##--------------------------------------------------------------------
-      modis <- read_crude_modis( 
-                                productnam, 
-                                sitename, 
-                                lon, 
-                                lat, 
-                                band_var, 
-                                band_qc, 
-                                prod, 
-                                expand_x        = expand_x,
-                                expand_y        = expand_y, 
-                                overwrite       = overwrite_raw, 
-                                overwrite_dates = FALSE, 
-                                ignore_missing  = ignore_missing 
-                                )
+      print( "monthly data already available in CSV file ...")
+      out <- list()
+      out$modis         <- read.csv( filnam_modis_csv )
+      out$modis_daily   <- read.csv( filnam_daily_csv )
+      out$modis_monthly <- read.csv( filnam_monthly_csv )
 
     }
 
-    ##--------------------------------------------------------------------
-    ## Write full time series data to nice CSV file
-    ##--------------------------------------------------------------------
-    print("writing to raw CSV file...")
-    write.csv( modis, file=filnam_modis_raw_csv, row.names=FALSE )
+    # #--------------------------------------------------------------------
+    # # Check for some manually downloaded time series 
+    # #--------------------------------------------------------------------
+    # modis_manually <- read.csv( "/alphadata01/bstocker/data/modis_gpp_fluxnet_cutouts_tseries/FR-Pue/fromMODISwebsite/FR-Pue_MODIS.txt" )
+    # modis_manually_gpp <- filter( modis_manually, Band=="Gpp_1km" )
+    # modis_manually_qc <- filter( modis_manually, Band=="Psn_QC_1km" )
 
+    # tmp <- modis_manually_gpp$Date
+    # modis_manually_gpp$year <- as.numeric( substr( tmp, start=2, stop=5 ))
+    # modis_manually_gpp$doy  <- as.numeric( substr( tmp, start=6, stop=8 ))
+    # modis_manually_gpp$date <- as.POSIXlt( as.Date( paste( as.character(modis_manually_gpp$year), "-01-01", sep="" ) ) + modis_manually_gpp$doy - 1 )
+    # modis_manually_gpp$year_dec <- modis_manually_gpp$year + ( modis_manually_gpp$doy - 1 ) / ndayyear
 
-  } else {
-    ##--------------------------------------------------------------------
-    ## Read full data from nice CSV file
-    ##--------------------------------------------------------------------
-    print("reading from raw CSV file...")
-    modis <- read.csv( filnam_modis_raw_csv )
-
-  }
-
-  if (!file.exists(filnam_modis_csv)||overwrite_csv){
-    ##--------------------------------------------------------------------
-    ## Clean (gapfill and interpolate) full time series data to 8-days, daily, and monthly
-    ##--------------------------------------------------------------------
-    print("interpolating...")
-    out <- interpolate_modis(
-                              modis,
-                              sitename, 
-                              lon, 
-                              lat, 
-                              prod,
-                              do_interpolate = do_interpolate
-                              )
+    # plot( out$modis$year_dec, out$modis$data, type='l', main=sitename )
+    # lines( modis_manually_gpp$year_dec, modis_manually_gpp$X25*1e-1, col='red' )
 
     ##--------------------------------------------------------------------
-    ## Save data frames as CSV files
+    ## Write to Fortran-formatted output for each variable and year separately
     ##--------------------------------------------------------------------
-    print( paste( "writing data frame into CSV file ", filnam_modis_csv, "...") )
-    system( paste( "mkdir -p", dirnam_csv_to ) )   
-    write.csv( out$modis_monthly,   file=filnam_monthly_csv, row.names=FALSE )
-    write.csv( out$modis_daily,     file=filnam_daily_csv,   row.names=FALSE )
-    write.csv( out$modis_gapfilled, file=filnam_modis_csv,   row.names=FALSE )
+    print( "writing formatted input files ..." )
 
-  } else {
+    ## in separate formatted file 
+    for (year in unique(out$modis_monthly$year)){
 
-    ##--------------------------------------------------------------------
-    ## Read CSV file directly for this site
-    ##--------------------------------------------------------------------
-    print( "monthly data already available in CSV file ...")
-    out <- list()
-    out$modis         <- read.csv( filnam_modis_csv )
-    out$modis_daily   <- read.csv( filnam_daily_csv )
-    out$modis_monthly <- read.csv( filnam_monthly_csv )
+      print( paste("... for year", year))
+      dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(year), "/", sep="" )
+      system( paste( "mkdir -p", dirnam ) )
 
-  }
+      filnam <- paste( dirnam, "mfapar_", productnam,"_modissubset_", sitename, "_", year, ".txt", sep="" )
+      write_sofunformatted( filnam, out$modis_monthly$data[ which( out$modis_monthly$year==year ) ] )
 
-  # #--------------------------------------------------------------------
-  # # Check for some manually downloaded time series 
-  # #--------------------------------------------------------------------
-  # modis_manually <- read.csv( "/alphadata01/bstocker/data/modis_gpp_fluxnet_cutouts_tseries/FR-Pue/fromMODISwebsite/FR-Pue_MODIS.txt" )
-  # modis_manually_gpp <- filter( modis_manually, Band=="Gpp_1km" )
-  # modis_manually_qc <- filter( modis_manually, Band=="Psn_QC_1km" )
+      filnam <- paste( dirnam, "dfapar_", productnam,"_modissubset_", sitename, "_", year, ".txt", sep="" )
+      write_sofunformatted( filnam, out$modis_daily$data[ which( out$modis_daily$year==year ) ] )
+      
+    }
 
-  # tmp <- modis_manually_gpp$Date
-  # modis_manually_gpp$year <- as.numeric( substr( tmp, start=2, stop=5 ))
-  # modis_manually_gpp$doy  <- as.numeric( substr( tmp, start=6, stop=8 ))
-  # modis_manually_gpp$date <- as.POSIXlt( as.Date( paste( as.character(modis_manually_gpp$year), "-01-01", sep="" ) ) + modis_manually_gpp$doy - 1 )
-  # modis_manually_gpp$year_dec <- modis_manually_gpp$year + ( modis_manually_gpp$doy - 1 ) / ndayyear
-
-  # plot( out$modis$year_dec, out$modis$data, type='l', main=sitename )
-  # lines( modis_manually_gpp$year_dec, modis_manually_gpp$X25*1e-1, col='red' )
-
-  ##--------------------------------------------------------------------
-  ## Write to Fortran-formatted output for each variable and year separately
-  ##--------------------------------------------------------------------
-  print( "writing formatted input files ..." )
-
-  ## in separate formatted file 
-  for (year in unique(out$modis_monthly$year)){
-
-    print( paste("... for year", year))
-    dirnam <- paste( myhome, "sofun/input_", simsuite, "_sofun/sitedata/fapar/", sitename, "/", as.character(year), "/", sep="" )
-    system( paste( "mkdir -p", dirnam ) )
-
-    filnam <- paste( dirnam, "mfapar_evi_modissubset_", sitename, "_", year, ".txt", sep="" )
-    write_sofunformatted( filnam, out$modis_monthly$data[ which( out$modis_monthly$year==year ) ] )
-
-    filnam <- paste( dirnam, "dfapar_evi_modissubset_", sitename, "_", year, ".txt", sep="" )
-    write_sofunformatted( filnam, out$modis_daily$data[ which( out$modis_daily$year==year ) ] )
-    
   }
 
 }
