@@ -254,9 +254,9 @@ read_crude_modis_tseries <- function( filn, savedir, band_var, band_qc=NA, expan
       tseries[ which( tseries_qc[,1:npixels] == 2 ), 1:npixels ] <- min( tseries[,1:npixels], na.rm=TRUE )
       tseries[ which( tseries_qc[,1:npixels] < 0.0 ) ] <- 0.0  ## remove negatives
 
-      ## Drop all data with quality flag != 0
-      tseries[ which( tseries_qc[,1:npixels] == 3 ),  1:npixels ] <- NA   # Target not visible, covered with cloud
-      tseries[ which( tseries_qc[,1:npixels] == -1 ), 1:npixels ] <- NA   # Not Processed
+      # ## Drop all data with quality flag != 0
+      # tseries[ which( tseries_qc[,1:npixels] == 3 ),  1:npixels ] <- NA   # Target not visible, covered with cloud
+      # tseries[ which( tseries_qc[,1:npixels] == -1 ), 1:npixels ] <- NA   # Not Processed
 
       tseries$centre_meansurr <- unname( apply( tseries[,1:npixels], 1, FUN=mean, na.rm=TRUE ) ) * ScaleFactor
     }
@@ -470,7 +470,6 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
   source( paste( myhome, "sofun/getin/init_daily_dataframe.R", sep="" ) )
   source( paste( myhome, "sofun/getin/init_monthly_dataframe.R", sep="" ) )
   source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
-  source( paste( myhome, "sofun/getin/remove_outliers.R", sep="" ) )
 
   dirnam_dates_csv <- paste( myhome, "data/modis_", varnam, "_fluxnet_cutouts/", sitename,"/", sep="" )
   system( paste( "mkdir -p ", dirnam_dates_csv, sep="" ) )  
@@ -562,7 +561,8 @@ read_crude_modis <- function( varnam, sitename, lon, lat, band_var, band_qc, pro
 
         ## get mean of surrounding pixels, first drop all data that is not quality flag 0 for getting mean across surrounding pixels
         surr <- out$nice_all
-        surr[ which( out$nice_qual_flg!=0 ) ] <- NA
+        # surr[ which( out$nice_qual_flg!=0 ) ] <- NA
+        surr[ which( surr<0 ) ] <- NA
         modis$centre_meansurr[idx] <- mean( surr, na.rm=TRUE )
         if (is.nan(modis$centre_meansurr[idx])) { modis$centre_meansurr[idx] <- NA }
 
@@ -636,6 +636,7 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
   source( paste( myhome, "sofun/getin/init_monthly_dataframe.R", sep="" ) )
   source( paste( myhome, "sofun/getin/monthly2daily.R", sep="" ) )
   source( paste( myhome, "sofun/getin/get_consecutive.R", sep="" ) )
+  source( paste( myhome, "sofun/getin/remove_outliers.R", sep="" ) )
 
   ##--------------------------------------
   ## CLEAN AND GAP-FILL
@@ -651,25 +652,26 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     ##--------------------------------------
     ## Replace data points with quality flag = 2 (snow covered) by 0
     # modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==2) ] <- max( min( modis_gapfilled$centre ), 0.0 )
-    modis_gapfilled$centre[ which(modis_gapfilled$centre<0) ] <- 0.0
+    modis_gapfilled$raw <- modis_gapfilled$centre
+    modis_gapfilled$centre[ which(modis_gapfilled$centre<0) ] <- NA
 
     if (!is.null(modis_gapfilled$centre_qc)){
       ## Drop all data with quality flag 3, 1 or -1
       modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==3) ]  <- NA  # Target not visible, covered with cloud
-      # modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==1) ]  <- NA  # Useful, but look at other QA information
+      modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==1) ]  <- NA  # Useful, but look at other QA information
       modis_gapfilled$centre[ which(modis_gapfilled$centre_qc==-1) ] <- NA  # Not Processed
     }
 
     ## open plot for illustrating gap-filling
-    pdf( paste("fig/evi_fill_", sitename, "_", prod, ".pdf", sep="" ), width=10, height=6 )
-    plot( modis$year_dec, modis$centre, pch=16, col='black', main=sitename, ylim=c(0,1), xlab="year", ylab="MODIS EVI 250 m", las=1 )
+    pdf( paste("fig/evi_fill_", sitename, ".pdf", sep="" ), width=10, height=6 )
+    plot( modis_gapfilled$year_dec, modis_gapfilled$raw, pch=16, col='black', main=sitename, ylim=c(0,1), xlab="year", ylab="MODIS EVI 250 m", las=1 )
     left <- seq(2000, 2016, 2)
     right <- seq(2001, 2017, 2)
     rect( left, -99, right, 99, border=NA, col=rgb(0,0,0,0.2) )
     points( modis_gapfilled$year_dec, modis_gapfilled$centre, pch=16, col='red' )
 
-    ## Drop all data identified as outliers = lie outside 5*IQR
-    modis_gapfilled$centre <- remove_outliers( modis_gapfilled$centre, coef=5 ) ## maybe too dangerous - removes peaks
+    # ## Drop all data identified as outliers = lie outside 5*IQR
+    # modis_gapfilled$centre <- remove_outliers( modis_gapfilled$centre, coef=5 ) ## maybe too dangerous - removes peaks
 
     ## add points to plot opened before
     points( modis_gapfilled$year_dec, modis_gapfilled$centre, pch=16, col='blue' )
@@ -702,8 +704,10 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     }
     modis_gapfilled <- modis_gapfilled %>% left_join( agg )
 
-    ## gap-fill by 
-    idxs <- which( !is.na(modis_gapfilled$centre) )
+    ##--------------------------------------
+    ## gap-fill with information from surrounding pixels 
+    ##--------------------------------------
+    idxs <- which( is.na(modis_gapfilled$centre) )
     if (is.element("centre_meansurr", names(modis_gapfilled))){
       ## get current anomaly of mean across surrounding pixels w.r.t. its mean annual cycle
       modis_gapfilled$anom_surr    <- modis_gapfilled$centre_meansurr / modis_gapfilled$centre_meansurr_meandoy
@@ -711,7 +715,7 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
     } else {
       modis_gapfilled$centre[idxs] <- modis_gapfilled$centre_meandoy[idxs]
     }
-    with( modis_gapfilled, points( year_dec[idx], centre[idx], pch=16, col='green' ) )
+    with( modis_gapfilled, points( year_dec[idxs], centre[idxs], pch=16, col='green' ) )
     legend("topright", c("modis", "outliers", "after bad values dropped and outliers removed", "added from mean of surrounding" ), col=c("black", "red", "blue", "green" ), pch=16, bty="n" )
     # legend("topleft", c("R LOESS smoothing with span=0.01", "R smooth.spline"), col=c("red", "dodgerblue"), lty=1, bty="n" )
 
@@ -837,12 +841,6 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
 
     # dev.off()
 
-  }
-
-  if (!is.null(modis_gapfilled$centre_qc)){
-    modis_gapfilled  <- dplyr::select( modis_gapfilled, year_dec, year, doy, date, centre, centre_qc )
-  } else {
-    modis_gapfilled  <- dplyr::select( modis_gapfilled, year_dec, year, doy, date, centre )
   }
 
   ##--------------------------------------

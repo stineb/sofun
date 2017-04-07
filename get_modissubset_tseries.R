@@ -25,18 +25,18 @@ simsuite         = "fluxnet2015"
 expand_x         = 1
 expand_y         = 1
 overwrite_raw    = FALSE
-overwrite_rawcsv = FALSE
+overwrite_rawcsv = TRUE
 overwrite_csv    = TRUE
 ignore_missing   = TRUE
 do_interpolate   = TRUE
-bundle           = "fpar_trevor"
+bundle           = "evi"
 tseries_out      = TRUE
 ##--------------------------------------------------------------------
 
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
-do.sites <- seq(nsites)
-# do.sites <- 118
+# do.sites <- seq(nsites)
+do.sites <- 95:96
 
 trevorread <- FALSE
 missing <- FALSE
