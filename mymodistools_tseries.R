@@ -904,67 +904,50 @@ interpolate_modis <- function( modis, sitename, lon, lat, prod, do_interpolate=T
 
   } else {
 
-    if (do_interpolate){
-      # modis_daily$data <- approx( modis_gapfilled$year_dec, modis_gapfilled$centre, modis_daily$year_dec )$y
-      tmp <- try( with( modis_daily, predict( myloess, year_dec ) ) )
-      if (class(tmp)!="try-error"){
-        modis_daily$data <- tmp
-      } else {
-        tmp <- try( with( modis_daily, predict( spline, year_dec ) )$y )
-        if (class(tmp)!="try-error"){
-          modis_daily$data <- tmp
-        } else {
-          modis_daily$data <- rep( NA, nrow(modis_daily) )
-        }      
-      }
-      tmp <- try( with( modis_daily, predict( spline, year_dec ) )$y)
-      if (class(tmp)!="try-error"){
-        modis_daily$data_spline <- tmp
-      } else {
-        modis_daily$data_spline <- rep( NA, nrow(modis_daily) )
-      }
+    ## merge
+    modis_daily <- modis_daily %>% left_join( select( modis_gapfilled, year, doy, centre ) )
 
-      ## savitzky golay filter
-      modis_daily            <- modis_daily %>% left_join( select( modis_gapfilled, year, doy, centre ) )
-      modis_daily$interpl    <- approx( modis_daily$year_dec, modis_daily$centre, xout=modis_daily$year_dec )$y 
-      modis_daily$sgfiltered <- rep( NA, nrow(modis_daily) )
-      idxs <- which(!is.na(modis_daily$interpl))
-      modis_daily$sgfiltered[idxs] <- sgolayfilt( modis_daily$interpl[idxs], p=3, n=31 ) 
-      
-      # tmodis_daily <- sgolayfilt( p=3, n=5, modis$centre ) 
-
+    ## LOESS
+    tmp <- try( with( modis_daily, predict( myloess, year_dec ) ) )
+    if (class(tmp)!="try-error"){
+      modis_daily$data_loess <- tmp
     } else {
-      modis_daily$data <- rep( NA, nrow(modis_daily) )
-      for (idx in seq(nrow(modis))){
-        putidx <- which( modis_daily$year_dec==modis_gapfilled$year_dec[idx] )
-        modis_daily$data[putidx] <- modis_gapfilled$data[idx]
-      }
+      modis_daily$data_loess <- rep( NA, nrow(modis_daily) )
     }
 
-    ## limit to within 0 and 1 (loess spline sometimes "explodes")
-    modis_daily$data         <- replace( modis_daily$data, modis_daily$data<0, 0  )
-    modis_daily$data_spline  <- replace( modis_daily$data_spline, modis_daily$data_spline<0, 0  )
+    ## SPLINE
+    tmp <- try( with( modis_daily, predict( spline, year_dec ) )$y)
+    if (class(tmp)!="try-error"){
+      modis_daily$spline <- tmp
+    } else {
+      modis_daily$spline <- rep( NA, nrow(modis_daily) )
+    }
+
+    ## LINEAR INTERPOLATION
+    modis_daily$interpl <- approx( modis_daily$year_dec, modis_daily$centre, xout=modis_daily$year_dec )$y 
+
+    ## SAVITZKY GOLAY 
+    modis_daily$sgfiltered <- rep( NA, nrow(modis_daily) )
+    idxs <- which(!is.na(modis_daily$interpl))
+    modis_daily$sgfiltered[idxs] <- sgolayfilt( modis_daily$interpl[idxs], p=3, n=31 ) 
     
-    modis_daily$data         <- replace( modis_daily$data, modis_daily$data>1, 1  )
-    modis_daily$data_spline  <- replace( modis_daily$data_spline, modis_daily$data_spline>1, 1  )
+    ## DEFINE STANDARD: SAVITZKY GOLAY 
+    modis_daily$data <- modis_daily$sgfiltered
+
+    ## limit to within 0 and 1 (loess spline sometimes "explodes")
+    modis_daily$data <- replace( modis_daily$data, modis_daily$data<0, 0  )
+    modis_daily$data <- replace( modis_daily$data, modis_daily$data>1, 1  )
 
   }
 
   ## plot daily smoothed line and close plotting device
   if (!missing){
-    # with( modis_daily, lines( year_dec, data_spline, col='darkgoldenrod', lwd=1 ) )
-    # with( modis_daily, lines( year_dec, data, col='cyan', lwd=1 ) )
+    # with( modis_daily, lines( year_dec, spline, col='darkgoldenrod', lwd=1 ) )
+    with( modis_daily, lines( year_dec, data, col='cyan', lwd=1 ) )
     # with( modis_monthly, lines( year_dec, data, col='blue', lwd=1 ) )
     with( modis_daily,   lines( year_dec, sgfiltered, col='red', lwd=1 ) )
   }
   dev.off()
-
-  ##--------------------------------------
-  ## select standard filtering method for daily data frames
-  ##--------------------------------------
-  if (prod=="MOD15A2" && !missing) { 
-    modis_daily <- modis_daily %>% select( -data ) %>% dplyr::rename( data=sgfiltered ) 
-  }
 
   print("done with interpolate_modis()")
 

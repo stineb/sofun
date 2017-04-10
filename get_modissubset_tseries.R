@@ -35,8 +35,8 @@ tseries_out      = TRUE
 
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
-# do.sites <- seq(nsites)
-do.sites <- 95:96
+do.sites <- seq(nsites)
+# do.sites <- 88
 
 trevorread <- FALSE
 missing <- FALSE
@@ -238,7 +238,6 @@ for (idx in do.sites){
                                           )
 
       } else {
-
         ##--------------------------------------------------------------------
         ## Get all at time steps individually. In this case 'read_crude_modis' is a wrapper
         ##--------------------------------------------------------------------
