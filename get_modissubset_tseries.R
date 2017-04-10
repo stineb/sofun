@@ -29,13 +29,14 @@ overwrite_rawcsv = TRUE
 overwrite_csv    = TRUE
 ignore_missing   = TRUE
 do_interpolate   = TRUE
-bundle           = "evi"
+bundle           = "fpar_trevor"
 tseries_out      = TRUE
 ##--------------------------------------------------------------------
 
 siteinfo <- read.csv( paste( myhome, "sofun/input_", simsuite, "_sofun/siteinfo_", simsuite, "_sofun.csv", sep="" ) )
 nsites <- dim(siteinfo)[1]
 do.sites <- seq(nsites)
+do.sites <- 83:nsites
 # do.sites <- 88
 
 trevorread <- FALSE
