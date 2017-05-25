@@ -18,7 +18,7 @@ from subprocess import call
 ## - "olson"
 ## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet2015'
+simsuite = 'ameriwue'
 
 ##--------------------------------------------------------------------
 ## set options
@@ -56,7 +56,7 @@ if simsuite == 'fluxnet_cmodel' or simsuite == 'cmodel_test' or simsuite == 'atk
     do_cmodel = True
 
 ## P-model setup
-if simsuite == 'fluxnet' or simsuite == 'pmodel_test' or simsuite == 'atkinfull' or simsuite == 'fluxnet2015':
+if simsuite == 'fluxnet' or simsuite == 'pmodel_test' or simsuite == 'atkinfull' or simsuite == 'fluxnet2015' or simsuite == 'ameriwue':
     if swbm:
         do_pmodel_swbm = True
     else:

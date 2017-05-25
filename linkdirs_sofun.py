@@ -17,8 +17,9 @@ import os.path
 ## - "olson"
 ## - "olson_cmodel"
 ## - "swbm"
+## - "ameriwue"
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet2015'
+simsuite = 'ameriwue'
 
 ##--------------------------------------------------------------------
 ## Link directories

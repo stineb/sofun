@@ -98,11 +98,11 @@ contains
       if (verbose) write(0,*) '    with argument elv = ', interface%grid(jpngr)%elv
       if (verbose) write(0,*) '    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
       solar = getsolar( &
-        interface%grid(jpngr)%lat, & 
-        interface%grid(jpngr)%elv, & 
-        interface%climate(jpngr)%dfsun(:), & 
-        interface%climate(jpngr)%dppfd(:)  & 
-        )
+                        interface%grid(jpngr)%lat, & 
+                        interface%grid(jpngr)%elv, & 
+                        interface%climate(jpngr)%dfsun(:), & 
+                        interface%climate(jpngr)%dppfd(:)  & 
+                        )
       if (verbose) write(0,*) '... done'
 
       !----------------------------------------------------------------
@@ -117,11 +117,11 @@ contains
       if (verbose) write(0,*) '    with argument VPD  = ', interface%climate(jpngr)%dvpd(:)
       if (verbose) write(0,*) '    with argument elv. = ', interface%grid(jpngr)%elv
       out_pmodel(:,:) = getlue( &
-        interface%pco2, & 
-        interface%climate(jpngr)%dtemp(:), & 
-        interface%climate(jpngr)%dvpd(:), & 
-        interface%grid(jpngr)%elv & 
-        )
+                                interface%pco2, & 
+                                interface%climate(jpngr)%dtemp(:), & 
+                                interface%climate(jpngr)%dvpd(:), & 
+                                interface%grid(jpngr)%elv & 
+                                )
       if (verbose) write(0,*) '... done'
 
       !----------------------------------------------------------------
@@ -152,15 +152,15 @@ contains
           !----------------------------------------------------------------
           if (verbose) write(0,*) 'calling waterbal() ... '
           call waterbal( &
-            tile(:,jpngr)%soil%phy, &
-            doy, & 
-            interface%grid(jpngr)%lat, & 
-            interface%grid(jpngr)%elv, & 
-            interface%climate(jpngr)%dprec(doy), & 
-            interface%climate(jpngr)%dtemp(doy), & 
-            interface%climate(jpngr)%dfsun(doy), &
-            interface%climate(jpngr)%dnetrad(doy)&
-            )
+                          tile(:,jpngr)%soil%phy, &
+                          doy, & 
+                          interface%grid(jpngr)%lat, & 
+                          interface%grid(jpngr)%elv, & 
+                          interface%climate(jpngr)%dprec(doy), & 
+                          interface%climate(jpngr)%dtemp(doy), & 
+                          interface%climate(jpngr)%dfsun(doy), &
+                          interface%climate(jpngr)%dnetrad(doy)&
+                          )
           if (verbose) write(0,*) '... done'
 
           !----------------------------------------------------------------
@@ -179,9 +179,9 @@ contains
           ! print*,'in biosphere: fapar', plant(1,1)%fapar_ind
           ! print*,'in biosphere: acrown', plant(1,1)%acrown
           call gpp( &
-            out_pmodel(:,moy), solar, plant(:,jpngr), doy, moy, &
-            interface%climate(jpngr)%dtemp(doy) &
-            )
+                    out_pmodel(:,moy), solar, plant(:,jpngr), doy, moy, &
+                    interface%climate(jpngr)%dtemp(doy) &
+                    )
           if (verbose) write(0,*) '... done'
 
           !----------------------------------------------------------------

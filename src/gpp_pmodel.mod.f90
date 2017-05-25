@@ -28,10 +28,11 @@ module md_gpp
     writeout_ascii_gpp, outtype_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd
 
   !----------------------------------------------------------------
-  ! Public, module-specific state variables
+  ! Module-specific state variables
   !----------------------------------------------------------------
   real, dimension(npft) :: dtransp          ! daily transpiration [mm]
   real, dimension(npft) :: drd              ! daily dark respiration [gC/m2/d]
+  real, dimension(npft) :: dassim           ! daily leaf-level assimilation rate (per unit leaf area) [gC/m2/d]
   real, dimension(npft) :: dvcmax_canop     ! canopy-level Vcmax [gCO2/m2-ground/s]
 
   !-----------------------------------------------------------------------
@@ -102,6 +103,9 @@ module md_gpp
     real :: gpp
     real :: gstar                 ! photorespiratory compensation point - Gamma-star (Pa)
     real :: chi                   ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
+    real :: ci                    ! leaf-internal partial pressure, (Pa)
+    real :: ca                    ! ambient partial pressure, (Pa)
+    ! real :: gs                    ! stomatal conductance
     real :: vcmax                 ! maximum carboxylation capacity per unit ground area (mol CO2 m-2 s-1)
     real :: vcmax25               ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
     real :: vcmax_unitfapar       ! Vcmax per fAPAR (mol CO2 m-2 s-1)
@@ -140,8 +144,10 @@ module md_gpp
   ! annual
   real, dimension(npft,maxgrid) :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
   real, dimension(npft,maxgrid) :: outavcmax25      ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
-  real, dimension(npft,maxgrid) :: outachi
-  real, dimension(npft,maxgrid) :: outalue
+  real, dimension(npft,maxgrid) :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
+  real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
+  real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP
+  real, dimension(npft,maxgrid) :: outags           ! stomatal conductance, mean across growing season, weighted by daily GPP
 
   ! These are stored as dayly variables for annual output
   ! at day of year when LAI is at its maximum.
@@ -195,20 +201,23 @@ contains
       if ( plant(pft)%fapar_ind>0.0 ) then
 
         ! GPP
-        ! dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
-        dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
+        ! dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )
+        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp )
 
-        ! Dark respiration
+        ! transpiration
         ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, evap(lu)%cpa )
         dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp )
 
-        ! transpiration
+        ! Dark respiration
         ! drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, evap(lu)%cpa )
         drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp )
 
+        ! Leaf-level assimilation rate
+        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, dtemp )
+
         ! Vcmax (actually changes only monthly)
-        ! dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )
-        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp )
+        ! dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
+        dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
 
       else  
 
@@ -343,6 +352,34 @@ contains
   end function calc_dgpp
 
 
+  function calc_dassim( dppfd, my_mlue, dtemp, cpalpha ) result( my_dassim )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates mean daily CO2 assimilation rate (leaf-level)
+    !------------------------------------------------------------------
+    ! arguments
+    real, intent(in)           :: dppfd           ! daily photon flux density, mol/m2/d
+    real, intent(in)           :: my_mlue
+    real, intent(in)           :: dtemp           ! this day's air temperature, deg C
+    real, intent(in), optional :: cpalpha         ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+
+    ! function return variable
+    real :: my_dassim                             ! daily mean leaf-level assimilation rate ( mol CO2 m-2 s-1 )
+
+    ! local variables
+    real :: fa
+
+    if (present(cpalpha)) then
+      fa = calc_fa( cpalpha )
+    else
+      fa = 1.0
+    end if
+
+    ! Leaf-level assimilation rate
+    my_dassim = dppfd * fa * my_mlue * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * 24.0 )
+
+  end function calc_dassim
+
+
   function calc_drd( fapar, acrown, meanmppfd, my_mrd_unitiabs, dtemp, cpalpha ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily dark respiration (Rd) based on monthly mean 
@@ -442,20 +479,20 @@ contains
     ! local variables
     real :: ppfdabs                  ! absorbed photosynthetically active radiation (mol/m2)
     real :: patm                     ! atmospheric pressure as a function of elevation (Pa)
-    real :: ca                       ! ambient CO2 partial pressure (Pa)
-    real :: ci                       ! leaf-internal CO2 partial pressure, (Pa)
     real :: chi                      ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
-    real :: gs                       ! stomatal conductance
+    real :: ci                       ! leaf-internal partial pressure, (Pa)
+    ! real :: gs                       ! stomatal conductance
+    real :: ca                       ! ambient CO2 partial pressure (Pa)
     real :: gstar                    ! photorespiratory compensation point - Gamma-star (Pa)
     real :: fa                       ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
     real :: kmm                      ! Michaelis-Menten coefficient (Pa)
     real :: ns                       ! viscosity of H2O at ambient temperatures (Pa s)
     real :: ns25                     ! viscosity of H2O at 25 deg C (Pa s)
     real :: ns_star                  ! viscosity correction factor (unitless)
-    real :: m
-    real :: n
-    real :: gpp                      ! assimilation (mol m-2 s-1)
-    real :: lue                      ! Light use efficiency
+    real :: mprime                   ! factor in light use model with Jmax limitation
+    real :: assim                    ! assimilation rate per unit ground area, ecosystem scale (mol m-2 s-1)
+    real :: assim_unitfapar          ! assimilation rate per unit leaf area, leaf scale (mol m-2 s-1)
+    real :: lue                      ! Light use efficiency = assimilation rate per unit aborbed light
     real :: vcmax                    ! Vcmax per unit ground area (mol CO2 m-2 s-1)
     real :: vcmax_unitfapar          ! Vcmax per fAPAR (mol CO2 m-2 s-1)
     real :: vcmax_unitiabs           ! Vcmax per unit absorbed light (mol CO2 m-2 s-1 [mol PPFD]-1)
@@ -540,14 +577,12 @@ contains
       end select
 
       ! LUE-functions return m, n, and chi
-      m   = out_lue%m
-      n   = out_lue%n
       chi = out_lue%chi
 
       ! ! XXX PMODEL_TEST: ok
       ! print*, 'm ', m
 
-      ! ! XXX PMODEL_TEST: ok
+      ! XXX PMODEL_TEST: ok
       ! print*, 'chi ', chi
 
       !-----------------------------------------------------------------------
@@ -557,12 +592,16 @@ contains
       ! GPP per unit ground area is the product of the intrinsic quantum 
       ! efficiency, the absorbed PAR, the function of alpha (drought-reduction),
       ! and 'm'
-      m   = calc_mprime( m )
+      mprime = calc_mprime( out_lue%m )
 
-      gpp = ppfdabs * params_pft_gpp(pft)%kphio * m  ! in mol m-2 s-1
+      ! Gross primary productivity = ecosystem-level assimilation rate (per unit ground area)
+      assim = ppfdabs * params_pft_gpp(pft)%kphio * mprime  ! in mol m-2 s-1
 
-      ! Light use efficiency (gpp per unit ppfdabs)
-      lue = params_pft_gpp(pft)%kphio * m 
+      ! Leaf-level assimilation rate (per unit leaf area)
+      assim_unitfapar = ppfd * params_pft_gpp(pft)%kphio * mprime  ! in mol m-2 s-1
+
+      ! Light use efficiency (assimilation rate per unit absorbed light)
+      lue = params_pft_gpp(pft)%kphio * mprime 
 
       ! ! XXX PMODEL_TEST: ok
       ! print*, 'lue ', lue
@@ -572,17 +611,23 @@ contains
       ci = chi * ca
 
       ! stomatal conductance
-      gs = gpp  / ( ca - ci )
+      ! gs = assim_unitfapar / ( ca - ci )
+      ! print*,'gs', gs
+      ! print*,'ppfd', ppfd
+      ! print*,'params_pft_gpp(pft)%kphio', params_pft_gpp(pft)%kphio
+      ! print*,'mprime', mprime
+      ! print*,'ca', ca
+      ! print*,'ci', ci
 
       ! Vcmax per unit ground area is the product of the intrinsic quantum 
       ! efficiency, the absorbed PAR, and 'n'
-      vcmax = ppfdabs * params_pft_gpp(pft)%kphio * n
+      vcmax = ppfdabs * params_pft_gpp(pft)%kphio * out_lue%n
 
       ! Vcmax normalised per unit fAPAR (assuming fAPAR=1)
-      vcmax_unitfapar = ppfd * params_pft_gpp(pft)%kphio * n 
+      vcmax_unitfapar = ppfd * params_pft_gpp(pft)%kphio * out_lue%n 
 
       ! Vcmax normalised per unit absorbed PPFD (assuming ppfdabs=1)
-      vcmax_unitiabs = params_pft_gpp(pft)%kphio * n 
+      vcmax_unitiabs = params_pft_gpp(pft)%kphio * out_lue%n 
 
       ! Vcmax25 (vcmax normalized to 25 deg C)
       factor25_vcmax    = calc_vcmax25( 1.0, tc )
@@ -610,14 +655,16 @@ contains
       ! - gs = A / (ca (1-chi))
       ! (- chi = ci / ca)
       ! => E = f
-      transp           = (1.6 * ppfdabs * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)   ! gpp = ppfdabs * params_pft_gpp(pft)%kphio * fa * m
-      transp_unitfapar = (1.6 * ppfd * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
-      transp_unitiabs  = (1.6 * 1.0  * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
+      transp           = (1.6 * ppfdabs * params_pft_gpp(pft)%kphio * fa * mprime * vpd) / (ca - ci)   ! gpp = ppfdabs * params_pft_gpp(pft)%kphio * fa * m
+      transp_unitfapar = (1.6 * ppfd * params_pft_gpp(pft)%kphio * fa * mprime * vpd) / (ca - ci)
+      transp_unitiabs  = (1.6 * 1.0  * params_pft_gpp(pft)%kphio * fa * mprime * vpd) / (ca - ci)
 
       ! Construct derived type for output
-      out_pmodel%gpp              = gpp
+      out_pmodel%gpp              = assim
       out_pmodel%gstar            = gstar
       out_pmodel%chi              = chi
+      out_pmodel%ci               = ci 
+      out_pmodel%ca               = ca
       out_pmodel%vcmax            = vcmax
       out_pmodel%vcmax25          = vcmax25
       out_pmodel%vcmax_unitfapar  = vcmax_unitfapar
@@ -640,6 +687,8 @@ contains
       out_pmodel%gpp              = 0.0
       out_pmodel%gstar            = 0.0
       out_pmodel%chi              = 0.0
+      out_pmodel%ci               = 0.0
+      ! out_pmodel%gs               = 0.0
       out_pmodel%vcmax            = 0.0
       out_pmodel%vcmax25          = 0.0
       out_pmodel%vcmax_unitfapar  = 0.0
@@ -776,7 +825,7 @@ contains
 
     ! arguments
     real, intent(in) :: kmm       ! Pa, Michaelis-Menten coeff.
-    real, intent(in) :: gstar        ! Pa, photores. comp. point (Gamma-star)
+    real, intent(in) :: gstar     ! Pa, photores. comp. point (Gamma-star)
     real, intent(in) :: ns_star   ! (unitless) viscosity correction factor for water
     real, intent(in) :: ca        ! Pa, ambient CO2 partial pressure
     real, intent(in) :: vpd       ! Pa, vapor pressure deficit
@@ -1345,6 +1394,14 @@ contains
       filnam=trim(prefix)//'.a.lue.out'
       open(653,file=filnam,err=888,status='unknown')
 
+      ! ci: leaf-internal CO2 partial pressure (Pa)
+      filnam=trim(prefix)//'.a.ci.out'
+      open(655,file=filnam,err=888,status='unknown')
+
+      ! gs: stomatal conductance
+      filnam=trim(prefix)//'.a.gs.out'
+      open(656,file=filnam,err=888,status='unknown')
+
     end if
 
     return
@@ -1381,6 +1438,8 @@ contains
       outavcmax25(:,:) = 0.0
       outachi(:,:)     = 0.0
       outalue(:,:)     = 0.0
+      outaci(:,:)      = 0.0
+      outags(:,:)      = 0.0
     end if
 
   end subroutine initoutput_gpp
@@ -1395,11 +1454,20 @@ contains
     ! where they are defined.
     !----------------------------------------------------------------
     use md_interface
+    use md_plant, only: dgpp
 
     ! argument
     type( outtype_pmodel ), dimension(npft), intent(in) :: out_pmodel
     integer, intent(in)                                 :: jpngr
     integer, intent(in)                                 :: doy
+
+    ! local 
+    real, dimension(npft), save :: agpp        ! annual total GPP
+    real                        :: dgs         ! daily stomatal conductance         
+
+    ! sum up daily GPP to annual total
+    if (doy==1) agpp(:) = 0.0
+    agpp(:) = agpp(:) + dgpp(:)
 
     !----------------------------------------------------------------
     ! DAILY
@@ -1419,13 +1487,38 @@ contains
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
-    ! Collect annual output variables as sum of daily values
+    ! Collect annual output variables
     !----------------------------------------------------------------
     ! store all daily values for outputting annual maximum
     if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
 
     outdvcmax(1,doy)   = dvcmax_canop(1)
     outdvcmax25(1,doy) = out_pmodel(1)%factor25_vcmax * dvcmax_canop(1)
+
+    ! weighted by daily GPP
+    if (interface%params_siml%loutgpp) then
+
+      if (dgpp(1) > 0.0) then 
+        dgs = dassim(1) / ( out_pmodel(1)%ca - out_pmodel(1)%ci )
+        ! print*,'dgs', dgs
+        ! print*,'ci/ca, chi',out_pmodel(1)%ci/out_pmodel(1)%ca, out_pmodel(1)%chi
+        ! print*,'chi',out_pmodel(1)%chi
+        ! print*,'gpp',dgpp(:)
+      else
+        dgs = 0.0
+      end if
+
+      outachi(:,jpngr) = outachi(:,jpngr) + out_pmodel(1)%chi * dgpp(:)
+      outaci (:,jpngr) = outaci (:,jpngr) + out_pmodel(1)%ci  * dgpp(:)
+      outags (:,jpngr) = outags (:,jpngr) + dgs               * dgpp(:)
+
+      if (doy==ndayyear) then
+        outachi(:,jpngr) = outachi(:,jpngr) / agpp(:)
+        outaci (:,jpngr) = outaci (:,jpngr) / agpp(:)
+        outags (:,jpngr) = outags (:,jpngr) / agpp(:)
+      end if
+
+    end if
 
   end subroutine getout_daily_gpp
 
@@ -1495,8 +1588,10 @@ contains
 
       write(323,999) itime, sum(outavcmax(:,jpngr))
       write(654,999) itime, sum(outavcmax25(:,jpngr))
-      write(652,999) itime, sum(outachi(:,jpngr))
       write(653,999) itime, sum(outalue(:,jpngr))
+      write(652,999) itime, sum(outachi(:,jpngr))
+      write(655,999) itime, sum(outaci(:,jpngr))
+      write(656,999) itime, sum(outags(:,jpngr))
 
     end if
 

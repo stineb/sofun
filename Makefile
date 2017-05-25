@@ -19,7 +19,7 @@ PROFILE=pgi
 ##################
 ifeq ($(PROFILE),pgi)
 # Compiler and options
-FCOM=pgf95
+FCOM=pgf95 
 CPPFLAGS=-E
 COMPFLAGS=-r8 -Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
 # COMPFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform  # debug flags, real8
@@ -36,7 +36,7 @@ endif
 ifeq ($(PROFILE),gfortran)
 # Compiler and options
 FCOM=gfortran
-CPPFLAGS=-E
+CPPFLAGS=-cpp -E
 # COMPFLAGS=-r8 -Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
 # # COMPFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform  # debug flags, real8
 # #COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
