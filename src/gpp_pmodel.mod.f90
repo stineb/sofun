@@ -34,6 +34,7 @@ module md_gpp
   real, dimension(npft) :: drd              ! daily dark respiration [gC/m2/d]
   real, dimension(npft) :: dassim           ! daily leaf-level assimilation rate (per unit leaf area) [gC/m2/d]
   real, dimension(npft) :: dvcmax_canop     ! canopy-level Vcmax [gCO2/m2-ground/s]
+  real, dimension(npft) :: dvcmax_leaf      ! leaf-level Vcmax [gCO2/m2-leaf/s]
 
   !-----------------------------------------------------------------------
   ! Known parameters, therefore hard-wired.
@@ -144,6 +145,7 @@ module md_gpp
   ! annual
   real, dimension(npft,maxgrid) :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
   real, dimension(npft,maxgrid) :: outavcmax25      ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  real, dimension(npft,maxgrid) :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
   real, dimension(npft,maxgrid) :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP
@@ -215,9 +217,12 @@ contains
         ! Leaf-level assimilation rate
         dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, dtemp )
 
-        ! Vcmax (actually changes only monthly)
+        ! Canopy-level Vcmax (actually changes only monthly)
         ! dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
         dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
+
+        ! Leaf-level Vcmax
+        dvcmax_leaf(pft) = out_pmodel(pft)%vcmax_unitiabs * solar%meanmppfd(moy)
 
       else  
 
@@ -225,6 +230,7 @@ contains
         drd(pft)          = 0.0
         dtransp(pft)      = 0.0
         dvcmax_canop(pft) = 0.0
+        dvcmax_leaf(pft)  = 0.0
 
       end if 
 
@@ -1378,7 +1384,7 @@ contains
     !----------------------------------------------------------------
     if (interface%params_siml%loutgpp) then
 
-      ! VCMAX (annual maximum) (mol m-2 s-1)
+      ! VCMAX (canopy-level, annual maximum) (mol m-2 s-1)
       filnam=trim(prefix)//'.a.vcmax.out'
       open(323,file=filnam,err=888,status='unknown')
 
@@ -1401,6 +1407,10 @@ contains
       ! gs: stomatal conductance
       filnam=trim(prefix)//'.a.gs.out'
       open(656,file=filnam,err=888,status='unknown')
+
+      ! VCMAX (leaf-level, annual mean) (mol m-2 s-1)
+      filnam=trim(prefix)//'.a.vcmax_mean.out'
+      open(657,file=filnam,err=888,status='unknown')
 
     end if
 
@@ -1434,12 +1444,13 @@ contains
 
     ! annual
     if (interface%params_siml%loutgpp) then
-      outavcmax(:,:)   = 0.0
-      outavcmax25(:,:) = 0.0
-      outachi(:,:)     = 0.0
-      outalue(:,:)     = 0.0
-      outaci(:,:)      = 0.0
-      outags(:,:)      = 0.0
+      outavcmax(:,:)      = 0.0
+      outavcmax25(:,:)    = 0.0
+      outavcmax_leaf(:,:) = 0.0
+      outachi(:,:)        = 0.0
+      outalue(:,:)        = 0.0
+      outaci(:,:)         = 0.0
+      outags(:,:)         = 0.0
     end if
 
   end subroutine initoutput_gpp
@@ -1492,8 +1503,8 @@ contains
     ! store all daily values for outputting annual maximum
     if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
 
-    outdvcmax(1,doy)   = dvcmax_canop(1)
-    outdvcmax25(1,doy) = out_pmodel(1)%factor25_vcmax * dvcmax_canop(1)
+    outdvcmax(1,doy)      = dvcmax_canop(1)
+    outdvcmax25(1,doy)    = out_pmodel(1)%factor25_vcmax * dvcmax_canop(1)
 
     ! weighted by daily GPP
     if (interface%params_siml%loutgpp) then
@@ -1508,14 +1519,16 @@ contains
         dgs = 0.0
       end if
 
-      outachi(:,jpngr) = outachi(:,jpngr) + out_pmodel(1)%chi * dgpp(:)
-      outaci (:,jpngr) = outaci (:,jpngr) + out_pmodel(1)%ci  * dgpp(:)
-      outags (:,jpngr) = outags (:,jpngr) + dgs               * dgpp(:)
+      outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi * dgpp(:)
+      outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci  * dgpp(:)
+      outags        (:,jpngr) = outags        (:,jpngr) + dgs               * dgpp(:)
+      outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)    * dgpp(:)
 
       if (doy==ndayyear) then
-        outachi(:,jpngr) = outachi(:,jpngr) / agpp(:)
-        outaci (:,jpngr) = outaci (:,jpngr) / agpp(:)
-        outags (:,jpngr) = outags (:,jpngr) / agpp(:)
+        outachi       (:,jpngr) = outachi       (:,jpngr) / agpp(:)
+        outaci        (:,jpngr) = outaci        (:,jpngr) / agpp(:)
+        outags        (:,jpngr) = outags        (:,jpngr) / agpp(:)
+        outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / agpp(:)
       end if
 
     end if
@@ -1592,6 +1605,7 @@ contains
       write(652,999) itime, sum(outachi(:,jpngr))
       write(655,999) itime, sum(outaci(:,jpngr))
       write(656,999) itime, sum(outags(:,jpngr))
+      write(657,999) itime, sum(outavcmax_leaf(:,jpngr))
 
     end if
 
