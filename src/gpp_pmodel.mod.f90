@@ -118,7 +118,7 @@ module md_gpp
     real :: actnv 
     real :: actnv_unitfapar 
     real :: actnv_unitiabs 
-    real :: lue                   ! light use efficiency (xxx units)
+    real :: lue                   ! light use efficiency (mol CO2 / mol photon)
     real :: transp                ! transpiration [g H2O (mol photons)-1]
     real :: transp_unitfapar      ! transpiration per unit fAPAR [g H2O (mol photons)-1]
     real :: transp_unitiabs       ! transpiration per unit light absorbed light [g H2O (mol photons)-1]
@@ -148,7 +148,7 @@ module md_gpp
   real, dimension(npft,maxgrid) :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
   real, dimension(npft,maxgrid) :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
-  real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP
+  real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (Pa)
   real, dimension(npft,maxgrid) :: outags           ! stomatal conductance, mean across growing season, weighted by daily GPP
 
   ! These are stored as dayly variables for annual output
@@ -215,7 +215,7 @@ contains
         drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp )
 
         ! Leaf-level assimilation rate
-        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, dtemp )
+        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), dtemp )
 
         ! Canopy-level Vcmax (actually changes only monthly)
         ! dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
@@ -341,7 +341,7 @@ contains
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
-    real :: my_dgpp
+    real :: my_dgpp                        ! Daily total gross primary productivity (gC m-2 d-1)
 
     ! local variables
     real :: fa
@@ -358,18 +358,19 @@ contains
   end function calc_dgpp
 
 
-  function calc_dassim( dppfd, my_mlue, dtemp, cpalpha ) result( my_dassim )
+  function calc_dassim( dppfd, my_mlue, daylength, dtemp, cpalpha ) result( my_dassim )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates mean daily CO2 assimilation rate (leaf-level)
+    ! Calculates leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
     !------------------------------------------------------------------
     ! arguments
     real, intent(in)           :: dppfd           ! daily photon flux density, mol/m2/d
-    real, intent(in)           :: my_mlue
+    real, intent(in)           :: my_mlue         ! light use efficiency, mol CO2 / mol photon
+    real, intent(in)           :: daylength       ! day length (h)
     real, intent(in)           :: dtemp           ! this day's air temperature, deg C
     real, intent(in), optional :: cpalpha         ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
-    real :: my_dassim                             ! daily mean leaf-level assimilation rate ( mol CO2 m-2 s-1 )
+    real :: my_dassim                             ! leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
 
     ! local variables
     real :: fa
@@ -380,8 +381,8 @@ contains
       fa = 1.0
     end if
 
-    ! Leaf-level assimilation rate
-    my_dassim = dppfd * fa * my_mlue * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * 24.0 )
+    ! Leaf-level assimilation rate, average over daylight hours
+    my_dassim = dppfd * fa * my_mlue * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * daylength )
 
   end function calc_dassim
 
@@ -1474,7 +1475,7 @@ contains
 
     ! local 
     real, dimension(npft), save :: agpp        ! annual total GPP
-    real                        :: dgs         ! daily stomatal conductance         
+    real                        :: dgs         ! daily stomatal conductance (mol CO2 m-2 s-1 Pa-1)
 
     ! sum up daily GPP to annual total
     if (doy==1) agpp(:) = 0.0
