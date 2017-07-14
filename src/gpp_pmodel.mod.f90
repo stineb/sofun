@@ -106,6 +106,7 @@ module md_gpp
     real :: chi                   ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: ci                    ! leaf-internal partial pressure, (Pa)
     real :: ca                    ! ambient partial pressure, (Pa)
+    real :: iwue                  ! XXX
     ! real :: gs                    ! stomatal conductance
     real :: vcmax                 ! maximum carboxylation capacity per unit ground area (mol CO2 m-2 s-1)
     real :: vcmax25               ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
@@ -150,6 +151,7 @@ module md_gpp
   real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (Pa)
   real, dimension(npft,maxgrid) :: outags           ! stomatal conductance, mean across growing season, weighted by daily GPP
+  real, dimension(npft,maxgrid) :: outaiwue         ! XXX
 
   ! These are stored as dayly variables for annual output
   ! at day of year when LAI is at its maximum.
@@ -488,6 +490,7 @@ contains
     real :: patm                     ! atmospheric pressure as a function of elevation (Pa)
     real :: chi                      ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: ci                       ! leaf-internal partial pressure, (Pa)
+    real :: iwue                     ! intrinsic water use efficiency = A / gs = ca - ci = ca ( 1 - chi )
     ! real :: gs                       ! stomatal conductance
     real :: ca                       ! ambient CO2 partial pressure (Pa)
     real :: gstar                    ! photorespiratory compensation point - Gamma-star (Pa)
@@ -672,6 +675,7 @@ contains
       out_pmodel%chi              = chi
       out_pmodel%ci               = ci 
       out_pmodel%ca               = ca
+      out_pmodel%iwue             = ( ca - ci ) / 1.6
       out_pmodel%vcmax            = vcmax
       out_pmodel%vcmax25          = vcmax25
       out_pmodel%vcmax_unitfapar  = vcmax_unitfapar
@@ -695,6 +699,7 @@ contains
       out_pmodel%gstar            = 0.0
       out_pmodel%chi              = 0.0
       out_pmodel%ci               = 0.0
+      out_pmodel%iwue             = 0.0
       ! out_pmodel%gs               = 0.0
       out_pmodel%vcmax            = 0.0
       out_pmodel%vcmax25          = 0.0
@@ -1413,6 +1418,10 @@ contains
       filnam=trim(prefix)//'.a.vcmax_mean.out'
       open(657,file=filnam,err=888,status='unknown')
 
+      ! intrinsic water use efficiency
+      filnam=trim(prefix)//'.a.iwue.out'
+      open(658,file=filnam,err=888,status='unknown')
+
     end if
 
     return
@@ -1449,6 +1458,7 @@ contains
       outavcmax25(:,:)    = 0.0
       outavcmax_leaf(:,:) = 0.0
       outachi(:,:)        = 0.0
+      outaiwue(:,:)       = 0.0
       outalue(:,:)        = 0.0
       outaci(:,:)         = 0.0
       outags(:,:)         = 0.0
@@ -1520,13 +1530,15 @@ contains
         dgs = 0.0
       end if
 
-      outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi * dgpp(:)
-      outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci  * dgpp(:)
-      outags        (:,jpngr) = outags        (:,jpngr) + dgs               * dgpp(:)
-      outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)    * dgpp(:)
+      outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * dgpp(:)
+      outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * dgpp(:)
+      outags        (:,jpngr) = outags        (:,jpngr) + dgs                * dgpp(:)
+      outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * dgpp(:)
+      outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * dgpp(:)
 
       if (doy==ndayyear) then
         outachi       (:,jpngr) = outachi       (:,jpngr) / agpp(:)
+        outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / agpp(:)
         outaci        (:,jpngr) = outaci        (:,jpngr) / agpp(:)
         outags        (:,jpngr) = outags        (:,jpngr) / agpp(:)
         outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / agpp(:)
@@ -1604,6 +1616,7 @@ contains
       write(654,999) itime, sum(outavcmax25(:,jpngr))
       write(653,999) itime, sum(outalue(:,jpngr))
       write(652,999) itime, sum(outachi(:,jpngr))
+      write(658,999) itime, sum(outaiwue(:,jpngr))
       write(655,999) itime, sum(outaci(:,jpngr))
       write(656,999) itime, sum(outags(:,jpngr))
       write(657,999) itime, sum(outavcmax_leaf(:,jpngr))
