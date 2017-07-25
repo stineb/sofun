@@ -58,11 +58,14 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
     len <- lev[3]
     margins <- seq( from=lev[1], to=lev[2], by=(lev[2]-lev[1])/len )
     margins.eff <- margins
+    margins.lab <- margins
     if (!is.na(maxval)) {
       margins.eff[length(margins)] <- maxval
+      magins.lab[length(margins)] <- margins[length(margins)]
     } 
     if (!is.na(minval)){
       margins.eff[1] <- minval
+      magins.lab[1] <- margins[1]
     }
     
     ## Define color key centers (mid-points between margins)
@@ -93,13 +96,13 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
         if (explicit) {
           labels <- as.character(lev)
         } else {
-          labels <- as.character(margins.eff)
+          labels <- as.character(margins.lab)
         }
       } else if (orient=="v") {
         if (explicit) {
           labels <- as.character(lev) 
         } else {
-          labels <- as.character(margins.eff)
+          labels <- as.character(margins.lab)
         }
       } else {
         print("argument 'orient' must be either 'v' for vertical or 'h' for horizontal.")
