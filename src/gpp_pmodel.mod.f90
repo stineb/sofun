@@ -106,7 +106,7 @@ module md_gpp
     real :: chi                   ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: ci                    ! leaf-internal partial pressure, (Pa)
     real :: ca                    ! ambient partial pressure, (Pa)
-    real :: iwue                  ! XXX
+    real :: iwue                  ! intrinsic water use efficiency (Pa)
     ! real :: gs                    ! stomatal conductance
     real :: vcmax                 ! maximum carboxylation capacity per unit ground area (mol CO2 m-2 s-1)
     real :: vcmax25               ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
@@ -151,7 +151,7 @@ module md_gpp
   real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (Pa)
   real, dimension(npft,maxgrid) :: outags           ! stomatal conductance, mean across growing season, weighted by daily GPP
-  real, dimension(npft,maxgrid) :: outaiwue         ! XXX
+  real, dimension(npft,maxgrid) :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP
 
   ! These are stored as dayly variables for annual output
   ! at day of year when LAI is at its maximum.
