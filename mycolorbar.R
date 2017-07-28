@@ -40,8 +40,16 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
 
     # margins defines where margins.eff are to be labelled
     margins <- seq( from=0, to=(len-1), by=1 )
+    margins.lab <- margins.eff
     # print(paste("length of margins",length(margins)))
     # print(margins)
+
+    if (!is.na(maxval)) {
+      margins.eff[length(margins)] <- maxval
+    } 
+    if (!is.na(minval)){
+      margins.eff[1] <- minval
+    }    
 
     ## Define color key centers (mid-points between margins)
     centers <- seq( from=0.5, to=(len-1.5), by=1 )
@@ -61,11 +69,11 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
     margins.lab <- margins
     if (!is.na(maxval)) {
       margins.eff[length(margins)] <- maxval
-      magins.lab[length(margins)] <- margins[length(margins)]
+      margins.lab[length(margins)] <- margins[length(margins)]
     } 
     if (!is.na(minval)){
       margins.eff[1] <- minval
-      magins.lab[1] <- margins[1]
+      margins.lab[1] <- margins[1]
     }
     
     ## Define color key centers (mid-points between margins)
@@ -94,13 +102,13 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
     } else {
       if (orient=="h"){
         if (explicit) {
-          labels <- as.character(lev)
+          labels <- as.character(margins.lab)
         } else {
           labels <- as.character(margins.lab)
         }
       } else if (orient=="v") {
         if (explicit) {
-          labels <- as.character(lev) 
+          labels <- as.character(margins.lab) 
         } else {
           labels <- as.character(margins.lab)
         }
