@@ -106,8 +106,8 @@ module md_gpp
     real :: chi                   ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: ci                    ! leaf-internal partial pressure, (Pa)
     real :: ca                    ! ambient partial pressure, (Pa)
-    real :: iwue                  ! intrinsic water use efficiency (Pa)
-    ! real :: gs                    ! stomatal conductance
+    real :: iwue                  ! intrinsic water use efficiency (unitless)
+    real :: gs                    ! stomatal conductance to H2O (mol H2O m-2 m-1)
     real :: vcmax                 ! maximum carboxylation capacity per unit ground area (mol CO2 m-2 s-1)
     real :: vcmax25               ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
     real :: vcmax_unitfapar       ! Vcmax per fAPAR (mol CO2 m-2 s-1)
@@ -150,8 +150,8 @@ module md_gpp
   real, dimension(npft,maxgrid) :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (Pa)
-  real, dimension(npft,maxgrid) :: outags           ! stomatal conductance, mean across growing season, weighted by daily GPP
-  real, dimension(npft,maxgrid) :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP
+  real, dimension(npft,maxgrid) :: outags           ! stomatal conductance to H2O, mean across growing season, weighted by daily GPP (mol H2O m-2 s-1)
+  real, dimension(npft,maxgrid) :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP [unitless]
 
   ! These are stored as dayly variables for annual output
   ! at day of year when LAI is at its maximum.
@@ -490,8 +490,8 @@ contains
     real :: patm                     ! atmospheric pressure as a function of elevation (Pa)
     real :: chi                      ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: ci                       ! leaf-internal partial pressure, (Pa)
-    real :: iwue                     ! intrinsic water use efficiency = A / gs = ca - ci = ca ( 1 - chi )
-    ! real :: gs                       ! stomatal conductance
+    real :: iwue                     ! intrinsic water use efficiency = A / gs = ca - ci = ca ( 1 - chi ) , unitless
+    real :: gs                       ! stomatal conductance to H2O (mol H2O m-2 s-1)
     real :: ca                       ! ambient CO2 partial pressure (Pa)
     real :: gstar                    ! photorespiratory compensation point - Gamma-star (Pa)
     real :: fa                       ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
@@ -501,7 +501,7 @@ contains
     real :: ns_star                  ! viscosity correction factor (unitless)
     real :: mprime                   ! factor in light use model with Jmax limitation
     real :: assim                    ! assimilation rate per unit ground area, ecosystem scale (mol m-2 s-1)
-    real :: assim_unitfapar          ! assimilation rate per unit leaf area, leaf scale (mol m-2 s-1)
+    real :: assim_unitfapar          ! assimilation rate per unit leaf area, leaf scale, representative for top-canopy leaves (mol m-2 s-1)
     real :: lue                      ! Light use efficiency = assimilation rate per unit aborbed light
     real :: vcmax                    ! Vcmax per unit ground area (mol CO2 m-2 s-1)
     real :: vcmax_unitfapar          ! Vcmax per fAPAR (mol CO2 m-2 s-1)
@@ -607,7 +607,7 @@ contains
       ! Gross primary productivity = ecosystem-level assimilation rate (per unit ground area)
       assim = ppfdabs * params_pft_gpp(pft)%kphio * mprime  ! in mol m-2 s-1
 
-      ! Leaf-level assimilation rate (per unit leaf area)
+      ! Leaf-level assimilation rate (per unit leaf area), representative for top-canopy leaves
       assim_unitfapar = ppfd * params_pft_gpp(pft)%kphio * mprime  ! in mol m-2 s-1
 
       ! Light use efficiency (assimilation rate per unit absorbed light)
@@ -620,8 +620,9 @@ contains
       ! leaf-internal CO2 partial pressure (Pa)
       ci = chi * ca
 
-      ! stomatal conductance
-      ! gs = assim_unitfapar / ( ca - ci )
+      ! stomatal conductance to CO2
+      gs = 1.6 * assim * patm / ( ca - ci )
+
       ! print*,'gs', gs
       ! print*,'ppfd', ppfd
       ! print*,'params_pft_gpp(pft)%kphio', params_pft_gpp(pft)%kphio
@@ -673,9 +674,10 @@ contains
       out_pmodel%gpp              = assim
       out_pmodel%gstar            = gstar
       out_pmodel%chi              = chi
-      out_pmodel%ci               = ci 
+      out_pmodel%ci               = ci
       out_pmodel%ca               = ca
-      out_pmodel%iwue             = ( ca - ci ) / 1.6
+      out_pmodel%iwue             = ( ca - ci ) / ( 1.6 * patm )
+      out_pmodel%gs               = gs
       out_pmodel%vcmax            = vcmax
       out_pmodel%vcmax25          = vcmax25
       out_pmodel%vcmax_unitfapar  = vcmax_unitfapar
@@ -700,7 +702,6 @@ contains
       out_pmodel%chi              = 0.0
       out_pmodel%ci               = 0.0
       out_pmodel%iwue             = 0.0
-      ! out_pmodel%gs               = 0.0
       out_pmodel%vcmax            = 0.0
       out_pmodel%vcmax25          = 0.0
       out_pmodel%vcmax_unitfapar  = 0.0
@@ -1485,7 +1486,6 @@ contains
 
     ! local 
     real, dimension(npft), save :: agpp        ! annual total GPP
-    real                        :: dgs         ! daily stomatal conductance (mol CO2 m-2 s-1 Pa-1)
 
     ! sum up daily GPP to annual total
     if (doy==1) agpp(:) = 0.0
@@ -1520,19 +1520,9 @@ contains
     ! weighted by daily GPP
     if (interface%params_siml%loutgpp) then
 
-      if (dgpp(1) > 0.0) then 
-        dgs = dassim(1) / ( out_pmodel(1)%ca - out_pmodel(1)%ci )
-        ! print*,'dgs', dgs
-        ! print*,'ci/ca, chi',out_pmodel(1)%ci/out_pmodel(1)%ca, out_pmodel(1)%chi
-        ! print*,'chi',out_pmodel(1)%chi
-        ! print*,'gpp',dgpp(:)
-      else
-        dgs = 0.0
-      end if
-
       outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * dgpp(:)
       outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * dgpp(:)
-      outags        (:,jpngr) = outags        (:,jpngr) + dgs                * dgpp(:)
+      outags        (:,jpngr) = outags        (:,jpngr) + out_pmodel(1)%gs   * dgpp(:)
       outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * dgpp(:)
       outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * dgpp(:)
 
