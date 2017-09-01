@@ -149,7 +149,7 @@ module md_gpp
   real, dimension(npft,maxgrid) :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
   real, dimension(npft,maxgrid) :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
-  real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (Pa)
+  real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (ppm)
   real, dimension(npft,maxgrid) :: outags           ! stomatal conductance to H2O, mean across growing season, weighted by daily GPP (mol H2O m-2 s-1)
   real, dimension(npft,maxgrid) :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP [unitless]
 
@@ -623,6 +623,9 @@ contains
       ! stomatal conductance to CO2
       gs = 1.6 * assim * patm / ( ca - ci )
 
+      print*,'patm ', patm
+      stop 
+
       ! print*,'gs', gs
       ! print*,'ppfd', ppfd
       ! print*,'params_pft_gpp(pft)%kphio', params_pft_gpp(pft)%kphio
@@ -674,7 +677,7 @@ contains
       out_pmodel%gpp              = assim
       out_pmodel%gstar            = gstar
       out_pmodel%chi              = chi
-      out_pmodel%ci               = ci
+      out_pmodel%ci               = co2 * chi  ! return value 'out_pmodel%ci' is used for output in units of ppm. 
       out_pmodel%ca               = ca
       out_pmodel%iwue             = ( ca - ci ) / ( 1.6 * patm )
       out_pmodel%gs               = gs
