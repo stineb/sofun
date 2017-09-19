@@ -150,7 +150,7 @@ module md_gpp
   real, dimension(npft,maxgrid) :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (ppm)
-  real, dimension(npft,maxgrid) :: outags           ! stomatal conductance to H2O, mean across growing season, weighted by daily GPP (mol H2O m-2 s-1)
+  real, dimension(npft,maxgrid) :: outags           ! stomatal conductance to H2O, mean across growing season, weighted by daily GPP (Mmol H2O m-2 s-1)
   real, dimension(npft,maxgrid) :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP [unitless]
 
   ! These are stored as dayly variables for annual output
@@ -623,9 +623,6 @@ contains
       ! stomatal conductance to H2O
       gs = 1.6 * assim * patm / ( ca - ci )
 
-      print*,'patm ', patm
-      stop 
-
       ! print*,'gs', gs
       ! print*,'ppfd', ppfd
       ! print*,'params_pft_gpp(pft)%kphio', params_pft_gpp(pft)%kphio
@@ -705,6 +702,7 @@ contains
       out_pmodel%chi              = 0.0
       out_pmodel%ci               = 0.0
       out_pmodel%iwue             = 0.0
+      out_pmodel%gs               = 0.0
       out_pmodel%vcmax            = 0.0
       out_pmodel%vcmax25          = 0.0
       out_pmodel%vcmax_unitfapar  = 0.0
@@ -1611,7 +1609,7 @@ contains
       write(652,999) itime, sum(outachi(:,jpngr))
       write(658,999) itime, sum(outaiwue(:,jpngr))
       write(655,999) itime, sum(outaci(:,jpngr))
-      write(656,999) itime, sum(outags(:,jpngr))
+      write(656,999) itime, sum(outags(:,jpngr)) * 1e-6  ! converting from mol H2O m-2 s-1 to Mmol H2O m-2 s-1
       write(657,999) itime, sum(outavcmax_leaf(:,jpngr))
 
     end if
