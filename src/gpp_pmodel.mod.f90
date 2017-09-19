@@ -620,7 +620,7 @@ contains
       ! leaf-internal CO2 partial pressure (Pa)
       ci = chi * ca
 
-      ! stomatal conductance to CO2
+      ! stomatal conductance to H2O
       gs = 1.6 * assim * patm / ( ca - ci )
 
       print*,'patm ', patm
