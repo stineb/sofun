@@ -151,7 +151,7 @@ module md_gpp
   real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
   real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (ppm)
   real, dimension(npft,maxgrid) :: outags           ! stomatal conductance to H2O, mean across growing season, weighted by daily GPP (Mmol H2O m-2 s-1)
-  real, dimension(npft,maxgrid) :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP [unitless]
+  real, dimension(npft,maxgrid) :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP [micro-mol CO2 / mol H2O]
 
   ! These are stored as dayly variables for annual output
   ! at day of year when LAI is at its maximum.
@@ -1607,7 +1607,7 @@ contains
       write(654,999) itime, sum(outavcmax25(:,jpngr))
       write(653,999) itime, sum(outalue(:,jpngr))
       write(652,999) itime, sum(outachi(:,jpngr))
-      write(658,999) itime, sum(outaiwue(:,jpngr))
+      write(658,999) itime, sum(outaiwue(:,jpngr)) * 1e6 / 1.6 ! converting from unitless to micro-mol CO2 / mol H2O
       write(655,999) itime, sum(outaci(:,jpngr))
       write(656,999) itime, sum(outags(:,jpngr)) * 1e-6  ! converting from mol H2O m-2 s-1 to Mmol H2O m-2 s-1
       write(657,999) itime, sum(outavcmax_leaf(:,jpngr))
