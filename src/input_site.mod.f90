@@ -5,19 +5,11 @@ module input_site
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-#include "sofun_module_control.inc"
   use md_params_core, only: npft, maxgrid
 
   implicit none
 
-#ifdef _prescr_gpp_site
-  !real, dimension(nyeartrend,ndayyear,npft) :: dgpp_data
-  real, dimension(:,:,:), allocatable :: dgpp_data
-#endif
-
-#ifdef _fix_veg
   real, dimension(npft,maxgrid) :: fpc_grid_data
-#endif
 
 contains
 
@@ -35,35 +27,6 @@ contains
     ! local variables
     integer :: day, mo, dm, pft, yr
 
-#if _prescr_gpp_site
-    ! PRESCRIBED DAILY GPP FOR ONE YEAR
-    write(0,*) 'prescribe daily GPP ...'
-    allocate(dgpp_data(nyeartrend,ndayyear,npft))
-    dgpp_data(:,:,:) = 0.0
-    do yr=1,nyeartrend
-      dgpp_data(yr,:,1) = read1year_daily(sitename//'_daily_gpp_med_STANDARD.txt')
-    end do
-    write(0,*) '... done'
-
-    !allocate(dgpp_data(nyeartrend,ndayyear,npft))
-    !dgpp_data(:,:,:) = 0.0
-    !do yr=1,nyeartrend
-    !  day=0
-    !  do mo=1,nmonth
-    !    do dm=1,ndaymonth(mo)
-    !      day=day+1
-    !      do pft=1,npft
-    !        dgpp_data(yr,day,pft) = getvalreal_STANDARD( &
-    !          sitename//'_daily_gpp_med_STANDARD.txt', mo=mo, dm=dm &
-    !          )
-    !      end do
-    !    end do
-    !  enddo
-    !enddo
-    !write(0,*) '... done'
-#endif
-
-#ifdef _fix_veg
     ! Get prescribed PFT selection 
     ! xxx try: make npft a definable variable depending on this selection 
     ! Get prescribed fractional plant cover (FPC) for each PFT
@@ -76,7 +39,6 @@ contains
     fpc_grid_data(7,1) = getparreal( sitename//".parameter", 'in_fpc_grid_7' )
     fpc_grid_data(8,1) = getparreal( sitename//".parameter", 'in_fpc_grid_8' )
     fpc_grid_data(9,1) = getparreal( sitename//".parameter", 'in_fpc_grid_9' )
-#endif
 
     return
 

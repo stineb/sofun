@@ -11,7 +11,7 @@
 # intel   - ifort compiler
 
 # PROFILE=gfortran
-PROFILE=pgi
+PROFILE=gfortran
 # PROFILE=intel
 
 ##################
@@ -31,7 +31,7 @@ DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfr
 endif
 
 #################
-## pgf profile ##
+## gfortran profile ##
 ##################
 ifeq ($(PROFILE),gfortran)
 # Compiler and options
@@ -57,8 +57,10 @@ COMPFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -free -g -trac
 DEBUGFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -free -warn all -implicitnone -g -traceback -fpe0 -fpstkchk -CU
 
 # System libraries
-# NETCDF_INC = /usr/local/include
-# NETCDF_LIB = /usr/local/lib
+# Get netcdf-fortran library by 'sudo port install netcdf-fortran'
+# and to see where it's been installed 'port contents netcdf-fortran'
+# NETCDF_INC = /opt/local/include
+# NETCDF_LIB = /opt/local/lib
 # LIBS = -L $(NETCDF_LIB) -lnetcdf
 endif
 
