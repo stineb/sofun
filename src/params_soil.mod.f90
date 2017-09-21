@@ -23,14 +23,15 @@ module md_params_soil
 
 contains
 
-  function getsoil_field( soilcode ) result( params_soil_field )
+  function getsoil_field( grid ) result( params_soil_field )
     !////////////////////////////////////////////////////////////////
     ! Function returns array containing all soil parameter values
     !----------------------------------------------------------------
     use md_params_core, only: maxgrid
+    use md_grid, only: gridtype
 
     ! arguments
-    integer, intent(in) :: soilcode
+    type( gridtype ), intent(in), dimension(maxgrid) :: grid
 
     ! local variables
     integer :: jpngr
@@ -41,7 +42,7 @@ contains
     if (maxgrid>1) stop 'in getsoil_field: think of something'
 
     do jpngr=1,maxgrid
-      params_soil_field(jpngr) = getsoil( soilcode )
+      params_soil_field(jpngr) = getsoil( grid(jpngr)%soilcode )
     end do
 
   end function getsoil_field

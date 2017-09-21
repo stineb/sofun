@@ -8,7 +8,7 @@ program main
   !----------------------------------------------------------------
   use md_interface, only: interface
   use md_params_siml, only: getpar_siml, getsteering
-  use md_params_site, only: getpar_site
+  use md_params_domain, only: getpar_domain
   use md_grid, only: getgrid
   use md_params_soil, only: getsoil_field
   use md_forcing_siterun, only: getclimate_site, getninput, ninput_type, gettot_ninput, getfapar, getlanduse, getco2
@@ -49,13 +49,13 @@ program main
   ! SR getpar_site is defined in _params_site.mod.F. 
   ! 'sitename' is global variable
   !----------------------------------------------------------------
-  interface%params_site = getpar_site( trim(interface%params_siml%sitename) )
+  interface%params_domain = getpar_domain( trim(interface%params_siml%sitename), trim(interface%params_siml%spacetype) )
 
   !----------------------------------------------------------------
   ! GET GRID INFORMATION
   ! longitude, latitude, elevation
   !----------------------------------------------------------------
-  interface%grid(:) = getgrid( trim(interface%params_siml%sitename) )
+  interface%grid(:) = getgrid( trim(interface%params_siml%spacetype), interface%params_domain  )
 
   ! Get soil parameters (if not defined in <sitename>.parameter)
   !call getsoilpar
@@ -66,7 +66,7 @@ program main
   !----------------------------------------------------------------
   ! GET SOIL PARAMETERS
   !----------------------------------------------------------------
-  interface%soilparams(:) = getsoil_field( interface%params_site%soilcode )
+  interface%soilparams(:) = getsoil_field( interface%grid(:) )
 
   ! LOOP THROUGH YEARS
   write(0,*) '------------START OF SIMULATION-------------'

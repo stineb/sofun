@@ -11,7 +11,7 @@
 # intel   - ifort compiler
 
 # PROFILE=gfortran
-PROFILE=gfortran
+PROFILE=pgi
 # PROFILE=intel
 
 ##################
@@ -83,14 +83,15 @@ endif
 #DEBUGFLAGS += -I$(NETCDF_INC)
 
 # name of executable
-EXE             = runsofun
-SPLASH_EXE      = runsplash
-SWBM_EXE        = runswbm
-PMODEL_EXE      = runpmodel
-PMODEL_SWBM_EXE = runpmodel_swbm
-CMODEL_EXE      = runcmodel
-TMODEL_EXE      = runtmodel
-CNMODEL_EXE     = runcnmodel
+EXE              = runsofun
+SPLASH_EXE       = runsplash
+SWBM_EXE         = runswbm
+PMODEL_EXE       = runpmodel
+PMODEL_SWBM_EXE  = runpmodel_swbm
+GPMODEL_EXE      = rungpmodel
+CMODEL_EXE       = runcmodel
+TMODEL_EXE       = runtmodel
+CNMODEL_EXE      = runcnmodel
 
 ARCHIVES= ./src/sofun.a
 # ARLPJ= ./lpj/lpj.a (archive names when compiling with different option)
@@ -135,6 +136,11 @@ pmodel_swbm:
 	 $(MAKE) pmodel_swbm -C src
 	 $(FCOM) -o $(PMODEL_SWBM_EXE) $(COMPFLAGS) $(ARCHIVES)
 
+# reduced model setup: only SPLASH and PMODEL
+gpmodel: 
+	 $(MAKE) gpmodel -C src
+	 $(FCOM) -o $(GPMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
+
 # reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
 cmodel: 
 	 $(MAKE) cmodel -C src
@@ -153,7 +159,7 @@ cnmodel:
 # clean: remove exe and .o and .do files
 .PHONY: clean
 clean:
-	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE)
+	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(GPMODEL_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE)
 	$(MAKE) clean -C src
 # include libraries when necessary
 #	$(MAKE) clean -C lpj/cdfcode

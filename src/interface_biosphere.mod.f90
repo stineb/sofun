@@ -3,7 +3,7 @@ module md_interface
   use md_params_core, only: maxgrid, nlu, ndayyear
   use md_grid, only: gridtype
   use md_forcing_siterun, only: landuse_type, climate_type, ninput_type
-  use md_params_site, only: paramstype_site
+  use md_params_domain, only: type_params_domain
   use md_params_soil, only: paramtype_soil
   use md_params_siml, only: outtype_steering, paramstype_siml
 
@@ -22,7 +22,7 @@ module md_interface
     type( climate_type )  , dimension(maxgrid)          :: climate
     type( ninput_type)    , dimension(maxgrid)          :: ninput_field
     real                  , dimension(ndayyear,maxgrid) :: dfapar_field
-    type( paramstype_site )                             :: params_site
+    type( type_params_domain )                          :: params_domain
     type( outtype_steering )                            :: steering
     type( paramstype_siml )                             :: params_siml
   end type interfacetype_biosphere
