@@ -18,8 +18,9 @@ module md_biosphere
   !----------------------------------------------------------------
   ! Module-specific (private) variables
   !----------------------------------------------------------------
-  type( tile_type ) , dimension(nlu,maxgrid)     :: tile
-  type( plant_type ), dimension(npft,maxgrid)    :: plant ! npft counts over PFTs in all land units (tiles)
+  type( tile_type ),  allocatable, dimension(:,:) :: tile
+  type( plant_type ), allocatable, dimension(:,:) :: plant
+
   type( solartype )                              :: solar
   type( outtype_pmodel ), dimension(npft,nmonth) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
 
@@ -43,7 +44,7 @@ contains
     integer :: dm, moy, jpngr, doy
 
     ! xxx verbose
-    logical, parameter :: verbose = .false.
+    logical, parameter :: verbose = .true.
 
     !----------------------------------------------------------------
     ! INITIALISATIONS
@@ -61,8 +62,11 @@ contains
       !----------------------------------------------------------------
       ! Initialise pool variables and/or read from restart file (not implemented)
       !----------------------------------------------------------------
-      call initglobal_tile( tile(:,:) )
-      call initglobal_plant( plant(:,:) )
+      allocate( tile(  nlu,  size(interface%grid) ) )
+      allocate( plant( npft, size(interface%grid) ) )
+
+      call initglobal_tile(  tile(:,:),  size(interface%grid) )
+      call initglobal_plant( plant(:,:), size(interface%grid) )
 
       !----------------------------------------------------------------
       ! Open input/output files
@@ -77,15 +81,15 @@ contains
     !----------------------------------------------------------------
     ! Initialise output variables for this year
     !----------------------------------------------------------------
-    call initoutput_waterbal()
-    call initoutput_gpp()
-    call initoutput_plant()
-    call initoutput_forcing()
+    call initoutput_waterbal( size(interface%grid) )
+    call initoutput_gpp(      size(interface%grid) )
+    call initoutput_plant(    size(interface%grid) )
+    call initoutput_forcing(  size(interface%grid) )
 
     !----------------------------------------------------------------
     ! LOOP THROUGH GRIDCELLS
     !----------------------------------------------------------------
-    gridcellloop: do jpngr=1,maxgrid
+    gridcellloop: do jpngr=1,size(interface%grid)
 
       !----------------------------------------------------------------
       ! Get radiation based on daily temperature, sunshine fraction, and 
@@ -168,6 +172,7 @@ contains
           ! establishment / sprouting
           !----------------------------------------------------------------
           if (verbose) write(0,*) 'calling vegdynamics() ... '
+          print*,'fapar: ', interface%dfapar_field(doy,jpngr)
           call vegdynamics( tile(:,jpngr), plant(:,jpngr), solar, out_pmodel(:,:), interface%dfapar_field(doy,jpngr) )
           if (verbose) write(0,*) '... done'
 

@@ -30,7 +30,6 @@ module md_params_siml
     integer :: const_lu_year        ! is true when using constant land use, given by year 'firstyeartrend'
     
     character(len=256) :: runname
-    character(len=256) :: spacetype
     character(len=256) :: sitename
     character(len=256) :: input_dir
     character(len=256) :: co2_forcing_file
@@ -258,7 +257,6 @@ contains
     ! input_dir        = getparstring( 'run/'//runname//'.sofun.parameter', 'input_dir' )
     ! co2_forcing_file = getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file' )
 
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'spacetype', out_getpar_siml%spacetype )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'sitename', out_getpar_siml%sitename )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'input_dir', out_getpar_siml%input_dir )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file', out_getpar_siml%co2_forcing_file )

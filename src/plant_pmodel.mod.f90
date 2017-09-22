@@ -79,12 +79,12 @@ module md_plant
   real, allocatable, dimension(:,:,:) :: outdgpp    ! daily gross primary production [gC/m2/d]
 
   ! annual
-  real, dimension(npft,maxgrid) :: outagpp
-  real, dimension(npft,maxgrid) :: outanarea_mb
-  real, dimension(npft,maxgrid) :: outanarea_cw
-  real, dimension(npft,maxgrid) :: outalai
-  real, dimension(npft,maxgrid) :: outalma
-  real, dimension(npft,maxgrid) :: outacton_lm
+  real, dimension(:,:), allocatable :: outagpp
+  real, dimension(:,:), allocatable :: outanarea_mb
+  real, dimension(:,:), allocatable :: outanarea_cw
+  real, dimension(:,:), allocatable :: outalai
+  real, dimension(:,:), allocatable :: outalma
+  real, dimension(:,:), allocatable :: outacton_lm
 
   ! required for outputting leaf trait variables in other modules
   integer, dimension(npft) :: maxdoy  ! DOY of maximum LAI
@@ -295,17 +295,18 @@ contains
   end function getpftparams
 
 
-  subroutine initglobal_plant( plant )
+  subroutine initglobal_plant( plant, ngridcells )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of all _pools on all gridcells at the beginning
     !  of the simulation.
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use md_params_core, only: npft, maxgrid
+    use md_params_core, only: npft
 
     ! argument
-    type( plant_type ), dimension(npft,maxgrid), intent(inout) :: plant
+    type( plant_type ), dimension(npft,ngridcells), intent(inout) :: plant
+    integer, intent(in) :: ngridcells
 
     ! local variables
     integer :: pft
@@ -314,7 +315,7 @@ contains
     !-----------------------------------------------------------------------------
     ! derive which PFTs are present from fpc_grid (which is prescribed)
     !-----------------------------------------------------------------------------
-    do jpngr=1,maxgrid
+    do jpngr=1,ngridcells
       do pft=1,npft
         call initpft( plant(pft,jpngr) )
         plant(pft,jpngr)%pftno = pft
@@ -357,25 +358,37 @@ contains
   end subroutine initdaily_plant
 
 
-  subroutine initoutput_plant()
+  subroutine initoutput_plant( ngridcells )
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
     use md_interface, only: interface
 
-    if ( interface%steering%init .and. interface%params_siml%loutdgpp ) allocate( outdgpp(npft,ndayyear,maxgrid) )
+    ! arguments
+    integer, intent(in) :: ngridcells
+
+    if ( interface%steering%init .and. interface%params_siml%loutdgpp ) allocate( outdgpp(npft,ndayyear,ngridcells) )
 
     outdgpp  (:,:,:) = 0.0
     
     ! annual output variables
     if (interface%params_siml%loutplant) then
+
+      allocate( outagpp(npft,maxgrid) )
+      allocate( outanarea_mb(npft,ngridcells) )
+      allocate( outanarea_cw(npft,ngridcells) )
+      allocate( outalai(npft,ngridcells) )
+      allocate( outalma(npft,ngridcells) )
+      allocate( outacton_lm(npft,ngridcells) )
+
       outagpp(:,:)      = 0.0
       outanarea_mb(:,:) = 0.0
       outanarea_cw(:,:) = 0.0
       outalai     (:,:) = 0.0
       outalma     (:,:) = 0.0
       outacton_lm (:,:) = 0.0
+
     end if
 
   end subroutine initoutput_plant

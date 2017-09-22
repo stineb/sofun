@@ -2,7 +2,7 @@ module md_interface
 
   use md_params_core, only: maxgrid, nlu, ndayyear
   use md_grid, only: gridtype
-  use md_forcing_siterun, only: landuse_type, climate_type, ninput_type
+  use md_forcing, only: landuse_type, climate_type, ninput_type
   use md_params_domain, only: type_params_domain
   use md_params_soil, only: paramtype_soil
   use md_params_siml, only: outtype_steering, paramstype_siml
@@ -16,17 +16,23 @@ module md_interface
   type interfacetype_biosphere
     integer                                             :: year
     real                                                :: pco2
-    type( gridtype )      , dimension(maxgrid)          :: grid
-    type( paramtype_soil ), dimension(maxgrid)          :: soilparams
-    type( landuse_type)   , dimension(maxgrid)          :: landuse
-    type( climate_type )  , dimension(maxgrid)          :: climate
-    type( ninput_type)    , dimension(maxgrid)          :: ninput_field
-    real                  , dimension(ndayyear,maxgrid) :: dfapar_field
+    type( gridtype )      , dimension(:),   allocatable :: grid
+    type( paramtype_soil ), dimension(:),   allocatable :: soilparams
+    type( landuse_type)   , dimension(:),   allocatable :: landuse
+    type( climate_type )  , dimension(:),   allocatable :: climate
+    type( ninput_type)    , dimension(:),   allocatable :: ninput_field
+    real                  , dimension(:,:), allocatable :: dfapar_field
     type( type_params_domain )                          :: params_domain
     type( outtype_steering )                            :: steering
     type( paramstype_siml )                             :: params_siml
   end type interfacetype_biosphere
 
+  !----------------------------------------------------------------
+  ! Interface instance is created here 
+  ! (instead of locally defined and passed on as argument. Both are 
+  ! ok but this has the advantage that unknown-size arguments are
+  ! avoided).
+  !----------------------------------------------------------------
   type( interfacetype_biosphere ) :: interface
 
   !----------------------------------------------------------------
@@ -43,15 +49,18 @@ module md_interface
 
 contains
 
-  subroutine initoutput_forcing()
+  subroutine initoutput_forcing( ngridcells )
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
-    use md_params_core, only: ndayyear, maxgrid
+    use md_params_core, only: ndayyear
+
+    ! arguments
+    integer, intent(in) :: ngridcells
 
     ! Allocate memory for daily output variables
-    if ( interface%steering%init .and. interface%params_siml%loutdtemp ) allocate( outdtemp(ndayyear,maxgrid) )
+    if ( interface%steering%init .and. interface%params_siml%loutdtemp ) allocate( outdtemp(ndayyear,ngridcells) )
     outdtemp(:,:) = 0.0
 
     ! ! annual output variables

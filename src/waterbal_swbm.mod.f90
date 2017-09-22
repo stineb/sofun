@@ -1273,26 +1273,29 @@ contains
   end subroutine initio_waterbal
 
 
-  subroutine initoutput_waterbal()
+  subroutine initoutput_waterbal( ngridcells )
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
     use md_interface, only: interface
 
+    ! arguments
+    integer, intent(in) :: ngridcells
+
     if (interface%params_siml%loutwaterbal) then
 
-      if (interface%steering%init) allocate( outdwcont (nlu,ndayyear,maxgrid) )  ! daily soil moisture, mm
-      if (interface%steering%init) allocate( outdra (ndayyear,maxgrid)     )     ! daily solar irradiation, J/m2
-      if (interface%steering%init) allocate( outdrn (ndayyear,maxgrid)     )     ! daily net radiation, J/m2
-      if (interface%steering%init) allocate( outdppfd (ndayyear,maxgrid)   )     ! daily PPFD, mol/m2
-      if (interface%steering%init) allocate( outdayl(ndayyear,maxgrid)     )     ! daily day length, h
-      if (interface%steering%init) allocate( outdcn (ndayyear,maxgrid)     )     ! daily condensation water, mm
-      if (interface%steering%init) allocate( outdro (nlu,ndayyear,maxgrid) )     ! daily runoff, mm
-      if (interface%steering%init) allocate( outdfleach (nlu,ndayyear,maxgrid) ) ! daily leaching fraction, (unitless)
-      if (interface%steering%init) allocate( outdeet(ndayyear,maxgrid)     ) ! daily equilibrium ET, mm
-      if (interface%steering%init) allocate( outdpet(ndayyear,maxgrid)     ) ! daily potential ET, mm
-      if (interface%steering%init) allocate( outdaet(nlu,ndayyear,maxgrid) ) ! daily actual ET, mm
-      if (interface%steering%init) allocate( outdcpa(nlu,ndayyear,maxgrid) ) ! daily Cramer-Prentice-Alpha, (unitless)
+      if (interface%steering%init) allocate( outdwcont (nlu,ndayyear,ngridcells) )  ! daily soil moisture, mm
+      if (interface%steering%init) allocate( outdra (ndayyear,ngridcells)     )     ! daily solar irradiation, J/m2
+      if (interface%steering%init) allocate( outdrn (ndayyear,ngridcells)     )     ! daily net radiation, J/m2
+      if (interface%steering%init) allocate( outdppfd (ndayyear,ngridcells)   )     ! daily PPFD, mol/m2
+      if (interface%steering%init) allocate( outdayl(ndayyear,ngridcells)     )     ! daily day length, h
+      if (interface%steering%init) allocate( outdcn (ndayyear,ngridcells)     )     ! daily condensation water, mm
+      if (interface%steering%init) allocate( outdro (nlu,ndayyear,ngridcells) )     ! daily runoff, mm
+      if (interface%steering%init) allocate( outdfleach (nlu,ndayyear,ngridcells) ) ! daily leaching fraction, (unitless)
+      if (interface%steering%init) allocate( outdeet(ndayyear,ngridcells)     ) ! daily equilibrium ET, mm
+      if (interface%steering%init) allocate( outdpet(ndayyear,ngridcells)     ) ! daily potential ET, mm
+      if (interface%steering%init) allocate( outdaet(nlu,ndayyear,ngridcells) ) ! daily actual ET, mm
+      if (interface%steering%init) allocate( outdcpa(nlu,ndayyear,ngridcells) ) ! daily Cramer-Prentice-Alpha, (unitless)
 
       outdwcont(:,:,:)  = 0.0
       outdra(:,:)       = 0.0

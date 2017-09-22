@@ -2,7 +2,7 @@ module md_tile
   !////////////////////////////////////////////////////////////////
   ! Holds all tile-specific variables and procedurs
   ! --------------------------------------------------------------
-  use md_params_core, only: nlu, maxgrid
+  use md_params_core, only: npft, nlu
 
   implicit none
 
@@ -40,7 +40,7 @@ module md_tile
 
 contains
 
-  subroutine initglobal_tile( tile )
+  subroutine initglobal_tile( tile, ngridcells )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of all _pools on all gridcells at the beginning
     !  of the simulation.
@@ -48,19 +48,24 @@ contains
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     ! argument
-    type( tile_type ), dimension(nlu,maxgrid), intent(inout) :: tile
+    type( tile_type ), dimension(nlu,ngridcells), intent(inout) :: tile
+    integer, intent(in) :: ngridcells
 
     ! local variables
     integer :: lu
     integer :: jpngr
 
     ! attribute land unit numbers
-    do lu=1,nlu
-      tile(lu,:)%luno = lu
-    end do
+    do jpngr=1,ngridcells
+      do lu=1,nlu
+        
+        tile(lu,jpngr)%luno = lu
 
-    ! initialise soil variables
-    call initglobal_soil( tile(:,:)%soil )
+        ! initialise soil variables
+        call initglobal_soil( tile(lu,jpngr)%soil )
+
+      end do
+    end do
 
   end subroutine initglobal_tile
 
@@ -70,10 +75,9 @@ contains
     ! initialise soil variables globally
     !----------------------------------------------------------------
     ! argument
-    type( soil_type ), dimension(nlu,maxgrid), intent(inout) :: soil
+    type( soil_type ), intent(inout) :: soil
 
-    ! initialise physical soil variables
-    call initglobal_soil_phy( soil(:,:)%phy )
+    call initglobal_soil_phy( soil%phy )
 
   end subroutine initglobal_soil
 
@@ -83,7 +87,8 @@ contains
     ! initialise physical soil variables globally
     !----------------------------------------------------------------
     ! argument
-    type( psoilphystype ), dimension(nlu,maxgrid), intent(inout) :: phy
+    type( psoilphystype ), intent(inout) :: phy
+
 
     ! initialise physical soil variables
     phy%wcont = 50.0

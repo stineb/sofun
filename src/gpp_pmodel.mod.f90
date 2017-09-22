@@ -145,14 +145,14 @@ module md_gpp
   ! real, allocatable, dimension(:,:,:) :: outmtransp ! monthly transpiration [mm]
 
   ! annual
-  real, dimension(npft,maxgrid) :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
-  real, dimension(npft,maxgrid) :: outavcmax25      ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
-  real, dimension(npft,maxgrid) :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
-  real, dimension(npft,maxgrid) :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
-  real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
-  real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (ppm)
-  real, dimension(npft,maxgrid) :: outags           ! stomatal conductance to H2O, mean across growing season, weighted by daily GPP (mol H2O m-2 s-1)
-  real, dimension(npft,maxgrid) :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP [micro-mol CO2 / mol H2O]
+  real, dimension(:,:), allocatable :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  real, dimension(:,:), allocatable :: outavcmax25      ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  real, dimension(:,:), allocatable :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
+  real, dimension(:,:), allocatable :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
+  real, dimension(:,:), allocatable :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
+  real, dimension(:,:), allocatable :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (ppm)
+  real, dimension(:,:), allocatable :: outags           ! stomatal conductance to H2O, mean across growing season, weighted by daily GPP (mol H2O m-2 s-1)
+  real, dimension(:,:), allocatable :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP [micro-mol CO2 / mol H2O]
 
   ! These are stored as dayly variables for annual output
   ! at day of year when LAI is at its maximum.
@@ -770,6 +770,8 @@ contains
     !----------------------------------------------------------------
     ! PFT-independent parameters
     !----------------------------------------------------------------
+    print*,'reading gpp parameters ...' 
+
     ! unit cost of carboxylation
     params_gpp%beta  = getparreal( 'params/params_gpp_pmodel.dat', 'beta' )
 
@@ -782,6 +784,8 @@ contains
       params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
 
     end do
+
+    print*,'... done'
 
     return
  
@@ -1465,29 +1469,43 @@ contains
   end subroutine initio_gpp
 
 
-  subroutine initoutput_gpp()
+  subroutine initoutput_gpp( ngridcells )
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
     !----------------------------------------------------------------
-    use md_params_core, only: npft, ndayyear, nmonth, maxgrid
+    use md_params_core, only: npft, ndayyear, nmonth
     use md_interface
 
+    ! arguments
+    integer, intent(in) :: ngridcells
+
     ! daily
-    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd       (npft,ndayyear,maxgrid) )
-    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp   (npft,ndayyear,maxgrid) )
+    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd       (npft,ndayyear,ngridcells) )
+    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp   (npft,ndayyear,ngridcells) )
+    
     outdrd(:,:,:)     = 0.0
     outdtransp(:,:,:) = 0.0
 
     ! ! monthly
-    ! if (interface%steering%init.and.interface%params_siml%loutdgpp   ) allocate( outmgpp      (npft,nmonth,maxgrid) )
-    ! if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outmrd       (npft,nmonth,maxgrid) )
-    ! if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outmtransp   (npft,nmonth,maxgrid) )
+    ! if (interface%steering%init.and.interface%params_siml%loutdgpp   ) allocate( outmgpp      (npft,nmonth,ngridcells) )
+    ! if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outmrd       (npft,nmonth,ngridcells) )
+    ! if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outmtransp   (npft,nmonth,ngridcells) )
     ! outmgpp(:,:,:)    = 0.0
     ! outmrd(:,:,:)     = 0.0
     ! outmtransp(:,:,:) = 0.0
 
     ! annual
     if (interface%params_siml%loutgpp) then
+
+      allocate( outavcmax     (npft,ngridcells) )
+      allocate( outavcmax25   (npft,ngridcells) )
+      allocate( outavcmax_leaf(npft,ngridcells) )
+      allocate( outalue       (npft,ngridcells) )
+      allocate( outachi       (npft,ngridcells) )
+      allocate( outaci        (npft,ngridcells) )
+      allocate( outags        (npft,ngridcells) )
+      allocate( outaiwue      (npft,ngridcells) )
+
       outavcmax(:,:)      = 0.0
       outavcmax25(:,:)    = 0.0
       outavcmax_leaf(:,:) = 0.0
@@ -1496,6 +1514,7 @@ contains
       outalue(:,:)        = 0.0
       outaci(:,:)         = 0.0
       outags(:,:)         = 0.0
+    
     end if
 
   end subroutine initoutput_gpp

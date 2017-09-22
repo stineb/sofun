@@ -2,7 +2,7 @@ module md_tile
   !////////////////////////////////////////////////////////////////
   ! Holds all tile-specific variables and procedurs
   ! --------------------------------------------------------------
-  use md_params_core, only: npft, nlu, maxgrid
+  use md_params_core, only: npft, nlu
 
   implicit none
 
@@ -50,7 +50,7 @@ module md_tile
 
 contains
 
-  subroutine initglobal_tile( tile )
+  subroutine initglobal_tile( tile, ngridcells )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of all _pools on all gridcells at the beginning
     !  of the simulation.
@@ -58,7 +58,8 @@ contains
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     ! argument
-    type( tile_type ), dimension(nlu,maxgrid), intent(inout) :: tile
+    type( tile_type ), dimension(nlu,ngridcells), intent(inout) :: tile
+    integer, intent(in) :: ngridcells
 
     ! local variables
     integer :: lu
@@ -67,18 +68,21 @@ contains
     !-----------------------------------------------------------------------------
     ! derive which PFTs are present from fpc_grid (which is prescribed)
     !-----------------------------------------------------------------------------
-    do jpngr=1,maxgrid
+    ! allocate( tile(nlu,ngridcells) )
+
+    do jpngr=1,ngridcells
       do lu=1,nlu
+        
         tile(lu,jpngr)%luno = lu
+
+        ! initialise soil variables
+        call initglobal_soil( tile(lu,jpngr)%soil )
+
+        ! initialise canopy variables
+        call initglobal_canopy( tile(lu,jpngr)%canopy )
+
       end do
     end do
-
-    ! initialise soil variables
-    call initglobal_soil( tile(:,:)%soil )
-
-    ! initialise canopy variables
-    call initglobal_canopy( tile(:,:)%canopy )
-
 
   end subroutine initglobal_tile
 
@@ -90,7 +94,7 @@ contains
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     ! argument
-    type( canopy_type ), dimension(nlu,maxgrid), intent(inout) :: canopy
+    type( canopy_type ), intent(inout) :: canopy
 
     canopy%fpc_grid = 0.0
 
@@ -102,10 +106,9 @@ contains
     ! initialise soil variables globally
     !----------------------------------------------------------------
     ! argument
-    type( soil_type ), dimension(nlu,maxgrid), intent(inout) :: soil
+    type( soil_type ), intent(inout) :: soil
 
-    ! initialise physical soil variables
-    call initglobal_soil_phy( soil(:,:)%phy )
+    call initglobal_soil_phy( soil%phy )
 
   end subroutine initglobal_soil
 
@@ -115,7 +118,8 @@ contains
     ! initialise physical soil variables globally
     !----------------------------------------------------------------
     ! argument
-    type( psoilphystype ), dimension(nlu,maxgrid), intent(inout) :: phy
+    type( psoilphystype ), intent(inout) :: phy
+
 
     ! initialise physical soil variables
     phy%wcont = 50.0
