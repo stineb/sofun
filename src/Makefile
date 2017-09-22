@@ -202,104 +202,104 @@ dbgcnmodel: $(DBGCNMODEL_MODOBJS) $(DBGCNMODEL_OBJS)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(DBGCNMODEL_MODOBJS) $(DBGCNMODEL_OBJS) 
 
-# default rules (.f90 -> .f -> .o/.do)
-# ------------
-%.f: %.f90 $(DEPEND)
-	rm -f $*.f
-	$(FCOM) $(CPPFLAGS) $*.f90 > $*.f 
+# # default rules (.f90 -> .f -> .o/.do)
+# # ------------
+# %.f: %.f90 $(DEPEND)
+# 	rm -f $*.f
+# 	$(FCOM) $(CPPFLAGS) $*.f90 > $*.f 
 
-$(MODOBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(MODOBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(OBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(DEBUGOBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DEBUGOBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(DEBUGMODOBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DEBUGMODOBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(SPLASH_MODOBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(SPLASH_MODOBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(SPLASH_OBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(SPLASH_OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(DBGSPLASH_MODOBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DBGSPLASH_MODOBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(DBGSPLASH_OBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DBGSPLASH_OBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(SWBM_MODOBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(SWBM_MODOBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(SWBM_OBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(SWBM_OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(DBGSWBM_MODOBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(DBGSWBM_MODOBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(DBGSWBM_OBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(DBGSWBM_OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(PMODEL_MODOBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(PMODEL_MODOBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(PMODEL_OBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(PMODEL_OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(DBGPMODEL_MODOBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DBGPMODEL_MODOBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(DBGPMODEL_OBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DBGPMODEL_OBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(PMODEL_SWBM_MODOBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(PMODEL_SWBM_MODOBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(PMODEL_SWBM_OBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(PMODEL_SWBM_OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(DBGPMODEL_SWBM_MODOBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DBGPMODEL_SWBM_MODOBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(DBGPMODEL_SWBM_OBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DBGPMODEL_SWBM_OBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(GPMODEL_MODOBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(GPMODEL_MODOBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(GPMODEL_OBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(GPMODEL_OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(CMODEL_MODOBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(CMODEL_MODOBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(CMODEL_OBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(CMODEL_OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(DBGCMODEL_MODOBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DBGCMODEL_MODOBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(DBGCMODEL_OBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DBGCMODEL_OBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(CNMODEL_MODOBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(CNMODEL_MODOBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(CNMODEL_OBJS): %.o: %.f
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f
+$(CNMODEL_OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
-$(DBGCNMODEL_MODOBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DBGCNMODEL_MODOBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-$(DBGCNMODEL_OBJS): %.do: %.f
-	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f
+$(DBGCNMODEL_OBJS): %.do: %.f90
+	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
-# don't delete the intermediate *.f files
-.SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(SWBM_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f) $(PMODEL_SWBM_SOURCES:.f90=.f) $(GPMODEL_SOURCES:.f90=.f) $(CMODEL_SOURCES:.f90=.f) $(CNMODEL_SOURCES:.f90=.f)
+# # don't delete the intermediate *.f files
+# .SECONDARY: $(SOURCES:.f90=.f) $(SPLASH_SOURCES:.f90=.f) $(SWBM_SOURCES:.f90=.f) $(PMODEL_SOURCES:.f90=.f) $(PMODEL_SWBM_SOURCES:.f90=.f) $(GPMODEL_SOURCES:.f90=.f) $(CMODEL_SOURCES:.f90=.f) $(CNMODEL_SOURCES:.f90=.f)
 
 # clean: remove .f, .o, .do, and .stb files
 .PHONY: clean

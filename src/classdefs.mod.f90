@@ -18,7 +18,7 @@ module md_classdefs
   real, parameter :: epsilon = 1.0e-5 
 
   ! additional checks
-  logical, parameter :: _check_sanity = .false.
+  logical, parameter :: check_sanity = .false.
 
   ! Carbon, so far contains only c12 (to be extended for c13)
   type carbon
@@ -105,7 +105,7 @@ contains
     ! print*,'amount ', amount
     ! print*,'from   ', from  
 
-    if (_check_sanity) then
+    if (check_sanity) then
       if ( amount%c%c12>from%c%c12+epsilon) then
         stop 'in ORGSUB: attempting to remove C amount > from-pool'
       else if ( amount%n%n14>from%n%n14+epsilon) then
@@ -304,7 +304,7 @@ contains
     type(carbon), intent(inout) :: from
 
 
-    if (_check_sanity) then
+    if (check_sanity) then
       if ( amount%c12 > from%c12+epsilon) then
         write(0,*) 'amount', amount%c12
         write(0,*) 'from  ', from%c12
@@ -421,7 +421,7 @@ contains
     type(nitrogen), intent(inout) :: from
 
 
-    if (_check_sanity) then
+    if (check_sanity) then
       if ( amount%n14>from%n14+epsilon) then
         stop 'in NSUB: attempting to remove amount > from-pool'
       end if
@@ -735,7 +735,7 @@ contains
       end if
     else
 
-    if (_check_sanity) then
+    if (check_sanity) then
       if (pool%n%n14==0.) then
         stop 'in CTON: N is zero'
       end if
@@ -769,7 +769,7 @@ contains
       end if
     else
 
-    if (_check_sanity) then
+    if (check_sanity) then
       if (pool%c%c12==0.) then
         stop 'in NTOC: C is zero'
       end if

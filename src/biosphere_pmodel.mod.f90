@@ -55,36 +55,44 @@ contains
       ! GET MODEL PARAMETERS
       ! read model parameters that may be varied for optimisation
       !----------------------------------------------------------------
+      if (verbose) print*, 'getpar_modl() ...'
       call getpar_modl_plant()
       call getpar_modl_waterbal()
       call getpar_modl_gpp()
+      if (verbose) print*, '... done'
 
       !----------------------------------------------------------------
       ! Initialise pool variables and/or read from restart file (not implemented)
       !----------------------------------------------------------------
+      if (verbose) print*, 'nitglobal_() ...'
       allocate( tile(  nlu,  size(interface%grid) ) )
       allocate( plant( npft, size(interface%grid) ) )
 
       call initglobal_tile(  tile(:,:),  size(interface%grid) )
       call initglobal_plant( plant(:,:), size(interface%grid) )
+      if (verbose) print*, '... done'
 
       !----------------------------------------------------------------
       ! Open input/output files
       !----------------------------------------------------------------
+      if (verbose) print*, 'initio_() ...'
       call initio_waterbal()
       call initio_gpp()
       call initio_plant()
       call initio_forcing()
+      if (verbose) print*, '... done'
 
     endif 
 
     !----------------------------------------------------------------
     ! Initialise output variables for this year
     !----------------------------------------------------------------
+    if (verbose) print*, 'initoutput_() ...'
     call initoutput_waterbal( size(interface%grid) )
     call initoutput_gpp(      size(interface%grid) )
     call initoutput_plant(    size(interface%grid) )
     call initoutput_forcing(  size(interface%grid) )
+    if (verbose) print*, '... done'
 
     !----------------------------------------------------------------
     ! LOOP THROUGH GRIDCELLS

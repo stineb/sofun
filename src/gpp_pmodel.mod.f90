@@ -1480,11 +1480,10 @@ contains
     integer, intent(in) :: ngridcells
 
     ! daily
-    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd       (npft,ndayyear,ngridcells) )
-    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp   (npft,ndayyear,ngridcells) )
-    
-    outdrd(:,:,:)     = 0.0
-    outdtransp(:,:,:) = 0.0
+    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd    (npft,ndayyear,ngridcells) )
+    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp(npft,ndayyear,ngridcells) )
+    if (interface%steering%init.and.interface%params_siml%loutdrd    ) outdrd(:,:,:)     = 0.0
+    if (interface%steering%init.and.interface%params_siml%loutdtransp) outdtransp(:,:,:) = 0.0
 
     ! ! monthly
     ! if (interface%steering%init.and.interface%params_siml%loutdgpp   ) allocate( outmgpp      (npft,nmonth,ngridcells) )

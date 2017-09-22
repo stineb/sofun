@@ -369,13 +369,12 @@ contains
     integer, intent(in) :: ngridcells
 
     if ( interface%steering%init .and. interface%params_siml%loutdgpp ) allocate( outdgpp(npft,ndayyear,ngridcells) )
-
-    outdgpp  (:,:,:) = 0.0
+    if ( interface%steering%init .and. interface%params_siml%loutdgpp ) outdgpp  (:,:,:) = 0.0
     
     ! annual output variables
     if (interface%params_siml%loutplant) then
 
-      allocate( outagpp(npft,maxgrid) )
+      allocate( outagpp(npft,ngridcells) )
       allocate( outanarea_mb(npft,ngridcells) )
       allocate( outanarea_cw(npft,ngridcells) )
       allocate( outalai(npft,ngridcells) )

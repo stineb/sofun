@@ -31,7 +31,7 @@ program main
   read (*,*) runname
   ! make sure runname length is smaller/equal than maxlen_runname
   if (len_trim(runname)>=maxlen_runname) then
-    stop'runname too long'
+    stop 'runname too long'
   endif
 
   ! write simulation name to standard output (screen)
