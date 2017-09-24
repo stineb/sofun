@@ -27,7 +27,7 @@ COMPFLAGS=-r8 -Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
 DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
 
 # System libraries
-#LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
+# LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
 endif
 
 #################
@@ -42,8 +42,14 @@ COMPFLAGS=-g -O2 -ffree-line-length-0
 #COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
 DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
 
-# System libraries
-#LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
+# # System libraries
+# LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
+
+NETCDF_INC = /opt/local/include
+NETCDF_LIB = /opt/local/lib
+# LIBS = -L $(NETCDF_LIB) -lnetcdf
+LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran
+
 endif
 
 #####################
@@ -79,8 +85,8 @@ endif
 #DEBUGFLAGS += $(shell mpif90 --showme:compile)
 
 # Add library include files to compiler flags
-#COMPFLAGS += -I$(NETCDF_INC)
-#DEBUGFLAGS += -I$(NETCDF_INC)
+COMPFLAGS += -I$(NETCDF_INC)
+DEBUGFLAGS += -I$(NETCDF_INC)
 
 # name of executable
 EXE              = runsofun
@@ -97,13 +103,14 @@ ARCHIVES= ./src/sofun.a
 # ARLPJ= ./lpj/lpj.a (archive names when compiling with different option)
 
 # Export variables that are needed by Makefiles in the subdirectories (called below)
-export FCOM CPPFLAGS COMPFLAGS DEBUGFLAGS #LIBS
+export FCOM CPPFLAGS COMPFLAGS DEBUGFLAGS LIBS
 
 # Targets
 # -------
 standard: 
 	 $(MAKE) -C src
 	 $(FCOM) -o $(EXE) $(COMPFLAGS) $(ARCHIVES)
+	 
 #  include libraries when necessary
 #	 $(FCOM) -o $(EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
@@ -139,7 +146,7 @@ pmodel_swbm:
 # reduced model setup: only SPLASH and PMODEL
 gpmodel: 
 	 $(MAKE) gpmodel -C src
-	 $(FCOM) -o $(GPMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
+	 $(FCOM) -o $(GPMODEL_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
 # reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
 cmodel: 
