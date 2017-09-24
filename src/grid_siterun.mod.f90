@@ -28,7 +28,6 @@ module md_grid
     integer, dimension(:,:), allocatable :: gridarray
   end type domaininfo_type
 
-
   type gridtype
     real :: lon
     real :: lat

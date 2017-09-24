@@ -12,7 +12,9 @@ module md_forcing
   use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu, dummy
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
-  use md_grid, only: gridtype
+  use md_grid, only: gridtype, domaininfo_type
+  use md_interface
+  use netcdf
 
   implicit none
 
@@ -178,20 +180,132 @@ contains
     logical, intent(in) :: in_ppfd
     logical, intent(in) :: in_netrad
 
-    ! local variables
-    integer :: day
-    integer :: jpngr = 1
-    character(len=4) :: climateyear_char
-
     ! function return variable
     type( climate_type ), dimension(ngridcells) :: out_climate
+
+    ! local variables
+    integer :: day, moy
+    integer :: jpngr = 1
+    character(len=4) :: climateyear_char
+    character(len=256) :: filnam
+    character(len=2) :: moy_char
+    integer :: ncid, varid
+    integer(ngridcells), save :: ilon, ilat
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
+    doy = 0
+    do moy=1,nmonth
+
+      write(moy_char,888) moy
+      filnam = './input/global/climate/temp/Tair_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
+      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
+
+      ! get dimension IDs
+      call check( nf90_inq_dimid( ncid, lonname, londimid ) )   
+      call check( nf90_inq_dimid( ncid, latname, latdimid ) )   
+      call check( nf90_inq_dimid( ncid, recname, recdimid ) )   
+
+      ! get dimension lengths
+      call check( nf90_get_var( ncid, londimid, nlon ) )
+      call check( nf90_get_var( ncid, londimid, nlat ) )
+      call check( nf90_get_var( ncid, londimid, nrec ) )
+
+      ! allocate size of output array
+      allocate( temp_tmp(nlon,nlat,nrec) )
+
+      ! Get the varid of the data variable, based on its name.
+      call check( nf90_inq_varid( ncid, "Tair", varid ) )
+
+      ! Read the full array data
+      call check( nf90_get_var( ncid, varid, temp_tmp ) )
+
+      ! for index association, get ilon and ilat vectors
+      if (interface%steering%init) then
+
+        ! get dimension ID for latitude
+        status = nf90_inq_dimid( ncid, "lat", latdimid )
+        if ( status /= nf90_noerr ) then
+          status = nf90_inq_dimid( ncid, "latitude", latdimid )
+          if ( status /= nf90_noerr ) then
+            status = nf90_inq_dimid( ncid, "LAT", latdimid )
+            if ( status /= nf90_noerr ) then
+              status = nf90_inq_dimid( ncid, "LATITUDE", latdimid )
+              if ( status /= nf90_noerr ) then
+                print*,'Error: Unknown latitude name.'
+                stop
+              end if
+            end if
+          end if
+        end if
+
+        ! Get latitude information: nlat
+        call check( nf90_inquire_dimension( ncid, latdimid, len = nlat ) )
+
+        ! get dimension ID for longitude
+        status = nf90_inq_dimid( ncid, "lon", londimid )
+        if ( status /= nf90_noerr ) then
+          status = nf90_inq_dimid( ncid, "longitude", londimid )
+          if ( status /= nf90_noerr ) then
+            status = nf90_inq_dimid( ncid, "LON", londimid )
+            if ( status /= nf90_noerr ) then
+              status = nf90_inq_dimid( ncid, "LONGITUDE", londimid )
+              if ( status /= nf90_noerr ) then
+                print*,'Error: Unknown latitude name.'
+                stop
+              end if
+            end if
+          end if
+        end if
+
+        ! Get latitude information: nlon
+        call check( nf90_inquire_dimension( ncid, londimid, len = nlon ) )
+
+        ! Allocate array sizes now knowing nlon and nlat 
+        allocate( lon_arr(nlon) )
+        allocate( lat_arr(nlat) )
+
+        ! Get longitude and latitude values
+        call check( nf90_get_var( ncid, londimid, lon_arr ) )
+        call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+
+        do jpngr=1,maxgrid
+
+          ilon_arr = 1
+          do while (grid(jpngr)%lon/=lon_arr(ilon_arr))
+            ilon_arr = ilon_arr + 1
+          end do
+          ilon(jpngr) = ilon_arr
+
+          ilat_arr = 1
+          do while (grid(jpngr)%lat/=lat_arr(ilat_arr))
+            ilat_arr = ilat_arr + 1
+          end do
+          ilat(jpngr) = ilat_arr
+
+        end do
+
+      end if
+
+      ! read from array to define climate type 
+      do dom=1,ndaymonth(moy)
+        
+        doy = doy + 1
+
+        do jpngr=1,ngridcells
+
+          out_climate(jpngr)%dtemp(doy) = temp_tmp(ilon(jpngr),ilat(jpngr),dom)
+
+        end do
+
+      end do
+
+    end do
+
+    ! xxx test
     do jpngr=1,ngridcells
 
-      out_climate(jpngr)%dtemp(:) = 1111
       out_climate(jpngr)%dprec(:) = 1111
       out_climate(jpngr)%dvpd(:)  = 1111
       if (in_ppfd) then
@@ -212,7 +326,9 @@ contains
 
     end do
 
+
     return
+    888  format (I2.2)
     999  format (I4.4)
 
   end function getclimate
@@ -249,6 +365,18 @@ contains
     out_landuse%do_grharvest(:) = .false.
 
   end function getlanduse
+
+
+  subroutine check( status )
+    
+    integer, intent (in) :: status
+    
+    if ( status /= nf90_noerr ) then 
+      print *, trim( nf90_strerror(status) )
+      stop "Stopped"
+    end if
+
+  end subroutine check     
 
 end module md_forcing
 

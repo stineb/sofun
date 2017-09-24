@@ -42,7 +42,8 @@ contains
     if (maxgrid>1) stop 'in getsoil_field: think of something'
 
     do jpngr=1,maxgrid
-      params_soil_field(jpngr) = getsoil( grid(jpngr)%soilcode )
+      ! params_soil_field(jpngr) = getsoil( grid(jpngr)%soilcode )
+      params_soil_field(jpngr) = getsoil( 1 )
     end do
 
   end function getsoil_field
