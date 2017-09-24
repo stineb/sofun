@@ -258,13 +258,25 @@ contains
 
       print*,'2'
 
+      ! print*,'grid(jpngr)%lon'
+      ! print*,grid(:)%lon
+      ! print*,'xxxx'
+      ! print*,lon_arr(:)
+
       do jpngr=1,ngridcells
 
         ilon_arr = 1
+        print*,'searching for ', grid(jpngr)%lon
+        print*,'is it ', lon_arr(ilon_arr)
+        print*,'test ', (grid(jpngr)%lon/=lon_arr(ilon_arr))
+        stop
         do while (grid(jpngr)%lon/=lon_arr(ilon_arr))
           ilon_arr = ilon_arr + 1
+          print*,'ilon_arr ', ilon_arr
         end do
         ilon(jpngr) = ilon_arr
+
+        print*,'ilon(jpngr)', ilon(jpngr)
 
         ilat_arr = 1
         do while (grid(jpngr)%lat/=lat_arr(ilat_arr))
