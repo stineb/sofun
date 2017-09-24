@@ -26,7 +26,7 @@ PMODEL_SWBM_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params
 PMODEL_SWBM_SOURCES=sofun.f90
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL for global simulations:
-GPMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 mynetcdf.mod.f90 params_siml.mod.f90 params_domain_global.mod.f90 grid_global.mod.f90 params_soil.mod.f90 forcing_global_pmodel.mod.f90 interface_biosphere.mod.f90 tile_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 plant_pmodel.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
+GPMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_domain_global.mod.f90 grid_global.mod.f90 params_soil.mod.f90 forcing_global_pmodel.mod.f90 interface_biosphere.mod.f90 tile_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 plant_pmodel.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
 GPMODEL_SOURCES=sofun.f90
 
 # List of source code files for reduced setup, executing the C-only model: XXX UNDER CONSTRUCTION XXX

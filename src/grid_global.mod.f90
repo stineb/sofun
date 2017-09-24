@@ -25,7 +25,6 @@ module md_grid
     integer, dimension(:,:), allocatable :: gridarray
     real, dimension(:), allocatable :: lon
     real, dimension(:), allocatable :: lat
-    character(len=*) :: resolutionid
   end type domaininfo_type
 
   type gridtype
@@ -64,16 +63,12 @@ contains
       ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
       call check( nf90_open( './input/global/grid/gicew_halfdeg.cdf', NF90_NOWRITE, ncid ) )
 
-      domaininfo%resolutionid = "halfdeg"   
-
     else if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_1x1deg.nc" ) then
 
       print*,'this is a 1x1deg simulation'
 
       ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
       call check( nf90_open( './input/global/grid/gicew_1x1deg.cdf', NF90_NOWRITE, ncid ) )
-
-      domaininfo%resolutionid = "1x1deg"   
 
     else
 
