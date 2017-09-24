@@ -55,27 +55,29 @@ contains
     ! This will be the netCDF ID for the file and data variable.
     integer :: ncid, varid, status, latdimid, londimid
 
+    print*,'landmask file: ', './input/global/grid/'//trim(params_domain%filnam_landmask)
+    call check( nf90_open( './input/global/grid/'//trim(params_domain%filnam_landmask), NF90_NOWRITE, ncid ) )
 
-    if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_halfdeg.nc" ) then
+    ! if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_halfdeg.nc" ) then
 
-      print*,'this is a halfdeg simulation'
+    !   print*,'this is a halfdeg simulation'
 
-      ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
-      call check( nf90_open( './input/global/grid/gicew_halfdeg.cdf', NF90_NOWRITE, ncid ) )
+    !   ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
+    !   call check( nf90_open( './input/global/grid/gicew_halfdeg.cdf', NF90_NOWRITE, ncid ) )
 
-    else if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_1x1deg.nc" ) then
+    ! else if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_1x1deg.nc" ) then
 
-      print*,'this is a 1x1deg simulation'
+    !   print*,'this is a 1x1deg simulation'
 
-      ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
-      call check( nf90_open( './input/global/grid/gicew_1x1deg.cdf', NF90_NOWRITE, ncid ) )
+    !   ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
+    !   call check( nf90_open( './input/global/grid/gicew_1x1deg.cdf', NF90_NOWRITE, ncid ) )
 
-    else
+    ! else
 
-      print*,'Error: landmask file name unknown'
-      stop
+    !   print*,'Error: landmask file name unknown'
+    !   stop
 
-    end if
+    ! end if
 
     ! get dimension ID for latitude
     status = nf90_inq_dimid( ncid, "lat", latdimid )

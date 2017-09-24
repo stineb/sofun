@@ -256,27 +256,14 @@ contains
       call check( nf90_get_var( ncid, londimid, lon_arr ) )
       call check( nf90_get_var( ncid, latdimid, lat_arr ) )
 
-      print*,'2'
-
-      ! print*,'grid(jpngr)%lon'
-      ! print*,grid(:)%lon
-      ! print*,'xxxx'
-      ! print*,lon_arr(:)
-
       do jpngr=1,ngridcells
 
         ilon_arr = 1
-        print*,'searching for ', grid(jpngr)%lon
-        print*,'is it ', lon_arr(ilon_arr)
-        print*,'test ', (grid(jpngr)%lon/=lon_arr(ilon_arr))
-        stop
+
         do while (grid(jpngr)%lon/=lon_arr(ilon_arr))
           ilon_arr = ilon_arr + 1
-          print*,'ilon_arr ', ilon_arr
         end do
         ilon(jpngr) = ilon_arr
-
-        print*,'ilon(jpngr)', ilon(jpngr)
 
         ilat_arr = 1
         do while (grid(jpngr)%lat/=lat_arr(ilat_arr))
@@ -287,12 +274,15 @@ contains
       end do
 
     end if
-    print*,'3'
 
     doy = 0
     do moy=1,nmonth
 
       write(moy_char,888) moy
+
+      ! xxx test
+      write(moy_char,888) 1
+
       filnam = './input/global/climate/temp/Tair_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
 
@@ -301,7 +291,6 @@ contains
       call check( nf90_inquire_dimension( ncid, recdimid, len = nrec_arr ) )
 
       ! allocate size of output array
-      deallocate( temp_arr )
       allocate( temp_arr(nlon_arr,nlat_arr,nrec_arr) )
 
       ! Get the varid of the data variable, based on its name.
@@ -322,6 +311,8 @@ contains
         end do
 
       end do
+
+      stop 'ok'
 
     end do
 
