@@ -146,7 +146,7 @@ module md_gpp
 
   ! annual
   real, dimension(:,:), allocatable :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
-  real, dimension(:,:), allocatable :: outavcmax25      ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  real, dimension(:,:), allocatable :: outavcmax_25     ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
   real, dimension(:,:), allocatable :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
   real, dimension(:,:), allocatable :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
   real, dimension(:,:), allocatable :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
@@ -1482,8 +1482,9 @@ contains
     ! daily
     if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd    (npft,ndayyear,ngridcells) )
     if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp(npft,ndayyear,ngridcells) )
-    if (interface%steering%init.and.interface%params_siml%loutdrd    ) outdrd(:,:,:)     = 0.0
-    if (interface%steering%init.and.interface%params_siml%loutdtransp) outdtransp(:,:,:) = 0.0
+
+    if (interface%params_siml%loutdrd    ) outdrd(:,:,:)     = 0.0
+    if (interface%params_siml%loutdtransp) outdtransp(:,:,:) = 0.0
 
     ! ! monthly
     ! if (interface%steering%init.and.interface%params_siml%loutdgpp   ) allocate( outmgpp      (npft,nmonth,ngridcells) )
@@ -1496,17 +1497,19 @@ contains
     ! annual
     if (interface%params_siml%loutgpp) then
 
-      allocate( outavcmax     (npft,ngridcells) )
-      allocate( outavcmax25   (npft,ngridcells) )
-      allocate( outavcmax_leaf(npft,ngridcells) )
-      allocate( outalue       (npft,ngridcells) )
-      allocate( outachi       (npft,ngridcells) )
-      allocate( outaci        (npft,ngridcells) )
-      allocate( outags        (npft,ngridcells) )
-      allocate( outaiwue      (npft,ngridcells) )
+      if (interface%steering%init) then
+        allocate( outavcmax     (npft,ngridcells) )
+        allocate( outavcmax_25  (npft,ngridcells) )
+        allocate( outavcmax_leaf(npft,ngridcells) )
+        allocate( outalue       (npft,ngridcells) )
+        allocate( outachi       (npft,ngridcells) )
+        allocate( outaci        (npft,ngridcells) )
+        allocate( outags        (npft,ngridcells) )
+        allocate( outaiwue      (npft,ngridcells) )
+      end if
 
       outavcmax(:,:)      = 0.0
-      outavcmax25(:,:)    = 0.0
+      outavcmax_25(:,:)    = 0.0
       outavcmax_leaf(:,:) = 0.0
       outachi(:,:)        = 0.0
       outaiwue(:,:)       = 0.0
@@ -1563,7 +1566,7 @@ contains
     ! Collect annual output variables
     !----------------------------------------------------------------
     ! store all daily values for outputting annual maximum
-    if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
+    ! if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
 
     outdvcmax(1,doy)      = dvcmax_canop(1)
     outdvcmax25(1,doy)    = out_pmodel(1)%factor25_vcmax * dvcmax_canop(1)
@@ -1605,7 +1608,7 @@ contains
     if (interface%params_siml%loutgpp) then
       ! xxx to do: get vcmax at annual maximum (of monthly values)
       outavcmax(1,jpngr)   = maxval(outdvcmax(1,:))
-      outavcmax25(1,jpngr) = maxval(outdvcmax25(1,:))
+      outavcmax_25(1,jpngr) = maxval(outdvcmax25(1,:))
     end if
 
   end subroutine getout_annual_gpp
@@ -1654,7 +1657,7 @@ contains
       itime = real(interface%steering%outyear)
 
       write(323,999) itime, sum(outavcmax(:,jpngr))
-      write(654,999) itime, sum(outavcmax25(:,jpngr))
+      write(654,999) itime, sum(outavcmax_25(:,jpngr))
       write(653,999) itime, sum(outalue(:,jpngr))
       write(652,999) itime, sum(outachi(:,jpngr))
       write(658,999) itime, sum(outaiwue(:,jpngr)) * 1e6 / 1.6 ! converting from unitless to micro-mol CO2 / mol H2O

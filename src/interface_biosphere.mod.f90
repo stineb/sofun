@@ -61,7 +61,7 @@ contains
 
     ! Allocate memory for daily output variables
     if ( interface%steering%init .and. interface%params_siml%loutdtemp ) allocate( outdtemp(ndayyear,ngridcells) )
-    if ( interface%steering%init .and. interface%params_siml%loutdtemp ) outdtemp(:,:) = 0.0
+    if ( interface%params_siml%loutdtemp ) outdtemp(:,:) = 0.0
 
     ! ! annual output variables
     ! if (interface%params_siml%loutforcing) then

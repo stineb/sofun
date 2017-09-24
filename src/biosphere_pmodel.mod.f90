@@ -202,9 +202,13 @@ contains
           !----------------------------------------------------------------
           if (verbose) write(0,*) 'calling getout_daily() ... '
           call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy )
+          print*,'a'
           call getout_daily_gpp( out_pmodel(:,moy), jpngr, doy )
+          print*,'b'
           call getout_daily_plant( plant(:,jpngr), jpngr, moy, doy )
+          print*,'c'
           call getout_daily_forcing( jpngr, moy, doy )
+          print*,'d'
           if (verbose) write(0,*) '... done'
 
         end do dayloop
@@ -215,15 +219,21 @@ contains
       ! collect annual output
       !----------------------------------------------------------------
       call getout_annual_plant( plant(:,jpngr), jpngr )
+      print*,'1'
       call getout_annual_gpp( jpngr )
+      print*,'2'
 
       !----------------------------------------------------------------
       ! Write to output
       !----------------------------------------------------------------
       call writeout_ascii_waterbal()
+      print*,'3'
       call writeout_ascii_gpp()
+      print*,'4'
       call writeout_ascii_plant()
+      print*,'5'
       call writeout_ascii_forcing()
+      print*,'6'
 
     end do gridcellloop
 
