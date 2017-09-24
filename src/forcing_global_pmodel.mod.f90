@@ -190,7 +190,7 @@ contains
     character(len=256) :: filnam
     character(len=2) :: moy_char
     integer :: ncid, varid, latdimid, londimid, recdimid, status
-    integer, dimension(100000) :: ilon, ilat
+    integer, dimension(100000), save :: ilon, ilat
     integer :: ilat_arr, ilon_arr, nlat_arr, nlon_arr, nrec_arr
     real, dimension(:,:,:), allocatable :: temp_arr
     real, dimension(:), allocatable :: lon_arr, lat_arr
@@ -200,6 +200,8 @@ contains
     write(climateyear_char,999) climateyear
 
     if (ngridcells>100000) stop 'problem for ilon and ilat length'
+
+    print*,'1'
 
     if (init) then
 
@@ -254,6 +256,8 @@ contains
       call check( nf90_get_var( ncid, londimid, lon_arr ) )
       call check( nf90_get_var( ncid, latdimid, lat_arr ) )
 
+      print*,'2'
+
       do jpngr=1,ngridcells
 
         ilon_arr = 1
@@ -271,7 +275,7 @@ contains
       end do
 
     end if
-
+    print*,'3'
 
     doy = 0
     do moy=1,nmonth
