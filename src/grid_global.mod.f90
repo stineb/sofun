@@ -11,6 +11,7 @@ module md_grid
   !----------------------------------------------------------------
   use md_params_core
   use md_params_domain, only: type_params_domain
+  use netcdf
 
   implicit none
 
@@ -21,15 +22,10 @@ module md_grid
     integer :: nlon
     integer :: nlat
     integer :: maxgrid
-    real :: lon_start
-    real :: lat_start
-    real :: dlon
-    real :: dlat
     integer, dimension(:,:), allocatable :: gridarray
     real, dimension(:), allocatable :: lon
     real, dimension(:), allocatable :: lat
   end type domaininfo_type
-
 
   type gridtype
     real :: lon
@@ -56,94 +52,91 @@ contains
     integer, dimension(:,:), allocatable :: myarr
     integer :: ilon, ilat, jpngr
 
-    if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_halfdeg.nc" ) then
+    ! This will be the netCDF ID for the file and data variable.
+    integer :: ncid, varid, status, latdimid, londimid
 
-      print*,'this is a halfdeg simulation'
+    print*,'landmask file: ', './input/global/grid/'//trim(params_domain%filnam_landmask)
+    call check( nf90_open( './input/global/grid/'//trim(params_domain%filnam_landmask), NF90_NOWRITE, ncid ) )
 
-      allocate( domaininfo%gridarray(4,4) )
-      allocate( domaininfo%lon(4) )
-      allocate( domaininfo%lat(4) )
+    ! if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_halfdeg.nc" ) then
 
-      domaininfo%nlon = 4
-      domaininfo%nlat = 4
+    !   print*,'this is a halfdeg simulation'
 
-      domaininfo%lon_start = 0.25
-      domaininfo%lat_start = 30.25
+    !   ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
+    !   call check( nf90_open( './input/global/grid/gicew_halfdeg.cdf', NF90_NOWRITE, ncid ) )
 
-      domaininfo%dlat = 0.5
-      domaininfo%dlon = 0.5
+    ! else if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_1x1deg.nc" ) then
 
-      ! data domaininfo%gridarray(1,:)/0,0,0,0/ 
-      ! data domaininfo%gridarray(2,:)/0,0,0,0/ 
-      ! data domaininfo%gridarray(3,:)/1,1,1,1/
-      ! data domaininfo%gridarray(4,:)/1,1,1,1/
-      do ilon=1,domaininfo%nlon
-        do ilat=1,domaininfo%nlat
-          if (ilat<3) then
-            domaininfo%gridarray(ilon,ilat) = 0
-          else
-            domaininfo%gridarray(ilon,ilat) = 1
+    !   print*,'this is a 1x1deg simulation'
+
+    !   ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
+    !   call check( nf90_open( './input/global/grid/gicew_1x1deg.cdf', NF90_NOWRITE, ncid ) )
+
+    ! else
+
+    !   print*,'Error: landmask file name unknown'
+    !   stop
+
+    ! end if
+
+    ! get dimension ID for latitude
+    status = nf90_inq_dimid( ncid, "lat", latdimid )
+    if ( status /= nf90_noerr ) then
+      status = nf90_inq_dimid( ncid, "latitude", latdimid )
+      if ( status /= nf90_noerr ) then
+        status = nf90_inq_dimid( ncid, "LAT", latdimid )
+        if ( status /= nf90_noerr ) then
+          status = nf90_inq_dimid( ncid, "LATITUDE", latdimid )
+          if ( status /= nf90_noerr ) then
+            print*,'Error: Unknown latitude name.'
+            stop
           end if
-        end do
-      end do
-
-      do ilon=1,domaininfo%nlon
-        domaininfo%lon(ilon) = domaininfo%lon_start + (ilon-1) * domaininfo%dlon
-      end do
-
-      do ilat=1,domaininfo%nlat
-        domaininfo%lat(ilat) = domaininfo%lat_start + (ilat-1) * domaininfo%dlat
-      end do
-
-    else if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_1x1deg.nc" ) then
-
-      print*,'this is a 1x1deg simulation'
-
-      allocate( domaininfo%gridarray(2,2) )
-      allocate( domaininfo%lon(2) )
-      allocate( domaininfo%lat(2) )
-
-      domaininfo%nlon = 2
-      domaininfo%nlat = 2
-
-      domaininfo%lon_start = 0.5
-      domaininfo%lat_start = 30.5
-
-      domaininfo%dlat = 1.0
-      domaininfo%dlon = 1.0
-
-      ! data domaininfo%gridarray(1,:)/0,0/ 
-      ! data domaininfo%gridarray(2,:)/1,1/
-      do ilon=1,domaininfo%nlon
-        do ilat=1,domaininfo%nlat
-          if (ilat>1) then
-            domaininfo%gridarray(ilon,ilat) = 0
-          else
-            domaininfo%gridarray(ilon,ilat) = 1
-          end if
-        end do
-      end do
-      
-      do ilon=1,domaininfo%nlon
-        domaininfo%lon(ilon) = domaininfo%lon_start + (ilon-1) * domaininfo%dlon
-      end do
-
-      do ilat=1,domaininfo%nlat
-        domaininfo%lat(ilat) = domaininfo%lat_start + (ilat-1) * domaininfo%dlat
-      end do
-
-    else
-
-      print*,'Error: landmask file name unknown'
-      stop
-
+        end if
+      end if
     end if
 
-    ! Get total number of land gridcells (value 1 in landmaskfile)
+    ! Get latitude information: nlat
+    call check( nf90_inquire_dimension( ncid, latdimid, len = domaininfo%nlat ) )
+
+    ! get dimension ID for longitude
+    status = nf90_inq_dimid( ncid, "lon", londimid )
+    if ( status /= nf90_noerr ) then
+      status = nf90_inq_dimid( ncid, "longitude", londimid )
+      if ( status /= nf90_noerr ) then
+        status = nf90_inq_dimid( ncid, "LON", londimid )
+        if ( status /= nf90_noerr ) then
+          status = nf90_inq_dimid( ncid, "LONGITUDE", londimid )
+          if ( status /= nf90_noerr ) then
+            print*,'Error: Unknown latitude name.'
+            stop
+          end if
+        end if
+      end if
+    end if
+
+    ! Get latitude information: nlon
+    call check( nf90_inquire_dimension( ncid, londimid, len = domaininfo%nlon ) )
+
+    ! Allocate array sizes now knowing nlon and nlat 
+    allocate( domaininfo%gridarray(domaininfo%nlon,domaininfo%nlat) )
+    allocate( domaininfo%lon(domaininfo%nlon) )
+    allocate( domaininfo%lat(domaininfo%nlat) )
+
+    ! Get longitude and latitude values
+    call check( nf90_get_var( ncid, londimid, domaininfo%lon ) )
+    call check( nf90_get_var( ncid, latdimid, domaininfo%lat ) )
+
+    ! Get the varid of the data variable, based on its name.
+    call check( nf90_inq_varid( ncid, "GICEW", varid ) )
+
+    ! Read the grid data
+    call check( nf90_get_var( ncid, varid, domaininfo%gridarray ) )
+
+    ! Get total number of land gridcells (value < 1.0 in gicew landmaskfile)
     jpngr = 0
     do ilon=1,domaininfo%nlon
       do ilat=1,domaininfo%nlat
-        if (domaininfo%gridarray(ilon,ilat)==1) then
+        if (domaininfo%gridarray(ilon,ilat)<1) then
           jpngr = jpngr + 1
         end if
       end do
@@ -172,11 +165,10 @@ contains
 
     allocate( out_grid(domaininfo%maxgrid ) )
 
-    ! xxx test
     jpngr = 0
     do ilon=1,domaininfo%nlon
       do ilat=1,domaininfo%nlat
-        if (domaininfo%gridarray(ilon,ilat)==1) then
+        if (domaininfo%gridarray(ilon,ilat)<1) then
           jpngr=jpngr+1
           out_grid(jpngr)%lon = domaininfo%lon(ilon)
           out_grid(jpngr)%lat = domaininfo%lat(ilat)
@@ -188,6 +180,18 @@ contains
     out_grid(:)%soilcode = 1
 
   end function getgrid
+
+
+  subroutine check( status )
+    
+    integer, intent (in) :: status
+    
+    if ( status /= nf90_noerr ) then 
+      print *, trim( nf90_strerror(status) )
+      stop "Stopped"
+    end if
+
+  end subroutine check    
 
 end module md_grid
 

@@ -12,7 +12,8 @@ module md_forcing
   use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu, dummy
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
-  use md_grid, only: gridtype
+  use md_grid, only: gridtype, domaininfo_type
+  use netcdf
 
   implicit none
 
@@ -165,7 +166,7 @@ contains
   end function getfapar
 
 
-  function getclimate( sitename, ngridcells, grid, climateyear, in_ppfd, in_netrad ) result ( out_climate )
+  function getclimate( sitename, ngridcells, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
     ! Read year-2013 data after 2013
@@ -174,24 +175,150 @@ contains
     character(len=*), intent(in) :: sitename
     integer, intent(in) :: ngridcells
     type( gridtype ), dimension(ngridcells), intent(in) :: grid
+    logical, intent(in) :: init
     integer, intent(in) :: climateyear
     logical, intent(in) :: in_ppfd
     logical, intent(in) :: in_netrad
 
-    ! local variables
-    integer :: day
-    integer :: jpngr = 1
-    character(len=4) :: climateyear_char
-
     ! function return variable
     type( climate_type ), dimension(ngridcells) :: out_climate
+
+    ! local variables
+    integer :: doy, dom, moy
+    integer :: jpngr = 1
+    character(len=4) :: climateyear_char
+    character(len=256) :: filnam
+    character(len=2) :: moy_char
+    integer :: ncid, varid, latdimid, londimid, recdimid, status
+    integer, dimension(100000), save :: ilon, ilat
+    integer :: ilat_arr, ilon_arr, nlat_arr, nlon_arr, nrec_arr
+    real, dimension(:,:,:), allocatable :: temp_arr
+    real, dimension(:), allocatable :: lon_arr, lat_arr
+    character(len=5) :: recname = "tstep"
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
+    if (ngridcells>100000) stop 'problem for ilon and ilat length'
+
+    print*,'1'
+
+    if (init) then
+
+      write(moy_char,888) moy
+      filnam = './input/global/climate/temp/Tair_daily_WFDEI_'//climateyear_char//'01.nc'
+      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
+
+      ! get dimension ID for latitude
+      status = nf90_inq_dimid( ncid, "lat", latdimid )
+      if ( status /= nf90_noerr ) then
+        status = nf90_inq_dimid( ncid, "latitude", latdimid )
+        if ( status /= nf90_noerr ) then
+          status = nf90_inq_dimid( ncid, "LAT", latdimid )
+          if ( status /= nf90_noerr ) then
+            status = nf90_inq_dimid( ncid, "LATITUDE", latdimid )
+            if ( status /= nf90_noerr ) then
+              print*,'Error: Unknown latitude name.'
+              stop
+            end if
+          end if
+        end if
+      end if
+
+      ! Get latitude information: nlat
+      call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
+
+      ! get dimension ID for longitude
+      status = nf90_inq_dimid( ncid, "lon", londimid )
+      if ( status /= nf90_noerr ) then
+        status = nf90_inq_dimid( ncid, "longitude", londimid )
+        if ( status /= nf90_noerr ) then
+          status = nf90_inq_dimid( ncid, "LON", londimid )
+          if ( status /= nf90_noerr ) then
+            status = nf90_inq_dimid( ncid, "LONGITUDE", londimid )
+            if ( status /= nf90_noerr ) then
+              print*,'Error: Unknown latitude name.'
+              stop
+            end if
+          end if
+        end if
+      end if
+
+      ! Get latitude information: nlon
+      call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
+
+      ! for index association, get ilon and ilat vectors
+      ! Allocate array sizes now knowing nlon and nlat 
+      allocate( lon_arr(nlon_arr) )
+      allocate( lat_arr(nlat_arr) )
+
+      ! Get longitude and latitude values
+      call check( nf90_get_var( ncid, londimid, lon_arr ) )
+      call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+
+      do jpngr=1,ngridcells
+
+        ilon_arr = 1
+
+        do while (grid(jpngr)%lon/=lon_arr(ilon_arr))
+          ilon_arr = ilon_arr + 1
+        end do
+        ilon(jpngr) = ilon_arr
+
+        ilat_arr = 1
+        do while (grid(jpngr)%lat/=lat_arr(ilat_arr))
+          ilat_arr = ilat_arr + 1
+        end do
+        ilat(jpngr) = ilat_arr
+
+      end do
+
+    end if
+
+    doy = 0
+    do moy=1,nmonth
+
+      write(moy_char,888) moy
+
+      ! xxx test
+      write(moy_char,888) 1
+
+      filnam = './input/global/climate/temp/Tair_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
+      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
+
+      ! get dimension IDs
+      call check( nf90_inq_dimid( ncid, recname, recdimid ) )
+      call check( nf90_inquire_dimension( ncid, recdimid, len = nrec_arr ) )
+
+      ! allocate size of output array
+      allocate( temp_arr(nlon_arr,nlat_arr,nrec_arr) )
+
+      ! Get the varid of the data variable, based on its name.
+      call check( nf90_inq_varid( ncid, "Tair", varid ) )
+
+      ! Read the full array data
+      call check( nf90_get_var( ncid, varid, temp_arr ) )
+
+      ! read from array to define climate type 
+      do dom=1,ndaymonth(moy)
+        
+        doy = doy + 1
+
+        do jpngr=1,ngridcells
+
+          out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom)
+
+        end do
+
+      end do
+
+      stop 'ok'
+
+    end do
+
+    ! xxx test
     do jpngr=1,ngridcells
 
-      out_climate(jpngr)%dtemp(:) = 1111
       out_climate(jpngr)%dprec(:) = 1111
       out_climate(jpngr)%dvpd(:)  = 1111
       if (in_ppfd) then
@@ -212,7 +339,9 @@ contains
 
     end do
 
+
     return
+    888  format (I2.2)
     999  format (I4.4)
 
   end function getclimate
@@ -249,6 +378,18 @@ contains
     out_landuse%do_grharvest(:) = .false.
 
   end function getlanduse
+
+
+  subroutine check( status )
+    
+    integer, intent (in) :: status
+    
+    if ( status /= nf90_noerr ) then 
+      print *, trim( nf90_strerror(status) )
+      stop "Stopped"
+    end if
+
+  end subroutine check     
 
 end module md_forcing
 

@@ -101,6 +101,7 @@ program main
                                       trim(interface%params_siml%sitename), &
                                       size(interface%grid), &
                                       interface%grid, &
+                                      interface%steering%init, &
                                       ! 1992 &
                                       interface%steering%climateyear, &
                                       interface%params_siml%in_ppfd,  &

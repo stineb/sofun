@@ -86,7 +86,7 @@ ARCHIVE=sofun.a
 # CDFARCHIVE=./cdfcode/cdf.a
 
 # Export variables that are needed by Makefiles in the subdirectories (called below)
-export FCOM CPPFLAGS COMPFLAGS DPCOMPFLAGS DEBUGFLAGS #LIBS
+export FCOM CPPFLAGS COMPFLAGS DPCOMPFLAGS DEBUGFLAGS LIBS
 
 # Targets
 # -------
