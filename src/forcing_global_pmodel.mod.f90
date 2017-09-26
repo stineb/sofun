@@ -154,7 +154,7 @@ contains
       do jpngr=1,ngridcells
         ! create 4-digit string for year  
         write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-        fapar_field(:,jpngr) = 2222
+        fapar_field(:,jpngr) = 0.75
       end do
 
     end if
