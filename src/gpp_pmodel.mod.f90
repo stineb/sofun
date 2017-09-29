@@ -1509,7 +1509,7 @@ contains
       end if
 
       outavcmax(:,:)      = 0.0
-      outavcmax_25(:,:)    = 0.0
+      outavcmax_25(:,:)   = 0.0
       outavcmax_leaf(:,:) = 0.0
       outachi(:,:)        = 0.0
       outaiwue(:,:)       = 0.0
