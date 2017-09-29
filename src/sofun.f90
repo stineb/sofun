@@ -8,8 +8,8 @@ program main
   !----------------------------------------------------------------
   use md_interface, only: interface
   use md_params_siml, only: getpar_siml, getsteering
-  use md_params_domain, only: getpar_domain
-  use md_grid, only: domaininfo_type, get_domaininfo, getgrid
+  use md_params_domain, only: getpar_domain, type_params_domain
+  use md_grid, only: get_domaininfo, getgrid
   use md_params_soil, only: getsoil_field
   use md_forcing, only: getclimate, getninput, ninput_type, gettot_ninput, getfapar, getlanduse, getco2
   use md_params_core, only: dummy, maxgrid, ndayyear
@@ -23,7 +23,8 @@ program main
   character(len=245) :: runname
   integer, parameter :: maxlen_runname = 50      ! maximum length of runname (arbitrary)
   type( ninput_type ), dimension(maxgrid) :: nfert_field, ndep_field 
-  type( domaininfo_type ) :: domaininfo
+  type( type_params_domain ) :: params_domain
+  logical, parameter :: verbose = .true.
 
   !----------------------------------------------------------------
   ! READ RUNNAME FROM STANDARD INPUT
@@ -50,25 +51,25 @@ program main
   ! SR getpar_site is defined in _params_site.mod.F. 
   ! 'sitename' is global variable
   !----------------------------------------------------------------
-  interface%params_domain = getpar_domain( trim(interface%params_siml%sitename) )
+  params_domain = getpar_domain( trim(interface%params_siml%sitename) )
 
   !----------------------------------------------------------------
   ! GET GRID INFORMATION
   ! longitude, latitude, elevation
   !----------------------------------------------------------------
   ! temporarily get full grid information (full lon-lat-array)
-  domaininfo = get_domaininfo( interface%params_domain )
+  interface%domaininfo = get_domaininfo( params_domain )
 
   ! allocate variable size arrays
-  allocate( interface%grid(         domaininfo%maxgrid ) )
-  allocate( interface%climate(      domaininfo%maxgrid ) )
-  allocate( interface%ninput_field( domaininfo%maxgrid ) )
-  allocate( interface%landuse(      domaininfo%maxgrid ) )
-  allocate( interface%soilparams(   domaininfo%maxgrid ) )
-  allocate( interface%dfapar_field( ndayyear, domaininfo%maxgrid ) )
+  allocate( interface%grid(         interface%domaininfo%maxgrid ) )
+  allocate( interface%climate(      interface%domaininfo%maxgrid ) )
+  allocate( interface%ninput_field( interface%domaininfo%maxgrid ) )
+  allocate( interface%landuse(      interface%domaininfo%maxgrid ) )
+  allocate( interface%soilparams(   interface%domaininfo%maxgrid ) )
+  allocate( interface%dfapar_field( ndayyear, interface%domaininfo%maxgrid ) )
 
   ! vectorise 2D array, keeping only land gridcells
-  interface%grid(:) = getgrid( domaininfo )
+  interface%grid(:) = getgrid( interface%domaininfo )
 
   ! Obtain land unit dependent parameters, define decomposition _rates
   !call luparameters
@@ -97,9 +98,10 @@ program main
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
     ! Climate
+    if (verbose) print*,'getting climate ...'
     interface%climate(:) = getclimate( &
                                       trim(interface%params_siml%sitename), &
-                                      size(interface%grid), &
+                                      interface%domaininfo, &
                                       interface%grid, &
                                       interface%steering%init, &
                                       ! 1992 &
@@ -107,6 +109,7 @@ program main
                                       interface%params_siml%in_ppfd,  &
                                       interface%params_siml%in_netrad &
                                       )
+    if (verbose) print*,'... done.'
 
     ! CO2
     interface%pco2 = getco2( &
@@ -164,6 +167,7 @@ program main
     !----------------------------------------------------------------
     ! Get prescribed fAPAR if required (otherwise set to dummy value)
     !----------------------------------------------------------------
+    if (verbose) print*,'getting fAPAR ...'
     interface%dfapar_field(:,:) = getfapar( &
                                           trim(runname), &
                                           trim(interface%params_siml%sitename), &
@@ -172,6 +176,7 @@ program main
                                           interface%steering%forcingyear, &
                                           interface%params_siml%fapar_forcing_source &
                                           )
+    if (verbose) print*,'... done.'
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 

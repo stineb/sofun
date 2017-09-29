@@ -21,6 +21,8 @@ module md_grid
   type domaininfo_type
     integer :: nlon
     integer :: nlat
+    real    :: dlon
+    real    :: dlat
     integer :: maxgrid
     integer, dimension(:,:), allocatable :: gridarray
     real, dimension(:), allocatable :: lon
@@ -28,10 +30,13 @@ module md_grid
   end type domaininfo_type
 
   type gridtype
+    integer :: ilon
+    integer :: ilat
     real :: lon
     real :: lat
     real :: elv
     integer :: soilcode
+    logical :: dogridcell
   end type gridtype
 
 contains
@@ -143,6 +148,10 @@ contains
     end do
     domaininfo%maxgrid = jpngr
 
+    ! get resolution
+    domaininfo%dlon = domaininfo%lon(2) - domaininfo%lon(1)
+    domaininfo%dlat = domaininfo%lat(2) - domaininfo%lat(1)
+
   end function get_domaininfo
 
 
@@ -170,12 +179,15 @@ contains
       do ilat=1,domaininfo%nlat
         if (domaininfo%gridarray(ilon,ilat)<1) then
           jpngr=jpngr+1
+          out_grid(jpngr)%ilon = ilon
+          out_grid(jpngr)%ilat = ilat
           out_grid(jpngr)%lon = domaininfo%lon(ilon)
           out_grid(jpngr)%lat = domaininfo%lat(ilat)
         end if
       end do
     end do
 
+    out_grid(:)%dogridcell = .true.
     out_grid(:)%elv = 100.0
     out_grid(:)%soilcode = 1
 
@@ -183,15 +195,16 @@ contains
 
 
   subroutine check( status )
-    
+    !/////////////////////////////////////////////////////////////////////////
+    ! Auxiliary subroutine handling NetCDF 
+    !-------------------------------------------------------------------------
+    use netcdf
     integer, intent (in) :: status
-    
     if ( status /= nf90_noerr ) then 
       print *, trim( nf90_strerror(status) )
       stop "Stopped"
     end if
-
-  end subroutine check    
+  end subroutine check  
 
 end module md_grid
 

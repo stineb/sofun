@@ -22,8 +22,6 @@ module md_params_domain
 
   end type type_params_domain
 
-  type( type_params_domain ) :: params_domain
-
 contains
 
   function getpar_domain( sitename ) result( out_params_domain )

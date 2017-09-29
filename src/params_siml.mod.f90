@@ -50,7 +50,7 @@ module md_params_siml
     logical :: lGNC3
     logical :: lGrC4
 
-    ! booleans defining whether variable is written to output
+    ! booleans defining whether variable is written to ascii output
     logical :: loutdgpp       
     logical :: loutdrd
     logical :: loutdtransp    
@@ -80,6 +80,9 @@ module md_params_siml
     logical :: loutnuptake
     logical :: loutlanduse
     logical :: loutforcing
+
+    ! booleans defining whether variable is written to NetCDF output
+    logical :: lncoutdtemp
 
   end type paramstype_siml
 
@@ -299,6 +302,7 @@ contains
     out_getpar_siml%lGNC3          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGNC3' )
     out_getpar_siml%lGrC4          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGrC4' )
     
+    ! boolean for ascii output writing (core variables)
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
     out_getpar_siml%loutdrd        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdrd' )
     out_getpar_siml%loutdtransp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtransp' )
@@ -317,6 +321,7 @@ contains
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
     out_getpar_siml%loutdtemp      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp' )
     
+    ! boolean for ascii output writing (module variables)
     out_getpar_siml%loutplant      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
     out_getpar_siml%loutalloc      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutalloc' )
     out_getpar_siml%loutgpp        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutgpp' )
@@ -327,6 +332,12 @@ contains
     out_getpar_siml%loutnuptake    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnuptake' )
     out_getpar_siml%loutlanduse    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlanduse' )
     out_getpar_siml%loutforcing    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutforcing' )
+
+    ! boolean for NetCDF output writing
+    out_getpar_siml%lncoutdtemp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdtemp' )
+
+    ! If NetCDF output writing is true and ascii output writing is false, then overwrite
+    if (.not.out_getpar_siml%loutdtemp .and. out_getpar_siml%lncoutdtemp) out_getpar_siml%loutdtemp = .true.
 
     write(0,*) "... done"
 

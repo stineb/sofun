@@ -66,7 +66,7 @@ contains
       readyear = forcingyear
     end if
     ! write(0,*) 'GETCO2: use CO2 data of year ', readyear
-    pco2 = getvalreal( 'sitedata/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
+    pco2 = getvalreal( 'global/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
 
   end function getco2
 
@@ -166,22 +166,23 @@ contains
   end function getfapar
 
 
-  function getclimate( sitename, ngridcells, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
+  function getclimate( sitename, domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
     ! Read year-2013 data after 2013
     !----------------------------------------------------------------    
     ! arguments
     character(len=*), intent(in) :: sitename
-    integer, intent(in) :: ngridcells
-    type( gridtype ), dimension(ngridcells), intent(in) :: grid
+    type( domaininfo_type ), intent(in) :: domaininfo
+
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(inout) :: grid
     logical, intent(in) :: init
     integer, intent(in) :: climateyear
     logical, intent(in) :: in_ppfd
     logical, intent(in) :: in_netrad
 
     ! function return variable
-    type( climate_type ), dimension(ngridcells) :: out_climate
+    type( climate_type ), dimension(domaininfo%maxgrid) :: out_climate
 
     ! local variables
     integer :: doy, dom, moy
@@ -202,12 +203,15 @@ contains
     real, dimension(:,:,:), allocatable :: nrad_arr      ! net radiation, array read from NetCDF file 
     real, dimension(:,:,:), allocatable :: ppfd_arr      ! photosynthetic photon flux density, array read from NetCDF file 
     real, dimension(:), allocatable :: lon_arr, lat_arr  ! longitude and latitude vectors from climate NetCDF files
+    real :: dlon_clim, dlat_clim                         ! resolution in longitude and latitude in climate input files
+    real :: ncfillvalue                                  ! _FillValue attribute in NetCDF file
+    integer :: nmissing                                  ! number of land cells where climate data is not available
     character(len=5) :: recname = "tstep"
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
-    if (ngridcells>100000) stop 'problem for ilon and ilat length'
+    if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
 
     !----------------------------------------------------------------    
     ! WATCH-WFDEI
@@ -218,16 +222,16 @@ contains
 
       write(moy_char,888) moy
       filnam = './input/global/climate/temp/Tair_daily_WFDEI_'//climateyear_char//'01.nc'
-      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
+      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_temp ) )
 
       ! get dimension ID for latitude
-      status = nf90_inq_dimid( ncid, "lat", latdimid )
+      status = nf90_inq_dimid( ncid_temp, "lat", latdimid )
       if ( status /= nf90_noerr ) then
-        status = nf90_inq_dimid( ncid, "latitude", latdimid )
+        status = nf90_inq_dimid( ncid_temp, "latitude", latdimid )
         if ( status /= nf90_noerr ) then
-          status = nf90_inq_dimid( ncid, "LAT", latdimid )
+          status = nf90_inq_dimid( ncid_temp, "LAT", latdimid )
           if ( status /= nf90_noerr ) then
-            status = nf90_inq_dimid( ncid, "LATITUDE", latdimid )
+            status = nf90_inq_dimid( ncid_temp, "LATITUDE", latdimid )
             if ( status /= nf90_noerr ) then
               print*,'Error: Unknown latitude name.'
               stop
@@ -237,16 +241,16 @@ contains
       end if
 
       ! Get latitude information: nlat
-      call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
+      call check( nf90_inquire_dimension( ncid_temp, latdimid, len = nlat_arr ) )
 
       ! get dimension ID for longitude
-      status = nf90_inq_dimid( ncid, "lon", londimid )
+      status = nf90_inq_dimid( ncid_temp, "lon", londimid )
       if ( status /= nf90_noerr ) then
-        status = nf90_inq_dimid( ncid, "longitude", londimid )
+        status = nf90_inq_dimid( ncid_temp, "longitude", londimid )
         if ( status /= nf90_noerr ) then
-          status = nf90_inq_dimid( ncid, "LON", londimid )
+          status = nf90_inq_dimid( ncid_temp, "LON", londimid )
           if ( status /= nf90_noerr ) then
-            status = nf90_inq_dimid( ncid, "LONGITUDE", londimid )
+            status = nf90_inq_dimid( ncid_temp, "LONGITUDE", londimid )
             if ( status /= nf90_noerr ) then
               print*,'Error: Unknown latitude name.'
               stop
@@ -256,7 +260,7 @@ contains
       end if
 
       ! Get latitude information: nlon
-      call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
+      call check( nf90_inquire_dimension( ncid_temp, londimid, len = nlon_arr ) )
 
       ! for index association, get ilon and ilat vectors
       ! Allocate array sizes now knowing nlon and nlat 
@@ -264,10 +268,17 @@ contains
       allocate( lat_arr(nlat_arr) )
 
       ! Get longitude and latitude values
-      call check( nf90_get_var( ncid, londimid, lon_arr ) )
-      call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+      call check( nf90_get_var( ncid_temp, londimid, lon_arr ) )
+      call check( nf90_get_var( ncid_temp, latdimid, lat_arr ) )
 
-      do jpngr=1,ngridcells
+      ! Check if the resolution of the climate input files is identical to the model grid resolution
+      dlon_clim = lon_arr(2) - lon_arr(1)
+      dlat_clim = lat_arr(2) - lat_arr(1)
+      
+      if (dlon_clim/=domaininfo%dlon) stop 'Longitude resolution of climate input file not identical with model grid.'
+      if (dlat_clim/=domaininfo%dlat) stop 'latitude resolution of climate input file not identical with model grid.'
+
+      do jpngr=1,domaininfo%maxgrid
 
         ilon_arr = 1
 
@@ -289,15 +300,15 @@ contains
 
     !----------------------------------------------------------------    
     ! Read climate fields for each month (and day) this year
-    !----------------------------------------------------------------    
+    !----------------------------------------------------------------
     doy = 0
     do moy=1,nmonth
 
       write(moy_char,888) moy
 
-      ! xxx test
-      print*,'time: reading january all the time'
-      write(moy_char,888) 1
+      ! ! xxx test
+      ! print*,'time: reading january all the time'
+      ! write(moy_char,888) 1
 
       ! open NetCDF files to get ncid_*
       ! temperature
@@ -322,14 +333,17 @@ contains
       allocate( snow_arr(nlon_arr,nlat_arr,nrec_arr) )
 
       ! Get the varid of the data variable, based on its name
-      call check( nf90_inq_varid( ncid_temp, "Tair", temp_varid ) )
-      call check( nf90_inq_varid( ncid_prec, "xxx", prec_varid ) )
-      call check( nf90_inq_varid( ncid_snow, "xxx", snow_varid ) )
+      call check( nf90_inq_varid( ncid_temp, "Tair", varid_temp ) )
+      call check( nf90_inq_varid( ncid_prec, "Rainf", varid_prec ) )
+      call check( nf90_inq_varid( ncid_snow, "Snowf", varid_snow ) )
 
       ! Read the full array data
-      call check( nf90_get_var( ncid_temp, varid, temp_arr ) )
-      call check( nf90_get_var( ncid_prec, varid, prec_arr ) )
-      call check( nf90_get_var( ncid_snow, varid, snow_arr ) )
+      call check( nf90_get_var( ncid_temp, varid_temp, temp_arr ) )
+      call check( nf90_get_var( ncid_prec, varid_prec, prec_arr ) )
+      call check( nf90_get_var( ncid_snow, varid_snow, snow_arr ) )
+
+      ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
+      call check( nf90_get_att( ncid_temp, varid_temp, "_FillValue", ncfillvalue ) )
 
       ! close NetCDF files
       call check( nf90_close( ncid_temp ) )
@@ -341,28 +355,41 @@ contains
         
         doy = doy + 1
 
-        do jpngr=1,ngridcells
+        ! print*,'doy: ', doy
+        ! print*,'dom: ', dom
 
-          out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
-          out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+        nmissing = 0
+        do jpngr=1,domaininfo%maxgrid
+
+          ! print*,'jpngr ', jpngr
+          ! print*,'ilon ', ilon(jpngr)
+          ! print*,'ilat ', ilat(jpngr)
+          ! print*,'dimension of temp_arr ', size(temp_arr, 1), size(temp_arr, 2), size(temp_arr, 3)
+          if ( temp_arr(ilon(jpngr),ilat(jpngr),dom)/=ncfillvalue ) then
+            out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
+            out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+          else
+            nmissing = nmissing + 1
+            out_climate(jpngr)%dtemp(doy) = dummy
+            out_climate(jpngr)%dprec(doy) = dummy
+            grid(jpngr)%dogridcell = .false.
+          end if
 
         end do
 
       end do
 
-      stop 'ok'
+      ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
+      deallocate( temp_arr )
+      deallocate( prec_arr )
+      deallocate( snow_arr )
 
     end do
-
-    ! deallocate memory again
-    deallocate( temp_arr )
-    deallocate( prec_arr )
-    deallocate( snow_arr )
+    print*,'number of land cells without climate data: ', nmissing
 
     ! xxx test
-    do jpngr=1,ngridcells
+    do jpngr=1,domaininfo%maxgrid
 
-      out_climate(jpngr)%dprec(:) = 1111
       out_climate(jpngr)%dvpd(:)  = 1111
       if (in_ppfd) then
         out_climate(jpngr)%dppfd(:) = 1111
@@ -423,15 +450,16 @@ contains
 
 
   subroutine check( status )
-    
+    !/////////////////////////////////////////////////////////////////////////
+    ! Auxiliary subroutine handling NetCDF 
+    !-------------------------------------------------------------------------
+    use netcdf
     integer, intent (in) :: status
-    
     if ( status /= nf90_noerr ) then 
       print *, trim( nf90_strerror(status) )
       stop "Stopped"
     end if
-
-  end subroutine check     
+  end subroutine check    
 
 end module md_forcing
 

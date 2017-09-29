@@ -25,9 +25,15 @@ simsuite = 'ameriwue'
 ## Link directories
 ##--------------------------------------------------------------------
 ## link output direcories
+## ASCII output
 os.system( 'rm output' )
 os.system( 'mkdir ../output_' + simsuite + '_sofun' )
 call(['ln', '-svf', '../output_' + simsuite + '_sofun', 'output'])
+
+## NetCDF output
+os.system( 'rm output_nc' )
+os.system( 'mkdir ../output_nc_' + simsuite + '_sofun' )
+call(['ln', '-svf', '../output_nc_' + simsuite + '_sofun', 'output_nc'])
 
 ## use same site and simulation parameter files for cnmodel and cmodel simulations
 if simsuite == 'fluxnet_fixalloc':

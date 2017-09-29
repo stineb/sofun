@@ -1,7 +1,7 @@
 module md_interface
 
-  use md_params_core, only: maxgrid, nlu, ndayyear
-  use md_grid, only: gridtype
+  use md_params_core, only: maxgrid, nlu, ndayyear, dummy
+  use md_grid, only: gridtype, domaininfo_type
   use md_forcing, only: landuse_type, climate_type, ninput_type
   use md_params_domain, only: type_params_domain
   use md_params_soil, only: paramtype_soil
@@ -11,7 +11,7 @@ module md_interface
 
   private
   public interfacetype_biosphere, interface, initoutput_forcing, initio_forcing, &
-    getout_daily_forcing, writeout_ascii_forcing
+    initio_nc_forcing, getout_daily_forcing, writeout_ascii_forcing, writeout_nc_forcing
 
   type interfacetype_biosphere
     integer                                             :: year
@@ -22,7 +22,7 @@ module md_interface
     type( climate_type )  , dimension(:),   allocatable :: climate
     type( ninput_type)    , dimension(:),   allocatable :: ninput_field
     real                  , dimension(:,:), allocatable :: dfapar_field
-    type( type_params_domain )                          :: params_domain
+    type( domaininfo_type )                             :: domaininfo
     type( outtype_steering )                            :: steering
     type( paramstype_siml )                             :: params_siml
   end type interfacetype_biosphere
@@ -74,9 +74,8 @@ contains
 
   subroutine initio_forcing()
     !////////////////////////////////////////////////////////////////
-    ! Opens input/output files.
+    ! Opens ascii output files.
     !----------------------------------------------------------------
-
     ! local variables
     character(len=256) :: prefix
     character(len=256) :: filnam
@@ -112,6 +111,89 @@ contains
     999  stop 'INITIO: error opening output files'
 
   end subroutine initio_forcing
+
+
+  subroutine initio_nc_forcing()
+    !////////////////////////////////////////////////////////////////
+    ! Opens NetCDF output files.
+    !----------------------------------------------------------------
+    use netcdf
+
+    ! local variables
+    character(len=256) :: prefix
+    character(len=256) :: filnam
+
+    integer, parameter :: ndims = 2
+
+    integer :: ncid
+    integer :: londimid, latdimid
+    integer :: dimids(ndims)
+    ! integer :: start(ndims), count(ndims)
+    integer :: varid_temp
+
+    integer :: jpngr
+
+    ! real, dimension(:,:), allocatable :: dtemp_arr
+
+    ! xxx test
+    integer :: doy = 1
+
+    print*,'in initio_nc_forcing...'
+
+    prefix = "./output_nc/"//trim(interface%params_siml%runname)
+
+    ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
+    ! overwrite this file, if it already exists.
+    filnam=trim(prefix)//'.d.temp.nc'
+    call check( nf90_create( trim(filnam), NF90_CLOBBER, ncid ) )
+
+    ! Define the dimensions. NetCDF will hand back an ID for each. 
+    call check( nf90_def_dim( ncid, "lon", size(interface%domaininfo%lon), londimid ) )
+    call check( nf90_def_dim( ncid, "lat", size(interface%domaininfo%lat), latdimid ) )
+
+    print*,'3'
+
+    ! The dimids array is used to pass the IDs of the dimensions of
+    ! the variables. Note that in fortran arrays are stored in
+    ! column-major format.
+    dimids =  (/ latdimid, londimid /)
+
+    ! Define the variable. The type of the variable in this case is
+    ! NF90_DOUBLE.
+    call check( nf90_def_var( ncid, "dtemp", NF90_FLOAT, dimids, varid_temp ) )
+
+    ! End define mode. This tells netCDF we are done defining metadata.
+    call check( nf90_enddef( ncid ) )
+
+    print*,'4'
+
+    ! xxx test
+    doy = 1
+
+    ! Write the data, gridcell by gridcell
+    do jpngr=1,size(interface%grid)
+      if (interface%grid(jpngr)%dogridcell) then
+        call check( nf90_put_var( ncid, varid_temp, interface%climate(jpngr)%dtemp(1), start = (/ interface%grid(jpngr)%ilat, interface%grid(jpngr)%ilon /) ) )
+      end if
+    end do
+
+    print*,'5'
+
+    ! ! Write the data to the file. Although netCDF supports
+    ! ! reading and writing subsets of data, in this case we write all the
+    ! ! data in one operation.
+    ! call check( nf90_put_var( ncid, varid_temp, dtemp_arr ) )
+
+    print*,'6'
+
+    ! Close the file. This frees up any internal netCDF resources
+    ! associated with the file, and flushes any buffers.
+    call check( nf90_close( ncid ) )
+    print*,'6'
+
+    stop 'check the nc file'
+
+  end subroutine initio_nc_forcing
 
 
   subroutine getout_daily_forcing( jpngr, moy, doy )
@@ -208,8 +290,21 @@ contains
     !/////////////////////////////////////////////////////////////////////////
     ! Write NetCDF output
     !-------------------------------------------------------------------------
+    print*,'writeout_nc_forcing: doing nothing here'
 
   end subroutine writeout_nc_forcing
 
+
+  subroutine check( status )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Auxiliary subroutine handling NetCDF 
+    !-------------------------------------------------------------------------
+    use netcdf
+    integer, intent (in) :: status
+    if ( status /= nf90_noerr ) then 
+      print *, trim( nf90_strerror(status) )
+      stop "Stopped"
+    end if
+  end subroutine check  
 
 end module md_interface
