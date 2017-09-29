@@ -149,8 +149,6 @@ contains
   subroutine writeout_ascii_forcing()
     !/////////////////////////////////////////////////////////////////////////
     ! Write daily ASCII output
-    ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
-    ! contact: b.stocker@imperial.ac.uk
     !-------------------------------------------------------------------------
     ! use md_params_siml, only: spinup, interface%params_siml%daily_out_startyr, &
     use md_params_core, only: ndayyear
@@ -204,6 +202,14 @@ contains
     999     format (F20.8,F20.8)
 
   end subroutine writeout_ascii_forcing
+
+
+  subroutine writeout_nc_forcing
+    !/////////////////////////////////////////////////////////////////////////
+    ! Write NetCDF output
+    !-------------------------------------------------------------------------
+
+  end subroutine writeout_nc_forcing
 
 
 end module md_interface

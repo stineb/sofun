@@ -218,12 +218,17 @@ contains
       call getout_annual_gpp( jpngr )
       
       !----------------------------------------------------------------
-      ! Write to output
+      ! Write to ascii output
       !----------------------------------------------------------------
       call writeout_ascii_waterbal()
       call writeout_ascii_gpp()
       call writeout_ascii_plant()
       call writeout_ascii_forcing()
+
+      !----------------------------------------------------------------
+      ! Write to NetCDF output
+      !----------------------------------------------------------------
+      call writeout_nc_forcing()
 
     end do gridcellloop
 
