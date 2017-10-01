@@ -26,6 +26,7 @@ module md_gpp
   public dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
     initdaily_gpp, gpp, getlue, getout_daily_gpp, getout_annual_gpp, &
     writeout_ascii_gpp, outtype_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd
+    ! initio_nc_gpp, writeout_nc_gpp
 
   !----------------------------------------------------------------
   ! Module-specific state variables
@@ -1467,6 +1468,64 @@ contains
     888  stop 'INITIO_GPP: error opening output files'
 
   end subroutine initio_gpp
+
+
+  ! subroutine initio_nc_gpp()
+  !   !////////////////////////////////////////////////////////////////
+  !   ! Opens NetCDF output files.
+  !   !----------------------------------------------------------------
+  !   use netcdf
+
+  !   ! local variables
+  !   character(len=256) :: prefix
+
+  !   integer, parameter :: ndims = 2
+
+  !   integer :: ncid
+  !   integer :: varid_temp
+  !   integer :: londimid, latdimid
+  !   integer :: dimids(ndims)
+
+  !   integer :: jpngr
+
+  !   ! xxx test
+  !   integer :: doy = 1
+
+  !   if (interface%params_siml%lncoutdtemp) then
+
+  !     prefix = "./output_nc/"//trim(interface%params_siml%runname)
+
+  !     ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
+  !     ! overwrite this file, if it already exists.
+  !     ncoutfilnam_temp = trim(prefix)//'.d.temp.nc'
+  !     call check( nf90_create( trim(ncoutfilnam_temp), NF90_CLOBBER, ncid ) )
+
+  !     ! Define the dimensions. NetCDF will hand back an ID for each. 
+  !     call check( nf90_def_dim( ncid, "lon", size(interface%domaininfo%lon), londimid ) )
+  !     call check( nf90_def_dim( ncid, "lat", size(interface%domaininfo%lat), latdimid ) )
+
+  !     ! The dimids array is used to pass the IDs of the dimensions of
+  !     ! the variables. Note that in fortran arrays are stored in
+  !     ! column-major format.
+  !     ! Option A
+  !     ! dimids =  (/ latdimid, londimid /)
+  !     ! Option B
+  !     dimids =  (/ londimid, latdimid /)
+
+  !     ! Define the variable. The type of the variable in this case is
+  !     ! NF90_DOUBLE.
+  !     call check( nf90_def_var( ncid, varnam_temp, NF90_FLOAT, dimids, varid_temp ) )
+
+  !     ! End define mode. This tells netCDF we are done defining metadata.
+  !     call check( nf90_enddef( ncid ) )
+
+  !     ! Close the file. This frees up any internal netCDF resources
+  !     ! associated with the file, and flushes any buffers.
+  !     call check( nf90_close( ncid ) )
+
+  !   end if
+
+  ! end subroutine initio_nc_gpp
 
 
   subroutine initoutput_gpp( ngridcells )
