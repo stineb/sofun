@@ -82,15 +82,15 @@ contains
       call initio_forcing()
       if (verbose) print*, '... done'
 
-      !----------------------------------------------------------------
-      ! Open NetCDF output files
-      !----------------------------------------------------------------
-      if (verbose) print*, 'initio_nc_() ...'
-      call initio_nc_forcing()
-      ! call initio_nc_gpp()
-      if (verbose) print*, '... done'
-
     endif 
+
+    !----------------------------------------------------------------
+    ! Open NetCDF output files (one for each year)
+    !----------------------------------------------------------------
+    if (verbose) print*, 'initio_nc_() ...'
+    call initio_nc_forcing()
+    ! call initio_nc_gpp()
+    if (verbose) print*, '... done'
 
     !----------------------------------------------------------------
     ! Initialise output variables for this year
