@@ -227,22 +227,23 @@ contains
         !----------------------------------------------------------------
         call getout_annual_plant( plant(:,jpngr), jpngr )
         call getout_annual_gpp( jpngr )
-        
-        !----------------------------------------------------------------
-        ! Write to ascii output
-        !----------------------------------------------------------------
-        call writeout_ascii_waterbal()
-        call writeout_ascii_gpp()
-        call writeout_ascii_plant()
-        call writeout_ascii_forcing()
-
-        !----------------------------------------------------------------
-        ! Write to NetCDF output
-        !----------------------------------------------------------------
-        call writeout_nc_forcing()
 
       end if
     end do gridcellloop
+
+    !----------------------------------------------------------------
+    ! Write to ascii output
+    !----------------------------------------------------------------
+    call writeout_ascii_waterbal()
+    call writeout_ascii_gpp()
+    call writeout_ascii_plant()
+    call writeout_ascii_forcing()
+
+    !----------------------------------------------------------------
+    ! Write to NetCDF output
+    !----------------------------------------------------------------
+    call writeout_nc_forcing()
+
 
     ! xxx insignificant
     c_uptake = 0.0

@@ -320,7 +320,7 @@ contains
     out_getpar_siml%loutdninorg    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdninorg' )
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
     out_getpar_siml%loutdtemp      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp' )
-    
+
     ! boolean for ascii output writing (module variables)
     out_getpar_siml%loutplant      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
     out_getpar_siml%loutalloc      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutalloc' )

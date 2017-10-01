@@ -27,6 +27,7 @@ module md_grid
     integer, dimension(:,:), allocatable :: gridarray
     real, dimension(:), allocatable :: lon
     real, dimension(:), allocatable :: lat
+    real :: landarea
   end type domaininfo_type
 
   type gridtype
@@ -35,6 +36,8 @@ module md_grid
     real :: lon
     real :: lat
     real :: elv
+    real :: landfrac
+    real :: area
     integer :: soilcode
     logical :: dogridcell
   end type gridtype
@@ -159,11 +162,11 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Defines grid variables
     !----------------------------------------------------------------
-    use md_sofunutils, only: getparreal
+    use md_sofunutils, only: getparreal, area
     use md_params_domain, only: type_params_domain
 
     ! arguments
-    type( domaininfo_type ), intent(in) :: domaininfo
+    type( domaininfo_type ), intent(inout) :: domaininfo
 
     ! function return variable
     type( gridtype ), allocatable, dimension(:) :: out_grid
@@ -171,6 +174,7 @@ contains
     ! local variables
     integer :: jpngr, ilon, ilat
     integer :: maxgrid_test
+    real :: landarea = 0.0
 
     allocate( out_grid(domaininfo%maxgrid ) )
 
@@ -183,6 +187,9 @@ contains
           out_grid(jpngr)%ilat = ilat
           out_grid(jpngr)%lon = domaininfo%lon(ilon)
           out_grid(jpngr)%lat = domaininfo%lat(ilat)
+          out_grid(jpngr)%landfrac = 1.0 - domaininfo%gridarray(ilon,ilat)
+          out_grid(jpngr)%area = area( domaininfo%lat(ilat), dx=domaininfo%dlon, dy=domaininfo%dlat )
+          landarea = landarea + out_grid(jpngr)%landfrac * out_grid(jpngr)%area
         end if
       end do
     end do
@@ -190,6 +197,9 @@ contains
     out_grid(:)%dogridcell = .true.
     out_grid(:)%elv = 100.0
     out_grid(:)%soilcode = 1
+
+    ! complement domaininfo here in order to avoid passing too many large arrays around with domaininfo
+    domaininfo%landarea = landarea
 
   end function getgrid
 

@@ -66,6 +66,7 @@ contains
       readyear = forcingyear
     end if
     ! write(0,*) 'GETCO2: use CO2 data of year ', readyear
+    print*,'CO2: reading file:', 'input/global/co2/'//trim(sitename)//'/'//trim(co2_forcing_file)
     pco2 = getvalreal( 'global/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
 
   end function getco2
@@ -194,7 +195,7 @@ contains
     integer :: varid_temp, varid_prec, varid_snow, varid_vpd, varid_fsun, varid_nrad, varid_ppfd
     integer :: latdimid, londimid, recdimid, status
     integer, dimension(100000), save :: ilon, ilat
-    integer :: ilat_arr, ilon_arr, nlat_arr, nlon_arr, nrec_arr
+    integer, save :: ilat_arr, ilon_arr, nlat_arr, nlon_arr, nrec_arr
     real, dimension(:,:,:), allocatable :: temp_arr      ! temperature, array read from NetCDF file in K
     real, dimension(:,:,:), allocatable :: prec_arr      ! precipitation, array read from NetCDF file in kg/m2/s
     real, dimension(:,:,:), allocatable :: snow_arr      ! snow fall, array read from NetCDF file in kg/m2/s
@@ -297,58 +298,58 @@ contains
 
     end if
 
-
     !----------------------------------------------------------------    
     ! Read climate fields for each month (and day) this year
     !----------------------------------------------------------------
     doy = 0
     do moy=1,nmonth
 
-      write(moy_char,888) moy
+      ! write(moy_char,888) moy
 
-      ! ! xxx test
-      ! print*,'time: reading january all the time'
-      ! write(moy_char,888) 1
+      ! xxx test
+      print*,'time: reading january all the time'
+      write(moy_char,888) 1
 
       ! open NetCDF files to get ncid_*
       ! temperature
       filnam = './input/global/climate/temp/Tair_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_temp ) )
 
-      ! precipitation (rain)
-      filnam = './input/global/climate/prec/Rainf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
-      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_prec ) )
+      ! ! precipitation (rain)
+      ! filnam = './input/global/climate/prec/Rainf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
+      ! call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_prec ) )
 
-      ! precipitation (snow)
-      filnam = './input/global/climate/prec/Snowf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
-      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_snow ) )
+      ! ! precipitation (snow)
+      ! filnam = './input/global/climate/prec/Snowf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
+      ! call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_snow ) )
 
       ! get dimension IDs
       call check( nf90_inq_dimid( ncid_temp, recname, recdimid ) )
       call check( nf90_inquire_dimension( ncid_temp, recdimid, len = nrec_arr ) )
 
       ! allocate size of output array
+      if (allocated(temp_arr)) deallocate( temp_arr )
       allocate( temp_arr(nlon_arr,nlat_arr,nrec_arr) )
-      allocate( prec_arr(nlon_arr,nlat_arr,nrec_arr) )
-      allocate( snow_arr(nlon_arr,nlat_arr,nrec_arr) )
+      ! allocate( prec_arr(nlon_arr,nlat_arr,nrec_arr) )
+      ! allocate( snow_arr(nlon_arr,nlat_arr,nrec_arr) )
 
       ! Get the varid of the data variable, based on its name
       call check( nf90_inq_varid( ncid_temp, "Tair", varid_temp ) )
-      call check( nf90_inq_varid( ncid_prec, "Rainf", varid_prec ) )
-      call check( nf90_inq_varid( ncid_snow, "Snowf", varid_snow ) )
+      ! call check( nf90_inq_varid( ncid_prec, "Rainf", varid_prec ) )
+      ! call check( nf90_inq_varid( ncid_snow, "Snowf", varid_snow ) )
 
       ! Read the full array data
       call check( nf90_get_var( ncid_temp, varid_temp, temp_arr ) )
-      call check( nf90_get_var( ncid_prec, varid_prec, prec_arr ) )
-      call check( nf90_get_var( ncid_snow, varid_snow, snow_arr ) )
+      ! call check( nf90_get_var( ncid_prec, varid_prec, prec_arr ) )
+      ! call check( nf90_get_var( ncid_snow, varid_snow, snow_arr ) )
 
       ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
       call check( nf90_get_att( ncid_temp, varid_temp, "_FillValue", ncfillvalue ) )
 
       ! close NetCDF files
       call check( nf90_close( ncid_temp ) )
-      call check( nf90_close( ncid_prec ) )
-      call check( nf90_close( ncid_snow ) )
+      ! call check( nf90_close( ncid_prec ) )
+      ! call check( nf90_close( ncid_snow ) )
 
       ! read from array to define climate type 
       do dom=1,ndaymonth(moy)
@@ -361,13 +362,9 @@ contains
         nmissing = 0
         do jpngr=1,domaininfo%maxgrid
 
-          ! print*,'jpngr ', jpngr
-          ! print*,'ilon ', ilon(jpngr)
-          ! print*,'ilat ', ilat(jpngr)
-          ! print*,'dimension of temp_arr ', size(temp_arr, 1), size(temp_arr, 2), size(temp_arr, 3)
           if ( temp_arr(ilon(jpngr),ilat(jpngr),dom)/=ncfillvalue ) then
             out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
-            out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            ! out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
           else
             nmissing = nmissing + 1
             out_climate(jpngr)%dtemp(doy) = dummy
@@ -381,8 +378,8 @@ contains
 
       ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
       deallocate( temp_arr )
-      deallocate( prec_arr )
-      deallocate( snow_arr )
+      ! deallocate( prec_arr )
+      ! deallocate( snow_arr )
 
     end do
     print*,'number of land cells without climate data: ', nmissing
