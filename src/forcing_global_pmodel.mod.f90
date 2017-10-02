@@ -355,16 +355,9 @@ contains
         
         doy = doy + 1
 
-        ! print*,'doy: ', doy
-        ! print*,'dom: ', dom
-
         nmissing = 0
         do jpngr=1,domaininfo%maxgrid
 
-          ! print*,'jpngr ', jpngr
-          ! print*,'ilon ', ilon(jpngr)
-          ! print*,'ilat ', ilat(jpngr)
-          ! print*,'dimension of temp_arr ', size(temp_arr, 1), size(temp_arr, 2), size(temp_arr, 3)
           if ( temp_arr(ilon(jpngr),ilat(jpngr),dom)/=ncfillvalue ) then
             out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
             out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
