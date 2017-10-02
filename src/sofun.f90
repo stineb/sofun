@@ -43,7 +43,7 @@ program main
   ! SR getpar_siml is defined in _params_siml.mod.F
   !----------------------------------------------------------------
   print*,'starting'
-  interface%params_siml = getpar_siml( trim(runname) )
+  interface%params_siml = getpar_siml( trim(runname) )    
 
   !----------------------------------------------------------------
   ! GET SITE PARAMETERS AND INPUT DATA

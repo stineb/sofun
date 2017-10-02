@@ -908,6 +908,29 @@ contains
 
   end function getparchar
 
+
+  function area( lat, dx, dy ) result( out_area )
+    !////////////////////////////////////////////////////////////////
+    ! Calculates grid cell area in m2 on a spherical Earth
+    !----------------------------------------------------------------
+    use md_params_core, only: pi
+
+    ! arguments
+    real, intent(in) :: lat      ! latitude (degrees N)
+    real, intent(in) :: dx       ! resolution in longitude (degrees)
+    real, intent(in) :: dy       ! resolution in latitude (degrees)
+
+    ! function return variable
+    real :: out_area             ! gridcell surface area (m2)
+
+    ! local variables
+    real, parameter :: r_earth = 6370000
+
+    out_area = 4.0 * r_earth**2 * 0.5 * dx * pi / 180.0 * cos( abs(lat) * pi / 180.0 ) * sin( 0.5 * dy * pi / 180.0 )    
+
+  end function area
+
+
  !  subroutine setreal(filename,paraname,default,paravalue)
  !          !////////////////////////////////////////////////////////////////
  !          ! "Low-level" SR for reading/defining parameter values from text file

@@ -40,6 +40,12 @@ module md_interface
   !----------------------------------------------------------------
   real, allocatable, dimension(:,:) :: outdtemp
 
+  !----------------------------------------------------------------
+  ! Module-specific NetCDF output file and variable names
+  !----------------------------------------------------------------
+  character(len=256) :: ncoutfilnam_temp
+  character (len = *), parameter :: TEMP_NAME="temperature"
+
   ! !----------------------------------------------------------------
   ! ! Module-specific annual output variables
   ! !----------------------------------------------------------------
@@ -91,21 +97,6 @@ contains
       open(950,file=filnam,err=999,status='unknown')
     end if 
 
-    ! !////////////////////////////////////////////////////////////////
-    ! ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
-    ! !----------------------------------------------------------------
-    ! if (interface%params_siml%loutforcing) then
-
-    !   ! ANNUAL MEAN TEMPERATURE (DEG C) 
-    !   filnam=trim(prefix)//'.a.temp.out'
-    !   open(951,file=filnam,err=999,status='unknown')
-
-    !   ! ANNUAL TOTAL N INPUT 
-    !   filnam=trim(prefix)//'.a.nin.out'
-    !   open(952,file=filnam,err=999,status='unknown')
-
-    ! end if
-
     return
 
     999  stop 'INITIO: error opening output files'
@@ -121,77 +112,102 @@ contains
 
     ! local variables
     character(len=256) :: prefix
-    character(len=256) :: filnam
-
-    integer, parameter :: ndims = 2
 
     integer :: ncid
-    integer :: londimid, latdimid
-    integer :: dimids(ndims)
-    ! integer :: start(ndims), count(ndims)
+    integer, parameter :: ndims = 4
+
+    integer :: londimid, latdimid, doydimid, yeardimid
+
+    character (len = *), parameter :: LAT_NAME = "latitude"
+    character (len = *), parameter :: LON_NAME = "longitude"
+    character (len = *), parameter :: DOY_NAME = "doy"
+    character (len = *), parameter :: YEAR_NAME = "year"
+
+    ! In addition to the latitude and longitude dimensions, we will also
+    ! create latitude and longitude netCDF variables which will hold the
+    ! actual latitudes and longitudes. Since they hold data about the
+    ! coordinate system, the netCDF term for these is: "coordinate
+    ! variables."
+    integer :: varid_lat, varid_lon, varid_doy, varid_year
+
+    ! It's good practice for each variable to carry a "units" attribute.
+    character (len = *), parameter :: UNITS = "units"
+    character (len = *), parameter :: TEMP_UNITS = "degrees Celsius"
+    character (len = *), parameter :: LAT_UNITS = "degrees_north"
+    character (len = *), parameter :: LON_UNITS = "degrees_east"
+
     integer :: varid_temp
+    integer :: dimids(ndims)
+    integer :: jpngr, doy
+    integer, dimension(ndayyear) :: doy_vals
 
-    integer :: jpngr
+    doy_vals = (/ (doy, doy = 1, ndayyear) /)
 
-    ! real, dimension(:,:), allocatable :: dtemp_arr
+    if (interface%params_siml%lncoutdtemp) then
 
-    ! xxx test
-    integer :: doy = 1
+      prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
-    print*,'in initio_nc_forcing...'
+      ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
+      ! overwrite this file, if it already exists.
+      ncoutfilnam_temp = trim(prefix)//'.d.temp.nc'
+      call check( nf90_create( trim(ncoutfilnam_temp), NF90_CLOBBER, ncid ) )
 
-    prefix = "./output_nc/"//trim(interface%params_siml%runname)
+      ! Define the dimensions. NetCDF will hand back an ID for each. 
+      call check( nf90_def_dim( ncid, LON_NAME,  interface%domaininfo%nlon, londimid  ) )
+      call check( nf90_def_dim( ncid, LAT_NAME,  interface%domaininfo%nlat, latdimid  ) )
+      call check( nf90_def_dim( ncid, DOY_NAME,  ndayyear,                  doydimid  ) )
+      call check( nf90_def_dim( ncid, YEAR_NAME, 1,                         yeardimid ) )
 
-    ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
-    ! overwrite this file, if it already exists.
-    filnam=trim(prefix)//'.d.temp.nc'
-    call check( nf90_create( trim(filnam), NF90_CLOBBER, ncid ) )
+      ! Define the coordinate variables. They will hold the coordinate
+      ! information, that is, the latitudes and longitudes. A varid is
+      ! returned for each.
+      call check( nf90_def_var( ncid, LAT_NAME,  NF90_REAL, latdimid,  varid_lat ) )
+      call check( nf90_def_var( ncid, LON_NAME,  NF90_REAL, londimid,  varid_lon ) )
+      call check( nf90_def_var( ncid, DOY_NAME,  NF90_INT,  doydimid,  varid_doy ) )
+      call check( nf90_def_var( ncid, YEAR_NAME, NF90_INT,  yeardimid, varid_year ) )
 
-    ! Define the dimensions. NetCDF will hand back an ID for each. 
-    call check( nf90_def_dim( ncid, "lon", size(interface%domaininfo%lon), londimid ) )
-    call check( nf90_def_dim( ncid, "lat", size(interface%domaininfo%lat), latdimid ) )
+      ! Assign units attributes to coordinate var data. This attaches a
+      ! text attribute to each of the coordinate variables, containing the
+      ! units.
+      call check( nf90_put_att( ncid, varid_lat, UNITS, LAT_UNITS ) )
+      call check( nf90_put_att( ncid, varid_lon, UNITS, LON_UNITS ) )
 
-    print*,'3'
+      ! The dimids array is used to pass the IDs of the dimensions of
+      ! the variables. Note that in fortran arrays are stored in
+      ! column-major format.
+      ! Option A
+      ! dimids =  (/ latdimid, londimid /)
+      ! Option B
+      dimids =  (/ londimid, latdimid, doydimid, yeardimid /)
 
-    ! The dimids array is used to pass the IDs of the dimensions of
-    ! the variables. Note that in fortran arrays are stored in
-    ! column-major format.
-    dimids =  (/ latdimid, londimid /)
+      ! Define the variable. The type of the variable in this case is
+      ! NF90_DOUBLE.
+      call check( nf90_def_var( ncid, TEMP_NAME, NF90_REAL, dimids, varid_temp ) )
 
-    ! Define the variable. The type of the variable in this case is
-    ! NF90_DOUBLE.
-    call check( nf90_def_var( ncid, "dtemp", NF90_FLOAT, dimids, varid_temp ) )
+      ! Define some attributes
+      ! variable-specific
+      call check( nf90_put_att( ncid, varid_temp, UNITS, TEMP_UNITS ) )
+      call check( nf90_put_att( ncid, varid_temp, "_FillValue", dummy ) )
+      call check( nf90_put_att( ncid, varid_temp, "long_name", "daily average 2 m temperature" ) )
 
-    ! End define mode. This tells netCDF we are done defining metadata.
-    call check( nf90_enddef( ncid ) )
+      ! global
+      call check( nf90_put_att( ncid, NF90_GLOBAL, "title", "SOFUN GP-model output, module md_interface" ) )
 
-    print*,'4'
+      ! End define mode. This tells netCDF we are done defining metadata.
+      call check( nf90_enddef( ncid ) )
 
-    ! xxx test
-    doy = 1
+      ! Write the coordinate variable data. This will put the latitudes
+      ! and longitudes of our data grid into the netCDF file.
+      call check( nf90_put_var( ncid, varid_lat,  interface%domaininfo%lat ) )
+      call check( nf90_put_var( ncid, varid_lon,  interface%domaininfo%lon ) )
+      call check( nf90_put_var( ncid, varid_doy,  doy_vals ) )
+      call check( nf90_put_var( ncid, varid_year, interface%steering%outyear ) )
 
-    ! Write the data, gridcell by gridcell
-    do jpngr=1,size(interface%grid)
-      if (interface%grid(jpngr)%dogridcell) then
-        call check( nf90_put_var( ncid, varid_temp, interface%climate(jpngr)%dtemp(1), start = (/ interface%grid(jpngr)%ilat, interface%grid(jpngr)%ilon /) ) )
-      end if
-    end do
+      ! Close the file. This frees up any internal netCDF resources
+      ! associated with the file, and flushes any buffers.
+      call check( nf90_close( ncid ) )
 
-    print*,'5'
-
-    ! ! Write the data to the file. Although netCDF supports
-    ! ! reading and writing subsets of data, in this case we write all the
-    ! ! data in one operation.
-    ! call check( nf90_put_var( ncid, varid_temp, dtemp_arr ) )
-
-    print*,'6'
-
-    ! Close the file. This frees up any internal netCDF resources
-    ! associated with the file, and flushes any buffers.
-    call check( nf90_close( ncid ) )
-    print*,'6'
-
-    stop 'check the nc file'
+    end if
 
   end subroutine initio_nc_forcing
 
@@ -237,11 +253,10 @@ contains
 
     ! local variables
     real :: itime
-    integer :: day, moy, jpngr
+    integer :: doy, moy, jpngr
+    real, dimension(ndayyear) :: outdtemp_tot
 
-    ! xxx implement this: sum over gridcells? single output per gridcell?
-    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
-    jpngr = 1
+    outdtemp_tot(:) = 0.0
 
     if (nlu>1) stop 'Output only for one LU category implemented.'
 
@@ -250,47 +265,97 @@ contains
     ! Write daily value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    if ( .not. interface%steering%spinup &
-      .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+    if (interface%params_siml%loutdtemp) then
+      ! if ( .not. interface%steering%spinup &
+      !   .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+      !   .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      ! Write daily output only during transient simulation
-      do day=1,ndayyear
+        ! Write daily output only during transient simulation
+        do doy=1,ndayyear
 
-        ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
-        
-        if (interface%params_siml%loutdtemp ) write(950,999) itime, outdtemp(day,jpngr)
+          ! Get weighted average
+          do jpngr=1,size(interface%grid)
+            outdtemp_tot(doy) = outdtemp_tot(doy) + outdtemp(doy,jpngr) * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
+          end do
+          outdtemp_tot(doy) = outdtemp_tot(doy) / interface%domaininfo%landarea
 
-      end do
+          ! Define 'itime' as a decimal number corresponding to day in the year + year
+          itime = real( interface%steering%outyear ) + real( doy - 1 ) / real( ndayyear )
+          
+          write(950,999) itime, outdtemp_tot(doy)
+
+        end do
+      ! end if
     end if
-
-    ! !-------------------------------------------------------------------------
-    ! ! ANNUAL OUTPUT
-    ! ! Write annual value, summed over all PFTs / LUs
-    ! ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    ! !-------------------------------------------------------------------------
-    ! if (interface%params_siml%loutforcing) then
-
-    !   itime = real(interface%steering%outyear)
-
-    !   ! write(951,999) itime, outatemp(jpngr)
-    !   ! write(952,999) itime, sum(outanin(:,jpngr))
-
-    ! end if
 
     return
 
-    999     format (F20.8,F20.8)
+    999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_forcing
 
 
-  subroutine writeout_nc_forcing
+  subroutine writeout_nc_forcing()
     !/////////////////////////////////////////////////////////////////////////
     ! Write NetCDF output
     !-------------------------------------------------------------------------
-    print*,'writeout_nc_forcing: doing nothing here'
+    use netcdf
+
+    ! local variables
+    integer :: doy, jpngr
+    integer :: ncid
+    integer :: varid_temp
+
+    real, dimension(:,:,:,:), allocatable :: outarr
+
+    ! if ( .not. interface%steering%spinup &
+    !       .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+    !       .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
+      if (interface%params_siml%lncoutdtemp) then
+
+        allocate( outarr(interface%domaininfo%nlon,interface%domaininfo%nlat,ndayyear,1) )
+        outarr(:,:,:,:) = dummy        
+
+        ! open NetCDF output file
+        call check( nf90_open( trim(ncoutfilnam_temp), NF90_WRITE, ncid ) )
+
+        ! Get the varid of the data variable, based on its name
+        call check( nf90_inq_varid( ncid, TEMP_NAME, varid_temp ) )
+
+        ! Write the data, gridcell by gridcell
+        do jpngr=1,size(interface%grid)
+          if (interface%grid(jpngr)%dogridcell) then
+
+            ! do doy=1,ndayyear
+              ! option A
+              ! call check( nf90_put_var( ncid, varid_temp, interface%climate(jpngr)%dtemp(1), start = (/ interface%grid(jpngr)%ilat, interface%grid(jpngr)%ilon /) ) )
+
+              ! option B
+              ! call check( nf90_put_var( ncid, varid_temp, outdtemp(doy,jpngr), start = (/ doy, interface%grid(jpngr)%ilon, interface%grid(jpngr)%ilat /) ) )            
+            ! end do
+            ! call check( nf90_put_var( ncid, varid_temp, outdtemp(:,jpngr), start = (/ interface%grid(jpngr)%ilon, interface%grid(jpngr)%ilat, 1 /), count = (/ 1, 1, ndayyear /) ) )
+
+            ! populate array
+            outarr(interface%grid(jpngr)%ilon,interface%grid(jpngr)%ilat,:,1) = outdtemp(:,jpngr)
+
+          end if
+        end do
+
+        ! write the data into the file
+        call check( nf90_put_var( ncid, varid_temp, outarr(:,:,:,:) ) )
+
+        ! close NetCDF output file
+        call check( nf90_close( ncid ) )
+
+        ! deallocate memory
+        deallocate( outarr )
+
+      end if
+
+      stop 'ok, written NetCDF file now.'
+
+    ! end if
 
   end subroutine writeout_nc_forcing
 
@@ -305,6 +370,7 @@ contains
       print *, trim( nf90_strerror(status) )
       stop "Stopped"
     end if
-  end subroutine check  
+
+  end subroutine check
 
 end module md_interface
