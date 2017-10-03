@@ -14,6 +14,7 @@ module md_forcing
     getvalreal, monthly2daily_weather, monthly2daily
   use md_grid, only: gridtype, domaininfo_type
   use netcdf
+  use md_io_netcdf, only: check
 
   implicit none
 
@@ -195,7 +196,7 @@ contains
     integer :: varid_temp, varid_prec, varid_snow, varid_vpd, varid_fsun, varid_nrad, varid_ppfd
     integer :: latdimid, londimid, recdimid, status
     integer, dimension(100000), save :: ilon, ilat
-    integer, save :: ilat_arr, ilon_arr, nlat_arr, nlon_arr, nrec_arr
+    integer, save :: nlon_arr, nlat_arr, ilat_arr, ilon_arr, nrec_arr
     real, dimension(:,:,:), allocatable :: temp_arr      ! temperature, array read from NetCDF file in K
     real, dimension(:,:,:), allocatable :: prec_arr      ! precipitation, array read from NetCDF file in kg/m2/s
     real, dimension(:,:,:), allocatable :: snow_arr      ! snow fall, array read from NetCDF file in kg/m2/s
@@ -223,6 +224,9 @@ contains
 
       write(moy_char,888) moy
       filnam = './input/global/climate/temp/Tair_daily_WFDEI_'//climateyear_char//'01.nc'
+
+      ! out_arrsize_2D = get_arrsize_2D( filnam )
+
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_temp ) )
 
       ! get dimension ID for latitude
@@ -268,9 +272,14 @@ contains
       allocate( lon_arr(nlon_arr) )
       allocate( lat_arr(nlat_arr) )
 
+      ! Open the file
+      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_temp ) )
+
       ! Get longitude and latitude values
       call check( nf90_get_var( ncid_temp, londimid, lon_arr ) )
       call check( nf90_get_var( ncid_temp, latdimid, lat_arr ) )
+
+      call check( nf90_close( ncid_temp ) )
 
       ! Check if the resolution of the climate input files is identical to the model grid resolution
       dlon_clim = lon_arr(2) - lon_arr(1)
@@ -446,17 +455,17 @@ contains
   end function getlanduse
 
 
-  subroutine check( status )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Auxiliary subroutine handling NetCDF 
-    !-------------------------------------------------------------------------
-    use netcdf
-    integer, intent (in) :: status
-    if ( status /= nf90_noerr ) then 
-      print *, trim( nf90_strerror(status) )
-      stop "Stopped"
-    end if
-  end subroutine check    
+  ! subroutine check( status )
+  !   !/////////////////////////////////////////////////////////////////////////
+  !   ! Auxiliary subroutine handling NetCDF 
+  !   !-------------------------------------------------------------------------
+  !   use netcdf
+  !   integer, intent (in) :: status
+  !   if ( status /= nf90_noerr ) then 
+  !     print *, trim( nf90_strerror(status) )
+  !     stop "Stopped"
+  !   end if
+  ! end subroutine check    
 
 end module md_forcing
 
