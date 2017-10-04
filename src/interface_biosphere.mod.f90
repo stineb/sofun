@@ -44,7 +44,7 @@ module md_interface
   ! Module-specific NetCDF output file and variable names
   !----------------------------------------------------------------
   character(len=256) :: ncoutfilnam_temp
-  character (len = *), parameter :: TEMP_NAME="temperature"
+  character(len=*), parameter :: TEMP_NAME="temp"
 
   ! !----------------------------------------------------------------
   ! ! Module-specific annual output variables
@@ -109,35 +109,14 @@ contains
     ! Opens NetCDF output files.
     !----------------------------------------------------------------
     use netcdf
+    use md_io_netcdf, only: init_nc_3D, check
 
     ! local variables
     character(len=256) :: prefix
 
-    integer :: ncid
-    integer, parameter :: ndims = 4
-
-    integer :: londimid, latdimid, doydimid, yeardimid
-
-    character (len = *), parameter :: LAT_NAME = "latitude"
-    character (len = *), parameter :: LON_NAME = "longitude"
     character (len = *), parameter :: DOY_NAME = "doy"
     character (len = *), parameter :: YEAR_NAME = "year"
 
-    ! In addition to the latitude and longitude dimensions, we will also
-    ! create latitude and longitude netCDF variables which will hold the
-    ! actual latitudes and longitudes. Since they hold data about the
-    ! coordinate system, the netCDF term for these is: "coordinate
-    ! variables."
-    integer :: varid_lat, varid_lon, varid_doy, varid_year
-
-    ! It's good practice for each variable to carry a "units" attribute.
-    character (len = *), parameter :: UNITS = "units"
-    character (len = *), parameter :: TEMP_UNITS = "degrees Celsius"
-    character (len = *), parameter :: LAT_UNITS = "degrees_north"
-    character (len = *), parameter :: LON_UNITS = "degrees_east"
-
-    integer :: varid_temp
-    integer :: dimids(ndims)
     integer :: jpngr, doy
     integer, dimension(ndayyear) :: doy_vals
 
@@ -150,62 +129,21 @@ contains
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
       ncoutfilnam_temp = trim(prefix)//'.d.temp.nc'
-      call check( nf90_create( trim(ncoutfilnam_temp), NF90_CLOBBER, ncid ) )
-
-      ! Define the dimensions. NetCDF will hand back an ID for each. 
-      call check( nf90_def_dim( ncid, LON_NAME,  interface%domaininfo%nlon, londimid  ) )
-      call check( nf90_def_dim( ncid, LAT_NAME,  interface%domaininfo%nlat, latdimid  ) )
-      call check( nf90_def_dim( ncid, DOY_NAME,  ndayyear,                  doydimid  ) )
-      call check( nf90_def_dim( ncid, YEAR_NAME, 1,                         yeardimid ) )
-
-      ! Define the coordinate variables. They will hold the coordinate
-      ! information, that is, the latitudes and longitudes. A varid is
-      ! returned for each.
-      call check( nf90_def_var( ncid, LAT_NAME,  NF90_REAL, latdimid,  varid_lat ) )
-      call check( nf90_def_var( ncid, LON_NAME,  NF90_REAL, londimid,  varid_lon ) )
-      call check( nf90_def_var( ncid, DOY_NAME,  NF90_INT,  doydimid,  varid_doy ) )
-      call check( nf90_def_var( ncid, YEAR_NAME, NF90_INT,  yeardimid, varid_year ) )
-
-      ! Assign units attributes to coordinate var data. This attaches a
-      ! text attribute to each of the coordinate variables, containing the
-      ! units.
-      call check( nf90_put_att( ncid, varid_lat, UNITS, LAT_UNITS ) )
-      call check( nf90_put_att( ncid, varid_lon, UNITS, LON_UNITS ) )
-
-      ! The dimids array is used to pass the IDs of the dimensions of
-      ! the variables. Note that in fortran arrays are stored in
-      ! column-major format.
-      ! Option A
-      ! dimids =  (/ latdimid, londimid /)
-      ! Option B
-      dimids =  (/ londimid, latdimid, doydimid, yeardimid /)
-
-      ! Define the variable. The type of the variable in this case is
-      ! NF90_DOUBLE.
-      call check( nf90_def_var( ncid, TEMP_NAME, NF90_REAL, dimids, varid_temp ) )
-
-      ! Define some attributes
-      ! variable-specific
-      call check( nf90_put_att( ncid, varid_temp, UNITS, TEMP_UNITS ) )
-      call check( nf90_put_att( ncid, varid_temp, "_FillValue", dummy ) )
-      call check( nf90_put_att( ncid, varid_temp, "long_name", "daily average 2 m temperature" ) )
-
-      ! global
-      call check( nf90_put_att( ncid, NF90_GLOBAL, "title", "SOFUN GP-model output, module md_interface" ) )
-
-      ! End define mode. This tells netCDF we are done defining metadata.
-      call check( nf90_enddef( ncid ) )
-
-      ! Write the coordinate variable data. This will put the latitudes
-      ! and longitudes of our data grid into the netCDF file.
-      call check( nf90_put_var( ncid, varid_lat,  interface%domaininfo%lat ) )
-      call check( nf90_put_var( ncid, varid_lon,  interface%domaininfo%lon ) )
-      call check( nf90_put_var( ncid, varid_doy,  doy_vals ) )
-      call check( nf90_put_var( ncid, varid_year, interface%steering%outyear ) )
-
-      ! Close the file. This frees up any internal netCDF resources
-      ! associated with the file, and flushes any buffers.
-      call check( nf90_close( ncid ) )
+      call init_nc_3D( filnam  = ncoutfilnam_temp, &
+                      nlon     = interface%domaininfo%nlon, &
+                      nlat     = interface%domaininfo%nlat, &
+                      nz       = ndayyear, &
+                      lon      = interface%domaininfo%lon, &
+                      lat      = interface%domaininfo%lat, &
+                      zvals    = doy_vals, &
+                      recvals  = interface%steering%outyear, &
+                      znam     = DOY_NAME, &
+                      recnam   = YEAR_NAME, &
+                      varnam   = TEMP_NAME, &
+                      varunits = "degrees Celsius", &
+                      longnam  = "daily average 2 m temperature", &
+                      title    = "SOFUN GP-model output, module md_interface" &
+                      )
 
     end if
 
@@ -300,6 +238,7 @@ contains
     ! Write NetCDF output
     !-------------------------------------------------------------------------
     use netcdf
+    use md_io_netcdf, only: write_nc_3D, check
 
     ! local variables
     integer :: doy, jpngr
@@ -317,13 +256,7 @@ contains
         allocate( outarr(interface%domaininfo%nlon,interface%domaininfo%nlat,ndayyear,1) )
         outarr(:,:,:,:) = dummy        
 
-        ! open NetCDF output file
-        call check( nf90_open( trim(ncoutfilnam_temp), NF90_WRITE, ncid ) )
-
-        ! Get the varid of the data variable, based on its name
-        call check( nf90_inq_varid( ncid, TEMP_NAME, varid_temp ) )
-
-        ! Write the data, gridcell by gridcell
+        ! Populate output array
         do jpngr=1,size(interface%grid)
           if (interface%grid(jpngr)%dogridcell) then
 
@@ -342,11 +275,7 @@ contains
           end if
         end do
 
-        ! write the data into the file
-        call check( nf90_put_var( ncid, varid_temp, outarr(:,:,:,:) ) )
-
-        ! close NetCDF output file
-        call check( nf90_close( ncid ) )
+        call write_nc_3D( ncoutfilnam_temp, TEMP_NAME, interface%domaininfo%nlon, interface%domaininfo%nlat, ndayyear, outarr(:,:,:,:)  )
 
         ! deallocate memory
         deallocate( outarr )
@@ -360,17 +289,17 @@ contains
   end subroutine writeout_nc_forcing
 
 
-  subroutine check( status )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Auxiliary subroutine handling NetCDF 
-    !-------------------------------------------------------------------------
-    use netcdf
-    integer, intent (in) :: status
-    if ( status /= nf90_noerr ) then 
-      print *, trim( nf90_strerror(status) )
-      stop "Stopped"
-    end if
+  ! subroutine check( status )
+  !   !/////////////////////////////////////////////////////////////////////////
+  !   ! Auxiliary subroutine handling NetCDF 
+  !   !-------------------------------------------------------------------------
+  !   use netcdf
+  !   integer, intent (in) :: status
+  !   if ( status /= nf90_noerr ) then 
+  !     print *, trim( nf90_strerror(status) )
+  !     stop "Stopped"
+  !   end if
 
-  end subroutine check
+  ! end subroutine check
 
 end module md_interface
