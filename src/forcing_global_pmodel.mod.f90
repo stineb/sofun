@@ -453,19 +453,7 @@ contains
     out_landuse%do_grharvest(:) = .false.
 
   end function getlanduse
-
-
-  ! subroutine check( status )
-  !   !/////////////////////////////////////////////////////////////////////////
-  !   ! Auxiliary subroutine handling NetCDF 
-  !   !-------------------------------------------------------------------------
-  !   use netcdf
-  !   integer, intent (in) :: status
-  !   if ( status /= nf90_noerr ) then 
-  !     print *, trim( nf90_strerror(status) )
-  !     stop "Stopped"
-  !   end if
-  ! end subroutine check    
+  
 
 end module md_forcing
 

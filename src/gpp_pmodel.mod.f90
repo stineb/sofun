@@ -26,8 +26,7 @@ module md_gpp
   public dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
     initdaily_gpp, gpp, getlue, getout_daily_gpp, getout_annual_gpp, &
     writeout_ascii_gpp, outtype_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd
-    ! initio_nc_gpp, writeout_nc_gpp
-
+    
   !----------------------------------------------------------------
   ! Module-specific state variables
   !----------------------------------------------------------------
@@ -1214,29 +1213,29 @@ contains
 
     ! Calculate lambda, (bar cm**3)/g:
     my_lambda = 1788.316 + &
-            21.55053*tc + &
-          -0.4695911*tc*tc + &
-       (3.096363e-3)*tc*tc*tc + &
-      -(7.341182e-6)*tc*tc*tc*tc
+                21.55053*tc + &
+              -0.4695911*tc*tc + &
+           (3.096363e-3)*tc*tc*tc + &
+      -1.0*(7.341182e-6)*tc*tc*tc*tc
 
     ! Calculate po, bar
     po = 5918.499 + & 
-             58.05267*tc + & 
-           -1.1253317*tc*tc + & 
-       (6.6123869e-3)*tc*tc*tc + & 
-      -(1.4661625e-5)*tc*tc*tc*tc
+                58.05267*tc + & 
+              -1.1253317*tc*tc + & 
+          (6.6123869e-3)*tc*tc*tc + & 
+     -1.0*(1.4661625e-5)*tc*tc*tc*tc
 
     ! Calculate vinf, cm**3/g
     vinf = 0.6980547 + &
-      -(7.435626e-4)*tc + &
-       (3.704258e-5)*tc*tc + &
-      -(6.315724e-7)*tc*tc*tc + &
-       (9.829576e-9)*tc*tc*tc*tc + &
-     -(1.197269e-10)*tc*tc*tc*tc*tc + &
-      (1.005461e-12)*tc*tc*tc*tc*tc*tc + &
-     -(5.437898e-15)*tc*tc*tc*tc*tc*tc*tc + &
-       (1.69946e-17)*tc*tc*tc*tc*tc*tc*tc*tc + &
-     -(2.295063e-20)*tc*tc*tc*tc*tc*tc*tc*tc*tc
+      -1.0*(7.435626e-4)*tc + &
+           (3.704258e-5)*tc*tc + &
+      -1.0*(6.315724e-7)*tc*tc*tc + &
+           (9.829576e-9)*tc*tc*tc*tc + &
+     -1.0*(1.197269e-10)*tc*tc*tc*tc*tc + &
+          (1.005461e-12)*tc*tc*tc*tc*tc*tc + &
+     -1.0*(5.437898e-15)*tc*tc*tc*tc*tc*tc*tc + &
+           (1.69946e-17)*tc*tc*tc*tc*tc*tc*tc*tc + &
+     -1.0*(2.295063e-20)*tc*tc*tc*tc*tc*tc*tc*tc*tc
 
     ! Convert pressure to bars (1 bar = 100000 Pa)
     pbar = (1e-5)*patm
@@ -1468,64 +1467,6 @@ contains
     888  stop 'INITIO_GPP: error opening output files'
 
   end subroutine initio_gpp
-
-
-  ! subroutine initio_nc_gpp()
-  !   !////////////////////////////////////////////////////////////////
-  !   ! Opens NetCDF output files.
-  !   !----------------------------------------------------------------
-  !   use netcdf
-
-  !   ! local variables
-  !   character(len=256) :: prefix
-
-  !   integer, parameter :: ndims = 2
-
-  !   integer :: ncid
-  !   integer :: varid_temp
-  !   integer :: londimid, latdimid
-  !   integer :: dimids(ndims)
-
-  !   integer :: jpngr
-
-  !   ! xxx test
-  !   integer :: doy = 1
-
-  !   if (interface%params_siml%lncoutdtemp) then
-
-  !     prefix = "./output_nc/"//trim(interface%params_siml%runname)
-
-  !     ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
-  !     ! overwrite this file, if it already exists.
-  !     ncoutfilnam_temp = trim(prefix)//'.d.temp.nc'
-  !     call check( nf90_create( trim(ncoutfilnam_temp), NF90_CLOBBER, ncid ) )
-
-  !     ! Define the dimensions. NetCDF will hand back an ID for each. 
-  !     call check( nf90_def_dim( ncid, "lon", size(interface%domaininfo%lon), londimid ) )
-  !     call check( nf90_def_dim( ncid, "lat", size(interface%domaininfo%lat), latdimid ) )
-
-  !     ! The dimids array is used to pass the IDs of the dimensions of
-  !     ! the variables. Note that in fortran arrays are stored in
-  !     ! column-major format.
-  !     ! Option A
-  !     ! dimids =  (/ latdimid, londimid /)
-  !     ! Option B
-  !     dimids =  (/ londimid, latdimid /)
-
-  !     ! Define the variable. The type of the variable in this case is
-  !     ! NF90_DOUBLE.
-  !     call check( nf90_def_var( ncid, varnam_temp, NF90_FLOAT, dimids, varid_temp ) )
-
-  !     ! End define mode. This tells netCDF we are done defining metadata.
-  !     call check( nf90_enddef( ncid ) )
-
-  !     ! Close the file. This frees up any internal netCDF resources
-  !     ! associated with the file, and flushes any buffers.
-  !     call check( nf90_close( ncid ) )
-
-  !   end if
-
-  ! end subroutine initio_nc_gpp
 
 
   subroutine initoutput_gpp( ngridcells )
