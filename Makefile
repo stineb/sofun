@@ -11,8 +11,8 @@
 # intel   - ifort compiler
 
 # PROFILE=gfortran
-PROFILE=pgi
-# PROFILE=intel
+# PROFILE=pgi
+PROFILE=intel
 
 ##################
 ## pgf profile ##
