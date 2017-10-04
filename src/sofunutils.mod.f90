@@ -716,6 +716,8 @@ contains
     integer :: filehandle
     character(len=40) :: readname, readvalue
 
+    print*,'reading real value for ', paraname
+
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
     9    read(filehandle,12,end=10)readname,readvalue
@@ -755,6 +757,8 @@ contains
     ! local variables
     integer :: filehandle
     character(len=40) :: readname, readvalue
+
+    print*,'reading integer for ', paraname
 
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
@@ -797,6 +801,8 @@ contains
     integer :: filehandle
     character(len=40) :: readname, readvalue
 
+    print*,'reading logical for ', paraname
+
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
     9    read(filehandle,12,end=10)readname,readvalue
@@ -833,6 +839,8 @@ contains
     integer :: filehandle,i
     character(len=40) :: readname
     character(len=1024) :: readvalue
+
+    print*, 'reading string for ', paraname
 
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)

@@ -28,11 +28,14 @@ module md_gpp
     writeout_ascii_gpp, outtype_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd
 
   !----------------------------------------------------------------
-  ! Public, module-specific state variables
+  ! Module-specific state variables
   !----------------------------------------------------------------
   real, dimension(npft) :: dtransp          ! daily transpiration [mm]
   real, dimension(npft) :: drd              ! daily dark respiration [gC/m2/d]
+  real, dimension(npft) :: dassim           ! daily leaf-level assimilation rate (per unit leaf area) [gC/m2/d]
+  real, dimension(npft) :: dgs              ! stomatal conductance (per unit leaf area, average daily) [mol H2O m-2 s-1]  
   real, dimension(npft) :: dvcmax_canop     ! canopy-level Vcmax [gCO2/m2-ground/s]
+  real, dimension(npft) :: dvcmax_leaf      ! leaf-level Vcmax [gCO2/m2-leaf/s]
 
   !-----------------------------------------------------------------------
   ! Known parameters, therefore hard-wired.
@@ -102,6 +105,10 @@ module md_gpp
     real :: gpp
     real :: gstar                 ! photorespiratory compensation point - Gamma-star (Pa)
     real :: chi                   ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
+    real :: ci                    ! leaf-internal partial pressure, (Pa)
+    real :: ca                    ! ambient partial pressure, (Pa)
+    real :: iwue                  ! intrinsic water use efficiency (unitless)
+    real :: gs_unitiabs           ! stomatal conductance to H2O, expressed per units absorbed light (mol H2O m-2 m-1 / (mol light m-2))
     real :: vcmax                 ! maximum carboxylation capacity per unit ground area (mol CO2 m-2 s-1)
     real :: vcmax25               ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
     real :: vcmax_unitfapar       ! Vcmax per fAPAR (mol CO2 m-2 s-1)
@@ -113,10 +120,10 @@ module md_gpp
     real :: actnv 
     real :: actnv_unitfapar 
     real :: actnv_unitiabs 
-    real :: lue                   ! light use efficiency (xxx units)
-    real :: transp                ! transpiration [g H2O (mol photons)-1]
-    real :: transp_unitfapar      ! transpiration per unit fAPAR [g H2O (mol photons)-1]
-    real :: transp_unitiabs       ! transpiration per unit light absorbed light [g H2O (mol photons)-1]
+    real :: lue                   ! light use efficiency (mol CO2 / mol photon)
+    ! real :: transp                ! transpiration [g H2O (mol photons)-1]
+    ! real :: transp_unitfapar      ! transpiration per unit fAPAR [g H2O (mol photons)-1]
+    ! real :: transp_unitiabs       ! transpiration per unit light absorbed light [g H2O (mol photons)-1]
   end type outtype_pmodel
 
   type outtype_lue
@@ -140,8 +147,12 @@ module md_gpp
   ! annual
   real, dimension(npft,maxgrid) :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
   real, dimension(npft,maxgrid) :: outavcmax25      ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
-  real, dimension(npft,maxgrid) :: outachi
-  real, dimension(npft,maxgrid) :: outalue
+  real, dimension(npft,maxgrid) :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
+  real, dimension(npft,maxgrid) :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
+  real, dimension(npft,maxgrid) :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
+  real, dimension(npft,maxgrid) :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (ppm)
+  real, dimension(npft,maxgrid) :: outags           ! stomatal conductance to H2O, mean across growing season, weighted by daily GPP (mol H2O m-2 s-1)
+  real, dimension(npft,maxgrid) :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP [micro-mol CO2 / mol H2O]
 
   ! These are stored as dayly variables for annual output
   ! at day of year when LAI is at its maximum.
@@ -187,7 +198,6 @@ contains
     ! print*,'solar%dppfd(doy)', solar%dppfd(doy)
     ! print*,'in GPP: out_pmodel(1)%lue', out_pmodel(1)%lue
 
-
     do pft=1,npft
 
       lu = params_pft_plant(pft)%lu_category
@@ -195,20 +205,29 @@ contains
       if ( plant(pft)%fapar_ind>0.0 ) then
 
         ! GPP
-        ! dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
-        dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
+        ! dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )
+        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp )
+
+        ! ! transpiration
+        ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, evap(lu)%cpa )
+        ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp )
 
         ! Dark respiration
-        ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, evap(lu)%cpa )
-        dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp )
-
-        ! transpiration
         ! drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, evap(lu)%cpa )
         drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp )
 
-        ! Vcmax (actually changes only monthly)
-        ! dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )
-        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp )
+        ! Leaf-level assimilation rate
+        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), dtemp )
+
+        ! stomatal conductance
+        dgs(pft) = calc_dgs( solar%dppfd(doy), out_pmodel(pft)%gs_unitiabs, solar%dayl(doy), dtemp )
+
+        ! Canopy-level Vcmax (actually changes only monthly)
+        ! dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
+        dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
+
+        ! Leaf-level Vcmax
+        dvcmax_leaf(pft) = out_pmodel(pft)%vcmax_unitiabs * solar%meanmppfd(moy)
 
       else  
 
@@ -216,6 +235,7 @@ contains
         drd(pft)          = 0.0
         dtransp(pft)      = 0.0
         dvcmax_canop(pft) = 0.0
+        dvcmax_leaf(pft)  = 0.0
 
       end if 
 
@@ -313,20 +333,20 @@ contains
   end function getlue
 
 
-  function calc_dgpp( fapar, acrown, dppfd, my_mlue, dtemp, cpalpha ) result( my_dgpp )
+  function calc_dgpp( fapar, acrown, dppfd, lue, dtemp, cpalpha ) result( my_dgpp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
     real, intent(in)           :: fapar    ! fraction of absorbed photosynthetically active radiation
     real, intent(in)           :: acrown   ! crown area (=1)
-    real, intent(in)           :: dppfd    ! phton flux density, mol/m2/d
-    real, intent(in)           :: my_mlue  ! light use efficiency
+    real, intent(in)           :: dppfd    ! daily total photon flux density, mol m-2
+    real, intent(in)           :: lue      ! light use efficiency
     real, intent(in)           :: dtemp    ! this day's air temperature, deg C
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
     ! function return variable
-    real :: my_dgpp
+    real :: my_dgpp                        ! Daily total gross primary productivity (gC m-2 d-1)
 
     ! local variables
     real :: fa
@@ -338,12 +358,70 @@ contains
     end if
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dgpp = fapar * acrown * dppfd * fa * my_mlue * ramp_gpp_lotemp( dtemp ) * c_molmass
+    my_dgpp = fapar * acrown * dppfd * fa * lue * ramp_gpp_lotemp( dtemp ) * c_molmass
 
   end function calc_dgpp
 
 
-  function calc_drd( fapar, acrown, meanmppfd, my_mrd_unitiabs, dtemp, cpalpha ) result( my_drd )
+  function calc_dassim( dppfd, lue, daylength, dtemp, cpalpha ) result( my_dassim )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
+    !------------------------------------------------------------------
+    ! arguments
+    real, intent(in)           :: dppfd           ! daily total photon flux density, mol m-2
+    real, intent(in)           :: lue             ! light use efficiency, mol CO2 / mol photon
+    real, intent(in)           :: daylength       ! day length (h)
+    real, intent(in)           :: dtemp           ! this day's air temperature, deg C
+    real, intent(in), optional :: cpalpha         ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+
+    ! function return variable
+    real :: my_dassim                             ! leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
+
+    ! local variables
+    real :: fa
+
+    if (present(cpalpha)) then
+      fa = calc_fa( cpalpha )
+    else
+      fa = 1.0
+    end if
+
+    ! Leaf-level assimilation rate, average over daylight hours
+    my_dassim = dppfd * fa * lue * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * daylength )
+
+  end function calc_dassim
+
+
+  function calc_dgs( dppfd, dgs_unitiabs, daylength, dtemp, cpalpha ) result( dgs )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates leaf-level stomatal conductance to H2O, mean over daylight hours ( mol H2O m-2 s-1 )
+    !------------------------------------------------------------------
+    ! arguments
+    real, intent(in)           :: dppfd           ! daily total photon flux density, mol m-2
+    real, intent(in)           :: dgs_unitiabs    ! stomatal conductance per unit absorbed light (mol H2O m-2 s-1 / mol light)
+    real, intent(in)           :: daylength       ! day length (h)
+    real, intent(in)           :: dtemp           ! this day's air temperature, deg C
+    real, intent(in), optional :: cpalpha         ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+
+    ! function return variable
+    real :: dgs                                   ! leaf-level stomatal conductance to H2O, mean over daylight hours ( mol H2O m-2 s-1 )
+
+    ! local variables
+    real :: fa
+
+    if (present(cpalpha)) then
+      fa = calc_fa( cpalpha )
+    else
+      fa = 1.0
+    end if
+
+    ! Leaf-level assimilation rate, average over daylight hours
+    dgs = dppfd * fa * dgs_unitiabs * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * daylength )
+
+  end function calc_dgs
+
+
+  function calc_drd( fapar, acrown, meanmppfd, rd_unitiabs, dtemp, cpalpha ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
@@ -352,7 +430,7 @@ contains
     real, intent(in)           :: fapar           ! fraction of absorbed photosynthetically active radiation
     real, intent(in)           :: acrown          ! crown area (=1)
     real, intent(in)           :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
-    real, intent(in)           :: my_mrd_unitiabs
+    real, intent(in)           :: rd_unitiabs
     real, intent(in)           :: dtemp           ! this day's air temperature, deg C
     real, intent(in), optional :: cpalpha         ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
@@ -369,20 +447,20 @@ contains
     end if
 
     ! Dark respiration takes place during night and day (24 hours)
-    my_drd = fapar * acrown * meanmppfd * fa * my_mrd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * acrown * meanmppfd * fa * rd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
 
   end function calc_drd
 
 
-  function calc_dtransp( fapar, acrown, dppfd, my_transp_unitiabs, dtemp, cpalpha ) result( my_dtransp )
+  function calc_dtransp( fapar, acrown, dppfd, transp_unitiabs, dtemp, cpalpha ) result( my_dtransp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
     real, intent(in)           :: fapar
     real, intent(in)           :: acrown
-    real, intent(in)           :: dppfd
-    real, intent(in)           :: my_transp_unitiabs
+    real, intent(in)           :: dppfd              ! daily total photon flux density, mol m-2
+    real, intent(in)           :: transp_unitiabs
     real, intent(in)           :: dtemp              ! this day's air temperature
     real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
 
@@ -399,25 +477,25 @@ contains
     end if
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dtransp = fapar * acrown * dppfd * fa * my_transp_unitiabs * ramp_gpp_lotemp( dtemp ) * h2o_molmass
+    my_dtransp = fapar * acrown * dppfd * fa * transp_unitiabs * ramp_gpp_lotemp( dtemp ) * h2o_molmass
 
   end function calc_dtransp
 
 
-  function calc_vcmax_canop( fapar, my_vcmax_unitiabs, meanmppfd ) result( my_vcmax )
+  function calc_vcmax_canop( fapar, vcmax_unitiabs, meanmppfd ) result( my_vcmax )
     !//////////////////////////////////////////////////////////////////
     ! Calculates canopy-level carboxylation capacity (Vcmax). To get
     ! value per unit leaf area, divide by LAI.
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: fapar
-    real, intent(in) :: my_vcmax_unitiabs
+    real, intent(in) :: vcmax_unitiabs
     real, intent(in) :: meanmppfd
 
     ! function return variable
     real :: my_vcmax    ! canopy-level Vcmax [gCO2/m2-ground/s]
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
-    my_vcmax = fapar * meanmppfd * my_vcmax_unitiabs
+    my_vcmax = fapar * meanmppfd * vcmax_unitiabs
 
   end function calc_vcmax_canop
 
@@ -442,20 +520,21 @@ contains
     ! local variables
     real :: ppfdabs                  ! absorbed photosynthetically active radiation (mol/m2)
     real :: patm                     ! atmospheric pressure as a function of elevation (Pa)
-    real :: ca                       ! ambient CO2 partial pressure (Pa)
-    real :: ci                       ! leaf-internal CO2 partial pressure, (Pa)
     real :: chi                      ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
-    real :: gs                       ! stomatal conductance
+    real :: ci                       ! leaf-internal partial pressure, (Pa)
+    real :: iwue                     ! intrinsic water use efficiency = A / gs = ca - ci = ca ( 1 - chi ) , unitless
+    real :: gs_unitiabs              ! stomatal conductance to H2O, expressed per unit absorbed light (mol H2O m-2 s-1 / (mol light m-2 -1))
+    real :: ca                       ! ambient CO2 partial pressure (Pa)
     real :: gstar                    ! photorespiratory compensation point - Gamma-star (Pa)
     real :: fa                       ! function of alpha to reduce GPP in strongly water-stressed months (unitless)
     real :: kmm                      ! Michaelis-Menten coefficient (Pa)
     real :: ns                       ! viscosity of H2O at ambient temperatures (Pa s)
     real :: ns25                     ! viscosity of H2O at 25 deg C (Pa s)
     real :: ns_star                  ! viscosity correction factor (unitless)
-    real :: m
-    real :: n
-    real :: gpp                      ! assimilation (mol m-2 s-1)
-    real :: lue                      ! Light use efficiency
+    real :: mprime                   ! factor in light use model with Jmax limitation
+    real :: assim                    ! assimilation rate per unit ground area, ecosystem scale (mol m-2 s-1)
+    real :: assim_unitfapar          ! assimilation rate per unit leaf area, leaf scale, representative for top-canopy leaves (mol m-2 s-1)
+    real :: lue                      ! Light use efficiency = assimilation rate per unit aborbed light
     real :: vcmax                    ! Vcmax per unit ground area (mol CO2 m-2 s-1)
     real :: vcmax_unitfapar          ! Vcmax per fAPAR (mol CO2 m-2 s-1)
     real :: vcmax_unitiabs           ! Vcmax per unit absorbed light (mol CO2 m-2 s-1 [mol PPFD]-1)
@@ -469,9 +548,9 @@ contains
     real :: actnv 
     real :: actnv_unitfapar 
     real :: actnv_unitiabs 
-    real :: transp                   ! transpiration [g H2O (mol photons)-1]
-    real :: transp_unitfapar         ! transpiration per unit fAPAR [g H2O (mol photons)-1]
-    real :: transp_unitiabs          ! transpiration per unit light absorbed light [g H2O (mol photons)-1]
+    ! real :: transp                   ! transpiration [g H2O (mol photons)-1]
+    ! real :: transp_unitfapar         ! transpiration per unit fAPAR [g H2O (mol photons)-1]
+    ! real :: transp_unitiabs          ! transpiration per unit light absorbed light [g H2O (mol photons)-1]
 
     type(outtype_lue) :: out_lue
 
@@ -540,14 +619,12 @@ contains
       end select
 
       ! LUE-functions return m, n, and chi
-      m   = out_lue%m
-      n   = out_lue%n
       chi = out_lue%chi
 
       ! ! XXX PMODEL_TEST: ok
       ! print*, 'm ', m
 
-      ! ! XXX PMODEL_TEST: ok
+      ! XXX PMODEL_TEST: ok
       ! print*, 'chi ', chi
 
       !-----------------------------------------------------------------------
@@ -557,12 +634,16 @@ contains
       ! GPP per unit ground area is the product of the intrinsic quantum 
       ! efficiency, the absorbed PAR, the function of alpha (drought-reduction),
       ! and 'm'
-      m   = calc_mprime( m )
+      mprime = calc_mprime( out_lue%m )
 
-      gpp = ppfdabs * params_pft_gpp(pft)%kphio * m  ! in mol m-2 s-1
+      ! Light use efficiency (assimilation rate per unit absorbed light)
+      lue = params_pft_gpp(pft)%kphio * mprime  ! in mol CO2 m-2 s-1 / (mol light m-2 s-1)
 
-      ! Light use efficiency (gpp per unit ppfdabs)
-      lue = params_pft_gpp(pft)%kphio * m 
+      ! Gross primary productivity = ecosystem-level assimilation rate (per unit ground area)
+      assim = ppfdabs * lue ! in mol CO2 m-2 s-1
+
+      ! Leaf-level assimilation rate (per unit leaf area), representative for top-canopy leaves
+      assim_unitfapar = ppfd * lue  ! in mol m-2 s-1
 
       ! ! XXX PMODEL_TEST: ok
       ! print*, 'lue ', lue
@@ -571,18 +652,25 @@ contains
       ! leaf-internal CO2 partial pressure (Pa)
       ci = chi * ca
 
-      ! stomatal conductance
-      gs = gpp  / ( ca - ci )
+      ! stomatal conductance to H2O, expressed per unit absorbed light
+      gs_unitiabs = 1.6 * lue * patm / ( ca - ci )
+
+      ! print*,'gs', gs
+      ! print*,'ppfd', ppfd
+      ! print*,'params_pft_gpp(pft)%kphio', params_pft_gpp(pft)%kphio
+      ! print*,'mprime', mprime
+      ! print*,'ca', ca
+      ! print*,'ci', ci
 
       ! Vcmax per unit ground area is the product of the intrinsic quantum 
       ! efficiency, the absorbed PAR, and 'n'
-      vcmax = ppfdabs * params_pft_gpp(pft)%kphio * n
+      vcmax = ppfdabs * params_pft_gpp(pft)%kphio * out_lue%n
 
       ! Vcmax normalised per unit fAPAR (assuming fAPAR=1)
-      vcmax_unitfapar = ppfd * params_pft_gpp(pft)%kphio * n 
+      vcmax_unitfapar = ppfd * params_pft_gpp(pft)%kphio * out_lue%n 
 
       ! Vcmax normalised per unit absorbed PPFD (assuming ppfdabs=1)
-      vcmax_unitiabs = params_pft_gpp(pft)%kphio * n 
+      vcmax_unitiabs = params_pft_gpp(pft)%kphio * out_lue%n 
 
       ! Vcmax25 (vcmax normalized to 25 deg C)
       factor25_vcmax    = calc_vcmax25( 1.0, tc )
@@ -604,20 +692,24 @@ contains
       actnv_unitfapar = vcmax25_unitfapar * n_v
       actnv_unitiabs  = vcmax25_unitiabs  * n_v
 
-      ! Transpiration (E)
-      ! Using 
-      ! - E = 1.6 gs D
-      ! - gs = A / (ca (1-chi))
-      ! (- chi = ci / ca)
-      ! => E = f
-      transp           = (1.6 * ppfdabs * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)   ! gpp = ppfdabs * params_pft_gpp(pft)%kphio * fa * m
-      transp_unitfapar = (1.6 * ppfd * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
-      transp_unitiabs  = (1.6 * 1.0  * params_pft_gpp(pft)%kphio * fa * m * vpd) / (ca - ci)
+      ! ! Transpiration (E)
+      ! ! Using 
+      ! ! - E = 1.6 gs D
+      ! ! - gs = A / (ca (1-chi))
+      ! ! (- chi = ci / ca)
+      ! ! => E = f
+      ! transp           = (1.6 * ppfdabs * params_pft_gpp(pft)%kphio * fa * mprime * vpd) / (ca - ci)   ! gpp = ppfdabs * params_pft_gpp(pft)%kphio * fa * m
+      ! transp_unitfapar = (1.6 * ppfd * params_pft_gpp(pft)%kphio * fa * mprime * vpd) / (ca - ci)
+      ! transp_unitiabs  = (1.6 * 1.0  * params_pft_gpp(pft)%kphio * fa * mprime * vpd) / (ca - ci)
 
       ! Construct derived type for output
-      out_pmodel%gpp              = gpp
+      out_pmodel%gpp              = assim
       out_pmodel%gstar            = gstar
       out_pmodel%chi              = chi
+      out_pmodel%ci               = co2 * chi  ! return value 'out_pmodel%ci' is used for output in units of ppm. 
+      out_pmodel%ca               = ca
+      out_pmodel%iwue             = ( ca - ci ) / ( 1.6 * patm )
+      out_pmodel%gs_unitiabs      = gs_unitiabs
       out_pmodel%vcmax            = vcmax
       out_pmodel%vcmax25          = vcmax25
       out_pmodel%vcmax_unitfapar  = vcmax_unitfapar
@@ -630,9 +722,9 @@ contains
       out_pmodel%actnv_unitfapar  = actnv_unitfapar 
       out_pmodel%actnv_unitiabs   = actnv_unitiabs 
       out_pmodel%lue              = lue
-      out_pmodel%transp           = transp          
-      out_pmodel%transp_unitfapar = transp_unitfapar
-      out_pmodel%transp_unitiabs  = transp_unitiabs 
+      ! out_pmodel%transp           = transp          
+      ! out_pmodel%transp_unitfapar = transp_unitfapar
+      ! out_pmodel%transp_unitiabs  = transp_unitiabs 
 
     else
 
@@ -640,6 +732,9 @@ contains
       out_pmodel%gpp              = 0.0
       out_pmodel%gstar            = 0.0
       out_pmodel%chi              = 0.0
+      out_pmodel%ci               = 0.0
+      out_pmodel%iwue             = 0.0
+      out_pmodel%gs_unitiabs      = 0.0
       out_pmodel%vcmax            = 0.0
       out_pmodel%vcmax25          = 0.0
       out_pmodel%vcmax_unitfapar  = 0.0
@@ -652,9 +747,9 @@ contains
       out_pmodel%actnv_unitfapar  = 0.0
       out_pmodel%actnv_unitiabs   = 0.0
       out_pmodel%lue              = 0.0
-      out_pmodel%transp           = 0.0
-      out_pmodel%transp_unitfapar = 0.0
-      out_pmodel%transp_unitiabs  = 0.0
+      ! out_pmodel%transp           = 0.0
+      ! out_pmodel%transp_unitfapar = 0.0
+      ! out_pmodel%transp_unitiabs  = 0.0
 
     end if
 
@@ -776,7 +871,7 @@ contains
 
     ! arguments
     real, intent(in) :: kmm       ! Pa, Michaelis-Menten coeff.
-    real, intent(in) :: gstar        ! Pa, photores. comp. point (Gamma-star)
+    real, intent(in) :: gstar     ! Pa, photores. comp. point (Gamma-star)
     real, intent(in) :: ns_star   ! (unitless) viscosity correction factor for water
     real, intent(in) :: ca        ! Pa, ambient CO2 partial pressure
     real, intent(in) :: vpd       ! Pa, vapor pressure deficit
@@ -1329,7 +1424,7 @@ contains
     !----------------------------------------------------------------
     if (interface%params_siml%loutgpp) then
 
-      ! VCMAX (annual maximum) (mol m-2 s-1)
+      ! VCMAX (canopy-level, annual maximum) (mol m-2 s-1)
       filnam=trim(prefix)//'.a.vcmax.out'
       open(323,file=filnam,err=888,status='unknown')
 
@@ -1344,6 +1439,22 @@ contains
       ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
       filnam=trim(prefix)//'.a.lue.out'
       open(653,file=filnam,err=888,status='unknown')
+
+      ! ci: leaf-internal CO2 partial pressure (Pa)
+      filnam=trim(prefix)//'.a.ci.out'
+      open(655,file=filnam,err=888,status='unknown')
+
+      ! gs: stomatal conductance
+      filnam=trim(prefix)//'.a.gs.out'
+      open(656,file=filnam,err=888,status='unknown')
+
+      ! VCMAX (leaf-level, annual mean) (mol m-2 s-1)
+      filnam=trim(prefix)//'.a.vcmax_mean.out'
+      open(657,file=filnam,err=888,status='unknown')
+
+      ! intrinsic water use efficiency
+      filnam=trim(prefix)//'.a.iwue.out'
+      open(658,file=filnam,err=888,status='unknown')
 
     end if
 
@@ -1377,10 +1488,14 @@ contains
 
     ! annual
     if (interface%params_siml%loutgpp) then
-      outavcmax(:,:)   = 0.0
-      outavcmax25(:,:) = 0.0
-      outachi(:,:)     = 0.0
-      outalue(:,:)     = 0.0
+      outavcmax(:,:)      = 0.0
+      outavcmax25(:,:)    = 0.0
+      outavcmax_leaf(:,:) = 0.0
+      outachi(:,:)        = 0.0
+      outaiwue(:,:)       = 0.0
+      outalue(:,:)        = 0.0
+      outaci(:,:)         = 0.0
+      outags(:,:)         = 0.0
     end if
 
   end subroutine initoutput_gpp
@@ -1395,11 +1510,19 @@ contains
     ! where they are defined.
     !----------------------------------------------------------------
     use md_interface
+    use md_plant, only: dgpp
 
     ! argument
     type( outtype_pmodel ), dimension(npft), intent(in) :: out_pmodel
     integer, intent(in)                                 :: jpngr
     integer, intent(in)                                 :: doy
+
+    ! local 
+    real, dimension(npft), save :: agpp        ! annual total GPP
+
+    ! sum up daily GPP to annual total
+    if (doy==1) agpp(:) = 0.0
+    agpp(:) = agpp(:) + dgpp(:)
 
     !----------------------------------------------------------------
     ! DAILY
@@ -1419,13 +1542,32 @@ contains
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
-    ! Collect annual output variables as sum of daily values
+    ! Collect annual output variables
     !----------------------------------------------------------------
     ! store all daily values for outputting annual maximum
     if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
 
-    outdvcmax(1,doy)   = dvcmax_canop(1)
-    outdvcmax25(1,doy) = out_pmodel(1)%factor25_vcmax * dvcmax_canop(1)
+    outdvcmax(1,doy)      = dvcmax_canop(1)
+    outdvcmax25(1,doy)    = out_pmodel(1)%factor25_vcmax * dvcmax_canop(1)
+
+    ! weighted by daily GPP
+    if (interface%params_siml%loutgpp) then
+
+      outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * dgpp(:)
+      outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * dgpp(:)
+      outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * dgpp(:)
+      outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * dgpp(:)
+      outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * dgpp(:)
+
+      if (doy==ndayyear) then
+        outachi       (:,jpngr) = outachi       (:,jpngr) / agpp(:)
+        outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / agpp(:)
+        outaci        (:,jpngr) = outaci        (:,jpngr) / agpp(:)
+        outags        (:,jpngr) = outags        (:,jpngr) / agpp(:)
+        outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / agpp(:)
+      end if
+
+    end if
 
   end subroutine getout_daily_gpp
 
@@ -1495,8 +1637,12 @@ contains
 
       write(323,999) itime, sum(outavcmax(:,jpngr))
       write(654,999) itime, sum(outavcmax25(:,jpngr))
-      write(652,999) itime, sum(outachi(:,jpngr))
       write(653,999) itime, sum(outalue(:,jpngr))
+      write(652,999) itime, sum(outachi(:,jpngr))
+      write(658,999) itime, sum(outaiwue(:,jpngr)) * 1e6 / 1.6 ! converting from unitless to micro-mol CO2 / mol H2O
+      write(655,999) itime, sum(outaci(:,jpngr))
+      write(656,999) itime, sum(outags(:,jpngr))
+      write(657,999) itime, sum(outavcmax_leaf(:,jpngr))
 
     end if
 

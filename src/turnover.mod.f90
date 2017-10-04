@@ -335,7 +335,7 @@ contains
     ! reduce leaf mass and labl mass
     call orgsub( lb_turn, plabl(pft,jpngr) )
 
-    call orgmvRec( lb_turn, lb_turn, plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr))
+    call orgmvRec( lb_turn, lb_turn, plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
 
 
   end subroutine turnover_labl
