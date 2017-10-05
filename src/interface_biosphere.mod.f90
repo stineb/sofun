@@ -291,6 +291,8 @@ contains
 
       end if
 
+      print*,'temp written to NetCDF file.'
+
     ! end if
 
   end subroutine writeout_nc_forcing

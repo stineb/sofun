@@ -209,6 +209,7 @@ contains
     real :: ncfillvalue                                  ! _FillValue attribute in NetCDF file
     integer :: nmissing                                  ! number of land cells where climate data is not available
     character(len=5) :: recname = "tstep"
+    real, parameter :: sw_to_ppfd_kfFEC = 2.04          ! conversion factor from SPLASH: flux to energy conversion, umol/J (Meek et al., 1984)
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
@@ -313,52 +314,61 @@ contains
     doy = 0
     do moy=1,nmonth
 
-      ! write(moy_char,888) moy
+      write(moy_char,888) moy
 
-      ! xxx test
-      print*,'time: reading january all the time'
-      write(moy_char,888) 1
+      ! ! xxx test
+      ! print*,'time: reading january all the time'
+      ! write(moy_char,888) 1
 
       ! open NetCDF files to get ncid_*
       ! temperature
       filnam = './input/global/climate/temp/Tair_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_temp ) )
 
-      ! ! precipitation (rain)
-      ! filnam = './input/global/climate/prec/Rainf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
-      ! call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_prec ) )
+      ! precipitation (rain)
+      filnam = './input/global/climate/prec/Rainf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
+      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_prec ) )
 
-      ! ! precipitation (snow)
-      ! filnam = './input/global/climate/prec/Snowf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
-      ! call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_snow ) )
+      ! precipitation (snow)
+      filnam = './input/global/climate/prec/Snowf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
+      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_snow ) )
+
+      ! PPFD from SWdown
+      if (in_ppfd) then
+        filnam = './input/global/climate/ppfd/SWdown_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
+        call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ppfd ) )
+      end if
 
       ! get dimension IDs
       call check( nf90_inq_dimid( ncid_temp, recname, recdimid ) )
       call check( nf90_inquire_dimension( ncid_temp, recdimid, len = nrec_arr ) )
 
       ! allocate size of output array
-      if (allocated(temp_arr)) deallocate( temp_arr )
       allocate( temp_arr(nlon_arr,nlat_arr,nrec_arr) )
-      ! allocate( prec_arr(nlon_arr,nlat_arr,nrec_arr) )
-      ! allocate( snow_arr(nlon_arr,nlat_arr,nrec_arr) )
+      allocate( prec_arr(nlon_arr,nlat_arr,nrec_arr) )
+      allocate( snow_arr(nlon_arr,nlat_arr,nrec_arr) )
+      if (in_ppfd) allocate( ppfd_arr(nlon_arr,nlat_arr,nrec_arr) )
 
       ! Get the varid of the data variable, based on its name
       call check( nf90_inq_varid( ncid_temp, "Tair", varid_temp ) )
-      ! call check( nf90_inq_varid( ncid_prec, "Rainf", varid_prec ) )
-      ! call check( nf90_inq_varid( ncid_snow, "Snowf", varid_snow ) )
+      call check( nf90_inq_varid( ncid_prec, "Rainf", varid_prec ) )
+      call check( nf90_inq_varid( ncid_snow, "Snowf", varid_snow ) )
+      if (in_ppfd) call check( nf90_inq_varid( ncid_ppfd, "SWdown", varid_ppfd ) )
 
       ! Read the full array data
       call check( nf90_get_var( ncid_temp, varid_temp, temp_arr ) )
-      ! call check( nf90_get_var( ncid_prec, varid_prec, prec_arr ) )
-      ! call check( nf90_get_var( ncid_snow, varid_snow, snow_arr ) )
+      call check( nf90_get_var( ncid_prec, varid_prec, prec_arr ) )
+      call check( nf90_get_var( ncid_snow, varid_snow, snow_arr ) )
+      if (in_ppfd) call check( nf90_get_var( ncid_ppfd, varid_ppfd, ppfd_arr ) )
 
       ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
       call check( nf90_get_att( ncid_temp, varid_temp, "_FillValue", ncfillvalue ) )
 
       ! close NetCDF files
       call check( nf90_close( ncid_temp ) )
-      ! call check( nf90_close( ncid_prec ) )
-      ! call check( nf90_close( ncid_snow ) )
+      call check( nf90_close( ncid_prec ) )
+      call check( nf90_close( ncid_snow ) )
+      if (in_ppfd) call check( nf90_close( ncid_ppfd ) )
 
       ! read from array to define climate type 
       do dom=1,ndaymonth(moy)
@@ -370,11 +380,17 @@ contains
 
           if ( temp_arr(ilon(jpngr),ilat(jpngr),dom)/=ncfillvalue ) then
             out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
-            ! out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            if (in_ppfd) then
+              out_climate(jpngr)%dppfd(doy) = 1.0e-6 * ppfd_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0 * sw_to_ppfd_kfFEC ! W m-2 -> mol m-2 d-1
+            else
+              out_climate(jpngr)%dppfd(doy) = dummy
+            end if
           else
             nmissing = nmissing + 1
             out_climate(jpngr)%dtemp(doy) = dummy
             out_climate(jpngr)%dprec(doy) = dummy
+            out_climate(jpngr)%dppfd(doy) = dummy
             grid(jpngr)%dogridcell = .false.
           end if
 
@@ -384,8 +400,9 @@ contains
 
       ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
       deallocate( temp_arr )
-      ! deallocate( prec_arr )
-      ! deallocate( snow_arr )
+      deallocate( prec_arr )
+      deallocate( snow_arr )
+      if (in_ppfd) deallocate( ppfd_arr )
 
     end do
     print*,'number of land cells without climate data: ', nmissing
@@ -394,11 +411,6 @@ contains
     do jpngr=1,domaininfo%maxgrid
 
       out_climate(jpngr)%dvpd(:)  = 1111
-      if (in_ppfd) then
-        out_climate(jpngr)%dppfd(:) = 1111
-      else
-        out_climate(jpngr)%dppfd(:) = dummy
-      end if
       if (in_netrad) then
         out_climate(jpngr)%dnetrad(:) = 1111
       else
