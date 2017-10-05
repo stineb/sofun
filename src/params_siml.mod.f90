@@ -83,6 +83,7 @@ module md_params_siml
 
     ! booleans defining whether variable is written to NetCDF output
     logical :: lncoutdtemp
+    logical :: lncoutdgpp
 
   end type paramstype_siml
 
@@ -335,9 +336,11 @@ contains
 
     ! boolean for NetCDF output writing
     out_getpar_siml%lncoutdtemp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdtemp' )
+    out_getpar_siml%lncoutdgpp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdgpp' )
 
     ! If NetCDF output writing is true and ascii output writing is false, then overwrite
     if (.not.out_getpar_siml%loutdtemp .and. out_getpar_siml%lncoutdtemp) out_getpar_siml%loutdtemp = .true.
+    if (.not.out_getpar_siml%loutdgpp  .and. out_getpar_siml%lncoutdgpp ) out_getpar_siml%loutdgpp  = .true.
 
     write(0,*) "... done"
 

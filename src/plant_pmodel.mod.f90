@@ -15,7 +15,7 @@ module md_plant
   public plant_type, dgpp, getpar_modl_plant, params_pft_plant,              &
     initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant,     &
     writeout_ascii_plant, maxdoy, initglobal_plant, get_leaftraits, initpft, &
-    getout_annual_plant
+    getout_annual_plant, initio_nc_plant, writeout_nc_plant
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -88,6 +88,12 @@ module md_plant
 
   ! required for outputting leaf trait variables in other modules
   integer, dimension(npft) :: maxdoy  ! DOY of maximum LAI
+
+  !----------------------------------------------------------------
+  ! Module-specific NetCDF output file and variable names
+  !----------------------------------------------------------------
+  character(len=256) :: ncoutfilnam_gpp
+  character(len=*), parameter :: GPP_NAME="gpp"
 
 contains
 
@@ -450,6 +456,62 @@ contains
   end subroutine initio_plant
 
 
+  subroutine initio_nc_plant()
+    !////////////////////////////////////////////////////////////////
+    ! Opens NetCDF output files.
+    !----------------------------------------------------------------
+    use netcdf
+    use md_io_netcdf, only: init_nc_3D, check
+    use md_interface, only: interface
+
+    ! local variables
+    character(len=256) :: prefix
+
+    character(len=*), parameter :: DOY_NAME  = "doy"
+    character(len=*), parameter :: YEAR_NAME = "year"
+    character(len=*), parameter :: filnamend = ".d.gpp.nc"
+    character(len=*), parameter :: varunits  = "gC m-2 d-1"
+    character(len=*), parameter :: longnam   = "daily gross primary productivivty"
+    character(len=*), parameter :: title     = "SOFUN GP-model output, module md_plant"
+    character(len=4) :: year_char
+
+    integer :: jpngr, doy
+    integer, dimension(ndayyear) :: doy_vals
+
+    write(year_char,999) interface%steering%outyear
+
+    doy_vals = (/ (doy, doy = 1, ndayyear) /)
+
+    if (interface%params_siml%lncoutdgpp) then
+
+      prefix = "./output_nc/"//trim(interface%params_siml%runname)
+
+      ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
+      ! overwrite this file, if it already exists.
+      ncoutfilnam_gpp = trim(prefix)//'.'//year_char//filnamend
+      call init_nc_3D( filnam  = ncoutfilnam_gpp, &
+                      nlon     = interface%domaininfo%nlon, &
+                      nlat     = interface%domaininfo%nlat, &
+                      nz       = ndayyear, &
+                      lon      = interface%domaininfo%lon, &
+                      lat      = interface%domaininfo%lat, &
+                      zvals    = doy_vals, &
+                      recvals  = interface%steering%outyear, &
+                      znam     = DOY_NAME, &
+                      recnam   = YEAR_NAME, &
+                      varnam   = GPP_NAME, &
+                      varunits = varunits, &
+                      longnam  = longnam, &
+                      title    = title &
+                      )
+
+    end if
+
+    999  format (I4.4)
+    
+  end subroutine initio_nc_plant
+
+
   subroutine getout_daily_plant( plant, jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
@@ -574,6 +636,56 @@ contains
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_plant
+
+
+  subroutine writeout_nc_plant()
+    !/////////////////////////////////////////////////////////////////////////
+    ! Write NetCDF output
+    !-------------------------------------------------------------------------
+    use netcdf
+    use md_io_netcdf, only: write_nc_3D, check
+    use md_interface, only: interface
+
+    ! local variables
+    integer :: doy, jpngr
+    integer :: ncid
+    integer :: varid_temp
+
+    real, dimension(:,:,:,:), allocatable :: outarr
+
+    if (npft>1) stop 'writeout_nc_plant(): npft > 1. Think of something clever.'
+
+    ! if ( .not. interface%steering%spinup &
+    !       .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+    !       .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
+      if (interface%params_siml%lncoutdgpp) then
+
+        allocate( outarr(interface%domaininfo%nlon,interface%domaininfo%nlat,ndayyear,1) )
+        outarr(:,:,:,:) = dummy        
+
+        ! Populate output array
+        do jpngr=1,size(interface%grid)
+          if (interface%grid(jpngr)%dogridcell) then
+
+            ! populate array
+            outarr(interface%grid(jpngr)%ilon,interface%grid(jpngr)%ilat,:,1) = outdgpp(1,:,jpngr)
+
+          end if
+        end do
+
+        call write_nc_3D( ncoutfilnam_gpp, GPP_NAME, interface%domaininfo%nlon, interface%domaininfo%nlat, ndayyear, outarr(:,:,:,:)  )
+
+        ! deallocate memory
+        deallocate( outarr )
+
+      end if
+
+      stop 'ok, written GPP NetCDF file now.'
+
+    ! end if
+
+  end subroutine writeout_nc_plant
 
 
 end module md_plant

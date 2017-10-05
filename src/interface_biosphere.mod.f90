@@ -114,11 +114,18 @@ contains
     ! local variables
     character(len=256) :: prefix
 
-    character (len = *), parameter :: DOY_NAME = "doy"
-    character (len = *), parameter :: YEAR_NAME = "year"
+    character(len=*), parameter :: DOY_NAME  = "doy"
+    character(len=*), parameter :: YEAR_NAME = "year"
+    character(len=*), parameter :: filnamend = ".d.temp.nc"
+    character(len=*), parameter :: varunits  = "degrees Celsius"
+    character(len=*), parameter :: longnam   = "daily average 2 m temperature"
+    character(len=*), parameter :: title     = "SOFUN GP-model output, module md_interface"
+    character(len=4) :: year_char
 
     integer :: jpngr, doy
     integer, dimension(ndayyear) :: doy_vals
+
+    write(year_char,999) interface%steering%outyear
 
     doy_vals = (/ (doy, doy = 1, ndayyear) /)
 
@@ -128,7 +135,7 @@ contains
 
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
-      ncoutfilnam_temp = trim(prefix)//'.d.temp.nc'
+      ncoutfilnam_temp = trim(prefix)//'.'//year_char//filnamend
       call init_nc_3D( filnam  = ncoutfilnam_temp, &
                       nlon     = interface%domaininfo%nlon, &
                       nlat     = interface%domaininfo%nlat, &
@@ -140,12 +147,14 @@ contains
                       znam     = DOY_NAME, &
                       recnam   = YEAR_NAME, &
                       varnam   = TEMP_NAME, &
-                      varunits = "degrees Celsius", &
-                      longnam  = "daily average 2 m temperature", &
-                      title    = "SOFUN GP-model output, module md_interface" &
+                      varunits = varunits, &
+                      longnam  = longnam, &
+                      title    = title &
                       )
 
     end if
+
+    999  format (I4.4)
 
   end subroutine initio_nc_forcing
 
@@ -282,24 +291,8 @@ contains
 
       end if
 
-      stop 'ok, written NetCDF file now.'
-
     ! end if
 
   end subroutine writeout_nc_forcing
-
-
-  ! subroutine check( status )
-  !   !/////////////////////////////////////////////////////////////////////////
-  !   ! Auxiliary subroutine handling NetCDF 
-  !   !-------------------------------------------------------------------------
-  !   use netcdf
-  !   integer, intent (in) :: status
-  !   if ( status /= nf90_noerr ) then 
-  !     print *, trim( nf90_strerror(status) )
-  !     stop "Stopped"
-  !   end if
-
-  ! end subroutine check
 
 end module md_interface
