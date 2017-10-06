@@ -11,7 +11,8 @@ program main
   use md_params_domain, only: getpar_domain, type_params_domain
   use md_grid, only: get_domaininfo, getgrid
   use md_params_soil, only: getsoil_field
-  use md_forcing, only: getclimate, getninput, ninput_type, gettot_ninput, getfapar, getlanduse, getco2
+  use md_forcing, only: getclimate_wfdei, getninput, ninput_type, gettot_ninput, &
+    getfapar, getlanduse, getco2
   use md_params_core, only: dummy, maxgrid, ndayyear
   use md_biosphere, only: biosphere_annual
 
@@ -99,16 +100,16 @@ program main
     !----------------------------------------------------------------
     ! Climate
     if (verbose) print*,'getting climate ...'
-    interface%climate(:) = getclimate( &
-                                      trim(interface%params_siml%sitename), &
-                                      interface%domaininfo, &
-                                      interface%grid, &
-                                      interface%steering%init, &
-                                      ! 1992 &
-                                      interface%steering%climateyear, &
-                                      interface%params_siml%in_ppfd,  &
-                                      interface%params_siml%in_netrad &
-                                      )
+    interface%climate(:) = getclimate_wfdei( &
+                                            trim(interface%params_siml%sitename), &
+                                            interface%domaininfo, &
+                                            interface%grid, &
+                                            interface%steering%init, &
+                                            ! 1992 &
+                                            interface%steering%climateyear, &
+                                            interface%params_siml%in_ppfd,  &
+                                            interface%params_siml%in_netrad &
+                                            )
     if (verbose) print*,'... done.'
 
     ! CO2

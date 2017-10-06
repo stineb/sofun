@@ -19,7 +19,8 @@ module md_forcing
   implicit none
 
   private
-  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate, getlanduse, landuse_type, climate_type
+  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate_wfdei, &
+    getlanduse, landuse_type, climate_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
@@ -168,7 +169,7 @@ contains
   end function getfapar
 
 
-  function getclimate( sitename, domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
+  function getclimate_wfdei( sitename, domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
     ! Read year-2013 data after 2013
@@ -428,7 +429,7 @@ contains
     888  format (I2.2)
     999  format (I4.4)
 
-  end function getclimate
+  end function getclimate_wfdei
 
 
   function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file, const_lu_year, firstyeartrend ) result( out_landuse )

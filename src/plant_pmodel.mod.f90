@@ -387,14 +387,14 @@ contains
         allocate( outalai(npft,ngridcells) )
         allocate( outalma(npft,ngridcells) )
         allocate( outacton_lm(npft,ngridcells) )
-      end if
 
-      outagpp(:,:)      = 0.0
-      outanarea_mb(:,:) = 0.0
-      outanarea_cw(:,:) = 0.0
-      outalai     (:,:) = 0.0
-      outalma     (:,:) = 0.0
-      outacton_lm (:,:) = 0.0
+        outagpp(:,:)      = 0.0
+        outanarea_mb(:,:) = 0.0
+        outanarea_cw(:,:) = 0.0
+        outalai     (:,:) = 0.0
+        outalma     (:,:) = 0.0
+        outacton_lm (:,:) = 0.0
+      end if
 
     end if
 
