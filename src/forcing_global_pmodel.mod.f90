@@ -193,15 +193,15 @@ contains
     character(len=4) :: climateyear_char
     character(len=256) :: filnam
     character(len=2) :: moy_char
-    integer :: ncid_temp, ncid_prec, ncid_snow, ncid_vpd, ncid_fsun, ncid_nrad, ncid_ppfd
-    integer :: varid_temp, varid_prec, varid_snow, varid_vpd, varid_fsun, varid_nrad, varid_ppfd
+    integer :: ncid_temp, ncid_prec, ncid_snow, ncid_humd, ncid_fsun, ncid_nrad, ncid_ppfd
+    integer :: varid_temp, varid_prec, varid_snow, varid_humd, varid_fsun, varid_nrad, varid_ppfd
     integer :: latdimid, londimid, recdimid, status
     integer, dimension(100000), save :: ilon, ilat
     integer, save :: nlon_arr, nlat_arr, ilat_arr, ilon_arr, nrec_arr
     real, dimension(:,:,:), allocatable :: temp_arr      ! temperature, array read from NetCDF file in K
     real, dimension(:,:,:), allocatable :: prec_arr      ! precipitation, array read from NetCDF file in kg/m2/s
     real, dimension(:,:,:), allocatable :: snow_arr      ! snow fall, array read from NetCDF file in kg/m2/s
-    real, dimension(:,:,:), allocatable :: vpd_arr       ! vapour pressure deficit, array read from NetCDF file 
+    real, dimension(:,:,:), allocatable :: humd_arr      ! specific humidity, array read from NetCDF file 
     real, dimension(:,:,:), allocatable :: fsun_arr      ! sunshine fraction, array read from NetCDF file 
     real, dimension(:,:,:), allocatable :: nrad_arr      ! net radiation, array read from NetCDF file 
     real, dimension(:,:,:), allocatable :: ppfd_arr      ! photosynthetic photon flux density, array read from NetCDF file 
@@ -334,6 +334,10 @@ contains
       filnam = './input/global/climate/prec/Snowf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_snow ) )
 
+      ! VPD from Qair
+      filnam = './input/global/climate/humd/Qair_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
+      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_humd ) )
+
       ! PPFD from SWdown
       if (in_ppfd) then
         filnam = './input/global/climate/ppfd/SWdown_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
@@ -348,18 +352,21 @@ contains
       allocate( temp_arr(nlon_arr,nlat_arr,nrec_arr) )
       allocate( prec_arr(nlon_arr,nlat_arr,nrec_arr) )
       allocate( snow_arr(nlon_arr,nlat_arr,nrec_arr) )
+      allocate( humd_arr(nlon_arr,nlat_arr,nrec_arr) )
       if (in_ppfd) allocate( ppfd_arr(nlon_arr,nlat_arr,nrec_arr) )
 
       ! Get the varid of the data variable, based on its name
-      call check( nf90_inq_varid( ncid_temp, "Tair", varid_temp ) )
+      call check( nf90_inq_varid( ncid_temp, "Tair",  varid_temp ) )
       call check( nf90_inq_varid( ncid_prec, "Rainf", varid_prec ) )
       call check( nf90_inq_varid( ncid_snow, "Snowf", varid_snow ) )
+      call check( nf90_inq_varid( ncid_humd, "Qair",  varid_humd ) )
       if (in_ppfd) call check( nf90_inq_varid( ncid_ppfd, "SWdown", varid_ppfd ) )
 
       ! Read the full array data
       call check( nf90_get_var( ncid_temp, varid_temp, temp_arr ) )
       call check( nf90_get_var( ncid_prec, varid_prec, prec_arr ) )
       call check( nf90_get_var( ncid_snow, varid_snow, snow_arr ) )
+      call check( nf90_get_var( ncid_humd, varid_humd, humd_arr ) )
       if (in_ppfd) call check( nf90_get_var( ncid_ppfd, varid_ppfd, ppfd_arr ) )
 
       ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
@@ -369,6 +376,7 @@ contains
       call check( nf90_close( ncid_temp ) )
       call check( nf90_close( ncid_prec ) )
       call check( nf90_close( ncid_snow ) )
+      call check( nf90_close( ncid_humd ) )
       if (in_ppfd) call check( nf90_close( ncid_ppfd ) )
 
       ! read from array to define climate type 
@@ -380,18 +388,38 @@ contains
         do jpngr=1,domaininfo%maxgrid
 
           if ( temp_arr(ilon(jpngr),ilat(jpngr),dom)/=ncfillvalue ) then
+            
+            ! required input variables
             out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
             out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            out_climate(jpngr)%dvpd (doy) = humd_arr(ilon(jpngr),ilat(jpngr),dom) * XXXXXXXXXX
+            
+            ! optional input variables
             if (in_ppfd) then
               out_climate(jpngr)%dppfd(doy) = 1.0e-6 * ppfd_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0 * sw_to_ppfd_kfFEC ! W m-2 -> mol m-2 d-1
+              out_climate(jpngr)%dfsun(doy) = dummy
             else
               out_climate(jpngr)%dppfd(doy) = dummy
             end if
+
+            if ( in_netrad .and. in_ppfd ) then
+              out_climate(jpngr)%dfsun(doy) = dummy
+            else
+              out_climate(jpngr)%dfsun(doy) = XXXXXXXXXX
+            end if
+
+            if (in_netrad) then
+              out_climate(jpngr)%dnetrad(:) = XXXXXXXXXX
+            else
+              out_climate(jpngr)%dnetrad(:) = dummy
+            end if
+
           else
             nmissing = nmissing + 1
             out_climate(jpngr)%dtemp(doy) = dummy
             out_climate(jpngr)%dprec(doy) = dummy
             out_climate(jpngr)%dppfd(doy) = dummy
+            out_climate(jpngr)%dvpd (doy) = dummy
             grid(jpngr)%dogridcell = .false.
           end if
 
@@ -403,27 +431,11 @@ contains
       deallocate( temp_arr )
       deallocate( prec_arr )
       deallocate( snow_arr )
+      deallocate( humd_arr )
       if (in_ppfd) deallocate( ppfd_arr )
 
     end do
     print*,'number of land cells without climate data: ', nmissing
-
-    ! xxx test
-    do jpngr=1,domaininfo%maxgrid
-
-      out_climate(jpngr)%dvpd(:)  = 1111
-      if (in_netrad) then
-        out_climate(jpngr)%dnetrad(:) = 1111
-      else
-        out_climate(jpngr)%dnetrad(:) = dummy
-      end if
-      if ( in_netrad .and. in_ppfd ) then
-        out_climate(jpngr)%dfsun(:) = dummy
-      else
-        out_climate(jpngr)%dfsun(:) = 1111
-      end if
-
-    end do
 
     return
     888  format (I2.2)

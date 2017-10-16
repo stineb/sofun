@@ -63,29 +63,8 @@ contains
     ! This will be the netCDF ID for the file and data variable.
     integer :: ncid, varid, status, latdimid, londimid
 
-    print*,'landmask file: ', './input/global/grid/'//trim(params_domain%filnam_landmask)
+    print*,'getting grid from landmask file: ', './input/global/grid/'//trim(params_domain%filnam_landmask)
     call check( nf90_open( './input/global/grid/'//trim(params_domain%filnam_landmask), NF90_NOWRITE, ncid ) )
-
-    ! if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_halfdeg.nc" ) then
-
-    !   print*,'this is a halfdeg simulation'
-
-    !   ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
-    !   call check( nf90_open( './input/global/grid/gicew_halfdeg.cdf', NF90_NOWRITE, ncid ) )
-
-    ! else if ( trim(params_domain%filnam_landmask)=="landmaskfile_global_1x1deg.nc" ) then
-
-    !   print*,'this is a 1x1deg simulation'
-
-    !   ! Open the file. NF90_NOWRITE tells netCDF we want read-only access to the file.
-    !   call check( nf90_open( './input/global/grid/gicew_1x1deg.cdf', NF90_NOWRITE, ncid ) )
-
-    ! else
-
-    !   print*,'Error: landmask file name unknown'
-    !   stop
-
-    ! end if
 
     ! get dimension ID for latitude
     status = nf90_inq_dimid( ncid, "lat", latdimid )
@@ -158,7 +137,7 @@ contains
   end function get_domaininfo
 
 
-  function getgrid( domaininfo ) result( out_grid )
+  function getgrid( domaininfo, params_domain ) result( out_grid )
     !////////////////////////////////////////////////////////////////
     ! Defines grid variables
     !----------------------------------------------------------------
@@ -167,6 +146,7 @@ contains
 
     ! arguments
     type( domaininfo_type ), intent(inout) :: domaininfo
+    type( type_params_domain ), intent(in) :: params_domain
 
     ! function return variable
     type( gridtype ), allocatable, dimension(:) :: out_grid
@@ -175,6 +155,17 @@ contains
     integer :: jpngr, ilon, ilat
     integer :: maxgrid_test
     real :: landarea = 0.0
+    character(len=256) :: filnam
+    integer :: ncid, varid, latdimid, londimid
+    integer:: nlon_arr, nlat_arr, ilat_arr, ilon_arr, nrec_arr
+    real :: dlon_elv, dlat_elv                           ! resolution in longitude and latitude in climate input files
+    integer, dimension(100000), save :: ilon_tmp, ilat_tmp
+    real, dimension(:), allocatable :: lon_arr, lat_arr  ! longitude and latitude vectors from climate NetCDF files
+    real, dimension(:,:), allocatable :: elv_arr         ! elevation, array read from NetCDF file in m
+    real :: ncfillvalue                                  ! _FillValue attribute in NetCDF file
+    integer :: nmissing                                  ! number of land cells where climate data is not available
+
+    if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
 
     allocate( out_grid(domaininfo%maxgrid ) )
 
@@ -195,11 +186,99 @@ contains
     end do
 
     out_grid(:)%dogridcell = .true.
-    out_grid(:)%elv = 100.0
     out_grid(:)%soilcode = 1
 
     ! complement domaininfo here in order to avoid passing too many large arrays around with domaininfo
     domaininfo%landarea = landarea
+
+
+    !----------------------------------------------------------------    
+    ! Get elevation data from WATCH-WFDEI
+    !----------------------------------------------------------------    
+    ! Get associations of elevation-array gridcells to jpngr (ilon, ilat)
+    !----------------------------------------------------------------    
+    print*,'getting elevation from file: ', "./input/global/grid/"//trim(params_domain%filnam_topography)
+
+    call check( nf90_open( "./input/global/grid/"//trim(params_domain%filnam_topography), NF90_NOWRITE, ncid ) )
+
+    ! get dimension ID for latitude
+    call check( nf90_inq_dimid( ncid, "lat", latdimid ) )
+
+    ! Get latitude information: nlat
+    call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
+
+    ! get dimension ID for longitude
+    call check( nf90_inq_dimid( ncid, "lon", londimid ) )
+
+    ! Get latitude information: nlon
+    call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
+
+    ! for index association, get ilon and ilat vectors
+    ! Allocate array sizes now knowing nlon and nlat 
+    allocate( lon_arr(nlon_arr) )
+    allocate( lat_arr(nlat_arr) )
+
+    ! Get longitude and latitude values
+    call check( nf90_get_var( ncid, londimid, lon_arr ) )
+    call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+
+    ! Check if the resolution of the climate input files is identical to the model grid resolution
+    dlon_elv = lon_arr(2) - lon_arr(1)
+    dlat_elv = lat_arr(2) - lat_arr(1)
+    
+    if (dlon_elv/=domaininfo%dlon) stop 'Longitude resolution of elevation input file not identical with model grid.'
+    if (dlat_elv/=domaininfo%dlat) stop 'latitude resolution of elevation input file not identical with model grid.'
+
+    do jpngr=1,domaininfo%maxgrid
+
+      ilon_arr = 1
+
+      do while (out_grid(jpngr)%lon/=lon_arr(ilon_arr))
+        ilon_arr = ilon_arr + 1
+      end do
+      ilon_tmp(jpngr) = ilon_arr
+
+      ilat_arr = 1
+      do while (out_grid(jpngr)%lat/=lat_arr(ilat_arr))
+        ilat_arr = ilat_arr + 1
+      end do
+      ilat_tmp(jpngr) = ilat_arr
+
+    end do
+
+    ! allocate size of output array
+    allocate( elv_arr(nlon_arr,nlat_arr) )
+
+    ! Get the varid of the data variable, based on its name
+    call check( nf90_inq_varid( ncid, "elevation", varid ) )
+
+    ! Read the full array data
+    call check( nf90_get_var( ncid, varid, elv_arr ) )
+
+    ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
+    call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
+
+    ! close NetCDF files
+    call check( nf90_close( ncid ) )
+
+    ! read from array to define grid type 
+    nmissing = 0
+    do jpngr=1,domaininfo%maxgrid
+
+      if ( elv_arr(ilon_tmp(jpngr),ilat_tmp(jpngr))/=ncfillvalue ) then
+        out_grid(jpngr)%elv = elv_arr(ilon_tmp(jpngr),ilat_tmp(jpngr))
+      else
+        nmissing = nmissing + 1
+        out_grid(jpngr)%elv = dummy
+        out_grid(jpngr)%dogridcell = .false.
+      end if
+
+    end do
+
+    ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
+    deallocate( elv_arr )
+
+    print*,'... done.'
 
   end function getgrid
 

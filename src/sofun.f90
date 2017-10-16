@@ -70,7 +70,7 @@ program main
   allocate( interface%dfapar_field( ndayyear, interface%domaininfo%maxgrid ) )
 
   ! vectorise 2D array, keeping only land gridcells
-  interface%grid(:) = getgrid( interface%domaininfo )
+  interface%grid(:) = getgrid( interface%domaininfo, params_domain )
 
   ! Obtain land unit dependent parameters, define decomposition _rates
   !call luparameters
