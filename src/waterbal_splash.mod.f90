@@ -21,7 +21,7 @@ module md_waterbal
   ! contact: b.stocker@imperial.ac.uk
   ! ...
   !----------------------------------------------------------------
-  use md_params_core, only: ndayyear, nmonth, nlu, maxgrid
+  use md_params_core, only: ndayyear, nmonth, nlu, maxgrid, kTo, kR, kMv, kMa, kfFEC
 
   implicit none
 
@@ -84,15 +84,7 @@ module md_waterbal
   real :: kd                ! angular coefficient of transmittivity (Linacre, 1968)
   real :: ke                ! eccentricity for 2000 CE (Berger, 1978)
   real :: keps              ! obliquity for 2000 CE, degrees (Berger, 1978)
-  real :: kfFEC             ! from flux to energy conversion, umol/J (Meek et al., 1984)
-  real :: kG                ! gravitational acceleration, m/s^2 (Allen, 1973)
   real :: kGsc              ! solar constant, W/m^2 (Kopp & Lean, 2011)
-  real :: kL                ! temperature lapse rate, K/m (Cavcar, 2000)
-  real :: kMa               ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
-  real :: kMv               ! molecular weight of water vapor, kg/mol (Tsilingiris, 2008)
-  real :: kPo               ! standard atmosphere, Pa (Allen, 1973)
-  real :: kR                ! gas constant, J/mol/K (Allen, 1973)
-  real :: kTo               ! base temperature, K (Prentice, unpublished)
   real :: kWm               ! soil moisture capacity, mm (Cramer & Prentice, 1988)
   real :: kw                ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
   real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
@@ -399,6 +391,7 @@ contains
     ! - daily condensation (out_evap%cn), mm
     !-------------------------------------------------------------------------  
     use md_params_core, only: ndayyear, pi
+    use md_sofunutils, only: calc_patm
 
     ! arguments
     real,    intent(in) :: lat           ! latitude, degrees
@@ -502,9 +495,9 @@ contains
     ! Enthalpy of vaporization, J/kg
     lv = enthalpy_vap(tc)
     ! Density of water, kg/m^3
-    pw = density_h2o(tc, elv2pres(elv))
+    pw = density_h2o(tc, calc_patm(elv))
     ! Psychrometric constant, Pa/K
-    g = psychro(tc, elv2pres(elv))
+    g = psychro(tc, calc_patm(elv))
 
     ! Eq. 51, SPLASH 2.0 Documentation
     econ = s/(lv*pw*(s + g))
@@ -758,33 +751,9 @@ contains
     
     ! obliquity for 2000 CE, degrees (Berger, 1978)
     keps     = getparreal( 'params/params_waterbal_splash.dat', 'keps' )
-    
-    ! from flux to energy conversion, umol/J (Meek et al., 1984)
-    kfFEC    = getparreal( 'params/params_waterbal_splash.dat', 'kfFEC' )
-    
-    ! gravitational acceleration, m/s^2 (Allen, 1973)
-    kG       = getparreal( 'params/params_waterbal_splash.dat', 'kG' )
-    
+
     ! solar constant, W/m^2 (Kopp & Lean, 2011)
     kGsc     = getparreal( 'params/params_waterbal_splash.dat', 'kGsc' )
-    
-    ! temperature lapse rate, K/m (Cavcar, 2000)
-    kL       = getparreal( 'params/params_waterbal_splash.dat', 'kL' )
-    
-    ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
-    kMa      = getparreal( 'params/params_waterbal_splash.dat', 'kMa' )
-    
-    ! molecular weight of water vapor, kg/mol (Tsilingiris, 2008)
-    kMv      = getparreal( 'params/params_waterbal_splash.dat', 'kMv' )
-    
-    ! standard atmosphere, Pa (Allen, 1973)
-    kPo      = getparreal( 'params/params_waterbal_splash.dat', 'kPo' )
-    
-    ! universal gas constant, J/mol/K (Allen, 1973)
-    kR       = getparreal( 'params/params_waterbal_splash.dat', 'kR' )
-    
-    ! base temperature, K (Prentice, unpublished)
-    kTo      = getparreal( 'params/params_waterbal_splash.dat', 'kTo' )
     
     ! soil moisture capacity, mm (Cramer & Prentice, 1988)
     kWm      = getparreal( 'params/params_waterbal_splash.dat', 'kWm' )
@@ -940,7 +909,6 @@ contains
     ! Calculates the slope of the sat pressure temp curve, Pa/K
     ! Ref:      Eq. 13, Allen et al. (1998)
     !----------------------------------------------------------------   
-
     ! arguments
     real, intent(in) :: tc ! air temperature, degrees C
 
@@ -967,23 +935,6 @@ contains
     enthalpy_vap = 1.91846e6*((tc + 273.15)/(tc + 273.15 - 33.91))**2
 
   end function enthalpy_vap
-
-
-  function elv2pres( alt )
-    !----------------------------------------------------------------   
-    ! Calculates atm. pressure for a given elevation
-    ! Ref:      Allen et al. (1998)
-    !----------------------------------------------------------------   
-
-    ! arguments
-    real, intent(in) :: alt ! elevation above sea level, m
-
-    ! function return value
-    real ::  elv2pres ! atm. pressure for a given elevation
-
-    elv2pres = kPo*(1.0 - kL*alt/kTo)**(kG*kMa/(kR*kL))
-
-  end function elv2pres
 
 
   function density_h2o( tc, press )

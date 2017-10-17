@@ -931,6 +931,26 @@ contains
   end function area
 
 
+  function calc_patm( elv ) result( patm )
+    !----------------------------------------------------------------   
+    ! Calculates atmospheric pressure for a given elevation, assuming
+    ! standard atmosphere at sea level (kPo)
+    ! Ref:      Allen et al. (1998)
+    ! This function is copied from SPLASH
+    !----------------------------------------------------------------
+    use md_params_core, only: kPo, kL, kTo, kG, kMa, kR
+
+    ! arguments
+    real, intent(in) :: elv ! elevation above sea level, m
+
+    ! function return value
+    real ::  patm ! atmospheric pressure (Pa)
+
+    patm = kPo * (1.0 - kL*elv/kTo)**(kG*kMa*1e-3/(kR*kL))
+
+  end function calc_patm
+
+
  !  subroutine setreal(filename,paraname,default,paravalue)
  !          !////////////////////////////////////////////////////////////////
  !          ! "Low-level" SR for reading/defining parameter values from text file

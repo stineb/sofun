@@ -69,7 +69,7 @@ contains
     end if
     ! write(0,*) 'GETCO2: use CO2 data of year ', readyear
     print*,'CO2: reading file:', 'input/global/co2/'//trim(sitename)//'/'//trim(co2_forcing_file)
-    pco2 = getvalreal( 'global/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
+    pco2 = getvalreal( 'global/co2/'//trim(co2_forcing_file), readyear )
 
   end function getco2
 
@@ -173,7 +173,9 @@ contains
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
     ! Read year-2013 data after 2013
-    !----------------------------------------------------------------    
+    !----------------------------------------------------------------
+    use md_params_core, only: kfFEC
+
     ! arguments
     character(len=*), intent(in) :: sitename
     type( domaininfo_type ), intent(in) :: domaininfo
@@ -201,16 +203,15 @@ contains
     real, dimension(:,:,:), allocatable :: temp_arr      ! temperature, array read from NetCDF file in K
     real, dimension(:,:,:), allocatable :: prec_arr      ! precipitation, array read from NetCDF file in kg/m2/s
     real, dimension(:,:,:), allocatable :: snow_arr      ! snow fall, array read from NetCDF file in kg/m2/s
-    real, dimension(:,:,:), allocatable :: humd_arr      ! specific humidity, array read from NetCDF file 
+    real, dimension(:,:,:), allocatable :: qair_arr      ! specific humidity, array read from NetCDF file 
     real, dimension(:,:,:), allocatable :: fsun_arr      ! sunshine fraction, array read from NetCDF file 
     real, dimension(:,:,:), allocatable :: nrad_arr      ! net radiation, array read from NetCDF file 
-    real, dimension(:,:,:), allocatable :: ppfd_arr      ! photosynthetic photon flux density, array read from NetCDF file 
+    real, dimension(:,:,:), allocatable :: rswd_arr      ! photosynthetic photon flux density, array read from NetCDF file 
     real, dimension(:), allocatable :: lon_arr, lat_arr  ! longitude and latitude vectors from climate NetCDF files
     real :: dlon_clim, dlat_clim                         ! resolution in longitude and latitude in climate input files
     real :: ncfillvalue                                  ! _FillValue attribute in NetCDF file
     integer :: nmissing                                  ! number of land cells where climate data is not available
     character(len=5) :: recname = "tstep"
-    real, parameter :: sw_to_ppfd_kfFEC = 2.04          ! conversion factor from SPLASH: flux to energy conversion, umol/J (Meek et al., 1984)
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
@@ -352,8 +353,8 @@ contains
       allocate( temp_arr(nlon_arr,nlat_arr,nrec_arr) )
       allocate( prec_arr(nlon_arr,nlat_arr,nrec_arr) )
       allocate( snow_arr(nlon_arr,nlat_arr,nrec_arr) )
-      allocate( humd_arr(nlon_arr,nlat_arr,nrec_arr) )
-      if (in_ppfd) allocate( ppfd_arr(nlon_arr,nlat_arr,nrec_arr) )
+      allocate( qair_arr(nlon_arr,nlat_arr,nrec_arr) )
+      if (in_ppfd) allocate( rswd_arr(nlon_arr,nlat_arr,nrec_arr) )
 
       ! Get the varid of the data variable, based on its name
       call check( nf90_inq_varid( ncid_temp, "Tair",  varid_temp ) )
@@ -366,8 +367,8 @@ contains
       call check( nf90_get_var( ncid_temp, varid_temp, temp_arr ) )
       call check( nf90_get_var( ncid_prec, varid_prec, prec_arr ) )
       call check( nf90_get_var( ncid_snow, varid_snow, snow_arr ) )
-      call check( nf90_get_var( ncid_humd, varid_humd, humd_arr ) )
-      if (in_ppfd) call check( nf90_get_var( ncid_ppfd, varid_ppfd, ppfd_arr ) )
+      call check( nf90_get_var( ncid_humd, varid_humd, qair_arr ) )
+      if (in_ppfd) call check( nf90_get_var( ncid_ppfd, varid_ppfd, rswd_arr ) )
 
       ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
       call check( nf90_get_att( ncid_temp, varid_temp, "_FillValue", ncfillvalue ) )
@@ -392,11 +393,11 @@ contains
             ! required input variables
             out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
             out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
-            out_climate(jpngr)%dvpd (doy) = humd_arr(ilon(jpngr),ilat(jpngr),dom) * XXXXXXXXXX
+            out_climate(jpngr)%dvpd(doy)  = calc_vpd( qair_arr(ilon(jpngr),ilat(jpngr),dom), out_climate(jpngr)%dtemp(doy), grid(jpngr)%elv )
             
             ! optional input variables
             if (in_ppfd) then
-              out_climate(jpngr)%dppfd(doy) = 1.0e-6 * ppfd_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0 * sw_to_ppfd_kfFEC ! W m-2 -> mol m-2 d-1
+              out_climate(jpngr)%dppfd(doy) = 1.0e-6 * rswd_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0 * kfFEC ! W m-2 -> mol m-2 d-1
               out_climate(jpngr)%dfsun(doy) = dummy
             else
               out_climate(jpngr)%dppfd(doy) = dummy
@@ -405,11 +406,11 @@ contains
             if ( in_netrad .and. in_ppfd ) then
               out_climate(jpngr)%dfsun(doy) = dummy
             else
-              out_climate(jpngr)%dfsun(doy) = XXXXXXXXXX
+              out_climate(jpngr)%dfsun(doy) = 1111
             end if
 
             if (in_netrad) then
-              out_climate(jpngr)%dnetrad(:) = XXXXXXXXXX
+              out_climate(jpngr)%dnetrad(:) = 1111
             else
               out_climate(jpngr)%dnetrad(:) = dummy
             end if
@@ -431,8 +432,8 @@ contains
       deallocate( temp_arr )
       deallocate( prec_arr )
       deallocate( snow_arr )
-      deallocate( humd_arr )
-      if (in_ppfd) deallocate( ppfd_arr )
+      deallocate( qair_arr )
+      if (in_ppfd) deallocate( rswd_arr )
 
     end do
     print*,'number of land cells without climate data: ', nmissing
@@ -475,7 +476,51 @@ contains
     out_landuse%do_grharvest(:) = .false.
 
   end function getlanduse
-  
+
+
+  function calc_vpd( qair, temp, elv ) result( vpd )
+    !////////////////////////////////////////////////////////////////////////
+    ! Calculates vapor pressure deficit, given air temperature and assuming
+    ! standard atmosphere, corrected for elevation above sea level.
+    ! Ref:      Allen et al. (1998)
+    !-----------------------------------------------------------------------
+    use md_sofunutils, only: calc_patm
+    use md_params_core, only: kR, kMv, kMa
+
+    ! arguments
+    real, intent(in) :: qair    ! specific humidity (g g-1)
+    real, intent(in) :: temp    ! temperature (degrees Celsius)
+    real, intent(in) :: elv     ! elevation above sea level (m)
+
+    ! function return variable
+    real :: vpd                 ! vapor pressure deficit (Pa)
+
+    ! local variables
+    real :: wair    ! mass mising ratio of water vapor to dry air (dimensionless)
+    real :: patm    ! atmopheric pressure (Pa)
+    real :: rv      ! specific gas constant of water vapor (J g-1 K-1)
+    real :: rd      ! specific gas constant of dry air (J g-1 K-1)
+    real :: eact    ! actual water vapor pressure (Pa)
+    real :: esat    ! saturation water vapor pressure (Pa)
+
+
+    ! calculate the mass mising ratio of water vapor to dry air (dimensionless)
+    wair = qair / ( 1 - qair )
+
+    ! calculate atmopheric pressure (Pa) assuming standard conditions at sea level (elv=0)
+    patm = calc_patm( elv )
+
+    ! calculate water vapor pressure 
+    rv = kR / kMv
+    rd = kR / kMa
+    eact = patm * wair * rv / (rd + wair * rv)
+
+    ! calculate saturation water vapour pressure in Pa
+    esat = 611.0 * exp( (17.27 * temp)/(temp + 237.3) )
+
+    vpd = esat - eact
+
+  end function calc_vpd
 
 end module md_forcing
 

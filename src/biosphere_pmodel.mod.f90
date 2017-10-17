@@ -64,7 +64,7 @@ contains
       !----------------------------------------------------------------
       ! Initialise pool variables and/or read from restart file (not implemented)
       !----------------------------------------------------------------
-      if (verbose) print*, 'nitglobal_() ...'
+      if (verbose) print*, 'initglobal_() ...'
       allocate( tile(  nlu,  size(interface%grid) ) )
       allocate( plant( npft, size(interface%grid) ) )
 

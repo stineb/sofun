@@ -36,7 +36,8 @@ example = True
 ## Manually et the root directory for the local mirror of 
 ## /work/bstocker/labprentice/data
 ##--------------------------------------------------------------------
-dataroot = '/Users/benjaminstocker/data/'
+# dataroot = '/Users/benjaminstocker/data/'
+dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
 
 ##--------------------------------------------------------------------
 ## Link directories
@@ -68,6 +69,11 @@ if simsuite == 'global':
 	## land masks at 1 deg and 0.5 deg resolution
 	call(['ln', '-svf', dataroot + 'landmasks/gicew_1x1deg.cdf', dirn ])
 	call(['ln', '-svf', dataroot + 'landmasks/gicew_halfdeg.cdf', dirn ])
+
+	## CO2
+	##--------------------------------------
+	dirn = 'input/global/co2'
+	call(['ln', '-svf', dataroot + 'co2/cCO2_rcp85_const850-1765.dat', dirn ])
 
 
 	## WATCH-WFDEI climate input data
