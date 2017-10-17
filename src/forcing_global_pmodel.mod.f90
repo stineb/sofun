@@ -19,7 +19,7 @@ module md_forcing
   implicit none
 
   private
-  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate_wfdei, &
+  public getco2, getninput, ninput_type, gettot_ninput, getfapar_fapar3g, getclimate_wfdei, &
     getlanduse, landuse_type, climate_type
 
   type climate_type
@@ -127,46 +127,134 @@ contains
   end function gettot_ninput
 
 
-  function getfapar( runname, sitename, ngridcells, grid, forcingyear, fapar_forcing_source ) result( fapar_field )
+  function getfapar_fapar3g( domaininfo, grid, year ) result( fapar_field )
     !////////////////////////////////////////////////////////////////
-    ! Function reads this year's atmospheric CO2 from input
+    ! Reads fAPAR from fapar3g data file.
+    ! Assumes fAPAR=0 for cells with missing data
     !----------------------------------------------------------------
     ! arguments
-    character(len=*), intent(in) :: runname
-    character(len=*), intent(in) :: sitename
-    integer, intent(in) :: ngridcells
-    type( gridtype ), dimension(ngridcells), intent(in) :: grid
-    integer, intent(in)          :: forcingyear
-    character(len=*), intent(in) :: fapar_forcing_source
+    type( domaininfo_type ), intent(in) :: domaininfo
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
+    integer, intent(in) :: year
 
     ! function return variable
-    real, dimension(ndayyear,ngridcells) :: fapar_field
+    real, dimension(ndayyear,domaininfo%maxgrid) :: fapar_field
 
-    ! local variables 
-    integer :: jpngr
-    integer :: readyear
-    character(len=4) :: faparyear_char
+    ! local variables
+    integer :: ncid, varid
+    integer :: latdimid, londimid
+    integer :: nlat_arr, nlon_arr
+    real, allocatable, dimension(:)     :: lon_arr
+    real, allocatable, dimension(:)     :: lat_arr
+    real, allocatable, dimension(:,:,:) :: fapar_arr
 
-    if (trim(fapar_forcing_source)=='NA') then
-      ! If in simulation parameter file 'NA' is specified for 'fapar_forcing_source', then set fapar_field to dummy value
-      do jpngr=1,ngridcells
-        fapar_field(:,jpngr) = dummy
+    integer :: jpngr, ilon_arr, ilat_arr, moy, dom, doy
+    integer, dimension(domaininfo%maxgrid) :: ilon
+    integer, dimension(domaininfo%maxgrid) :: ilat
+    integer :: fileyear, read_idx
+    real :: tmp
+    real :: ncfillvalue
+    real :: dlat, dlon
+    character(len=*), parameter :: LONNAME  = "LON"
+    character(len=*), parameter :: LATNAME  = "LAT"
+    character(len=*), parameter :: VARNAME  = "FAPAR3G"
+
+    integer, parameter :: firstyr_fapar3g = 1982
+    integer, parameter :: lastyr_fapar3g = 2011
+
+
+    !----------------------------------------------------------------  
+    ! Read arrays of all months of current year from file  
+    !----------------------------------------------------------------    
+    print*,'getting fapar from file: ', "./input/global/fapar/fAPAR3g_monthly_1982_2011_NICE.nc"
+
+    call check( nf90_open( "./input/global/fapar/fAPAR3g_monthly_1982_2011_NICE.nc", NF90_NOWRITE, ncid ) )
+
+    ! get dimension ID for latitude
+    call check( nf90_inq_dimid( ncid, LATNAME, latdimid ) )
+
+    ! Get latitude information: nlat
+    call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
+
+    ! get dimension ID for longitude
+    call check( nf90_inq_dimid( ncid, LONNAME, londimid ) )
+
+    ! Get latitude information: nlon
+    call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
+
+    ! for index association, get ilon and ilat vectors
+    ! Allocate array sizes now knowing nlon and nlat 
+    allocate( lon_arr(nlon_arr) )
+    allocate( lat_arr(nlat_arr) )
+
+    ! Get longitude and latitude values
+    call check( nf90_get_var( ncid, londimid, lon_arr ) )
+    call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+
+    ! Check if the resolution of the climate input files is identical to the model grid resolution
+    dlon = lon_arr(2) - lon_arr(1)
+    dlat = lat_arr(2) - lat_arr(1)
+
+    if (dlon/=domaininfo%dlon) stop 'Longitude resolution of fapar input file not identical with model grid.'
+    if (dlat/=domaininfo%dlat) stop 'latitude resolution of fapar input file not identical with model grid.'
+
+    ! get index associations
+    do jpngr=1,domaininfo%maxgrid
+
+      ilon_arr = 1
+
+      do while (grid(jpngr)%lon/=lon_arr(ilon_arr))
+        ilon_arr = ilon_arr + 1
       end do
+      ilon(jpngr) = ilon_arr
 
-    else
-      ! Prescribed. Read monthly fAPAR value from file
-      do jpngr=1,ngridcells
-        ! create 4-digit string for year  
-        write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-        fapar_field(:,jpngr) = 0.75
+      ilat_arr = 1
+      do while (grid(jpngr)%lat/=lat_arr(ilat_arr))
+        ilat_arr = ilat_arr + 1
       end do
+      ilat(jpngr) = ilat_arr
 
-    end if
+    end do
 
-    return
-    999  format (I4.4)
+    ! allocate size of output array
+    allocate( fapar_arr(nlon_arr,nlat_arr,nmonth) )
 
-  end function getfapar
+    ! Get the varid of the data variable, based on its name
+    call check( nf90_inq_varid( ncid, VARNAME, varid ) )
+
+    ! Read the array, only current year
+    fileyear = min( max( year - firstyr_fapar3g + 1, 1 ), 30 )
+    read_idx = ( fileyear - 1 ) * nmonth
+    call check( nf90_get_var( ncid, varid, fapar_arr, start=(/1, 1, read_idx/), count=(/nlon_arr, nlat_arr, nmonth/) ) )
+
+    ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
+    call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
+
+    ! close NetCDF files
+    call check( nf90_close( ncid ) )
+
+    ! read from array to define grid type 
+    do jpngr=1,domaininfo%maxgrid
+      doy = 0
+      do moy=1,nmonth
+        do dom=1,ndaymonth(moy)
+          doy = doy + 1
+          tmp = fapar_arr(ilon(jpngr),ilat(jpngr),moy)
+          if ( tmp/=ncfillvalue ) then
+            fapar_field(doy,jpngr) = tmp
+          else
+            fapar_field(doy,jpngr) = 0.0
+          end if
+        end do
+      end do
+    end do
+
+    ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
+    deallocate( fapar_arr )
+
+    print*,'... done.'
+
+  end function getfapar_fapar3g
 
 
   function getclimate_wfdei( sitename, domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
@@ -179,7 +267,6 @@ contains
     ! arguments
     character(len=*), intent(in) :: sitename
     type( domaininfo_type ), intent(in) :: domaininfo
-
     type( gridtype ), dimension(domaininfo%maxgrid), intent(inout) :: grid
     logical, intent(in) :: init
     integer, intent(in) :: climateyear

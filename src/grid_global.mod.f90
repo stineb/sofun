@@ -66,7 +66,6 @@ contains
     print*,'getting grid from landmask file: ', './input/global/grid/'//trim(params_domain%filnam_landmask)
     call check( nf90_open( './input/global/grid/'//trim(params_domain%filnam_landmask), NF90_NOWRITE, ncid ) )
 
-    print*,'1' 
     ! get dimension ID for latitude
     status = nf90_inq_dimid( ncid, "lat", latdimid )
     if ( status /= nf90_noerr ) then
@@ -191,7 +190,6 @@ contains
 
     ! complement domaininfo here in order to avoid passing too many large arrays around with domaininfo
     domaininfo%landarea = landarea
-
 
     !----------------------------------------------------------------    
     ! Get elevation data from WATCH-WFDEI

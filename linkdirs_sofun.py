@@ -75,6 +75,11 @@ if simsuite == 'global':
 	dirn = 'input/global/co2'
 	call(['ln', '-svf', dataroot + 'co2/cCO2_rcp85_const850-1765.dat', dirn ])
 
+	## fapar 
+	##--------------------------------------
+	dirn = 'input/global/fapar'
+	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g/fAPAR3g_monthly_1982_2011_NICE.nc', dirn ])
+
 
 	## WATCH-WFDEI climate input data
 	##--------------------------------------

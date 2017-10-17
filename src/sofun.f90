@@ -12,7 +12,7 @@ program main
   use md_grid, only: get_domaininfo, getgrid
   use md_params_soil, only: getsoil_field
   use md_forcing, only: getclimate_wfdei, getninput, ninput_type, gettot_ninput, &
-    getfapar, getlanduse, getco2
+    getfapar_fapar3g, getlanduse, getco2
   use md_params_core, only: dummy, maxgrid, ndayyear
   use md_biosphere, only: biosphere_annual
 
@@ -100,16 +100,16 @@ program main
     !----------------------------------------------------------------
     ! Climate
     if (verbose) print*,'getting climate ...'
-    interface%climate(:) = getclimate_wfdei( &
-                                            trim(interface%params_siml%sitename), &
-                                            interface%domaininfo, &
-                                            interface%grid, &
-                                            interface%steering%init, &
-                                            ! 1992 &
-                                            interface%steering%climateyear, &
-                                            interface%params_siml%in_ppfd,  &
-                                            interface%params_siml%in_netrad &
-                                            )
+    ! interface%climate(:) = getclimate_wfdei( &
+    !                                         trim(interface%params_siml%sitename), &
+    !                                         interface%domaininfo, &
+    !                                         interface%grid, &
+    !                                         interface%steering%init, &
+    !                                         ! 1992 &
+    !                                         interface%steering%climateyear, &
+    !                                         interface%params_siml%in_ppfd,  &
+    !                                         interface%params_siml%in_netrad &
+    !                                         )
     if (verbose) print*,'... done.'
 
     ! CO2
@@ -169,14 +169,11 @@ program main
     ! Get prescribed fAPAR if required (otherwise set to dummy value)
     !----------------------------------------------------------------
     if (verbose) print*,'getting fAPAR ...'
-    interface%dfapar_field(:,:) = getfapar( &
-                                          trim(runname), &
-                                          trim(interface%params_siml%sitename), &
-                                          size(interface%grid), &
-                                          interface%grid, &
-                                          interface%steering%forcingyear, &
-                                          interface%params_siml%fapar_forcing_source &
-                                          )
+    interface%dfapar_field(:,:) = getfapar_fapar3g( &
+                                                    interface%domaininfo, &
+                                                    interface%grid, &
+                                                    interface%steering%forcingyear &
+                                                    )
     if (verbose) print*,'... done.'
 
     !----------------------------------------------------------------
