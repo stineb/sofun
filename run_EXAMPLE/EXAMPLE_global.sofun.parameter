@@ -41,6 +41,9 @@ const_nfert_year                        -9999
 daily_out_startyr                       2010
 daily_out_endyr                         2010
 
+# NetCDF output periodicity (d)
+dt                                      5
+
 # boolean defining which PFTs to include (lpft1: pftcode=1)
 lTeBE                                   .false.
 lTeBS                                   .false.
@@ -71,6 +74,7 @@ loutdtemp                               .false.
 
 # Variables written to NetCDF output (core)
 lncoutdtemp                             .true.
+lncoutdfapar                            .true.
 lncoutdgpp                              .true. 
 
 # Variables written to output by module

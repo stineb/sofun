@@ -39,12 +39,16 @@ module md_interface
   ! Module-specific daily output variables
   !----------------------------------------------------------------
   real, allocatable, dimension(:,:) :: outdtemp
+  real, allocatable, dimension(:,:) :: outdfapar
 
   !----------------------------------------------------------------
   ! Module-specific NetCDF output file and variable names
   !----------------------------------------------------------------
   character(len=256) :: ncoutfilnam_temp
+  character(len=256) :: ncoutfilnam_fapar
+
   character(len=*), parameter :: TEMP_NAME="temp"
+  character(len=*), parameter :: FAPAR_NAME="fapar"
 
   ! !----------------------------------------------------------------
   ! ! Module-specific annual output variables
@@ -66,14 +70,11 @@ contains
     integer, intent(in) :: ngridcells
 
     ! Allocate memory for daily output variables
-    if ( interface%steering%init .and. interface%params_siml%loutdtemp ) allocate( outdtemp(ndayyear,ngridcells) )
-    if ( interface%params_siml%loutdtemp ) outdtemp(:,:) = 0.0
+    if ( interface%steering%init .and. interface%params_siml%loutdtemp  ) allocate( outdtemp (ndayyear,ngridcells) )
+    if ( interface%steering%init .and. interface%params_siml%loutdfapar ) allocate( outdfapar(ndayyear,ngridcells) )
 
-    ! ! annual output variables
-    ! if (interface%params_siml%loutforcing) then
-    !   outatemp(:) = 0.0
-    !   outanin (:,:) = 0.0
-    ! end if
+    if ( interface%params_siml%loutdtemp  ) outdtemp (:,:) = 0.0
+    if ( interface%params_siml%loutdfapar ) outdfapar(:,:) = 0.0
 
   end subroutine initoutput_forcing
 
@@ -97,6 +98,12 @@ contains
       open(950,file=filnam,err=999,status='unknown')
     end if 
 
+    ! FRACTION OF ABSORBED PHOTOSYNTHETICALLY ACTIVE RADIATION
+    if (interface%params_siml%loutdfapar) then
+      filnam=trim(prefix)//'.d.fapar.out'
+      open(951,file=filnam,err=999,status='unknown')
+    end if     
+
     return
 
     999  stop 'INITIO: error opening output files'
@@ -116,9 +123,6 @@ contains
 
     character(len=*), parameter :: DOY_NAME  = "doy"
     character(len=*), parameter :: YEAR_NAME = "year"
-    character(len=*), parameter :: filnamend = ".d.temp.nc"
-    character(len=*), parameter :: varunits  = "degrees Celsius"
-    character(len=*), parameter :: longnam   = "daily average 2 m temperature"
     character(len=*), parameter :: title     = "SOFUN GP-model output, module md_interface"
     character(len=4) :: year_char
 
@@ -135,7 +139,8 @@ contains
 
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
-      ncoutfilnam_temp = trim(prefix)//'.'//year_char//filnamend
+      print*,'initialising temp nc file ...'
+      ncoutfilnam_temp = trim(prefix)//'.'//year_char//".d.temp.nc"
       call init_nc_3D( filnam  = ncoutfilnam_temp, &
                       nlon     = interface%domaininfo%nlon, &
                       nlat     = interface%domaininfo%nlat, &
@@ -147,8 +152,34 @@ contains
                       znam     = DOY_NAME, &
                       recnam   = YEAR_NAME, &
                       varnam   = TEMP_NAME, &
-                      varunits = varunits, &
-                      longnam  = longnam, &
+                      varunits = "degrees Celsius", &
+                      longnam  = "daily average 2 m temperature", &
+                      title    = title &
+                      )
+
+    end if
+
+    if (interface%params_siml%lncoutdfapar) then
+
+      prefix = "./output_nc/"//trim(interface%params_siml%runname)
+
+      ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
+      ! overwrite this file, if it already exists.
+      print*,'initialising fapar nc file ...'
+      ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar.nc"
+      call init_nc_3D( filnam  = ncoutfilnam_fapar, &
+                      nlon     = interface%domaininfo%nlon, &
+                      nlat     = interface%domaininfo%nlat, &
+                      nz       = ndayyear, &
+                      lon      = interface%domaininfo%lon, &
+                      lat      = interface%domaininfo%lat, &
+                      zvals    = doy_vals, &
+                      recvals  = interface%steering%outyear, &
+                      znam     = DOY_NAME, &
+                      recnam   = YEAR_NAME, &
+                      varnam   = FAPAR_NAME, &
+                      varunits = "unitless", &
+                      longnam  = "fraction of absorbed photosynthetically active radiation", &
                       title    = title &
                       )
 
@@ -177,7 +208,8 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (interface%params_siml%loutdtemp) outdtemp(doy,jpngr) = interface%climate(jpngr)%dtemp(doy)
+    if (interface%params_siml%loutdtemp ) outdtemp (doy,jpngr) = interface%climate(jpngr)%dtemp (doy)
+    if (interface%params_siml%loutdfapar) outdfapar(doy,jpngr) = interface%dfapar_field(doy,jpngr)
 
     ! !----------------------------------------------------------------
     ! ! ANNUAL SUM OVER DAILY VALUES
@@ -202,8 +234,10 @@ contains
     real :: itime
     integer :: doy, moy, jpngr
     real, dimension(ndayyear) :: outdtemp_tot
+    real, dimension(ndayyear) :: outdfapar_tot
 
-    outdtemp_tot(:) = 0.0
+    outdtemp_tot(:)  = 0.0
+    outdfapar_tot(:) = 0.0
 
     if (nlu>1) stop 'Output only for one LU category implemented.'
 
@@ -212,28 +246,29 @@ contains
     ! Write daily value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    if (interface%params_siml%loutdtemp) then
-      ! if ( .not. interface%steering%spinup &
-      !   .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-      !   .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+    ! if ( .not. interface%steering%spinup &
+    !   .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+    !   .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-        ! Write daily output only during transient simulation
-        do doy=1,ndayyear
+      ! Write daily output only during transient simulation
+      do doy=1,ndayyear
 
-          ! Get weighted average
-          do jpngr=1,size(interface%grid)
-            outdtemp_tot(doy) = outdtemp_tot(doy) + outdtemp(doy,jpngr) * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
-          end do
-          outdtemp_tot(doy) = outdtemp_tot(doy) / interface%domaininfo%landarea
-
-          ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real( interface%steering%outyear ) + real( doy - 1 ) / real( ndayyear )
-          
-          write(950,999) itime, outdtemp_tot(doy)
-
+        ! Get weighted average
+        do jpngr=1,size(interface%grid)
+          if (interface%params_siml%loutdtemp ) outdtemp_tot(doy)  = outdtemp_tot(doy)  + outdtemp(doy,jpngr)  * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
+          if (interface%params_siml%loutdfapar) outdfapar_tot(doy) = outdfapar_tot(doy) + outdfapar(doy,jpngr) * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
         end do
-      ! end if
-    end if
+        if (interface%params_siml%loutdtemp ) outdtemp_tot(doy)  = outdtemp_tot(doy)  / interface%domaininfo%landarea
+        if (interface%params_siml%loutdfapar) outdfapar_tot(doy) = outdfapar_tot(doy) / interface%domaininfo%landarea
+
+        ! Define 'itime' as a decimal number corresponding to day in the year + year
+        itime = real( interface%steering%outyear ) + real( doy - 1 ) / real( ndayyear )
+        
+        if (interface%params_siml%loutdtemp)  write(950,999) itime, outdtemp_tot(doy)
+        if (interface%params_siml%loutdfapar) write(951,999) itime, outdfapar_tot(doy)
+
+      end do
+    ! end if
 
     return
 
@@ -260,36 +295,49 @@ contains
     !       .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
     !       .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
+      !-------------------------------------------------------------------------
+      ! dtemp
+      !-------------------------------------------------------------------------
+      print*,'writing temp nc file ...'
       if (interface%params_siml%lncoutdtemp) then
-
         allocate( outarr(interface%domaininfo%nlon,interface%domaininfo%nlat,ndayyear,1) )
         outarr(:,:,:,:) = dummy        
 
         ! Populate output array
         do jpngr=1,size(interface%grid)
           if (interface%grid(jpngr)%dogridcell) then
-
-            ! do doy=1,ndayyear
-              ! option A
-              ! call check( nf90_put_var( ncid, varid_temp, interface%climate(jpngr)%dtemp(1), start = (/ interface%grid(jpngr)%ilat, interface%grid(jpngr)%ilon /) ) )
-
-              ! option B
-              ! call check( nf90_put_var( ncid, varid_temp, outdtemp(doy,jpngr), start = (/ doy, interface%grid(jpngr)%ilon, interface%grid(jpngr)%ilat /) ) )            
-            ! end do
-            ! call check( nf90_put_var( ncid, varid_temp, outdtemp(:,jpngr), start = (/ interface%grid(jpngr)%ilon, interface%grid(jpngr)%ilat, 1 /), count = (/ 1, 1, ndayyear /) ) )
-
-            ! populate array
             outarr(interface%grid(jpngr)%ilon,interface%grid(jpngr)%ilat,:,1) = outdtemp(:,jpngr)
-
           end if
         end do
 
+        ! write to NetCDF file
         call write_nc_3D( ncoutfilnam_temp, TEMP_NAME, interface%domaininfo%nlon, interface%domaininfo%nlat, ndayyear, outarr(:,:,:,:)  )
 
         ! deallocate memory
         deallocate( outarr )
-
       end if
+
+      !-------------------------------------------------------------------------
+      ! fapar
+      !-------------------------------------------------------------------------
+      print*,'writing fapar nc file ...'
+      if (interface%params_siml%lncoutdfapar) then
+        allocate( outarr(interface%domaininfo%nlon,interface%domaininfo%nlat,ndayyear,1) )
+        outarr(:,:,:,:) = dummy        
+
+        ! Populate output array
+        do jpngr=1,size(interface%grid)
+          if (interface%grid(jpngr)%dogridcell) then
+            outarr(interface%grid(jpngr)%ilon,interface%grid(jpngr)%ilat,:,1) = outdfapar(:,jpngr)
+          end if
+        end do
+
+        ! write to NetCDF file
+        call write_nc_3D( ncoutfilnam_fapar, FAPAR_NAME, interface%domaininfo%nlon, interface%domaininfo%nlat, ndayyear, outarr(:,:,:,:)  )
+
+        ! deallocate memory
+        deallocate( outarr )
+      end if      
 
       print*,'temp written to NetCDF file.'
 

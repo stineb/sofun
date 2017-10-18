@@ -157,7 +157,7 @@ contains
     real :: dlat, dlon
     character(len=*), parameter :: LONNAME  = "LON"
     character(len=*), parameter :: LATNAME  = "LAT"
-    character(len=*), parameter :: VARNAME  = "FAPAR3G"
+    character(len=*), parameter :: VARNAME  = "FAPAR_FILLED"
 
     integer, parameter :: firstyr_fapar3g = 1982
     integer, parameter :: lastyr_fapar3g = 2011
@@ -168,7 +168,7 @@ contains
     !----------------------------------------------------------------    
     print*,'getting fapar from file: ', "./input/global/fapar/fAPAR3g_monthly_1982_2011_NICE.nc"
 
-    call check( nf90_open( "./input/global/fapar/fAPAR3g_monthly_1982_2011_NICE.nc", NF90_NOWRITE, ncid ) )
+    call check( nf90_open( "./input/global/fapar/fAPAR3g_monthly_1982_2011_FILLED.nc", NF90_NOWRITE, ncid ) )
 
     ! get dimension ID for latitude
     call check( nf90_inq_dimid( ncid, LATNAME, latdimid ) )

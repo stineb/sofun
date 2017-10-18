@@ -29,7 +29,9 @@ module md_params_core
   real, parameter :: h2o_molmass = 44.013        ! g H2O / mol H2O
   real, parameter :: c_content_of_biomass = 0.46 ! gC / g-dry mass
 
-  ! The following parameters are from SPLASH. Defined here because parameters are used by climate input data unit conversions
+  ! The following parameters are from SPLASH. 
+  ! Defined here because parameters are used by climate input data unit conversions and
+  ! because these are well-known parameters.
   real, parameter :: kTo = 288.15                ! base temperature, K (Prentice, unpublished)
   real, parameter :: kR  = 8.3143                ! universal gas constant, J/mol/K (Allen, 1973)
   real, parameter :: kMv = 18.02                 ! molecular weight of water vapor, g/mol (Tsilingiris, 2008)

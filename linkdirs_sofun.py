@@ -36,8 +36,8 @@ example = True
 ## Manually et the root directory for the local mirror of 
 ## /work/bstocker/labprentice/data
 ##--------------------------------------------------------------------
-# dataroot = '/Users/benjaminstocker/data/'
-dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
+dataroot = '/Users/benjaminstocker/data/'
+# dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
 
 ##--------------------------------------------------------------------
 ## Link directories
@@ -78,7 +78,8 @@ if simsuite == 'global':
 	## fapar 
 	##--------------------------------------
 	dirn = 'input/global/fapar'
-	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g/fAPAR3g_monthly_1982_2011_NICE.nc', dirn ])
+	os.system( 'mkdir -p ' + dirn )
+	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g/fAPAR3g_monthly_1982_2011_FILLED.nc', dirn ])
 
 
 	## WATCH-WFDEI climate input data

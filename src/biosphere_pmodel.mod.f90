@@ -243,7 +243,7 @@ contains
     !----------------------------------------------------------------
     ! Write to NetCDF output
     !----------------------------------------------------------------
-    ! call writeout_nc_forcing()
+    call writeout_nc_forcing()
     call writeout_nc_plant()
 
     ! xxx insignificant
