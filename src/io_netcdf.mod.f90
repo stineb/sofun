@@ -22,27 +22,27 @@ contains
     ! Subroutine to initialise a NetCDF file with one variable
     !----------------------------------------------------------------    
     ! arguments
-    character(len=*) :: filnam
+    character(len=*), intent(in) :: filnam
 
-    integer :: nlon
-    integer :: nlat
-    integer :: nz
-    integer, parameter :: nrec = 1
+    integer, intent(in) :: nlon
+    integer, intent(in) :: nlat
+    integer, intent(in) :: nz
     
-    real,    dimension(nlon) :: lon
-    real,    dimension(nlat) :: lat
-    integer, dimension(nz)   :: zvals
-    integer :: recvals                    ! this dimension is of length 1
+    real,    dimension(nlon), intent(in) :: lon
+    real,    dimension(nlat), intent(in) :: lat
+    integer, dimension(nz), intent(in)   :: zvals
+    integer, intent(in) :: recvals                    ! this dimension is of length 1
 
-    character(len=*) :: znam
-    character(len=*) :: recnam
-    character(len=*) :: varnam
-    character(len=*) :: varunits
-    character(len=*) :: longnam
-    character(len=*) :: title
+    character(len=*), intent(in) :: znam
+    character(len=*), intent(in) :: recnam
+    character(len=*), intent(in) :: varnam
+    character(len=*), intent(in) :: varunits
+    character(len=*), intent(in) :: longnam
+    character(len=*), intent(in) :: title
 
     ! local variables
     integer :: ncid
+    integer, parameter :: nrec = 1
     integer, parameter :: ndims = 4
     integer :: dimids(ndims)
 
@@ -119,18 +119,29 @@ contains
   end subroutine init_nc_3D
 
 
-  subroutine write_nc_3D( filnam, varnam, nlon, nlat, nz, outarr )
+  subroutine write_nc_3D( filnam, varnam, maxgrid, nlon, nlat, ilon, ilat, ndays, out )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to put data into an already opened NetCDF file
-    !----------------------------------------------------------------   
+    !----------------------------------------------------------------
     ! arguments
-    character(len=*) :: filnam
-    character(len=*) :: varnam
-    integer :: nlon, nlat, nz
-    real, dimension(nlon,nlat,nz,1) :: outarr
+    character(len=*), intent(in) :: filnam
+    character(len=*), intent(in) :: varnam
+    integer, intent(in) :: maxgrid, nlon, nlat, ndays
+    integer, dimension(maxgrid), intent(in) :: ilon, ilat
+    real, dimension(ndays,maxgrid), intent(in) :: out
 
     ! local variables
+    real, dimension(:,:,:,:), allocatable :: outarr
+    integer :: jpngr
     integer :: ncid, varid
+
+    allocate( outarr(nlon,nlat,ndays,1) )
+    outarr(:,:,:,:) = dummy        
+
+    ! Populate output array
+    do jpngr=1,maxgrid
+        outarr(ilon(jpngr),ilat(jpngr),:,1) = out(:,jpngr)
+    end do
 
     ! open NetCDF output file
     call check( nf90_open( trim(filnam), NF90_WRITE, ncid ) )
@@ -143,6 +154,9 @@ contains
 
     ! close NetCDF output file
     call check( nf90_close( ncid ) )
+
+    ! deallocate memory
+    deallocate( outarr )
 
   end subroutine write_nc_3D
 

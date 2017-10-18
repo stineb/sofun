@@ -246,6 +246,8 @@ contains
     call writeout_nc_forcing()
     call writeout_nc_plant()
 
+    stop 'end of first year'
+
     ! xxx insignificant
     c_uptake = 0.0
 

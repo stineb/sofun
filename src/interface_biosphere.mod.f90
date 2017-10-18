@@ -139,7 +139,7 @@ contains
 
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
-      print*,'initialising temp nc file ...'
+      print*,'initialising temp NetCDF file ...'
       ncoutfilnam_temp = trim(prefix)//'.'//year_char//".d.temp.nc"
       call init_nc_3D( filnam  = ncoutfilnam_temp, &
                       nlon     = interface%domaininfo%nlon, &
@@ -165,7 +165,7 @@ contains
 
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
-      print*,'initialising fapar nc file ...'
+      print*,'initialising fapar NetCDF file ...'
       ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar.nc"
       call init_nc_3D( filnam  = ncoutfilnam_fapar, &
                       nlon     = interface%domaininfo%nlon, &
@@ -298,50 +298,33 @@ contains
       !-------------------------------------------------------------------------
       ! dtemp
       !-------------------------------------------------------------------------
-      print*,'writing temp nc file ...'
-      if (interface%params_siml%lncoutdtemp) then
-        allocate( outarr(interface%domaininfo%nlon,interface%domaininfo%nlat,ndayyear,1) )
-        outarr(:,:,:,:) = dummy        
+      print*,'writing temp NetCDF file ...'
+      if (interface%params_siml%lncoutdtemp) call write_nc_3D(  ncoutfilnam_temp, &
+                                                                TEMP_NAME, &
+                                                                interface%domaininfo%maxgrid, &
+                                                                interface%domaininfo%nlon, &
+                                                                interface%domaininfo%nlat, &
+                                                                interface%grid(:)%ilon, &
+                                                                interface%grid(:)%ilat, &
+                                                                ndayyear, &
+                                                                outdtemp(:,:) &
+                                                                )
 
-        ! Populate output array
-        do jpngr=1,size(interface%grid)
-          if (interface%grid(jpngr)%dogridcell) then
-            outarr(interface%grid(jpngr)%ilon,interface%grid(jpngr)%ilat,:,1) = outdtemp(:,jpngr)
-          end if
-        end do
-
-        ! write to NetCDF file
-        call write_nc_3D( ncoutfilnam_temp, TEMP_NAME, interface%domaininfo%nlon, interface%domaininfo%nlat, ndayyear, outarr(:,:,:,:)  )
-
-        ! deallocate memory
-        deallocate( outarr )
-      end if
 
       !-------------------------------------------------------------------------
       ! fapar
       !-------------------------------------------------------------------------
-      print*,'writing fapar nc file ...'
-      if (interface%params_siml%lncoutdfapar) then
-        allocate( outarr(interface%domaininfo%nlon,interface%domaininfo%nlat,ndayyear,1) )
-        outarr(:,:,:,:) = dummy        
-
-        ! Populate output array
-        do jpngr=1,size(interface%grid)
-          if (interface%grid(jpngr)%dogridcell) then
-            outarr(interface%grid(jpngr)%ilon,interface%grid(jpngr)%ilat,:,1) = outdfapar(:,jpngr)
-          end if
-        end do
-
-        ! write to NetCDF file
-        call write_nc_3D( ncoutfilnam_fapar, FAPAR_NAME, interface%domaininfo%nlon, interface%domaininfo%nlat, ndayyear, outarr(:,:,:,:)  )
-
-        ! deallocate memory
-        deallocate( outarr )
-      end if      
-
-      print*,'temp written to NetCDF file.'
-
-    ! end if
+      print*,'writing fapar NetCDF file ...'
+      if (interface%params_siml%lncoutdfapar) call write_nc_3D( ncoutfilnam_fapar, &
+                                                                FAPAR_NAME, &
+                                                                interface%domaininfo%maxgrid, &
+                                                                interface%domaininfo%nlon, &
+                                                                interface%domaininfo%nlat, &
+                                                                interface%grid(:)%ilon, &
+                                                                interface%grid(:)%ilat, &
+                                                                ndayyear, &
+                                                                outdfapar(:,:) &
+                                                                )
 
   end subroutine writeout_nc_forcing
 

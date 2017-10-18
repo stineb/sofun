@@ -489,6 +489,7 @@ contains
 
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
+      print*,'initialising gpp NetCDF file ...'
       ncoutfilnam_gpp = trim(prefix)//'.'//year_char//filnamend
       call init_nc_3D( filnam  = ncoutfilnam_gpp, &
                       nlon     = interface%domaininfo%nlon, &
@@ -660,29 +661,20 @@ contains
     !       .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
     !       .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      if (interface%params_siml%lncoutdgpp) then
-
-        allocate( outarr(interface%domaininfo%nlon,interface%domaininfo%nlat,ndayyear,1) )
-        outarr(:,:,:,:) = dummy        
-
-        ! Populate output array
-        do jpngr=1,size(interface%grid)
-          if (interface%grid(jpngr)%dogridcell) then
-
-            ! populate array
-            outarr(interface%grid(jpngr)%ilon,interface%grid(jpngr)%ilat,:,1) = outdgpp(1,:,jpngr)
-
-          end if
-        end do
-
-        call write_nc_3D( ncoutfilnam_gpp, GPP_NAME, interface%domaininfo%nlon, interface%domaininfo%nlat, ndayyear, outarr(:,:,:,:)  )
-
-        ! deallocate memory
-        deallocate( outarr )
-
-      end if
-
-      stop 'ok, written GPP NetCDF file now.'
+      !-------------------------------------------------------------------------
+      ! fapar
+      !-------------------------------------------------------------------------
+      print*,'writing gpp NetCDF file ...'
+      if (interface%params_siml%lncoutdgpp) call write_nc_3D( ncoutfilnam_gpp, &
+                                                              GPP_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              ndayyear, &
+                                                              outdgpp(1,:,:) &
+                                                              )
 
     ! end if
 
