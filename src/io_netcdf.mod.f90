@@ -17,24 +17,22 @@ module md_io_netcdf
 
 contains
 
-  subroutine init_nc_3D( filnam, nlon, nlat, nz, lon, lat, zvals, recvals, znam, recnam, varnam, varunits, longnam, title )
+  subroutine init_nc_3D( filnam, nlon, nlat, lon, lat, outyear, varnam, varunits, longnam, title )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to initialise a NetCDF file with one variable
-    !----------------------------------------------------------------    
+    !----------------------------------------------------------------
+    use md_params_core, only: ndayyear
+
     ! arguments
     character(len=*), intent(in) :: filnam
 
     integer, intent(in) :: nlon
     integer, intent(in) :: nlat
-    integer, intent(in) :: nz
     
     real,    dimension(nlon), intent(in) :: lon
     real,    dimension(nlat), intent(in) :: lat
-    integer, dimension(nz), intent(in)   :: zvals
-    integer, intent(in) :: recvals                    ! this dimension is of length 1
+    integer, intent(in) :: outyear
 
-    character(len=*), intent(in) :: znam
-    character(len=*), intent(in) :: recnam
     character(len=*), intent(in) :: varnam
     character(len=*), intent(in) :: varunits
     character(len=*), intent(in) :: longnam
@@ -42,52 +40,58 @@ contains
 
     ! local variables
     integer :: ncid
-    integer, parameter :: nrec = 1
+    integer, parameter :: nz = 1
+    integer, parameter :: zvals = 1
     integer, parameter :: ndims = 4
     integer :: dimids(ndims)
 
-    integer :: londimid, latdimid, zdimid, recdimid
-    integer :: varid_lat, varid_lon, varid_z, varid_rec
+    integer :: londimid, latdimid, zdimid, tdimid
+    integer :: varid_lat, varid_lon, varid_z, varid_t
     integer :: varid_var
+    integer :: doy
 
-    character (len = *), parameter :: LAT_NAME = "latitude"
-    character (len = *), parameter :: LON_NAME = "longitude"
+    character(len=*), parameter :: LAT_NAME  = "lat"
+    character(len=*), parameter :: LON_NAME  = "lon"
+    character(len=*), parameter :: Z_NAME    = "z"
+    character(len=*), parameter :: T_NAME    = "time"
+    character(len=*), parameter :: UNITS     = "units"
+    character(len=*), parameter :: LAT_UNITS = "degrees_north"
+    character(len=*), parameter :: LON_UNITS = "degrees_east"
+    character(len=*), parameter :: T_UNITS   = "days since 2001-1-1 0:0:0"
 
-    character (len = *), parameter :: UNITS = "units"
+    integer, dimension(ndayyear) :: tvals
 
-    character (len = *), parameter :: LAT_UNITS = "degrees_north"
-    character (len = *), parameter :: LON_UNITS = "degrees_east"
-
+    ! create time values as integers counting days since 1 Jan 2001 (assuming no leap years)
+    tvals = (/ ( ((outyear-2001)*ndayyear+doy-1), doy = 1, ndayyear) /)
 
     call check( nf90_create( trim(filnam), NF90_CLOBBER, ncid ) )
 
     ! Define the dimensions. NetCDF will hand back an ID for each. 
-    call check( nf90_def_dim( ncid, LON_NAME,  nlon, londimid  ) )
-    call check( nf90_def_dim( ncid, LAT_NAME,  nlat, latdimid  ) )
-    call check( nf90_def_dim( ncid, znam,      nz,   zdimid  ) )
-    call check( nf90_def_dim( ncid, recnam,    nrec, recdimid ) )
+    call check( nf90_def_dim( ncid, LON_NAME, nlon,     londimid  ) )
+    call check( nf90_def_dim( ncid, LAT_NAME, nlat,     latdimid  ) )
+    call check( nf90_def_dim( ncid, Z_NAME,   nz,       zdimid    ) )
+    call check( nf90_def_dim( ncid, T_NAME,   ndayyear, tdimid  ) )
 
     ! Define the coordinate variables. They will hold the coordinate
     ! information, that is, the latitudes and longitudes. A varid is
     ! returned for each.
-    call check( nf90_def_var( ncid, LAT_NAME,  NF90_REAL, latdimid,  varid_lat ) )
-    call check( nf90_def_var( ncid, LON_NAME,  NF90_REAL, londimid,  varid_lon ) )
-    call check( nf90_def_var( ncid, znam,      NF90_INT,  zdimid,    varid_z ) )
-    call check( nf90_def_var( ncid, recnam,    NF90_INT,  recdimid,  varid_rec ) )
+    call check( nf90_def_var( ncid, LAT_NAME, NF90_REAL, latdimid,  varid_lat ) )
+    call check( nf90_def_var( ncid, LON_NAME, NF90_REAL, londimid,  varid_lon ) )
+    call check( nf90_def_var( ncid, Z_NAME,   NF90_INT,  zdimid,    varid_z   ) )
+    call check( nf90_def_var( ncid, T_NAME,   NF90_INT , tdimid,    varid_t   ) )
 
     ! Assign units attributes to coordinate var data. This attaches a
     ! text attribute to each of the coordinate variables, containing the
     ! units.
     call check( nf90_put_att( ncid, varid_lat, UNITS, LAT_UNITS ) )
     call check( nf90_put_att( ncid, varid_lon, UNITS, LON_UNITS ) )
+    call check( nf90_put_att( ncid, varid_t  , UNITS, T_UNITS   ) )
+    call check( nf90_put_att( ncid, varid_t  , "calendar", "noleap"   ) )
 
     ! The dimids array is used to pass the IDs of the dimensions of
     ! the variables. Note that in fortran arrays are stored in
     ! column-major format.
-    ! Option A
-    ! dimids =  (/ latdimid, londimid /)
-    ! Option B
-    dimids = (/ londimid, latdimid, zdimid, recdimid /)
+    dimids = (/ londimid, latdimid, zdimid, tdimid /)
 
     ! Define the variable. The type of the variable in this case is
     ! NF90_DOUBLE.
@@ -107,10 +111,10 @@ contains
 
     ! Write the coordinate variable data. This will put the latitudes
     ! and longitudes of our data grid into the netCDF file.
-    call check( nf90_put_var( ncid, varid_lat,  lat ) )
-    call check( nf90_put_var( ncid, varid_lon,  lon ) )
-    call check( nf90_put_var( ncid, varid_z,    zvals ) )
-    call check( nf90_put_var( ncid, varid_rec,  recvals ) )
+    call check( nf90_put_var( ncid, varid_lat, lat   ) )
+    call check( nf90_put_var( ncid, varid_lon, lon   ) )
+    call check( nf90_put_var( ncid, varid_z,   zvals ) )
+    call check( nf90_put_var( ncid, varid_t,   tvals ) )
 
     ! Close the file. This frees up any internal netCDF resources
     ! associated with the file, and flushes any buffers.
@@ -135,12 +139,12 @@ contains
     integer :: jpngr
     integer :: ncid, varid
 
-    allocate( outarr(nlon,nlat,ndays,1) )
+    allocate( outarr(nlon,nlat,1,ndays) )
     outarr(:,:,:,:) = dummy        
 
     ! Populate output array
     do jpngr=1,maxgrid
-        outarr(ilon(jpngr),ilat(jpngr),:,1) = out(:,jpngr)
+        outarr(ilon(jpngr),ilat(jpngr),1,:) = out(:,jpngr)
     end do
 
     ! open NetCDF output file
@@ -266,13 +270,13 @@ contains
   !   real, dimension(:,:,:), allocatable :: outarr
 
   !   ! local variables
-  !   integer :: londimid, latdimid, recdimid, varid
+  !   integer :: londimid, latdimid, tdimid, varid
   !   integer :: nlon, nlat, nrec
 
   !   ! get dimension IDs
   !   call check( nf90_inq_dimid( ncid, lonname, londimid ) )   
   !   call check( nf90_inq_dimid( ncid, latname, latdimid ) )   
-  !   call check( nf90_inq_dimid( ncid, recname, recdimid ) )   
+  !   call check( nf90_inq_dimid( ncid, recname, tdimid ) )   
 
   !   ! get dimension lengths
   !   call check( nf90_get_var( ncid, londimid, nlon ) )

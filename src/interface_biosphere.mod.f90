@@ -121,67 +121,52 @@ contains
     ! local variables
     character(len=256) :: prefix
 
-    character(len=*), parameter :: DOY_NAME  = "doy"
-    character(len=*), parameter :: YEAR_NAME = "year"
-    character(len=*), parameter :: title     = "SOFUN GP-model output, module md_interface"
+    character(len=*), parameter :: TITLE = "SOFUN GP-model output, module md_interface"
     character(len=4) :: year_char
 
     integer :: jpngr, doy
-    integer, dimension(ndayyear) :: doy_vals
 
     write(year_char,999) interface%steering%outyear
 
-    doy_vals = (/ (doy, doy = 1, ndayyear) /)
+    prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
     if (interface%params_siml%lncoutdtemp) then
-
-      prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
       print*,'initialising temp NetCDF file ...'
       ncoutfilnam_temp = trim(prefix)//'.'//year_char//".d.temp.nc"
-      call init_nc_3D( filnam  = ncoutfilnam_temp, &
-                      nlon     = interface%domaininfo%nlon, &
-                      nlat     = interface%domaininfo%nlat, &
-                      nz       = ndayyear, &
-                      lon      = interface%domaininfo%lon, &
-                      lat      = interface%domaininfo%lat, &
-                      zvals    = doy_vals, &
-                      recvals  = interface%steering%outyear, &
-                      znam     = DOY_NAME, &
-                      recnam   = YEAR_NAME, &
-                      varnam   = TEMP_NAME, &
-                      varunits = "degrees Celsius", &
-                      longnam  = "daily average 2 m temperature", &
-                      title    = title &
-                      )
+      call init_nc_3D(  filnam   = ncoutfilnam_temp, &
+                        nlon     = interface%domaininfo%nlon, &
+                        nlat     = interface%domaininfo%nlat, &
+                        lon      = interface%domaininfo%lon, &
+                        lat      = interface%domaininfo%lat, &
+                        outyear  = interface%steering%outyear, &
+                        varnam   = TEMP_NAME, &
+                        varunits = "degrees Celsius", &
+                        longnam  = "daily average 2 m temperature", &
+                        title    = TITLE &
+                        )
 
     end if
 
     if (interface%params_siml%lncoutdfapar) then
 
-      prefix = "./output_nc/"//trim(interface%params_siml%runname)
-
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
       print*,'initialising fapar NetCDF file ...'
       ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar.nc"
-      call init_nc_3D( filnam  = ncoutfilnam_fapar, &
-                      nlon     = interface%domaininfo%nlon, &
-                      nlat     = interface%domaininfo%nlat, &
-                      nz       = ndayyear, &
-                      lon      = interface%domaininfo%lon, &
-                      lat      = interface%domaininfo%lat, &
-                      zvals    = doy_vals, &
-                      recvals  = interface%steering%outyear, &
-                      znam     = DOY_NAME, &
-                      recnam   = YEAR_NAME, &
-                      varnam   = FAPAR_NAME, &
-                      varunits = "unitless", &
-                      longnam  = "fraction of absorbed photosynthetically active radiation", &
-                      title    = title &
-                      )
+      call init_nc_3D(  filnam   = ncoutfilnam_fapar, &
+                        nlon     = interface%domaininfo%nlon, &
+                        nlat     = interface%domaininfo%nlat, &
+                        lon      = interface%domaininfo%lon, &
+                        lat      = interface%domaininfo%lat, &
+                        outyear  = interface%steering%outyear, &
+                        varnam   = FAPAR_NAME, &
+                        varunits = "unitless", &
+                        longnam  = "fraction of absorbed photosynthetically active radiation", &
+                        title    = TITLE &
+                        )
 
     end if
 

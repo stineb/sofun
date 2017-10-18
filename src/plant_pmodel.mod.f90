@@ -468,43 +468,31 @@ contains
     ! local variables
     character(len=256) :: prefix
 
-    character(len=*), parameter :: DOY_NAME  = "doy"
-    character(len=*), parameter :: YEAR_NAME = "year"
-    character(len=*), parameter :: filnamend = ".d.gpp.nc"
-    character(len=*), parameter :: varunits  = "gC m-2 d-1"
-    character(len=*), parameter :: longnam   = "daily gross primary productivivty"
-    character(len=*), parameter :: title     = "SOFUN GP-model output, module md_plant"
+    character(len=*), parameter :: TITLE = "SOFUN GP-model output, module md_plant"
     character(len=4) :: year_char
 
     integer :: jpngr, doy
-    integer, dimension(ndayyear) :: doy_vals
 
     write(year_char,999) interface%steering%outyear
 
-    doy_vals = (/ (doy, doy = 1, ndayyear) /)
+    prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
     if (interface%params_siml%lncoutdgpp) then
-
-      prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
       print*,'initialising gpp NetCDF file ...'
-      ncoutfilnam_gpp = trim(prefix)//'.'//year_char//filnamend
+      ncoutfilnam_gpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
       call init_nc_3D( filnam  = ncoutfilnam_gpp, &
                       nlon     = interface%domaininfo%nlon, &
                       nlat     = interface%domaininfo%nlat, &
-                      nz       = ndayyear, &
                       lon      = interface%domaininfo%lon, &
                       lat      = interface%domaininfo%lat, &
-                      zvals    = doy_vals, &
-                      recvals  = interface%steering%outyear, &
-                      znam     = DOY_NAME, &
-                      recnam   = YEAR_NAME, &
+                      outyear  = interface%steering%outyear, &
                       varnam   = GPP_NAME, &
-                      varunits = varunits, &
-                      longnam  = longnam, &
-                      title    = title &
+                      varunits = "gC m-2 d-1", &
+                      longnam  = "daily gross primary productivivty", &
+                      title    = TITLE &
                       )
 
     end if
