@@ -116,7 +116,7 @@ contains
     ! Get the varid of the data variable, based on its name.
     call check( nf90_inq_varid( ncid, "GICEW", varid ) )
 
-    ! Read the grid data
+    ! Read the grid data (warning: this here produces some IEEE exception)
     call check( nf90_get_var( ncid, varid, domaininfo%gridarray ) )
 
     ! Get total number of land gridcells (value < 1.0 in gicew landmaskfile)
@@ -130,9 +130,12 @@ contains
     end do
     domaininfo%maxgrid = jpngr
 
+
     ! get resolution
     domaininfo%dlon = domaininfo%lon(2) - domaininfo%lon(1)
     domaininfo%dlat = domaininfo%lat(2) - domaininfo%lat(1)
+
+    print*,'... done'
 
   end function get_domaininfo
 

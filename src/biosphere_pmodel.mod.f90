@@ -84,6 +84,10 @@ contains
 
     endif 
 
+    write(0,*) '----------------------'
+    write(0,*) 'YEAR ', interface%steering%year
+    write(0,*) '----------------------'
+
     !----------------------------------------------------------------
     ! Open NetCDF output files (one for each year)
     !----------------------------------------------------------------
@@ -107,10 +111,6 @@ contains
     !----------------------------------------------------------------
     gridcellloop: do jpngr=1,size(interface%grid)
       if (interface%grid(jpngr)%dogridcell) then
-
-        write(0,*) '----------------------'
-        write(0,*) 'YEAR, jpngr ', interface%steering%year, jpngr
-        write(0,*) '----------------------'
 
         !----------------------------------------------------------------
         ! Get radiation based on daily temperature, sunshine fraction, and 
@@ -232,13 +232,13 @@ contains
       end if
     end do gridcellloop
 
-    !----------------------------------------------------------------
-    ! Write to ascii output
-    !----------------------------------------------------------------
-    call writeout_ascii_waterbal()
-    call writeout_ascii_gpp()
-    call writeout_ascii_plant()
-    call writeout_ascii_forcing()
+    ! !----------------------------------------------------------------
+    ! ! Write to ascii output
+    ! !----------------------------------------------------------------
+    ! call writeout_ascii_waterbal()
+    ! call writeout_ascii_gpp()
+    ! call writeout_ascii_plant()
+    ! call writeout_ascii_forcing()
 
     !----------------------------------------------------------------
     ! Write to NetCDF output

@@ -17,7 +17,7 @@ module md_io_netcdf
 
 contains
 
-  subroutine init_nc_3D( filnam, nlon, nlat, lon, lat, outyear, varnam, varunits, longnam, title )
+  subroutine init_nc_3D( filnam, nlon, nlat, lon, lat, outyear, outdt, outnt, varnam, varunits, longnam, title )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to initialise a NetCDF file with one variable
     !----------------------------------------------------------------
@@ -31,7 +31,7 @@ contains
     
     real,    dimension(nlon), intent(in) :: lon
     real,    dimension(nlat), intent(in) :: lat
-    integer, intent(in) :: outyear
+    integer, intent(in) :: outyear, outdt, outnt
 
     character(len=*), intent(in) :: varnam
     character(len=*), intent(in) :: varunits
@@ -48,7 +48,7 @@ contains
     integer :: londimid, latdimid, zdimid, tdimid
     integer :: varid_lat, varid_lon, varid_z, varid_t
     integer :: varid_var
-    integer :: doy
+    integer :: it
 
     character(len=*), parameter :: LAT_NAME  = "lat"
     character(len=*), parameter :: LON_NAME  = "lon"
@@ -59,10 +59,10 @@ contains
     character(len=*), parameter :: LON_UNITS = "degrees_east"
     character(len=*), parameter :: T_UNITS   = "days since 2001-1-1 0:0:0"
 
-    integer, dimension(ndayyear) :: tvals
+    integer, dimension(outnt) :: tvals
 
     ! create time values as integers counting days since 1 Jan 2001 (assuming no leap years)
-    tvals = (/ ( ((outyear-2001)*ndayyear+doy-1), doy = 1, ndayyear) /)
+    tvals = (/ ( ((outyear-2001)*ndayyear+(it-1)*outdt), it = 1, outnt) /)
 
     call check( nf90_create( trim(filnam), NF90_CLOBBER, ncid ) )
 
@@ -70,7 +70,7 @@ contains
     call check( nf90_def_dim( ncid, LON_NAME, nlon,     londimid  ) )
     call check( nf90_def_dim( ncid, LAT_NAME, nlat,     latdimid  ) )
     call check( nf90_def_dim( ncid, Z_NAME,   nz,       zdimid    ) )
-    call check( nf90_def_dim( ncid, T_NAME,   ndayyear, tdimid  ) )
+    call check( nf90_def_dim( ncid, T_NAME,   outnt,    tdimid  ) )
 
     ! Define the coordinate variables. They will hold the coordinate
     ! information, that is, the latitudes and longitudes. A varid is
@@ -102,6 +102,7 @@ contains
     call check( nf90_put_att( ncid, varid_var, UNITS, varunits ) )
     call check( nf90_put_att( ncid, varid_var, "_FillValue", dummy ) )
     call check( nf90_put_att( ncid, varid_var, "long_name", longnam ) )
+    call check( nf90_put_att( ncid, varid_var, "output_periodicity_d", outdt ) )
 
     ! global
     call check( nf90_put_att( ncid, NF90_GLOBAL, "title", title ) )
@@ -123,23 +124,23 @@ contains
   end subroutine init_nc_3D
 
 
-  subroutine write_nc_3D( filnam, varnam, maxgrid, nlon, nlat, ilon, ilat, ndays, out )
+  subroutine write_nc_3D( filnam, varnam, maxgrid, nlon, nlat, ilon, ilat, outnt, out )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to put data into an already opened NetCDF file
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: filnam
     character(len=*), intent(in) :: varnam
-    integer, intent(in) :: maxgrid, nlon, nlat, ndays
+    integer, intent(in) :: maxgrid, nlon, nlat, outnt
     integer, dimension(maxgrid), intent(in) :: ilon, ilat
-    real, dimension(ndays,maxgrid), intent(in) :: out
+    real, dimension(outnt,maxgrid), intent(in) :: out
 
     ! local variables
     real, dimension(:,:,:,:), allocatable :: outarr
     integer :: jpngr
     integer :: ncid, varid
 
-    allocate( outarr(nlon,nlat,1,ndays) )
+    allocate( outarr(nlon,nlat,1,outnt) )
     outarr(:,:,:,:) = dummy        
 
     ! Populate output array

@@ -100,16 +100,16 @@ program main
     !----------------------------------------------------------------
     ! Climate
     if (verbose) print*,'getting climate ...'
-    ! interface%climate(:) = getclimate_wfdei( &
-    !                                         trim(interface%params_siml%sitename), &
-    !                                         interface%domaininfo, &
-    !                                         interface%grid, &
-    !                                         interface%steering%init, &
-    !                                         ! 1992 &
-    !                                         interface%steering%climateyear, &
-    !                                         interface%params_siml%in_ppfd,  &
-    !                                         interface%params_siml%in_netrad &
-    !                                         )
+    interface%climate(:) = getclimate_wfdei( &
+                                            trim(interface%params_siml%sitename), &
+                                            interface%domaininfo, &
+                                            interface%grid, &
+                                            interface%steering%init, &
+                                            ! 1992 &
+                                            interface%steering%climateyear, &
+                                            interface%params_siml%in_ppfd,  &
+                                            interface%params_siml%in_netrad &
+                                            )
     if (verbose) print*,'... done.'
 
     ! CO2

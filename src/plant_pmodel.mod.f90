@@ -489,6 +489,8 @@ contains
                       lon      = interface%domaininfo%lon, &
                       lat      = interface%domaininfo%lat, &
                       outyear  = interface%steering%outyear, &
+                      outdt    = interface%params_siml%outdt, &
+                      outnt    = interface%params_siml%outnt, &
                       varnam   = GPP_NAME, &
                       varunits = "gC m-2 d-1", &
                       longnam  = "daily gross primary productivivty", &
@@ -519,22 +521,24 @@ contains
     integer, intent(in)                             :: moy
     integer, intent(in) :: doy
 
-    ! LOCAL VARIABLES
+    ! local variables
     integer :: pft
+    integer :: it
 
     !----------------------------------------------------------------
     ! DAILY
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if ( interface%params_siml%loutdgpp ) outdgpp(:,doy,jpngr) = dgpp(:)
+    it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
+    if ( interface%params_siml%loutdgpp ) outdgpp(:,it,jpngr) = outdgpp(:,it,jpngr) + dgpp(:) / real( interface%params_siml%outdt )
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
     if (interface%params_siml%loutplant) then
-      outagpp(:,jpngr)     = outagpp(:,jpngr) + dgpp(:)
+      outagpp(:,jpngr) = outagpp(:,jpngr) + dgpp(:)
     end if
 
   end subroutine getout_daily_plant
@@ -660,7 +664,7 @@ contains
                                                               interface%domaininfo%nlat, &
                                                               interface%grid(:)%ilon, &
                                                               interface%grid(:)%ilat, &
-                                                              ndayyear, &
+                                                              interface%params_siml%outnt, &
                                                               outdgpp(1,:,:) &
                                                               )
 

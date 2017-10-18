@@ -20,6 +20,8 @@ module md_params_siml
     integer :: recycle         ! length of standard recycling period
     integer :: daily_out_startyr! first year where daily output is written
     integer :: daily_out_endyr ! last year where daily output is written
+    integer :: outdt           ! output periodicity
+    integer :: outnt           ! number of output time steps per year
     
     logical :: do_spinup            ! whether this simulation does spinup 
     
@@ -36,7 +38,7 @@ module md_params_siml
     character(len=256) :: ndep_noy_forcing_file
     character(len=256) :: ndep_nhx_forcing_file
     character(len=256) :: nfert_noy_forcing_file
-    character(len=256) :: nfert_nhx_forcing_file
+    character(len=256) :: nfert_nhx_forcing_file 
     character(len=256) :: do_grharvest_forcing_file
     character(len=256) :: fapar_forcing_source
 
@@ -247,6 +249,8 @@ contains
     !  SR for reading and defining simulation parameters from file 
     !  <runname>.sofun.parameter. Only once at start of simulation.
     !----------------------------------------------------------------
+    use md_params_core, only: ndayyear
+
     ! argument
     character(len=*), intent(in) :: runname
 
@@ -290,7 +294,9 @@ contains
     
     out_getpar_siml%daily_out_startyr = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_startyr' )
     out_getpar_siml%daily_out_endyr   = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_endyr' )
+    out_getpar_siml%outdt             = getparint( 'run/'//runname//'.sofun.parameter', 'outdt' )
 
+    out_getpar_siml%outnt = ceiling( real( ndayyear ) / real( out_getpar_siml%outdt ) )
 
     if (out_getpar_siml%do_spinup) then
       out_getpar_siml%runyears = out_getpar_siml%nyeartrend + out_getpar_siml%spinupyears

@@ -70,8 +70,8 @@ contains
     integer, intent(in) :: ngridcells
 
     ! Allocate memory for daily output variables
-    if ( interface%steering%init .and. interface%params_siml%loutdtemp  ) allocate( outdtemp (ndayyear,ngridcells) )
-    if ( interface%steering%init .and. interface%params_siml%loutdfapar ) allocate( outdfapar(ndayyear,ngridcells) )
+    if ( interface%steering%init .and. interface%params_siml%loutdtemp  ) allocate( outdtemp (interface%params_siml%outnt,ngridcells) )
+    if ( interface%steering%init .and. interface%params_siml%loutdfapar ) allocate( outdfapar(interface%params_siml%outnt,ngridcells) )
 
     if ( interface%params_siml%loutdtemp  ) outdtemp (:,:) = 0.0
     if ( interface%params_siml%loutdfapar ) outdfapar(:,:) = 0.0
@@ -142,6 +142,8 @@ contains
                         lon      = interface%domaininfo%lon, &
                         lat      = interface%domaininfo%lat, &
                         outyear  = interface%steering%outyear, &
+                        outdt    = interface%params_siml%outdt, &
+                        outnt    = interface%params_siml%outnt, &
                         varnam   = TEMP_NAME, &
                         varunits = "degrees Celsius", &
                         longnam  = "daily average 2 m temperature", &
@@ -162,6 +164,8 @@ contains
                         lon      = interface%domaininfo%lon, &
                         lat      = interface%domaininfo%lat, &
                         outyear  = interface%steering%outyear, &
+                        outdt    = interface%params_siml%outdt, &
+                        outnt    = interface%params_siml%outnt, &
                         varnam   = FAPAR_NAME, &
                         varunits = "unitless", &
                         longnam  = "fraction of absorbed photosynthetically active radiation", &
@@ -188,13 +192,17 @@ contains
     integer, intent(in) :: moy
     integer, intent(in) :: doy
 
+    ! local variables
+    integer :: it
+
     !----------------------------------------------------------------
     ! DAILY
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (interface%params_siml%loutdtemp ) outdtemp (doy,jpngr) = interface%climate(jpngr)%dtemp (doy)
-    if (interface%params_siml%loutdfapar) outdfapar(doy,jpngr) = interface%dfapar_field(doy,jpngr)
+    it = floor( real( doy ) / real( interface%params_siml%outdt ) )
+    if (interface%params_siml%loutdtemp ) outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(jpngr)%dtemp(doy) / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdfapar) outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%dfapar_field(doy,jpngr)   / real( interface%params_siml%outdt )
 
     ! !----------------------------------------------------------------
     ! ! ANNUAL SUM OVER DAILY VALUES
@@ -291,7 +299,7 @@ contains
                                                                 interface%domaininfo%nlat, &
                                                                 interface%grid(:)%ilon, &
                                                                 interface%grid(:)%ilat, &
-                                                                ndayyear, &
+                                                                interface%params_siml%outnt, &
                                                                 outdtemp(:,:) &
                                                                 )
 
@@ -307,7 +315,7 @@ contains
                                                                 interface%domaininfo%nlat, &
                                                                 interface%grid(:)%ilon, &
                                                                 interface%grid(:)%ilat, &
-                                                                ndayyear, &
+                                                                interface%params_siml%outnt, &
                                                                 outdfapar(:,:) &
                                                                 )
 

@@ -401,7 +401,7 @@ contains
     ! Read climate fields for each month (and day) this year
     !----------------------------------------------------------------
     doy = 0
-    do moy=1,nmonth
+    monthloop: do moy=1,nmonth
 
       write(moy_char,888) moy
 
@@ -428,7 +428,7 @@ contains
 
       ! PPFD from SWdown
       if (in_ppfd) then
-        filnam = './input/global/climate/ppfd/SWdown_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
+        filnam = './input/global/climate/srad/SWdown_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
         call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ppfd ) )
       end if
 
@@ -468,12 +468,12 @@ contains
       if (in_ppfd) call check( nf90_close( ncid_ppfd ) )
 
       ! read from array to define climate type 
-      do dom=1,ndaymonth(moy)
+      domloop: do dom=1,ndaymonth(moy)
         
         doy = doy + 1
 
         nmissing = 0
-        do jpngr=1,domaininfo%maxgrid
+        gridcellloop: do jpngr=1,domaininfo%maxgrid
 
           if ( temp_arr(ilon(jpngr),ilat(jpngr),dom)/=ncfillvalue ) then
             
@@ -511,9 +511,9 @@ contains
             grid(jpngr)%dogridcell = .false.
           end if
 
-        end do
+        end do gridcellloop
 
-      end do
+      end do domloop
 
       ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
       deallocate( temp_arr )
@@ -522,7 +522,8 @@ contains
       deallocate( qair_arr )
       if (in_ppfd) deallocate( rswd_arr )
 
-    end do
+    end do monthloop
+
     print*,'number of land cells without climate data: ', nmissing
 
     return
