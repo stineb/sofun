@@ -106,7 +106,6 @@ if simsuite == 'global':
 	src = dataroot + 'watch_wfdei/Snowf_daily/*'
 	os.system( 'ln -svf ' + src + ' ' + dst )
 
-
 	## humidity (specific humidity in the case of WATCH-WFDEI)
 	src = dataroot + 'watch_wfdei/Qair_daily/*'
 	dst = 'input/global/climate/humd'
@@ -117,6 +116,16 @@ if simsuite == 'global':
 	## solar (shortwave) radiation
 	src = dataroot + 'watch_wfdei/SWdown_daily/*'
 	dst = 'input/global/climate/srad'
+	if not os.path.isdir( dst ):
+		os.system( 'mkdir -p ' + dst )
+	os.system( 'ln -svf ' + src + ' ' + dst )
+
+
+	## CRU climate input data (only ccov)
+	##--------------------------------------
+	## cloud cover
+	src = dataroot + 'cru/ts_3.23/cru_ts3.23.1901.2014.cld.dat.nc'
+	dst = 'input/global/climate/ccov'
 	if not os.path.isdir( dst ):
 		os.system( 'mkdir -p ' + dst )
 	os.system( 'ln -svf ' + src + ' ' + dst )

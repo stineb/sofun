@@ -202,7 +202,7 @@ contains
 
       lu = params_pft_plant(pft)%lu_category
 
-      if ( plant(pft)%fapar_ind>0.0 ) then
+      if ( plant(pft)%fapar_ind>0.0 .and. solar%dayl(doy)>0.0) then
 
         ! GPP
         ! dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )

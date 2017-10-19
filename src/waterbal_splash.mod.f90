@@ -29,7 +29,8 @@ module md_waterbal
   public solartype, soilphys, evap, waterbal, getsolar,                &
     initdaily_waterbal, initio_waterbal,                               &
     getout_daily_waterbal, initoutput_waterbal,                        &
-    getpar_modl_waterbal, writeout_ascii_waterbal
+    getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, &
+    writeout_nc_waterbal
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -54,23 +55,6 @@ module md_waterbal
     real, dimension(nmonth)   :: mppfd       ! monthly total PPFD (mol m-2 month-1)
     real, dimension(nmonth)   :: meanmppfd   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
   end type solartype
-
-  !----------------------------------------------------------------
-  ! Module-specific output variables
-  !----------------------------------------------------------------
-  real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
-  real, allocatable, dimension(:,:)   :: outdra             ! daily solar irradiation, J/m2
-  real, allocatable, dimension(:,:)   :: outdrn             ! daily net radiation, J/m2
-  real, allocatable, dimension(:,:)   :: outdppfd           ! daily PPFD, mol/m2
-  real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
-  real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
-  real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
-  real, allocatable, dimension(:,:,:) :: outdfleach         ! daily NO3 leaching fraction, (unitless)
-  real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
-  real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm r J/m2/d depending on 'outenergy'
-  real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm or J/m2/d depending on 'outenergy'
-  real, allocatable, dimension(:,:,:) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
-  real, allocatable, dimension(:,:)   :: outdecon           ! daily water-to-energy conversion factor m TJ-1 = mm GJ-1
 
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
@@ -123,6 +107,34 @@ module md_waterbal
   !----------------------------------------------------------------
   real, parameter :: secs_per_day = 86400.0
   logical :: outenergy = .true.
+
+  !----------------------------------------------------------------
+  ! Module-specific output variables
+  !----------------------------------------------------------------
+  real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
+  real, allocatable, dimension(:,:)   :: outdra             ! daily solar irradiation, J/m2
+  real, allocatable, dimension(:,:)   :: outdrn             ! daily net radiation, J/m2
+  real, allocatable, dimension(:,:)   :: outdppfd           ! daily PPFD, mol/m2
+  real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
+  real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
+  real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
+  real, allocatable, dimension(:,:,:) :: outdfleach         ! daily NO3 leaching fraction, (unitless)
+  real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
+  real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm r J/m2/d depending on 'outenergy'
+  real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm or J/m2/d depending on 'outenergy'
+  real, allocatable, dimension(:,:,:) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
+  real, allocatable, dimension(:,:)   :: outdecon           ! daily water-to-energy conversion factor m TJ-1 = mm GJ-1
+
+  !----------------------------------------------------------------
+  ! Module-specific NetCDF output file and variable names
+  !----------------------------------------------------------------
+  character(len=256) :: ncoutfilnam_wcont
+  ! character(len=256) :: ncoutfilnam_pet
+  ! character(len=256) :: ncoutfilnam_wcont
+
+  character(len=*), parameter :: WCONT_NAME="wcont"
+  ! character(len=*), parameter :: WCONT_NAME="wcont"
+  ! character(len=*), parameter :: WCONT_NAME="wcont"
 
 contains
 
@@ -1068,61 +1080,61 @@ contains
     !----------------------------------------------------------------
     if (interface%params_siml%loutwaterbal) then
 
-      ! RA: daily solar irradiation, J/m2
-      filnam=trim(prefix)//'.d.ra.out'
-      open(251,file=filnam,err=888,status='unknown')
+      ! ! RA: daily solar irradiation, J/m2
+      ! filnam=trim(prefix)//'.d.ra.out'
+      ! open(251,file=filnam,err=888,status='unknown')
 
-      ! RN: daily net radiation, J/m2
-      filnam=trim(prefix)//'.d.rn.out'
-      open(252,file=filnam,err=888,status='unknown')
+      ! ! RN: daily net radiation, J/m2
+      ! filnam=trim(prefix)//'.d.rn.out'
+      ! open(252,file=filnam,err=888,status='unknown')
 
-      ! PPFD: daily PPFD, mol/m2
-      filnam=trim(prefix)//'.d.ppfd.out'
-      open(253,file=filnam,err=888,status='unknown')
+      ! ! PPFD: daily PPFD, mol/m2
+      ! filnam=trim(prefix)//'.d.ppfd.out'
+      ! open(253,file=filnam,err=888,status='unknown')
 
-      ! CN: daily condensation water, mm
-      filnam=trim(prefix)//'.d.cn.out'
-      open(254,file=filnam,err=888,status='unknown')
+      ! ! CN: daily condensation water, mm
+      ! filnam=trim(prefix)//'.d.cn.out'
+      ! open(254,file=filnam,err=888,status='unknown')
 
       ! WCONT: daily soil moisture, mm
       filnam=trim(prefix)//'.d.wcont.out'
       open(255,file=filnam,err=888,status='unknown')
 
-      ! ! PN: daily precipitation, mm
-      ! filnam=trim(prefix)//'.d.pn.out'
-      ! open(256,file=filnam,err=888,status='unknown')
+      ! ! ! PN: daily precipitation, mm
+      ! ! filnam=trim(prefix)//'.d.pn.out'
+      ! ! open(256,file=filnam,err=888,status='unknown')
 
-      ! RO: daily runoff, mm
-      filnam=trim(prefix)//'.d.ro.out'
-      open(257,file=filnam,err=888,status='unknown')
+      ! ! RO: daily runoff, mm
+      ! filnam=trim(prefix)//'.d.ro.out'
+      ! open(257,file=filnam,err=888,status='unknown')
 
-      ! FLEACH: daily leaching fraction, (unitless)
-      filnam=trim(prefix)//'.d.fleach.out'
-      open(263,file=filnam,err=888,status='unknown')
+      ! ! FLEACH: daily leaching fraction, (unitless)
+      ! filnam=trim(prefix)//'.d.fleach.out'
+      ! open(263,file=filnam,err=888,status='unknown')
 
-      ! eet: daily equilibrium ET, mm
-      filnam=trim(prefix)//'.d.eet.out'
-      open(258,file=filnam,err=888,status='unknown')
+      ! ! eet: daily equilibrium ET, mm
+      ! filnam=trim(prefix)//'.d.eet.out'
+      ! open(258,file=filnam,err=888,status='unknown')
 
-      ! PET: daily potential ET, mm
-      filnam=trim(prefix)//'.d.pet.out'
-      open(259,file=filnam,err=888,status='unknown')
+      ! ! PET: daily potential ET, mm
+      ! filnam=trim(prefix)//'.d.pet.out'
+      ! open(259,file=filnam,err=888,status='unknown')
 
-      ! AET: daily actual ET, mm
-      filnam=trim(prefix)//'.d.aet.out'
-      open(260,file=filnam,err=888,status='unknown')
+      ! ! AET: daily actual ET, mm
+      ! filnam=trim(prefix)//'.d.aet.out'
+      ! open(260,file=filnam,err=888,status='unknown')
 
-      ! DAYL: day length, h
-      filnam=trim(prefix)//'.d.dayl.out'
-      open(261,file=filnam,err=888,status='unknown')
+      ! ! DAYL: day length, h
+      ! filnam=trim(prefix)//'.d.dayl.out'
+      ! open(261,file=filnam,err=888,status='unknown')
 
-      ! CPA: cramer-prentice alpha, unitless
-      filnam=trim(prefix)//'.d.cpa.out'
-      open(262,file=filnam,err=888,status='unknown')
+      ! ! CPA: cramer-prentice alpha, unitless
+      ! filnam=trim(prefix)//'.d.cpa.out'
+      ! open(262,file=filnam,err=888,status='unknown')
 
-      ! ECON: daily water-to-energy conversion factor, mm GJ-1 = m TJ-1
-      filnam=trim(prefix)//'.d.econ.out'
-      open(264,file=filnam,err=888,status='unknown')
+      ! ! ECON: daily water-to-energy conversion factor, mm GJ-1 = m TJ-1
+      ! filnam=trim(prefix)//'.d.econ.out'
+      ! open(264,file=filnam,err=888,status='unknown')
 
     end if
 
@@ -1161,6 +1173,53 @@ contains
   end subroutine initio_waterbal
 
 
+  subroutine initio_nc_waterbal()
+    !////////////////////////////////////////////////////////////////
+    ! Opens NetCDF output files.
+    !----------------------------------------------------------------
+    use netcdf
+    use md_io_netcdf, only: init_nc_3D, check
+    use md_interface, only: interface
+
+    ! local variables
+    character(len=256) :: prefix
+
+    character(len=*), parameter :: TITLE = "SOFUN GP-model output, module md_waterbal (SPLASH)"
+    character(len=4) :: year_char
+
+    integer :: jpngr, doy
+
+    write(year_char,999) interface%steering%outyear
+
+    prefix = "./output_nc/"//trim(interface%params_siml%runname)
+
+    if (interface%params_siml%lncoutwaterbal) then
+
+      ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
+      ! overwrite this file, if it already exists.
+      ncoutfilnam_wcont = trim(prefix)//'.'//year_char//".d.wcont.nc"
+      print*,'initialising ', trim(ncoutfilnam_wcont), '...'
+      call init_nc_3D( filnam  = trim(ncoutfilnam_wcont), &
+                      nlon     = interface%domaininfo%nlon, &
+                      nlat     = interface%domaininfo%nlat, &
+                      lon      = interface%domaininfo%lon, &
+                      lat      = interface%domaininfo%lat, &
+                      outyear  = interface%steering%outyear, &
+                      outdt    = interface%params_siml%outdt, &
+                      outnt    = interface%params_siml%outnt, &
+                      varnam   = WCONT_NAME, &
+                      varunits = "mm", &
+                      longnam  = "soil water content", &
+                      title    = TITLE &
+                      )
+
+    end if
+
+    999  format (I4.4)
+    
+  end subroutine initio_nc_waterbal
+
+
   subroutine initoutput_waterbal( ngridcells )
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
@@ -1173,34 +1232,34 @@ contains
     if (interface%params_siml%loutwaterbal) then
 
       if (interface%steering%init) then
-        if (interface%steering%init) allocate( outdwcont (nlu,ndayyear,ngridcells) )  ! daily soil moisture, mm
-        if (interface%steering%init) allocate( outdra (ndayyear,ngridcells)     )     ! daily solar irradiation, J/m2
-        if (interface%steering%init) allocate( outdrn (ndayyear,ngridcells)     )     ! daily net radiation, J/m2
-        if (interface%steering%init) allocate( outdppfd (ndayyear,ngridcells)   )     ! daily PPFD, mol/m2
-        if (interface%steering%init) allocate( outdayl(ndayyear,ngridcells)     )     ! daily day length, h
-        if (interface%steering%init) allocate( outdcn (ndayyear,ngridcells)     )     ! daily condensation water, mm
-        if (interface%steering%init) allocate( outdro (nlu,ndayyear,ngridcells) )     ! daily runoff, mm
-        if (interface%steering%init) allocate( outdfleach (nlu,ndayyear,ngridcells) ) ! daily leaching fraction, (unitless)
-        if (interface%steering%init) allocate( outdeet(ndayyear,ngridcells)     )     ! daily equilibrium ET, mm
-        if (interface%steering%init) allocate( outdpet(ndayyear,ngridcells)     )     ! daily potential ET, mm
-        if (interface%steering%init) allocate( outdaet(nlu,ndayyear,ngridcells) )     ! daily actual ET, mm
-        if (interface%steering%init) allocate( outdcpa(nlu,ndayyear,ngridcells) )     ! daily Cramer-Prentice-Alpha, (unitless)
-        if (interface%steering%init) allocate( outdecon(ndayyear,ngridcells) )        ! daily water-to-energy conversion factor
+        if (interface%steering%init) allocate( outdwcont (nlu,interface%params_siml%outnt,ngridcells) )  ! daily soil moisture, mm
+        ! if (interface%steering%init) allocate( outdra (interface%params_siml%outnt,ngridcells)     )     ! daily solar irradiation, J/m2
+        ! if (interface%steering%init) allocate( outdrn (interface%params_siml%outnt,ngridcells)     )     ! daily net radiation, J/m2
+        ! if (interface%steering%init) allocate( outdppfd (interface%params_siml%outnt,ngridcells)   )     ! daily PPFD, mol/m2
+        ! if (interface%steering%init) allocate( outdayl(interface%params_siml%outnt,ngridcells)     )     ! daily day length, h
+        ! if (interface%steering%init) allocate( outdcn (interface%params_siml%outnt,ngridcells)     )     ! daily condensation water, mm
+        ! if (interface%steering%init) allocate( outdro (nlu,interface%params_siml%outnt,ngridcells) )     ! daily runoff, mm
+        ! if (interface%steering%init) allocate( outdfleach (nlu,interface%params_siml%outnt,ngridcells) ) ! daily leaching fraction, (unitless)
+        ! if (interface%steering%init) allocate( outdeet(interface%params_siml%outnt,ngridcells)     )     ! daily equilibrium ET, mm
+        ! if (interface%steering%init) allocate( outdpet(interface%params_siml%outnt,ngridcells)     )     ! daily potential ET, mm
+        ! if (interface%steering%init) allocate( outdaet(nlu,interface%params_siml%outnt,ngridcells) )     ! daily actual ET, mm
+        ! if (interface%steering%init) allocate( outdcpa(nlu,interface%params_siml%outnt,ngridcells) )     ! daily Cramer-Prentice-Alpha, (unitless)
+        ! if (interface%steering%init) allocate( outdecon(interface%params_siml%outnt,ngridcells) )        ! daily water-to-energy conversion factor
       end if
 
       outdwcont(:,:,:)  = 0.0
-      outdra(:,:)       = 0.0
-      outdrn(:,:)       = 0.0
-      outdppfd(:,:)     = 0.0
-      outdayl(:,:)      = 0.0
-      outdcn(:,:)       = 0.0
-      outdro(:,:,:)     = 0.0
-      outdfleach(:,:,:) = 0.0
-      outdeet(:,:)      = 0.0
-      outdpet(:,:)      = 0.0
-      outdaet(:,:,:)    = 0.0
-      outdcpa(:,:,:)    = 0.0
-      outdecon(:,:)     = 0.0
+      ! outdra(:,:)       = 0.0
+      ! outdrn(:,:)       = 0.0
+      ! outdppfd(:,:)     = 0.0
+      ! outdayl(:,:)      = 0.0
+      ! outdcn(:,:)       = 0.0
+      ! outdro(:,:,:)     = 0.0
+      ! outdfleach(:,:,:) = 0.0
+      ! outdeet(:,:)      = 0.0
+      ! outdpet(:,:)      = 0.0
+      ! outdaet(:,:,:)    = 0.0
+      ! outdcpa(:,:,:)    = 0.0
+      ! outdecon(:,:)     = 0.0
 
     end if
 
@@ -1221,34 +1280,40 @@ contains
     type( solartype ), intent(in)                     :: solar
     type( psoilphystype ), dimension(nlu), intent(in) :: phy
 
-    ! Save the daily totals:
-    ! xxx add lu-dimension and jpngr-dimension
+    ! local variables
+    integer :: it
+
+    !----------------------------------------------------------------
+    ! DAILY FOR HIGH FREQUENCY OUTPUT
+    ! Collect daily output variables
+    ! so far not implemented for isotopes
+    !----------------------------------------------------------------
+    it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
+
     if (interface%params_siml%loutwaterbal) then
 
-      outdra(doy,jpngr)       = solar%dra(doy)
-      outdppfd(doy,jpngr)     = solar%dppfd(doy)
-      outdayl(doy,jpngr)      = solar%dayl(doy)
-      
-      outdrn(doy,jpngr)       = evap(1)%rn
-      outdeet(doy,jpngr)      = evap(1)%eet
-      outdpet(doy,jpngr)      = evap(1)%pet
-      outdcn(doy,jpngr)       = evap(1)%cn
-      outdaet(:,doy,jpngr)    = evap(:)%aet
-      outdcpa(:,doy,jpngr)    = evap(:)%cpa
-      
-      outdwcont(:,doy,jpngr)  = phy(:)%wcont
-      outdro(:,doy,jpngr)     = soilphys(:)%ro
-      outdfleach(:,doy,jpngr) = soilphys(:)%fleach
+      outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr)  + phy(:)%wcont / real( interface%params_siml%outdt )
+      ! outdra(it,jpngr)       = outdra(it,jpngr)       + solar%dra(doy) / real( interface%params_siml%outdt )
+      ! outdppfd(it,jpngr)     = outdppfd(it,jpngr)     + solar%dppfd(doy) / real( interface%params_siml%outdt )
+      ! outdayl(it,jpngr)      = outdayl(it,jpngr)      + solar%dayl(doy) / real( interface%params_siml%outdt )
+      ! outdrn(it,jpngr)       = outdrn(it,jpngr)       + evap(1)%rn / real( interface%params_siml%outdt )
+      ! outdeet(it,jpngr)      = outdeet(it,jpngr)      + evap(1)%eet / real( interface%params_siml%outdt )
+      ! outdpet(it,jpngr)      = outdpet(it,jpngr)      + evap(1)%pet / real( interface%params_siml%outdt )
+      ! outdcn(it,jpngr)       = outdcn(it,jpngr)       + evap(1)%cn / real( interface%params_siml%outdt )
+      ! outdaet(:,it,jpngr)    = outdaet(:,it,jpngr)    + evap(:)%aet / real( interface%params_siml%outdt )
+      ! outdcpa(:,it,jpngr)    = outdcpa(:,it,jpngr)    + evap(:)%cpa / real( interface%params_siml%outdt )
+      ! outdro(:,it,jpngr)     = outdro(:,it,jpngr)     + soilphys(:)%ro / real( interface%params_siml%outdt )
+      ! outdfleach(:,it,jpngr) = outdfleach(:,it,jpngr) + soilphys(:)%fleach / real( interface%params_siml%outdt )
 
-      if (outenergy) then
-        outdpet(doy,jpngr)    = evap(1)%pet / (evap(1)%econ * 1000.0)
-        outdaet(:,doy,jpngr)  = evap(:)%aet / (evap(1)%econ * 1000.0)
-      else 
-        outdpet(doy,jpngr)    = evap(1)%pet
-        outdaet(:,doy,jpngr)  = evap(:)%aet
-      end if
+      ! if (outenergy) then
+      !   outdpet(it,jpngr)    = outdpet(it,jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
+      !   outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + (evap(:)%aet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
+      ! else 
+      !   outdpet(it,jpngr)    = outdpet(it,jpngr)   + evap(1)%pet / real( interface%params_siml%outdt )
+      !   outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + evap(:)%aet / real( interface%params_siml%outdt )
+      ! end if
 
-      outdecon(doy,jpngr)     = evap(1)%econ * 1.0e12 ! converting from m J-1 to mm GJ-1 = m TJ-1
+      ! outdecon(it,jpngr)     = outdecon(it,jpngr)    + evap(1)%econ * 1.0e12 / real( interface%params_siml%outdt ) ! converting from m J-1 to mm GJ-1 = m TJ-1
 
     end if
 
@@ -1264,7 +1329,7 @@ contains
 
     ! Local variables
     real :: itime
-    integer :: day, moy, jpngr
+    integer :: it, moy, jpngr
     
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii_waterbal: think of something ...'
@@ -1276,31 +1341,31 @@ contains
     if (interface%params_siml%loutwaterbal) then
 
       if ( .not. interface%steering%spinup &
-        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+           .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+           .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
         ! Write daily output only during transient simulation
-        do day=1,ndayyear
+        do it=1,interface%params_siml%outnt
 
           ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
+          itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
 
           if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
 
           ! xxx lu-area weighted sum if nlu>0
-          write(251,999) itime, outdra(day,jpngr)
-          write(252,999) itime, outdrn(day,jpngr)
-          write(253,999) itime, outdppfd(day,jpngr)
-          write(254,999) itime, outdcn(day,jpngr)
-          write(255,999) itime, outdwcont(1,day,jpngr)
-          write(257,999) itime, outdro(1,day,jpngr)
-          write(263,999) itime, outdfleach(1,day,jpngr)
-          write(258,999) itime, outdeet(day,jpngr)
-          write(259,999) itime, outdpet(day,jpngr)
-          write(260,999) itime, outdaet(1,day,jpngr)
-          write(261,999) itime, outdayl(day,jpngr)
-          write(262,999) itime, outdcpa(1,day,jpngr)
-          write(264,999) itime, outdecon(day,jpngr)
+          write(255,999) itime, outdwcont(1,it,jpngr)
+          ! write(251,999) itime, outdra(it,jpngr)
+          ! write(252,999) itime, outdrn(it,jpngr)
+          ! write(253,999) itime, outdppfd(it,jpngr)
+          ! write(254,999) itime, outdcn(it,jpngr)
+          ! write(257,999) itime, outdro(1,it,jpngr)
+          ! write(263,999) itime, outdfleach(1,it,jpngr)
+          ! write(258,999) itime, outdeet(it,jpngr)
+          ! write(259,999) itime, outdpet(it,jpngr)
+          ! write(260,999) itime, outdaet(1,it,jpngr)
+          ! write(261,999) itime, outdayl(it,jpngr)
+          ! write(262,999) itime, outdcpa(1,it,jpngr)
+          ! write(264,999) itime, outdecon(it,jpngr)
 
         end do
       end if
@@ -1313,5 +1378,36 @@ contains
 
   end subroutine writeout_ascii_waterbal
 
+
+  subroutine writeout_nc_waterbal()
+    !/////////////////////////////////////////////////////////////////////////
+    ! Write NetCDF output
+    !-------------------------------------------------------------------------
+    use netcdf
+    use md_io_netcdf, only: write_nc_3D, check
+    use md_interface, only: interface
+
+    if ( .not. interface%steering%spinup &
+         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
+      !-------------------------------------------------------------------------
+      ! soil water content
+      !-------------------------------------------------------------------------
+      print*,'writing ', trim(ncoutfilnam_wcont), '...'
+      if (interface%params_siml%lncoutwaterbal) call write_nc_3D( trim(ncoutfilnam_wcont), &
+                                                                WCONT_NAME, &
+                                                                interface%domaininfo%maxgrid, &
+                                                                interface%domaininfo%nlon, &
+                                                                interface%domaininfo%nlat, &
+                                                                interface%grid(:)%ilon, &
+                                                                interface%grid(:)%ilat, &
+                                                                interface%params_siml%outnt, &
+                                                                outdwcont(1,:,:) &
+                                                                )
+
+    end if
+
+  end subroutine writeout_nc_waterbal
 
 end module md_waterbal

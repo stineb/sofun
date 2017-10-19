@@ -374,7 +374,9 @@ contains
     ! arguments
     integer, intent(in) :: ngridcells
 
-    if ( interface%steering%init .and. interface%params_siml%loutdgpp ) allocate( outdgpp(npft,ndayyear,ngridcells) )
+    ! high frequency output variables
+    if ( interface%steering%init .and. interface%params_siml%loutdgpp ) allocate( outdgpp(npft,interface%params_siml%outnt,ngridcells) )
+
     if ( interface%params_siml%loutdgpp ) outdgpp  (:,:,:) = 0.0
     
     ! annual output variables
@@ -481,9 +483,9 @@ contains
 
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
-      print*,'initialising gpp NetCDF file ...'
       ncoutfilnam_gpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
-      call init_nc_3D( filnam  = ncoutfilnam_gpp, &
+      print*,'initialising ', trim(ncoutfilnam_gpp), '...'
+      call init_nc_3D( filnam  = trim(ncoutfilnam_gpp), &
                       nlon     = interface%domaininfo%nlon, &
                       nlat     = interface%domaininfo%nlat, &
                       lon      = interface%domaininfo%lon, &
@@ -526,7 +528,7 @@ contains
     integer :: it
 
     !----------------------------------------------------------------
-    ! DAILY
+    ! DAILY FOR HIGH FREQUENCY OUTPUT
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
@@ -582,7 +584,7 @@ contains
 
     ! local variables
     real :: itime
-    integer :: day, moy, jpngr
+    integer :: it, moy, jpngr
 
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii: think of something ...'
@@ -594,16 +596,16 @@ contains
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
     if ( .not. interface%steering%spinup &
-      .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       ! Write daily output only during transient simulation
-      do day=1,ndayyear
+      do it=1,interface%params_siml%outnt
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
+        itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
         
-        if (interface%params_siml%loutdgpp  ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
+        if (interface%params_siml%loutdgpp  ) write(101,999) itime, sum(outdgpp(:,it,jpngr))
 
       end do
     end if
@@ -640,24 +642,17 @@ contains
     use md_io_netcdf, only: write_nc_3D, check
     use md_interface, only: interface
 
-    ! local variables
-    integer :: doy, jpngr
-    integer :: ncid
-    integer :: varid_temp
-
-    real, dimension(:,:,:,:), allocatable :: outarr
-
     if (npft>1) stop 'writeout_nc_plant(): npft > 1. Think of something clever.'
 
-    ! if ( .not. interface%steering%spinup &
-    !       .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-    !       .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+    if ( .not. interface%steering%spinup &
+         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       !-------------------------------------------------------------------------
       ! fapar
       !-------------------------------------------------------------------------
-      print*,'writing gpp NetCDF file ...'
-      if (interface%params_siml%lncoutdgpp) call write_nc_3D( ncoutfilnam_gpp, &
+      print*,'writing ', trim(ncoutfilnam_gpp), '...'
+      if (interface%params_siml%lncoutdgpp) call write_nc_3D( trim(ncoutfilnam_gpp), &
                                                               GPP_NAME, &
                                                               interface%domaininfo%maxgrid, &
                                                               interface%domaininfo%nlon, &
@@ -668,7 +663,7 @@ contains
                                                               outdgpp(1,:,:) &
                                                               )
 
-    ! end if
+    end if
 
   end subroutine writeout_nc_plant
 

@@ -4,7 +4,7 @@ module md_biosphere
   use md_classdefs
   use md_plant, only: plant_type, initdaily_plant, initglobal_plant, getout_daily_plant, getout_annual_plant, getpar_modl_plant, initoutput_plant, writeout_ascii_plant, initio_plant, initio_nc_plant, writeout_nc_plant
   use md_params_soil, only: paramtype_soil
-  use md_waterbal, only: solartype, waterbal, getsolar, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
+  use md_waterbal, only: solartype, waterbal, getsolar, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, writeout_nc_waterbal
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp
   use md_vegdynamics, only: vegdynamics
   use md_tile, only: tile_type, initglobal_tile
@@ -84,9 +84,9 @@ contains
 
     endif 
 
-    write(0,*) '----------------------'
-    write(0,*) 'YEAR ', interface%steering%year
-    write(0,*) '----------------------'
+    print*,'----------------------'
+    print*,'YEAR ', interface%steering%year
+    print*,'----------------------'
 
     !----------------------------------------------------------------
     ! Open NetCDF output files (one for each year)
@@ -94,6 +94,7 @@ contains
     if (verbose) print*, 'initio_nc_() ...'
     call initio_nc_forcing()
     call initio_nc_plant()
+    call initio_nc_waterbal()
     if (verbose) print*, '... done'
 
     !----------------------------------------------------------------
@@ -112,42 +113,47 @@ contains
     gridcellloop: do jpngr=1,size(interface%grid)
       if (interface%grid(jpngr)%dogridcell) then
 
+        if (verbose) print*,'----------------------'
+        if (verbose) print*,'jpngr ', jpngr
+        if (verbose) print*,'----------------------'
+
         !----------------------------------------------------------------
         ! Get radiation based on daily temperature, sunshine fraction, and 
         ! elevation.
         ! This is not compatible with a daily biosphere-climate coupling. I.e., 
         ! there is a daily loop within 'getsolar'!
         !----------------------------------------------------------------
-        if (verbose) write(0,*) 'calling getsolar() ... '
-        if (verbose) write(0,*) '    with argument lat = ', interface%grid(jpngr)%lat
-        if (verbose) write(0,*) '    with argument elv = ', interface%grid(jpngr)%elv
-        if (verbose) write(0,*) '    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
+        if (verbose) print*,'calling getsolar() ... '
+        if (verbose) print*,'    with argument lat = ', interface%grid(jpngr)%lat
+        if (verbose) print*,'    with argument elv = ', interface%grid(jpngr)%elv
+        if (verbose) print*,'    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
+        if (verbose) print*,'    with argument dppfd (ann. mean) = ', sum( interface%climate(jpngr)%dppfd(:) / ndayyear )
         solar = getsolar( &
                           interface%grid(jpngr)%lat, & 
                           interface%grid(jpngr)%elv, & 
                           interface%climate(jpngr)%dfsun(:), & 
                           interface%climate(jpngr)%dppfd(:)  & 
                           )
-        if (verbose) write(0,*) '... done'
+        if (verbose) print*,'... done'
 
         !----------------------------------------------------------------
         ! Get monthly light use efficiency, and Rd per unit of light absorbed
-        ! Photosynthetic parameters acclimate at monthly time scale
+        ! Photosynthetic parameters acclimate at ~monthly time scale
         ! This is not compatible with a daily biosphere-climate coupling. I.e., 
         ! there is a monthly loop within 'getlue'!
         !----------------------------------------------------------------
-        if (verbose) write(0,*) 'calling getlue() ... '
-        if (verbose) write(0,*) '    with argument CO2  = ', interface%pco2
-        if (verbose) write(0,*) '    with argument temp.= ', interface%climate(jpngr)%dtemp(:)
-        if (verbose) write(0,*) '    with argument VPD  = ', interface%climate(jpngr)%dvpd(:)
-        if (verbose) write(0,*) '    with argument elv. = ', interface%grid(jpngr)%elv
+        if (verbose) print*,'calling getlue() ... '
+        if (verbose) print*,'    with argument CO2  = ', interface%pco2
+        if (verbose) print*,'    with argument temp.= ', interface%climate(jpngr)%dtemp(:)
+        if (verbose) print*,'    with argument VPD  = ', interface%climate(jpngr)%dvpd(:)
+        if (verbose) print*,'    with argument elv. = ', interface%grid(jpngr)%elv
         out_pmodel(:,:) = getlue( &
                                   interface%pco2, & 
                                   interface%climate(jpngr)%dtemp(:), & 
                                   interface%climate(jpngr)%dvpd(:), & 
                                   interface%grid(jpngr)%elv & 
                                   )
-        if (verbose) write(0,*) '... done'
+        if (verbose) print*,'... done'
 
         !----------------------------------------------------------------
         ! LOOP THROUGH MONTHS
@@ -161,9 +167,9 @@ contains
           dayloop: do dm=1,ndaymonth(moy)
             doy=doy+1
 
-            ! if (verbose) write(0,*) '----------------------'
-            ! if (verbose) write(0,*) 'YEAR, Doy ', interface%steering%year, doy
-            ! if (verbose) write(0,*) '----------------------'
+            if (verbose) print*,'----------------------'
+            if (verbose) print*,'YEAR, Doy ', interface%steering%year, doy
+            if (verbose) print*,'----------------------'
 
             !----------------------------------------------------------------
             ! initialise daily updated variables 
@@ -175,7 +181,7 @@ contains
             !----------------------------------------------------------------
             ! get soil moisture, and runoff
             !----------------------------------------------------------------
-            if (verbose) write(0,*) 'calling waterbal() ... '
+            if (verbose) print*,'calling waterbal() ... '
             call waterbal( &
                             tile(:,jpngr)%soil%phy, &
                             doy, & 
@@ -186,20 +192,20 @@ contains
                             interface%climate(jpngr)%dfsun(doy), &
                             interface%climate(jpngr)%dnetrad(doy)&
                             )
-            if (verbose) write(0,*) '... done'
+            if (verbose) print*,'... done'
 
             !----------------------------------------------------------------
             ! update canopy and tile variables and simulate daily 
             ! establishment / sprouting
             !----------------------------------------------------------------
-            if (verbose) write(0,*) 'calling vegdynamics() ... '
+            if (verbose) print*,'calling vegdynamics() ... '
             call vegdynamics( tile(:,jpngr), plant(:,jpngr), solar, out_pmodel(:,:), interface%dfapar_field(doy,jpngr) )
-            if (verbose) write(0,*) '... done'
+            if (verbose) print*,'... done'
 
             !/////////////////////////////////////////////////////////////////
             ! calculate GPP
             !----------------------------------------------------------------
-            if (verbose) write(0,*) 'calling gpp() ... '
+            if (verbose) print*,'calling gpp() ... '
             ! print*,'acrown', plant(1,1)%acrown
             ! print*,'in biosphere: fapar', plant(1,1)%fapar_ind
             ! print*,'in biosphere: acrown', plant(1,1)%acrown
@@ -207,17 +213,17 @@ contains
                       out_pmodel(:,moy), solar, plant(:,jpngr), doy, moy, &
                       interface%climate(jpngr)%dtemp(doy) &
                       )
-            if (verbose) write(0,*) '... done'
+            if (verbose) print*,'... done'
 
             !----------------------------------------------------------------
             ! collect from daily updated state variables for annual variables
             !----------------------------------------------------------------
-            if (verbose) write(0,*) 'calling getout_daily() ... '
+            if (verbose) print*,'calling getout_daily() ... '
             call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy )
             call getout_daily_gpp( out_pmodel(:,moy), jpngr, doy )
             call getout_daily_plant( plant(:,jpngr), jpngr, moy, doy )
             call getout_daily_forcing( jpngr, moy, doy )
-            if (verbose) write(0,*) '... done'
+            if (verbose) print*,'... done'
 
           end do dayloop
 
@@ -245,8 +251,7 @@ contains
     !----------------------------------------------------------------
     call writeout_nc_forcing()
     call writeout_nc_plant()
-
-    stop 'end of first year'
+    call writeout_nc_waterbal()
 
     ! xxx insignificant
     c_uptake = 0.0

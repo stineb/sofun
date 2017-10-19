@@ -10,7 +10,7 @@ sitename                                EXAMPLE_global_halfdeg
 
 # Model spinup setting
 spinup                                  .true.
-spinupyears                             10
+spinupyears                             5
 recycle                                 1
 
 # Start and length of simulation in years (AD)
@@ -76,6 +76,7 @@ loutdtemp                               .false.
 lncoutdtemp                             .true.
 lncoutdfapar                            .true.
 lncoutdgpp                              .true. 
+lncoutwaterbal                          .true. 
 
 # Variables written to output by module
 loutplant                               .false.

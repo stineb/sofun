@@ -134,9 +134,9 @@ contains
 
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
-      print*,'initialising temp NetCDF file ...'
       ncoutfilnam_temp = trim(prefix)//'.'//year_char//".d.temp.nc"
-      call init_nc_3D(  filnam   = ncoutfilnam_temp, &
+      print*,'initialising ', trim(ncoutfilnam_temp), '...'
+      call init_nc_3D(  filnam   = trim(ncoutfilnam_temp), &
                         nlon     = interface%domaininfo%nlon, &
                         nlat     = interface%domaininfo%nlat, &
                         lon      = interface%domaininfo%lon, &
@@ -156,9 +156,9 @@ contains
 
       ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
       ! overwrite this file, if it already exists.
-      print*,'initialising fapar NetCDF file ...'
       ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar.nc"
-      call init_nc_3D(  filnam   = ncoutfilnam_fapar, &
+      print*,'initialising ', trim(ncoutfilnam_fapar), '...'
+      call init_nc_3D(  filnam   = trim(ncoutfilnam_fapar), &
                         nlon     = interface%domaininfo%nlon, &
                         nlat     = interface%domaininfo%nlat, &
                         lon      = interface%domaininfo%lon, &
@@ -200,7 +200,7 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    it = floor( real( doy ) / real( interface%params_siml%outdt ) )
+    it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
     if (interface%params_siml%loutdtemp ) outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(jpngr)%dtemp(doy) / real( interface%params_siml%outdt )
     if (interface%params_siml%loutdfapar) outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%dfapar_field(doy,jpngr)   / real( interface%params_siml%outdt )
 
@@ -225,7 +225,7 @@ contains
 
     ! local variables
     real :: itime
-    integer :: doy, moy, jpngr
+    integer :: it, moy, jpngr
     real, dimension(ndayyear) :: outdtemp_tot
     real, dimension(ndayyear) :: outdfapar_tot
 
@@ -239,29 +239,29 @@ contains
     ! Write daily value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    ! if ( .not. interface%steering%spinup &
-    !   .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-    !   .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+    if ( .not. interface%steering%spinup &
+         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       ! Write daily output only during transient simulation
-      do doy=1,ndayyear
+      do it=1,interface%params_siml%outnt
 
         ! Get weighted average
         do jpngr=1,size(interface%grid)
-          if (interface%params_siml%loutdtemp ) outdtemp_tot(doy)  = outdtemp_tot(doy)  + outdtemp(doy,jpngr)  * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
-          if (interface%params_siml%loutdfapar) outdfapar_tot(doy) = outdfapar_tot(doy) + outdfapar(doy,jpngr) * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
+          if (interface%params_siml%loutdtemp ) outdtemp_tot(it)  = outdtemp_tot(it)  + outdtemp(it,jpngr)  * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
+          if (interface%params_siml%loutdfapar) outdfapar_tot(it) = outdfapar_tot(it) + outdfapar(it,jpngr) * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
         end do
-        if (interface%params_siml%loutdtemp ) outdtemp_tot(doy)  = outdtemp_tot(doy)  / interface%domaininfo%landarea
-        if (interface%params_siml%loutdfapar) outdfapar_tot(doy) = outdfapar_tot(doy) / interface%domaininfo%landarea
+        if (interface%params_siml%loutdtemp ) outdtemp_tot(it)  = outdtemp_tot(it)  / interface%domaininfo%landarea
+        if (interface%params_siml%loutdfapar) outdfapar_tot(it) = outdfapar_tot(it) / interface%domaininfo%landarea
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real( interface%steering%outyear ) + real( doy - 1 ) / real( ndayyear )
+        itime = real( interface%steering%outyear ) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
         
-        if (interface%params_siml%loutdtemp)  write(950,999) itime, outdtemp_tot(doy)
-        if (interface%params_siml%loutdfapar) write(951,999) itime, outdfapar_tot(doy)
+        if (interface%params_siml%loutdtemp)  write(950,999) itime, outdtemp_tot(it)
+        if (interface%params_siml%loutdfapar) write(951,999) itime, outdfapar_tot(it)
 
       end do
-    ! end if
+    end if
 
     return
 
@@ -277,22 +277,15 @@ contains
     use netcdf
     use md_io_netcdf, only: write_nc_3D, check
 
-    ! local variables
-    integer :: doy, jpngr
-    integer :: ncid
-    integer :: varid_temp
-
-    real, dimension(:,:,:,:), allocatable :: outarr
-
-    ! if ( .not. interface%steering%spinup &
-    !       .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-    !       .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+    if ( .not. interface%steering%spinup &
+         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       !-------------------------------------------------------------------------
       ! dtemp
       !-------------------------------------------------------------------------
-      print*,'writing temp NetCDF file ...'
-      if (interface%params_siml%lncoutdtemp) call write_nc_3D(  ncoutfilnam_temp, &
+      print*,'writing ', trim(ncoutfilnam_temp), '...'
+      if (interface%params_siml%lncoutdtemp) call write_nc_3D(  trim(ncoutfilnam_temp), &
                                                                 TEMP_NAME, &
                                                                 interface%domaininfo%maxgrid, &
                                                                 interface%domaininfo%nlon, &
@@ -307,8 +300,8 @@ contains
       !-------------------------------------------------------------------------
       ! fapar
       !-------------------------------------------------------------------------
-      print*,'writing fapar NetCDF file ...'
-      if (interface%params_siml%lncoutdfapar) call write_nc_3D( ncoutfilnam_fapar, &
+      print*,'writing ', trim(ncoutfilnam_fapar), '...'
+      if (interface%params_siml%lncoutdfapar) call write_nc_3D( trim(ncoutfilnam_fapar), &
                                                                 FAPAR_NAME, &
                                                                 interface%domaininfo%maxgrid, &
                                                                 interface%domaininfo%nlon, &
@@ -318,6 +311,8 @@ contains
                                                                 interface%params_siml%outnt, &
                                                                 outdfapar(:,:) &
                                                                 )
+
+    end if
 
   end subroutine writeout_nc_forcing
 
