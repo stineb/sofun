@@ -44,9 +44,11 @@ module md_interface
   !----------------------------------------------------------------
   ! Module-specific NetCDF output file and variable names
   !----------------------------------------------------------------
+  character(len=256) :: ncoutfilnam_fland
   character(len=256) :: ncoutfilnam_temp
   character(len=256) :: ncoutfilnam_fapar
 
+  character(len=*), parameter :: FLAND_NAME="fland"
   character(len=*), parameter :: TEMP_NAME="temp"
   character(len=*), parameter :: FAPAR_NAME="fapar"
 
@@ -116,7 +118,7 @@ contains
     ! Opens NetCDF output files.
     !----------------------------------------------------------------
     use netcdf
-    use md_io_netcdf, only: init_nc_3D, check
+    use md_io_netcdf, only: init_nc_2D, init_nc_3D, check
 
     ! local variables
     character(len=256) :: prefix
@@ -130,47 +132,70 @@ contains
 
     prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
-    if (interface%params_siml%lncoutdtemp) then
 
-      ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
-      ! overwrite this file, if it already exists.
-      ncoutfilnam_temp = trim(prefix)//'.'//year_char//".d.temp.nc"
-      print*,'initialising ', trim(ncoutfilnam_temp), '...'
-      call init_nc_3D(  filnam   = trim(ncoutfilnam_temp), &
+    !----------------------------------------------------------------
+    ! Land fraction
+    !----------------------------------------------------------------
+    if ( interface%steering%init ) then
+      ncoutfilnam_fland = trim(prefix)//".fland.nc"
+      print*,'initialising ', trim(ncoutfilnam_fland), '...'
+      call init_nc_2D(  filnam   = trim(ncoutfilnam_fland), &
                         nlon     = interface%domaininfo%nlon, &
                         nlat     = interface%domaininfo%nlat, &
                         lon      = interface%domaininfo%lon, &
                         lat      = interface%domaininfo%lat, &
-                        outyear  = interface%steering%outyear, &
-                        outdt    = interface%params_siml%outdt, &
-                        outnt    = interface%params_siml%outnt, &
-                        varnam   = TEMP_NAME, &
-                        varunits = "degrees Celsius", &
-                        longnam  = "daily average 2 m temperature", &
+                        varnam   = FLAND_NAME, &
+                        varunits = "(unitless)", &
+                        longnam  = "gridcell fraction covered by land", &
                         title    = TITLE &
                         )
-
     end if
 
-    if (interface%params_siml%lncoutdfapar) then
+    if ( .not. interface%steering%spinup &
+         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
-      ! overwrite this file, if it already exists.
-      ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar.nc"
-      print*,'initialising ', trim(ncoutfilnam_fapar), '...'
-      call init_nc_3D(  filnam   = trim(ncoutfilnam_fapar), &
-                        nlon     = interface%domaininfo%nlon, &
-                        nlat     = interface%domaininfo%nlat, &
-                        lon      = interface%domaininfo%lon, &
-                        lat      = interface%domaininfo%lat, &
-                        outyear  = interface%steering%outyear, &
-                        outdt    = interface%params_siml%outdt, &
-                        outnt    = interface%params_siml%outnt, &
-                        varnam   = FAPAR_NAME, &
-                        varunits = "unitless", &
-                        longnam  = "fraction of absorbed photosynthetically active radiation", &
-                        title    = TITLE &
-                        )
+      !----------------------------------------------------------------
+      ! Temperature output file 
+      !----------------------------------------------------------------
+      if (interface%params_siml%lncoutdtemp) then
+        ncoutfilnam_temp = trim(prefix)//'.'//year_char//".d.temp.nc"
+        print*,'initialising ', trim(ncoutfilnam_temp), '...'
+        call init_nc_3D(  filnam   = trim(ncoutfilnam_temp), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = TEMP_NAME, &
+                          varunits = "degrees Celsius", &
+                          longnam  = "daily average 2 m temperature", &
+                          title    = TITLE &
+                          )
+      end if
+
+      !----------------------------------------------------------------
+      ! fAPAR output file 
+      !----------------------------------------------------------------
+      if (interface%params_siml%lncoutdfapar) then
+        ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar.nc"
+        print*,'initialising ', trim(ncoutfilnam_fapar), '...'
+        call init_nc_3D(  filnam   = trim(ncoutfilnam_fapar), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = FAPAR_NAME, &
+                          varunits = "unitless", &
+                          longnam  = "fraction of absorbed photosynthetically active radiation", &
+                          title    = TITLE &
+                          )
+      end if
 
     end if
 
@@ -275,7 +300,23 @@ contains
     ! Write NetCDF output
     !-------------------------------------------------------------------------
     use netcdf
-    use md_io_netcdf, only: write_nc_3D, check
+    use md_io_netcdf, only: write_nc_2D, write_nc_3D, check
+
+    !-------------------------------------------------------------------------
+    ! land fraction
+    !-------------------------------------------------------------------------
+    if (interface%steering%init) then
+      print*,'writing ', trim(ncoutfilnam_fland), '...'
+      call write_nc_2D( trim(ncoutfilnam_fland), &
+                        FLAND_NAME, &
+                        interface%domaininfo%maxgrid, &
+                        interface%domaininfo%nlon, &
+                        interface%domaininfo%nlat, &
+                        interface%grid(:)%ilon, &
+                        interface%grid(:)%ilat, &
+                        interface%grid(:)%landfrac &
+                        )
+    end if
 
     if ( .not. interface%steering%spinup &
          .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
@@ -284,7 +325,7 @@ contains
       !-------------------------------------------------------------------------
       ! dtemp
       !-------------------------------------------------------------------------
-      print*,'writing ', trim(ncoutfilnam_temp), '...'
+      if (interface%params_siml%lncoutdtemp) print*,'writing ', trim(ncoutfilnam_temp), '...'
       if (interface%params_siml%lncoutdtemp) call write_nc_3D(  trim(ncoutfilnam_temp), &
                                                                 TEMP_NAME, &
                                                                 interface%domaininfo%maxgrid, &
@@ -300,7 +341,7 @@ contains
       !-------------------------------------------------------------------------
       ! fapar
       !-------------------------------------------------------------------------
-      print*,'writing ', trim(ncoutfilnam_fapar), '...'
+      if (interface%params_siml%lncoutdfapar) print*,'writing ', trim(ncoutfilnam_fapar), '...'
       if (interface%params_siml%lncoutdfapar) call write_nc_3D( trim(ncoutfilnam_fapar), &
                                                                 FAPAR_NAME, &
                                                                 interface%domaininfo%maxgrid, &

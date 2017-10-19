@@ -479,25 +479,31 @@ contains
 
     prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
-    if (interface%params_siml%lncoutdgpp) then
+    if ( .not. interface%steering%spinup &
+         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      ! Create the netCDF file. The nf90_clobber parameter tells netCDF to
-      ! overwrite this file, if it already exists.
-      ncoutfilnam_gpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
-      print*,'initialising ', trim(ncoutfilnam_gpp), '...'
-      call init_nc_3D( filnam  = trim(ncoutfilnam_gpp), &
-                      nlon     = interface%domaininfo%nlon, &
-                      nlat     = interface%domaininfo%nlat, &
-                      lon      = interface%domaininfo%lon, &
-                      lat      = interface%domaininfo%lat, &
-                      outyear  = interface%steering%outyear, &
-                      outdt    = interface%params_siml%outdt, &
-                      outnt    = interface%params_siml%outnt, &
-                      varnam   = GPP_NAME, &
-                      varunits = "gC m-2 d-1", &
-                      longnam  = "daily gross primary productivivty", &
-                      title    = TITLE &
-                      )
+      !----------------------------------------------------------------
+      ! GPP output file 
+      !----------------------------------------------------------------
+      if (interface%params_siml%lncoutdgpp) then
+        ncoutfilnam_gpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
+        print*,'initialising ', trim(ncoutfilnam_gpp), '...'
+        call init_nc_3D( filnam  = trim(ncoutfilnam_gpp), &
+                        nlon     = interface%domaininfo%nlon, &
+                        nlat     = interface%domaininfo%nlat, &
+                        lon      = interface%domaininfo%lon, &
+                        lat      = interface%domaininfo%lat, &
+                        outyear  = interface%steering%outyear, &
+                        outdt    = interface%params_siml%outdt, &
+                        outnt    = interface%params_siml%outnt, &
+                        varnam   = GPP_NAME, &
+                        varunits = "gC m-2 d-1", &
+                        longnam  = "daily gross primary productivivty", &
+                        title    = TITLE &
+                        )
+
+      end if
 
     end if
 
@@ -649,9 +655,9 @@ contains
          .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       !-------------------------------------------------------------------------
-      ! fapar
+      ! gpp
       !-------------------------------------------------------------------------
-      print*,'writing ', trim(ncoutfilnam_gpp), '...'
+      if (interface%params_siml%lncoutdgpp) print*,'writing ', trim(ncoutfilnam_gpp), '...'
       if (interface%params_siml%lncoutdgpp) call write_nc_3D( trim(ncoutfilnam_gpp), &
                                                               GPP_NAME, &
                                                               interface%domaininfo%maxgrid, &
