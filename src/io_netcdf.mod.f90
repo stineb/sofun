@@ -11,7 +11,13 @@ module md_io_netcdf
 
 contains
 
-  subroutine init_nc_3D( filnam, nlon, nlat, lon, lat, outyear, outdt, outnt, varnam, varunits, longnam, title )
+  subroutine init_nc_3D( filnam, nlon, nlat, lon, lat, outyear, outdt, outnt, varnam, varunits, longnam, title, &
+                          globatt1_nam, globatt1_val, &
+                          globatt2_nam, globatt2_val, &
+                          globatt3_nam, globatt3_val, &
+                          globatt4_nam, globatt4_val, &
+                          globatt5_nam, globatt5_val  &
+                        )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to initialise a NetCDF file with one variable and lon/lat/time
     !----------------------------------------------------------------
@@ -19,18 +25,17 @@ contains
 
     ! arguments
     character(len=*), intent(in) :: filnam
-
     integer, intent(in) :: nlon
     integer, intent(in) :: nlat
-    
     real,    dimension(nlon), intent(in) :: lon
     real,    dimension(nlat), intent(in) :: lat
     integer, intent(in) :: outyear, outdt, outnt
-
     character(len=*), intent(in) :: varnam
     character(len=*), intent(in) :: varunits
     character(len=*), intent(in) :: longnam
     character(len=*), intent(in) :: title
+    character(len=*), intent(in), optional :: globatt1_nam, globatt2_nam, globatt3_nam, globatt4_nam, globatt5_nam
+    character(len=*), intent(in), optional :: globatt1_val, globatt2_val, globatt3_val, globatt4_val, globatt5_val
 
     ! local variables
     integer :: ncid
@@ -92,14 +97,19 @@ contains
     call check( nf90_def_var( ncid, varnam, NF90_REAL, dimids, varid_var ) )
 
     ! Define some attributes
-    ! variable-specific
+    ! variable-specific attributes
     call check( nf90_put_att( ncid, varid_var, UNITS, varunits ) )
     call check( nf90_put_att( ncid, varid_var, "_FillValue", dummy ) )
     call check( nf90_put_att( ncid, varid_var, "long_name", longnam ) )
     call check( nf90_put_att( ncid, varid_var, "output_periodicity_d", outdt ) )
 
-    ! global
+    ! global attributes
     call check( nf90_put_att( ncid, NF90_GLOBAL, "title", title ) )
+    if (present(globatt1_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt1_nam, globatt1_val ) )
+    if (present(globatt2_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt2_nam, globatt2_val ) )
+    if (present(globatt3_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt3_nam, globatt3_val ) )
+    if (present(globatt4_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt4_nam, globatt4_val ) )
+    if (present(globatt5_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt5_nam, globatt5_val ) )
 
     ! End define mode. This tells netCDF we are done defining metadata.
     call check( nf90_enddef( ncid ) )

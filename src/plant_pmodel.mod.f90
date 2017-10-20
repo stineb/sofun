@@ -502,7 +502,6 @@ contains
                         longnam  = "daily gross primary productivivty", &
                         title    = TITLE &
                         )
-
       end if
 
     end if

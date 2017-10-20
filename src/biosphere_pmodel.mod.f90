@@ -110,6 +110,7 @@ contains
     !----------------------------------------------------------------
     ! LOOP THROUGH GRIDCELLS
     !----------------------------------------------------------------
+    print*,'looping through gridcells ...'
     gridcellloop: do jpngr=1,size(interface%grid)
       if (interface%grid(jpngr)%dogridcell) then
 

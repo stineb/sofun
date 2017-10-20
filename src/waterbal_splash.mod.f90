@@ -129,12 +129,16 @@ module md_waterbal
   ! Module-specific NetCDF output file and variable names
   !----------------------------------------------------------------
   character(len=256) :: ncoutfilnam_wcont
+  character(len=256) :: ncoutfilnam_ppfd
   ! character(len=256) :: ncoutfilnam_pet
   ! character(len=256) :: ncoutfilnam_wcont
 
   character(len=*), parameter :: WCONT_NAME="wcont"
+  character(len=*), parameter :: PPFD_NAME="ppfd"
   ! character(len=*), parameter :: WCONT_NAME="wcont"
   ! character(len=*), parameter :: WCONT_NAME="wcont"
+
+  character(len=7) :: in_ppfd       ! information whether PPFD is prescribed from meteo file for global attribute in NetCDF file
 
 contains
 
@@ -320,9 +324,11 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       if (ppfd(1)/=dummy) then
         out_solar%dppfd(doy) = ppfd(doy)
+        in_ppfd = ".true. "
       else
         ! Eq. 57, SPLASH 2.0 Documentation
         out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
+        in_ppfd = ".false."
       end if
 
     end do
@@ -1088,9 +1094,9 @@ contains
       ! filnam=trim(prefix)//'.d.rn.out'
       ! open(252,file=filnam,err=888,status='unknown')
 
-      ! ! PPFD: daily PPFD, mol/m2
-      ! filnam=trim(prefix)//'.d.ppfd.out'
-      ! open(253,file=filnam,err=888,status='unknown')
+      ! PPFD: daily PPFD, mol/m2
+      filnam=trim(prefix)//'.d.ppfd.out'
+      open(253,file=filnam,err=888,status='unknown')
 
       ! ! CN: daily condensation water, mm
       ! filnam=trim(prefix)//'.d.cn.out'
@@ -1186,10 +1192,14 @@ contains
 
     character(len=*), parameter :: TITLE = "SOFUN GP-model output, module md_waterbal (SPLASH)"
     character(len=4) :: year_char
+    character(len=12) :: kWm_char
 
     integer :: jpngr, doy
 
     write(year_char,999) interface%steering%outyear
+
+    ! convert parameter values to charaters
+    write(kWm_char,888) kWm
 
     prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
@@ -1197,10 +1207,10 @@ contains
          .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
          .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      !----------------------------------------------------------------
-      ! WCONT output file 
-      !----------------------------------------------------------------
       if (interface%params_siml%lncoutwaterbal) then
+        !----------------------------------------------------------------
+        ! WCONT output file 
+        !----------------------------------------------------------------
         ncoutfilnam_wcont = trim(prefix)//'.'//year_char//".d.wcont.nc"
         print*,'initialising ', trim(ncoutfilnam_wcont), '...'
         call init_nc_3D( filnam  = trim(ncoutfilnam_wcont), &
@@ -1214,13 +1224,37 @@ contains
                         varnam   = WCONT_NAME, &
                         varunits = "mm", &
                         longnam  = "soil water content", &
-                        title    = TITLE &
+                        title    = TITLE, &
+                        globatt1_nam = "param_kWm", globatt1_val = trim(kWm_char), &
+                        globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                        )
+
+        !----------------------------------------------------------------
+        ! PPFD output file 
+        !----------------------------------------------------------------
+        ncoutfilnam_ppfd = trim(prefix)//'.'//year_char//".d.ppfd.nc"
+        print*,'initialising ', trim(ncoutfilnam_ppfd), '...'
+        call init_nc_3D( filnam  = trim(ncoutfilnam_ppfd), &
+                        nlon     = interface%domaininfo%nlon, &
+                        nlat     = interface%domaininfo%nlat, &
+                        lon      = interface%domaininfo%lon, &
+                        lat      = interface%domaininfo%lat, &
+                        outyear  = interface%steering%outyear, &
+                        outdt    = interface%params_siml%outdt, &
+                        outnt    = interface%params_siml%outnt, &
+                        varnam   = PPFD_NAME, &
+                        varunits = "mol m-2 d-1", &
+                        longnam  = "photosynthetic photon flux density", &
+                        title    = TITLE, &
+                        globatt1_nam = "param_kWm", globatt1_val = trim(kWm_char), &
+                        globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
                         )
 
       end if
 
     end if
 
+    888  format (F12.6)
     999  format (I4.4)
     
   end subroutine initio_nc_waterbal
@@ -1239,9 +1273,9 @@ contains
 
       if (interface%steering%init) then
         if (interface%steering%init) allocate( outdwcont (nlu,interface%params_siml%outnt,ngridcells) )  ! daily soil moisture, mm
+        if (interface%steering%init) allocate( outdppfd (interface%params_siml%outnt,ngridcells)   )     ! daily PPFD, mol/m2
         ! if (interface%steering%init) allocate( outdra (interface%params_siml%outnt,ngridcells)     )     ! daily solar irradiation, J/m2
         ! if (interface%steering%init) allocate( outdrn (interface%params_siml%outnt,ngridcells)     )     ! daily net radiation, J/m2
-        ! if (interface%steering%init) allocate( outdppfd (interface%params_siml%outnt,ngridcells)   )     ! daily PPFD, mol/m2
         ! if (interface%steering%init) allocate( outdayl(interface%params_siml%outnt,ngridcells)     )     ! daily day length, h
         ! if (interface%steering%init) allocate( outdcn (interface%params_siml%outnt,ngridcells)     )     ! daily condensation water, mm
         ! if (interface%steering%init) allocate( outdro (nlu,interface%params_siml%outnt,ngridcells) )     ! daily runoff, mm
@@ -1254,9 +1288,9 @@ contains
       end if
 
       outdwcont(:,:,:)  = 0.0
+      outdppfd(:,:)     = 0.0
       ! outdra(:,:)       = 0.0
       ! outdrn(:,:)       = 0.0
-      ! outdppfd(:,:)     = 0.0
       ! outdayl(:,:)      = 0.0
       ! outdcn(:,:)       = 0.0
       ! outdro(:,:,:)     = 0.0
@@ -1299,8 +1333,8 @@ contains
     if (interface%params_siml%loutwaterbal) then
 
       outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr)  + phy(:)%wcont / real( interface%params_siml%outdt )
+      outdppfd(it,jpngr)     = outdppfd(it,jpngr)     + solar%dppfd(doy) / real( interface%params_siml%outdt )
       ! outdra(it,jpngr)       = outdra(it,jpngr)       + solar%dra(doy) / real( interface%params_siml%outdt )
-      ! outdppfd(it,jpngr)     = outdppfd(it,jpngr)     + solar%dppfd(doy) / real( interface%params_siml%outdt )
       ! outdayl(it,jpngr)      = outdayl(it,jpngr)      + solar%dayl(doy) / real( interface%params_siml%outdt )
       ! outdrn(it,jpngr)       = outdrn(it,jpngr)       + evap(1)%rn / real( interface%params_siml%outdt )
       ! outdeet(it,jpngr)      = outdeet(it,jpngr)      + evap(1)%eet / real( interface%params_siml%outdt )
@@ -1360,9 +1394,9 @@ contains
 
           ! xxx lu-area weighted sum if nlu>0
           write(255,999) itime, outdwcont(1,it,jpngr)
+          write(253,999) itime, outdppfd(it,jpngr)
           ! write(251,999) itime, outdra(it,jpngr)
           ! write(252,999) itime, outdrn(it,jpngr)
-          ! write(253,999) itime, outdppfd(it,jpngr)
           ! write(254,999) itime, outdcn(it,jpngr)
           ! write(257,999) itime, outdro(1,it,jpngr)
           ! write(263,999) itime, outdfleach(1,it,jpngr)
@@ -1397,20 +1431,37 @@ contains
          .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
          .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      !-------------------------------------------------------------------------
-      ! soil water content
-      !-------------------------------------------------------------------------
-      if (interface%params_siml%lncoutwaterbal) print*,'writing ', trim(ncoutfilnam_wcont), '...'
-      if (interface%params_siml%lncoutwaterbal) call write_nc_3D( trim(ncoutfilnam_wcont), &
-                                                                  WCONT_NAME, &
-                                                                  interface%domaininfo%maxgrid, &
-                                                                  interface%domaininfo%nlon, &
-                                                                  interface%domaininfo%nlat, &
-                                                                  interface%grid(:)%ilon, &
-                                                                  interface%grid(:)%ilat, &
-                                                                  interface%params_siml%outnt, &
-                                                                  outdwcont(1,:,:) &
-                                                                  )
+      if (interface%params_siml%lncoutwaterbal) then
+        !-------------------------------------------------------------------------
+        ! soil water content
+        !-------------------------------------------------------------------------
+        print*,'writing ', trim(ncoutfilnam_wcont), '...'
+        call write_nc_3D( trim(ncoutfilnam_wcont), &
+                          WCONT_NAME, &
+                          interface%domaininfo%maxgrid, &
+                          interface%domaininfo%nlon, &
+                          interface%domaininfo%nlat, &
+                          interface%grid(:)%ilon, &
+                          interface%grid(:)%ilat, &
+                          interface%params_siml%outnt, &
+                          outdwcont(1,:,:) &
+                          )
+
+        !-------------------------------------------------------------------------
+        ! PPFD
+        !-------------------------------------------------------------------------
+        print*,'writing ', trim(ncoutfilnam_ppfd), '...'
+        call write_nc_3D( trim(ncoutfilnam_ppfd), &
+                          PPFD_NAME, &
+                          interface%domaininfo%maxgrid, &
+                          interface%domaininfo%nlon, &
+                          interface%domaininfo%nlat, &
+                          interface%grid(:)%ilon, &
+                          interface%grid(:)%ilat, &
+                          interface%params_siml%outnt, &
+                          outdppfd(:,:) &
+                          )
+      end if
 
     end if
 

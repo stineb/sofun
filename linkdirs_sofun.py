@@ -36,8 +36,8 @@ example = True
 ## Manually et the root directory for the local mirror of 
 ## /work/bstocker/labprentice/data
 ##--------------------------------------------------------------------
-dataroot = '/Users/benjaminstocker/data/'
-# dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
+# dataroot = '/Users/benjaminstocker/data/'
+dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
 
 ##--------------------------------------------------------------------
 ## Link directories
