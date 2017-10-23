@@ -1274,7 +1274,7 @@ contains
         !----------------------------------------------------------------
         ! AET output file 
         !----------------------------------------------------------------
-        ncoutfilnam_ppfd = trim(prefix)//'.'//year_char//".d.aet.nc"
+        ncoutfilnam_aet = trim(prefix)//'.'//year_char//".d.aet.nc"
         print*,'initialising ', trim(ncoutfilnam_aet), '...'
         call init_nc_3D( filnam  = trim(ncoutfilnam_aet), &
                         nlon     = interface%domaininfo%nlon, &
