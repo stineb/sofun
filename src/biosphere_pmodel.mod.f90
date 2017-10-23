@@ -45,6 +45,9 @@ contains
 
     ! xxx verbose
     logical, parameter :: verbose = .false.
+    logical, parameter :: splashtest = .false.
+    integer, parameter :: lev_splashtest = 2
+    integer, parameter :: testdoy = 8
 
     !----------------------------------------------------------------
     ! INITIALISATIONS
@@ -111,7 +114,8 @@ contains
     ! LOOP THROUGH GRIDCELLS
     !----------------------------------------------------------------
     print*,'looping through gridcells ...'
-    gridcellloop: do jpngr=1,size(interface%grid)
+    ! gridcellloop: do jpngr=1,size(interface%grid)
+    gridcellloop: do jpngr=48790,48790   ! negative PET in january 2010
       if (interface%grid(jpngr)%dogridcell) then
 
         if (verbose) print*,'----------------------'
@@ -129,12 +133,21 @@ contains
         if (verbose) print*,'    with argument elv = ', interface%grid(jpngr)%elv
         if (verbose) print*,'    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
         if (verbose) print*,'    with argument dppfd (ann. mean) = ', sum( interface%climate(jpngr)%dppfd(:) / ndayyear )
-        solar = getsolar( &
-                          interface%grid(jpngr)%lat, & 
-                          interface%grid(jpngr)%elv, & 
-                          interface%climate(jpngr)%dfsun(:), & 
-                          interface%climate(jpngr)%dppfd(:)  & 
-                          )
+        if (splashtest) then
+          ! for comparison with Python SPLASH
+          interface%climate(jpngr)%dfsun(:) = 0.422999978
+          interface%climate(jpngr)%dppfd(:) = dummy
+          solar = getsolar( 54.75, 954.0, interface%climate(jpngr)%dfsun(:), interface%climate(jpngr)%dppfd(:), splashtest=splashtest, testdoy=testdoy )
+          if (lev_splashtest==1) stop 'end of splash test level 1'
+        else          
+          solar = getsolar( &
+                            interface%grid(jpngr)%lat, & 
+                            interface%grid(jpngr)%elv, & 
+                            interface%climate(jpngr)%dfsun(:), & 
+                            interface%climate(jpngr)%dppfd(:),  & 
+                            splashtest = splashtest, testdoy=testdoy &
+                            )
+        end if
         if (verbose) print*,'... done'
 
         !----------------------------------------------------------------
@@ -183,6 +196,7 @@ contains
             ! get soil moisture, and runoff
             !----------------------------------------------------------------
             if (verbose) print*,'calling waterbal() ... '
+            ! print*,'lon,lat,ilon,ilat,jpngr', interface%grid(jpngr)%lon, interface%grid(jpngr)%lat, interface%grid(jpngr)%ilon, interface%grid(jpngr)%ilat, jpngr
             call waterbal( &
                             tile(:,jpngr)%soil%phy, &
                             doy, & 
@@ -191,7 +205,8 @@ contains
                             interface%climate(jpngr)%dprec(doy), & 
                             interface%climate(jpngr)%dtemp(doy), & 
                             interface%climate(jpngr)%dfsun(doy), &
-                            interface%climate(jpngr)%dnetrad(doy)&
+                            interface%climate(jpngr)%dnetrad(doy), &
+                            splashtest=splashtest, lev_splashtest=lev_splashtest, testdoy=testdoy &
                             )
             if (verbose) print*,'... done'
 

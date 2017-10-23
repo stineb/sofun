@@ -142,11 +142,11 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( phy, doy, lat, elv, pr, tc, sf, netrad )
+  subroutine waterbal( phy, doy, lat, elv, pr, tc, sf, netrad, splashtest, lev_splashtest, testdoy )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
-    use md_params_core, only: ndayyear, ndaymonth, nlu
+    use md_params_core, only: ndayyear, ndaymonth, nlu, dummy
     use md_tile, only: psoilphystype
 
     ! arguments
@@ -159,6 +159,10 @@ contains
     real, intent(in)                                     :: sf     ! mean monthly sunshine fraction (unitless)
     real, intent(in)                                     :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
 
+    logical, intent(in) :: splashtest
+    integer, intent(in) :: lev_splashtest
+    integer, intent(in) :: testdoy
+
     ! local variables
     integer :: lu                        ! land unit (gridcell tile)
     integer :: moy                       ! month of year
@@ -168,8 +172,15 @@ contains
     ! xxx debug
     integer, save :: leaching_events = 0
 
-    ! Reset monthly totals
-    !call initmonthly
+    real, parameter :: sf_splashtest = 0.422999978
+    real, parameter :: tc_splashtest = -41.3453674
+    real, parameter :: sw_splashtest = 0.368448317
+
+    if (splashtest) then
+      print*,'sf_splashtest ', sf_splashtest
+      print*,'tc_splashtest ', tc_splashtest
+      print*,'sw_splashtest ', sw_splashtest
+    end if
 
     ! Loop over gricell tiles
     do lu=1,nlu
@@ -178,9 +189,14 @@ contains
       soilphys(lu)%sw = kCw * phy(lu)%wcont / kWm
 
       ! Calculate radiation and evaporation quantities
-      ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soilphys(lu)%sw
-      evap(lu) = getevap( lat, doy, elv, sf, tc, soilphys(lu)%sw, netrad )
-      ! print*,'... done'
+      if (splashtest) then
+        evap(lu) = getevap( lat=54.7500000, doy=8, elv=954.0, sf=sf_splashtest, tc=tc_splashtest, sw=sw_splashtest, netrad=dummy, splashtest=splashtest, testdoy=testdoy )
+        if (lev_splashtest==2) stop 'end of splash test level 2'
+      else
+        ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soilphys(lu)%sw
+        evap(lu) = getevap( lat, doy, elv, sf, tc, soilphys(lu)%sw, netrad, splashtest, testdoy )
+        ! print*,'... done'
+      end if
 
       ! Update soil moisture
       phy(lu)%wcont = phy(lu)%wcont + pr + evap(lu)%cn - evap(lu)%aet
@@ -226,7 +242,7 @@ contains
   end subroutine waterbal
 
 
-  function getsolar( lat, elv, sf, ppfd ) result( out_solar )
+  function getsolar( lat, elv, sf, ppfd, splashtest, testdoy ) result( out_solar )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily PPFD. Code is an extract of the subroutine
     ! 'evap', adopted from the evap() function in GePiSaT (Python version). 
@@ -243,6 +259,8 @@ contains
     real, intent(in)                      :: elv           ! elevation, metres
     real, intent(in), dimension(ndayyear) :: sf            ! fraction of sunshine hours 
     real, intent(in), dimension(ndayyear) :: ppfd          ! photon flux density (mol m-2 d-1), may be dummy (in which case this is not used)
+    logical, intent(in)                   :: splashtest
+    integer, intent(in)                   :: testdoy
 
     ! function return variable
     type( solartype ) :: out_solar
@@ -261,7 +279,6 @@ contains
     real, dimension(ndayyear) :: daysecs ! daylight seconds for each DOY
     real, dimension(nmonth)   :: monsecs ! daylight seconds for each MOY
 
-
     ! initialise members of solartype
     out_solar%dayl(:)      = 0.0
     out_solar%dra(:)       = 0.0
@@ -270,6 +287,10 @@ contains
     out_solar%meanmppfd(:) = 0.0
 
     do doy=1,ndayyear
+
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'day of year: ', doy
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
       ! Store daily return values for later use in subroutine 'evap'.
@@ -281,15 +302,25 @@ contains
       ! Berger (1978)
       out_berger(doy) = get_berger_tls( doy )
 
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'true anomaly, nu: ', out_berger(doy)%nu
+      if (splashtest .and. doy==testdoy) print*,'true longitude, lambda: ', out_berger(doy)%lambda
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 3. Calculate distance factor (dr), unitless
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       dr = calc_dr( out_berger(doy)%nu )
 
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'distance factor, dr: ', dr
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 4. Calculate declination angle (delta), degrees
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       delta = calc_delta( out_berger(doy)%lambda )
+
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'declination, delta: ', delta
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 5. Calculate variable substitutes (u and v), unitless
@@ -298,10 +329,17 @@ contains
       ru = out_ru_rv(1)
       rv = out_ru_rv(2)
 
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'variable substitute, ru: ', ru
+      if (splashtest .and. doy==testdoy) print*,'variable substitute, rv: ', rv
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 6. Calculate the sunset hour angle (hs), degrees
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       hs = calc_hs( ru, rv )
+
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'sunset angle, hs: ', hs
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 6.a Calculate day length from sunset hour angle, h
@@ -314,10 +352,16 @@ contains
       ! Eq. 1.10.3, Duffy & Beckman (1993)
       out_solar%dra(doy) = ( secs_per_day / pi ) * kGsc * dr * ( radians(ru) * hs + rv * dgsin(hs) )
 
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'daily TOA radiation: ', (1.0e-6)*out_solar%dra(doy)
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 8. Calculate transmittivity (tau), unitless
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       tau = calc_tau( sf(doy), elv )
+
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'transmittivity, tau: ', tau
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 9. Calculate daily PPFD (dppfd), mol/m^2
@@ -330,6 +374,9 @@ contains
         out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
         in_ppfd = ".false."
       end if
+
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'daily PPFD: ', out_solar%dppfd(doy)
 
     end do
 
@@ -394,7 +441,7 @@ contains
   end function getsolar
 
 
-  function getevap( lat, doy, elv, sf, tc, sw, netrad ) result( out_evap )
+  function getevap( lat, doy, elv, sf, tc, sw, netrad, splashtest, testdoy ) result( out_evap )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily evaporation quantities. Code is 
     ! adopted from the evap() function in GePiSaT (Python version). 
@@ -419,6 +466,9 @@ contains
     real,    intent(in) :: tc            ! mean daily air temperature, C
     real,    intent(in) :: sw            ! evaporative supply rate, mm/hr
     real,    intent(in) :: netrad        ! net radiation (W m-2)
+
+    logical, intent(in) :: splashtest
+    integer, intent(in) :: testdoy
 
     ! function return variable
     type( evaptype )  :: out_evap
@@ -474,11 +524,15 @@ contains
     ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
     out_evap%rnl = ( kb + (1.0 - kb ) * sf ) * ( kA - tc )
 
+    if (splashtest .and. doy==testdoy) print*,'net longwave radiation: ', out_evap%rnl
+
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 11. Calculate variable substitute (rw), W/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     rw = ( 1.0 - kalb_sw ) * tau * kGsc * dr
     
+    if (splashtest .and. doy==testdoy) print*,'variable substitute, rw: ', rw
+
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 12. Calculate net radiation cross-over hour angle (hn), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -493,32 +547,48 @@ contains
       hn = degrees( acos((out_evap%rnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
     end if
 
+    if (splashtest .and. doy==testdoy) print*,'cross-over hour angle: ', hn
+
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 53, SPLASH 2.0 Documentation
     out_evap%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
-    
+
+    if (splashtest .and. doy==testdoy) print*,'daytime net radiation: ', out_evap%rn
+
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 56, SPLASH 2.0 Documentation
-    out_evap%rnn = (secs_per_day/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + out_evap%rnl*(pi - 2.0*radians(hs) + radians(hn)))
+    ! adopted bugfix from Python version (iss#13)
+    out_evap%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) - out_evap%rnl * (pi - radians(hn)))
+
+    if (splashtest .and. doy==testdoy) print*,'nighttime net radiation: ', out_evap%rnn
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 15. Calculate water-to-energy conversion (econ), m^3/J
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Slope of saturation vap press temp curve, Pa/K
     s = sat_slope(tc)
+    if (splashtest .and. doy==testdoy) print*,'slope of saturation, s', s
+
     ! Enthalpy of vaporization, J/kg
     lv = enthalpy_vap(tc)
+    if (splashtest .and. doy==testdoy) print*,'enthalpy of vaporization: ', lv
+
     ! Density of water, kg/m^3
     pw = density_h2o(tc, calc_patm(elv))
+    if (splashtest .and. doy==testdoy) print*,'water density at 1 atm calculated: ', pw
+
     ! Psychrometric constant, Pa/K
     g = psychro(tc, calc_patm(elv))
+    if (splashtest .and. doy==testdoy) print*,'psychrometric constant: ', g
 
     ! Eq. 51, SPLASH 2.0 Documentation
     econ = s/(lv*pw*(s + g))
+    if (splashtest .and. doy==testdoy) print*,'Econ: ', Econ
+
     out_evap%econ = 1.0 / ( lv * pw ) ! this is to convert energy into mass (water)
 
     ! print*,'Econ alternative: ', 1.0 / (lv * pw)
@@ -528,24 +598,39 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 68, SPLASH 2.0 Documentation
     out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
+    if (splashtest .and. doy==testdoy) print*,'daily condensation: ', out_evap%cn
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 17. Estimate daily EET (out_evap%eet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 70, SPLASH 2.0 Documentation
     out_evap%eet = 1000.0 * econ * out_evap%rn
+    if (splashtest .and. doy==testdoy) print*,'daily EET: ', out_evap%eet
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 18. Estimate daily PET (out_evap%pet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 72, SPLASH 2.0 Documentation
     out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
+    if (splashtest .and. doy==testdoy) print*,'daily PET: ', out_evap%pet
     ! out_evap%pet_e = out_evap%pet / (econ * 1000)
+
+    ! if (out_evap%pet<0.0) then
+    !   print*,'doy:', doy
+    !   print*,'lat', lat
+    !   print*,'doy', doy
+    !   print*,'elv', elv
+    !   print*,'sf', sf
+    !   print*,'tc', tc
+    !   print*,'sw', sw
+    !   stop 'pet < 0.0'
+    ! end if
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * econ
+    if (splashtest .and. doy==testdoy) print*,'variable substitute, rx: ', rx
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 20. Calculate the intersection hour angle (hi), degrees
@@ -560,13 +645,15 @@ contains
     else
       hi = degrees(acos(cos_hi))
     end if
+    if (splashtest .and. doy==testdoy) print*,'intersection hour angle, hi: ', hi
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 21. Estimate daily AET (out_evap%aet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Eq. 81, SPLASH 2.0 Documentation
-    out_evap%aet   = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
+    out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
     ! out_evap%aet_e = out_evap%aet / (econ * 1000)
+    if (splashtest .and. doy==testdoy) print*,'daily AET set to: ', out_evap%aet
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 22. Calculate Cramer-Prentice-Alpha, (unitless)

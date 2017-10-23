@@ -125,6 +125,13 @@ contains
       do ilat=1,domaininfo%nlat
         if (domaininfo%gridarray(ilon,ilat)<1) then
           jpngr = jpngr + 1
+
+          ! ! search particular
+          ! if (ilon==551 .and. ilat==290) then
+          !   print*,'jpngr', jpngr
+          !   stop
+          ! end if
+
         end if
       end do
     end do
