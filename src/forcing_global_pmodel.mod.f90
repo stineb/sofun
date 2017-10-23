@@ -166,8 +166,6 @@ contains
     !----------------------------------------------------------------  
     ! Read arrays of all months of current year from file  
     !----------------------------------------------------------------    
-    print*,'getting fapar from file: ', trim(filnam)
-
     call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
 
     ! get dimension ID for latitude

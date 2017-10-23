@@ -106,7 +106,7 @@ module md_waterbal
   ! MODULE-SPECIFIC, KNOWN PARAMETERS
   !----------------------------------------------------------------
   real, parameter :: secs_per_day = 86400.0
-  logical :: outenergy = .true.
+  logical :: outenergy = .false.
 
   !----------------------------------------------------------------
   ! Module-specific output variables
@@ -130,13 +130,13 @@ module md_waterbal
   !----------------------------------------------------------------
   character(len=256) :: ncoutfilnam_wcont
   character(len=256) :: ncoutfilnam_ppfd
-  ! character(len=256) :: ncoutfilnam_pet
-  ! character(len=256) :: ncoutfilnam_wcont
+  character(len=256) :: ncoutfilnam_pet
+  character(len=256) :: ncoutfilnam_aet
 
   character(len=*), parameter :: WCONT_NAME="wcont"
   character(len=*), parameter :: PPFD_NAME="ppfd"
-  ! character(len=*), parameter :: WCONT_NAME="wcont"
-  ! character(len=*), parameter :: WCONT_NAME="wcont"
+  character(len=*), parameter :: PET_NAME="pet"
+  character(len=*), parameter :: AET_NAME="aet"
 
   character(len=7) :: in_ppfd       ! information whether PPFD is prescribed from meteo file for global attribute in NetCDF file
 
@@ -1122,13 +1122,13 @@ contains
       ! filnam=trim(prefix)//'.d.eet.out'
       ! open(258,file=filnam,err=888,status='unknown')
 
-      ! ! PET: daily potential ET, mm
-      ! filnam=trim(prefix)//'.d.pet.out'
-      ! open(259,file=filnam,err=888,status='unknown')
+      ! PET: daily potential ET, mm
+      filnam=trim(prefix)//'.d.pet.out'
+      open(259,file=filnam,err=888,status='unknown')
 
-      ! ! AET: daily actual ET, mm
-      ! filnam=trim(prefix)//'.d.aet.out'
-      ! open(260,file=filnam,err=888,status='unknown')
+      ! AET: daily actual ET, mm
+      filnam=trim(prefix)//'.d.aet.out'
+      open(260,file=filnam,err=888,status='unknown')
 
       ! ! DAYL: day length, h
       ! filnam=trim(prefix)//'.d.dayl.out'
@@ -1250,6 +1250,47 @@ contains
                         globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
                         )
 
+        !----------------------------------------------------------------
+        ! PET output file 
+        !----------------------------------------------------------------
+        ncoutfilnam_pet = trim(prefix)//'.'//year_char//".d.pet.nc"
+        print*,'initialising ', trim(ncoutfilnam_pet), '...'
+        call init_nc_3D( filnam  = trim(ncoutfilnam_pet), &
+                        nlon     = interface%domaininfo%nlon, &
+                        nlat     = interface%domaininfo%nlat, &
+                        lon      = interface%domaininfo%lon, &
+                        lat      = interface%domaininfo%lat, &
+                        outyear  = interface%steering%outyear, &
+                        outdt    = interface%params_siml%outdt, &
+                        outnt    = interface%params_siml%outnt, &
+                        varnam   = PET_NAME, &
+                        varunits = "mm d-1", &
+                        longnam  = "potential evapotranspiration", &
+                        title    = TITLE, &
+                        globatt1_nam = "param_kWm", globatt1_val = trim(kWm_char), &
+                        globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                        )
+
+        !----------------------------------------------------------------
+        ! AET output file 
+        !----------------------------------------------------------------
+        ncoutfilnam_ppfd = trim(prefix)//'.'//year_char//".d.aet.nc"
+        print*,'initialising ', trim(ncoutfilnam_aet), '...'
+        call init_nc_3D( filnam  = trim(ncoutfilnam_aet), &
+                        nlon     = interface%domaininfo%nlon, &
+                        nlat     = interface%domaininfo%nlat, &
+                        lon      = interface%domaininfo%lon, &
+                        lat      = interface%domaininfo%lat, &
+                        outyear  = interface%steering%outyear, &
+                        outdt    = interface%params_siml%outdt, &
+                        outnt    = interface%params_siml%outnt, &
+                        varnam   = AET_NAME, &
+                        varunits = "mm d-1", &
+                        longnam  = "actual evapotranspiration", &
+                        title    = TITLE, &
+                        globatt1_nam = "param_kWm", globatt1_val = trim(kWm_char), &
+                        globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                        )        
       end if
 
     end if
@@ -1274,6 +1315,8 @@ contains
       if (interface%steering%init) then
         if (interface%steering%init) allocate( outdwcont (nlu,interface%params_siml%outnt,ngridcells) )  ! daily soil moisture, mm
         if (interface%steering%init) allocate( outdppfd (interface%params_siml%outnt,ngridcells)   )     ! daily PPFD, mol/m2
+        if (interface%steering%init) allocate( outdpet(interface%params_siml%outnt,ngridcells)     )     ! daily potential ET, mm
+        if (interface%steering%init) allocate( outdaet(nlu,interface%params_siml%outnt,ngridcells) )     ! daily actual ET, mm
         ! if (interface%steering%init) allocate( outdra (interface%params_siml%outnt,ngridcells)     )     ! daily solar irradiation, J/m2
         ! if (interface%steering%init) allocate( outdrn (interface%params_siml%outnt,ngridcells)     )     ! daily net radiation, J/m2
         ! if (interface%steering%init) allocate( outdayl(interface%params_siml%outnt,ngridcells)     )     ! daily day length, h
@@ -1281,14 +1324,14 @@ contains
         ! if (interface%steering%init) allocate( outdro (nlu,interface%params_siml%outnt,ngridcells) )     ! daily runoff, mm
         ! if (interface%steering%init) allocate( outdfleach (nlu,interface%params_siml%outnt,ngridcells) ) ! daily leaching fraction, (unitless)
         ! if (interface%steering%init) allocate( outdeet(interface%params_siml%outnt,ngridcells)     )     ! daily equilibrium ET, mm
-        ! if (interface%steering%init) allocate( outdpet(interface%params_siml%outnt,ngridcells)     )     ! daily potential ET, mm
-        ! if (interface%steering%init) allocate( outdaet(nlu,interface%params_siml%outnt,ngridcells) )     ! daily actual ET, mm
         ! if (interface%steering%init) allocate( outdcpa(nlu,interface%params_siml%outnt,ngridcells) )     ! daily Cramer-Prentice-Alpha, (unitless)
         ! if (interface%steering%init) allocate( outdecon(interface%params_siml%outnt,ngridcells) )        ! daily water-to-energy conversion factor
       end if
 
       outdwcont(:,:,:)  = 0.0
       outdppfd(:,:)     = 0.0
+      outdpet(:,:)      = 0.0
+      outdaet(:,:,:)    = 0.0
       ! outdra(:,:)       = 0.0
       ! outdrn(:,:)       = 0.0
       ! outdayl(:,:)      = 0.0
@@ -1296,8 +1339,6 @@ contains
       ! outdro(:,:,:)     = 0.0
       ! outdfleach(:,:,:) = 0.0
       ! outdeet(:,:)      = 0.0
-      ! outdpet(:,:)      = 0.0
-      ! outdaet(:,:,:)    = 0.0
       ! outdcpa(:,:,:)    = 0.0
       ! outdecon(:,:)     = 0.0
 
@@ -1345,13 +1386,13 @@ contains
       ! outdro(:,it,jpngr)     = outdro(:,it,jpngr)     + soilphys(:)%ro / real( interface%params_siml%outdt )
       ! outdfleach(:,it,jpngr) = outdfleach(:,it,jpngr) + soilphys(:)%fleach / real( interface%params_siml%outdt )
 
-      ! if (outenergy) then
-      !   outdpet(it,jpngr)    = outdpet(it,jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
-      !   outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + (evap(:)%aet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
-      ! else 
-      !   outdpet(it,jpngr)    = outdpet(it,jpngr)   + evap(1)%pet / real( interface%params_siml%outdt )
-      !   outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + evap(:)%aet / real( interface%params_siml%outdt )
-      ! end if
+      if (outenergy) then
+        outdpet(it,jpngr)    = outdpet(it,jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
+        outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + (evap(:)%aet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
+      else 
+        outdpet(it,jpngr)    = outdpet(it,jpngr)   + evap(1)%pet / real( interface%params_siml%outdt )
+        outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + evap(:)%aet / real( interface%params_siml%outdt )
+      end if
 
       ! outdecon(it,jpngr)     = outdecon(it,jpngr)    + evap(1)%econ * 1.0e12 / real( interface%params_siml%outdt ) ! converting from m J-1 to mm GJ-1 = m TJ-1
 
@@ -1369,7 +1410,7 @@ contains
 
     ! Local variables
     real :: itime
-    integer :: it, moy, jpngr
+    integer :: it, jpngr
     
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii_waterbal: think of something ...'
@@ -1395,14 +1436,14 @@ contains
           ! xxx lu-area weighted sum if nlu>0
           write(255,999) itime, outdwcont(1,it,jpngr)
           write(253,999) itime, outdppfd(it,jpngr)
+          write(259,999) itime, outdpet(it,jpngr)
+          write(260,999) itime, outdaet(1,it,jpngr)
           ! write(251,999) itime, outdra(it,jpngr)
           ! write(252,999) itime, outdrn(it,jpngr)
           ! write(254,999) itime, outdcn(it,jpngr)
           ! write(257,999) itime, outdro(1,it,jpngr)
           ! write(263,999) itime, outdfleach(1,it,jpngr)
           ! write(258,999) itime, outdeet(it,jpngr)
-          ! write(259,999) itime, outdpet(it,jpngr)
-          ! write(260,999) itime, outdaet(1,it,jpngr)
           ! write(261,999) itime, outdayl(it,jpngr)
           ! write(262,999) itime, outdcpa(1,it,jpngr)
           ! write(264,999) itime, outdecon(it,jpngr)
@@ -1461,6 +1502,38 @@ contains
                           interface%params_siml%outnt, &
                           outdppfd(:,:) &
                           )
+
+        !-------------------------------------------------------------------------
+        ! PET
+        !-------------------------------------------------------------------------
+        print*,'writing ', trim(ncoutfilnam_pet), '...'
+        call write_nc_3D( trim(ncoutfilnam_pet), &
+                          PET_NAME, &
+                          interface%domaininfo%maxgrid, &
+                          interface%domaininfo%nlon, &
+                          interface%domaininfo%nlat, &
+                          interface%grid(:)%ilon, &
+                          interface%grid(:)%ilat, &
+                          interface%params_siml%outnt, &
+                          outdpet(:,:) &
+                          )
+
+        !-------------------------------------------------------------------------
+        ! AET
+        !-------------------------------------------------------------------------
+        if (nlu>1) stop 'writeout_nc_waterbal: nlu>1. Think of something clever!'
+        print*,'writing ', trim(ncoutfilnam_aet), '...'
+        call write_nc_3D( trim(ncoutfilnam_aet), &
+                          AET_NAME, &
+                          interface%domaininfo%maxgrid, &
+                          interface%domaininfo%nlon, &
+                          interface%domaininfo%nlat, &
+                          interface%grid(:)%ilon, &
+                          interface%grid(:)%ilat, &
+                          interface%params_siml%outnt, &
+                          outdaet(1,:,:) &
+                          )
+
       end if
 
     end if

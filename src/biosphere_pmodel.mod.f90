@@ -239,13 +239,13 @@ contains
       end if
     end do gridcellloop
 
-    ! !----------------------------------------------------------------
-    ! ! Write to ascii output
-    ! !----------------------------------------------------------------
-    ! call writeout_ascii_waterbal()
-    ! call writeout_ascii_gpp()
-    ! call writeout_ascii_plant()
-    ! call writeout_ascii_forcing()
+    !----------------------------------------------------------------
+    ! Write to ascii output
+    !----------------------------------------------------------------
+    call writeout_ascii_waterbal()
+    call writeout_ascii_gpp()
+    call writeout_ascii_plant()
+    call writeout_ascii_forcing()
 
     !----------------------------------------------------------------
     ! Write to NetCDF output
