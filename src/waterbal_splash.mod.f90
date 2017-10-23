@@ -615,17 +615,6 @@ contains
     if (splashtest .and. doy==testdoy) print*,'daily PET: ', out_evap%pet
     ! out_evap%pet_e = out_evap%pet / (econ * 1000)
 
-    ! if (out_evap%pet<0.0) then
-    !   print*,'doy:', doy
-    !   print*,'lat', lat
-    !   print*,'doy', doy
-    !   print*,'elv', elv
-    !   print*,'sf', sf
-    !   print*,'tc', tc
-    !   print*,'sw', sw
-    !   stop 'pet < 0.0'
-    ! end if
-
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -663,6 +652,45 @@ contains
     else
       out_evap%cpa = 1.0 + kw
     end if
+
+    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! ! 23. CRUDEFIX: When temperature is below zero, set bot PET and AET to zero. 
+    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! if (tc < 0.0) then
+    !   out_evap%pet = 0.0
+    !   out_evap%eet = 0.0
+    !   out_evap%aet = 0.0
+    ! end if
+
+    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! ! 24. CRUDEFIX: When AET > PET, set AET to PET
+    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! if (out_evap%aet > out_evap%pet) then
+    !   out_evap%aet = out_evap%pet
+    ! end if
+
+    ! ! checks
+    ! if (out_evap%pet<0.0) then
+    !   print*,'doy:', doy
+    !   print*,'lat', lat
+    !   print*,'doy', doy
+    !   print*,'elv', elv
+    !   print*,'sf', sf
+    !   print*,'tc', tc
+    !   print*,'sw', sw
+    !   stop 'pet < 0.0'
+    ! end if
+
+    ! if (out_evap%aet>out_evap%pet) then
+    !   print*,'doy:', doy
+    !   print*,'lat', lat
+    !   print*,'doy', doy
+    !   print*,'elv', elv
+    !   print*,'sf', sf
+    !   print*,'tc', tc
+    !   print*,'sw', sw
+    !   stop 'aet > pet'
+    ! end if
 
     !-------------------------------------------------------------   
     ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 

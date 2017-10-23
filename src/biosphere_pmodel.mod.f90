@@ -114,8 +114,8 @@ contains
     ! LOOP THROUGH GRIDCELLS
     !----------------------------------------------------------------
     print*,'looping through gridcells ...'
-    ! gridcellloop: do jpngr=1,size(interface%grid)
-    gridcellloop: do jpngr=48790,48790   ! negative PET in january 2010
+    gridcellloop: do jpngr=1,size(interface%grid)
+    ! gridcellloop: do jpngr=48790,48790   ! negative PET in january 2010
       if (interface%grid(jpngr)%dogridcell) then
 
         if (verbose) print*,'----------------------'
