@@ -665,6 +665,7 @@ contains
                                                               interface%grid(:)%ilon, &
                                                               interface%grid(:)%ilat, &
                                                               interface%params_siml%outnt, &
+                                                              interface%grid(:)%dogridcell, &
                                                               outdgpp(1,:,:) &
                                                               )
 

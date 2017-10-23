@@ -314,6 +314,7 @@ contains
                         interface%domaininfo%nlat, &
                         interface%grid(:)%ilon, &
                         interface%grid(:)%ilat, &
+                        interface%grid(:)%dogridcell, &
                         interface%grid(:)%landfrac &
                         )
     end if
@@ -334,6 +335,7 @@ contains
                                                                 interface%grid(:)%ilon, &
                                                                 interface%grid(:)%ilat, &
                                                                 interface%params_siml%outnt, &
+                                                                interface%grid(:)%dogridcell, &
                                                                 outdtemp(:,:) &
                                                                 )
 
@@ -350,6 +352,7 @@ contains
                                                                 interface%grid(:)%ilon, &
                                                                 interface%grid(:)%ilat, &
                                                                 interface%params_siml%outnt, &
+                                                                interface%grid(:)%dogridcell, &
                                                                 outdfapar(:,:) &
                                                                 )
 

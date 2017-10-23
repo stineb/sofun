@@ -223,7 +223,7 @@ contains
   end subroutine init_nc_2D
 
 
-  subroutine write_nc_3D( filnam, varnam, maxgrid, nlon, nlat, ilon, ilat, outnt, out )
+  subroutine write_nc_3D( filnam, varnam, maxgrid, nlon, nlat, ilon, ilat, outnt, dogridcell, out )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to put data into an already opened NetCDF file
     !----------------------------------------------------------------
@@ -232,6 +232,7 @@ contains
     character(len=*), intent(in) :: varnam
     integer, intent(in) :: maxgrid, nlon, nlat, outnt
     integer, dimension(maxgrid), intent(in) :: ilon, ilat
+    logical, dimension(maxgrid), intent(in) :: dogridcell
     real, dimension(outnt,maxgrid), intent(in) :: out
 
     ! local variables
@@ -244,7 +245,7 @@ contains
 
     ! Populate output array
     do jpngr=1,maxgrid
-        outarr(ilon(jpngr),ilat(jpngr),1,:) = out(:,jpngr)
+      if (dogridcell(jpngr)) outarr(ilon(jpngr),ilat(jpngr),1,:) = out(:,jpngr)
     end do
 
     ! open NetCDF output file
@@ -265,7 +266,7 @@ contains
   end subroutine write_nc_3D
 
 
-  subroutine write_nc_2D( filnam, varnam, maxgrid, nlon, nlat, ilon, ilat, out )
+  subroutine write_nc_2D( filnam, varnam, maxgrid, nlon, nlat, ilon, ilat, dogridcell, out )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to put data into an already opened NetCDF file
     !----------------------------------------------------------------
@@ -274,6 +275,7 @@ contains
     character(len=*), intent(in) :: varnam
     integer, intent(in) :: maxgrid, nlon, nlat
     integer, dimension(maxgrid), intent(in) :: ilon, ilat
+    logical, dimension(maxgrid), intent(in) :: dogridcell
     real, dimension(maxgrid), intent(in) :: out
 
     ! local variables
@@ -286,7 +288,7 @@ contains
 
     ! Populate output array
     do jpngr=1,maxgrid
-        outarr(ilon(jpngr),ilat(jpngr),1,1) = out(jpngr)
+      if (dogridcell(jpngr)) outarr(ilon(jpngr),ilat(jpngr),1,1) = out(jpngr)
     end do
 
     ! open NetCDF output file

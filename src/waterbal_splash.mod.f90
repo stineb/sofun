@@ -1414,7 +1414,7 @@ contains
     
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii_waterbal: think of something ...'
-    jpngr = 1
+    jpngr = 20000
 
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
@@ -1485,6 +1485,7 @@ contains
                           interface%grid(:)%ilon, &
                           interface%grid(:)%ilat, &
                           interface%params_siml%outnt, &
+                          interface%grid(:)%dogridcell, &
                           outdwcont(1,:,:) &
                           )
 
@@ -1500,6 +1501,7 @@ contains
                           interface%grid(:)%ilon, &
                           interface%grid(:)%ilat, &
                           interface%params_siml%outnt, &
+                          interface%grid(:)%dogridcell, &
                           outdppfd(:,:) &
                           )
 
@@ -1515,6 +1517,7 @@ contains
                           interface%grid(:)%ilon, &
                           interface%grid(:)%ilat, &
                           interface%params_siml%outnt, &
+                          interface%grid(:)%dogridcell, &
                           outdpet(:,:) &
                           )
 
@@ -1531,6 +1534,7 @@ contains
                           interface%grid(:)%ilon, &
                           interface%grid(:)%ilat, &
                           interface%params_siml%outnt, &
+                          interface%grid(:)%dogridcell, &
                           outdaet(1,:,:) &
                           )
 
