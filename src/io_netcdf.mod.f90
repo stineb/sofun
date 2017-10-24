@@ -12,12 +12,12 @@ module md_io_netcdf
 contains
 
   subroutine init_nc_3D( filnam, nlon, nlat, lon, lat, outyear, outdt, outnt, varnam, varunits, longnam, title, &
-                          globatt1_nam, globatt1_val, &
-                          globatt2_nam, globatt2_val, &
-                          globatt3_nam, globatt3_val, &
-                          globatt4_nam, globatt4_val, &
-                          globatt5_nam, globatt5_val  &
-                        )
+    globatt1_nam, globatt1_val, &
+    globatt2_nam, globatt2_val, &
+    globatt3_nam, globatt3_val, &
+    globatt4_nam, globatt4_val, &
+    globatt5_nam, globatt5_val  &
+    )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to initialise a NetCDF file with one variable and lon/lat/time
     !----------------------------------------------------------------

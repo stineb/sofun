@@ -14,8 +14,8 @@ spinupyears                             5
 recycle                                 1
 
 # Start and length of simulation in years (AD)
-firstyeartrend                          2010
-nyeartrend                              1
+firstyeartrend                          1982
+nyeartrend                              30
 
 # Model parameter file (not PFT-specific)
 modparfil                               params_modl.dat
@@ -42,8 +42,8 @@ const_ndep_year                         -9999
 const_nfert_year                        -9999
 
 # limit period for which daily output is written
-daily_out_startyr                       2010
-daily_out_endyr                         2010
+daily_out_startyr                       2001
+daily_out_endyr                         2015
 
 # NetCDF output periodicity (d)
 outdt                                   1
