@@ -47,7 +47,7 @@ contains
     logical, parameter :: verbose = .false.
     logical, parameter :: splashtest = .false.
     integer, parameter :: lev_splashtest = 2
-    integer, parameter :: testdoy = 8
+    integer, parameter :: testdoy = 55
 
     !----------------------------------------------------------------
     ! INITIALISATIONS
@@ -135,9 +135,9 @@ contains
         if (verbose) print*,'    with argument dppfd (ann. mean) = ', sum( interface%climate(jpngr)%dppfd(:) / ndayyear )
         if (splashtest) then
           ! for comparison with Python SPLASH
-          interface%climate(jpngr)%dfsun(:) = 0.422999978
+          interface%climate(jpngr)%dfsun(:) = 0.562000036
           interface%climate(jpngr)%dppfd(:) = dummy
-          solar = getsolar( 54.75, 954.0, interface%climate(jpngr)%dfsun(:), interface%climate(jpngr)%dppfd(:), splashtest=splashtest, testdoy=testdoy )
+          solar = getsolar( 67.25, 87.0, interface%climate(jpngr)%dfsun(:), interface%climate(jpngr)%dppfd(:), splashtest=splashtest, testdoy=testdoy )
           if (lev_splashtest==1) stop 'end of splash test level 1'
         else          
           solar = getsolar( &

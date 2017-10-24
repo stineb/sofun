@@ -172,9 +172,9 @@ contains
     ! xxx debug
     integer, save :: leaching_events = 0
 
-    real, parameter :: sf_splashtest = 0.422999978
-    real, parameter :: tc_splashtest = -41.3453674
-    real, parameter :: sw_splashtest = 0.368448317
+    real, parameter :: sf_splashtest = 0.562000036
+    real, parameter :: tc_splashtest = -40.2450562
+    real, parameter :: sw_splashtest = 0.573677897
 
     if (splashtest) then
       print*,'sf_splashtest ', sf_splashtest
@@ -190,7 +190,7 @@ contains
 
       ! Calculate radiation and evaporation quantities
       if (splashtest) then
-        evap(lu) = getevap( lat=54.7500000, doy=8, elv=954.0, sf=sf_splashtest, tc=tc_splashtest, sw=sw_splashtest, netrad=dummy, splashtest=splashtest, testdoy=testdoy )
+        evap(lu) = getevap( lat=67.25, doy=55, elv=87.0, sf=sf_splashtest, tc=tc_splashtest, sw=sw_splashtest, netrad=dummy, splashtest=splashtest, testdoy=testdoy )
         if (lev_splashtest==2) stop 'end of splash test level 2'
       else
         ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soilphys(lu)%sw
@@ -582,7 +582,9 @@ contains
     if (splashtest .and. doy==testdoy) print*,'water density at 1 atm calculated: ', pw
 
     ! Psychrometric constant, Pa/K
+    if (splashtest .and. doy==testdoy) print*,'calculating psychrometric const. with (tc, elv): ', tc, elv
     g = psychro(tc, calc_patm(elv))
+    if (splashtest .and. doy==testdoy) print*,'calculating psychrometric const. with patm: ', calc_patm(elv)
     if (splashtest .and. doy==testdoy) print*,'psychrometric constant: ', g
 
     ! Eq. 51, SPLASH 2.0 Documentation
@@ -669,17 +671,18 @@ contains
     !   out_evap%aet = out_evap%pet
     ! end if
 
-    ! ! checks
-    ! if (out_evap%pet<0.0) then
-    !   print*,'doy:', doy
-    !   print*,'lat', lat
-    !   print*,'doy', doy
-    !   print*,'elv', elv
-    !   print*,'sf', sf
-    !   print*,'tc', tc
-    !   print*,'sw', sw
-    !   stop 'pet < 0.0'
-    ! end if
+    ! checks
+    if (out_evap%pet< -5.0) then
+      print*,'doy:', doy
+      print*,'lat', lat
+      print*,'doy', doy
+      print*,'elv', elv
+      print*,'sf', sf
+      print*,'tc', tc
+      print*,'sw', sw
+      print*,'pet', out_evap%pet
+      stop 'pet < -5.0'
+    end if
 
     ! if (out_evap%aet>out_evap%pet) then
     !   print*,'doy:', doy
@@ -1140,9 +1143,8 @@ contains
     ! Calculates the psychrometric constant for a given temperature and pressure
     ! Ref: Allen et al. (1998); Tsilingiris (2008) 
     !----------------------------------------------------------------   
-
     ! arguments
-    real, intent(in) :: tc ! air temperature, degrees C
+    real, intent(in) :: tc     ! air temperature, degrees C
     real, intent(in) :: press  ! atmospheric pressure, Pa
 
     ! local variables
@@ -1152,15 +1154,26 @@ contains
     ! function return value
     real :: psychro  ! psychrometric constant, Pa/K
 
+    ! local variables
+    real :: my_tc    ! adjusted temperature to avoid numerical blow-up 
+
+    ! Adopted temperature adjustment from SPLASH, Python version
+    my_tc = tc
+    if (my_tc < 0) then
+      my_tc = 0.0
+    else if (my_tc > 100) then
+      my_tc = 100.0
+    end if
+
     ! Calculate the specific heat capacity of water, J/kg/K
     ! Eq. 47, Tsilingiris (2008)
     cp = 1.0e3*(&
                1.0045714270&
-             + 2.050632750e-3  *tc&
-             - 1.631537093e-4  *tc*tc&
-             + 6.212300300e-6  *tc*tc*tc&
-             - 8.830478888e-8  *tc*tc*tc*tc&
-             + 5.071307038e-10 *tc*tc*tc*tc*tc&
+             + 2.050632750e-3  *my_tc&
+             - 1.631537093e-4  *my_tc*my_tc&
+             + 6.212300300e-6  *my_tc*my_tc*my_tc&
+             - 8.830478888e-8  *my_tc*my_tc*my_tc*my_tc&
+             + 5.071307038e-10 *my_tc*my_tc*my_tc*my_tc*my_tc&
             )
 
     ! Calculate latent heat of vaporization, J/kg
