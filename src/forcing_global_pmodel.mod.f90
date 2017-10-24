@@ -19,8 +19,8 @@ module md_forcing
   implicit none
 
   private
-  public getco2, getninput, ninput_type, gettot_ninput, getfapar_fapar3g, getclimate_wfdei, &
-    getclimate_cru, getlanduse, landuse_type, climate_type
+  public getco2, getninput, ninput_type, gettot_ninput, getfapar, &
+    getclimate_wfdei, getclimate_cru, getlanduse, landuse_type, climate_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
@@ -125,9 +125,9 @@ contains
     end do
 
   end function gettot_ninput
+  
 
-
-  function getfapar_fapar3g( domaininfo, grid, year ) result( fapar_field )
+  function getfapar( domaininfo, grid, year, fapar_forcing_source ) result( fapar_field )
     !////////////////////////////////////////////////////////////////
     ! Reads fAPAR from fapar3g data file.
     ! Assumes fAPAR=0 for cells with missing data
@@ -136,6 +136,7 @@ contains
     type( domaininfo_type ), intent(in) :: domaininfo
     type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
     integer, intent(in) :: year
+    character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
     real, dimension(ndayyear,domaininfo%maxgrid) :: fapar_field
@@ -155,13 +156,38 @@ contains
     real :: tmp
     real :: ncfillvalue
     real :: dlat, dlon
-    character(len=*), parameter :: LONNAME  = "LON"
-    character(len=*), parameter :: LATNAME  = "LAT"
-    character(len=*), parameter :: VARNAME  = "FAPAR_FILLED"
+    character(len=100) :: lonname, latname, varname
+    integer :: firstyr_data, nyrs_data
+    character(len=100) :: filnam
 
-    integer, parameter :: firstyr_fapar3g = 1982
-    integer, parameter :: nyrs_fapar3g = 30
-    character(len=256), parameter :: filnam = "./input/global/fapar/fAPAR3g_monthly_1982_2011_FILLED.nc"
+    !----------------------------------------------------------------  
+    ! Set file-specific variables
+    !----------------------------------------------------------------    
+    if (fapar_forcing_source=="modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc") then
+
+      ! fAPAR data from MODIS EVI
+      firstyr_data = 2001
+      nyrs_data = 15
+      lonname ="LON"
+      latname = "LAT"
+      varname = "EVI_FILLED"
+
+    else if (fapar_forcing_source=="fAPAR3g_monthly_1982_2011_FILLED.nc") then
+      
+      ! fAPAR data from fAPAR3g
+      firstyr_data = 1982
+      nyrs_data = 30
+      lonname ="LON"
+      latname = "LAT"
+      varname = "FAPAR_FILLED"
+
+    else
+
+      stop 'getfapar: argument fapar_forcing_source is invalid'
+
+    end if
+
+    filnam = "./input/global/fapar/"//fapar_forcing_source
 
     !----------------------------------------------------------------  
     ! Read arrays of all months of current year from file  
@@ -169,13 +195,13 @@ contains
     call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
 
     ! get dimension ID for latitude
-    call check( nf90_inq_dimid( ncid, LATNAME, latdimid ) )
+    call check( nf90_inq_dimid( ncid, trim(latname), latdimid ) )
 
     ! Get latitude information: nlat
     call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
 
     ! get dimension ID for longitude
-    call check( nf90_inq_dimid( ncid, LONNAME, londimid ) )
+    call check( nf90_inq_dimid( ncid, trim(lonname), londimid ) )
 
     ! Get latitude information: nlon
     call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
@@ -193,8 +219,8 @@ contains
     dlon = lon_arr(2) - lon_arr(1)
     dlat = lat_arr(2) - lat_arr(1)
 
-    if (dlon/=domaininfo%dlon) stop 'Longitude resolution of fapar input file not identical with model grid.'
-    if (dlat/=domaininfo%dlat) stop 'latitude resolution of fapar input file not identical with model grid.'
+    if (dlon/=domaininfo%dlon) stop 'Longitude resolution of fapar (modis evi) input file not identical with model grid.'
+    if (dlat/=domaininfo%dlat) stop 'latitude resolution of fapar (modis evi) input file not identical with model grid.'
 
     ! get index associations
     do jpngr=1,domaininfo%maxgrid
@@ -215,10 +241,10 @@ contains
     allocate( fapar_arr(nlon_arr,nlat_arr,nmonth) )
 
     ! Get the varid of the data variable, based on its name
-    call check( nf90_inq_varid( ncid, VARNAME, varid ) )
+    call check( nf90_inq_varid( ncid, trim(varname), varid ) )
 
     ! Read the array, only current year
-    read_idx = ( min( max( year - firstyr_fapar3g + 1, 1 ), nyrs_fapar3g ) - 1 ) * nmonth + 1
+    read_idx = ( min( max( year - firstyr_data + 1, 1 ), nyrs_data ) - 1 ) * nmonth + 1
     call check( nf90_get_var( ncid, varid, fapar_arr, start=(/1, 1, read_idx/), count=(/nlon_arr, nlat_arr, nmonth/) ) )
 
     ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
@@ -248,7 +274,7 @@ contains
 
     print*,'... done.'
 
-  end function getfapar_fapar3g
+  end function getfapar
 
 
   function getclimate_wfdei( sitename, domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )

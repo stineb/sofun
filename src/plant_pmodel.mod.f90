@@ -500,7 +500,9 @@ contains
                         varnam   = GPP_NAME, &
                         varunits = "gC m-2 d-1", &
                         longnam  = "daily gross primary productivivty", &
-                        title    = TITLE &
+                        title    = TITLE, &
+                        globatt1_nam = "fapar_source", &
+                        globatt1_val = interface%params_siml%fapar_forcing_source &
                         )
       end if
 

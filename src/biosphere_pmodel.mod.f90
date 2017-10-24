@@ -167,6 +167,15 @@ contains
                                   interface%climate(jpngr)%dvpd(:), & 
                                   interface%grid(jpngr)%elv & 
                                   )
+        ! ! xxx trevortest
+        ! interface%climate(jpngr)%dtemp(:) = 20.0
+        ! interface%climate(jpngr)%dvpd(:) = 1000.0
+        ! out_pmodel(:,:) = getlue( &
+        !                           400.0, & 
+        !                           interface%climate(jpngr)%dtemp(:), & 
+        !                           interface%climate(jpngr)%dvpd(:), & 
+        !                           0.0 & 
+        !                           )
         if (verbose) print*,'... done'
 
         !----------------------------------------------------------------

@@ -28,9 +28,13 @@ ndep_nhx_forcing_file                   XXXnhxdepfilnamXXX
 nfert_noy_forcing_file                  XXXnoyfertfilnamXXX
 nfert_nhx_forcing_file                  XXXnhxfertfilnamXXX
 do_grharvest_forcing_file               XXXgrharvestfilnamXXX
-fapar_forcing_source                    dfapar_evi_modissubset
+fapar_forcing_source                    modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc
+
+# switches for reading data in as forcing or calculating it online
 in_netrad                               .false.
 in_ppfd                                 .true.
+
+# switches for constant environmental boundary conditions
 const_clim_year                         -9999
 const_lu_year                           -9999
 const_co2_year                          -9999

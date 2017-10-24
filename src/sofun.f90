@@ -12,7 +12,7 @@ program main
   use md_grid, only: get_domaininfo, getgrid
   use md_params_soil, only: getsoil_field
   use md_forcing, only: getclimate_wfdei, getclimate_cru, getninput, ninput_type, gettot_ninput, &
-    getfapar_fapar3g, getlanduse, getco2
+    getfapar, getlanduse, getco2
   use md_params_core, only: dummy, maxgrid, ndayyear
   use md_biosphere, only: biosphere_annual
 
@@ -176,11 +176,12 @@ program main
     ! Get prescribed fAPAR if required (otherwise set to dummy value)
     !----------------------------------------------------------------
     if (verbose) print*,'getting fAPAR ...'
-    interface%dfapar_field(:,:) = getfapar_fapar3g( &
-                                                    interface%domaininfo, &
-                                                    interface%grid, &
-                                                    interface%steering%forcingyear &
-                                                    )
+    interface%dfapar_field(:,:) = getfapar( &
+                                            interface%domaininfo, &
+                                            interface%grid, &
+                                            interface%steering%forcingyear, &
+                                            interface%params_siml%fapar_forcing_source &
+                                            )    
     if (verbose) print*,'... done.'
 
     !----------------------------------------------------------------
