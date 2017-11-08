@@ -7,7 +7,7 @@ module md_io_netcdf
 
   implicit none
   private
-  public check, init_nc_2D, write_nc_2D, init_nc_3D, write_nc_3D
+  public check, init_nc_2D, init_nc_3D, write_nc_2D, write_nc_3D
 
 contains
 
@@ -226,6 +226,7 @@ contains
   subroutine write_nc_3D( filnam, varnam, maxgrid, nlon, nlat, ilon, ilat, outnt, dogridcell, out )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to put data into an already opened NetCDF file
+    ! Output array has dimensions (lon, lat, time).
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: filnam
@@ -269,6 +270,7 @@ contains
   subroutine write_nc_2D( filnam, varnam, maxgrid, nlon, nlat, ilon, ilat, dogridcell, out )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to put data into an already opened NetCDF file
+    ! Output array has dimensions (lon, lat).
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: filnam

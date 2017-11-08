@@ -671,7 +671,7 @@ contains
     ! Write NetCDF output
     !-------------------------------------------------------------------------
     use netcdf
-    use md_io_netcdf, only: write_nc_3D, check
+    use md_io_netcdf, only: write_nc_2D, write_nc_3D, check
     use md_interface, only: interface
 
     if (npft>1) stop 'writeout_nc_plant(): npft > 1. Think of something clever.'
@@ -684,16 +684,15 @@ contains
       ! Annual GPP
       !-------------------------------------------------------------------------
       if (interface%params_siml%loutplant) print*,'writing ', trim(ncoutfilnam_agpp), '...'
-      if (interface%params_siml%loutplant) call write_nc_3D( trim(ncoutfilnam_agpp), &
+      if (interface%params_siml%loutplant) call write_nc_2D( trim(ncoutfilnam_agpp), &
                                                               GPP_NAME, &
                                                               interface%domaininfo%maxgrid, &
                                                               interface%domaininfo%nlon, &
                                                               interface%domaininfo%nlat, &
                                                               interface%grid(:)%ilon, &
                                                               interface%grid(:)%ilat, &
-                                                              1, &
                                                               interface%grid(:)%dogridcell, &
-                                                              outagpp(:,:) &
+                                                              outagpp(1,:) &
                                                               )
 
       !-------------------------------------------------------------------------
