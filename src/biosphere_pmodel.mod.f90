@@ -4,7 +4,7 @@ module md_biosphere
   use md_classdefs
   use md_plant, only: plant_type, initdaily_plant, initglobal_plant, getout_daily_plant, getout_annual_plant, getpar_modl_plant, initoutput_plant, writeout_ascii_plant, initio_plant, initio_nc_plant, writeout_nc_plant
   use md_params_soil, only: paramtype_soil
-  use md_waterbal, only: solartype, waterbal, getsolar, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, writeout_nc_waterbal
+  use md_waterbal, only: solartype, waterbal, getsolar, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, writeout_nc_waterbal, get_rlm_waterbal
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp
   use md_vegdynamics, only: vegdynamics
   use md_tile, only: tile_type, initglobal_tile
@@ -208,7 +208,7 @@ contains
             ! print*,'lon,lat,ilon,ilat,jpngr', interface%grid(jpngr)%lon, interface%grid(jpngr)%lat, interface%grid(jpngr)%ilon, interface%grid(jpngr)%ilat, jpngr
             call waterbal( &
                             tile(:,jpngr)%soil%phy, &
-                            doy, & 
+                            doy, jpngr, & 
                             interface%grid(jpngr)%lat, & 
                             interface%grid(jpngr)%elv, & 
                             interface%climate(jpngr)%dprec(doy), & 
@@ -262,6 +262,12 @@ contains
 
       end if
     end do gridcellloop
+    print*,'... gridcellloop finished.'
+
+    !----------------------------------------------------------------
+    ! Get rolling multi-year averages (needs to store entire arrays)
+    !----------------------------------------------------------------
+    call get_rlm_waterbal()
 
     !----------------------------------------------------------------
     ! Write to ascii output

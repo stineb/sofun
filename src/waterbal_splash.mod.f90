@@ -30,17 +30,18 @@ module md_waterbal
     initdaily_waterbal, initio_waterbal,                               &
     getout_daily_waterbal, initoutput_waterbal,                        &
     getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, &
-    writeout_nc_waterbal
+    writeout_nc_waterbal, get_rlm_waterbal, rlmalpha
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
   ! Collection of physical soil variables used across modules
   type soilphystype
-    real :: ro         ! daily runoff (mm)
-    real :: sw         ! evaporative supply rate (mm/h)
-    real :: wscal      ! water filled pore space (unitless)
-    real :: fleach     ! NO3 leaching fraction (unitless)
+    real :: ro           ! daily runoff (mm)
+    real :: sw           ! evaporative supply rate (mm/h)
+    real :: wscal        ! water filled pore space (unitless)
+    real :: fleach       ! NO3 leaching fraction (unitless)
+    real :: soilmstress  ! soil moisture stress factor (unitless)
   end type soilphystype
 
   type( soilphystype ), dimension(nlu) :: soilphys(nlu)
@@ -109,6 +110,12 @@ module md_waterbal
   logical :: outenergy = .false.
 
   !----------------------------------------------------------------
+  ! Module-specific rolling mean variables
+  !----------------------------------------------------------------
+  real, allocatable, dimension(:,:), save :: rlmalpha       ! rolling mean of annual alpha (AET/PET)
+  integer, parameter :: nyrs_rlmalpha = 5                   ! number of years for rolling mean (=width of sliding window)
+
+  !----------------------------------------------------------------
   ! Module-specific output variables, daily
   !----------------------------------------------------------------
   real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
@@ -153,7 +160,7 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( phy, doy, lat, elv, pr, tc, sf, netrad, splashtest, lev_splashtest, testdoy )
+  subroutine waterbal( phy, doy, jpngr, lat, elv, pr, tc, sf, netrad, splashtest, lev_splashtest, testdoy )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
@@ -163,6 +170,7 @@ contains
     ! arguments
     type( psoilphystype ), dimension(nlu), intent(inout) :: phy
     integer, intent(in)                                  :: doy    ! day of year
+    integer, intent(in)                                  :: jpngr  ! gridcell number
     real, intent(in)                                     :: lat    ! latitude (degrees)
     real, intent(in)                                     :: elv    ! altitude (m)
     real, intent(in)                                     :: pr     ! daily precip (mm) 
@@ -234,7 +242,7 @@ contains
         ! -----------------------------------
         ! * set soil moisture to zero
         evap(lu)%aet              = evap(lu)%aet + phy(lu)%wcont
-        phy(lu)%wcont = 0.0
+        phy(lu)%wcont             = 0.0
         soilphys(lu)%ro           = 0.0
         soilphys(lu)%fleach       = 0.0
 
@@ -247,6 +255,10 @@ contains
 
       ! water-filled pore space
       soilphys(lu)%wscal = phy(lu)%wcont / kWm
+
+      ! soil moisture stress function
+      soilphys(lu)%soilmstress = calc_soilmstress( soilphys(lu)%wscal, rlmalpha(lu,jpngr) )  
+      ! print*,'waterbal: soilmstress :', soilphys(lu)%soilmstress  
 
     end do
 
@@ -753,6 +765,35 @@ contains
     !         Administration (NASA).
     !-------------------------------------------------------------   
   end function getevap
+
+
+  function calc_soilmstress( soilm, meanalpha ) result( outstress )
+    !-----------------------------------------------------------------------
+    ! Calculates empirically-derived stress (fractional reduction in light 
+    ! use efficiency) as a function of soil moisture
+    ! Input:  soilm (unitless, within [0,1]): daily varying soil moisture
+    ! Output: outstress (unitless, within [0,1]): function of alpha to reduce GPP 
+    !         in strongly water-stressed months
+    !-----------------------------------------------------------------------
+    ! argument
+    real, intent(in) :: soilm       ! soil water content (fraction)
+    real, intent(in) :: meanalpha   ! mean annual AET/PET (fraction)
+
+    ! local variables
+    real, parameter :: apar = -0.2013140
+    real, parameter :: bpar = 0.9779388
+    real, parameter :: x0 = 0.9
+    real :: y0, beta
+
+    ! function return variable
+    real :: outstress
+
+    y0 = apar + bpar * meanalpha
+    beta = (1.0 - y0) / x0**2
+    outstress = 1.0 - beta * ( soilm - x0 )**2
+    outstress = max( 0.0, min( 1.0, outstress ) )
+
+  end function calc_soilmstress
 
 
   function calc_dr( nu ) result( dr )
@@ -1494,22 +1535,32 @@ contains
 
   subroutine initoutput_waterbal( ngridcells )
     !////////////////////////////////////////////////////////////////
-    !  Initialises waterbalance-specific output variables
+    ! Initialises waterbalance-specific output variables
+    ! The same subroutine is used here for initialising rolling mean variables
     !----------------------------------------------------------------
     use md_interface, only: interface
 
     ! arguments
     integer, intent(in) :: ngridcells
 
-    ! Annual output variables
-    if (interface%params_siml%loutwaterbal) then
-      if (interface%steering%init) then
-        if (interface%steering%init) allocate( outapet(ngridcells) )
-        if (interface%steering%init) allocate( outaaet(nlu,ngridcells) )
-      end if
-      outapet(:)  = 0.0
-      outaaet(:,:)  = 0.0
+    ! Rolling mean variables
+    if (interface%steering%init) allocate( rlmalpha(nlu,ngridcells) )
+    if (interface%steering%init) rlmalpha(:,:) = 0.0
+
+    ! Annual output variables, required for rlmalpha, irrespective of loutwaterbal
+    if (interface%steering%init) then
+      if (interface%steering%init) allocate( outapet(ngridcells) )
+      if (interface%steering%init) allocate( outaaet(nlu,ngridcells) )
     end if
+    outapet(:)   = 0.0
+    outaaet(:,:) = 0.0
+
+    ! if (interface%params_siml%loutwaterbal) then
+    !   if (interface%steering%init) then
+    !     ...
+    !   end if
+    !   ...
+    ! end if
 
     ! Daily output variables
     if (interface%params_siml%loutwaterbal) then
@@ -1566,6 +1617,17 @@ contains
 
     it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
 
+    ! Annual output variables
+    if (interface%params_siml%loutwaterbal) then
+      if (outenergy) then
+        outapet(jpngr)    = outapet(jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0))
+        outaaet(:,jpngr)  = outaaet(:,jpngr) + (evap(:)%aet / (evap(1)%econ * 1000.0))
+      else 
+        outapet(jpngr)    = outapet(jpngr)   + evap(1)%pet
+        outaaet(:,jpngr)  = outaaet(:,jpngr) + evap(:)%aet
+      end if
+    end if
+
     ! Daily output variables
     if (interface%params_siml%loutwaterbal) then
       outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr)  + phy(:)%wcont / real( interface%params_siml%outdt )
@@ -1590,18 +1652,33 @@ contains
       ! outdecon(it,jpngr)     = outdecon(it,jpngr)    + evap(1)%econ * 1.0e12 / real( interface%params_siml%outdt ) ! converting from m J-1 to mm GJ-1 = m TJ-1
     end if
 
-    ! Annual output variables
-    if (interface%params_siml%loutwaterbal) then
-      if (outenergy) then
-        outapet(jpngr)    = outapet(jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0))
-        outaaet(:,jpngr)  = outaaet(:,jpngr) + (evap(:)%aet / (evap(1)%econ * 1000.0))
-      else 
-        outapet(jpngr)    = outapet(jpngr)   + evap(1)%pet
-        outaaet(:,jpngr)  = outaaet(:,jpngr) + evap(:)%aet
-      end if
-    end if
-
   end subroutine getout_daily_waterbal
+
+
+  subroutine get_rlm_waterbal()
+    !/////////////////////////////////////////////////////////////////////////
+    ! Calculates the rolling mean of relevant variables
+    ! This requires the full arrays (all gridcells) to be stored.
+    !-------------------------------------------------------------------------
+    use md_params_core, only: nlu
+
+    ! local variables
+    integer, save :: ncalls = 0
+    integer :: nyrs_uptonow
+    integer :: lu
+
+    ncalls = ncalls + 1
+    nyrs_uptonow = min( ncalls, nyrs_rlmalpha )
+
+    do lu=1,nlu
+      where (outapet(:) > 0.0)
+        rlmalpha(lu,:) = ( rlmalpha(lu,:) * (nyrs_uptonow - 1) + outaaet(lu,:) / outapet(:) ) / nyrs_uptonow
+      elsewhere
+        rlmalpha(lu,:) = 1.0
+      end where
+    end do
+
+  end subroutine get_rlm_waterbal
 
 
   subroutine writeout_ascii_waterbal()
@@ -1676,6 +1753,43 @@ contains
          .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       !-------------------------------------------------------------------------
+      ! Annual output
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutwaterbal) then
+        !-------------------------------------------------------------------------
+        ! PET
+        !-------------------------------------------------------------------------
+        print*,'writing ', trim(ncoutfilnam_apet), '...'
+        call write_nc_2D( trim(ncoutfilnam_apet), &
+                          PET_NAME, &
+                          interface%domaininfo%maxgrid, &
+                          interface%domaininfo%nlon, &
+                          interface%domaininfo%nlat, &
+                          interface%grid(:)%ilon, &
+                          interface%grid(:)%ilat, &
+                          interface%grid(:)%dogridcell, &
+                          outapet(:) &
+                          )
+
+        !-------------------------------------------------------------------------
+        ! AET
+        !-------------------------------------------------------------------------
+        if (nlu>1) stop 'writeout_nc_waterbal: nlu>1. Think of something clever!'
+        print*,'writing ', trim(ncoutfilnam_aaet), '...'
+        call write_nc_2D( trim(ncoutfilnam_aaet), &
+                          AET_NAME, &
+                          interface%domaininfo%maxgrid, &
+                          interface%domaininfo%nlon, &
+                          interface%domaininfo%nlat, &
+                          interface%grid(:)%ilon, &
+                          interface%grid(:)%ilat, &
+                          interface%grid(:)%dogridcell, &
+                          outaaet(1,:) &
+                          )
+
+      end if
+
+      !-------------------------------------------------------------------------
       ! Daily output
       !-------------------------------------------------------------------------
       if (interface%params_siml%lncoutwaterbal) then
@@ -1745,43 +1859,6 @@ contains
                           )
 
       end if
-
-      !-------------------------------------------------------------------------
-      ! Annual output
-      !-------------------------------------------------------------------------
-      if (interface%params_siml%loutwaterbal) then
-        !-------------------------------------------------------------------------
-        ! PET
-        !-------------------------------------------------------------------------
-        print*,'writing ', trim(ncoutfilnam_apet), '...'
-        call write_nc_2D( trim(ncoutfilnam_apet), &
-                          PET_NAME, &
-                          interface%domaininfo%maxgrid, &
-                          interface%domaininfo%nlon, &
-                          interface%domaininfo%nlat, &
-                          interface%grid(:)%ilon, &
-                          interface%grid(:)%ilat, &
-                          interface%grid(:)%dogridcell, &
-                          outapet(:) &
-                          )
-
-        !-------------------------------------------------------------------------
-        ! AET
-        !-------------------------------------------------------------------------
-        if (nlu>1) stop 'writeout_nc_waterbal: nlu>1. Think of something clever!'
-        print*,'writing ', trim(ncoutfilnam_aaet), '...'
-        call write_nc_2D( trim(ncoutfilnam_aaet), &
-                          AET_NAME, &
-                          interface%domaininfo%maxgrid, &
-                          interface%domaininfo%nlon, &
-                          interface%domaininfo%nlat, &
-                          interface%grid(:)%ilon, &
-                          interface%grid(:)%ilat, &
-                          interface%grid(:)%dogridcell, &
-                          outaaet(1,:) &
-                          )
-
-      end if      
 
     end if
 
