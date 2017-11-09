@@ -1021,7 +1021,12 @@ contains
     mprime = m**2 - kc**(2.0/3.0) * (m**(4.0/3.0))
 
     ! Check for negatives and take root of square
-    if (mprime > 0) mprime = sqrt(mprime) 
+    if (mprime > 0) then
+      mprime = sqrt(mprime)
+    else
+      print*,'mprime ', mprime
+      stop 'negative mprime'
+    end if 
     
   end function calc_mprime
 
