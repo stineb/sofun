@@ -77,17 +77,17 @@ loutdtemp_soil                          .false.
 loutdtemp                               .false.
 
 # Variables written to NetCDF output (core)
-lncoutdtemp                             .true.
-lncoutdfapar                            .true.
-lncoutdgpp                              .true. 
-lncoutwaterbal                          .true. 
+lncoutdtemp                             .false.
+lncoutdfapar                            .false.
+lncoutdgpp                              .false. 
+lncoutwaterbal                          .false. 
 
 # Variables written to output by module
 loutplant                               .false.
 loutalloc                               .false.
 loutgpp                                 .false.
 loutnpp                                 .false.
-loutwaterbal                            .false.
+loutwaterbal                            .true.
 loutntransform                          .false.
 loutnuptake                             .false.
 loutlittersom                           .false.

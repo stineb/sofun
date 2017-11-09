@@ -174,7 +174,7 @@ contains
     !------------------------------------------------------------------
     use md_params_core, only: dummy
     use md_plant, only: dgpp, params_pft_plant, plant_type
-    use md_waterbal, only: evap, solartype
+    use md_waterbal, only: soilphys, solartype
 
     ! arguments
     type( outtype_pmodel ), dimension(npft) :: out_pmodel
@@ -205,8 +205,7 @@ contains
       if ( plant(pft)%fapar_ind>0.0 .and. solar%dayl(doy)>0.0) then
 
         ! GPP
-        ! dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, evap(lu)%cpa )
-        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp )
+        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilphys(lu)%soilmstress )
 
         ! ! xxx trevortest
         ! dgpp(pft) = calc_dgpp( 1.0, 1.0, 2000.0, out_pmodel(pft)%lue, 20.0 )
@@ -214,21 +213,19 @@ contains
         ! stop 'trevortest'
 
         ! ! transpiration
-        ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, evap(lu)%cpa )
+        ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, soilphys(lu)%soilmstress )
         ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp )
 
         ! Dark respiration
-        ! drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, evap(lu)%cpa )
-        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp )
+        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, soilphys(lu)%soilmstress )
 
         ! Leaf-level assimilation rate
-        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), dtemp )
+        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), dtemp, soilphys(lu)%soilmstress )
 
         ! stomatal conductance
-        dgs(pft) = calc_dgs( solar%dppfd(doy), out_pmodel(pft)%gs_unitiabs, solar%dayl(doy), dtemp )
+        dgs(pft) = calc_dgs( solar%dppfd(doy), out_pmodel(pft)%gs_unitiabs, solar%dayl(doy), dtemp, soilphys(lu)%soilmstress )
 
         ! Canopy-level Vcmax (actually changes only monthly)
-        ! dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
         dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
 
         ! Leaf-level Vcmax
@@ -338,151 +335,106 @@ contains
   end function getlue
 
 
-  function calc_dgpp( fapar, acrown, dppfd, lue, dtemp, cpalpha ) result( my_dgpp )
+  function calc_dgpp( fapar, acrown, dppfd, lue, dtemp, soilmstress ) result( my_dgpp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: fapar    ! fraction of absorbed photosynthetically active radiation
-    real, intent(in)           :: acrown   ! crown area (=1)
-    real, intent(in)           :: dppfd    ! daily total photon flux density, mol m-2
-    real, intent(in)           :: lue      ! light use efficiency
-    real, intent(in)           :: dtemp    ! this day's air temperature, deg C
-    real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in) :: fapar       ! fraction of absorbed photosynthetically active radiation
+    real, intent(in) :: acrown      ! crown area (=1)
+    real, intent(in) :: dppfd       ! daily total photon flux density, mol m-2
+    real, intent(in) :: lue         ! light use efficiency
+    real, intent(in) :: dtemp       ! this day's air temperature, deg C 
+    real, intent(in) :: soilmstress ! soil moisture stress factor
 
     ! function return variable
     real :: my_dgpp                        ! Daily total gross primary productivity (gC m-2 d-1)
 
-    ! local variables
-    real :: fa
-
-    if (present(cpalpha)) then
-      fa = calc_fa( cpalpha )
-    else
-      fa = 1.0
-    end if
-
-    ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dgpp = fapar * acrown * dppfd * fa * lue * ramp_gpp_lotemp( dtemp ) * c_molmass
+    ! GPP is light use efficiency multiplied by absorbed light and soil moisture stress function
+    my_dgpp = fapar * acrown * dppfd * soilmstress * lue * ramp_gpp_lotemp( dtemp ) * c_molmass
 
   end function calc_dgpp
 
 
-  function calc_dassim( dppfd, lue, daylength, dtemp, cpalpha ) result( my_dassim )
+  function calc_dassim( dppfd, lue, daylength, dtemp, soilmstress ) result( my_dassim )
     !//////////////////////////////////////////////////////////////////
     ! Calculates leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: dppfd           ! daily total photon flux density, mol m-2
-    real, intent(in)           :: lue             ! light use efficiency, mol CO2 / mol photon
-    real, intent(in)           :: daylength       ! day length (h)
-    real, intent(in)           :: dtemp           ! this day's air temperature, deg C
-    real, intent(in), optional :: cpalpha         ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in) :: dppfd           ! daily total photon flux density, mol m-2
+    real, intent(in) :: lue             ! light use efficiency, mol CO2 / mol photon
+    real, intent(in) :: daylength       ! day length (h)
+    real, intent(in) :: dtemp           ! this day's air temperature, deg C
+    real, intent(in) :: soilmstress     ! soil moisture stress factor
 
     ! function return variable
-    real :: my_dassim                             ! leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
-
-    ! local variables
-    real :: fa
-
-    if (present(cpalpha)) then
-      fa = calc_fa( cpalpha )
-    else
-      fa = 1.0
-    end if
+    real :: my_dassim                   ! leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
 
     ! Leaf-level assimilation rate, average over daylight hours
-    my_dassim = dppfd * fa * lue * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * daylength )
+    my_dassim = dppfd * soilmstress * lue * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * daylength )
 
   end function calc_dassim
 
 
-  function calc_dgs( dppfd, dgs_unitiabs, daylength, dtemp, cpalpha ) result( dgs )
+  function calc_dgs( dppfd, dgs_unitiabs, daylength, dtemp, soilmstress ) result( dgs )
     !//////////////////////////////////////////////////////////////////
     ! Calculates leaf-level stomatal conductance to H2O, mean over daylight hours ( mol H2O m-2 s-1 )
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: dppfd           ! daily total photon flux density, mol m-2
-    real, intent(in)           :: dgs_unitiabs    ! stomatal conductance per unit absorbed light (mol H2O m-2 s-1 / mol light)
-    real, intent(in)           :: daylength       ! day length (h)
-    real, intent(in)           :: dtemp           ! this day's air temperature, deg C
-    real, intent(in), optional :: cpalpha         ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in) :: dppfd           ! daily total photon flux density, mol m-2
+    real, intent(in) :: dgs_unitiabs    ! stomatal conductance per unit absorbed light (mol H2O m-2 s-1 / mol light)
+    real, intent(in) :: daylength       ! day length (h)
+    real, intent(in) :: dtemp           ! this day's air temperature, deg C
+    real, intent(in) :: soilmstress     ! soil moisture stress factor
 
     ! function return variable
-    real :: dgs                                   ! leaf-level stomatal conductance to H2O, mean over daylight hours ( mol H2O m-2 s-1 )
-
-    ! local variables
-    real :: fa
-
-    if (present(cpalpha)) then
-      fa = calc_fa( cpalpha )
-    else
-      fa = 1.0
-    end if
+    real :: dgs                         ! leaf-level stomatal conductance to H2O, mean over daylight hours ( mol H2O m-2 s-1 )
 
     ! Leaf-level assimilation rate, average over daylight hours
-    dgs = dppfd * fa * dgs_unitiabs * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * daylength )
+    dgs = dppfd * soilmstress * dgs_unitiabs * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * daylength )
 
   end function calc_dgs
 
 
-  function calc_drd( fapar, acrown, meanmppfd, rd_unitiabs, dtemp, cpalpha ) result( my_drd )
+  function calc_drd( fapar, acrown, meanmppfd, rd_unitiabs, dtemp, soilmstress ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: fapar           ! fraction of absorbed photosynthetically active radiation
-    real, intent(in)           :: acrown          ! crown area (=1)
-    real, intent(in)           :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
-    real, intent(in)           :: rd_unitiabs
-    real, intent(in)           :: dtemp           ! this day's air temperature, deg C
-    real, intent(in), optional :: cpalpha         ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in) :: fapar           ! fraction of absorbed photosynthetically active radiation
+    real, intent(in) :: acrown          ! crown area (=1)
+    real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
+    real, intent(in) :: rd_unitiabs
+    real, intent(in) :: dtemp           ! this day's air temperature, deg C
+    real, intent(in) :: soilmstress     ! soil moisture stress factor
 
     ! function return variable
     real :: my_drd
 
-    ! local variables
-    real :: fa
-
-    if (present(cpalpha)) then
-      fa = calc_fa( cpalpha )
-    else
-      fa = 1.0
-    end if
-
     ! Dark respiration takes place during night and day (24 hours)
-    my_drd = fapar * acrown * meanmppfd * fa * rd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * acrown * meanmppfd * soilmstress * rd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
 
   end function calc_drd
 
 
-  function calc_dtransp( fapar, acrown, dppfd, transp_unitiabs, dtemp, cpalpha ) result( my_dtransp )
+  function calc_dtransp( fapar, acrown, dppfd, transp_unitiabs, dtemp, soilmstress ) result( my_dtransp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in)           :: fapar
-    real, intent(in)           :: acrown
-    real, intent(in)           :: dppfd              ! daily total photon flux density, mol m-2
-    real, intent(in)           :: transp_unitiabs
-    real, intent(in)           :: dtemp              ! this day's air temperature
-    real, intent(in), optional :: cpalpha  ! monthly Cramer-Prentice-alpha (unitless, within [0,1.26]) 
+    real, intent(in) :: fapar
+    real, intent(in) :: acrown
+    real, intent(in) :: dppfd              ! daily total photon flux density, mol m-2
+    real, intent(in) :: transp_unitiabs
+    real, intent(in) :: dtemp              ! this day's air temperature
+    real, intent(in) :: soilmstress        ! soil moisture stress factor
 
     ! function return variable
     real :: my_dtransp
 
-    ! local variables
-    real :: fa
-
-    if (present(cpalpha)) then
-      fa = calc_fa( cpalpha )
-    else
-      fa = 1.0
-    end if
-
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dtransp = fapar * acrown * dppfd * fa * transp_unitiabs * ramp_gpp_lotemp( dtemp ) * h2o_molmass
+    my_dtransp = fapar * acrown * dppfd * soilmstress * transp_unitiabs * ramp_gpp_lotemp( dtemp ) * h2o_molmass
 
   end function calc_dtransp
 
@@ -499,6 +451,7 @@ contains
 
     ! function return variable
     real :: my_vcmax    ! canopy-level Vcmax [gCO2/m2-ground/s]
+
     ! Calculate leafy-scale Rubisco-N as a function of LAI and current LUE
     my_vcmax = fapar * meanmppfd * vcmax_unitiabs
 
@@ -1029,23 +982,6 @@ contains
     end if 
     
   end function calc_mprime
-
-
-  function calc_fa( cpalpha ) result( fa )
-    !-----------------------------------------------------------------------
-    ! Input:  cpalpha (unitless, within [0,1.26]): monthly Cramer-Prentice-alpha
-    ! Output: fa (unitless, within [0,1]): function of alpha to reduce GPP 
-    !                                      in strongly water-stressed months
-    !-----------------------------------------------------------------------
-    ! argument
-    real, intent(in) :: cpalpha
-
-    ! function return variable
-    real :: fa
-
-    fa = ( cpalpha / 1.26 )**(0.25)
-    
-  end function calc_fa
 
 
   function co2_to_ca( co2, patm ) result( ca )
