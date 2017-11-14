@@ -14,8 +14,8 @@ spinupyears                             5
 recycle                                 1
 
 # Start and length of simulation in years (AD)
-firstyeartrend                          2010
-nyeartrend                              1
+firstyeartrend                          1982
+nyeartrend                              30
 
 # Model parameter file (not PFT-specific)
 modparfil                               params_modl.dat
@@ -28,7 +28,10 @@ ndep_nhx_forcing_file                   XXXnhxdepfilnamXXX
 nfert_noy_forcing_file                  XXXnoyfertfilnamXXX
 nfert_nhx_forcing_file                  XXXnhxfertfilnamXXX
 do_grharvest_forcing_file               XXXgrharvestfilnamXXX
-fapar_forcing_source                    modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc
+fapar_forcing_source                    fapar3g
+
+# switch for applying soil moisture stress function on GPP
+soilmstress                             .true.
 
 # switches for reading data in as forcing or calculating it online
 in_netrad                               .false.
@@ -42,8 +45,8 @@ const_ndep_year                         -9999
 const_nfert_year                        -9999
 
 # limit period for which daily output is written
-daily_out_startyr                       2010
-daily_out_endyr                         2010
+daily_out_startyr                       2001
+daily_out_endyr                         2011
 
 # NetCDF output periodicity (d)
 outdt                                   1
@@ -83,7 +86,7 @@ lncoutdgpp                              .false.
 lncoutwaterbal                          .false. 
 
 # Variables written to output by module
-loutplant                               .false.
+loutplant                               .true.
 loutalloc                               .false.
 loutgpp                                 .false.
 loutnpp                                 .false.

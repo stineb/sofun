@@ -81,7 +81,7 @@ program main
   interface%soilparams(:) = getsoil_field( interface%grid(:) )
 
   ! LOOP THROUGH YEARS
-  write(0,*) '------------START OF SIMULATION-------------'
+  write(0,*) '-------------------START OF SIMULATION--------------------'
 
   do yr=1,interface%params_siml%runyears
 
@@ -92,7 +92,7 @@ program main
     interface%steering = getsteering( yr, interface%params_siml )
 
     if (yr == interface%params_siml%spinupyears+1 ) then
-      write(0,*) '-----------TRANSIENT SIMULATION-------------'
+      write(0,*) '------------------TRANSIENT SIMULATION--------------------'
     endif
 
     !----------------------------------------------------------------
@@ -121,7 +121,6 @@ program main
                         interface%steering%climateyear, &
                         interface%climate(:) &
                         )
-    if (verbose) print*,'... done.'
 
     ! CO2
     interface%pco2 = getco2( &
@@ -182,19 +181,19 @@ program main
                                             interface%steering%forcingyear, &
                                             interface%params_siml%fapar_forcing_source &
                                             )    
-    if (verbose) print*,'... done.'
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
     ! containing data for each day of this year.
     !----------------------------------------------------------------
-    write(0,100) 'sim. year, year AD', yr, interface%steering%forcingyear
-
+    print*,'--------------------------------------------------------'
+    print*,'Simulation year: ', interface%steering%year, ' - Real year: ', interface%steering%outyear
+    print*,'--------------------------------------------------------'
     
     !----------------------------------------------------------------
+    ! Call biosphere (wrapper for all modules, contains gridcell loop)
     !----------------------------------------------------------------
     c_uptake = biosphere_annual() 
-    !----------------------------------------------------------------
     !----------------------------------------------------------------
 
   enddo
@@ -204,5 +203,6 @@ program main
 100  format(A,I6,I6,F8.2)
 ! 888  write(0,*) 'error opening file'
 777  format (F20.8,F20.8)
+999  format (I4.4)
 
 end program main

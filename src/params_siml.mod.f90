@@ -30,6 +30,8 @@ module md_params_siml
     integer :: const_nfert_year     ! is true when using constant N fertilisation, given by first transient year in 'nfert_forcing_file'
     integer :: const_clim_year      ! is true when using constant climate, given by year 'firstyeartrend'
     integer :: const_lu_year        ! is true when using constant land use, given by year 'firstyeartrend'
+
+    logical :: soilmstress          ! when true, an empirical soil moisture stress function is applied to GPP
     
     character(len=256) :: runname
     character(len=256) :: sitename
@@ -287,6 +289,8 @@ contains
     out_getpar_siml%const_nfert_year  = getparint( 'run/'//runname//'.sofun.parameter', 'const_nfert_year' )
     out_getpar_siml%const_clim_year   = getparint( 'run/'//runname//'.sofun.parameter', 'const_clim_year' )
     out_getpar_siml%const_lu_year     = getparint( 'run/'//runname//'.sofun.parameter', 'const_lu_year' )
+
+    out_getpar_siml%soilmstress       = getparlogical( 'run/'//runname//'.sofun.parameter', 'soilmstress' )
     
     out_getpar_siml%spinupyears       = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
     out_getpar_siml%firstyeartrend    = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )

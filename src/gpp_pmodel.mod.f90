@@ -161,7 +161,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( out_pmodel, solar, plant, doy, moy, dtemp )
+  subroutine gpp( out_pmodel, solar, plant, doy, moy, dtemp, do_soilmstress )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -180,13 +180,15 @@ contains
     type( outtype_pmodel ), dimension(npft) :: out_pmodel
     type( solartype )                       :: solar
     type( plant_type ), dimension(npft)     :: plant
-    integer, intent(in)                     :: doy       ! day of year and month of year
-    integer, intent(in)                     :: moy       ! month of year and month of year
-    real,    intent(in)                     :: dtemp     ! this day's air temperature
+    integer, intent(in)                     :: doy             ! day of year and month of year
+    integer, intent(in)                     :: moy             ! month of year and month of year
+    real,    intent(in)                     :: dtemp           ! this day's air temperature
+    logical, intent(in)                     :: do_soilmstress  ! whether empirical soil miosture stress function is applied to GPP
 
     ! local variables
     integer :: pft
     integer :: lu
+    real    :: soilmstress
 
     !----------------------------------------------------------------
     ! CALCULATE PREDICTED GPP FROM P-model
@@ -202,10 +204,16 @@ contains
 
       lu = params_pft_plant(pft)%lu_category
 
+      if (do_soilmstress) then
+        soilmstress = soilphys(lu)%soilmstress
+      else
+        soilmstress = 1.0
+      end if
+
       if ( plant(pft)%fapar_ind>0.0 .and. solar%dayl(doy)>0.0) then
 
         ! GPP
-        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilphys(lu)%soilmstress )
+        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilmstress )
 
         ! ! xxx trevortest
         ! dgpp(pft) = calc_dgpp( 1.0, 1.0, 2000.0, out_pmodel(pft)%lue, 20.0 )
@@ -213,17 +221,17 @@ contains
         ! stop 'trevortest'
 
         ! ! transpiration
-        ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, soilphys(lu)%soilmstress )
+        ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, soilmstress )
         ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp )
 
         ! Dark respiration
-        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, soilphys(lu)%soilmstress )
+        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, soilmstress )
 
         ! Leaf-level assimilation rate
-        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), dtemp, soilphys(lu)%soilmstress )
+        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), dtemp, soilmstress )
 
         ! stomatal conductance
-        dgs(pft) = calc_dgs( solar%dppfd(doy), out_pmodel(pft)%gs_unitiabs, solar%dayl(doy), dtemp, soilphys(lu)%soilmstress )
+        dgs(pft) = calc_dgs( solar%dppfd(doy), out_pmodel(pft)%gs_unitiabs, solar%dayl(doy), dtemp, soilmstress )
 
         ! Canopy-level Vcmax (actually changes only monthly)
         dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
@@ -977,8 +985,8 @@ contains
     if (mprime > 0) then
       mprime = sqrt(mprime)
     else
-      print*,'mprime ', mprime
-      stop 'negative mprime'
+      print*,'negative mprime (', mprime, '). Setting to zero.'
+      mprime = 0.0
     end if 
     
   end function calc_mprime

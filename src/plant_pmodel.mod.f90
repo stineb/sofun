@@ -481,10 +481,7 @@ contains
 
     prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
-    if ( .not. interface%steering%spinup &
-         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
-
+    if ( .not. interface%steering%spinup ) then
       !----------------------------------------------------------------
       ! Annual GPP output file 
       !----------------------------------------------------------------
@@ -508,27 +505,31 @@ contains
                         )
       end if
 
-      !----------------------------------------------------------------
-      ! Daily GPP output file 
-      !----------------------------------------------------------------
-      if (interface%params_siml%lncoutdgpp) then
-        ncoutfilnam_dgpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
-        print*,'initialising ', trim(ncoutfilnam_dgpp), '...'
-        call init_nc_3D( filnam  = trim(ncoutfilnam_dgpp), &
-                        nlon     = interface%domaininfo%nlon, &
-                        nlat     = interface%domaininfo%nlat, &
-                        lon      = interface%domaininfo%lon, &
-                        lat      = interface%domaininfo%lat, &
-                        outyear  = interface%steering%outyear, &
-                        outdt    = interface%params_siml%outdt, &
-                        outnt    = interface%params_siml%outnt, &
-                        varnam   = GPP_NAME, &
-                        varunits = "gC m-2 d-1", &
-                        longnam  = "daily gross primary productivivty", &
-                        title    = TITLE, &
-                        globatt1_nam = "fapar_source", &
-                        globatt1_val = interface%params_siml%fapar_forcing_source &
-                        )
+      if ( interface%steering%outyear>=interface%params_siml%daily_out_startyr .and. &
+        interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+        !----------------------------------------------------------------
+        ! Daily GPP output file 
+        !----------------------------------------------------------------
+        if (interface%params_siml%lncoutdgpp) then
+          ncoutfilnam_dgpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
+          print*,'initialising ', trim(ncoutfilnam_dgpp), '...'
+          call init_nc_3D( filnam  = trim(ncoutfilnam_dgpp), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = GPP_NAME, &
+                          varunits = "gC m-2 d-1", &
+                          longnam  = "daily gross primary productivivty", &
+                          title    = TITLE, &
+                          globatt1_nam = "fapar_source", &
+                          globatt1_val = interface%params_siml%fapar_forcing_source &
+                          )
+        end if
+
       end if
 
     end if
@@ -676,10 +677,7 @@ contains
 
     if (npft>1) stop 'writeout_nc_plant(): npft > 1. Think of something clever.'
 
-    if ( .not. interface%steering%spinup &
-         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
-
+    if ( .not. interface%steering%spinup ) then
       !-------------------------------------------------------------------------
       ! Annual GPP
       !-------------------------------------------------------------------------
@@ -695,22 +693,24 @@ contains
                                                               outagpp(1,:) &
                                                               )
 
-      !-------------------------------------------------------------------------
-      ! Daily GPP
-      !-------------------------------------------------------------------------
-      if (interface%params_siml%lncoutdgpp) print*,'writing ', trim(ncoutfilnam_dgpp), '...'
-      if (interface%params_siml%lncoutdgpp) call write_nc_3D( trim(ncoutfilnam_dgpp), &
-                                                              GPP_NAME, &
-                                                              interface%domaininfo%maxgrid, &
-                                                              interface%domaininfo%nlon, &
-                                                              interface%domaininfo%nlat, &
-                                                              interface%grid(:)%ilon, &
-                                                              interface%grid(:)%ilat, &
-                                                              interface%params_siml%outnt, &
-                                                              interface%grid(:)%dogridcell, &
-                                                              outdgpp(1,:,:) &
-                                                              )
-
+      if (       interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+           .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+        !-------------------------------------------------------------------------
+        ! Daily GPP
+        !-------------------------------------------------------------------------
+        if (interface%params_siml%lncoutdgpp) print*,'writing ', trim(ncoutfilnam_dgpp), '...'
+        if (interface%params_siml%lncoutdgpp) call write_nc_3D( trim(ncoutfilnam_dgpp), &
+                                                                GPP_NAME, &
+                                                                interface%domaininfo%maxgrid, &
+                                                                interface%domaininfo%nlon, &
+                                                                interface%domaininfo%nlat, &
+                                                                interface%grid(:)%ilon, &
+                                                                interface%grid(:)%ilat, &
+                                                                interface%params_siml%outnt, &
+                                                                interface%grid(:)%dogridcell, &
+                                                                outdgpp(1,:,:) &
+                                                                )
+      end if
     end if
 
   end subroutine writeout_nc_plant

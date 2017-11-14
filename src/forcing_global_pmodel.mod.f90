@@ -163,7 +163,7 @@ contains
     !----------------------------------------------------------------  
     ! Set file-specific variables
     !----------------------------------------------------------------    
-    if (fapar_forcing_source=="modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc") then
+    if (fapar_forcing_source=="evi_modis") then
 
       ! fAPAR data from MODIS EVI
       firstyr_data = 2001
@@ -171,8 +171,9 @@ contains
       lonname ="LON"
       latname = "LAT"
       varname = "EVI_FILLED"
+      filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc"
 
-    else if (fapar_forcing_source=="fAPAR3g_monthly_1982_2011_FILLED.nc") then
+    else if (fapar_forcing_source=="fapar3g") then
       
       ! fAPAR data from fAPAR3g
       firstyr_data = 1982
@@ -180,14 +181,13 @@ contains
       lonname ="LON"
       latname = "LAT"
       varname = "FAPAR_FILLED"
+      filnam = "./input/global/fapar/fAPAR3g_monthly_1982_2011_FILLED.nc"
 
     else
 
       stop 'getfapar: argument fapar_forcing_source is invalid'
 
     end if
-
-    filnam = "./input/global/fapar/"//fapar_forcing_source
 
     !----------------------------------------------------------------  
     ! Read arrays of all months of current year from file  
@@ -271,8 +271,6 @@ contains
 
     ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
     deallocate( fapar_arr )
-
-    print*,'... done.'
 
   end function getfapar
 
@@ -536,7 +534,7 @@ contains
 
     end do monthloop
 
-    print*,'number of land cells without climate data: ', nmissing
+    if (init) print*,'number of land cells without climate data: ', nmissing
 
     return
     888  format (I2.2)

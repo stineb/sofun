@@ -87,10 +87,6 @@ contains
 
     endif 
 
-    print*,'----------------------'
-    print*,'YEAR ', interface%steering%year
-    print*,'----------------------'
-
     !----------------------------------------------------------------
     ! Open NetCDF output files (one for each year)
     !----------------------------------------------------------------
@@ -236,7 +232,8 @@ contains
             ! print*,'in biosphere: acrown', plant(1,1)%acrown
             call gpp( &
                       out_pmodel(:,moy), solar, plant(:,jpngr), doy, moy, &
-                      interface%climate(jpngr)%dtemp(doy) &
+                      interface%climate(jpngr)%dtemp(doy), &
+                      interface%params_siml%soilmstress &
                       )
             if (verbose) print*,'... done'
 
