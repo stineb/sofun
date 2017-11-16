@@ -162,6 +162,7 @@ mycolorbar <- function( col,           # a vector of colors from which to interp
   out.mycolorbar$colors <- colors
   out.mycolorbar$margins <- margins.eff
   out.mycolorbar$centers <- centers
+  
   return(out.mycolorbar)
 
 }

@@ -88,3 +88,4 @@ This repository holds utility and general functionality scripts.
 
 ### zipall.pl
 * This script performs bulk file compressions (e.g., gzip). It may be modified to run any bulk system commands (e.g., tar, gunzip, pdfcrop).
+

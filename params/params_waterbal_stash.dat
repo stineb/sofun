@@ -1,0 +1,31 @@
+###############################################################
+# STASH PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+kA                                      107     
+kalb_sw                                 0.17    
+kalb_vis                                0.03    
+kb                                      0.20    
+kc                                      0.25    
+kCw                                     1.05    
+kd                                      0.50    
+ke                                      0.0167  
+keps                                    23.44   
+kfFEC                                   2.04    
+kG                                      9.80665 
+kGsc                                    1360.8  
+kL                                      0.0065  
+kMa                                     0.028963
+kMv                                     0.01802 
+kPo                                     101325  
+kR                                      8.3143  
+kTo                                     288.15  
+kWm                                     150.0   
+kw                                      0.26    
+komega                                  283.0
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 

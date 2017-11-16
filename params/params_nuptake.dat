@@ -1,0 +1,15 @@
+###############################################################
+# MODEL PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+eff_nup                                 0.600000
+minimumcostfix                          1.000000
+fixoptimum                              25.15000
+a_param_fix                             -3.62000
+b_param_fix                             0.270000
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 
