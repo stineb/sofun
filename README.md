@@ -1,91 +1,126 @@
-# README
+# Table of Contents
+-------------------
+[TOC]
+
+# Repository Details
 ---------------
-* LAST UPDATED: 2016-10-23
+
+* LATEST RELEASE: (no official release)
+* DATE OF LATEST RELEASE: 2016-02-18
+* LICENSE: GNU Lesser General Public License
 * TEAM: labprentice
-* REPO: utilities (public)
+* REPO: https://bitbucket.org/labprentice/sofun
+* WIKI: NA
 
-## Description
-This repository holds utility and general functionality scripts.
+# Repository Structure
+----------------------
+## src/
+This directory holds all source code.
 
-## Files
+## input/
+This directory holds all input files to drive the simulations.
 
-### area.R
-* R function to calculate the surface area of a rectangular gridcell on a sphere.
+* sitedata/
 
-### asc2cdf.jnl
-* Ferret script to convert an ASCII file (gridded, geo-referenced data in text format) into NetCDF.
+    * Holds subdirectories for climate, co2, fapar, and ndep input data; structured for site-scale simulations.
 
-### batch_audio_cvt.sh
-* Performs batch audio conversions (e.g., lossless m4a to lossy mp3) using libav-tools and mediainfo (Debian Linux)
+## output/
+Holds model output files.
 
-### biomisation.R
-* R function returns the biome as a function of GDD, fractional plant cover of 9 PFTs (LPX) and vegetation height.
 
-### calc_centroids.R
-* Writes CSV file (ID, LAT, LON) of regular grid pixel centroids for given map extents and pixel resolution.
+# SOFUN: Seasonal optimisation of fixation and uptake of nitrogen
+----------------------------------------------------------------------------
+This is a modular framework that serves as a structure for simulating terrestrial ecosystem functioning (radiation, photosynthesis, allocation, soil organic dynamics, inorganic nitrogen dynamics). Code is programmed in Fortran 90 and can be compiled using either the PGI90 compiler or gfortran (others not tested).
+Written, developed and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
 
-### calc_statistics.R
-* This R function calculates a variety of statistics for a given data vector.
 
-### catfiles.pl
-* This script concatenates multiple time series data files into one single file.
+# Usage
+---------
+To compile the full model, do 
+```bash
+  make
+```
+Adjust Makefile and src/Makefile to use a different compiler.
+To run the program, do
+```bash
+  echo RUNNAME | ./runsofun
+```
+Change 'RUNNAME' to any given simulation name. Parameter files containing 'RUNNAME' in their file name need to be adjusted accordingly (replacing the string 'RUNNAME' with your simulation name and adjusting parameter values.).
 
-### cdf.write.R
-* R function to write a numeric array (maximum 4 dimensions: lon, lat, xxx, time) into a NetCDF file.
+Component models can be compiled and executed individually:
+## SPLASH
 
-### diffdays.pl
-* This script calculates the number of days between two given dates.
 
-### etsrad
-* Python (__etsrad.py__) and R (__etsrad.R__) scripts that calculate the half-hourly extraterrestrial solar radiation flux, daylight hours, sunset hour, daily solar irradation, half-hourly PAR, and daily PAR (as well as other parameters) for a given day and location.
+# Model structure
+-------------------------
 
-### get.f.luc.R
-* Get global CO2 emissions due to land use change from outputs of two LPX-Bern simulations (with and without landuse).
+sofun is designed to be a modular framework that can adopt different formulation of processes by selecting modules. Irrespective of the module choice, a set of state variables must be calculated and updated by the respective subroutines which are contained in the chosen modules. These required state variables are declared in modules 'fluxes', 'pools', and 'treegeometry'. Other module-specific variables are declared within the module. Module-specific output variables are also declared only in the respective module. These "feature-"modules may also contain other subroutines to read/write necessary inputp/output that is not required by the model outside the module.
 
-### get.nbp.R
-* R function to get global NBP (total land-atmosphere C flux) from a LPX-Bern simulation.
+The separation between the main program 'sofun' and the subroutine 'biosphere' is somewhat arbitrary and I have not been able to follow a clear distinction between what is contained in modules and what is passed on as arguments.
 
-### get_mean_seasonal_cycle.jnl
-* Ferret script to calculate monthly climatology from a multi-annual time series.
+Non-module-specific subroutines are defined in .F files while all module-specific subroutines are specified in their respective modlue (.mod.F). 
 
-### list_dirs.R
-* This function provides a list.dirs() function (similar to existing list.files() function) that returns directory names.
+## Coding philosophy
+- Functions are strictly self-contained: public variables are updated within functions
+- Subroutines are used to update public variables
 
-### mean.bymonth.R
-* R function to calculate monthly climatology from a multi-annual time series (analogue to 'get_mean_seasonal_cycle.jnl').
+## State variables
 
-### mycolorbar.R
-* R function to add a colorbar to a plot.
+In order to satisfy modularity, inter-changeable subroutines have to use the same set of global variables, but may treat them differently and use specific, locally defined variables. Still, the the core remains the same. That is, the vegetation is described by a set of state variables. These are:
 
-### ocr.py
-* This script converts JPG images to text files (e.g., those pesky journal articles online where each page is an image file).
-* Depends on [imagemagick](http://www.imagemagick.org/) (for image processing) and [tesseract](https://code.google.com/p/tesseract-ocr/) (for OCR) software packages.
-* Includes __ocr_example.jpg__ for testing purposes.
+*in module 'pools'
+pleaf : leaf mass;
+proot : root mass; 
+plabl : labile pool; 
+pexud : exudates in soil;
+plitt_af : above-ground litter (fast turnover);
+plitt_as : above-ground litter (slow turnover);
+plitt_bg : below-ground litter;
+psoil_sl : soil organic matter (slow turnover);
+psoil_fs : soil organic matter (fast turnover);
+wtot : soil water storage;
+nh4 : ammonium;
+no3 : nitrate;
+no2 : nitrogen dioxide;
 
-### peirce_dev
-* Python (__peirce_dev.py__) and R (__peirce_dev.R__) scripts that remove outliers from observation pairs based on a model fit using Peirce's criterion.
-* Example data is available (__peirce_example.csv__)
 
-### plot_biome.R
-* R function creates a PDF with a nice map of biomes, given biome categorised using function 'biomisation.R'.
+ 
+## Dimensionality of mass pools/fluxes
 
-### regrid_landuse.R
-* R function to regrid (remap) landuse data conserving total area in categories cropland, pasture, urban.
+The major loops determine the dimensionality of variables. The highest-order subroutine is 'biosphere' which simulates C exchange over the selected domain. SR 'biosphere' is called each year. Within 'biosphere', the program runs over loops for each gridcell, month, and day (in this order). This may be changed to 'biosphere' being called each day, and only the gridcell loop being governed inside 'biosphere'. 
 
-### rename.pl
-* This script performs bulk file renames based on regular expression search and replace.
+Model state variables generally have the lowest-possible number of dimensions. In most cases, this is 'pft' (for each plant functional type) or 'lu' (for each gridcell tile). An exception are pool variables which have a space dimension (representing gridcells 'jpngr'). Only input/output variables (to be kept separate from model state variables!) have an explicit time dimension (for month or day). 
 
-### rms.pl
-* This script reads through a file (plain text or CSV) and removes all whitespace characters from lines.
+Variables are generally named so that the first letter represents the time scale on which the variable is updated (d for daily, m for monthly, a for annually). Output variables are named, e.g., like 'outdgpp' (for daily GPP output), or 'luoutagpp' (for annual GPP, summed over all PFTs per LU). 
 
-### sort.pl
-* This script performs lexicographical line sorting on a file.
+Fortran-derived types are used to define pools of organic matter (roots, sapwood, leaves, roots, litter, soil). This type consists of "dimensions" 'carbon' and 'nitrogen', which in turn consist of 'c12' and 'n14', respectively. There are also pools/fluxes that consist only of 'carbon' or 'nitrogen'. As a principle, the additional dimensionality of such derived-types should be introduced on the highest-possible level. E.g. it makes no sense to define GPP as 'carbon', as all variables NPP, Ra, ... carry the same signature of c12/c13/c14. The highest level is in general the step where a flux is added to a pool. In this case this is the biomass increment ('bm_inc'). I.e., only 'bm_inc' should be defined as 'carbon' and its c13/c14 signature should be explicitly defined.
 
-### water_states.R
-* Functions for calculating the temperature and pressure dependencies of:
-    * the *density* of pure water (Tumlirz and Chen equations)
-    * the *viscosity* of pure water (Huber and Vogel equations)
 
-### zipall.pl
-* This script performs bulk file compressions (e.g., gzip). It may be modified to run any bulk system commands (e.g., tar, gunzip, pdfcrop).
+## Units
+
+All plant-related pools (pleaf, proot, psapw, pwood, plabl) are in units of gC/ind. and gN/ind. 'nind' is the number of individuals per m2, [nind]=ind./m2. Other pools (plitt, psoil, pexud, inorganic N pools) are in units of gC/m2 and/or gN/m2. Note that C and N transfers from plant to litter have to be multiplied by 'nind' (number of individuals). Fluxes (dgpp, dnpp, dexud, dnup, ...) are in units of gC/m2/day or gN/m2/day. 
+
+
+## Year-to-year memory
+
+In general, all pool variables carry on information from year to year, while all others don't. Exceptions are previous year's values to define "buffers", e.g., where moving average of previous N days is used to calculate stuff. This is the case for soil temperature (soiltemp_sitch), where the previous year's daily temperature field is used. This is defined within biosphere, using Fortran's 'SAVE' statement, and updated at the end of each year. For the first simulation year, the "previous" year's values are taken as the present year's values.
+
+
+## Output
+
+One output file is written for each output variable. Output variables have an according time dimension (daily and monthly output), and a space dimension (jpngr) and are kept separate from model state variables. To add a (module-independent) variable to be written to the output, add statements in the following files:
+- outvars.mod.F: Declare non-module specific output variables.
+- init.F: SR initoutput: Initialise output array, called daily.
+- initio.F: Open file for output writing.
+- getout.F: Copy daily updated state variables to according position in output array.
+- writeout_ascii.F: Write output array into file opened by initio.F.
+For module-specific output variables, add according statements contained in SR (named as 'initio_<modulename>') contained within respective module.
+
+
+## Processes
+
+*Phenology*
+Temperature driven phenology ('dtphen') is determined by smoothed daily temperature (smoothing by interpolating from monthly mean air temperatures). For grasses, 'dtphen' is zero if smoothed temperature is <5 deg C and 1 if it is >5 deg C. When dtphen=1, then grass grows daily with LAI dynamically developping over the course of the season.
+
+
 
