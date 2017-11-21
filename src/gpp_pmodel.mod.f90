@@ -194,12 +194,6 @@ contains
     ! CALCULATE PREDICTED GPP FROM P-model
     ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
     !----------------------------------------------------------------
-    ! print*,'in GPP: plant(1)%fapar_ind', plant(1)%fapar_ind
-    ! print*,'in GPP: plant(1)%acrown', plant(1)%acrown
-    ! print*,'plant(1)%acrown' , plant(1)%acrown
-    ! print*,'solar%dppfd(doy)', solar%dppfd(doy)
-    ! print*,'in GPP: out_pmodel(1)%lue', out_pmodel(1)%lue
-
     do pft=1,npft
 
       lu = params_pft_plant(pft)%lu_category
@@ -214,11 +208,6 @@ contains
 
         ! GPP
         dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilmstress )
-
-        ! ! xxx trevortest
-        ! dgpp(pft) = calc_dgpp( 1.0, 1.0, 2000.0, out_pmodel(pft)%lue, 20.0 )
-        ! print*,'dgpp:', dgpp
-        ! stop 'trevortest'
 
         ! ! transpiration
         ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, soilmstress )
@@ -282,6 +271,11 @@ contains
     integer                   :: moy, pft
     integer                   :: doy
 
+    ! xxx test
+    real, dimension(nmonth)   :: mppfd
+    real :: myco2
+    real :: myelv
+
     ! locally used daily temperature (may be different from globally used one)
     mydtemp(:) = dtemp(:)
 
@@ -289,53 +283,32 @@ contains
     mtemp(:) = daily2monthly( mydtemp(:), "mean" )
     mvpd(:)  = daily2monthly( dvpd(:), "mean" )
 
-    ! xxx try out: -- THIS WORKS PERFECTLY -- 
+    ! ! xxx try out: -- THIS WORKS PERFECTLY -- 
     ! print*, 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
-    ! co2   = 376.0
-    ! elv   = 450.0
+    ! myco2   = 376.0
+    ! myelv   = 450.0
     ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
     ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
     ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
 
-    ! print*, 'co2'
-    ! print*, co2
-    ! print*, 'mtemp'
-    ! print*, mtemp
-    ! print*, 'mvpd'
-    ! print*, mvpd
-    ! stop
-
+    !------------------------------------------------------------------
     ! Run P-model for monthly averages and store monthly variables 
     ! per unit absorbed light (not corrected for soil moisture)
-
-    ! ! XXX PMODEL_TEST
-    ! print*, 'WARNING: ONLY C3 PHOTOSYNTHESIS USED IN PMODEL'
-
+    !------------------------------------------------------------------
     do pft=1,npft
 
       do moy=1,nmonth
 
-        ! ! XXX PMODEL_TEST
-        ! out_pmodel = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
-
-        ! ! xxx debug
-        ! print*,'calling P-model with:'
-        ! print*,'pft   ', pft
-        ! print*,'moy   ', moy
-        ! print*,'mtemp ', mtemp(moy)
-        ! print*,'mvpd  ', mvpd(moy)
-        ! print*,'elv   ', elv
-        ! print*,'C4    ', params_pft_plant(pft)%c4
-
-        ! print*,'calling pmodel to get LUE ...'
         if ( params_pft_plant(pft)%c4 ) then
           ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
           out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
         else
           ! C3
           out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
+
+          ! ! XXX PMODEL_TEST:
+          ! out_pmodel(pft,moy) = pmodel( pft, 1.0, mppfd(moy), myco2, mtemp(moy), mvpd(moy), myelv, "C3_full" )
         end if
-        ! print*,'... done'
 
       end do
     end do
@@ -535,13 +508,13 @@ contains
       ! photorespiratory compensation point - Gamma-star (Pa)
       gstar = calc_gstar( tc )
 
-      ! ! XXX PMODEL_TEST: ok
+      ! XXX PMODEL_TEST: ok
       ! print*, 'gstar ', gstar
 
       ! Michaelis-Menten coef. (Pa)
       kmm  = calc_k( tc, patm )
 
-      ! ! XXX PMODEL_TEST: ok
+      ! XXX PMODEL_TEST: ok
       ! print*, 'kmm ', kmm
 
       ! viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
@@ -549,8 +522,8 @@ contains
       ns25    = calc_viscosity_h2o( kTo, kPo )  ! Pa s 
       ns_star = ns / ns25                       ! (unitless)
 
-      ! ! XXX PMODEL_TEST: ok
-      ! print*, 'ns ', ns
+      ! XXX PMODEL_TEST: ok
+      ! print*, 'ns_star ', ns_star
 
       select case (method)
 
@@ -587,8 +560,8 @@ contains
       ! LUE-functions return m, n, and chi
       chi = out_lue%chi
 
-      ! ! XXX PMODEL_TEST: ok
-      ! print*, 'm ', m
+      ! XXX PMODEL_TEST: ok
+      ! print*, 'm ', out_lue%m
 
       ! XXX PMODEL_TEST: ok
       ! print*, 'chi ', chi
@@ -621,12 +594,6 @@ contains
       ! stomatal conductance to H2O, expressed per unit absorbed light
       gs_unitiabs = 1.6 * lue * patm / ( ca - ci )
 
-      ! print*,'gs', gs
-      ! print*,'ppfd', ppfd
-      ! print*,'params_pft_gpp(pft)%kphio', params_pft_gpp(pft)%kphio
-      ! print*,'mprime', mprime
-      ! print*,'ca', ca
-      ! print*,'ci', ci
 
       ! Vcmax per unit ground area is the product of the intrinsic quantum 
       ! efficiency, the absorbed PAR, and 'n'
@@ -1231,8 +1198,13 @@ contains
     ! function return variable
     real :: viscosity_h2o
 
+    ! print*,'----- in calc_viscosity_h2o() ------'
+    ! print*,'tc ', tc
+    ! print*,'patm ', patm
+
     ! Get the density of water, kg/m**3
     rho = calc_density_h2o(tc, patm)
+    ! print*,'rho ', rho
 
     ! Calculate dimensionless parameters:
     tbar = (tc + 273.15)/tk_ast
@@ -1240,10 +1212,12 @@ contains
     tbar2 = tbar**2
     tbar3 = tbar**3
     rbar = rho/rho_ast
+    ! print*,'rbar ', rbar
 
     ! Calculate mu0 (Eq. 11 & Table 2, Huber et al., 2009):
     mu0 = 1.67752 + 2.20462/tbar + 0.6366564/tbar2 - 0.241605/tbar3
     mu0 = 1e2*tbarx/mu0
+    ! print*,'mu0 ', mu0
 
     ! Create Table 3, Huber et al. (2009):
     h_array(1,:) = (/0.520094, 0.0850895, -1.08374, -0.289555, 0.0, 0.0/)  ! hj0
@@ -1261,11 +1235,14 @@ contains
       coef1 = ctbar**(i-1)
       coef2 = 0.0
       do j=1,7
+        ! print*,i, j, ' h_array(j,i): ',h_array(j,i)
         coef2 = coef2 + h_array(j,i) * (rbar - 1.0)**(j-1)
+        ! print*,i, j, ' coef2: ',coef2
       end do
       mu1 = mu1 + coef1 * coef2    
     end do
     mu1 = exp( rbar * mu1 )
+    ! print*, 'mu1 ', mu1
 
     ! Calculate mu_bar (Eq. 2, Huber et al., 2009)
     !   assumes mu2 = 1
@@ -1273,6 +1250,8 @@ contains
 
     ! Calculate mu (Eq. 1, Huber et al., 2009)
     viscosity_h2o = mu_bar * mu_ast    ! Pa s
+
+    ! print*,'----- END calc_viscosity_h2o() ------'
 
   end function calc_viscosity_h2o
 
