@@ -15,24 +15,51 @@ module md_grid
   implicit none
 
   private
-  public gridtype, getgrid, domaininfo_type
+  public gridtype, getgrid, domaininfo_type, get_domaininfo
 
+  ! xxx before: site
+  ! type domaininfo_type
+  !   integer :: nlon
+  !   integer :: nlat
+  !   integer :: maxgrid
+  !   real :: lon_start
+  !   real :: lat_start
+  !   real :: dlon
+  !   real :: dlat
+  !   integer, dimension(:,:), allocatable :: gridarray
+  ! end type domaininfo_type
+
+  ! type gridtype
+  !   real :: lon
+  !   real :: lat
+  !   real :: elv
+  !   integer :: soilcode
+  ! end type gridtype
+
+  ! xxx new: from global
   type domaininfo_type
     integer :: nlon
     integer :: nlat
+    real    :: dlon
+    real    :: dlat
     integer :: maxgrid
-    real :: lon_start
-    real :: lat_start
-    real :: dlon
-    real :: dlat
     integer, dimension(:,:), allocatable :: gridarray
+    real, dimension(:), allocatable :: lon
+    real, dimension(:), allocatable :: lat
+    real :: landarea
+    character(len=256) :: domain_name  ! This is the site name for site-scale simulations and the character identifyier defining the resolution for global simulations
   end type domaininfo_type
 
   type gridtype
+    integer :: ilon
+    integer :: ilat
     real :: lon
     real :: lat
     real :: elv
+    real :: landfrac
+    real :: area
     integer :: soilcode
+    logical :: dogridcell
   end type gridtype
 
 contains
@@ -52,10 +79,21 @@ contains
     domaininfo%nlon = 1
     domaininfo%nlat = 1
 
-    domaininfo%lon_start = params_domain%lon_site
-    domaininfo%lat_start = params_domain%lat_site
+    domaininfo%dlon = 0
+    domaininfo%dlat = 0
 
     domaininfo%maxgrid = 1
+
+    allocate( domaininfo%gridarray(1,1) )
+    allocate( domaininfo%lon(1) )
+    allocate( domaininfo%lat(1) )
+
+    domaininfo%gridarray(1,1) = 0.0
+
+    ! Copy domain parameters
+    domaininfo%lon(1)      = params_domain%lon_site
+    domaininfo%lat(1)      = params_domain%lat_site
+    domaininfo%domain_name = params_domain%domain_name
 
   end function get_domaininfo
 
@@ -78,13 +116,23 @@ contains
     integer :: jpngr, ilon, ilat
     integer :: maxgrid_test
 
-    print*,'reading grid ...'
+    print*,'getting grid ...'
 
-    ! xxx try. otherwise loop over sites and allocate values for each 
-    ! site into vectors containing all sites
-    out_grid(:)%lon = domaininfo%lon_start
-    out_grid(:)%lat = domaininfo%lat_start
-    out_grid(:)%elv = params_domain%elv_site
+    allocate( out_grid(domaininfo%maxgrid) )
+
+    out_grid(1)%ilon = 1
+    out_grid(1)%ilat = 1
+
+    out_grid(1)%landfrac = 1.0
+    out_grid(1)%area     = 1.0
+
+    out_grid(1)%soilcode = 1
+
+    out_grid(1)%dogridcell = .true.
+    
+    out_grid(1)%lon = params_domain%lon_site
+    out_grid(1)%lat = params_domain%lat_site
+    out_grid(1)%elv = params_domain%elv_site
 
     print*,'...done'
 

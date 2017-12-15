@@ -11,7 +11,7 @@ program main
   use md_params_domain, only: getpar_domain, type_params_domain
   use md_grid, only: get_domaininfo, getgrid
   use md_params_soil, only: getsoil_field
-  use md_forcing, only: getclimate_wfdei, getclimate_cru, getninput, ninput_type, gettot_ninput, &
+  use md_forcing, only: getclimate, getninput, ninput_type, gettot_ninput, &
     getfapar, getlanduse, getco2
   use md_params_core, only: dummy, maxgrid, ndayyear
   use md_biosphere, only: biosphere_annual
@@ -100,32 +100,20 @@ program main
     !----------------------------------------------------------------
     ! Climate
     if (verbose) print*,'getting WFDEI climate ...'
-    interface%climate(:) = getclimate_wfdei( &
-                                            trim(interface%params_siml%sitename), &
-                                            interface%domaininfo, &
-                                            interface%grid, &
-                                            interface%steering%init, &
-                                            interface%steering%climateyear, &
-                                            interface%params_siml%in_ppfd,  &
-                                            interface%params_siml%in_netrad &
-                                            )
+    interface%climate(:) = getclimate( &
+                                      interface%domaininfo, &
+                                      interface%grid, &
+                                      interface%steering%init, &
+                                      interface%steering%climateyear, &
+                                      interface%params_siml%in_ppfd,  &
+                                      interface%params_siml%in_netrad &
+                                      )
     if (verbose) print*,'... done.'
-
-    ! add dfsun from CRU data to climate type
-    if (verbose) print*,'getting CRU climate ...'
-    call getclimate_cru( &
-                        trim(interface%params_siml%sitename), &
-                        interface%domaininfo, &
-                        interface%grid, &
-                        interface%steering%init, &
-                        interface%steering%climateyear, &
-                        interface%climate(:) &
-                        )
 
     ! CO2
     interface%pco2 = getco2( &
                             trim(runname), &
-                            trim(interface%params_siml%sitename), &
+                            interface%domaininfo, &
                             interface%steering%forcingyear, &
                             interface%params_siml%const_co2_year, &
                             interface%params_siml%firstyeartrend,&
@@ -136,7 +124,7 @@ program main
     ndep_field(:) = getninput( &
                               "ndep", &
                               trim(runname), &
-                              trim(interface%params_siml%sitename), &
+                              interface%domaininfo, &
                               interface%steering%forcingyear, &
                               interface%params_siml%firstyeartrend, &
                               interface%params_siml%const_ndep_year, &
@@ -149,7 +137,7 @@ program main
     nfert_field(:) = getninput( &
                               "nfert", &
                               trim(runname), &
-                              trim(interface%params_siml%sitename), &
+                              interface%domaininfo, &
                               interface%steering%forcingyear, &
                               interface%params_siml%firstyeartrend, &
                               interface%params_siml%const_nfert_year, &
@@ -164,7 +152,7 @@ program main
     ! write(0,*) 'SOFUN: holding harvesting regime constant at 1993 level.'
     interface%landuse(:) = getlanduse( &
                                       trim(runname), &
-                                      trim(interface%params_siml%sitename), &
+                                      interface%domaininfo, &
                                       interface%steering%forcingyear, &
                                       interface%params_siml%do_grharvest_forcing_file, &
                                       interface%params_siml%const_lu_year, &

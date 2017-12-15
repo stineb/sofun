@@ -24,7 +24,7 @@ module md_grid
     real    :: dlon
     real    :: dlat
     integer :: maxgrid
-    integer, dimension(:,:), allocatable :: gridarray
+    real, dimension(:,:), allocatable :: gridarray
     real, dimension(:), allocatable :: lon
     real, dimension(:), allocatable :: lat
     real :: landarea
@@ -123,7 +123,7 @@ contains
     jpngr = 0
     do ilon=1,domaininfo%nlon
       do ilat=1,domaininfo%nlat
-        if (domaininfo%gridarray(ilon,ilat)<1) then
+        if (domaininfo%gridarray(ilon,ilat)<1.0) then
           jpngr = jpngr + 1
 
           ! ! search particular
@@ -137,6 +137,8 @@ contains
     end do
     domaininfo%maxgrid = jpngr
 
+    ! Copy domain parameter
+    domaininfo%domain_name = params_domain%domain_name
 
     ! get resolution
     domaininfo%dlon = domaininfo%lon(2) - domaininfo%lon(1)
@@ -206,7 +208,7 @@ contains
     !----------------------------------------------------------------    
     ! Get associations of elevation-array gridcells to jpngr (ilon, ilat)
     !----------------------------------------------------------------    
-    print*,'getting elevation from file: ', "./input/global/grid/"//trim(params_domain%filnam_topography)
+    print*,'getting grid ...'
 
     call check( nf90_open( "./input/global/grid/"//trim(params_domain%filnam_topography), NF90_NOWRITE, ncid ) )
 

@@ -132,12 +132,12 @@ swbm:
 # reduced model setup: only SPLASH and PMODEL
 pmodel: 
 	 $(MAKE) pmodel -C src
-	 $(FCOM) -o $(PMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
+	 $(FCOM) -o $(PMODEL_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
 # reduced model setup: only SPLASH and PMODEL
 dbgpmodel: 
 	 $(MAKE) pmodel -C src
-	 $(FCOM) -o $(PMODEL_EXE) $(DEBUGFLAGS) $(ARCHIVES)
+	 $(FCOM) -o $(PMODEL_EXE) $(DEBUGFLAGS) $(ARCHIVES) $(LIBS)
 
 pmodel_swbm: 
 	 $(MAKE) pmodel_swbm -C src

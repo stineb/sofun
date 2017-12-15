@@ -2,10 +2,10 @@ module md_biosphere
 
   use md_params_core
   use md_classdefs
-  use md_plant, only: plant_type, initdaily_plant, initglobal_plant, getout_daily_plant, getout_annual_plant, getpar_modl_plant, initoutput_plant, writeout_ascii_plant, initio_plant, initio_nc_plant, writeout_nc_plant
+  use md_plant, only: plant_type, initdaily_plant, initglobal_plant, getout_daily_plant, getout_annual_plant, getpar_modl_plant, initoutput_plant, writeout_ascii_plant, initio_plant
   use md_params_soil, only: paramtype_soil
   use md_waterbal, only: solartype, waterbal, getsolar, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, writeout_nc_waterbal, get_rlm_waterbal
-  use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp
+  use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp, initio_nc_gpp, writeout_nc_gpp
   use md_vegdynamics, only: vegdynamics
   use md_tile, only: tile_type, initglobal_tile
   use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_forcing, initio_nc_forcing, writeout_ascii_forcing, writeout_nc_forcing
@@ -92,7 +92,7 @@ contains
     !----------------------------------------------------------------
     if (verbose) print*, 'initio_nc_() ...'
     call initio_nc_forcing()
-    call initio_nc_plant()
+    call initio_nc_gpp()
     call initio_nc_waterbal()
     if (verbose) print*, '... done'
 
@@ -278,7 +278,7 @@ contains
     ! Write to NetCDF output
     !----------------------------------------------------------------
     call writeout_nc_forcing()
-    call writeout_nc_plant()
+    call writeout_nc_gpp()
     call writeout_nc_waterbal()
 
     ! xxx insignificant

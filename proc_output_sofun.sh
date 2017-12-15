@@ -1,24 +1,94 @@
 #!/bin/bash
 
-runname="s0_fapar3g_global"
-outyears=`seq 1982 2011`
-let dt=1
+proc_sitescale_site(){
+	## Combines output files, written for each year, along time axis. For one specific site.
 
-cd output_nc
+	## 1. argument runname/site name
 
-# ## sum up to annual values
-# for yr in ${outyears}
-# do
-# 	cdo yearsum ${runname}.${yr}.d.gpp.nc ${runname}.${yr}.a.gpp.nc
-# done
+	##-------------------------------------
+	## Daily
+	##-------------------------------------
+	## GPP
+	cdo mergetime output_nc/$1.*.d.wcont.nc   output_nc/$1.d.wcont.nc
+	rm output_nc/$1.*.d.wcont.nc
 
-# ## output is in daily average values, multiply by output periodicity
-# cdo -O mulc,dt ${runname}.${yr}.a.gpp.nc ${runname}.${yr}.a.gpp.nc
+	## AET
+	cdo mergetime output_nc/$1.*.d.pet.nc   output_nc/$1.d.pet.nc
+	rm output_nc/$1.*.d.pet.nc
 
-## stack annual files along time axis
-cdo mergetime ${runname}.*.a.gpp.nc ${runname}.a.gpp.nc
-cdo mergetime ${runname}.*.a.aet.nc ${runname}.a.aet.nc
-cdo mergetime ${runname}.*.a.pet.nc ${runname}.a.pet.nc
-cdo mergetime ${runname}.*.a.alpha.nc ${runname}.a.alpha.nc
+	## PET
+	cdo mergetime output_nc/$1.*.d.aet.nc   output_nc/$1.d.aet.nc
+	rm output_nc/$1.*.d.aet.nc
 
-cd ..
+	## WCONT
+	cdo mergetime output_nc/$1.*.d.gpp.nc   output_nc/$1.d.gpp.nc
+	rm output_nc/$1.*.d.gpp.nc
+
+	## fAPAR
+	cdo mergetime output_nc/$1.*.d.fapar.nc   output_nc/$1.d.fapar.nc
+	rm output_nc/$1.*.d.fapar.nc
+
+	## PPFD
+	cdo mergetime output_nc/$1.*.d.ppfd.nc   output_nc/$1.d.ppfd.nc
+	rm output_nc/$1.*.d.ppfd.nc
+
+	## TEMPERATURE
+	cdo mergetime output_nc/$1.*.d.temp.nc   output_nc/$1.d.temp.nc
+	rm output_nc/$1.*.d.temp.nc
+
+
+	##-------------------------------------
+	## Annual
+	##-------------------------------------
+	## GPP
+	cdo mergetime output_nc/$1.*.a.wcont.nc   output_nc/$1.a.wcont.nc
+	rm output_nc/$1.*.a.wcont.nc
+
+	## AET
+	cdo mergetime output_nc/$1.*.a.pet.nc   output_nc/$1.a.pet.nc
+	rm output_nc/$1.*.a.pet.nc
+
+	## PET
+	cdo mergetime output_nc/$1.*.a.aet.nc   output_nc/$1.a.aet.nc
+	rm output_nc/$1.*.a.aet.nc
+
+	## WCONT
+	cdo mergetime output_nc/$1.*.a.gpp.nc   output_nc/$1.a.gpp.nc
+	rm output_nc/$1.*.a.gpp.nc
+
+	## fAPAR
+	cdo mergetime output_nc/$1.*.a.fapar.nc   output_nc/$1.a.fapar.nc
+	rm output_nc/$1.*.a.fapar.nc
+
+	## PPFD
+	cdo mergetime output_nc/$1.*.a.ppfd.nc   output_nc/$1.a.ppfd.nc
+	rm output_nc/$1.*.a.ppfd.nc
+
+	## TEMPERATURE
+	cdo mergetime output_nc/$1.*.a.temp.nc   output_nc/$1.a.temp.nc
+	rm output_nc/$1.*.a.temp.nc
+
+	## ALPHA (AET/PET)
+	cdo mergetime output_nc/$1.*.a.alpha.nc   output_nc/$1.a.alpha.nc
+	rm output_nc/$1.*.a.alpha.nc	
+
+	return 0
+}
+
+proc_sitescale_simsuite(){
+	## Combines output files, written for each year, along time axis. For an entire simulation suite.
+	## Uses ./sitelist.txt for a list of sites. Create this file using get_sitelist_simsuite.py
+
+	python get_sitelist_simsuite.py
+
+	sitelist=`cat sitelist.txt` 
+
+	for idx in $sitelist
+	do
+		proc_sitescale_site $idx
+	done
+
+	return 0
+}
+
+

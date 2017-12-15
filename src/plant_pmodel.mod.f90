@@ -15,7 +15,7 @@ module md_plant
   public plant_type, dgpp, getpar_modl_plant, params_pft_plant,              &
     initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant,     &
     writeout_ascii_plant, maxdoy, initglobal_plant, get_leaftraits, initpft, &
-    getout_annual_plant, initio_nc_plant, writeout_nc_plant
+    getout_annual_plant
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -76,10 +76,8 @@ module md_plant
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
-  real, allocatable, dimension(:,:,:) :: outdgpp    ! daily gross primary production [gC/m2/d]
 
   ! annual
-  real, dimension(:,:), allocatable :: outagpp
   real, dimension(:,:), allocatable :: outanarea_mb
   real, dimension(:,:), allocatable :: outanarea_cw
   real, dimension(:,:), allocatable :: outalai
@@ -88,14 +86,6 @@ module md_plant
 
   ! required for outputting leaf trait variables in other modules
   integer, dimension(npft) :: maxdoy  ! DOY of maximum LAI
-
-  !----------------------------------------------------------------
-  ! Module-specific NetCDF output file and variable names
-  !----------------------------------------------------------------
-  character(len=256) :: ncoutfilnam_dgpp
-  character(len=256) :: ncoutfilnam_agpp
-
-  character(len=*), parameter :: GPP_NAME="gpp"
 
 contains
 
@@ -375,17 +365,11 @@ contains
 
     ! arguments
     integer, intent(in) :: ngridcells
-
-    ! high frequency output variables
-    if ( interface%steering%init .and. interface%params_siml%loutdgpp ) allocate( outdgpp(npft,interface%params_siml%outnt,ngridcells) )
-
-    if ( interface%params_siml%loutdgpp ) outdgpp(:,:,:) = 0.0
     
     ! annual output variables
     if (interface%params_siml%loutplant) then
 
       if (interface%steering%init) then
-        allocate( outagpp(npft,ngridcells) )
         allocate( outanarea_mb(npft,ngridcells) )
         allocate( outanarea_cw(npft,ngridcells) )
         allocate( outalai(npft,ngridcells) )
@@ -393,7 +377,6 @@ contains
         allocate( outacton_lm(npft,ngridcells) )
       end if
       
-      outagpp     (:,:) = 0.0
       outanarea_mb(:,:) = 0.0
       outanarea_cw(:,:) = 0.0
       outalai     (:,:) = 0.0
@@ -420,21 +403,12 @@ contains
     !////////////////////////////////////////////////////////////////
     ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
     !----------------------------------------------------------------
-    ! GPP
-    if (interface%params_siml%loutdgpp) then
-      filnam=trim(prefix)//'.d.gpp.out'
-      print*,'filnam ', filnam
-      open(101,file=filnam,err=999,status='unknown')
-    end if 
+
 
     !////////////////////////////////////////////////////////////////
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
     !----------------------------------------------------------------
     if (interface%params_siml%loutplant) then
-
-      ! GPP 
-      filnam=trim(prefix)//'.a.gpp.out'
-      open(310,file=filnam,err=999,status='unknown')
 
       ! METABOLIC NAREA (AT ANNUAL LAI MAXIMUM)
       filnam=trim(prefix)//'.a.narea_mb.out'
@@ -459,84 +433,6 @@ contains
     999  stop 'INITIO: error opening output files'
 
   end subroutine initio_plant
-
-
-  subroutine initio_nc_plant()
-    !////////////////////////////////////////////////////////////////
-    ! Opens NetCDF output files.
-    !----------------------------------------------------------------
-    use netcdf
-    use md_io_netcdf, only: init_nc_3D, check
-    use md_interface, only: interface
-
-    ! local variables
-    character(len=256) :: prefix
-
-    character(len=*), parameter :: TITLE = "SOFUN GP-model output, module md_plant"
-    character(len=4) :: year_char
-
-    integer :: jpngr, doy
-
-    write(year_char,999) interface%steering%outyear
-
-    prefix = "./output_nc/"//trim(interface%params_siml%runname)
-
-    if ( .not. interface%steering%spinup ) then
-      !----------------------------------------------------------------
-      ! Annual GPP output file 
-      !----------------------------------------------------------------
-      if (interface%params_siml%loutplant) then
-        ncoutfilnam_agpp = trim(prefix)//'.'//year_char//".a.gpp.nc"
-        print*,'initialising ', trim(ncoutfilnam_agpp), '...'
-        call init_nc_3D( filnam  = trim(ncoutfilnam_agpp), &
-                        nlon     = interface%domaininfo%nlon, &
-                        nlat     = interface%domaininfo%nlat, &
-                        lon      = interface%domaininfo%lon, &
-                        lat      = interface%domaininfo%lat, &
-                        outyear  = interface%steering%outyear, &
-                        outdt    = 365, &
-                        outnt    = 1, &
-                        varnam   = GPP_NAME, &
-                        varunits = "gC m-2 yr-1", &
-                        longnam  = "annual gross primary productivivty", &
-                        title    = TITLE, &
-                        globatt1_nam = "fapar_source", &
-                        globatt1_val = interface%params_siml%fapar_forcing_source &
-                        )
-      end if
-
-      if ( interface%steering%outyear>=interface%params_siml%daily_out_startyr .and. &
-        interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
-        !----------------------------------------------------------------
-        ! Daily GPP output file 
-        !----------------------------------------------------------------
-        if (interface%params_siml%lncoutdgpp) then
-          ncoutfilnam_dgpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
-          print*,'initialising ', trim(ncoutfilnam_dgpp), '...'
-          call init_nc_3D( filnam  = trim(ncoutfilnam_dgpp), &
-                          nlon     = interface%domaininfo%nlon, &
-                          nlat     = interface%domaininfo%nlat, &
-                          lon      = interface%domaininfo%lon, &
-                          lat      = interface%domaininfo%lat, &
-                          outyear  = interface%steering%outyear, &
-                          outdt    = interface%params_siml%outdt, &
-                          outnt    = interface%params_siml%outnt, &
-                          varnam   = GPP_NAME, &
-                          varunits = "gC m-2 d-1", &
-                          longnam  = "daily gross primary productivivty", &
-                          title    = TITLE, &
-                          globatt1_nam = "fapar_source", &
-                          globatt1_val = interface%params_siml%fapar_forcing_source &
-                          )
-        end if
-
-      end if
-
-    end if
-
-    999  format (I4.4)
-    
-  end subroutine initio_nc_plant
 
 
   subroutine getout_daily_plant( plant, jpngr, moy, doy )
@@ -565,16 +461,15 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
-    if ( interface%params_siml%loutdgpp ) outdgpp(:,it,jpngr) = outdgpp(:,it,jpngr) + dgpp(:) / real( interface%params_siml%outdt )
+    ! it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    if (interface%params_siml%loutplant) then
-      outagpp(:,jpngr) = outagpp(:,jpngr) + dgpp(:)
-    end if
+    ! if (interface%params_siml%loutplant) then
+    !   ! nothing yet
+    ! end if
 
   end subroutine getout_daily_plant
 
@@ -628,20 +523,18 @@ contains
     ! Write daily value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    if ( .not. interface%steering%spinup &
-         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+    ! if ( .not. interface%steering%spinup &
+    !      .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+    !      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      ! Write daily output only during transient simulation
-      do it=1,interface%params_siml%outnt
+    !   ! Write daily output only during transient simulation
+    !   do it=1,interface%params_siml%outnt
 
-        ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
+    !     ! Define 'itime' as a decimal number corresponding to day in the year + year
+    !     itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
         
-        if (interface%params_siml%loutdgpp  ) write(101,999) itime, sum(outdgpp(:,it,jpngr))
-
-      end do
-    end if
+    !   end do
+    ! end if
 
     !-------------------------------------------------------------------------
     ! ANNUAL OUTPUT
@@ -652,7 +545,6 @@ contains
 
       itime = real(interface%steering%outyear)
 
-      write(310,999) itime, sum(outagpp(:,jpngr))
       write(319,999) itime, sum(outanarea_mb(:,jpngr))
       write(320,999) itime, sum(outanarea_cw(:,jpngr))
       write(321,999) itime, sum(outacton_lm(:,jpngr))
@@ -665,55 +557,5 @@ contains
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_plant
-
-
-  subroutine writeout_nc_plant()
-    !/////////////////////////////////////////////////////////////////////////
-    ! Write NetCDF output
-    !-------------------------------------------------------------------------
-    use netcdf
-    use md_io_netcdf, only: write_nc_2D, write_nc_3D, check
-    use md_interface, only: interface
-
-    if (npft>1) stop 'writeout_nc_plant(): npft > 1. Think of something clever.'
-
-    if ( .not. interface%steering%spinup ) then
-      !-------------------------------------------------------------------------
-      ! Annual GPP
-      !-------------------------------------------------------------------------
-      if (interface%params_siml%loutplant) print*,'writing ', trim(ncoutfilnam_agpp), '...'
-      if (interface%params_siml%loutplant) call write_nc_2D( trim(ncoutfilnam_agpp), &
-                                                              GPP_NAME, &
-                                                              interface%domaininfo%maxgrid, &
-                                                              interface%domaininfo%nlon, &
-                                                              interface%domaininfo%nlat, &
-                                                              interface%grid(:)%ilon, &
-                                                              interface%grid(:)%ilat, &
-                                                              interface%grid(:)%dogridcell, &
-                                                              outagpp(1,:) &
-                                                              )
-
-      if (       interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-           .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
-        !-------------------------------------------------------------------------
-        ! Daily GPP
-        !-------------------------------------------------------------------------
-        if (interface%params_siml%lncoutdgpp) print*,'writing ', trim(ncoutfilnam_dgpp), '...'
-        if (interface%params_siml%lncoutdgpp) call write_nc_3D( trim(ncoutfilnam_dgpp), &
-                                                                GPP_NAME, &
-                                                                interface%domaininfo%maxgrid, &
-                                                                interface%domaininfo%nlon, &
-                                                                interface%domaininfo%nlat, &
-                                                                interface%grid(:)%ilon, &
-                                                                interface%grid(:)%ilat, &
-                                                                interface%params_siml%outnt, &
-                                                                interface%grid(:)%dogridcell, &
-                                                                outdgpp(1,:,:) &
-                                                                )
-      end if
-    end if
-
-  end subroutine writeout_nc_plant
-
 
 end module md_plant

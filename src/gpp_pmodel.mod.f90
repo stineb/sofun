@@ -25,7 +25,8 @@ module md_gpp
   private
   public dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
     initdaily_gpp, gpp, getlue, getout_daily_gpp, getout_annual_gpp, &
-    writeout_ascii_gpp, outtype_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd
+    writeout_ascii_gpp, outtype_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd, &
+    initio_nc_gpp, writeout_nc_gpp
     
   !----------------------------------------------------------------
   ! Module-specific state variables
@@ -136,6 +137,7 @@ module md_gpp
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
+  real, allocatable, dimension(:,:,:) :: outdgpp    ! daily gross primary production [gC/m2/d]
   real, allocatable, dimension(:,:,:) :: outdrd     ! daily dark respiration [gC/m2/d]
   real, allocatable, dimension(:,:,:) :: outdtransp ! daily transpiration [mm]
 
@@ -145,6 +147,7 @@ module md_gpp
   ! real, allocatable, dimension(:,:,:) :: outmtransp ! monthly transpiration [mm]
 
   ! annual
+  real, dimension(:,:), allocatable :: outagpp
   real, dimension(:,:), allocatable :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
   real, dimension(:,:), allocatable :: outavcmax_25     ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
   real, dimension(:,:), allocatable :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
@@ -158,6 +161,14 @@ module md_gpp
   ! at day of year when LAI is at its maximum.
   real, dimension(npft,ndayyear) :: outdvcmax
   real, dimension(npft,ndayyear) :: outdvcmax25
+
+  !----------------------------------------------------------------
+  ! Module-specific NetCDF output file and variable names
+  !----------------------------------------------------------------
+  character(len=256) :: ncoutfilnam_dgpp
+  character(len=256) :: ncoutfilnam_agpp
+
+  character(len=*), parameter :: GPP_NAME="gpp"
 
 contains
 
@@ -1322,6 +1333,13 @@ contains
     !----------------------------------------------------------------
     ! DAILY OUTPUT
     !----------------------------------------------------------------
+    ! GPP
+    if (interface%params_siml%loutdgpp) then
+      filnam=trim(prefix)//'.d.gpp.out'
+      print*,'filnam ', filnam
+      open(101,file=filnam,err=888,status='unknown')
+    end if 
+
     ! RD
     if (interface%params_siml%loutdrd) then
       filnam=trim(prefix)//'.d.rd.out'
@@ -1360,6 +1378,10 @@ contains
     ! ANNUAL OUTPUT
     !----------------------------------------------------------------
     if (interface%params_siml%loutgpp) then
+
+      ! GPP 
+      filnam=trim(prefix)//'.a.gpp.out'
+      open(310,file=filnam,err=888,status='unknown')
 
       ! VCMAX (canopy-level, annual maximum) (mol m-2 s-1)
       filnam=trim(prefix)//'.a.vcmax.out'
@@ -1402,6 +1424,97 @@ contains
   end subroutine initio_gpp
 
 
+  subroutine initio_nc_gpp()
+    !////////////////////////////////////////////////////////////////
+    ! Opens NetCDF output files.
+    !----------------------------------------------------------------
+    use netcdf
+    use md_io_netcdf, only: init_nc_3D, check
+    use md_interface, only: interface
+
+    ! local variables
+    character(len=256) :: prefix
+
+    character(len=*), parameter :: TITLE = "SOFUN GP-model output, module md_gpp"
+    character(len=4)  :: year_char
+    character(len=12) :: beta_char
+    character(len=12) :: rd_to_vcmax_char
+    character(len=12) :: kphio_char
+
+    integer :: jpngr, doy
+
+    write(year_char,999) interface%steering%outyear
+
+    ! convert parameter values to charaters
+    write(beta_char,888) params_gpp%beta
+    write(rd_to_vcmax_char,888) params_pft_gpp(1)%rd_to_vcmax
+    write(kphio_char,888) params_pft_gpp(1)%kphio
+
+    prefix = "./output_nc/"//trim(interface%params_siml%runname)
+
+    if ( .not. interface%steering%spinup ) then
+      !----------------------------------------------------------------
+      ! Annual GPP output file 
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutgpp) then
+        ncoutfilnam_agpp = trim(prefix)//'.'//year_char//".a.gpp.nc"
+        print*,'initialising ', trim(ncoutfilnam_agpp), '...'
+        call init_nc_3D( filnam  = trim(ncoutfilnam_agpp), &
+                        nlon     = interface%domaininfo%nlon, &
+                        nlat     = interface%domaininfo%nlat, &
+                        lon      = interface%domaininfo%lon, &
+                        lat      = interface%domaininfo%lat, &
+                        outyear  = interface%steering%outyear, &
+                        outdt    = 365, &
+                        outnt    = 1, &
+                        varnam   = GPP_NAME, &
+                        varunits = "gC m-2 yr-1", &
+                        longnam  = "annual gross primary productivivty", &
+                        title    = TITLE, &
+                        globatt1_nam = "fapar_source",      globatt1_val = interface%params_siml%fapar_forcing_source, &
+                        globatt2_nam = "param_beta",        globatt2_val = beta_char, &
+                        globatt3_nam = "param_rd_to_vcmax", globatt3_val = rd_to_vcmax_char, &
+                        globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char  &
+                        )
+      end if
+
+      if ( interface%steering%outyear>=interface%params_siml%daily_out_startyr .and. &
+        interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+        !----------------------------------------------------------------
+        ! Daily GPP output file 
+        !----------------------------------------------------------------
+        if (interface%params_siml%lncoutdgpp) then
+          ncoutfilnam_dgpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
+          print*,'initialising ', trim(ncoutfilnam_dgpp), '...'
+          call init_nc_3D( filnam  = trim(ncoutfilnam_dgpp), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = GPP_NAME, &
+                          varunits = "gC m-2 d-1", &
+                          longnam  = "daily gross primary productivivty", &
+                          title    = TITLE, &
+                          globatt1_nam = "fapar_source",      globatt1_val = interface%params_siml%fapar_forcing_source, &
+                          globatt2_nam = "param_beta",        globatt2_val = beta_char, &
+                          globatt3_nam = "param_rd_to_vcmax", globatt3_val = rd_to_vcmax_char, &
+                          globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char  &
+                          )
+        end if
+
+      end if
+
+    end if
+
+    888  format (F12.6)
+    999  format (I4.4)
+    
+  end subroutine initio_nc_gpp
+
+
   subroutine initoutput_gpp( ngridcells )
     !////////////////////////////////////////////////////////////////
     !  Initialises waterbalance-specific output variables
@@ -1413,24 +1526,19 @@ contains
     integer, intent(in) :: ngridcells
 
     ! daily
-    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd    (npft,ndayyear,ngridcells) )
-    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp(npft,ndayyear,ngridcells) )
+    if ( interface%steering%init.and.interface%params_siml%loutdgpp )   allocate( outdgpp(npft,interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and. interface%params_siml%loutdrd    ) allocate( outdrd(npft,interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and. interface%params_siml%loutdtransp) allocate( outdtransp(npft,interface%params_siml%outnt,ngridcells) )
 
+    if ( interface%params_siml%loutdgpp )  outdgpp(:,:,:)    = 0.0
     if (interface%params_siml%loutdrd    ) outdrd(:,:,:)     = 0.0
     if (interface%params_siml%loutdtransp) outdtransp(:,:,:) = 0.0
-
-    ! ! monthly
-    ! if (interface%steering%init.and.interface%params_siml%loutdgpp   ) allocate( outmgpp      (npft,nmonth,ngridcells) )
-    ! if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outmrd       (npft,nmonth,ngridcells) )
-    ! if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outmtransp   (npft,nmonth,ngridcells) )
-    ! outmgpp(:,:,:)    = 0.0
-    ! outmrd(:,:,:)     = 0.0
-    ! outmtransp(:,:,:) = 0.0
 
     ! annual
     if (interface%params_siml%loutgpp) then
 
       if (interface%steering%init) then
+        allocate( outagpp       (npft,ngridcells) )
         allocate( outavcmax     (npft,ngridcells) )
         allocate( outavcmax_25  (npft,ngridcells) )
         allocate( outavcmax_leaf(npft,ngridcells) )
@@ -1441,6 +1549,7 @@ contains
         allocate( outaiwue      (npft,ngridcells) )
       end if
 
+      outagpp(:,:)        = 0.0
       outavcmax(:,:)      = 0.0
       outavcmax_25(:,:)   = 0.0
       outavcmax_leaf(:,:) = 0.0
@@ -1471,28 +1580,19 @@ contains
     integer, intent(in)                                 :: jpngr
     integer, intent(in)                                 :: doy
 
-    ! local 
-    real, dimension(npft), save :: agpp        ! annual total GPP
-
-    ! sum up daily GPP to annual total
-    if (doy==1) agpp(:) = 0.0
-    agpp(:) = agpp(:) + dgpp(:)
+    ! local
+    integer :: it
 
     !----------------------------------------------------------------
-    ! DAILY
+    ! DAILY FOR HIGH FREQUENCY OUTPUT
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if (interface%params_siml%loutdrd    ) outdrd(:,doy,jpngr)     = drd(:)
-    if (interface%params_siml%loutdtransp) outdtransp(:,doy,jpngr) = dtransp(:)
+    it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
 
-    ! !----------------------------------------------------------------
-    ! ! MONTHLY SUM OVER DAILY VALUES
-    ! ! Collect monthly output variables as sum of daily values
-    ! !----------------------------------------------------------------
-    ! if (interface%params_siml%loutdgpp   ) outmgpp(:,moy,jpngr)    = outmgpp(:,moy,jpngr) + dgpp(:)
-    ! if (interface%params_siml%loutdrd    ) outmrd(:,moy,jpngr)     = outmrd(:,moy,jpngr)  + drd(:)
-    ! if (interface%params_siml%loutdrd    ) outmtransp(:,moy,jpngr) = outmtransp(:,moy,jpngr)  + dtransp(:)
+    if (interface%params_siml%loutdgpp   ) outdgpp(:,it,jpngr)    = outdgpp(:,it,jpngr)    + dgpp(:)    / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdrd    ) outdrd(:,it,jpngr)     = outdrd(:,it,jpngr)     + drd(:)     / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdtransp) outdtransp(:,it,jpngr) = outdtransp(:,it,jpngr) + dtransp(:) / real( interface%params_siml%outdt )
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
@@ -1507,6 +1607,8 @@ contains
     ! weighted by daily GPP
     if (interface%params_siml%loutgpp) then
 
+      outagpp(:,jpngr)        = outagpp(:,jpngr)        + dgpp(:)
+
       outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * dgpp(:)
       outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * dgpp(:)
       outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * dgpp(:)
@@ -1514,11 +1616,11 @@ contains
       outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * dgpp(:)
 
       if (doy==ndayyear) then
-        outachi       (:,jpngr) = outachi       (:,jpngr) / agpp(:)
-        outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / agpp(:)
-        outaci        (:,jpngr) = outaci        (:,jpngr) / agpp(:)
-        outags        (:,jpngr) = outags        (:,jpngr) / agpp(:)
-        outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / agpp(:)
+        outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
+        outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
+        outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
+        outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
+        outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
       end if
 
     end if
@@ -1540,7 +1642,7 @@ contains
     ! outanrlarea(jpngr) = anrlarea
     if (interface%params_siml%loutgpp) then
       ! xxx to do: get vcmax at annual maximum (of monthly values)
-      outavcmax(1,jpngr)   = maxval(outdvcmax(1,:))
+      outavcmax(1,jpngr)    = maxval(outdvcmax(1,:))
       outavcmax_25(1,jpngr) = maxval(outdvcmax25(1,:))
     end if
 
@@ -1555,7 +1657,7 @@ contains
 
     ! local variables
     real :: itime
-    integer :: day, moy, jpngr
+    integer :: it, jpngr
 
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii_gpp: think of something ...'
@@ -1564,17 +1666,19 @@ contains
     !-------------------------------------------------------------------------
     ! DAILY OUTPUT
     !-------------------------------------------------------------------------
-    if ( .not. interface%steering%spinup .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+    if ( .not. interface%steering%spinup &
+         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
       ! Write daily output only during transient simulation
-      do day=1,ndayyear
+      do it=1,interface%params_siml%outnt
 
         ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
-
-        if (interface%params_siml%loutdrd    ) write(135,999) itime, sum(outdrd(:,day,jpngr))
-        if (interface%params_siml%loutdtransp) write(114,999) itime, sum(outdtransp(:,day,jpngr))
+        itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
+        
+        if (interface%params_siml%loutdgpp  )  write(101,999) itime, sum(outdgpp(:,it,jpngr))
+        if (interface%params_siml%loutdrd    ) write(135,999) itime, sum(outdrd(:,it,jpngr))
+        if (interface%params_siml%loutdtransp) write(114,999) itime, sum(outdtransp(:,it,jpngr))
 
       end do
 
@@ -1589,6 +1693,7 @@ contains
   
       itime = real(interface%steering%outyear)
 
+      write(310,999) itime, sum(outagpp(:,jpngr))
       write(323,999) itime, sum(outavcmax(:,jpngr))
       write(654,999) itime, sum(outavcmax_25(:,jpngr))
       write(653,999) itime, sum(outalue(:,jpngr))
@@ -1605,6 +1710,55 @@ contains
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_gpp
+
+
+  subroutine writeout_nc_gpp()
+    !/////////////////////////////////////////////////////////////////////////
+    ! Write NetCDF output
+    !-------------------------------------------------------------------------
+    use netcdf
+    use md_io_netcdf, only: write_nc_2D, write_nc_3D, check
+    use md_interface, only: interface
+
+    if (npft>1) stop 'writeout_nc_gpp(): npft > 1. Think of something clever.'
+
+    if ( .not. interface%steering%spinup ) then
+      !-------------------------------------------------------------------------
+      ! Annual GPP
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutgpp) print*,'writing ', trim(ncoutfilnam_agpp), '...'
+      if (interface%params_siml%loutgpp) call write_nc_2D( trim(ncoutfilnam_agpp), &
+                                                              GPP_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outagpp(1,:) &
+                                                              )
+
+      if (       interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+           .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+        !-------------------------------------------------------------------------
+        ! Daily GPP
+        !-------------------------------------------------------------------------
+        if (interface%params_siml%lncoutdgpp) print*,'writing ', trim(ncoutfilnam_dgpp), '...'
+        if (interface%params_siml%lncoutdgpp) call write_nc_3D( trim(ncoutfilnam_dgpp), &
+                                                                GPP_NAME, &
+                                                                interface%domaininfo%maxgrid, &
+                                                                interface%domaininfo%nlon, &
+                                                                interface%domaininfo%nlat, &
+                                                                interface%grid(:)%ilon, &
+                                                                interface%grid(:)%ilat, &
+                                                                interface%params_siml%outnt, &
+                                                                interface%grid(:)%dogridcell, &
+                                                                outdgpp(1,:,:) &
+                                                                )
+      end if
+    end if
+
+  end subroutine writeout_nc_gpp
 
 
 end module md_gpp

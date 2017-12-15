@@ -1,4 +1,4 @@
-module md_forcing_siterun
+module md_forcing
   !////////////////////////////////////////////////////////////////
   ! Module contains forcing variables (climate, co2, ...), and
   ! subroutines used to read forcing input files for a specific year
@@ -12,6 +12,7 @@ module md_forcing_siterun
   use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu, dummy
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
+  use md_grid, only: gridtype, domaininfo_type  
 
   implicit none
 
@@ -40,13 +41,13 @@ module md_forcing_siterun
 
 contains
 
-  function getco2( runname, sitename, forcingyear, const_co2_year, firstyeartrend, co2_forcing_file ) result( pco2 )
+  function getco2( runname, domaininfo, forcingyear, const_co2_year, firstyeartrend, co2_forcing_file ) result( pco2 )
     !////////////////////////////////////////////////////////////////
     !  Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: runname
-    character(len=*), intent(in) :: sitename
+    type( domaininfo_type ), intent(in) :: domaininfo
     integer, intent(in) :: forcingyear
     integer, intent(in) :: const_co2_year
     integer, intent(in) :: firstyeartrend
@@ -64,19 +65,19 @@ contains
       readyear = forcingyear
     end if
     ! write(0,*) 'GETCO2: use CO2 data of year ', readyear
-    pco2 = getvalreal( 'sitedata/co2/'//trim(sitename)//'/'//trim(co2_forcing_file), readyear )
+    pco2 = getvalreal( 'sitedata/co2/'//trim(domaininfo%domain_name)//'/'//trim(co2_forcing_file), readyear )
 
   end function getco2
 
 
-  function getninput( ntype, runname, sitename, forcingyear, firstyeartrend, const_ninput_year, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
+  function getninput( ntype, runname, domaininfo, forcingyear, firstyeartrend, const_ninput_year, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
     !////////////////////////////////////////////////////////////////
     ! Dummy function
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: ntype   ! either "nfert" or "ndep"
     character(len=*), intent(in) :: runname
-    character(len=*), intent(in) :: sitename
+    type( domaininfo_type ), intent(in) :: domaininfo
     integer, intent(in)          :: forcingyear
     integer, intent(in) :: firstyeartrend
     integer, intent(in) :: const_ninput_year
@@ -122,37 +123,32 @@ contains
   end function gettot_ninput
 
 
-  function getfapar( runname, sitename, forcingyear, fapar_forcing_source ) result( fapar_field )
+  function getfapar( domaininfo, grid, year, fapar_forcing_source ) result( fapar_field )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
     ! arguments
-    character(len=*), intent(in) :: runname
-    character(len=*), intent(in) :: sitename
-    integer, intent(in)          :: forcingyear
+    type( domaininfo_type ), intent(in) :: domaininfo
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
+    integer, intent(in) :: year
     character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
-    real, dimension(ndayyear,maxgrid) :: fapar_field
+    real, dimension(ndayyear,domaininfo%maxgrid) :: fapar_field
 
     ! local variables 
-    integer :: jpngr
     integer :: readyear
     character(len=4) :: faparyear_char
 
     if (trim(fapar_forcing_source)=='NA') then
       ! If in simulation parameter file 'NA' is specified for 'fapar_forcing_source', then set fapar_field to dummy value
-      do jpngr=1,maxgrid
-        fapar_field(:,jpngr) = dummy
-      end do
+      fapar_field(:,1) = dummy
 
     else
       ! Prescribed. Read monthly fAPAR value from file
-      do jpngr=1,maxgrid
-        ! create 4-digit string for year  
-        write(faparyear_char,999) min( max( 2000, forcingyear ), 2014 )
-        fapar_field(:,jpngr) = read1year_daily( 'sitedata/fapar/'//trim(sitename)//'/'//faparyear_char//'/'//trim(fapar_forcing_source)//'_'//trim(sitename)//'_'//faparyear_char//'.txt' )
-      end do
+      ! create 4-digit string for year  
+      write(faparyear_char,999) min( max( 2000, year ), 2014 )
+      fapar_field(:,1) = read1year_daily( 'sitedata/fapar/'//trim(domaininfo%domain_name)//'/'//faparyear_char//'/'//trim(fapar_forcing_source)//'_'//trim(domaininfo%domain_name)//'_'//faparyear_char//'.txt' )
 
     end if
 
@@ -162,49 +158,48 @@ contains
   end function getfapar
 
 
-  function getclimate( sitename, climateyear, in_ppfd, in_netrad ) result ( out_climate )
+  function getclimate( domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
-    ! SR reads this year's daily temperature and precipitation.
-    ! Read year-2013 data after 2013
-    !----------------------------------------------------------------    
+    ! This function invokes file format specific "sub-functions/routines"
+    ! to read from NetCDF. This nesting is necessary because this 
+    ! cannot be done file-specific in SR sofun, but can be done here
+    ! as this module is compilation-specific (only for global simulations)
+    !----------------------------------------------------------------
     ! arguments
-    character(len=*), intent(in) :: sitename
+    type( domaininfo_type ), intent(in) :: domaininfo
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(inout) :: grid
+    logical, intent(in) :: init
     integer, intent(in) :: climateyear
     logical, intent(in) :: in_ppfd
     logical, intent(in) :: in_netrad
 
     ! local variables
-    integer :: day
-    integer :: jpngr = 1
     character(len=4) :: climateyear_char
 
     ! function return variable
-    type( climate_type ), dimension(maxgrid) :: out_climate
+    type( climate_type ), dimension(domaininfo%maxgrid) :: out_climate
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
-    jpngr = 1
-
-    out_climate(jpngr)%dtemp(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dtemp_'//trim(sitename)//'_'//climateyear_char//'.txt')
-    out_climate(jpngr)%dprec(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dprec_'//trim(sitename)//'_'//climateyear_char//'.txt')
-    out_climate(jpngr)%dvpd(:)  = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dvpd_' //trim(sitename)//'_'//climateyear_char//'.txt')
+    out_climate(1)%dtemp(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dtemp_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
+    out_climate(1)%dprec(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dprec_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
+    out_climate(1)%dvpd(:)  = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dvpd_' //trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
     if (in_ppfd) then
-      out_climate(jpngr)%dppfd(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dppfd_'//trim(sitename)//'_'//climateyear_char//'.txt')
+      out_climate(1)%dppfd(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dppfd_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
     else
-      out_climate(jpngr)%dppfd(:) = dummy
+      out_climate(1)%dppfd(:) = dummy
     end if
     if (in_netrad) then
-      out_climate(jpngr)%dnetrad(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dnetrad_'//trim(sitename)//'_'//climateyear_char//'.txt')
+      out_climate(1)%dnetrad(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dnetrad_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
     else
-      out_climate(jpngr)%dnetrad(:) = dummy
+      out_climate(1)%dnetrad(:) = dummy
     end if
     if ( in_netrad .and. in_ppfd ) then
-      out_climate(jpngr)%dfsun(:) = dummy
+      out_climate(1)%dfsun(:) = dummy
     else
-      out_climate(jpngr)%dfsun(:) = read1year_daily('sitedata/climate/'//trim(sitename)//'/'//climateyear_char//'/'//'dfsun_'//trim(sitename)//'_'//climateyear_char//'.txt')
+      out_climate(1)%dfsun(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dfsun_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
     end if
-
 
     return
     999  format (I4.4)
@@ -212,7 +207,7 @@ contains
   end function getclimate
 
 
-  function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file, const_lu_year, firstyeartrend ) result( out_landuse )
+  function getlanduse( runname, domaininfo, forcingyear, do_grharvest_forcing_file, const_lu_year, firstyeartrend ) result( out_landuse )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual landuse state and harvesting regime (day of above-ground harvest)
     ! Grass harvest forcing file is read for specific year, if none is available,
@@ -220,7 +215,7 @@ contains
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: runname
-    character(len=*), intent(in) :: sitename
+    type( domaininfo_type ), intent(in) :: domaininfo
     integer, intent(in)          :: forcingyear
     character(len=*), intent(in), optional :: do_grharvest_forcing_file
     integer, intent(in) :: const_lu_year
@@ -244,5 +239,5 @@ contains
 
   end function getlanduse
 
-end module md_forcing_siterun
+end module md_forcing
 

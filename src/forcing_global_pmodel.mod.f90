@@ -20,7 +20,7 @@ module md_forcing
 
   private
   public getco2, getninput, ninput_type, gettot_ninput, getfapar, &
-    getclimate_wfdei, getclimate_cru, getlanduse, landuse_type, climate_type
+    getclimate, getlanduse, landuse_type, climate_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
@@ -44,13 +44,13 @@ module md_forcing
 
 contains
 
-  function getco2( runname, sitename, forcingyear, const_co2_year, firstyeartrend, co2_forcing_file ) result( pco2 )
+  function getco2( runname, domaininfo, forcingyear, const_co2_year, firstyeartrend, co2_forcing_file ) result( pco2 )
     !////////////////////////////////////////////////////////////////
     !  Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: runname
-    character(len=*), intent(in) :: sitename
+    type( domaininfo_type ), intent(in) :: domaininfo
     integer, intent(in) :: forcingyear
     integer, intent(in) :: const_co2_year
     integer, intent(in) :: firstyeartrend
@@ -68,20 +68,20 @@ contains
       readyear = forcingyear
     end if
     ! write(0,*) 'GETCO2: use CO2 data of year ', readyear
-    print*,'CO2: reading file:', 'input/global/co2/'//trim(sitename)//'/'//trim(co2_forcing_file)
+    print*,'CO2: reading file:', 'input/global/co2/'//trim(co2_forcing_file)
     pco2 = getvalreal( 'global/co2/'//trim(co2_forcing_file), readyear )
 
   end function getco2
 
 
-  function getninput( ntype, runname, sitename, forcingyear, firstyeartrend, const_ninput_year, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
+  function getninput( ntype, runname, domaininfo, forcingyear, firstyeartrend, const_ninput_year, ninput_noy_forcing_file, ninput_nhx_forcing_file, climate ) result( out_getninput )
     !////////////////////////////////////////////////////////////////
     ! Dummy function
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: ntype   ! either "nfert" or "ndep"
     character(len=*), intent(in) :: runname
-    character(len=*), intent(in) :: sitename
+    type( domaininfo_type ), intent(in) :: domaininfo
     integer, intent(in)          :: forcingyear
     integer, intent(in) :: firstyeartrend
     integer, intent(in) :: const_ninput_year
@@ -177,11 +177,11 @@ contains
       
       ! fAPAR data from fAPAR3g
       firstyr_data = 1982
-      nyrs_data = 30
+      nyrs_data = 35
       lonname ="LON"
       latname = "LAT"
       varname = "FAPAR_FILLED"
-      filnam = "./input/global/fapar/fAPAR3g_monthly_1982_2011_FILLED.nc"
+      filnam = "./input/global/fapar/fAPAR3g_v2_1982_2016_FILLED.nc"
 
     else
 
@@ -245,7 +245,7 @@ contains
 
     ! Read the array, only current year
     read_idx = ( min( max( year - firstyr_data + 1, 1 ), nyrs_data ) - 1 ) * nmonth + 1
-    call check( nf90_get_var( ncid, varid, fapar_arr, start=(/1, 1, read_idx/), count=(/nlon_arr, nlat_arr, nmonth/) ) )
+    call check( nf90_get_var( ncid, varid, fapar_arr, start=(/1, 1, 1, read_idx/), count=(/nlon_arr, nlat_arr, 1, nmonth/) ) )
 
     ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
     call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
@@ -275,7 +275,45 @@ contains
   end function getfapar
 
 
-  function getclimate_wfdei( sitename, domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
+  function getclimate( domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
+    !////////////////////////////////////////////////////////////////
+    ! This function invokes file format specific "sub-functions/routines"
+    ! to read from NetCDF. This nesting is necessary because this 
+    ! cannot be done file-specific in SR sofun, but can be done here
+    ! as this module is compilation-specific (only for global simulations)
+    !----------------------------------------------------------------
+    ! arguments
+    type( domaininfo_type ), intent(in) :: domaininfo
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(inout) :: grid
+    logical, intent(in) :: init
+    integer, intent(in) :: climateyear
+    logical, intent(in) :: in_ppfd
+    logical, intent(in) :: in_netrad
+
+    ! function return variable
+    type( climate_type ), dimension(domaininfo%maxgrid) :: out_climate
+
+    out_climate(:) = getclimate_wfdei( &
+                                      domaininfo, &
+                                      grid, &
+                                      init, &
+                                      climateyear, &
+                                      in_ppfd,  &
+                                      in_netrad &
+                                      )
+
+    call getclimate_cru( &
+                        domaininfo, &
+                        grid, &
+                        steering%init, &
+                        steering%climateyear, &
+                        out_climate(:) &
+                        )
+
+  end function getclimate
+
+
+  function getclimate_wfdei( domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
     ! Read year-2013 data after 2013
@@ -283,7 +321,6 @@ contains
     use md_params_core, only: kfFEC
 
     ! arguments
-    character(len=*), intent(in) :: sitename
     type( domaininfo_type ), intent(in) :: domaininfo
     type( gridtype ), dimension(domaininfo%maxgrid), intent(inout) :: grid
     logical, intent(in) :: init
@@ -543,13 +580,12 @@ contains
   end function getclimate_wfdei
 
 
-  subroutine getclimate_cru( sitename, domaininfo, grid, init, climateyear, inout_climate )
+  subroutine getclimate_cru( domaininfo, grid, init, climateyear, inout_climate )
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
     ! Read year-2013 data after 2013
     !----------------------------------------------------------------
     ! arguments
-    character(len=*), intent(in) :: sitename
     type( domaininfo_type ), intent(in) :: domaininfo
     type( gridtype ), dimension(domaininfo%maxgrid), intent(inout) :: grid
     logical, intent(in) :: init
@@ -688,7 +724,7 @@ contains
   end subroutine getclimate_cru
 
 
-  function getlanduse( runname, sitename, forcingyear, do_grharvest_forcing_file, const_lu_year, firstyeartrend ) result( out_landuse )
+  function getlanduse( runname, domaininfo, forcingyear, do_grharvest_forcing_file, const_lu_year, firstyeartrend ) result( out_landuse )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's annual landuse state and harvesting regime (day of above-ground harvest)
     ! Grass harvest forcing file is read for specific year, if none is available,
@@ -696,7 +732,7 @@ contains
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: runname
-    character(len=*), intent(in) :: sitename
+    type( domaininfo_type ), intent(in) :: domaininfo
     integer, intent(in)          :: forcingyear
     character(len=*), intent(in), optional :: do_grharvest_forcing_file
     integer, intent(in) :: const_lu_year

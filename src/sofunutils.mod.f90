@@ -702,12 +702,15 @@ contains
   end function getvalreal_STANDARD
 
 
-  function getparreal( filename, paraname ) result( paravalue )
+  function getparreal( filename, paraname, try ) result( paravalue )
     !////////////////////////////////////////////////////////////////
     !  "Low-level" function for reading parameter values from text file
     !----------------------------------------------------------------
+    use md_params_core, only: dummy
+
     ! arguments
-    character(len=*), intent(in) :: filename, paraname
+    character(len=*), intent(in)  :: filename, paraname
+    logical, intent(in), optional :: try
 
     ! function return value
     real :: paravalue
@@ -728,9 +731,16 @@ contains
       goto 9
     endif
     10   continue
-    write(0,*) 'getparreal: '//paraname//' of type real not found'
-    stop
 
+    if (present(try)) then
+      if (try) then
+        paravalue = dummy
+      end if
+    else
+      write(0,*) 'getparreal: '//paraname//' of type real not found'
+      stop
+    end if
+    
     11   continue
     12   format(2a40)
 

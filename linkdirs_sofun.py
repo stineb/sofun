@@ -24,7 +24,7 @@ import os.path
 ## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
-simsuite = 'global'
+simsuite = 'fluxnet2015'
 
 ##--------------------------------------------------------------------
 ## For an example simulation (simulation name 'EXAMPLE_global'), set 
@@ -36,8 +36,8 @@ example = True
 ## Manually et the root directory for the local mirror of 
 ## /work/bstocker/labprentice/data
 ##--------------------------------------------------------------------
-# dataroot = '/Users/benjaminstocker/data/'
-dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
+dataroot = '/Users/benjaminstocker/data/'
+# dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
 
 ##--------------------------------------------------------------------
 ## Link directories
@@ -79,7 +79,7 @@ if simsuite == 'global':
 	##--------------------------------------
 	dirn = 'input/global/fapar'
 	os.system( 'mkdir -p ' + dirn )
-	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g/fAPAR3g_monthly_1982_2011_FILLED.nc', dirn ])
+	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
 
 
 	## fapar (modis evi)
