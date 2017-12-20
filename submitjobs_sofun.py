@@ -27,7 +27,7 @@ from subprocess import call
 ## simsuite to 'example'. This should work after cloning this repo 
 ## from github.
 ##--------------------------------------------------------------------
-simsuite = 'example'
+simsuite = 'fluxnet2015'
 
 ##--------------------------------------------------------------------
 ## set options
@@ -36,7 +36,7 @@ simsuite = 'example'
 out_to_file = True
 
 ## overwrite results
-overwrite = True
+overwrite = False
 
 ## Use SWBM water balance model instead of SPLASH
 swbm = False
@@ -137,7 +137,7 @@ else:
     for index, row in siteinfo.iterrows():
 
         ## set whether simulation should be submitted (and previous output overwritten)
-        outfil = 'output/' + row['expname'] + '.a.' + defaultvar + '.out'
+        outfil = 'output_nc/' + row['expname'] + '.d.' + defaultvar + '.nc'
         if overwrite:
             do_submit = True
         else: 

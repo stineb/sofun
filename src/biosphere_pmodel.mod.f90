@@ -78,12 +78,12 @@ contains
       !----------------------------------------------------------------
       ! Open ascii output files
       !----------------------------------------------------------------
-      if (verbose) print*, 'initio_() ...'
-      call initio_waterbal()
-      call initio_gpp()
-      call initio_plant()
-      call initio_forcing()
-      if (verbose) print*, '... done'
+      ! if (verbose) print*, 'initio_() ...'
+      ! call initio_waterbal()
+      ! call initio_gpp()
+      ! call initio_plant()
+      ! call initio_forcing()
+      ! if (verbose) print*, '... done'
 
     endif 
 
@@ -269,10 +269,10 @@ contains
     !----------------------------------------------------------------
     ! Write to ascii output
     !----------------------------------------------------------------
-    call writeout_ascii_waterbal()
-    call writeout_ascii_gpp()
-    call writeout_ascii_plant()
-    call writeout_ascii_forcing()
+    ! call writeout_ascii_waterbal()
+    ! call writeout_ascii_gpp()
+    ! call writeout_ascii_plant()
+    ! call writeout_ascii_forcing()
 
     !----------------------------------------------------------------
     ! Write to NetCDF output
