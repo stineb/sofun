@@ -1,6 +1,11 @@
 # SOFUN 
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1163149.svg)](https://doi.org/10.5281/zenodo.1163149)
+
 Modelling framework for simulating terrestrial ecoystems and their biogeochemistry (radiation, photosynthesis, allocation, soil organic dynamics, inorganic nitrogen dynamics). SOFUN stands for Seasonal optimisation of fixation and uptake of nitrogen. Code is programmed in Fortran 90 and can be compiled using PGI and Intel compilers.
-Written, developed and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
+Written and maintained by Beni Stocker (b.stocker@imperial.ac.uk).
+
+A detailed documentation is available as a [website](https://stineb.github.io/).
 
 ## Table of Contents
 -------------------
