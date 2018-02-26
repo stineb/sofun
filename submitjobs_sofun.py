@@ -36,7 +36,7 @@ simsuite = 'fluxnet2015'
 out_to_file = True
 
 ## overwrite results
-overwrite = False
+overwrite = True
 
 ## Use SWBM water balance model instead of SPLASH
 swbm = False

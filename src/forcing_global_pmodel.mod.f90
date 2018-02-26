@@ -305,8 +305,8 @@ contains
     call getclimate_cru( &
                         domaininfo, &
                         grid, &
-                        steering%init, &
-                        steering%climateyear, &
+                        init, &
+                        climateyear, &
                         out_climate(:) &
                         )
 

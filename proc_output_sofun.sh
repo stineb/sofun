@@ -75,6 +75,36 @@ proc_sitescale_site(){
 	return 0
 }
 
+proc_global(){
+	## Combines output files, written for each year, along time axis. For one specific site.
+
+	## 1. argument runname/site name
+
+	##-------------------------------------
+	## Daily
+	##-------------------------------------
+	## GPP
+	cdo -O mergetime output_nc/$1.*.d.gpp.nc   output_nc/$1.d.gpp.nc
+	rm output_nc/$1.*.d.gpp.nc
+
+	##-------------------------------------
+	## Annual
+	##-------------------------------------
+	## AET
+	cdo -O mergetime output_nc/$1.*.a.pet.nc   output_nc/$1.a.pet.nc
+	rm output_nc/$1.*.a.pet.nc
+
+	## PET
+	cdo -O mergetime output_nc/$1.*.a.aet.nc   output_nc/$1.a.aet.nc
+	rm output_nc/$1.*.a.aet.nc
+
+	## ALPHA (AET/PET)
+	cdo -O mergetime output_nc/$1.*.a.alpha.nc   output_nc/$1.a.alpha.nc
+	rm output_nc/$1.*.a.alpha.nc	
+
+	return 0
+}
+
 proc_sitescale_simsuite(){
 	## Combines output files, written for each year, along time axis. For an entire simulation suite.
 	## Uses ./sitelist.txt for a list of sites. Create this file using get_sitelist_simsuite.py

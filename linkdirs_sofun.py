@@ -20,17 +20,19 @@ import os.path
 ## - "ameriwue"
 ##--------------------------------------------------------------------
 ## For global simulations, set simsuite to 'global'.
+## - "global"
+##--------------------------------------------------------------------
 ## This links NetCDF input files from directories mirrored locally from
 ## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet2015'
+simsuite = 'global'
 
 ##--------------------------------------------------------------------
 ## For an example simulation (simulation name 'EXAMPLE_global'), set 
 ## this to true 
 ##--------------------------------------------------------------------
-example = True
+example = False
 
 ##--------------------------------------------------------------------
 ## Manually et the root directory for the local mirror of 

@@ -28,6 +28,7 @@ module md_grid
     real, dimension(:), allocatable :: lon
     real, dimension(:), allocatable :: lat
     real :: landarea
+    character(len=256) :: domain_name  ! This is the site name for site-scale simulations or the character identifyier defining the resolution for global simulations
   end type domaininfo_type
 
   type gridtype

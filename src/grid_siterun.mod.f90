@@ -17,26 +17,6 @@ module md_grid
   private
   public gridtype, getgrid, domaininfo_type, get_domaininfo
 
-  ! xxx before: site
-  ! type domaininfo_type
-  !   integer :: nlon
-  !   integer :: nlat
-  !   integer :: maxgrid
-  !   real :: lon_start
-  !   real :: lat_start
-  !   real :: dlon
-  !   real :: dlat
-  !   integer, dimension(:,:), allocatable :: gridarray
-  ! end type domaininfo_type
-
-  ! type gridtype
-  !   real :: lon
-  !   real :: lat
-  !   real :: elv
-  !   integer :: soilcode
-  ! end type gridtype
-
-  ! xxx new: from global
   type domaininfo_type
     integer :: nlon
     integer :: nlat
@@ -47,7 +27,7 @@ module md_grid
     real, dimension(:), allocatable :: lon
     real, dimension(:), allocatable :: lat
     real :: landarea
-    character(len=256) :: domain_name  ! This is the site name for site-scale simulations and the character identifyier defining the resolution for global simulations
+    character(len=256) :: domain_name  ! This is the site name for site-scale simulations or the character identifyier defining the resolution for global simulations
   end type domaininfo_type
 
   type gridtype
