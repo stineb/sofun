@@ -26,7 +26,7 @@ import os.path
 ## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet2015'
+simsuite = 'global'
 
 ##--------------------------------------------------------------------
 ## For an example simulation (simulation name 'EXAMPLE_global'), set 

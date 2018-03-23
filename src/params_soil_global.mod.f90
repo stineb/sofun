@@ -12,7 +12,7 @@ module md_params_soil
   public paramtype_soil, getsoil
 
   type paramtype_soil
-    real :: whc
+    real :: whc            ! water holding capacity of the soil, from SoilGrids as (FC-PWP) * fgravel * min( 2m, soildepth )
     real :: perc_k1
     real :: thdiff_wp
     real :: thdiff_whc15
@@ -220,7 +220,9 @@ contains
       if ( tmp/=ncfillvalue ) then
         params_soil_field(jpngr)%whc = tmp
       else
-        params_soil_field(jpngr)%whc = 0.0
+        print*, 'WARNING: No WHC data for (ilon, ilat)=', ilon(jpngr), ',', ilat(jpngr)
+        print*, 'Assuming WHC = 250 mm'
+        params_soil_field(jpngr)%whc = 250.0
       end if
     end do
 

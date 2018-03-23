@@ -207,6 +207,7 @@ contains
                             doy, jpngr, & 
                             interface%grid(jpngr)%lat, & 
                             interface%grid(jpngr)%elv, & 
+                            interface%soilparams(jpngr), &
                             interface%climate(jpngr)%dprec(doy), & 
                             interface%climate(jpngr)%dtemp(doy), & 
                             interface%climate(jpngr)%dfsun(doy), &

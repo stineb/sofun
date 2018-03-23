@@ -82,7 +82,6 @@ module md_waterbal
   real :: kPo               ! standard atmosphere, Pa (Allen, 1973)
   real :: kR                ! gas constant, J/mol/K (Allen, 1973)
   real :: kTo               ! base temperature, K (Prentice, unpublished)
-  real :: kWm               ! soil moisture capacity, mm (Cramer & Prentice, 1988)
   real :: kw                ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
   real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
 
@@ -134,7 +133,7 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( phy, doy, lat, elv, pr, tc, sf, netrad )
+  subroutine waterbal( phy, doy, lat, elv, soilparams, pr, tc, sf, netrad )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
@@ -146,6 +145,7 @@ contains
     integer, intent(in)                                  :: doy    ! day of year
     real, intent(in)                                     :: lat    ! latitude (degrees)
     real, intent(in)                                     :: elv    ! altitude (m)
+    type( paramtype_soil ), intent(in)                   :: soilparams
     real, intent(in)                                     :: pr     ! daily precip (mm) 
     real, intent(in)                                     :: tc     ! mean monthly temperature (deg C)
     real, intent(in)                                     :: sf     ! mean monthly sunshine fraction (unitless)
@@ -168,7 +168,7 @@ contains
     do lu=1,nlu
 
       ! Calculate evaporative supply rate, mm/h
-      soilphys(lu)%sw = kCw * phy(lu)%wcont / kWm
+      soilphys(lu)%sw = kCw * phy(lu)%wcont / soilparams%whc
 
       ! Calculate radiation and evaporation quantities
       ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soilphys(lu)%sw
@@ -193,7 +193,7 @@ contains
       if ( phy(lu)%wcont < 0.0 ) then 
         stop 'WATERBAL: negative soil moisture'
       end if
-      soilphys(lu)%ro = ( min( 1.0, ( ( phy(lu)%wcont / kWm )**exp_runoff ) ) ) * out_snow_rain%liquid_to_soil
+      soilphys(lu)%ro = ( min( 1.0, ( ( phy(lu)%wcont / soilparams%whc )**exp_runoff ) ) ) * out_snow_rain%liquid_to_soil
 
       ! re-calculate AET
       evap(lu)%aet = evap(lu)%aet + ( phy(lu)%wcont - wcont_prev ) * evap(lu)%daet
@@ -202,7 +202,7 @@ contains
       soilphys(lu)%fleach = soilphys(lu)%ro / ( wcont_prev + out_snow_rain%liquid_to_soil )
 
       ! water-filled pore space
-      soilphys(lu)%wscal = phy(lu)%wcont / kWm
+      soilphys(lu)%wscal = phy(lu)%wcont / soilparams%whc
 
     end do
 
@@ -252,10 +252,10 @@ contains
     type( outtype_get_infiltr ) :: out_get_infiltr
 
     ! calculate infiltr (P-Q) from Eq. 3 in Orth et al., 2013
-    out_get_infiltr%infiltr  = ( 1.0 - min( 1.0,( ( wcont / kWm )**exp_runoff ) ) ) * pr
+    out_get_infiltr%infiltr  = ( 1.0 - min( 1.0,( ( wcont / soilparams%whc )**exp_runoff ) ) ) * pr
 
     ! calculate derivative of infiltr w.r.t. soil moisture
-    out_get_infiltr%dinfiltr = (-1.0) * min( max( 0.0, kWm - wcont ), ( exp_runoff / kWm ) ) * ( ( wcont / kWm )**( exp_runoff - 1.0 ) ) * pr
+    out_get_infiltr%dinfiltr = (-1.0) * min( max( 0.0, soilparams%whc - wcont ), ( exp_runoff / soilparams%whc ) ) * ( ( wcont / soilparams%whc )**( exp_runoff - 1.0 ) ) * pr
 
   end function get_infiltr
 
@@ -611,10 +611,10 @@ contains
     ! 21. Estimate daily AET (out_evap%aet), mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! calculate ET from net radiation and Eq. 2 in Orth et al., 2013, limited to <=1
-    out_evap%aet = out_evap%pet * beta * min( 1.0, ( wcont / kWm )**exp_et )
+    out_evap%aet = out_evap%pet * beta * min( 1.0, ( wcont / soilparams%whc )**exp_et )
 
     ! calculate derivative of ET w.r.t. soil moisture
-    out_evap%daet = out_evap%pet * beta * min( max( 0.0, kWm - wcont), ( exp_et / kWm ) ) * ( wcont / kWm )**( exp_et - 1.0 )
+    out_evap%daet = out_evap%pet * beta * min( max( 0.0, soilparams%whc - wcont), ( exp_et / soilparams%whc ) ) * ( wcont / soilparams%whc )**( exp_et - 1.0 )
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
@@ -797,9 +797,6 @@ contains
     maxmeltrate = getparreal( 'params/params_waterbal_swbm.dat', 'maxmeltrate' )
     exp_et      = getparreal( 'params/params_waterbal_swbm.dat', 'exp_et' )
     exp_runoff  = getparreal( 'params/params_waterbal_swbm.dat', 'exp_runoff' )
-
-    ! soil moisture capacity, mm (Cramer & Prentice, 1988)
-    kWm         = getparreal( 'params/params_waterbal_swbm.dat', 'kWm' )
 
     !----------------------------------------------------------------
     ! SPLASH parameters

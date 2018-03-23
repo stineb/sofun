@@ -120,7 +120,6 @@ contains
     ! argument
     type( psoilphystype ), intent(inout) :: phy
 
-
     ! initialise physical soil variables
     phy%wcont = 50.0
     phy%temp  = 10.0
