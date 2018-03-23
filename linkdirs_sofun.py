@@ -90,6 +90,13 @@ if simsuite == 'global':
 	os.system( 'mkdir -p ' + dirn )
 	call(['ln', '-svf', dataroot + 'modis_monthly-evi/zmaw_data/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc', dirn ])
 
+	## soil
+	##--------------------------------------
+	dirn = 'input/global/soil'
+	os.system( 'mkdir -p ' + dirn )
+	call(['ln', '-svf', dataroot + 'soil/soilgrids/whc_soilgrids_halfdeg_FILLED.nc', dirn ])
+	call(['ln', '-svf', dataroot + 'soil/hwsd/soil_type_hwsd_halfdeg.cdf', dirn ])
+
 
 	## WATCH-WFDEI climate input data
 	##--------------------------------------

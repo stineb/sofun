@@ -17,6 +17,7 @@ module md_params_domain
     real :: lon_site
     real :: lat_site
     real :: elv_site
+    real :: soilcode_site
 
     ! For global simulations
     character(len=256) :: filnam_landmask
@@ -45,9 +46,10 @@ contains
   
     write(0,*) 'reading site parameter file ', 'site_paramfils/'//trim(sitename)//'.parameter ...'
 
-    out_params_domain%lon_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'longitude' )
-    out_params_domain%lat_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'latitude' )
-    out_params_domain%elv_site = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'altitude' )
+    out_params_domain%lon_site      = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'longitude' )
+    out_params_domain%lat_site      = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'latitude' )
+    out_params_domain%elv_site      = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'altitude' )
+    out_params_domain%soilcode_site = 1 ! getparint(  'site_paramfils/'//trim(sitename)//'.parameter', 'soilcode' )
 
   end function getpar_domain
 

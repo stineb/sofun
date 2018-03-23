@@ -17,6 +17,7 @@ module md_grid
   private
   public gridtype, getgrid, domaininfo_type, get_domaininfo
 
+  ! note that for site scale simulations 'domaininfo_type' contains also 'elv' and 'soilcode'
   type domaininfo_type
     integer :: nlon
     integer :: nlat
@@ -26,6 +27,8 @@ module md_grid
     integer, dimension(:,:), allocatable :: gridarray
     real, dimension(:), allocatable :: lon
     real, dimension(:), allocatable :: lat
+    real :: elv
+    integer :: soilcode
     real :: landarea
     character(len=256) :: domain_name  ! This is the site name for site-scale simulations or the character identifyier defining the resolution for global simulations
   end type domaininfo_type
@@ -38,7 +41,6 @@ module md_grid
     real :: elv
     real :: landfrac
     real :: area
-    integer :: soilcode
     logical :: dogridcell
   end type gridtype
 
@@ -73,6 +75,8 @@ contains
     ! Copy domain parameters
     domaininfo%lon(1)      = params_domain%lon_site
     domaininfo%lat(1)      = params_domain%lat_site
+    domaininfo%elv         = params_domain%elv_site
+    domaininfo%soilcode    = params_domain%soilcode_site
     domaininfo%domain_name = params_domain%domain_name
 
   end function get_domaininfo
@@ -106,12 +110,10 @@ contains
     out_grid(1)%landfrac = 1.0
     out_grid(1)%area     = 1.0
 
-    out_grid(1)%soilcode = 1
-
     out_grid(1)%dogridcell = .true.
     
-    out_grid(1)%lon = params_domain%lon_site
-    out_grid(1)%lat = params_domain%lat_site
+    out_grid(1)%lon = domaininfo%lon(1)
+    out_grid(1)%lat = domaininfo%lat(1)
     out_grid(1)%elv = params_domain%elv_site
 
     print*,'...done'

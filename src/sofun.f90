@@ -10,7 +10,7 @@ program main
   use md_params_siml, only: getpar_siml, getsteering
   use md_params_domain, only: getpar_domain, type_params_domain
   use md_grid, only: get_domaininfo, getgrid
-  use md_params_soil, only: getsoil_field
+  use md_params_soil, only: getsoil
   use md_forcing, only: getclimate, getninput, ninput_type, gettot_ninput, &
     getfapar, getlanduse, getco2
   use md_params_core, only: dummy, maxgrid, ndayyear
@@ -78,7 +78,7 @@ program main
   !----------------------------------------------------------------
   ! GET SOIL PARAMETERS
   !----------------------------------------------------------------
-  interface%soilparams(:) = getsoil_field( interface%grid(:) )
+  interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
 
   ! LOOP THROUGH YEARS
   write(0,*) '-------------------START OF SIMULATION--------------------'

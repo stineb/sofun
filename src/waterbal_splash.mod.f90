@@ -781,19 +781,37 @@ contains
     real, intent(in) :: soilm       ! soil water content (fraction)
     real, intent(in) :: meanalpha   ! mean annual AET/PET (fraction)
 
-    ! local variables
-    real, parameter :: apar = -0.2013140
-    real, parameter :: bpar = 0.9779388
-    real, parameter :: x0 = 0.9
+    ! ! Parameters for approach I (simulation s1a)
+    ! real, parameter :: apar = 0.1214
+    ! real, parameter :: bpar = 0.8855
+    ! real, parameter :: x0 = 0.125
+    ! real, parameter :: x1 = 0.75
+
+    ! ! Parameters for approach II (simulation s1b)
+    ! real, parameter :: apar = -0.09242
+    ! real, parameter :: bpar = 0.79194
+    ! real, parameter :: x0 = 0.0
+    ! real, parameter :: x1 = 0.9
+
+    ! Parameters for approach III (simulation s1c)
+    real, parameter :: apar = -0.1693101
+    real, parameter :: bpar = 0.7650865
+    real, parameter :: x0 = 0.0
+    real, parameter :: x1 = 0.9
+
     real :: y0, beta
 
     ! function return variable
     real :: outstress
 
-    y0 = apar + bpar * meanalpha
-    beta = (1.0 - y0) / x0**2
-    outstress = 1.0 - beta * ( soilm - x0 )**2
-    outstress = max( 0.0, min( 1.0, outstress ) )
+    if (soilm > x1) then
+      outstress = 1.0
+    else
+      y0 = apar + bpar * meanalpha
+      beta = (1.0 - y0) / (x0 - x1)**2
+      outstress = 1.0 - beta * ( soilm - x1 )**2
+      outstress = max( 0.0, min( 1.0, outstress ) )
+    end if
 
   end function calc_soilmstress
 

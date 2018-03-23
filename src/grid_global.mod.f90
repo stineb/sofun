@@ -39,7 +39,6 @@ module md_grid
     real :: elv
     real :: landfrac
     real :: area
-    integer :: soilcode
     logical :: dogridcell
   end type gridtype
 
@@ -199,7 +198,6 @@ contains
     end do
 
     out_grid(:)%dogridcell = .true.
-    out_grid(:)%soilcode = 1
 
     ! complement domaininfo here in order to avoid passing too many large arrays around with domaininfo
     domaininfo%landarea = landarea

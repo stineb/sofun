@@ -5,12 +5,10 @@
 # write value behind this position:    |->
 
 perc_k1                                 5.0        
-whc_eff                                 0.110        
 thdiff_wp                               0.2          
-thdiff_whc15                            0.800            
+thdiff_whc15                            0.8
 thdiff_fc                               0.4          
 forg                                    0.01    
-whc_blwp                                0.029        
 por                                     0.421    
 fsand                                   0.82      
 fclay                                   0.06      
