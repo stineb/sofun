@@ -26,7 +26,7 @@ module md_params_soil
 
 contains
 
-  function getsoil( domaininfo, grid ) result( params_soil_field )
+  function getsoil( domaininfo, grid ) result( params_soil )
     !////////////////////////////////////////////////////////////////
     ! Function returns the field of soil parameters
     !----------------------------------------------------------------
@@ -35,40 +35,25 @@ contains
     type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
 
     ! function return variable
-    type(paramtype_soil), dimension(domaininfo%maxgrid) :: params_soil_field
+    type(paramtype_soil) :: params_soil
 
     ! local variables
     type(paramtype_soil), dimension(9) :: soilparams_per_code
 
-    integer :: ncid, varid
-    integer :: latdimid, londimid
-    integer :: nlat_arr, nlon_arr
-    real, allocatable, dimension(:)     :: lon_arr
-    real, allocatable, dimension(:)     :: lat_arr
-    real, allocatable, dimension(:,:) :: soilparams_arr
-
-    integer :: isoilcode, jpngr, ilon_arr, ilat_arr, moy, dom, doy
-    integer, dimension(domaininfo%maxgrid) :: ilon
-    integer, dimension(domaininfo%maxgrid) :: ilat
-    integer :: fileyear, read_idx
-    real :: tmp
-    real :: ncfillvalue
-    real :: dlat, dlon
-    character(len=3), parameter :: lonname = "LON"
-    character(len=3), parameter :: latname = "LAT" 
-    character(len=3), parameter :: varname = "kwm"
-    character(len=100), parameter :: filnam_whc = "./input/global/soil/whc_soilgrids_halfdeg_FILLED.nc"
-    character(len=100), parameter :: filnam_soilcode = "./input/global/soil/whc_soilgrids_halfdeg_FILLED.nc"
+    integer :: isoilcode
 
     !----------------------------------------------------------------  
     ! Get soil parameters per code
     !----------------------------------------------------------------  
-    do isoilcode=1,9
+    do isoilcode=1,1
       soilparams_per_code(isoilcode) = get_soilparams_per_code( isoilcode )
     end do
 
     ! read from array to define grid type 
-    params_soil_field(1) = soilparams_per_code(domaininfo%filnam_soilcode)
+    params_soil = soilparams_per_code(domaininfo%soilcode)
+
+    ! water holding capacity is read in separately
+    params_soil%whc = domaininfo%whc
 
     return
     999  format (I2.2)
