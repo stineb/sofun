@@ -89,7 +89,7 @@ module md_params_siml
     logical :: lncoutdtemp
     logical :: lncoutdgpp
     logical :: lncoutdfapar
-    logical :: lncoutwaterbal
+    logical :: lncoutdwaterbal
 
   end type paramstype_siml
 
@@ -350,13 +350,13 @@ contains
     out_getpar_siml%lncoutdtemp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdtemp' )
     out_getpar_siml%lncoutdfapar   = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdfapar' )
     out_getpar_siml%lncoutdgpp     = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdgpp' )
-    out_getpar_siml%lncoutwaterbal = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutwaterbal' )
+    out_getpar_siml%lncoutdwaterbal= getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdwaterbal' )
 
     ! If NetCDF output writing is true and ascii output writing is false, then overwrite
-    if (.not.out_getpar_siml%loutdtemp    .and. out_getpar_siml%lncoutdtemp    ) out_getpar_siml%loutdtemp    = .true.
-    if (.not.out_getpar_siml%loutdfapar   .and. out_getpar_siml%lncoutdfapar   ) out_getpar_siml%loutdfapar   = .true.
-    if (.not.out_getpar_siml%loutdgpp     .and. out_getpar_siml%lncoutdgpp     ) out_getpar_siml%loutdgpp     = .true.
-    if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%lncoutwaterbal ) out_getpar_siml%loutwaterbal = .true.
+    if (.not.out_getpar_siml%loutdtemp    .and. out_getpar_siml%lncoutdtemp    )  out_getpar_siml%loutdtemp    = .true.
+    if (.not.out_getpar_siml%loutdfapar   .and. out_getpar_siml%lncoutdfapar   )  out_getpar_siml%loutdfapar   = .true.
+    if (.not.out_getpar_siml%loutdgpp     .and. out_getpar_siml%lncoutdgpp     )  out_getpar_siml%loutdgpp     = .true.
+    if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%lncoutdwaterbal ) out_getpar_siml%loutwaterbal = .true.
 
     write(0,*) "... done"
 

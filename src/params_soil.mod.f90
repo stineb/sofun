@@ -52,7 +52,7 @@ contains
     ! read from array to define grid type 
     params_soil = soilparams_per_code(domaininfo%soilcode)
 
-    ! water holding capacity is read in separately
+    ! water holding capacity is read in separately from site parameter file
     params_soil%whc = domaininfo%whc
 
     return

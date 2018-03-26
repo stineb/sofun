@@ -1470,7 +1470,7 @@ contains
         !----------------------------------------------------------------
         ! Daily NetCDF output
         !----------------------------------------------------------------
-        if (interface%params_siml%lncoutwaterbal) then
+        if (interface%params_siml%lncoutdwaterbal) then
           !----------------------------------------------------------------
           ! Daily WCONT output file 
           !----------------------------------------------------------------
@@ -1511,45 +1511,45 @@ contains
           !                 globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
           !                 )
 
-          ! !----------------------------------------------------------------
-          ! ! Daily PET output file 
-          ! !----------------------------------------------------------------
-          ! ncoutfilnam_dpet = trim(prefix)//'.'//year_char//".d.pet.nc"
-          ! print*,'initialising ', trim(ncoutfilnam_dpet), '...'
-          ! call init_nc_3D( filnam  = trim(ncoutfilnam_dpet), &
-          !                 nlon     = interface%domaininfo%nlon, &
-          !                 nlat     = interface%domaininfo%nlat, &
-          !                 lon      = interface%domaininfo%lon, &
-          !                 lat      = interface%domaininfo%lat, &
-          !                 outyear  = interface%steering%outyear, &
-          !                 outdt    = interface%params_siml%outdt, &
-          !                 outnt    = interface%params_siml%outnt, &
-          !                 varnam   = PET_NAME, &
-          !                 varunits = "mm d-1", &
-          !                 longnam  = "potential evapotranspiration", &
-          !                 title    = TITLE, &
-          !                 globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
-          !                 )
+          !----------------------------------------------------------------
+          ! Daily PET output file 
+          !----------------------------------------------------------------
+          ncoutfilnam_dpet = trim(prefix)//'.'//year_char//".d.pet.nc"
+          print*,'initialising ', trim(ncoutfilnam_dpet), '...'
+          call init_nc_3D( filnam  = trim(ncoutfilnam_dpet), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = PET_NAME, &
+                          varunits = "mm d-1", &
+                          longnam  = "potential evapotranspiration", &
+                          title    = TITLE, &
+                          globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                          )
 
-          ! !----------------------------------------------------------------
-          ! ! Daily AET output file 
-          ! !----------------------------------------------------------------
-          ! ncoutfilnam_daet = trim(prefix)//'.'//year_char//".d.aet.nc"
-          ! print*,'initialising ', trim(ncoutfilnam_daet), '...'
-          ! call init_nc_3D( filnam  = trim(ncoutfilnam_daet), &
-          !                 nlon     = interface%domaininfo%nlon, &
-          !                 nlat     = interface%domaininfo%nlat, &
-          !                 lon      = interface%domaininfo%lon, &
-          !                 lat      = interface%domaininfo%lat, &
-          !                 outyear  = interface%steering%outyear, &
-          !                 outdt    = interface%params_siml%outdt, &
-          !                 outnt    = interface%params_siml%outnt, &
-          !                 varnam   = AET_NAME, &
-          !                 varunits = "mm d-1", &
-          !                 longnam  = "actual evapotranspiration", &
-          !                 title    = TITLE, &
-          !                 globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
-          !                 )        
+          !----------------------------------------------------------------
+          ! Daily AET output file 
+          !----------------------------------------------------------------
+          ncoutfilnam_daet = trim(prefix)//'.'//year_char//".d.aet.nc"
+          print*,'initialising ', trim(ncoutfilnam_daet), '...'
+          call init_nc_3D( filnam  = trim(ncoutfilnam_daet), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = AET_NAME, &
+                          varunits = "mm d-1", &
+                          longnam  = "actual evapotranspiration", &
+                          title    = TITLE, &
+                          globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                          )        
         end if
 
       end if
@@ -1842,7 +1842,7 @@ contains
         !-------------------------------------------------------------------------
         ! Daily output
         !-------------------------------------------------------------------------
-        if (interface%params_siml%lncoutwaterbal) then
+        if (interface%params_siml%lncoutdwaterbal) then
           !-------------------------------------------------------------------------
           ! soil water content
           !-------------------------------------------------------------------------
@@ -1875,38 +1875,38 @@ contains
           !                   outdppfd(:,:) &
           !                   )
 
-          ! !-------------------------------------------------------------------------
-          ! ! PET
-          ! !-------------------------------------------------------------------------
-          ! print*,'writing ', trim(ncoutfilnam_dpet), '...'
-          ! call write_nc_3D( trim(ncoutfilnam_dpet), &
-          !                   PET_NAME, &
-          !                   interface%domaininfo%maxgrid, &
-          !                   interface%domaininfo%nlon, &
-          !                   interface%domaininfo%nlat, &
-          !                   interface%grid(:)%ilon, &
-          !                   interface%grid(:)%ilat, &
-          !                   interface%params_siml%outnt, &
-          !                   interface%grid(:)%dogridcell, &
-          !                   outdpet(:,:) &
-          !                   )
+          !-------------------------------------------------------------------------
+          ! PET
+          !-------------------------------------------------------------------------
+          print*,'writing ', trim(ncoutfilnam_dpet), '...'
+          call write_nc_3D( trim(ncoutfilnam_dpet), &
+                            PET_NAME, &
+                            interface%domaininfo%maxgrid, &
+                            interface%domaininfo%nlon, &
+                            interface%domaininfo%nlat, &
+                            interface%grid(:)%ilon, &
+                            interface%grid(:)%ilat, &
+                            interface%params_siml%outnt, &
+                            interface%grid(:)%dogridcell, &
+                            outdpet(:,:) &
+                            )
 
-          ! !-------------------------------------------------------------------------
-          ! ! AET
-          ! !-------------------------------------------------------------------------
-          ! if (nlu>1) stop 'writeout_nc_waterbal: nlu>1. Think of something clever!'
-          ! print*,'writing ', trim(ncoutfilnam_daet), '...'
-          ! call write_nc_3D( trim(ncoutfilnam_daet), &
-          !                   AET_NAME, &
-          !                   interface%domaininfo%maxgrid, &
-          !                   interface%domaininfo%nlon, &
-          !                   interface%domaininfo%nlat, &
-          !                   interface%grid(:)%ilon, &
-          !                   interface%grid(:)%ilat, &
-          !                   interface%params_siml%outnt, &
-          !                   interface%grid(:)%dogridcell, &
-          !                   outdaet(1,:,:) &
-          !                   )
+          !-------------------------------------------------------------------------
+          ! AET
+          !-------------------------------------------------------------------------
+          if (nlu>1) stop 'writeout_nc_waterbal: nlu>1. Think of something clever!'
+          print*,'writing ', trim(ncoutfilnam_daet), '...'
+          call write_nc_3D( trim(ncoutfilnam_daet), &
+                            AET_NAME, &
+                            interface%domaininfo%maxgrid, &
+                            interface%domaininfo%nlon, &
+                            interface%domaininfo%nlat, &
+                            interface%grid(:)%ilon, &
+                            interface%grid(:)%ilat, &
+                            interface%params_siml%outnt, &
+                            interface%grid(:)%dogridcell, &
+                            outdaet(1,:,:) &
+                            )
 
         end if
 
