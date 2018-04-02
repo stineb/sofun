@@ -27,8 +27,6 @@ module md_params_domain
 
     character(len=256) :: domain_name
 
-    ! integer :: maxgrid
-
   end type type_params_domain
 
   type( type_params_domain ) :: params_domain

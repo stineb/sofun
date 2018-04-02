@@ -26,7 +26,7 @@ import os.path
 ## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet2015'
+simsuite = 'global'
 
 ##--------------------------------------------------------------------
 ## For an example simulation (simulation name 'EXAMPLE_global'), set 
@@ -83,7 +83,6 @@ if simsuite == 'global':
 	os.system( 'mkdir -p ' + dirn )
 	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
 
-
 	## fapar (modis evi)
 	##--------------------------------------
 	dirn = 'input/global/fapar'
@@ -96,6 +95,12 @@ if simsuite == 'global':
 	os.system( 'mkdir -p ' + dirn )
 	call(['ln', '-svf', dataroot + 'soil/soilgrids/whc_soilgrids_halfdeg_FILLED.nc', dirn ])
 	call(['ln', '-svf', dataroot + 'soil/hwsd/soil_type_hwsd_halfdeg.cdf', dirn ])
+
+	## land cover
+	##--------------------------------------
+	dirn = 'input/global/landcover'
+	os.system( 'mkdir -p ' + dirn )
+	call(['ln', '-svf', dataroot + 'landcover/modis_landcover_halfdeg_2010_FILLED.nc', dirn ])
 
 
 	## WATCH-WFDEI climate input data

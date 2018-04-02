@@ -11,9 +11,9 @@ program main
   use md_params_domain, only: getpar_domain, type_params_domain
   use md_grid, only: get_domaininfo, getgrid
   use md_params_soil, only: getsoil
-  use md_forcing, only: getclimate, getninput, ninput_type, gettot_ninput, &
+  use md_forcing, only: get_fpc_grid_igbp, getclimate, getninput, ninput_type, gettot_ninput, &
     getfapar, getlanduse, getco2
-  use md_params_core, only: dummy, maxgrid, ndayyear
+  use md_params_core, only: dummy, maxgrid, ndayyear, npft
   use md_biosphere, only: biosphere_annual
 
   implicit none
@@ -68,6 +68,7 @@ program main
   allocate( interface%landuse(      interface%domaininfo%maxgrid ) )
   allocate( interface%soilparams(   interface%domaininfo%maxgrid ) )
   allocate( interface%dfapar_field( ndayyear, interface%domaininfo%maxgrid ) )
+  allocate( interface%fpc_grid(     interface%domaininfo%maxgrid, npft ) )
 
   ! vectorise 2D array, keeping only land gridcells
   interface%grid(:) = getgrid( interface%domaininfo, params_domain )
@@ -79,6 +80,12 @@ program main
   ! GET SOIL PARAMETERS
   !----------------------------------------------------------------
   interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
+
+  !----------------------------------------------------------------
+  ! GET VEGETATION COVER (fractional projective cover by PFT)
+  !----------------------------------------------------------------
+  interface%fpc_grid(:,:) = get_fpc_grid_igbp( interface%domaininfo, interface%grid(:), interface%params_siml )
+
 
   ! LOOP THROUGH YEARS
   write(0,*) '-------------------START OF SIMULATION--------------------'

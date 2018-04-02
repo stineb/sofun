@@ -137,9 +137,6 @@ contains
     end do
     domaininfo%maxgrid = jpngr
 
-    ! Copy domain parameter
-    domaininfo%domain_name = params_domain%domain_name
-
     ! get resolution
     domaininfo%dlon = domaininfo%lon(2) - domaininfo%lon(1)
     domaininfo%dlat = domaininfo%lat(2) - domaininfo%lat(1)
