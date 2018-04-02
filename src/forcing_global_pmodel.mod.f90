@@ -303,8 +303,8 @@ contains
 
     ! local variables
     integer :: ncid, varid
-    integer :: latdimid, londimid
-    integer :: nlat_arr, nlon_arr
+    integer :: latdimid, londimid, pftdimid
+    integer :: nlat_arr, nlon_arr, npft_in
     real, allocatable, dimension(:)     :: lon_arr
     real, allocatable, dimension(:)     :: lat_arr
     real, allocatable, dimension(:,:,:) :: vegtype_arr
@@ -321,12 +321,11 @@ contains
     character(len=100), parameter :: dimname_pft = "z"
     character(len=100), parameter :: varname = "pftcover"
     character(len=100), parameter :: filnam = "./input/global/landcover/modis_landcover_halfdeg_2010_FILLED.nc"
-    integer, parameter :: npft_in = 10
 
     !----------------------------------------------------------------  
     ! Get vegetation cover information from file
     !----------------------------------------------------------------
-    print*,'getting vegetation cover from ', trim(filnam), '...'
+    print*,'getting vegetation cover from ', trim(filnam), ' ...'
 
     ! Read arrays of all months of current year from file  
     call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
@@ -343,14 +342,27 @@ contains
     ! Get latitude information: nlon
     call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
 
+    ! get dimension ID for PFT
+    call check( nf90_inq_dimid( ncid, trim(dimname_pft), pftdimid ) )
+
+    ! Get PFT information: number of PFTs
+    call check( nf90_inquire_dimension( ncid, pftdimid, len = npft_in ) )
+
     ! for index association, get ilon and ilat vectors
     ! Allocate array sizes now knowing nlon and nlat 
+    print*,'nlon_arr', nlon_arr
+    print*,'nlat_arr', nlat_arr
     allocate( lon_arr(nlon_arr) )
     allocate( lat_arr(nlat_arr) )
+    print*,'length of lon_arr ', size(lon_arr)
+    print*,'length of lat_arr ', size(lat_arr)
 
     ! Get longitude and latitude values
+    print*,'1'
     call check( nf90_get_var( ncid, londimid, lon_arr ) )
+    print*,'2'
     call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+    print*,'3'
 
     ! Check if the resolution of the climate input files is identical to the model grid resolution
     dlon = lon_arr(2) - lon_arr(1)
@@ -381,6 +393,10 @@ contains
     ! Get the varid of the data variable, based on its name
     print*,trim(varname)
     call check( nf90_inq_varid( ncid, trim(varname), varid ) )
+
+    print*,'nlon_arr ', nlon_arr 
+    print*,'nlat_arr ', nlat_arr 
+    print*,'npft_in', npft_in
 
     ! Read the array
     call check( nf90_get_var( ncid, varid, vegtype_arr, start=(/1, 1, 1/), count=(/nlon_arr, nlat_arr, npft_in/) ) )

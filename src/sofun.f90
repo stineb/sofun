@@ -76,10 +76,10 @@ program main
   ! Obtain land unit dependent parameters, define decomposition _rates
   !call luparameters
 
-  !----------------------------------------------------------------
-  ! GET SOIL PARAMETERS
-  !----------------------------------------------------------------
-  interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
+  ! !----------------------------------------------------------------
+  ! ! GET SOIL PARAMETERS
+  ! !----------------------------------------------------------------
+  ! interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
 
   !----------------------------------------------------------------
   ! GET VEGETATION COVER (fractional projective cover by PFT)
