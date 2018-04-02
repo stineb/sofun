@@ -29,7 +29,7 @@ module md_tile
   ! Canopy type
   !----------------------------------------------------------------
   type canopy_type
-    real :: fpc_grid    ! fractional projective cover (sum of crownarea by canopy plants)
+    ! real :: fpc_grid    ! fractional projective cover (sum of crownarea by canopy plants)
   end type canopy_type
 
   !----------------------------------------------------------------
@@ -96,7 +96,7 @@ contains
     ! argument
     type( canopy_type ), intent(inout) :: canopy
 
-    canopy%fpc_grid = 0.0
+    ! canopy%fpc_grid = 0.0
 
   end subroutine initglobal_canopy
 

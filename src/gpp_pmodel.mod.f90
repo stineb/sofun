@@ -137,9 +137,9 @@ module md_gpp
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
-  real, allocatable, dimension(:,:,:) :: outdgpp    ! daily gross primary production [gC/m2/d]
-  real, allocatable, dimension(:,:,:) :: outdrd     ! daily dark respiration [gC/m2/d]
-  real, allocatable, dimension(:,:,:) :: outdtransp ! daily transpiration [mm]
+  real, allocatable, dimension(:,:) :: outdgpp    ! daily gross primary production [gC/m2/d]
+  real, allocatable, dimension(:,:) :: outdrd     ! daily dark respiration [gC/m2/d]
+  real, allocatable, dimension(:,:) :: outdtransp ! daily transpiration [mm]
 
   ! ! monthly
   ! real, allocatable, dimension(:,:,:) :: outmgpp    ! monthly gross primary production [gC/m2/mo.]
@@ -215,17 +215,17 @@ contains
         soilmstress = 1.0
       end if
 
-      if ( plant(pft)%fapar_ind>0.0 .and. solar%dayl(doy)>0.0) then
+      if ( plant(pft)%fpc_grid>0.0 .and. solar%dayl(doy)>0.0) then
 
         ! GPP
-        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilmstress )
+        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilmstress )
 
         ! ! transpiration
         ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, soilmstress )
         ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp )
 
         ! Dark respiration
-        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%acrown, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, soilmstress )
+        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, soilmstress )
 
         ! Leaf-level assimilation rate
         dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), dtemp, soilmstress )
@@ -327,13 +327,13 @@ contains
   end function getlue
 
 
-  function calc_dgpp( fapar, acrown, dppfd, lue, dtemp, soilmstress ) result( my_dgpp )
+  function calc_dgpp( fapar, fpc_grid, dppfd, lue, dtemp, soilmstress ) result( my_dgpp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: fapar       ! fraction of absorbed photosynthetically active radiation
-    real, intent(in) :: acrown      ! crown area (=1)
+    real, intent(in) :: fpc_grid    ! foliar projective cover
     real, intent(in) :: dppfd       ! daily total photon flux density, mol m-2
     real, intent(in) :: lue         ! light use efficiency
     real, intent(in) :: dtemp       ! this day's air temperature, deg C 
@@ -343,7 +343,7 @@ contains
     real :: my_dgpp                        ! Daily total gross primary productivity (gC m-2 d-1)
 
     ! GPP is light use efficiency multiplied by absorbed light and soil moisture stress function
-    my_dgpp = fapar * acrown * dppfd * soilmstress * lue * ramp_gpp_lotemp( dtemp ) * c_molmass
+    my_dgpp = fapar * fpc_grid * dppfd * soilmstress * lue * ramp_gpp_lotemp( dtemp ) * c_molmass
 
   end function calc_dgpp
 
@@ -388,14 +388,14 @@ contains
   end function calc_dgs
 
 
-  function calc_drd( fapar, acrown, meanmppfd, rd_unitiabs, dtemp, soilmstress ) result( my_drd )
+  function calc_drd( fapar, fpc_grid, meanmppfd, rd_unitiabs, dtemp, soilmstress ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: fapar           ! fraction of absorbed photosynthetically active radiation
-    real, intent(in) :: acrown          ! crown area (=1)
+    real, intent(in) :: fpc_grid        ! foliar projective cover
     real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
     real, intent(in) :: rd_unitiabs
     real, intent(in) :: dtemp           ! this day's air temperature, deg C
@@ -405,7 +405,7 @@ contains
     real :: my_drd
 
     ! Dark respiration takes place during night and day (24 hours)
-    my_drd = fapar * acrown * meanmppfd * soilmstress * rd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * fpc_grid * meanmppfd * soilmstress * rd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
 
   end function calc_drd
 
@@ -1459,23 +1459,23 @@ contains
       if (interface%params_siml%loutgpp) then
         ncoutfilnam_agpp = trim(prefix)//'.'//year_char//".a.gpp.nc"
         print*,'initialising ', trim(ncoutfilnam_agpp), '...'
-        call init_nc_3D( filnam  = trim(ncoutfilnam_agpp), &
-                        nlon     = interface%domaininfo%nlon, &
-                        nlat     = interface%domaininfo%nlat, &
-                        lon      = interface%domaininfo%lon, &
-                        lat      = interface%domaininfo%lat, &
-                        outyear  = interface%steering%outyear, &
-                        outdt    = 365, &
-                        outnt    = 1, &
-                        varnam   = GPP_NAME, &
-                        varunits = "gC m-2 yr-1", &
-                        longnam  = "annual gross primary productivivty", &
-                        title    = TITLE, &
-                        globatt1_nam = "fapar_source",      globatt1_val = interface%params_siml%fapar_forcing_source, &
-                        globatt2_nam = "param_beta",        globatt2_val = beta_char, &
-                        globatt3_nam = "param_rd_to_vcmax", globatt3_val = rd_to_vcmax_char, &
-                        globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char  &
-                        )
+        call init_nc_3D(  filnam  = trim(ncoutfilnam_agpp), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = GPP_NAME, &
+                          varunits = "gC m-2 yr-1", &
+                          longnam  = "annual gross primary productivivty", &
+                          title    = TITLE, &
+                          globatt1_nam = "fapar_source",      globatt1_val = interface%params_siml%fapar_forcing_source, &
+                          globatt2_nam = "param_beta",        globatt2_val = beta_char, &
+                          globatt3_nam = "param_rd_to_vcmax", globatt3_val = rd_to_vcmax_char, &
+                          globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char  &
+                          )
       end if
 
       if ( interface%steering%outyear>=interface%params_siml%daily_out_startyr .and. &
@@ -1486,23 +1486,23 @@ contains
         if (interface%params_siml%lncoutdgpp) then
           ncoutfilnam_dgpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
           print*,'initialising ', trim(ncoutfilnam_dgpp), '...'
-          call init_nc_3D( filnam  = trim(ncoutfilnam_dgpp), &
-                          nlon     = interface%domaininfo%nlon, &
-                          nlat     = interface%domaininfo%nlat, &
-                          lon      = interface%domaininfo%lon, &
-                          lat      = interface%domaininfo%lat, &
-                          outyear  = interface%steering%outyear, &
-                          outdt    = interface%params_siml%outdt, &
-                          outnt    = interface%params_siml%outnt, &
-                          varnam   = GPP_NAME, &
-                          varunits = "gC m-2 d-1", &
-                          longnam  = "daily gross primary productivivty", &
-                          title    = TITLE, &
-                          globatt1_nam = "fapar_source",      globatt1_val = interface%params_siml%fapar_forcing_source, &
-                          globatt2_nam = "param_beta",        globatt2_val = beta_char, &
-                          globatt3_nam = "param_rd_to_vcmax", globatt3_val = rd_to_vcmax_char, &
-                          globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char  &
-                          )
+          call init_nc_3D(  filnam  = trim(ncoutfilnam_dgpp), &
+                            nlon     = interface%domaininfo%nlon, &
+                            nlat     = interface%domaininfo%nlat, &
+                            lon      = interface%domaininfo%lon, &
+                            lat      = interface%domaininfo%lat, &
+                            outyear  = interface%steering%outyear, &
+                            outdt    = interface%params_siml%outdt, &
+                            outnt    = interface%params_siml%outnt, &
+                            varnam   = GPP_NAME, &
+                            varunits = "gC m-2 d-1", &
+                            longnam  = "daily gross primary productivivty", &
+                            title    = TITLE, &
+                            globatt1_nam = "fapar_source",      globatt1_val = interface%params_siml%fapar_forcing_source, &
+                            globatt2_nam = "param_beta",        globatt2_val = beta_char, &
+                            globatt3_nam = "param_rd_to_vcmax", globatt3_val = rd_to_vcmax_char, &
+                            globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char  &
+                            )
         end if
 
       end if
@@ -1526,13 +1526,13 @@ contains
     integer, intent(in) :: ngridcells
 
     ! daily
-    if ( interface%steering%init.and.interface%params_siml%loutdgpp )   allocate( outdgpp(npft,interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init.and. interface%params_siml%loutdrd    ) allocate( outdrd(npft,interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init.and. interface%params_siml%loutdtransp) allocate( outdtransp(npft,interface%params_siml%outnt,ngridcells) )
+    if ( interface%steering%init.and.interface%params_siml%loutdgpp )   allocate( outdgpp(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and. interface%params_siml%loutdrd    ) allocate( outdrd(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and. interface%params_siml%loutdtransp) allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
 
-    if ( interface%params_siml%loutdgpp )  outdgpp(:,:,:)    = 0.0
-    if (interface%params_siml%loutdrd    ) outdrd(:,:,:)     = 0.0
-    if (interface%params_siml%loutdtransp) outdtransp(:,:,:) = 0.0
+    if (interface%params_siml%loutdgpp )   outdgpp(:,:)    = 0.0
+    if (interface%params_siml%loutdrd    ) outdrd(:,:)     = 0.0
+    if (interface%params_siml%loutdtransp) outdtransp(:,:) = 0.0
 
     ! annual
     if (interface%params_siml%loutgpp) then
@@ -1590,9 +1590,9 @@ contains
     !----------------------------------------------------------------
     it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
 
-    if (interface%params_siml%loutdgpp   ) outdgpp(:,it,jpngr)    = outdgpp(:,it,jpngr)    + dgpp(:)    / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdrd    ) outdrd(:,it,jpngr)     = outdrd(:,it,jpngr)     + drd(:)     / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdtransp) outdtransp(:,it,jpngr) = outdtransp(:,it,jpngr) + dtransp(:) / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdgpp   ) outdgpp(it,jpngr)    = outdgpp(it,jpngr)    + sum(dgpp(:))    / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + sum(drd(:))     / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + sum(dtransp(:)) / real( interface%params_siml%outdt )
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
@@ -1676,9 +1676,9 @@ contains
         ! Define 'itime' as a decimal number corresponding to day in the year + year
         itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
         
-        if (interface%params_siml%loutdgpp  )  write(101,999) itime, sum(outdgpp(:,it,jpngr))
-        if (interface%params_siml%loutdrd    ) write(135,999) itime, sum(outdrd(:,it,jpngr))
-        if (interface%params_siml%loutdtransp) write(114,999) itime, sum(outdtransp(:,it,jpngr))
+        if (interface%params_siml%loutdgpp  )  write(101,999) itime, outdgpp(it,jpngr)
+        if (interface%params_siml%loutdrd    ) write(135,999) itime, outdrd(it,jpngr)
+        if (interface%params_siml%loutdtransp) write(114,999) itime, outdtransp(it,jpngr)
 
       end do
 
@@ -1753,7 +1753,7 @@ contains
                                                                 interface%grid(:)%ilat, &
                                                                 interface%params_siml%outnt, &
                                                                 interface%grid(:)%dogridcell, &
-                                                                outdgpp(1,:,:) &
+                                                                outdgpp(:,:) &
                                                                 )
       end if
     end if

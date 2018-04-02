@@ -309,7 +309,7 @@ contains
     real, allocatable, dimension(:)     :: lat_arr
     real, allocatable, dimension(:,:,:) :: vegtype_arr
 
-    integer :: pft, jpngr, ilon_arr, ilat_arr
+    integer :: i, pft, jpngr, ilon_arr, ilat_arr
     integer, dimension(domaininfo%maxgrid) :: ilon
     integer, dimension(domaininfo%maxgrid) :: ilat
     integer :: fileyear, read_idx
@@ -358,11 +358,17 @@ contains
     print*,'length of lat_arr ', size(lat_arr)
 
     ! Get longitude and latitude values
-    print*,'1'
-    call check( nf90_get_var( ncid, londimid, lon_arr ) )
-    print*,'2'
-    call check( nf90_get_var( ncid, latdimid, lat_arr ) )
-    print*,'3'
+    ! print*,'1'
+    ! call check( nf90_get_var( ncid, londimid, lon_arr ) )
+    ! print*,'2'
+    ! call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+    ! print*,'3'
+
+    ! xxx try:
+    lon_arr = (/ (i, i = 1,nlon_arr) /)
+    lon_arr = (lon_arr - 1) * 0.5 - 180.0 + 0.25 
+    lat_arr = (/ (i, i = 1,nlat_arr) /)
+    lat_arr = (lat_arr - 1) * 0.5 - 90.0 + 0.25 
 
     ! Check if the resolution of the climate input files is identical to the model grid resolution
     dlon = lon_arr(2) - lon_arr(1)

@@ -26,6 +26,7 @@ module md_plant
     integer :: pftno
 
     ! canopy
+    real :: fpc_grid            ! fractional projective cover
     real :: lai_ind             ! fraction of absorbed photosynthetically active radiation
     real :: fapar_ind           ! fraction of absorbed photosynthetically active radiation
     real :: acrown              ! crown area
@@ -344,7 +345,10 @@ contains
     ! argument
     type( plant_type ), intent(inout) :: plant
 
-    plant%acrown = 1.0 ! dummy
+    plant%fpc_grid  = 0.0
+    plant%lai_ind   = 0.0
+    plant%fapar_ind = 0.0
+    plant%acrown    = 0.0
 
     ! canpopy state variables
     plant%narea            = 0.0
