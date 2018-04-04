@@ -38,8 +38,8 @@ example = False
 ## Manually et the root directory for the local mirror of 
 ## /work/bstocker/labprentice/data
 ##--------------------------------------------------------------------
-dataroot = '/Users/benjaminstocker/data/'
-# dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
+# dataroot = '/Users/benjaminstocker/data/'
+dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
 
 ##--------------------------------------------------------------------
 ## Link directories
@@ -83,7 +83,6 @@ if simsuite == 'global':
 	os.system( 'mkdir -p ' + dirn )
 	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
 
-
 	## fapar (modis evi)
 	##--------------------------------------
 	dirn = 'input/global/fapar'
@@ -96,6 +95,12 @@ if simsuite == 'global':
 	os.system( 'mkdir -p ' + dirn )
 	call(['ln', '-svf', dataroot + 'soil/soilgrids/whc_soilgrids_halfdeg_FILLED.nc', dirn ])
 	call(['ln', '-svf', dataroot + 'soil/hwsd/soil_type_hwsd_halfdeg.cdf', dirn ])
+
+	## land cover
+	##--------------------------------------
+	dirn = 'input/global/landcover'
+	os.system( 'mkdir -p ' + dirn )
+	call(['ln', '-svf', dataroot + 'landcover/modis_landcover_halfdeg_2010_FILLED.nc', dirn ])
 
 
 	## WATCH-WFDEI climate input data

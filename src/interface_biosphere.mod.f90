@@ -18,13 +18,14 @@ module md_interface
     real                                                :: pco2
     type( gridtype )      , dimension(:),   allocatable :: grid
     type( paramtype_soil ), dimension(:),   allocatable :: soilparams
-    type( landuse_type)   , dimension(:),   allocatable :: landuse
+    type( landuse_type )  , dimension(:),   allocatable :: landuse
     type( climate_type )  , dimension(:),   allocatable :: climate
     type( ninput_type)    , dimension(:),   allocatable :: ninput_field
     real                  , dimension(:,:), allocatable :: dfapar_field
     type( domaininfo_type )                             :: domaininfo
     type( outtype_steering )                            :: steering
     type( paramstype_siml )                             :: params_siml
+    real, dimension(:,:), allocatable                   :: fpc_grid
   end type interfacetype_biosphere
 
   !----------------------------------------------------------------

@@ -49,10 +49,15 @@ module md_params_siml
     logical :: in_ppfd      ! photosynthetic photon flux density 
 
     ! activated PFTs
-    logical :: lTeBE
-    logical :: lGrC3
-    logical :: lGNC3
-    logical :: lGrC4
+    logical :: lTrE        ! evergreen tree
+    logical :: lTNE        ! evergreen tree, N-fixing
+    logical :: lTrD        ! deciduous tree
+    logical :: lTND        ! deciduous tree, N-fixing
+    logical :: lGr3        ! grass, C3 photosynthetic pathway
+    logical :: lGN3        ! grass, C3 photosynthetic pathway, N-fixing
+    logical :: lGr4        ! grass, C4 photosynthetic pathway
+
+    integer :: npft        ! number of activated PFTs
 
     ! booleans defining whether variable is written to ascii output
     logical :: loutdgpp       
@@ -252,13 +257,16 @@ contains
     !  SR for reading and defining simulation parameters from file 
     !  <runname>.sofun.parameter. Only once at start of simulation.
     !----------------------------------------------------------------
-    use md_params_core, only: ndayyear
+    use md_params_core, only: ndayyear, npft
 
     ! argument
     character(len=*), intent(in) :: runname
 
     ! function return variable
     type( paramstype_siml ) :: out_getpar_siml
+
+    ! local variables
+    integer :: npft_local, pft
 
     ! Read in main model parameters
     write(0,*) 'reading parameter file ', runname//".sofun.parameter ..."
@@ -310,11 +318,28 @@ contains
       out_getpar_siml%spinupyears = 0
     endif
 
-    out_getpar_siml%lTeBE          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTeBE' )
-    out_getpar_siml%lGrC3          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGrC3' )
-    out_getpar_siml%lGNC3          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGNC3' )
-    out_getpar_siml%lGrC4          = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGrC4' )
-    
+    ! activated PFTs
+    out_getpar_siml%lTrE = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTrE' )
+    out_getpar_siml%lTNE = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTNE' )
+    out_getpar_siml%lTrD = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTrD' )
+    out_getpar_siml%lTND = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTND' )
+    out_getpar_siml%lGr3 = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGr3' )
+    out_getpar_siml%lGN3 = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGN3' )
+    out_getpar_siml%lGr4 = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGr4' )
+
+    npft_local = 0
+    if (out_getpar_siml%lTrE) npft_local = npft_local + 1
+    if (out_getpar_siml%lTNE) npft_local = npft_local + 1
+    if (out_getpar_siml%lTrD) npft_local = npft_local + 1
+    if (out_getpar_siml%lTND) npft_local = npft_local + 1
+    if (out_getpar_siml%lGr3) npft_local = npft_local + 1
+    if (out_getpar_siml%lGr4) npft_local = npft_local + 1
+    if (out_getpar_siml%lGN3) npft_local = npft_local + 1
+
+    ! temporary solution to this
+    print*,'found ', npft_local, ' activated PFTs.'
+    if (npft/=npft_local) stop 'GETPAR_SIML: adjust number of activated PFTs by hand in params_core.'
+
     ! boolean for ascii output writing (core variables)
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
     out_getpar_siml%loutdrd        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdrd' )

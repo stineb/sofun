@@ -18,8 +18,6 @@ module md_params_domain
     character(len=256) :: filnam_topography
     character(len=256) :: filnam_soil
 
-    ! integer :: maxgrid
-
   end type type_params_domain
 
 contains
@@ -41,7 +39,6 @@ contains
     call getparstring( 'site_paramfils/'//trim(sitename)//'.parameter', 'filnam_landmask',   out_params_domain%filnam_landmask )
     call getparstring( 'site_paramfils/'//trim(sitename)//'.parameter', 'filnam_topography', out_params_domain%filnam_topography )
     call getparstring( 'site_paramfils/'//trim(sitename)//'.parameter', 'filnam_soil',       out_params_domain%filnam_soil )
-    ! out_params_domain%maxgrid = getparint( 'site_paramfils/'//trim(sitename)//'.parameter', 'maxgrid' )
 
   end function getpar_domain
 

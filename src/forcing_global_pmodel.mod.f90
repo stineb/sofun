@@ -20,7 +20,7 @@ module md_forcing
 
   private
   public getco2, getninput, ninput_type, gettot_ninput, getfapar, &
-    getclimate, getlanduse, landuse_type, climate_type
+    getclimate, getlanduse, landuse_type, climate_type, get_fpc_grid
 
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
@@ -273,6 +273,180 @@ contains
     deallocate( fapar_arr )
 
   end function getfapar
+
+
+  function get_fpc_grid( domaininfo, grid, params_siml ) result( fpc_grid_field )
+    !////////////////////////////////////////////////////////////////
+    ! Function returns the fractional land cover by vegetation types 
+    ! based on the 10 IGBP types in the input file (MODIS Landcover)
+    ! 1: ENF: type2 = "evergreen needleleaf forest" ;
+    ! 2: EBF: type3 = "evergreen broadleaf forest" ;
+    ! 3: DNF: type4 = "deciduous needleleaf forest" ;
+    ! 4: DBF: type5 = "deciduous broadleaf forest" ;
+    ! 5: MF:  type6 = "mixed forest" ;
+    ! 6: SHR: type7+type8 = "closed shrublands" + "open shrublands";
+    ! 7: SAV: type9+type10 = "savannas" plus "woody savannas"
+    ! 8: GRA: type11 = "grasslands" ;
+    ! 9: WET: type12 = "permanent wetlands" ;
+    ! 10:CRO: type13 + type15 = "croplands" + "cropland (natural vegetation mosaic)";
+    !----------------------------------------------------------------
+    use md_params_siml, only: paramstype_siml
+    use md_params_core, only: npft
+
+    ! arguments
+    type( domaininfo_type ), intent(in) :: domaininfo
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
+    type( paramstype_siml ), intent(in) :: params_siml
+
+    ! function return variable
+    real, dimension(domaininfo%maxgrid,npft) :: fpc_grid_field
+
+    ! local variables
+    integer :: ncid, varid
+    integer :: latdimid, londimid, pftdimid
+    integer :: nlat_arr, nlon_arr, npft_in
+    real, allocatable, dimension(:)     :: lon_arr
+    real, allocatable, dimension(:)     :: lat_arr
+    real, allocatable, dimension(:,:,:) :: vegtype_arr
+
+    integer :: i, pft, jpngr, ilon_arr, ilat_arr
+    integer, dimension(domaininfo%maxgrid) :: ilon
+    integer, dimension(domaininfo%maxgrid) :: ilat
+    integer :: fileyear, read_idx
+    real, allocatable, dimension(:) :: tmp
+    real :: ncfillvalue
+    real :: dlat, dlon
+    character(len=3), parameter :: lonname = "lon"
+    character(len=3), parameter :: latname = "lat"
+    character(len=100), parameter :: dimname_pft = "z"
+    character(len=100), parameter :: varname = "pftcover"
+    character(len=100), parameter :: filnam = "./input/global/landcover/modis_landcover_halfdeg_2010_FILLED.nc"
+
+    !----------------------------------------------------------------  
+    ! Get vegetation cover information from file
+    !----------------------------------------------------------------
+    print*,'getting vegetation cover from ', trim(filnam), ' ...'
+
+    ! Read arrays of all months of current year from file  
+    call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
+
+    ! get dimension ID for latitude
+    call check( nf90_inq_dimid( ncid, trim(latname), latdimid ) )
+
+    ! Get latitude information: nlat
+    call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
+
+    ! get dimension ID for longitude
+    call check( nf90_inq_dimid( ncid, trim(lonname), londimid ) )
+
+    ! Get latitude information: nlon
+    call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
+
+    ! get dimension ID for PFT
+    call check( nf90_inq_dimid( ncid, trim(dimname_pft), pftdimid ) )
+
+    ! Get PFT information: number of PFTs
+    call check( nf90_inquire_dimension( ncid, pftdimid, len = npft_in ) )
+
+    ! for index association, get ilon and ilat vectors
+    ! Allocate array sizes now knowing nlon and nlat 
+    print*,'nlon_arr', nlon_arr
+    print*,'nlat_arr', nlat_arr
+    allocate( lon_arr(nlon_arr) )
+    allocate( lat_arr(nlat_arr) )
+    print*,'length of lon_arr ', size(lon_arr)
+    print*,'length of lat_arr ', size(lat_arr)
+
+    ! Get longitude and latitude values
+    ! print*,'1'
+    ! call check( nf90_get_var( ncid, londimid, lon_arr ) )
+    ! print*,'2'
+    ! call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+    ! print*,'3'
+
+    ! xxx try:
+    lon_arr = (/ (i, i = 1,nlon_arr) /)
+    lon_arr = (lon_arr - 1) * 0.5 - 180.0 + 0.25 
+    lat_arr = (/ (i, i = 1,nlat_arr) /)
+    lat_arr = (lat_arr - 1) * 0.5 - 90.0 + 0.25 
+
+    ! Check if the resolution of the climate input files is identical to the model grid resolution
+    dlon = lon_arr(2) - lon_arr(1)
+    dlat = lat_arr(2) - lat_arr(1)
+
+    if (dlon/=domaininfo%dlon) stop 'Longitude resolution of soil input file is not identical with model grid.'
+    if (dlat/=domaininfo%dlat) stop 'latitude resolution of soil input file is not identical with model grid.'
+
+    ! get index associations
+    do jpngr=1,domaininfo%maxgrid
+      ilon_arr = 1
+      do while (grid(jpngr)%lon/=lon_arr(ilon_arr))
+        ilon_arr = ilon_arr + 1
+      end do
+      ilon(jpngr) = ilon_arr
+
+      ilat_arr = 1
+      do while (grid(jpngr)%lat/=lat_arr(ilat_arr))
+        ilat_arr = ilat_arr + 1
+      end do
+      ilat(jpngr) = ilat_arr
+    end do
+
+    ! allocate size of output array
+    allocate( vegtype_arr(nlon_arr,nlat_arr,npft_in) )
+    allocate( tmp(npft_in))
+
+    ! Get the varid of the data variable, based on its name
+    print*,trim(varname)
+    call check( nf90_inq_varid( ncid, trim(varname), varid ) )
+
+    print*,'nlon_arr ', nlon_arr 
+    print*,'nlat_arr ', nlat_arr 
+    print*,'npft_in', npft_in
+
+    ! Read the array
+    call check( nf90_get_var( ncid, varid, vegtype_arr, start=(/1, 1, 1/), count=(/nlon_arr, nlat_arr, npft_in/) ) )
+
+    ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
+    call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
+
+    ! close NetCDF files
+    call check( nf90_close( ncid ) )
+
+    ! read from array to define land cover 'fpc_grid_field'
+    do jpngr=1,domaininfo%maxgrid
+      tmp = vegtype_arr(ilon(jpngr),ilat(jpngr),:)
+      if ( tmp(1)/=ncfillvalue ) then
+
+        fpc_grid_field(jpngr,:) = 0.0
+
+        ! Code below must follow the same structure as in 'plant_pmodel.mod.f90'
+        pft = 0
+        if ( params_siml%lTrE ) then
+          ! xxx dirty: call all non-grass vegetation types 'TrE', see indeces above
+          pft = pft + 1
+          fpc_grid_field(jpngr,pft) = sum( tmp(1:7) ) + tmp(9)
+
+        else if ( params_siml%lGr3 ) then
+          ! xxx dirty: call all grass vegetation types 'Gr3'
+          pft = pft + 1
+          fpc_grid_field(jpngr,pft) = tmp(8) + tmp(10)
+        else
+          stop 'PLANT:GETPAR_MODL_PLANT: PFT name not valid. See run/<simulationname>.sofun.parameter'
+        end if
+
+      end if
+    end do
+
+    ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
+    deallocate( vegtype_arr )
+    deallocate( lon_arr )
+    deallocate( lat_arr )
+
+    return
+    999  format (I2.2)
+
+  end function get_fpc_grid
 
 
   function getclimate( domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
