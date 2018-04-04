@@ -20,7 +20,7 @@ module md_forcing
 
   private
   public getco2, getninput, ninput_type, gettot_ninput, getfapar, &
-    getclimate, getlanduse, landuse_type, climate_type, get_fpc_grid_igbp
+    getclimate, getlanduse, landuse_type, climate_type, get_fpc_grid
 
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
@@ -275,7 +275,7 @@ contains
   end function getfapar
 
 
-  function get_fpc_grid_igbp( domaininfo, grid, params_siml ) result( fpc_grid_field )
+  function get_fpc_grid( domaininfo, grid, params_siml ) result( fpc_grid_field )
     !////////////////////////////////////////////////////////////////
     ! Function returns the fractional land cover by vegetation types 
     ! based on the 10 IGBP types in the input file (MODIS Landcover)
@@ -446,7 +446,7 @@ contains
     return
     999  format (I2.2)
 
-  end function get_fpc_grid_igbp
+  end function get_fpc_grid
 
 
   function getclimate( domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )

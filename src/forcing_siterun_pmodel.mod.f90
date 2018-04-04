@@ -17,7 +17,8 @@ module md_forcing
   implicit none
 
   private
-  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate, getlanduse, landuse_type, climate_type
+  public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate, &
+    getlanduse, landuse_type, climate_type, get_fpc_grid
 
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
@@ -156,6 +157,58 @@ contains
     999  format (I4.4)
 
   end function getfapar
+
+
+  function get_fpc_grid( domaininfo, grid, params_siml ) result( fpc_grid_field )
+    !////////////////////////////////////////////////////////////////
+    ! Function returns the fractional land cover by vegetation types 
+    ! based on the 10 IGBP types in the input file (MODIS Landcover)
+    ! 1: ENF: type2 = "evergreen needleleaf forest" ;
+    ! 2: EBF: type3 = "evergreen broadleaf forest" ;
+    ! 3: DNF: type4 = "deciduous needleleaf forest" ;
+    ! 4: DBF: type5 = "deciduous broadleaf forest" ;
+    ! 5: MF:  type6 = "mixed forest" ;
+    ! 6: SHR: type7+type8 = "closed shrublands" + "open shrublands";
+    ! 7: SAV: type9+type10 = "savannas" plus "woody savannas"
+    ! 8: GRA: type11 = "grasslands" ;
+    ! 9: WET: type12 = "permanent wetlands" ;
+    ! 10:CRO: type13 + type15 = "croplands" + "cropland (natural vegetation mosaic)";
+    !----------------------------------------------------------------
+    use md_params_siml, only: paramstype_siml
+    use md_params_core, only: npft
+
+    ! arguments
+    type( domaininfo_type ), intent(in) :: domaininfo
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
+    type( paramstype_siml ), intent(in) :: params_siml
+
+    ! function return variable
+    real, dimension(domaininfo%maxgrid,npft) :: fpc_grid_field
+
+    ! local variables
+    integer :: jpngr
+
+    jpngr = 1
+
+    ! get binary information of PFT presence from simulation parameters
+    fpc_grid_field(jpngr,:) = 0.0
+
+    ! Code below must follow the same structure as in 'plant_pmodel.mod.f90'
+    if ( params_siml%lTrE ) then
+      ! xxx dirty: call all non-grass vegetation types 'TrE', see indeces above
+      fpc_grid_field(jpngr,1) = 1.0
+
+    else if ( params_siml%lGr3 ) then
+      ! xxx dirty: call all grass vegetation types 'Gr3'
+      fpc_grid_field(jpngr,2) = 1.0
+    else
+      stop 'get_fpc_grid: no PFT activated accoring to simulation parameter file.'
+    end if
+
+    return
+    999  format (I2.2)
+
+  end function get_fpc_grid
 
 
   function getclimate( domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )

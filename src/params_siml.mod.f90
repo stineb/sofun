@@ -337,7 +337,8 @@ contains
     if (out_getpar_siml%lGN3) npft_local = npft_local + 1
 
     ! temporary solution to this
-    if (npft/=npft_local) stop 'adjust number of activated PFTs by hand in params_core.'
+    print*,'found ', npft_local, ' activated PFTs.'
+    if (npft/=npft_local) stop 'GETPAR_SIML: adjust number of activated PFTs by hand in params_core.'
 
     ! boolean for ascii output writing (core variables)
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
