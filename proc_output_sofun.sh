@@ -87,6 +87,10 @@ proc_global(){
 	cdo -O mergetime output_nc/$1.*.d.gpp.nc   output_nc/$1.d.gpp.nc
 	rm output_nc/$1.*.d.gpp.nc
 
+	## Soil water content
+	cdo -O mergetime output_nc/$1.*.d.wcont.nc   output_nc/$1.d.wcont.nc
+	rm output_nc/$1.*.d.wcont.nc
+
 	##-------------------------------------
 	## Annual
 	##-------------------------------------
