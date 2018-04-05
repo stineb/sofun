@@ -38,8 +38,8 @@ example = False
 ## Manually et the root directory for the local mirror of 
 ## /work/bstocker/labprentice/data
 ##--------------------------------------------------------------------
-# dataroot = '/Users/benjaminstocker/data/'
-dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
+dataroot = '/Users/benjaminstocker/data/'
+# dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
 
 ##--------------------------------------------------------------------
 ## Link directories
@@ -82,12 +82,6 @@ if simsuite == 'global':
 	dirn = 'input/global/fapar'
 	os.system( 'mkdir -p ' + dirn )
 	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
-
-	## fapar (modis evi)
-	##--------------------------------------
-	dirn = 'input/global/fapar'
-	os.system( 'mkdir -p ' + dirn )
-	call(['ln', '-svf', dataroot + 'modis_monthly-evi/zmaw_data/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc', dirn ])
 
 	## soil
 	##--------------------------------------

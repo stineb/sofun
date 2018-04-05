@@ -218,6 +218,15 @@ contains
       if ( plant(pft)%fpc_grid>0.0 .and. solar%dayl(doy)>0.0) then
 
         ! GPP
+        ! print*,'calling calc_dgpp() with'
+        ! print*,'pft', pft
+        ! print*,'plant(pft)%fapar_ind', plant(pft)%fapar_ind
+        ! print*,'plant(pft)%fpc_grid', plant(pft)%fpc_grid
+        ! print*,'solar%dppfd(doy)', solar%dppfd(doy)
+        ! print*,'out_pmodel(pft)%lue', out_pmodel(pft)%lue
+        ! print*,'dtemp', dtemp
+        ! print*,'soilmstress', soilmstress
+
         dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilmstress )
 
         ! ! transpiration
@@ -250,6 +259,8 @@ contains
       end if 
 
     end do
+
+    ! print*,'dgpp(:)', dgpp(:)
     
   end subroutine gpp
 
@@ -1429,7 +1440,7 @@ contains
     ! Opens NetCDF output files.
     !----------------------------------------------------------------
     use netcdf
-    use md_io_netcdf, only: init_nc_3D, check
+    use md_io_netcdf, only: init_nc_3D_time, check
     use md_interface, only: interface
 
     ! local variables
@@ -1459,7 +1470,7 @@ contains
       if (interface%params_siml%loutgpp) then
         ncoutfilnam_agpp = trim(prefix)//'.'//year_char//".a.gpp.nc"
         print*,'initialising ', trim(ncoutfilnam_agpp), '...'
-        call init_nc_3D(  filnam  = trim(ncoutfilnam_agpp), &
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_agpp), &
                           nlon     = interface%domaininfo%nlon, &
                           nlat     = interface%domaininfo%nlat, &
                           lon      = interface%domaininfo%lon, &
@@ -1486,7 +1497,7 @@ contains
         if (interface%params_siml%lncoutdgpp) then
           ncoutfilnam_dgpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
           print*,'initialising ', trim(ncoutfilnam_dgpp), '...'
-          call init_nc_3D(  filnam  = trim(ncoutfilnam_dgpp), &
+          call init_nc_3D_time(  filnam  = trim(ncoutfilnam_dgpp), &
                             nlon     = interface%domaininfo%nlon, &
                             nlat     = interface%domaininfo%nlat, &
                             lon      = interface%domaininfo%lon, &
@@ -1590,6 +1601,7 @@ contains
     !----------------------------------------------------------------
     it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
 
+    ! sum over PFT
     if (interface%params_siml%loutdgpp   ) outdgpp(it,jpngr)    = outdgpp(it,jpngr)    + sum(dgpp(:))    / real( interface%params_siml%outdt )
     if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + sum(drd(:))     / real( interface%params_siml%outdt )
     if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + sum(dtransp(:)) / real( interface%params_siml%outdt )
@@ -1637,13 +1649,16 @@ contains
     ! arguments
     integer, intent(in) :: jpngr
 
-    if (npft>1) stop 'getout_annual_gpp not implemented for npft>1'
+    ! local variables
+    integer :: pft
 
     ! outanrlarea(jpngr) = anrlarea
     if (interface%params_siml%loutgpp) then
       ! xxx to do: get vcmax at annual maximum (of monthly values)
-      outavcmax(1,jpngr)    = maxval(outdvcmax(1,:))
-      outavcmax_25(1,jpngr) = maxval(outdvcmax25(1,:))
+      do pft=1,npft
+        outavcmax(pft,jpngr)    = maxval(outdvcmax(pft,:))
+        outavcmax_25(pft,jpngr) = maxval(outdvcmax25(pft,:))
+      end do
     end if
 
   end subroutine getout_annual_gpp
@@ -1717,10 +1732,8 @@ contains
     ! Write NetCDF output
     !-------------------------------------------------------------------------
     use netcdf
-    use md_io_netcdf, only: write_nc_2D, write_nc_3D, check
+    use md_io_netcdf, only: write_nc_2D, write_nc_3D_time, check
     use md_interface, only: interface
-
-    if (npft>1) stop 'writeout_nc_gpp(): npft > 1. Think of something clever.'
 
     if ( .not. interface%steering%spinup ) then
       !-------------------------------------------------------------------------
@@ -1735,7 +1748,7 @@ contains
                                                               interface%grid(:)%ilon, &
                                                               interface%grid(:)%ilat, &
                                                               interface%grid(:)%dogridcell, &
-                                                              outagpp(1,:) &
+                                                              sum( outagpp(:,:), dim=1 ) &
                                                               )
 
       if (       interface%steering%outyear>=interface%params_siml%daily_out_startyr &
@@ -1744,7 +1757,7 @@ contains
         ! Daily GPP
         !-------------------------------------------------------------------------
         if (interface%params_siml%lncoutdgpp) print*,'writing ', trim(ncoutfilnam_dgpp), '...'
-        if (interface%params_siml%lncoutdgpp) call write_nc_3D( trim(ncoutfilnam_dgpp), &
+        if (interface%params_siml%lncoutdgpp) call write_nc_3D_time( trim(ncoutfilnam_dgpp), &
                                                                 GPP_NAME, &
                                                                 interface%domaininfo%maxgrid, &
                                                                 interface%domaininfo%nlon, &

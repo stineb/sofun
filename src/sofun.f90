@@ -68,7 +68,7 @@ program main
   allocate( interface%landuse(      interface%domaininfo%maxgrid ) )
   allocate( interface%soilparams(   interface%domaininfo%maxgrid ) )
   allocate( interface%dfapar_field( ndayyear, interface%domaininfo%maxgrid ) )
-  allocate( interface%fpc_grid(     interface%domaininfo%maxgrid, npft ) )
+  allocate( interface%fpc_grid( npft, interface%domaininfo%maxgrid ) )
 
   ! vectorise 2D array, keeping only land gridcells
   interface%grid(:) = getgrid( interface%domaininfo, params_domain )
@@ -76,10 +76,10 @@ program main
   ! Obtain land unit dependent parameters, define decomposition _rates
   !call luparameters
 
-  ! !----------------------------------------------------------------
-  ! ! GET SOIL PARAMETERS
-  ! !----------------------------------------------------------------
-  ! interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
+  !----------------------------------------------------------------
+  ! GET SOIL PARAMETERS
+  !----------------------------------------------------------------
+  interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
 
   !----------------------------------------------------------------
   ! GET VEGETATION COVER (fractional projective cover by PFT)
@@ -170,7 +170,7 @@ program main
     ! Get prescribed fAPAR if required (otherwise set to dummy value)
     !----------------------------------------------------------------
     if (verbose) print*,'getting fAPAR ...'
-    interface%dfapar_field(:,:) = getfapar( &
+      interface%dfapar_field(:,:) = getfapar( &
                                             interface%domaininfo, &
                                             interface%grid, &
                                             interface%steering%forcingyear, &

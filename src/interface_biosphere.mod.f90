@@ -1,6 +1,6 @@
 module md_interface
 
-  use md_params_core, only: maxgrid, nlu, ndayyear, dummy
+  use md_params_core, only: maxgrid, nlu, npft, ndayyear, dummy
   use md_grid, only: gridtype, domaininfo_type
   use md_forcing, only: landuse_type, climate_type, ninput_type
   use md_params_domain, only: type_params_domain
@@ -46,10 +46,12 @@ module md_interface
   ! Module-specific NetCDF output file and variable names
   !----------------------------------------------------------------
   character(len=256) :: ncoutfilnam_fland
+  character(len=256) :: ncoutfilnam_vegcover
   character(len=256) :: ncoutfilnam_temp
   character(len=256) :: ncoutfilnam_fapar
 
   character(len=*), parameter :: FLAND_NAME="fland"
+  character(len=*), parameter :: VEGCOVER_NAME="vegcover"
   character(len=*), parameter :: TEMP_NAME="temp"
   character(len=*), parameter :: FAPAR_NAME="fapar"
 
@@ -119,7 +121,7 @@ contains
     ! Opens NetCDF output files.
     !----------------------------------------------------------------
     use netcdf
-    use md_io_netcdf, only: init_nc_2D, init_nc_3D, check
+    use md_io_netcdf, only: init_nc_2D, init_nc_3D_time, init_nc_3D_pft, check
 
     ! local variables
     character(len=256) :: prefix
@@ -146,10 +148,29 @@ contains
                         lon      = interface%domaininfo%lon, &
                         lat      = interface%domaininfo%lat, &
                         varnam   = FLAND_NAME, &
-                        varunits = "(unitless)", &
+                        varunits = "unitless", &
                         longnam  = "gridcell fraction covered by land", &
                         title    = TITLE &
                         )
+    end if
+
+    !----------------------------------------------------------------
+    ! Vegetation cover
+    !----------------------------------------------------------------
+    if ( interface%steering%init ) then
+      ncoutfilnam_vegcover = trim(prefix)//".vegcover.nc"
+      print*,'initialising ', trim(ncoutfilnam_vegcover), '...'
+      call init_nc_3D_pft(  filnam   = trim(ncoutfilnam_vegcover), &
+                            nlon     = interface%domaininfo%nlon, &
+                            nlat     = interface%domaininfo%nlat, &
+                            lon      = interface%domaininfo%lon, &
+                            lat      = interface%domaininfo%lat, &
+                            outnz    = npft, &
+                            varnam   = VEGCOVER_NAME, &
+                            varunits = "unitless", &
+                            longnam  = "gridcell fraction covered by vegetation type", &
+                            title    = TITLE &
+                            )
     end if
 
     if ( .not. interface%steering%spinup &
@@ -162,19 +183,19 @@ contains
       if (interface%params_siml%lncoutdtemp) then
         ncoutfilnam_temp = trim(prefix)//'.'//year_char//".d.temp.nc"
         print*,'initialising ', trim(ncoutfilnam_temp), '...'
-        call init_nc_3D(  filnam   = trim(ncoutfilnam_temp), &
-                          nlon     = interface%domaininfo%nlon, &
-                          nlat     = interface%domaininfo%nlat, &
-                          lon      = interface%domaininfo%lon, &
-                          lat      = interface%domaininfo%lat, &
-                          outyear  = interface%steering%outyear, &
-                          outdt    = interface%params_siml%outdt, &
-                          outnt    = interface%params_siml%outnt, &
-                          varnam   = TEMP_NAME, &
-                          varunits = "degrees Celsius", &
-                          longnam  = "daily average 2 m temperature", &
-                          title    = TITLE &
-                          )
+        call init_nc_3D_time( filnam   = trim(ncoutfilnam_temp), &
+                              nlon     = interface%domaininfo%nlon, &
+                              nlat     = interface%domaininfo%nlat, &
+                              lon      = interface%domaininfo%lon, &
+                              lat      = interface%domaininfo%lat, &
+                              outyear  = interface%steering%outyear, &
+                              outdt    = interface%params_siml%outdt, &
+                              outnt    = interface%params_siml%outnt, &
+                              varnam   = TEMP_NAME, &
+                              varunits = "degrees Celsius", &
+                              longnam  = "daily average 2 m temperature", &
+                              title    = TITLE &
+                              )
       end if
 
       !----------------------------------------------------------------
@@ -183,19 +204,19 @@ contains
       if (interface%params_siml%lncoutdfapar) then
         ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar.nc"
         print*,'initialising ', trim(ncoutfilnam_fapar), '...'
-        call init_nc_3D(  filnam   = trim(ncoutfilnam_fapar), &
-                          nlon     = interface%domaininfo%nlon, &
-                          nlat     = interface%domaininfo%nlat, &
-                          lon      = interface%domaininfo%lon, &
-                          lat      = interface%domaininfo%lat, &
-                          outyear  = interface%steering%outyear, &
-                          outdt    = interface%params_siml%outdt, &
-                          outnt    = interface%params_siml%outnt, &
-                          varnam   = FAPAR_NAME, &
-                          varunits = "unitless", &
-                          longnam  = "fraction of absorbed photosynthetically active radiation", &
-                          title    = TITLE &
-                          )
+        call init_nc_3D_time( filnam   = trim(ncoutfilnam_fapar), &
+                              nlon     = interface%domaininfo%nlon, &
+                              nlat     = interface%domaininfo%nlat, &
+                              lon      = interface%domaininfo%lon, &
+                              lat      = interface%domaininfo%lat, &
+                              outyear  = interface%steering%outyear, &
+                              outdt    = interface%params_siml%outdt, &
+                              outnt    = interface%params_siml%outnt, &
+                              varnam   = FAPAR_NAME, &
+                              varunits = "unitless", &
+                              longnam  = "fraction of absorbed photosynthetically active radiation", &
+                              title    = TITLE &
+                              )
       end if
 
     end if
@@ -301,7 +322,7 @@ contains
     ! Write NetCDF output
     !-------------------------------------------------------------------------
     use netcdf
-    use md_io_netcdf, only: write_nc_2D, write_nc_3D, check
+    use md_io_netcdf, only: write_nc_2D, write_nc_3D_time, write_nc_3D_pft, check
 
     !-------------------------------------------------------------------------
     ! land fraction
@@ -320,6 +341,24 @@ contains
                         )
     end if
 
+    !-------------------------------------------------------------------------
+    ! vegetation cover
+    !-------------------------------------------------------------------------
+    if (interface%steering%init) then
+      print*,'writing ', trim(ncoutfilnam_vegcover), '...'
+      call write_nc_3D_pft( trim(ncoutfilnam_vegcover), &
+                            VEGCOVER_NAME, &
+                            interface%domaininfo%maxgrid, &
+                            interface%domaininfo%nlon, &
+                            interface%domaininfo%nlat, &
+                            interface%grid(:)%ilon, &
+                            interface%grid(:)%ilat, &
+                            npft, &
+                            interface%grid(:)%dogridcell, &
+                            interface%fpc_grid(:,:) &
+                            )
+    end if
+
     if ( .not. interface%steering%spinup &
          .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
          .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
@@ -328,34 +367,34 @@ contains
       ! dtemp
       !-------------------------------------------------------------------------
       if (interface%params_siml%lncoutdtemp) print*,'writing ', trim(ncoutfilnam_temp), '...'
-      if (interface%params_siml%lncoutdtemp) call write_nc_3D(  trim(ncoutfilnam_temp), &
-                                                                TEMP_NAME, &
-                                                                interface%domaininfo%maxgrid, &
-                                                                interface%domaininfo%nlon, &
-                                                                interface%domaininfo%nlat, &
-                                                                interface%grid(:)%ilon, &
-                                                                interface%grid(:)%ilat, &
-                                                                interface%params_siml%outnt, &
-                                                                interface%grid(:)%dogridcell, &
-                                                                outdtemp(:,:) &
-                                                                )
+      if (interface%params_siml%lncoutdtemp) call write_nc_3D_time( trim(ncoutfilnam_temp), &
+                                                                    TEMP_NAME, &
+                                                                    interface%domaininfo%maxgrid, &
+                                                                    interface%domaininfo%nlon, &
+                                                                    interface%domaininfo%nlat, &
+                                                                    interface%grid(:)%ilon, &
+                                                                    interface%grid(:)%ilat, &
+                                                                    interface%params_siml%outnt, &
+                                                                    interface%grid(:)%dogridcell, &
+                                                                    outdtemp(:,:) &
+                                                                    )
 
 
       !-------------------------------------------------------------------------
       ! fapar
       !-------------------------------------------------------------------------
       if (interface%params_siml%lncoutdfapar) print*,'writing ', trim(ncoutfilnam_fapar), '...'
-      if (interface%params_siml%lncoutdfapar) call write_nc_3D( trim(ncoutfilnam_fapar), &
-                                                                FAPAR_NAME, &
-                                                                interface%domaininfo%maxgrid, &
-                                                                interface%domaininfo%nlon, &
-                                                                interface%domaininfo%nlat, &
-                                                                interface%grid(:)%ilon, &
-                                                                interface%grid(:)%ilat, &
-                                                                interface%params_siml%outnt, &
-                                                                interface%grid(:)%dogridcell, &
-                                                                outdfapar(:,:) &
-                                                                )
+      if (interface%params_siml%lncoutdfapar) call write_nc_3D_time(trim(ncoutfilnam_fapar), &
+                                                                    FAPAR_NAME, &
+                                                                    interface%domaininfo%maxgrid, &
+                                                                    interface%domaininfo%nlon, &
+                                                                    interface%domaininfo%nlat, &
+                                                                    interface%grid(:)%ilon, &
+                                                                    interface%grid(:)%ilat, &
+                                                                    interface%params_siml%outnt, &
+                                                                    interface%grid(:)%dogridcell, &
+                                                                    outdfapar(:,:) &
+                                                                    )
 
     end if
 

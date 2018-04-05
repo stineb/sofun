@@ -291,7 +291,7 @@ contains
     ! 10:CRO: type13 + type15 = "croplands" + "cropland (natural vegetation mosaic)";
     !----------------------------------------------------------------
     use md_params_siml, only: paramstype_siml
-    use md_params_core, only: npft
+    use md_params_core, only: npft, eps
 
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo
@@ -299,7 +299,7 @@ contains
     type( paramstype_siml ), intent(in) :: params_siml
 
     ! function return variable
-    real, dimension(domaininfo%maxgrid,npft) :: fpc_grid_field
+    real, dimension(npft,domaininfo%maxgrid) :: fpc_grid_field
 
     ! local variables
     integer :: ncid, varid
@@ -309,7 +309,7 @@ contains
     real, allocatable, dimension(:)     :: lat_arr
     real, allocatable, dimension(:,:,:) :: vegtype_arr
 
-    integer :: i, pft, jpngr, ilon_arr, ilat_arr
+    integer :: i, pft, jpngr, ilon_arr, ilat_arr, n_noinfo
     integer, dimension(domaininfo%maxgrid) :: ilon
     integer, dimension(domaininfo%maxgrid) :: ilat
     integer :: fileyear, read_idx
@@ -350,14 +350,13 @@ contains
 
     ! for index association, get ilon and ilat vectors
     ! Allocate array sizes now knowing nlon and nlat 
-    print*,'nlon_arr', nlon_arr
-    print*,'nlat_arr', nlat_arr
     allocate( lon_arr(nlon_arr) )
     allocate( lat_arr(nlat_arr) )
-    print*,'length of lon_arr ', size(lon_arr)
-    print*,'length of lat_arr ', size(lat_arr)
 
-    ! Get longitude and latitude values
+    ! print*,'size(lon_arr)', size(lon_arr)
+    ! print*,'size(lat_arr)', size(lat_arr)
+
+    ! ! Get longitude and latitude values
     ! print*,'1'
     ! call check( nf90_get_var( ncid, londimid, lon_arr ) )
     ! print*,'2'
@@ -397,12 +396,7 @@ contains
     allocate( tmp(npft_in))
 
     ! Get the varid of the data variable, based on its name
-    print*,trim(varname)
     call check( nf90_inq_varid( ncid, trim(varname), varid ) )
-
-    print*,'nlon_arr ', nlon_arr 
-    print*,'nlat_arr ', nlat_arr 
-    print*,'npft_in', npft_in
 
     ! Read the array
     call check( nf90_get_var( ncid, varid, vegtype_arr, start=(/1, 1, 1/), count=(/nlon_arr, nlat_arr, npft_in/) ) )
@@ -414,29 +408,62 @@ contains
     call check( nf90_close( ncid ) )
 
     ! read from array to define land cover 'fpc_grid_field'
+    n_noinfo = 0
     do jpngr=1,domaininfo%maxgrid
+      
       tmp = vegtype_arr(ilon(jpngr),ilat(jpngr),:)
-      if ( tmp(1)/=ncfillvalue ) then
+      
+      if ( (tmp(1)==ncfillvalue .or. sum(tmp(:))<eps) .and. grid(jpngr)%dogridcell ) then
 
-        fpc_grid_field(jpngr,:) = 0.0
+        n_noinfo = n_noinfo + 1
+        fpc_grid_field(:,jpngr) = 1.0 / real( npft )
 
-        ! Code below must follow the same structure as in 'plant_pmodel.mod.f90'
-        pft = 0
-        if ( params_siml%lTrE ) then
-          ! xxx dirty: call all non-grass vegetation types 'TrE', see indeces above
-          pft = pft + 1
-          fpc_grid_field(jpngr,pft) = sum( tmp(1:7) ) + tmp(9)
+      else        
 
-        else if ( params_siml%lGr3 ) then
-          ! xxx dirty: call all grass vegetation types 'Gr3'
-          pft = pft + 1
-          fpc_grid_field(jpngr,pft) = tmp(8) + tmp(10)
+        fpc_grid_field(:,jpngr) = 0.0
+
+        if (npft==2) then
+          if (jpngr==1) print*,'GET_FPC_GRID: npft=2 ==> assuming distinction between grasslands/croplands and others'
+
+          pft = 0
+          if ( params_siml%lTrE ) then
+            ! xxx dirty: call all non-grass vegetation types 'TrE', see indeces above
+            pft = pft + 1
+  
+            ! TrE defined as: 1: ENF, 2: EBF, 3: DNF, 4: DBF, 5: MF:, 6: SHR, 7: SAV, 9: WET     
+            fpc_grid_field(pft,jpngr) = sum( tmp(1:7) ) + tmp(9)
+          end if
+
+          if ( params_siml%lGr3 ) then
+            ! xxx dirty: call all grass vegetation types 'Gr3'
+            pft = pft + 1
+
+            ! Gr3 defined as: 8: GRA, 10:CRO: 
+            fpc_grid_field(pft,jpngr) = tmp(8) + tmp(10)
+          end if
+
+        else if (npft==1) then
+
+          if (jpngr==1) print*,'GET_FPC_GRID: npft=1 ==> assuming no distinction between vegetation types'
+          ! 1: ENF, 2: EBF, 3: DNF, 4: DBF, 5: MF:, 6: SHR, 7: SAV, 9: WET     
+          pft = 1
+          fpc_grid_field(pft,jpngr) = sum( tmp(:) )
+
         else
-          stop 'PLANT:GETPAR_MODL_PLANT: PFT name not valid. See run/<simulationname>.sofun.parameter'
+
+          stop 'GET_FPC_GRID: only implemented for npft = 1 or 2.'
+
         end if
 
+
       end if
+
+      if ( abs(sum(fpc_grid_field(:,jpngr)) - 1.0)>eps .and. sum(fpc_grid_field(:,jpngr)) > 0.0 ) &
+        fpc_grid_field(:,jpngr) = fpc_grid_field(:,jpngr) / sum( fpc_grid_field(:,jpngr) )
+
     end do
+
+    print*,'GET_FPC_GRID: number of gridcells with no fpc_grid info:', n_noinfo
 
     ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
     deallocate( vegtype_arr )

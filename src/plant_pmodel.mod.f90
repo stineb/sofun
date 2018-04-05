@@ -196,6 +196,7 @@ contains
     integer :: pft
     integer :: npft_site
 
+    print*,'1'
     !----------------------------------------------------------------
     ! NON-PFT DEPENDENT PARAMETERS
     !----------------------------------------------------------------
@@ -211,35 +212,40 @@ contains
     if ( interface%params_siml%lTrE ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'TrE' )
+    end if
 
-    else if ( interface%params_siml%lTNE ) then
+    if ( interface%params_siml%lTNE ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'TNE' )
+    end if
 
-    else if ( interface%params_siml%lTrD ) then
+    if ( interface%params_siml%lTrD ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'TrD' )
+    end if
 
-    else if ( interface%params_siml%lTND ) then
+    if ( interface%params_siml%lTND ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'TND' )
+    end if
 
-    else if ( interface%params_siml%lGr3 ) then
+    if ( interface%params_siml%lGr3 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'Gr3' )
+    end if
 
-    else if ( interface%params_siml%lGN3 ) then
+    if ( interface%params_siml%lGN3 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'GN3' )
+    end if
 
-    else if ( interface%params_siml%lGr4 ) then
+    if ( interface%params_siml%lGr4 ) then
       pft = pft + 1
       params_pft_plant(pft) = getpftparams( 'Gr4' )
-
-    else
-      stop 'PLANT:GETPAR_MODL_PLANT: PFT name not valid. See run/<simulationname>.sofun.parameter'
     end if
+
     npft_site = pft
+    if (npft_site==0) stop 'PLANT:GETPAR_MODL_PLANT: PFT name not valid. See run/<simulationname>.sofun.parameter'
 
   end subroutine getpar_modl_plant
 
@@ -285,6 +291,24 @@ contains
       out_getpftparams%c3      = .false.
       out_getpftparams%c4      = .true.
       out_getpftparams%nfixer  = .false.
+    else if (trim(pftname)=='TrE') then
+      out_getpftparams%grass   = .false.
+      out_getpftparams%tree    = .true.
+      out_getpftparams%c3      = .true.
+      out_getpftparams%c4      = .false.
+      out_getpftparams%nfixer  = .false.
+    else if (trim(pftname)=='TNE') then
+      out_getpftparams%grass   = .false.
+      out_getpftparams%tree    = .true.
+      out_getpftparams%c3      = .true.
+      out_getpftparams%c4      = .false.
+      out_getpftparams%nfixer  = .true.
+    else if (trim(pftname)=='TND') then
+      out_getpftparams%grass   = .false.
+      out_getpftparams%tree    = .true.
+      out_getpftparams%c3      = .true.
+      out_getpftparams%c4      = .false.
+      out_getpftparams%nfixer  = .true.
     end if      
 
     ! land use category associated with PFT (provisional) 

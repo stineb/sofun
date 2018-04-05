@@ -41,6 +41,8 @@ contains
         if (params_pft_plant(pft)%lu_category==lu) then
 
           ! Override interactively simulated fAPAR and foliar projective cover with data
+          ! if (sum(fpc_grid_prescr(:))==0.0) print*,'sum of fpc_grid',sum(fpc_grid_prescr(:))
+
           if (fapar_prescr/=dummy) plant(pft)%fapar_ind = fapar_prescr
           plant(pft)%fpc_grid = fpc_grid_prescr(pft)
 

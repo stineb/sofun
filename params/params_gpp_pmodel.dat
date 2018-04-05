@@ -7,9 +7,13 @@
 # beta   244.033
 beta                                    146.0
 rd_to_vcmax                             0.015
-kphio_GrC3                              0.05792348
-kphio_GNC3                              0.093
-kphio_GrC4                              0.055
+kphio_Gr3                               0.05792348
+kphio_GN3                               0.05792348
+kphio_Gr4                               0.05792348
+kphio_TND                               0.05792348
+kphio_TNE                               0.05792348
+kphio_TrD                               0.05792348
+kphio_TrE                               0.05792348
 
 #                                      |
 # write value *behind* this position:  |->

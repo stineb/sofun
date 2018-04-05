@@ -1383,7 +1383,7 @@ contains
     ! Opens NetCDF output files.
     !----------------------------------------------------------------
     use netcdf
-    use md_io_netcdf, only: init_nc_3D, check
+    use md_io_netcdf, only: init_nc_3D_time, check
     use md_interface, only: interface
 
     ! local variables
@@ -1408,7 +1408,7 @@ contains
           !----------------------------------------------------------------
           ncoutfilnam_apet = trim(prefix)//'.'//year_char//".a.pet.nc"
           print*,'initialising ', trim(ncoutfilnam_apet), '...'
-          call init_nc_3D( filnam  = trim(ncoutfilnam_apet), &
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_apet), &
                           nlon     = interface%domaininfo%nlon, &
                           nlat     = interface%domaininfo%nlat, &
                           lon      = interface%domaininfo%lon, &
@@ -1428,7 +1428,7 @@ contains
           !----------------------------------------------------------------
           ncoutfilnam_aaet = trim(prefix)//'.'//year_char//".a.aet.nc"
           print*,'initialising ', trim(ncoutfilnam_aaet), '...'
-          call init_nc_3D( filnam  = trim(ncoutfilnam_aaet), &
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_aaet), &
                           nlon     = interface%domaininfo%nlon, &
                           nlat     = interface%domaininfo%nlat, &
                           lon      = interface%domaininfo%lon, &
@@ -1448,7 +1448,7 @@ contains
           !----------------------------------------------------------------
           ncoutfilnam_aalpha = trim(prefix)//'.'//year_char//".a.alpha.nc"
           print*,'initialising ', trim(ncoutfilnam_aalpha), '...'
-          call init_nc_3D( filnam  = trim(ncoutfilnam_aalpha), &
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_aalpha), &
                           nlon     = interface%domaininfo%nlon, &
                           nlat     = interface%domaininfo%nlat, &
                           lon      = interface%domaininfo%lon, &
@@ -1476,7 +1476,7 @@ contains
           !----------------------------------------------------------------
           ncoutfilnam_dwcont = trim(prefix)//'.'//year_char//".d.wcont.nc"
           print*,'initialising ', trim(ncoutfilnam_dwcont), '...'
-          call init_nc_3D( filnam  = trim(ncoutfilnam_dwcont), &
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_dwcont), &
                           nlon     = interface%domaininfo%nlon, &
                           nlat     = interface%domaininfo%nlat, &
                           lon      = interface%domaininfo%lon, &
@@ -1496,7 +1496,7 @@ contains
           ! !----------------------------------------------------------------
           ! ncoutfilnam_dppfd = trim(prefix)//'.'//year_char//".d.ppfd.nc"
           ! print*,'initialising ', trim(ncoutfilnam_dppfd), '...'
-          ! call init_nc_3D( filnam  = trim(ncoutfilnam_dppfd), &
+          ! call init_nc_3D_time( filnam  = trim(ncoutfilnam_dppfd), &
           !                 nlon     = interface%domaininfo%nlon, &
           !                 nlat     = interface%domaininfo%nlat, &
           !                 lon      = interface%domaininfo%lon, &
@@ -1516,7 +1516,7 @@ contains
           !----------------------------------------------------------------
           ncoutfilnam_dpet = trim(prefix)//'.'//year_char//".d.pet.nc"
           print*,'initialising ', trim(ncoutfilnam_dpet), '...'
-          call init_nc_3D( filnam  = trim(ncoutfilnam_dpet), &
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_dpet), &
                           nlon     = interface%domaininfo%nlon, &
                           nlat     = interface%domaininfo%nlat, &
                           lon      = interface%domaininfo%lon, &
@@ -1536,7 +1536,7 @@ contains
           !----------------------------------------------------------------
           ncoutfilnam_daet = trim(prefix)//'.'//year_char//".d.aet.nc"
           print*,'initialising ', trim(ncoutfilnam_daet), '...'
-          call init_nc_3D( filnam  = trim(ncoutfilnam_daet), &
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_daet), &
                           nlon     = interface%domaininfo%nlon, &
                           nlat     = interface%domaininfo%nlat, &
                           lon      = interface%domaininfo%lon, &
@@ -1781,7 +1781,7 @@ contains
     ! Write NetCDF output
     !-------------------------------------------------------------------------
     use netcdf
-    use md_io_netcdf, only: write_nc_2D, write_nc_3D, check
+    use md_io_netcdf, only: write_nc_2D, write_nc_3D_time, check
     use md_interface, only: interface
 
     if ( .not. interface%steering%spinup ) then
@@ -1847,7 +1847,7 @@ contains
           ! soil water content
           !-------------------------------------------------------------------------
           print*,'writing ', trim(ncoutfilnam_dwcont), '...'
-          call write_nc_3D( trim(ncoutfilnam_dwcont), &
+          call write_nc_3D_time( trim(ncoutfilnam_dwcont), &
                             WCONT_NAME, &
                             interface%domaininfo%maxgrid, &
                             interface%domaininfo%nlon, &
@@ -1863,7 +1863,7 @@ contains
           ! ! PPFD
           ! !-------------------------------------------------------------------------
           ! print*,'writing ', trim(ncoutfilnam_dppfd), '...'
-          ! call write_nc_3D( trim(ncoutfilnam_dppfd), &
+          ! call write_nc_3D_time( trim(ncoutfilnam_dppfd), &
           !                   PPFD_NAME, &
           !                   interface%domaininfo%maxgrid, &
           !                   interface%domaininfo%nlon, &
@@ -1879,7 +1879,7 @@ contains
           ! PET
           !-------------------------------------------------------------------------
           print*,'writing ', trim(ncoutfilnam_dpet), '...'
-          call write_nc_3D( trim(ncoutfilnam_dpet), &
+          call write_nc_3D_time( trim(ncoutfilnam_dpet), &
                             PET_NAME, &
                             interface%domaininfo%maxgrid, &
                             interface%domaininfo%nlon, &
@@ -1896,7 +1896,7 @@ contains
           !-------------------------------------------------------------------------
           if (nlu>1) stop 'writeout_nc_waterbal: nlu>1. Think of something clever!'
           print*,'writing ', trim(ncoutfilnam_daet), '...'
-          call write_nc_3D( trim(ncoutfilnam_daet), &
+          call write_nc_3D_time( trim(ncoutfilnam_daet), &
                             AET_NAME, &
                             interface%domaininfo%maxgrid, &
                             interface%domaininfo%nlon, &
