@@ -219,7 +219,6 @@ contains
         else
           soilmstress = 1.0
         end if
-        ! print*,'soilmstress', soilmstress
 
         ! GPP
         dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilmstress )
@@ -717,13 +716,13 @@ contains
     real, intent(in) :: meanalpha   ! mean annual AET/PET (fraction)
     logical, intent(in), optional :: isgrass 
 
-    ! Parameters for approach I (simulation s1a)
-    real, parameter :: apar = 0.2617121
-    real, parameter :: bpar = 0.5668587
-    real, parameter :: apar_grass = 0.2617121
-    real, parameter :: bpar_grass = 0.5668587
-    real, parameter :: x0 = 0.125
-    real, parameter :: x1 = 0.75
+    ! ! Parameters for approach I (simulation s1a)
+    ! real, parameter :: apar = 0.2617121
+    ! real, parameter :: bpar = 0.5668587
+    ! real, parameter :: apar_grass = 0.2617121
+    ! real, parameter :: bpar_grass = 0.5668587
+    ! real, parameter :: x0 = 0.125
+    ! real, parameter :: x1 = 0.75
 
     ! ! Parameters for approach IV (simulation s1b)
     ! real, parameter :: apar = 0.1785247
@@ -741,13 +740,13 @@ contains
     ! real, parameter :: x0 = 0.0
     ! real, parameter :: x1 = 0.9
 
-    ! ! Parameters for approach III (simulation s1c)
-    ! real, parameter :: apar = 0.0515108 
-    ! real, parameter :: bpar = 0.1920844
-    ! real, parameter :: apar_grass = 0.0515108
-    ! real, parameter :: bpar_grass = 0.1920844
-    ! real, parameter :: x0 = 0.0
-    ! real, parameter :: x1 = 0.9
+    ! Parameters for approach III (simulation s1c)
+    real, parameter :: apar = 0.0515108 
+    real, parameter :: bpar = 0.1920844
+    real, parameter :: apar_grass = 0.0515108
+    real, parameter :: bpar_grass = 0.1920844
+    real, parameter :: x0 = 0.0
+    real, parameter :: x1 = 0.9
 
     real :: y0, beta
 

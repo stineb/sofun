@@ -45,4 +45,3 @@ module md_params_core
   real, parameter :: dummy = -9999.0             ! arbitrary dummy value
 
 end module md_params_core
-
