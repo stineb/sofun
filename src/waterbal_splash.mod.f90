@@ -30,7 +30,7 @@ module md_waterbal
     initdaily_waterbal, initio_waterbal,                               &
     getout_daily_waterbal, initoutput_waterbal,                        &
     getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, &
-    writeout_nc_waterbal, get_rlm_waterbal, rlmalpha
+    writeout_nc_waterbal, get_rlm_waterbal
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -41,7 +41,7 @@ module md_waterbal
     real :: sw           ! evaporative supply rate (mm/h)
     real :: wscal        ! water filled pore space (unitless)
     real :: fleach       ! NO3 leaching fraction (unitless)
-    real :: soilmstress  ! soil moisture stress factor (unitless)
+    ! real :: soilmstress  ! soil moisture stress factor (unitless)
   end type soilphystype
 
   type( soilphystype ), dimension(nlu) :: soilphys(nlu)
@@ -111,7 +111,7 @@ module md_waterbal
   !----------------------------------------------------------------
   ! Module-specific rolling mean variables
   !----------------------------------------------------------------
-  real, allocatable, dimension(:,:), save :: rlmalpha       ! rolling mean of annual mean alpha (AET/PET)
+  ! real, allocatable, dimension(:,:), save :: rlmalpha       ! rolling mean of annual mean alpha (AET/PET)
   integer, parameter :: nyrs_rlmalpha = 5                   ! number of years for rolling mean (=width of sliding window)
 
   !----------------------------------------------------------------
@@ -260,8 +260,8 @@ contains
       ! water-filled pore space
       soilphys(lu)%wscal = phy(lu)%wcont / soilparams%whc
 
-      ! soil moisture stress function
-      soilphys(lu)%soilmstress = calc_soilmstress( soilphys(lu)%wscal, rlmalpha(lu,jpngr) )  
+      ! ! soil moisture stress function
+      ! soilphys(lu)%soilmstress = calc_soilmstress( soilphys(lu)%wscal, rlmalpha(lu,jpngr), params_pft_plant(pft)%grass )  
 
     end do
 
@@ -770,53 +770,6 @@ contains
   end function getevap
 
 
-  function calc_soilmstress( soilm, meanalpha ) result( outstress )
-    !-----------------------------------------------------------------------
-    ! Calculates empirically-derived stress (fractional reduction in light 
-    ! use efficiency) as a function of soil moisture
-    ! Input:  soilm (unitless, within [0,1]): daily varying soil moisture
-    ! Output: outstress (unitless, within [0,1]): function of alpha to reduce GPP 
-    !         in strongly water-stressed months
-    !-----------------------------------------------------------------------
-    ! argument
-    real, intent(in) :: soilm       ! soil water content (fraction)
-    real, intent(in) :: meanalpha   ! mean annual AET/PET (fraction)
-
-    ! ! Parameters for approach I (simulation s1a)
-    ! real, parameter :: apar = 0.1214
-    ! real, parameter :: bpar = 0.8855
-    ! real, parameter :: x0 = 0.125
-    ! real, parameter :: x1 = 0.75
-
-    ! ! Parameters for approach II (simulation s1b)
-    ! real, parameter :: apar = -0.09242
-    ! real, parameter :: bpar = 0.79194
-    ! real, parameter :: x0 = 0.0
-    ! real, parameter :: x1 = 0.9
-
-    ! Parameters for approach III (simulation s1c)
-    real, parameter :: apar = -0.1693101
-    real, parameter :: bpar = 0.7650865
-    real, parameter :: x0 = 0.0
-    real, parameter :: x1 = 0.9
-
-    real :: y0, beta
-
-    ! function return variable
-    real :: outstress
-
-    if (soilm > x1) then
-      outstress = 1.0
-    else
-      y0 = apar + bpar * meanalpha
-      beta = (1.0 - y0) / (x0 - x1)**2
-      outstress = 1.0 - beta * ( soilm - x1 )**2
-      outstress = max( 0.0, min( 1.0, outstress ) )
-    end if
-
-  end function calc_soilmstress
-
-
   function calc_dr( nu ) result( dr )
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Calculates distance factor (dr), unitless
@@ -1263,7 +1216,7 @@ contains
     soilphys(:)%ro          = 0.0
     soilphys(:)%sw          = 0.0
     soilphys(:)%wscal       = 0.0
-    soilphys(:)%soilmstress = 0.0
+    ! soilphys(:)%soilmstress = 0.0
 
   end subroutine initdaily_waterbal
 
@@ -1572,9 +1525,9 @@ contains
     ! arguments
     integer, intent(in) :: ngridcells
 
-    ! Rolling mean variables
-    if (interface%steering%init) allocate( rlmalpha(nlu,ngridcells) )
-    if (interface%steering%init) rlmalpha(:,:) = 0.0
+    ! ! Rolling mean variables
+    ! if (interface%steering%init) allocate( rlmalpha(nlu,ngridcells) )
+    ! if (interface%steering%init) rlmalpha(:,:) = 0.0
 
     ! Annual output variables, required for rlmalpha, irrespective of loutwaterbal
     if (interface%steering%init) then
@@ -1691,12 +1644,16 @@ contains
   end subroutine getout_daily_waterbal
 
 
-  subroutine get_rlm_waterbal()
+  subroutine get_rlm_waterbal( phy )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates the rolling mean of relevant variables
     ! This requires the full arrays (all gridcells) to be stored.
     !-------------------------------------------------------------------------
     use md_params_core, only: nlu
+    use md_tile, only: psoilphystype
+
+    ! arguments
+    type( psoilphystype ), dimension(:,:), intent(inout) :: phy
 
     ! local variables
     integer, save :: ncalls = 0
@@ -1708,9 +1665,9 @@ contains
 
     do lu=1,nlu
       where (outapet(:) > 0.0)
-        rlmalpha(lu,:) = ( rlmalpha(lu,:) * (nyrs_uptonow - 1) + outaalpha(lu,:) ) / nyrs_uptonow
+        phy(lu,:)%rlmalpha = ( phy(lu,:)%rlmalpha * (nyrs_uptonow - 1) + outaalpha(lu,:) ) / nyrs_uptonow
       elsewhere
-        rlmalpha(lu,:) = 1.0
+        phy(lu,:)%rlmalpha = 1.0
       end where
     end do
 

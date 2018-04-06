@@ -16,6 +16,7 @@ module md_tile
     real :: temp        ! soil temperature [deg C]
     real :: wcont       ! liquid soil water mass [mm = kg/m2]
     real :: snow        ! snow depth in liquid-water-equivalents [mm = kg/m2]
+    real :: rlmalpha    ! rolling mean of annual mean alpha (AET/PET)
   end type psoilphystype
 
   !----------------------------------------------------------------
@@ -121,9 +122,10 @@ contains
     type( psoilphystype ), intent(inout) :: phy
 
     ! initialise physical soil variables
-    phy%wcont = 50.0
-    phy%temp  = 10.0
-    phy%snow  = 0.0
+    phy%wcont    = 50.0
+    phy%temp     = 10.0
+    phy%snow     = 0.0
+    phy%rlmalpha = 0.0
 
   end subroutine initglobal_soil_phy
 

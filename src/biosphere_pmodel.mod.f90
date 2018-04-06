@@ -238,7 +238,9 @@ contains
             ! print*,'in biosphere: fapar', plant(1,1)%fapar_ind
             ! print*,'in biosphere: acrown', plant(1,1)%acrown
             call gpp( &
-                      out_pmodel(:,moy), solar, plant(:,jpngr), doy, moy, &
+                      out_pmodel(:,moy), solar, plant(:,jpngr), &
+                      tile(:,jpngr)%soil%phy, &
+                      doy, moy, &
                       interface%climate(jpngr)%dtemp(doy), &
                       interface%params_siml%soilmstress &
                       )
@@ -271,7 +273,7 @@ contains
     !----------------------------------------------------------------
     ! Get rolling multi-year averages (needs to store entire arrays)
     !----------------------------------------------------------------
-    call get_rlm_waterbal()
+    call get_rlm_waterbal( tile(:,:)%soil%phy )
 
     !----------------------------------------------------------------
     ! Write to ascii output

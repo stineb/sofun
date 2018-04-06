@@ -172,7 +172,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( out_pmodel, solar, plant, doy, moy, dtemp, do_soilmstress )
+  subroutine gpp( out_pmodel, solar, plant, phy, doy, moy, dtemp, do_soilmstress )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -185,9 +185,11 @@ contains
     !------------------------------------------------------------------
     use md_params_core, only: dummy
     use md_plant, only: dgpp, params_pft_plant, plant_type
+    use md_tile, only: psoilphystype
     use md_waterbal, only: soilphys, solartype
 
     ! arguments
+    type( psoilphystype ), dimension(nlu), intent(inout) :: phy
     type( outtype_pmodel ), dimension(npft) :: out_pmodel
     type( solartype )                       :: solar
     type( plant_type ), dimension(npft)     :: plant
@@ -209,24 +211,17 @@ contains
 
       lu = params_pft_plant(pft)%lu_category
 
-      if (do_soilmstress) then
-        soilmstress = soilphys(lu)%soilmstress
-      else
-        soilmstress = 1.0
-      end if
-
       if ( plant(pft)%fpc_grid>0.0 .and. solar%dayl(doy)>0.0) then
 
-        ! GPP
-        ! print*,'calling calc_dgpp() with'
-        ! print*,'pft', pft
-        ! print*,'plant(pft)%fapar_ind', plant(pft)%fapar_ind
-        ! print*,'plant(pft)%fpc_grid', plant(pft)%fpc_grid
-        ! print*,'solar%dppfd(doy)', solar%dppfd(doy)
-        ! print*,'out_pmodel(pft)%lue', out_pmodel(pft)%lue
-        ! print*,'dtemp', dtemp
+        ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
+        if (do_soilmstress) then
+          soilmstress = calc_soilmstress( soilphys(lu)%wscal, phy(lu)%rlmalpha, params_pft_plant(pft)%grass )
+        else
+          soilmstress = 1.0
+        end if
         ! print*,'soilmstress', soilmstress
 
+        ! GPP
         dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilmstress )
 
         ! ! transpiration
@@ -260,8 +255,6 @@ contains
 
     end do
 
-    ! print*,'dgpp(:)', dgpp(:)
-    
   end subroutine gpp
 
 
@@ -709,6 +702,76 @@ contains
     end if
 
   end function pmodel
+
+
+  function calc_soilmstress( soilm, meanalpha, isgrass ) result( outstress )
+    !-----------------------------------------------------------------------
+    ! Calculates empirically-derived stress (fractional reduction in light 
+    ! use efficiency) as a function of soil moisture
+    ! Input:  soilm (unitless, within [0,1]): daily varying soil moisture
+    ! Output: outstress (unitless, within [0,1]): function of alpha to reduce GPP 
+    !         in strongly water-stressed months
+    !-----------------------------------------------------------------------
+    ! argument
+    real, intent(in) :: soilm       ! soil water content (fraction)
+    real, intent(in) :: meanalpha   ! mean annual AET/PET (fraction)
+    logical, intent(in), optional :: isgrass 
+
+    ! Parameters for approach I (simulation s1a)
+    real, parameter :: apar = 0.2617121
+    real, parameter :: bpar = 0.5668587
+    real, parameter :: apar_grass = 0.2617121
+    real, parameter :: bpar_grass = 0.5668587
+    real, parameter :: x0 = 0.125
+    real, parameter :: x1 = 0.75
+
+    ! ! Parameters for approach IV (simulation s1b)
+    ! real, parameter :: apar = 0.1785247
+    ! real, parameter :: bpar = 0.4501654
+    ! real, parameter :: apar_grass = 0.1007749 
+    ! real, parameter :: bpar_grass = 0.0063069
+    ! real, parameter :: x0 = 0.0
+    ! real, parameter :: x1 = 0.9
+
+    ! ! Parameters for approach II (no simulations done with this)
+    ! real, parameter :: apar = 0.0606651 
+    ! real, parameter :: bpar = 0.5090085 
+    ! real, parameter :: apar_grass = 0.0606651
+    ! real, parameter :: bpar_grass = 0.5090085
+    ! real, parameter :: x0 = 0.0
+    ! real, parameter :: x1 = 0.9
+
+    ! ! Parameters for approach III (simulation s1c)
+    ! real, parameter :: apar = 0.0515108 
+    ! real, parameter :: bpar = 0.1920844
+    ! real, parameter :: apar_grass = 0.0515108
+    ! real, parameter :: bpar_grass = 0.1920844
+    ! real, parameter :: x0 = 0.0
+    ! real, parameter :: x1 = 0.9
+
+    real :: y0, beta
+
+    ! function return variable
+    real :: outstress
+
+    if (soilm > x1) then
+      outstress = 1.0
+    else
+      if (present(isgrass)) then
+        if (isgrass) then
+          y0 = apar_grass + bpar_grass * meanalpha
+        else
+          y0 = apar + bpar * meanalpha
+        end if
+      else
+        y0 = apar + bpar * meanalpha
+      end if
+      beta = (1.0 - y0) / (x0 - x1)**2
+      outstress = 1.0 - beta * ( soilm - x1 )**2
+      outstress = max( 0.0, min( 1.0, outstress ) )
+    end if
+
+  end function calc_soilmstress
 
 
   subroutine getpar_modl_gpp()
