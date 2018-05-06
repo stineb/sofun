@@ -170,8 +170,6 @@ module md_plant
   real, dimension(npft,maxgrid) :: outanup
   real, dimension(npft,maxgrid) :: outanup_fix
   real, dimension(npft,maxgrid) :: outacex
-  real, dimension(npft,maxgrid) :: outaCveg2lit
-  real, dimension(npft,maxgrid) :: outaNveg2lit
   real, dimension(npft,maxgrid) :: outanarea_mb
   real, dimension(npft,maxgrid) :: outanarea_cw
   real, dimension(npft,maxgrid) :: outalai

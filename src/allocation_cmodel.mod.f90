@@ -34,42 +34,38 @@ module md_allocation
 
 contains
 
-  subroutine allocation_daily( jpngr, doy, dm, moy, dtemp )
+  subroutine allocation_daily( plant, plant_fluxes, solar, out_pmodel, dtemp )
     !//////////////////////////////////////////////////////////////////
     ! Finds optimal shoot:root growth ratio to balance C:N stoichiometry
     ! of a grass (no wood allocation).
     !------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant, params_pft_plant, pleaf, proot, &
-      plabl, drgrow, lai_ind, nind, canopy, leaftraits, &
-      get_canopy, get_leaftraits, get_leaftraits_init, &
-      frac_leaf, dnup_fix
-    use md_waterbal, only: solar
-    use md_gpp, only: out_pmodel
+    use md_plant, only: plant_type, plant_fluxes_type, params_plant, params_pft_plant, &
+      update_leaftraits, update_leaftraits_init
     use md_soiltemp, only: dtemp_soil
     use md_params_core, only: eps
+    use md_waterbal, only: solartype
+    use md_gpp, only: outtype_pmodel
 
-    ! xxx debug
-    use md_nuptake, only: calc_dnup, outtype_calc_dnup
-    use md_waterbal, only: solar, evap
-    use md_gpp, only: calc_dgpp, calc_drd
-    use md_npp, only: calc_resp_maint, calc_cexu
-    use md_gpp, only: drd 
-    use md_plant, only: dgpp, dnpp, drleaf, drroot, dcex, dnup
-    use md_interface
+    ! ! xxx debug
+    ! use md_nuptake, only: calc_dnup, outtype_calc_dnup
+    ! use md_waterbal, only: solar, evap
+    ! use md_gpp, only: calc_dgpp, calc_drd
+    ! use md_npp, only: calc_resp_maint, calc_cexu
+    ! use md_gpp, only: drd 
+    ! use md_plant, only: dgpp, dnpp, drleaf, drroot, dcex, dnup
+    ! use md_interface
 
     ! arguments
-    integer, intent(in)                   :: jpngr
-    integer, intent(in)                   :: dm      ! day of month
-    integer, intent(in)                   :: doy     ! day of year
-    integer, intent(in)                   :: moy     ! month of year
-    real, dimension(ndayyear), intent(in) :: dtemp   ! air temperaure, deg C
+    type( plant_type ), dimension(npft), intent(in)      :: plant ! npft counts over PFTs in all land units (tiles)
+    type( plant_type ), dimension(npft), intent(in)      :: plant_fluxes ! npft counts over PFTs in all land units (tiles)
+    type( outtype_pmodel ), dimension(npft), intent(in)  :: out_pmodel
+    type( solartype ), intent(in)                        :: solar
+    real, intent(in)                      :: dtemp   ! air temperaure, deg C
 
     ! local variables
     integer :: lu
     integer :: pft
-    integer :: usemoy        ! MOY in climate vectors to use for allocation
-    integer :: usedoy        ! DOY in climate vectors to use for allocation
     real :: avl
     real, parameter :: freserve = 0.0
 
@@ -88,31 +84,12 @@ contains
     verbose = .false.
     !------------------------------------------------------------------
 
-    !-------------------------------------------------------------------------
-    ! Determine day of year (DOY) and month of year (MOY) to use in climate vectors
-    !-------------------------------------------------------------------------
-    if (dm==ndaymonth(moy)) then
-      usemoy = moy + 1
-      if (usemoy==13) usemoy = 1
-    else
-      usemoy = moy
-    end if
-    if (doy==ndayyear) then
-      usedoy = 1
-    else
-      usedoy = doy + 1
-    end if
-    !-------------------------------------------------------------------------
-
-    ! xxx debug
-    frac_leaf = 0.5
-
     ! initialise
     dcleaf(:) = 0.0
     dnleaf(:) = 0.0
     dcroot(:) = 0.0
     dnroot(:) = 0.0
-    drgrow(:) = 0.0
+    plant_fluxes(:)%drgrow = 0.0
 
     do pft=1,npft
 
@@ -120,21 +97,22 @@ contains
 
       if (params_pft_plant(pft)%grass) then
 
-        if ( plabl(pft,jpngr)%c%c12>0.0 .and. dtemp(doy)>0.0 ) then
+        if ( plant(pft)%plabl%c%c12>0.0 .and. dtemp>0.0 ) then
 
           !------------------------------------------------------------------
           ! Calculate maximum C allocatable based on current labile pool size.
           ! Maximum is the lower of all labile C and the C to be matched by all labile N,
           ! discounted by the yield factor.
           !------------------------------------------------------------------
-          if (pleaf(pft,jpngr)%c%c12==0.0) then
-            leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+          if (plant(pft)%pleaf%c%c12==0.0) then
+            call update_leaftraits_init( plant, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+            ! leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
           end if
 
           ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
-          avl = max( 0.0, plabl(pft,jpngr)%c%c12 - freserve * pleaf(pft,jpngr)%c%c12 )
-          dcleaf(pft) = frac_leaf(pft) * params_plant%growtheff * avl
-          dcroot(pft) = (1.0 - frac_leaf(pft)) * params_plant%growtheff * avl
+          avl = max( 0.0, plant(pft)%plabl%c%c12 - freserve * plant(pft)%pleaf%c%c12 )
+          dcleaf(pft) = params_plant%frac_leaf * params_plant%growtheff * avl
+          dcroot(pft) = (1.0 - params_plant%frac_leaf) * params_plant%growtheff * avl
           dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
 
           ! print*,'         doy, pleaf ', doy,  pleaf
@@ -142,29 +120,29 @@ contains
           !-------------------------------------------------------------------
           ! LEAF ALLOCATION
           !-------------------------------------------------------------------
-          if (baltest) orgtmp1 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(drgrow(pft)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
+          if (baltest) orgtmp1 = orgminus( orgplus( plant(pft)%pleaf, plant(pft)%proot, plant(pft)%plabl, orgpool( carbon(plant_fluxes(pft)%drgrow), nitrogen(0.0) ) ), orgpool(carbon(0.0),plant_fluxes(pft)%dnup) )
           if (verbose) write(0,*) 'calling allocate_leaf() ... '
           if (verbose) write(0,*) '              with state variables:'
-          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-          if (verbose) write(0,*) '              drgrow= ', drgrow(:)
+          if (verbose) write(0,*) '              pleaf = ', plant(:)%pleaf
+          if (verbose) write(0,*) '              proot = ', plant(:)%proot
+          if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
+          if (verbose) write(0,*) '              drgrow= ', plant_fluxes(:)%drgrow
           if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
           call allocate_leaf( &
             pft, dcleaf(pft), &
-            pleaf(pft,jpngr)%c%c12, pleaf(pft,jpngr)%n%n14, &
-            plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14, &
+            plant(pft)%pleaf%c%c12, plant(pft)%pleaf%n%n14, &
+            plant(pft)%plabl%c%c12, plant(pft)%plabl%n%n14, &
             solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs, &
-            lai_ind(pft,jpngr), dnleaf(pft) &
+            plant(pft)%lai_ind, dnleaf(pft) &
             )
           if (verbose) write(0,*) '              ==> returned: '
-          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+          if (verbose) write(0,*) '              pleaf = ', plant(:)%pleaf
+          if (verbose) write(0,*) '              proot = ', plant(:)%proot
+          if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
           if (baltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) ) / params_plant%growtheff
           if (verbose) write(0,*) '              drgrow= ', ctmp
           if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
-          if (baltest) orgtmp2 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
+          if (baltest) orgtmp2 = orgminus( orgplus( plant(pft)%pleaf, plant(pft)%proot, plant(pft)%plabl, orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),plant_fluxes(pft)%dnup) )
           if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
           if (baltest) write(0,*) '       balance A =', orgbal1
           if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance A not satisfied for C'
@@ -173,37 +151,37 @@ contains
           !-------------------------------------------------------------------  
           ! Update leaf traits
           !-------------------------------------------------------------------  
-          leaftraits(pft) = get_leaftraits( pft, lai_ind(pft,jpngr), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+          call update_leaftraits( plant(pft), pft, plant(pft)%lai_ind, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
 
           !-------------------------------------------------------------------  
           ! Update fpc_grid and fapar_ind (not lai_ind)
           !-------------------------------------------------------------------  
-          canopy(pft) = get_canopy( lai_ind(pft,jpngr) )
+          plant(pft)%fapar_ind = get_fapar( plant(pft)%lai_ind )
 
           !-------------------------------------------------------------------
           ! ROOT ALLOCATION
           !-------------------------------------------------------------------
-          if (baltest) orgtmp1 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(drgrow(pft)), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
+          if (baltest) orgtmp1 = orgminus( orgplus( plant(pft)%pleaf, plant(pft)%proot, plant(pft)%plabl, orgpool( carbon(plant_fluxes(pft)%drgrow), nitrogen(0.0) ) ), orgpool(carbon(0.0),plant_fluxes(pft)%dnup) )
           if (verbose) write(0,*) 'calling allocate_root() ... '
           if (verbose) write(0,*) '              with state variables:'
-          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
-          if (verbose) write(0,*) '              drgrow= ', drgrow(:)
+          if (verbose) write(0,*) '              pleaf = ', plant(:)%pleaf
+          if (verbose) write(0,*) '              proot = ', plant(:)%proot
+          if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
+          if (verbose) write(0,*) '              drgrow= ', plant_fluxes(:)%drgrow
           if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
           call allocate_root( &
             pft, dcroot(pft), dnroot(pft), &
-            proot(pft,jpngr)%c%c12, proot(pft,jpngr)%n%n14, &
-            plabl(pft,jpngr)%c%c12, plabl(pft,jpngr)%n%n14  &
+            plant(pft)%proot%c%c12, plant(pft)%proot%n%n14, &
+            plant(pft)%plabl%c%c12, plant(pft)%plabl%n%n14  &
             )
           if (verbose) write(0,*) '              ==> returned: '
-          if (verbose) write(0,*) '              pleaf = ', pleaf(:,jpngr)
-          if (verbose) write(0,*) '              proot = ', proot(:,jpngr)
-          if (verbose) write(0,*) '              plabl = ', plabl(:,jpngr)
+          if (verbose) write(0,*) '              pleaf = ', plant(:)%pleaf
+          if (verbose) write(0,*) '              proot = ', plant(:)%proot
+          if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
           if (baltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcroot(pft) ) / params_plant%growtheff
           if (verbose) write(0,*) '              drgrow= ', ctmp
           if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
-          if (baltest) orgtmp2 = orgminus( orgplus( pleaf(pft,jpngr), proot(pft,jpngr), plabl(pft,jpngr), orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),dnup(pft)) )
+          if (baltest) orgtmp2 = orgminus( orgplus( plant(pft)%pleaf, plant(pft)%proot, plant(pft)%plabl, orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),plant_fluxes(pft)%dnup) )
           if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
           if (baltest) write(0,*) '       balance B =', orgbal1
           if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance B not satisfied for C'
@@ -215,9 +193,9 @@ contains
           ! add growth respiration to autotrophic respiration and substract from NPP
           ! (note that NPP is added to plabl in and growth resp. is implicitly removed
           ! from plabl above)
-          drgrow(pft)   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
+          plant_fluxes(pft)%drgrow   = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) + dcroot(pft) ) / params_plant%growtheff
 
-          if ( plabl(pft,jpngr)%n%n14<0.0 ) plabl(pft,jpngr)%n%n14 = 0.0
+          if ( plant(pft)%plabl%n%n14<0.0 ) plant(pft)%plabl%n%n14 = 0.0
 
         end if
 
@@ -287,7 +265,7 @@ contains
 
     ! If labile N gets negative, account gap as N fixation
     if ( nlabl < 0.0 ) then
-      dnup(pft)%n14 = dnup(pft)%n14 - nlabl
+      plant_fluxes(pft)%dnup%n14 = plant_fluxes(pft)%dnup%n14 - nlabl
       dnup_fix(pft) = dnup_fix(pft) - nlabl
       nlabl = 0.0
     end if
@@ -341,7 +319,7 @@ contains
 
     ! If labile N gets negative, account gap as N fixation
     if ( nlabl < 0.0 ) then
-      dnup(pft)%n14 = dnup(pft)%n14 - nlabl
+      plant_fluxes(pft)%dnup%n14 = plant_fluxes(pft)%dnup%n14 - nlabl
       dnup_fix(pft) = dnup_fix(pft) - nlabl
       nlabl = 0.0
     end if

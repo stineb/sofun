@@ -25,13 +25,13 @@ module md_soiltemp
   implicit none
 
   private
-  public dtemp_soil, soiltemp, initio_soiltemp, initoutput_soiltemp, &
+  public soiltemp, initio_soiltemp, initoutput_soiltemp, &
     getout_daily_soiltemp, writeout_ascii_soiltemp
 
   !----------------------------------------------------------------
   ! Module-specific state variables
   !----------------------------------------------------------------
-  real, dimension(nlu,maxgrid) :: dtemp_soil          ! soil temperature [deg C]
+  ! real, dimension(nlu,maxgrid) :: dtemp_soil          ! soil temperature [deg C]
 
   !----------------------------------------------------------------
   ! Module-specific daily output variables
@@ -40,25 +40,29 @@ module md_soiltemp
 
 contains
 
-  subroutine soiltemp( jpngr, moy, day, dtemp ) 
+  subroutine soiltemp( phy, dtemp, ngridcells, init, jpngr, moy, doy ) 
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates soil temperature based on.
     !-------------------------------------------------------------------------
-    use md_params_core, only: ndayyear, nlu, maxgrid, ndaymonth, pi
+    use md_params_core, only: ndayyear, nlu, ndaymonth, pi
     use md_sofunutils, only: running, daily2monthly
     use md_waterbal, only: soilphys
+    use md_tile, only: psoilphystype
     use md_interface
 
     ! arguments
+    type( psoilphystype ), dimension(nlu), intent(inout) :: phy
     integer, intent(in)                   :: jpngr
-    integer, intent(in)                   :: moy
-    integer, intent(in)                   :: day                            ! current day of year
+    integer, intent(in)                   :: moy        ! current month of year
+    integer, intent(in)                   :: doy        ! current day of year
     real, dimension(ndayyear), intent(in) :: dtemp        ! daily temperature (deg C)
+    integer, intent(in) :: ngridcells
+    logical, intent(in) :: init
 
     ! local variables
-    real, dimension(ndayyear,maxgrid), save     :: dtemp_pvy    ! daily temperature of previous year (deg C)
-    real, dimension(nlu,ndayyear,maxgrid), save :: wscal_pvy ! daily Cramer-Prentice-Alpha of previous year (unitless) 
-    real, dimension(nlu,ndayyear), save         :: wscal_alldays
+    real, dimension(:,:), allocatable, save   :: dtemp_pvy    ! daily temperature of previous year (deg C)
+    real, dimension(:,:,:), allocatable, save :: wscal_pvy    ! daily Cramer-Prentice-Alpha of previous year (unitless) 
+    real, dimension(:,:), allocatable, save   :: wscal_alldays
 
     !real, dimension(ndayyear), save :: dtemp_buf        ! daily temperature vector containing values of the present day and the preceeding 364 days. Updated daily. (deg C)
     !real, dimension(ndayyear), save :: dwtot_buf        ! daily soil moisture content, containing values of the present day and the preceeding 364 days. Updated daily
@@ -70,15 +74,17 @@ contains
     real :: diffus
     real :: alag, amp, lag, lagtemp
 
-
     ! in first year, use this years air temperature (available for all days in this year)
-    if ( interface%steering%init .and. day==1 ) then
+    if ( interface%steering%init .and. doy==1 ) then
+      allocate( dtemp_pvy(ndayyear,ngridcells) )
+      allocate( wscal_pvy(nlu,ndayyear,ngridcells) )
+      allocate( wscal_alldays(nlu,ndayyear) )
       dtemp_pvy(:,jpngr) = dtemp(:)
     end if
 
-    wscal_alldays(:,day) = soilphys(:)%wscal
+    wscal_alldays(:,doy) = soilphys(:)%wscal
 
-    avetemp = running( dtemp, day, ndayyear, ndayyear, "mean", dtemp_pvy(:,jpngr) ) 
+    avetemp = running( dtemp, doy, ndayyear, ndayyear, "mean", dtemp_pvy(:,jpngr) ) 
 
     ! get monthly mean temperature vector from daily vector
     !mtemp     = daily2monthly( dtemp,     "mean" )
@@ -95,8 +101,8 @@ contains
       pm = moy - 1
       ppm = moy - 2
     end if
-    tempthismonth = running( dtemp, day, ndayyear, ndaymonth(pm), "mean", dtemp_pvy(:,jpngr) )
-    templastmonth = running( dtemp, modulo( day - ndaymonth(pm), ndayyear ), ndayyear, ndaymonth(ppm), "mean", dtemp_pvy(:,jpngr) )
+    tempthismonth = running( dtemp, doy, ndayyear, ndaymonth(pm), "mean", dtemp_pvy(:,jpngr) )
+    templastmonth = running( dtemp, modulo( doy - ndaymonth(pm), ndayyear ), ndayyear, ndaymonth(ppm), "mean", dtemp_pvy(:,jpngr) )
 
 
     do lu=1,nlu
@@ -106,14 +112,15 @@ contains
       ! meanw1 stores running mean soil moisture in layer 1 of previous 12 months 
       !-------------------------------------------------------------------------
       if (interface%steering%init) then
-        meanw1  = running( wscal_alldays(lu,:), day, ndayyear, ndayyear, "mean"  )
+        meanw1  = running( wscal_alldays(lu,:), doy, ndayyear, ndayyear, "mean"  )
       else
-        meanw1  = running( wscal_alldays(lu,:), day, ndayyear, ndayyear, "mean", wscal_pvy(lu,:,jpngr)  )
+        meanw1  = running( wscal_alldays(lu,:), doy, ndayyear, ndayyear, "mean", wscal_pvy(lu,:,jpngr)  )
       end if
 
       ! In case of zero soil water, return with soil temp = air temp
       if (meanw1==0.0) then
-        dtemp_soil(lu,jpngr) = dtemp(day)
+        phy(lu)%temp = dtemp(doy)
+        ! dtemp_soil(lu,jpngr) = dtemp(doy)
         return
       endif
           
@@ -141,12 +148,13 @@ contains
       lagtemp = ( tempthismonth - templastmonth ) * ( 1.0 - lag ) + templastmonth
           
       ! Adjust amplitude of lagged air temp to give estimated soil temp
-      dtemp_soil(lu,jpngr) = avetemp + amp * ( lagtemp - avetemp )
+      ! dtemp_soil(lu,jpngr) = avetemp + amp * ( lagtemp - avetemp )
+      phy(lu)%temp = avetemp + amp * ( lagtemp - avetemp )
 
     end do
 
     ! save temperature for next year
-    if (day==ndayyear) then
+    if (doy==ndayyear) then
       dtemp_pvy(:,jpngr) = dtemp(:)
       wscal_pvy(:,:,jpngr) = wscal_alldays(:,:)
     end if
@@ -194,18 +202,20 @@ contains
   end subroutine initoutput_soiltemp
 
 
-  subroutine getout_daily_soiltemp( jpngr, moy, doy )
+  subroutine getout_daily_soiltemp( jpngr, moy, doy, phy )
     !////////////////////////////////////////////////////////////////
     !  SR called daily to sum up output variables.
     !----------------------------------------------------------------
     use md_interface
+    use md_tile, only: psoilphystype
 
     ! arguments
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy    
     integer, intent(in) :: doy    
+    type( psoilphystype ), dimension(nlu), intent(inout) :: phy
 
-    if (interface%params_siml%loutdtemp_soil) outdtemp_soil(:,doy,jpngr) = dtemp_soil(:,jpngr)
+    if (interface%params_siml%loutdtemp_soil) outdtemp_soil(:,doy,jpngr) = phy(:)%temp
 
   end subroutine getout_daily_soiltemp
 

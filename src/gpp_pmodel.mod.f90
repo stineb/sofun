@@ -23,16 +23,14 @@ module md_gpp
   implicit none
 
   private
-  public dtransp, drd, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
-    initdaily_gpp, gpp, getlue, getout_daily_gpp, getout_annual_gpp, &
+  public getpar_modl_gpp, initio_gpp, initoutput_gpp, &
+    gpp, getlue, getout_daily_gpp, getout_annual_gpp, &
     writeout_ascii_gpp, outtype_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd, &
     initio_nc_gpp, writeout_nc_gpp
     
   !----------------------------------------------------------------
   ! Module-specific state variables
   !----------------------------------------------------------------
-  real, dimension(npft) :: dtransp          ! daily transpiration [mm]
-  real, dimension(npft) :: drd              ! daily dark respiration [gC/m2/d]
   real, dimension(npft) :: dassim           ! daily leaf-level assimilation rate (per unit leaf area) [gC/m2/d]
   real, dimension(npft) :: dgs              ! stomatal conductance (per unit leaf area, average daily) [mol H2O m-2 s-1]  
   real, dimension(npft) :: dvcmax_canop     ! canopy-level Vcmax [gCO2/m2-ground/s]
@@ -172,7 +170,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( out_pmodel, solar, plant, phy, doy, moy, dtemp, do_soilmstress )
+  subroutine gpp( out_pmodel, solar, plant, plant_fluxes, phy, doy, moy, dtemp, do_soilmstress )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -184,19 +182,20 @@ contains
     !
     !------------------------------------------------------------------
     use md_params_core, only: dummy
-    use md_plant, only: dgpp, params_pft_plant, plant_type
+    use md_plant, only: params_pft_plant, plant_type, plant_fluxes_type
     use md_tile, only: psoilphystype
     use md_waterbal, only: soilphys, solartype
 
     ! arguments
     type( psoilphystype ), dimension(nlu), intent(inout) :: phy
-    type( outtype_pmodel ), dimension(npft) :: out_pmodel
-    type( solartype )                       :: solar
-    type( plant_type ), dimension(npft)     :: plant
-    integer, intent(in)                     :: doy             ! day of year and month of year
-    integer, intent(in)                     :: moy             ! month of year and month of year
-    real,    intent(in)                     :: dtemp           ! this day's air temperature
-    logical, intent(in)                     :: do_soilmstress  ! whether empirical soil miosture stress function is applied to GPP
+    type( outtype_pmodel ), dimension(npft), intent(in)  :: out_pmodel
+    type( solartype ), intent(in)                        :: solar
+    type( plant_type ), dimension(npft), intent(in) :: plant
+    type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
+    integer, intent(in)                        :: doy             ! day of year and month of year
+    integer, intent(in)                        :: moy             ! month of year and month of year
+    real,    intent(in)                        :: dtemp           ! this day's air temperature
+    logical, intent(in)                        :: do_soilmstress  ! whether empirical soil miosture stress function is applied to GPP
 
     ! local variables
     integer :: pft
@@ -221,14 +220,14 @@ contains
         end if
 
         ! GPP
-        dgpp(pft) = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilmstress )
+        plant_fluxes(pft)%dgpp = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilmstress )
 
         ! ! transpiration
         ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, soilmstress )
         ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp )
 
         ! Dark respiration
-        drd(pft) = calc_drd( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, soilmstress )
+        plant_fluxes(pft)%drd = calc_drd( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, soilmstress )
 
         ! Leaf-level assimilation rate
         dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), dtemp, soilmstress )
@@ -244,11 +243,11 @@ contains
 
       else  
 
-        dgpp(pft)         = 0.0
-        drd(pft)          = 0.0
-        dtransp(pft)      = 0.0
-        dvcmax_canop(pft) = 0.0
-        dvcmax_leaf(pft)  = 0.0
+        plant_fluxes(pft)%dgpp    = 0.0
+        plant_fluxes(pft)%drd     = 0.0
+        plant_fluxes(pft)%dtransp = 0.0
+        dvcmax_canop(pft)         = 0.0
+        dvcmax_leaf(pft)          = 0.0
 
       end if 
 
@@ -1219,28 +1218,28 @@ contains
     ! Calculate lambda, (bar cm**3)/g:
     my_lambda = 1788.316 + &
                 21.55053*tc + &
-              -0.4695911*tc*tc + &
+            (-0.4695911)*tc*tc + &
            (3.096363e-3)*tc*tc*tc + &
-      -1.0*(7.341182e-6)*tc*tc*tc*tc
+    (-1.0)*(7.341182e-6)*tc*tc*tc*tc
 
     ! Calculate po, bar
     po = 5918.499 + & 
                 58.05267*tc + & 
-              -1.1253317*tc*tc + & 
+            (-1.1253317)*tc*tc + & 
           (6.6123869e-3)*tc*tc*tc + & 
-     -1.0*(1.4661625e-5)*tc*tc*tc*tc
+    (-1.0)*(1.4661625e-5)*tc*tc*tc*tc
 
     ! Calculate vinf, cm**3/g
     vinf = 0.6980547 + &
-      -1.0*(7.435626e-4)*tc + &
+    (-1.0)*(7.435626e-4)*tc + &
            (3.704258e-5)*tc*tc + &
-      -1.0*(6.315724e-7)*tc*tc*tc + &
+    (-1.0)*(6.315724e-7)*tc*tc*tc + &
            (9.829576e-9)*tc*tc*tc*tc + &
-     -1.0*(1.197269e-10)*tc*tc*tc*tc*tc + &
+    (-1.0)*(1.197269e-10)*tc*tc*tc*tc*tc + &
           (1.005461e-12)*tc*tc*tc*tc*tc*tc + &
-     -1.0*(5.437898e-15)*tc*tc*tc*tc*tc*tc*tc + &
+    (-1.0)*(5.437898e-15)*tc*tc*tc*tc*tc*tc*tc + &
            (1.69946e-17)*tc*tc*tc*tc*tc*tc*tc*tc + &
-     -1.0*(2.295063e-20)*tc*tc*tc*tc*tc*tc*tc*tc*tc
+    (-1.0)*(2.295063e-20)*tc*tc*tc*tc*tc*tc*tc*tc*tc
 
     ! Convert pressure to bars (1 bar = 100000 Pa)
     pbar = (1e-5)*patm
@@ -1379,16 +1378,6 @@ contains
                 ) 
 
   end function sigm_gpp_lotemp
-
-
-  subroutine initdaily_gpp()
-    !////////////////////////////////////////////////////////////////
-    ! Initialise daily variables with zero
-    !----------------------------------------------------------------
-    dtransp(:) = 0.0
-    drd(:)     = 0.0
-
-  end subroutine initdaily_gpp
 
 
   subroutine initio_gpp()
@@ -1637,7 +1626,7 @@ contains
   end subroutine initoutput_gpp
 
 
-  subroutine getout_daily_gpp( out_pmodel, jpngr, doy )
+  subroutine getout_daily_gpp( out_pmodel, plant_fluxes, jpngr, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
     ! Note that output variables are collected only for those variables
@@ -1646,12 +1635,13 @@ contains
     ! where they are defined.
     !----------------------------------------------------------------
     use md_interface
-    use md_plant, only: dgpp
+    use md_plant, only: plant_fluxes_type
 
     ! argument
-    type( outtype_pmodel ), dimension(npft), intent(in) :: out_pmodel
-    integer, intent(in)                                 :: jpngr
-    integer, intent(in)                                 :: doy
+    type( outtype_pmodel ), dimension(npft), intent(in)    :: out_pmodel
+    type( plant_fluxes_type ), dimension(npft), intent(in) :: plant_fluxes
+    integer, intent(in)                                    :: jpngr
+    integer, intent(in)                                    :: doy
 
     ! local
     integer :: it
@@ -1664,9 +1654,9 @@ contains
     it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
 
     ! sum over PFT
-    if (interface%params_siml%loutdgpp   ) outdgpp(it,jpngr)    = outdgpp(it,jpngr)    + sum(dgpp(:))    / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + sum(drd(:))     / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + sum(dtransp(:)) / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdgpp   ) outdgpp(it,jpngr)    = outdgpp(it,jpngr)    + sum(plant_fluxes(:)%dgpp)    / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + sum(plant_fluxes(:)%drd)     / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + sum(plant_fluxes(:)%dtransp) / real( interface%params_siml%outdt )
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
@@ -1681,13 +1671,13 @@ contains
     ! weighted by daily GPP
     if (interface%params_siml%loutgpp) then
 
-      outagpp(:,jpngr)        = outagpp(:,jpngr)        + dgpp(:)
+      outagpp(:,jpngr)        = outagpp(:,jpngr)        + plant_fluxes(:)%dgpp
 
-      outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * dgpp(:)
-      outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * dgpp(:)
-      outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * dgpp(:)
-      outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * dgpp(:)
-      outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * dgpp(:)
+      outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * plant_fluxes(:)%dgpp
+      outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * plant_fluxes(:)%dgpp
+      outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * plant_fluxes(:)%dgpp
+      outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * plant_fluxes(:)%dgpp
+      outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * plant_fluxes(:)%dgpp
 
       if (doy==ndayyear) then
         outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)

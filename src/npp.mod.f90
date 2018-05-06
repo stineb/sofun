@@ -46,7 +46,7 @@ module md_npp
 
 contains
 
-  subroutine npp( jpngr, dtemp, doy )
+  subroutine npp( plant, plant_fluxes, dtemp ) !jpngr, dtemp, doy )
     !/////////////////////////////////////////////////////////////////////////
     ! NET PRIMARY PRODUCTIVITY
     ! Calculate maintenance and growth respiration and substract this from GPP 
@@ -63,12 +63,16 @@ contains
     use md_gpp, only: drd
     use md_turnover, only: turnover_leaf, turnover_root, turnover_labl
     use md_phenology, only: sprout
+    use md_plant, only: plant_type, plant_fluxes_type
     use md_interface
 
     ! arguments
-    integer, intent(in) :: jpngr
-    real, intent(in)    :: dtemp      ! air temperature at this day
-    integer, intent(in) :: doy
+    type( plant_type ), dimension(npft), intent(in) :: plant ! npft counts over PFTs in all land units (tiles)
+    type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
+    real, intent(in) :: dtemp      ! air temperature at this day
+
+    ! integer, intent(in) :: jpngr
+    ! integer, intent(in) :: doy
 
     ! local variables
     integer :: pft
@@ -87,8 +91,8 @@ contains
     !-------------------------------------------------------------------------
     do pft=1,npft
 
-      if (plabl(pft,jpngr)%c%c12<0.0) stop 'before npp labile C is neg.'
-      if (plabl(pft,jpngr)%n%n14<0.0) stop 'before npp labile N is neg.'
+      if (plant(pft)%plabl%c%c12<0.0) stop 'before npp labile C is neg.'
+      if (plant(pft)%plabl%n%n14<0.0) stop 'before npp labile N is neg.'
 
       lu = params_pft_plant(pft)%lu_category
       
@@ -97,8 +101,8 @@ contains
       ! use function 'resp_main'
       !-------------------------------------------------------------------------
       ! fine roots should have a higher repsiration coefficient than other tissues (Franklin et al., 2007).
-      drleaf(pft) = drd(pft)  ! leaf respiration is given by dark respiration as calculated in P-model.       
-      drroot(pft) = calc_resp_maint( proot(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_root, dtemp )
+      plant_fluxes(pft)%drleaf = drd(pft)  ! leaf respiration is given by dark respiration as calculated in P-model.       
+      plant_fluxes(pft)%drroot = calc_resp_maint( plant(pft)%proot%c%c12 * nind(pft,jpngr), params_plant%r_root, dtemp )
       if (params_pft_plant(pft)%tree) then
         drsapw(pft) = calc_resp_maint( psapw(pft,jpngr)%c%c12 * nind(pft,jpngr), params_plant%r_sapw, dtemp )
       endif
@@ -113,8 +117,8 @@ contains
       ! full isotopic effects of gross exchange _fluxes.
       ! Growth respiration ('drgrow') is deduced from 'dnpp' in allocation SR.
       !-------------------------------------------------------------------------
-      dnpp(pft) = carbon( dgpp(pft) - drleaf(pft) - drroot(pft) )
-      dcex(pft) = calc_cexu( proot(pft,jpngr)%c%c12 , dtemp )   
+      plant_fluxes(pft)%dnpp = carbon( plant_fuxes(pft)%dgpp - plant_fluxes(pft)%drleaf - plant_fluxes(pft)%drroot )
+      plant_fluxes(pft)%dcex = calc_cexu( plant(pft)%proot%c%c12, dtemp )   
 
 
       !/////////////////////////////////////////////////////////////////////////
@@ -126,18 +130,18 @@ contains
       !     but continuing turnover).
       !-------------------------------------------------------------------------
       ! This option (deactivate_root) leads to good results, the alternative leads to on-off growth. Unclear why.
-      if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
-        call deactivate_root( dgpp(pft), drleaf(pft), plabl(pft,jpngr)%c%c12, proot(pft,jpngr), drroot(pft), dnpp(pft)%c12, dcex(pft), dtemp, plitt_bg(pft,jpngr) )
+      if ( (plant(pft)%plabl%c%c12 + plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex) < 0.0 ) then
+        call deactivate_root( plant_fuxes(pft)%dgpp, plant_fluxes(pft)%drleaf, plant(pft)%plabl%c%c12, plant(pft)%proot, plant_fluxes(pft)%drroot, plant_fluxes(pft)%dnpp%c12, plant_fluxes(pft)%dcex, dtemp, plitt_bg(pft,jpngr) )
       end if
 
       ! ! -------------------------------------------------------------------------
       ! ! the alternative formulation with shutting all fluxes down and decaying
       ! ! -------------------------------------------------------------------------
-      ! if ( (plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 - dcex(pft)) < 0.0 ) then
+      ! if ( (plant(pft)%plabl%c%c12 + plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex) < 0.0 ) then
       !   ! stop exuding
-      !   dcex(pft) = 0.0
+      !   plant_fluxes(pft)%dcex = 0.0
 
-      !   if ( ( plabl(pft,jpngr)%c%c12 + dnpp(pft)%c12 ) < 0.0 ) then
+      !   if ( ( plant(pft)%plabl%c%c12 + plant_fluxes(pft)%dnpp%c12 ) < 0.0 ) then
 
       !     ! ! after C balance has become negative wait until it gets positive again to trigger sprouting
       !     ! ! print*,'setting check_sprout = T ', doy
@@ -145,12 +149,12 @@ contains
 
       !     ! slow death
       !     ! print*,'slow death', doy
-      !     dgpp(pft)   = 0.0
-      !     drleaf(pft) = 0.0
-      !     drroot(pft) = 0.0
+      !     plant_fuxes(pft)%dgpp   = 0.0
+      !     plant_fluxes(pft)%drleaf = 0.0
+      !     plant_fluxes(pft)%drroot = 0.0
       !     drd(pft)    = 0.0
-      !     dcex(pft)   = 0.0
-      !     dnpp(pft)   = carbon(0.0)
+      !     plant_fluxes(pft)%dcex   = 0.0
+      !     plant_fluxes(pft)%dnpp   = carbon(0.0)
 
       !     call turnover_leaf( dleaf_die, pft, jpngr )
       !     call turnover_root( droot_die, pft, jpngr )
@@ -179,13 +183,13 @@ contains
       ! NPP available for growth first enters the labile pool ('plabl ').
       ! XXX Allocation is called here without "paying"  growth respir.?
       !-------------------------------------------------------------------------
-      call ccp( carbon( dcex(pft) ), pexud(pft,jpngr) )
-      call ccp( cminus( dnpp(pft), carbon(dcex(pft)) ), plabl(pft,jpngr)%c )
+      call ccp( carbon( plant_fluxes(pft)%dcex ), plant(pft)%pexud )
+      call ccp( cminus( plant_fluxes(pft)%dnpp, carbon(plant_fluxes(pft)%dcex) ), plant(pft)%plabl%c )
 
-      if (plabl(pft,jpngr)%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
-      if (plabl(pft,jpngr)%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
+      if (plant(pft)%plabl%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
+      if (plant(pft)%plabl%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
 
-      ! print*,'gpp, dclabl', doy, dgpp(pft), cminus( dnpp(pft), carbon(dcex(pft)) )
+      ! print*,'gpp, dclabl', doy, plant_fuxes(pft)%dgpp, cminus( plant_fluxes(pft)%dnpp, carbon(plant_fluxes(pft)%dcex) )
 
     end do
 
