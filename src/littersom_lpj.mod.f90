@@ -76,7 +76,7 @@ module md_littersom
 
 contains
 
-  subroutine littersom( jpngr, doy, dtemp )
+  subroutine littersom( plant, phy, jpngr, doy, dtemp )
     !////////////////////////////////////////////////////////////////
     !  Litter and SOM decomposition and nitrogen mineralisation.
     !  1st order decay of litter and SOM _pools, governed by temperature
@@ -90,12 +90,14 @@ contains
     use md_interface
     use md_classdefs
     use md_rates, only: ftemp, fmoist
-    use md_plant, only: params_pft_plant, plitt_af, plitt_as, plitt_bg, pexud
+    use md_plant, only: plant_type, params_pft_plant
     use md_waterbal, only: soilphys
-    use md_soiltemp, only: dtemp_soil
     use md_ntransform, only: pnh4, pno3
+    use md_tile, only: psoilphystype
 
     ! arguments
+    type(plant_type), intent(inout) :: plant
+    type(psoilphystype), intent(in) :: phy
     integer, intent(in) :: jpngr                    ! grid cell number
     integer, intent(in) :: doy                      ! day of year
     real, intent(in)    :: dtemp                    ! daily temperature (deg C)
@@ -191,10 +193,10 @@ contains
           ! Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
           !-------------------------------------------------------------------------
           ! define decomposition _rates for current soil temperature and moisture 
-          klitt_af(lu) = params_littersom%klitt_af10 * ftemp( dtemp,                "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
-          klitt_as(lu) = params_littersom%klitt_as10 * ftemp( dtemp,                "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
-          klitt_bg(lu) = params_littersom%klitt_bg10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
-          kexu(lu)     = params_littersom%kexu10     * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_af(lu) = params_littersom%klitt_af10 * ftemp( dtemp,        "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_as(lu) = params_littersom%klitt_as10 * ftemp( dtemp,        "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_bg(lu) = params_littersom%klitt_bg10 * ftemp( phy(lu)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          kexu(lu)     = params_littersom%kexu10     * ftemp( phy(lu)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
 
         end if
       end do
@@ -205,8 +207,8 @@ contains
       ! Moisture: Foley, 1995; Fang and Moncrieff, 1999; Gerten et al., 2004;
       !           Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
       !-------------------------------------------------------------------------
-      ksoil_fs(lu) = params_littersom%ksoil_fs10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
-      ksoil_sl(lu) = params_littersom%ksoil_sl10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
+      ksoil_fs(lu) = params_littersom%ksoil_fs10 * ftemp( phy(lu)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
+      ksoil_sl(lu) = params_littersom%ksoil_sl10 * ftemp( phy(lu)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
 
       !-------------------------------------------------------------------------
       ! Initialisation of decomposing pool 
@@ -223,14 +225,14 @@ contains
       do pft=1,npft
         if (params_pft_plant(pft)%islu(lu)) then
                         
-          dlitt_af = orgfrac( 1.0 - exp( -klitt_af(lu)), plitt_af(pft,jpngr) )
-          dlitt_as = orgfrac( 1.0 - exp( -klitt_as(lu)), plitt_as(pft,jpngr) )
-          dlitt_bg = orgfrac( 1.0 - exp( -klitt_bg(lu)), plitt_bg(pft,jpngr) )
+          dlitt_af = orgfrac( 1.0 - exp( -klitt_af(lu)), plant(pft)%plitt_af )
+          dlitt_as = orgfrac( 1.0 - exp( -klitt_as(lu)), plant(pft)%plitt_as )
+          dlitt_bg = orgfrac( 1.0 - exp( -klitt_bg(lu)), plant(pft)%plitt_bg )
 
           ! Update the litter _pools
-          call orgmv( dlitt_af(pft), plitt_af(pft,jpngr), dlitt )
-          call orgmv( dlitt_as(pft), plitt_as(pft,jpngr), dlitt )
-          call orgmv( dlitt_bg(pft), plitt_bg(pft,jpngr), dlitt )
+          call orgmv( dlitt_af(pft), plant(pft)%plitt_af, dlitt )
+          call orgmv( dlitt_as(pft), plant(pft)%plitt_as, dlitt )
+          call orgmv( dlitt_bg(pft), plant(pft)%plitt_bg, dlitt )
       
         end if
       end do
@@ -643,18 +645,19 @@ contains
   end subroutine initoutput_littersom
 
 
-  subroutine getout_annual_littersom( jpngr )
+  subroutine getout_annual_littersom( plant, jpngr )
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
     use md_interface
-    use md_plant, only: plitt_af, plitt_as, plitt_bg
+    use md_plant, only: plant_type
 
     ! arguments
+    type(plant_type), intent(in) :: plant
     integer, intent(in) :: jpngr
 
     if (interface%params_siml%loutlittersom) then
-      outaclitt(:,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
+      outaclitt(:,jpngr) = plant(:)%plitt_af%c%c12 + plant(:)%plitt_as%c%c12 + plant(:)%plitt_bg%c%c12
       outacsoil(:,jpngr) = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
     end if
 

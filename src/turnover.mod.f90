@@ -43,16 +43,17 @@ contains
     !  year.
     !----------------------------------------------------------------
     use md_classdefs
-    use md_params_core, only: npft, eps
+    use md_params_core, only: npft, eps, nmonth
     use md_plant, only: plant_type
     use md_waterbal, only: solartype
     use md_gpp, only: outtype_pmodel
+    use md_phenology, only: temppheno_type
 
     ! arguments
-    type( plant_type ), dimension(npft), intent(in)      :: plant ! npft counts over PFTs in all land units (tiles)
-    type( outtype_pmodel ), dimension(npft), intent(in)  :: out_pmodel
-    type( solartype ), intent(in)                        :: solar
-    type(temppheno_type), dimension(npft), intent(in)    :: temppheno
+    type( plant_type ), dimension(npft), intent(inout)         :: plant ! npft counts over PFTs in all land units (tiles)
+    type( outtype_pmodel ), dimension(npft,nmonth), intent(in) :: out_pmodel
+    type( solartype ), intent(in)                              :: solar
+    type(temppheno_type), dimension(npft), intent(in)          :: temppheno
 
     ! local variables
     integer :: pft
@@ -78,7 +79,7 @@ contains
       !--------------------------------------------------------------
       if (params_pft_plant(pft)%grass) then
 
-        if (temppheno(pft)%shedleaves(pft)) then
+        if (temppheno(pft)%shedleaves) then
 
           droot = 1.0
           dleaf = 1.0
@@ -113,7 +114,7 @@ contains
       if (verbose) orgtmp  =  plant(pft)%pleaf
       if (verbose) orgtmp2 =  plant(pft)%plitt_af
       !--------------------------------------------------------------
-      if ( dleaf>0.0 )                 call turnover_leaf( dleaf, plant(pft), out_pmodel(pft), solar ) !, pft, jpngr
+      if ( dleaf>0.0 ) call turnover_leaf( dleaf, plant(pft), out_pmodel(pft,:), solar, pft ) !, jpngr
       !--------------------------------------------------------------
       if (verbose) print*, '              ==> returned: '
       if (verbose) print*, '              pleaf = ', plant(pft)%pleaf
@@ -140,7 +141,7 @@ contains
       if (verbose) orgtmp  =  plant(pft)%proot
       if (verbose) orgtmp2 =  plant(pft)%plitt_bg
       !--------------------------------------------------------------
-      if ( droot>0.0 )                 call turnover_root( droot, plant(pft) )  ! pft, jpngr
+      if ( droot>0.0 ) call turnover_root( droot, plant(pft) )  ! pft, jpngr
       !--------------------------------------------------------------
       if (verbose) print*, '              ==> returned: '
       if (verbose) print*, '              proot = ', plant(pft)%proot
@@ -167,7 +168,7 @@ contains
       if (verbose) orgtmp  =  plant(pft)%plabl
       if (verbose) orgtmp2 =  plant(pft)%plitt_af
       !--------------------------------------------------------------
-      if ( dlabl>0.0 )                 call turnover_labl( dlabl, plant(pft) )  !  pft, jpngr
+      if ( dlabl>0.0 ) call turnover_labl( dlabl, plant(pft) )  !  pft, jpngr
       !--------------------------------------------------------------
       if (verbose) print*, '              ==> returned: '
       if (verbose) print*, '              plabl = ', plant(:)%plabl
@@ -188,20 +189,21 @@ contains
   end subroutine turnover
 
 
-  subroutine turnover_leaf( dleaf, plant, out_pmodel, solar )  ! pft, jpngr
+  subroutine turnover_leaf( dleaf, plant, out_pmodel, solar, pft )  ! pft, jpngr
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction dleaf for leaf pool
     !------------------------------------------------------------------
-    use md_params_core, only: eps
+    use md_params_core, only: npft, eps, nmonth
     use md_waterbal, only: solartype
-    use md_gpp, only: out_pmodel
-    use md_plant, only: plant_type
+    use md_gpp, only: outtype_pmodel
+    use md_plant, only: plant_type, get_fapar
 
     ! arguments
     real, intent(in)    :: dleaf
-    type( plant_type ), intent(in) :: plant ! npft counts over PFTs in all land units (tiles)
-    type( outtype_pmodel ), dimension(npft), intent(in)  :: out_pmodel
-    type( solartype ), intent(in)                        :: solar
+    type( plant_type ), intent(inout)  :: plant ! npft counts over PFTs in all land units (tiles)
+    type( outtype_pmodel ), dimension(nmonth), intent(in) :: out_pmodel
+    type( solartype ), intent(in)      :: solar
+    integer, intent(in) :: pft
 
     ! local variables
     type(orgpool) :: lm_turn
@@ -224,17 +226,17 @@ contains
     cleaf = ( 1.0 - dleaf ) *  plant%pleaf%c%c12
 
     ! get new LAI based on cleaf
-    lai_new = get_lai( pft, cleaf, solar%meanmppfd(:), out_pmodel%actnv_unitiabs )
+    lai_new = get_lai( pft, cleaf, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
 
     ! update canopy state (only variable fAPAR so far implemented)
     plant%fapar_ind = get_fapar( lai_new )
 
     ! re-calculate metabolic and structural N, given new LAI and fAPAR
-    call update_leaftraits( plant, pft, lai_new, solar%meanmppfd(:), out_pmodel%actnv_unitiabs )
+    call update_leaftraits( plant, pft, lai_new, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
     ! leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel%actnv_unitiabs )
 
     ! get updated leaf N
-    nleaf = leaftraits(pft)%narea_canopy
+    nleaf = plant%narea_canopy
 
     do while ( nleaf > lm_init%n%n14 )
 
@@ -244,17 +246,17 @@ contains
       cleaf = cleaf * lm_init%n%n14 / nleaf
 
       ! get new LAI based on cleaf
-      lai_new = get_lai( pft, cleaf, solar%meanmppfd(:), out_pmodel%actnv_unitiabs )
+      lai_new = get_lai( pft, cleaf, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
 
       ! update canopy state (only variable fAPAR so far implemented)
       plant%fapar_ind = get_fapar( lai_new )
 
       ! re-calculate metabolic and structural N, given new LAI and fAPAR
-      call update_leaftraits( plant, pft, lai_new, solar%meanmppfd(:), out_pmodel%actnv_unitiabs )
-      ! leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel%actnv_unitiabs )
+      call update_leaftraits( plant, pft, lai_new, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
+      ! leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
 
       ! get updated leaf N
-      nleaf = leaftraits(pft)%narea_canopy
+      nleaf = plant%narea_canopy
 
       if (nitr>30) exit
 
@@ -284,15 +286,15 @@ contains
     end if
 
     ! add all organic (fixed) C to litter
-    ! call cmvRec( lm_turn%c, lm_turn%c, plant%plitt_af%c, outaCveg2lit(pft,jpngr), scale=plant(pft)%nind)
-    call cmv( lm_turn%c, lm_turn%c, plant%plitt_af%c, scale=plant(pft)%nind )
+    ! call cmvRec( lm_turn%c, lm_turn%c, plant%plitt_af%c, outaCveg2lit(pft,jpngr), scale=plant%nind)
+    call cmv( lm_turn%c, lm_turn%c, plant%plitt_af%c, scale=plant%nind )
 
     ! retain fraction of N
     call nmv( nfrac( params_plant%f_nretain, lm_turn%n ), lm_turn%n, plant%plabl%n )
 
     ! rest goes to litter
-    ! call nmvRec( lm_turn%n, lm_turn%n, plant%plitt_af%n, outaNveg2lit(pft,jpngr), scale=plant(pft)%nind )
-    call nmv( lm_turn%n, lm_turn%n, plant%plitt_af%n, scale=plant(pft)%nind )
+    ! call nmvRec( lm_turn%n, lm_turn%n, plant%plitt_af%n, outaNveg2lit(pft,jpngr), scale=plant%nind )
+    call nmv( lm_turn%n, lm_turn%n, plant%plitt_af%n, scale=plant%nind )
 
   end subroutine turnover_leaf
 
@@ -305,7 +307,7 @@ contains
 
     ! arguments
     real, intent(in)    :: droot
-    type( plant_type ), intent(in) :: plant ! npft counts over PFTs in all land units (tiles)
+    type( plant_type ), intent(inout) :: plant ! npft counts over PFTs in all land units (tiles)
     ! integer, intent(in) :: pft
     ! integer, intent(in) :: jpngr
 
@@ -319,15 +321,15 @@ contains
     call orgsub( rm_turn, plant%proot )
 
     ! add all organic (fixed) C to litter
-    ! call cmvRec( rm_turn%c, rm_turn%c, plant%plitt_bg%c, outaCveg2lit(pft,jpngr), scale=plant(pft)%nind)
-    call cmv( rm_turn%c, rm_turn%c, plant%plitt_bg%c, scale=plant(pft)%nind)
+    ! call cmvRec( rm_turn%c, rm_turn%c, plant%plitt_bg%c, outaCveg2lit(pft,jpngr), scale=plant%nind)
+    call cmv( rm_turn%c, rm_turn%c, plant%plitt_bg%c, scale=plant%nind)
 
     ! retain fraction of N
     call nmv( nfrac( params_plant%f_nretain, rm_turn%n ), rm_turn%n, plant%plabl%n )
 
     ! rest goes to litter
-    ! call nmvRec( rm_turn%n, rm_turn%n, plant%plitt_bg%n, outaNveg2lit(pft,jpngr), scale=plant(pft)%nind )
-    call nmv( rm_turn%n, rm_turn%n, plant%plitt_bg%n, scale=plant(pft)%nind )
+    ! call nmvRec( rm_turn%n, rm_turn%n, plant%plitt_bg%n, outaNveg2lit(pft,jpngr), scale=plant%nind )
+    call nmv( rm_turn%n, rm_turn%n, plant%plitt_bg%n, scale=plant%nind )
 
   end subroutine turnover_root
 
@@ -340,7 +342,7 @@ contains
 
     ! arguments
     real, intent(in)    :: dlabl
-    type( plant_type ), intent(in) :: plant ! npft counts over PFTs in all land units (tiles)
+    type( plant_type ), intent(inout) :: plant ! npft counts over PFTs in all land units (tiles)
     ! integer, intent(in) :: pft
     ! integer, intent(in) :: jpngr
 
@@ -355,8 +357,8 @@ contains
     ! reduce leaf mass and labl mass
     call orgsub( lb_turn, plant%plabl )
 
-    ! call orgmvRec( lb_turn, lb_turn, plant%plitt_af, outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr), scale=plant(pft)%nind )
-    call orgmv( lb_turn, lb_turn, plant%plitt_af, scale=plant(pft)%nind )
+    ! call orgmvRec( lb_turn, lb_turn, plant%plitt_af, outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr), scale=plant%nind )
+    call orgmv( lb_turn, lb_turn, plant%plitt_af, scale=plant%nind )
 
   end subroutine turnover_labl
 
@@ -367,6 +369,7 @@ contains
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
     use md_interface, only: interface
+    use md_params_core, only: npft
 
     ! arguments
     integer, intent(in) :: ngridcells

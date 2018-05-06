@@ -390,7 +390,7 @@ contains
             ! litter and soil decomposition and N mineralisation
             !----------------------------------------------------------------
             print*, 'calling littersom() ... '
-            call littersom( jpngr, doy )
+            call littersom( plant(:,jpngr), tile(:,jpngr)%soil%phy, jpngr, doy, interface%climate(jpngr)%dtemp(doy) )
             print*, '... done'
 
             !----------------------------------------------------------------
@@ -399,7 +399,7 @@ contains
             if (verbose) print*,'calling getout_daily() ... '
             call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy )
             call getout_daily_gpp( out_pmodel(:,moy), plant_fluxes(:), jpngr, doy )
-            call getout_daily_plant( plant(:,jpngr), jpngr, moy, doy )
+            call getout_daily_plant( plant_fluxes(:), jpngr, moy, doy )
             call getout_daily_forcing( jpngr, moy, doy )
             call getout_daily_soiltemp( jpngr, moy, doy, tile(:,jpngr)%soil%phy )
             if (verbose) print*,'... done'

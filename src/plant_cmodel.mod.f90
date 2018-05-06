@@ -14,7 +14,7 @@ module md_plant
 
   private
   public plant_type, plant_fluxes_type, getpar_modl_plant, params_pft_plant, &
-    params_plant, &
+    params_plant, get_fapar, &
     initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant,     &
     writeout_ascii_plant, maxdoy, initglobal_plant, update_leaftraits, &
     update_leaftraits_init, initpft, getout_annual_plant, get_lai, seed
@@ -137,13 +137,21 @@ module md_plant
   !-----------------------------------------------------------------------
   ! type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.0) )
   type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.12) )
-  ! type( orgpool ), parameter :: seed = orgpool( carbon(100.0), nitrogen(1 .0) )
+  ! type( orgpool ), parameter :: seed = orgpool( carbon(100.0), nitrogen(1 .0)
 
   !----------------------------------------------------------------
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
+  real, allocatable, dimension(:,:,:) :: outdrleaf
+  real, allocatable, dimension(:,:,:) :: outdrroot
+  real, allocatable, dimension(:,:,:) :: outdrgrow
+
   ! annual
+  real, dimension(npft,maxgrid) :: outarleaf
+  real, dimension(npft,maxgrid) :: outarroot
+  real, dimension(npft,maxgrid) :: outargrow
+
   real, dimension(:,:), allocatable :: outanarea_mb
   real, dimension(:,:), allocatable :: outanarea_cw
   real, dimension(:,:), allocatable :: outalai
@@ -154,21 +162,6 @@ module md_plant
   integer, dimension(npft) :: maxdoy  ! DOY of maximum LAI
 
 contains
-
-  ! function get_canopy( lai ) result( out_canopy )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Returs canopy variables as a function of LAI
-  !   !------------------------------------------------------------------
-  !   ! arguments
-  !   real, intent(in) :: lai
-
-  !   ! function return value
-  !   type( canopy_type ) :: out_canopy
-
-  !   out_canopy%fapar_ind = get_fapar( lai )
-
-  ! end function get_canopy
-
 
   function get_fapar( lai ) result( fapar )
     !////////////////////////////////////////////////////////////////
@@ -703,6 +696,7 @@ contains
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
     use md_interface, only: interface
+    use md_params_core, only: npft, ndayyear, maxgrid
 
     ! arguments
     integer, intent(in) :: ngridcells
@@ -723,6 +717,25 @@ contains
       outalai     (:,:) = 0.0
       outalma     (:,:) = 0.0
       outacton_lm (:,:) = 0.0
+
+    end if
+
+    if (interface%params_siml%loutnpp) then
+
+      if (interface%steering%init) then
+        allocate( outdrleaf(npft,ndayyear,maxgrid) )
+        allocate( outdrroot(npft,ndayyear,maxgrid) )
+        allocate( outdrgrow(npft,ndayyear,maxgrid) )
+      end if
+
+      outdrleaf(:,:,:) = 0.0
+      outdrroot(:,:,:) = 0.0
+      outdrgrow(:,:,:) = 0.0
+
+      ! annual output variables
+      outarleaf(:,:) = 0.0
+      outarroot(:,:) = 0.0
+      outargrow(:,:) = 0.0
 
     end if
 
@@ -769,6 +782,43 @@ contains
 
     end if
 
+
+    !////////////////////////////////////////////////////////////////
+    ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
+    !----------------------------------------------------------------
+    if (interface%params_siml%loutnpp) then 
+
+      ! LEAF RESPIRATION
+      filnam=trim(prefix)//'.d.rleaf.out'
+      open(450,file=filnam,err=999,status='unknown')
+
+      ! ROOT RESPIRATION
+      filnam=trim(prefix)//'.d.rroot.out'
+      open(451,file=filnam,err=999,status='unknown')
+
+      ! GROWTH RESPIRATION
+      filnam=trim(prefix)//'.d.rgrow.out'
+      open(454,file=filnam,err=999,status='unknown')
+
+
+      !////////////////////////////////////////////////////////////////
+      ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
+      !----------------------------------------------------------------
+
+      ! LEAF RESPIRATION
+      filnam=trim(prefix)//'.a.rleaf.out'
+      open(452,file=filnam,err=999,status='unknown')
+
+      ! ROOT RESPIRATION
+      filnam=trim(prefix)//'.a.rroot.out'
+      open(453,file=filnam,err=999,status='unknown')
+
+      ! GRWOTH RESPIRATION
+      filnam=trim(prefix)//'.a.rgrow.out'
+      open(455,file=filnam,err=999,status='unknown')
+
+    end if    
+
     return
 
     999  stop 'INITIO: error opening output files'
@@ -776,7 +826,7 @@ contains
   end subroutine initio_plant
 
 
-  subroutine getout_daily_plant( plant, jpngr, moy, doy )
+  subroutine getout_daily_plant( plant_fluxes, jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
     ! Note that output variables are collected only for those variables
@@ -788,29 +838,30 @@ contains
     use md_interface, only: interface
 
     ! arguments
-    type( plant_type ), dimension(npft), intent(in) :: plant
-    integer, intent(in)                             :: jpngr
-    integer, intent(in)                             :: moy
+    type(plant_fluxes_type), dimension(npft), intent(in) :: plant_fluxes
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: moy
     integer, intent(in) :: doy
 
-    ! local variables
-    integer :: pft
-    integer :: it
+    if (interface%params_siml%loutnpp) then
+      !----------------------------------------------------------------
+      ! DAILY
+      ! Collect daily output variables
+      ! so far not implemented for isotopes
+      !----------------------------------------------------------------
+      outdrleaf(:,doy,jpngr) = plant_fluxes(:)%drleaf
+      outdrroot(:,doy,jpngr) = plant_fluxes(:)%drroot
+      outdrgrow(:,doy,jpngr) = plant_fluxes(:)%drgrow
 
-    !----------------------------------------------------------------
-    ! DAILY FOR HIGH FREQUENCY OUTPUT
-    ! Collect daily output variables
-    ! so far not implemented for isotopes
-    !----------------------------------------------------------------
-    ! it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
+      !----------------------------------------------------------------
+      ! ANNUAL SUM OVER DAILY VALUES
+      ! Collect annual output variables as sum of daily values
+      !----------------------------------------------------------------
+      outarleaf(:,jpngr) = outarleaf(:,jpngr) + plant_fluxes(:)%drleaf
+      outarroot(:,jpngr) = outarroot(:,jpngr) + plant_fluxes(:)%drroot
+      outargrow(:,jpngr) = outargrow(:,jpngr) + plant_fluxes(:)%drgrow
 
-    !----------------------------------------------------------------
-    ! ANNUAL SUM OVER DAILY VALUES
-    ! Collect annual output variables as sum of daily values
-    !----------------------------------------------------------------
-    ! if (interface%params_siml%loutplant) then
-    !   ! nothing yet
-    ! end if
+    end if
 
   end subroutine getout_daily_plant
 
@@ -853,7 +904,7 @@ contains
 
     ! local variables
     real :: itime
-    integer :: it, moy, jpngr
+    integer :: it, moy, doy, jpngr
 
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii: think of something ...'
@@ -892,6 +943,45 @@ contains
       write(322,999) itime, sum(outalma(:,jpngr))
 
     end if
+
+
+    if (interface%params_siml%loutnpp) then
+      !-------------------------------------------------------------------------
+      ! DAILY OUTPUT
+      ! Write daily value, summed over all PFTs / LUs
+      ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+      !-------------------------------------------------------------------------
+      if ( .not. interface%steering%spinup &
+        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
+        ! Write daily output only during transient simulation
+        do it=1,interface%params_siml%outnt
+
+          ! Define 'itime' as a decimal number corresponding to day in the year + year
+          itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
+          
+          write(450,999) itime, sum(outdrleaf(:,it,jpngr))
+          write(451,999) itime, sum(outdrroot(:,it,jpngr))
+          write(454,999) itime, sum(outdrgrow(:,it,jpngr))
+
+        end do
+
+        !-------------------------------------------------------------------------
+        ! ANNUAL OUTPUT
+        ! Write annual value, summed over all PFTs / LUs
+        ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+        !-------------------------------------------------------------------------
+        itime = real(interface%steering%outyear)
+
+        write(452,999) itime, outarleaf(:,jpngr)
+        write(453,999) itime, outarroot(:,jpngr)
+        write(455,999) itime, outargrow(:,jpngr)
+
+      end if
+
+    end if
+
 
     return
 

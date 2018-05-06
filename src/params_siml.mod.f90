@@ -89,6 +89,7 @@ module md_params_siml
     logical :: loutnuptake
     logical :: loutlanduse
     logical :: loutforcing
+    logical :: loutturnover
 
     ! booleans defining whether variable is written to NetCDF output
     logical :: lncoutdtemp
@@ -370,6 +371,7 @@ contains
     out_getpar_siml%loutnuptake    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnuptake' )
     out_getpar_siml%loutlanduse    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlanduse' )
     out_getpar_siml%loutforcing    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutforcing' )
+    out_getpar_siml%loutturnover   = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutturnover' )
 
     ! boolean for NetCDF output writing
     out_getpar_siml%lncoutdtemp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdtemp' )
