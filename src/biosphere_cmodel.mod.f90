@@ -9,7 +9,12 @@ module md_biosphere
   use md_vegdynamics, only: vegdynamics
   use md_tile, only: tile_type, initglobal_tile
   use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_forcing, initio_nc_forcing, writeout_ascii_forcing, writeout_nc_forcing
-  use md_phenology, only: temppheno_type, get_temppheno
+  use md_phenology, only: temppheno_type, get_temppheno, getpar_modl_phenology
+  use md_allocation, only: allocation_daily
+  use md_soiltemp, only: getout_daily_soiltemp, soiltemp
+  use md_turnover, only: turnover, initoutput_turnover
+  use md_littersom, only: littersom
+  use md_npp, only: npp
 
   implicit none
 
@@ -368,7 +373,7 @@ contains
             if (verbose) orgtmp1 =  plant(1,jpngr)%plabl
             if (verbose) orgtmp2 =  orgplus( plant(1,jpngr)%pleaf, plant(1,jpngr)%proot )
             !----------------------------------------------------------------
-            call allocation_daily( plant(:,jpngr), plant_fluxes(:), solar, out_pmodel(:,moy), interface%climate(jpngr)%dtemp(doy) )
+            call allocation_daily( plant(:,jpngr), plant_fluxes(:), solar, out_pmodel(:,:), interface%climate(jpngr)%dtemp(doy) )
             !----------------------------------------------------------------
             if (verbose) write(0,*) '              ==> returned: '
             if (verbose) write(0,*) '              pleaf = ', plant(:,jpngr)%pleaf, ' C:N = ', cton( plant(1,jpngr)%pleaf )

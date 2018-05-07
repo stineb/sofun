@@ -88,7 +88,7 @@ contains
     !----------------------------------------------------------------
     use md_params_core, only: pft_start, pft_end
     use md_rates
-    use md_waterbal, only: soilphys, psoilphys
+    use md_waterbal, only: soilphys
     use md_soiltemp, only: dtemp_soil
     use md_plant, only: pexud
     use md_interface

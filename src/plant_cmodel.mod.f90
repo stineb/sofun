@@ -14,7 +14,7 @@ module md_plant
 
   private
   public plant_type, plant_fluxes_type, getpar_modl_plant, params_pft_plant, &
-    params_plant, get_fapar, &
+    params_plant, get_fapar, get_leaf_n_canopy, &
     initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant,     &
     writeout_ascii_plant, maxdoy, initglobal_plant, update_leaftraits, &
     update_leaftraits_init, initpft, getout_annual_plant, get_lai, seed

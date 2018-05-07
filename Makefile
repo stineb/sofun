@@ -151,7 +151,7 @@ gpmodel:
 # reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
 cmodel: 
 	 $(MAKE) cmodel -C src
-	 $(FCOM) -o $(CMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
+	 $(FCOM) -o $(CMODEL_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
 # reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
 tmodel: 

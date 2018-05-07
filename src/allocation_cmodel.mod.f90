@@ -41,8 +41,7 @@ contains
     !------------------------------------------------------------------
     use md_classdefs
     use md_plant, only: plant_type, plant_fluxes_type, params_plant, params_pft_plant, &
-      update_leaftraits, update_leaftraits_init
-    use md_soiltemp, only: dtemp_soil
+      update_leaftraits, update_leaftraits_init, get_fapar
     use md_params_core, only: eps
     use md_waterbal, only: solartype
     use md_gpp, only: outtype_pmodel
@@ -57,11 +56,11 @@ contains
     ! use md_interface
 
     ! arguments
-    type( plant_type ), dimension(npft), intent(in)      :: plant ! npft counts over PFTs in all land units (tiles)
-    type( plant_type ), dimension(npft), intent(in)      :: plant_fluxes ! npft counts over PFTs in all land units (tiles)
-    type( outtype_pmodel ), dimension(npft), intent(in)  :: out_pmodel
-    type( solartype ), intent(in)                        :: solar
-    real, intent(in)                      :: dtemp   ! air temperaure, deg C
+    type( plant_type ), dimension(npft), intent(inout)        :: plant ! npft counts over PFTs in all land units (tiles)
+    type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes ! npft counts over PFTs in all land units (tiles)
+    type( outtype_pmodel ), dimension(npft,nmonth), intent(in):: out_pmodel
+    type( solartype ), intent(in)                             :: solar
+    real, intent(in)                                          :: dtemp   ! air temperaure, deg C
 
     ! local variables
     integer :: lu
@@ -105,7 +104,7 @@ contains
           ! discounted by the yield factor.
           !------------------------------------------------------------------
           if (plant(pft)%pleaf%c%c12==0.0) then
-            call update_leaftraits_init( plant, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+            call update_leaftraits_init( plant(pft), pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
             ! leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
           end if
 
@@ -127,13 +126,14 @@ contains
           if (verbose) write(0,*) '              proot = ', plant(:)%proot
           if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
           if (verbose) write(0,*) '              drgrow= ', plant_fluxes(:)%drgrow
-          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
+          if (verbose) write(0,*) '              dnup  = ', plant_fluxes(1)%dnup%n14
           call allocate_leaf( &
             pft, dcleaf(pft), &
             plant(pft)%pleaf%c%c12, plant(pft)%pleaf%n%n14, &
             plant(pft)%plabl%c%c12, plant(pft)%plabl%n%n14, &
             solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs, &
-            plant(pft)%lai_ind, dnleaf(pft) &
+            plant(pft)%lai_ind, dnleaf(pft), &
+            plant_fluxes(pft) &
             )
           if (verbose) write(0,*) '              ==> returned: '
           if (verbose) write(0,*) '              pleaf = ', plant(:)%pleaf
@@ -141,7 +141,7 @@ contains
           if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
           if (baltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) ) / params_plant%growtheff
           if (verbose) write(0,*) '              drgrow= ', ctmp
-          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
+          if (verbose) write(0,*) '              dnup  = ', plant_fluxes(1)%dnup%n14
           if (baltest) orgtmp2 = orgminus( orgplus( plant(pft)%pleaf, plant(pft)%proot, plant(pft)%plabl, orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),plant_fluxes(pft)%dnup) )
           if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
           if (baltest) write(0,*) '       balance A =', orgbal1
@@ -168,11 +168,12 @@ contains
           if (verbose) write(0,*) '              proot = ', plant(:)%proot
           if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
           if (verbose) write(0,*) '              drgrow= ', plant_fluxes(:)%drgrow
-          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
+          if (verbose) write(0,*) '              dnup  = ', plant_fluxes(1)%dnup%n14
           call allocate_root( &
             pft, dcroot(pft), dnroot(pft), &
             plant(pft)%proot%c%c12, plant(pft)%proot%n%n14, &
-            plant(pft)%plabl%c%c12, plant(pft)%plabl%n%n14  &
+            plant(pft)%plabl%c%c12, plant(pft)%plabl%n%n14,  &
+            plant_fluxes(pft) &
             )
           if (verbose) write(0,*) '              ==> returned: '
           if (verbose) write(0,*) '              pleaf = ', plant(:)%pleaf
@@ -180,7 +181,7 @@ contains
           if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
           if (baltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcroot(pft) ) / params_plant%growtheff
           if (verbose) write(0,*) '              drgrow= ', ctmp
-          if (verbose) write(0,*) '              dnup  = ', dnup(1)%n14
+          if (verbose) write(0,*) '              dnup  = ', plant_fluxes(1)%dnup%n14
           if (baltest) orgtmp2 = orgminus( orgplus( plant(pft)%pleaf, plant(pft)%proot, plant(pft)%plabl, orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),plant_fluxes(pft)%dnup) )
           if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
           if (baltest) write(0,*) '       balance B =', orgbal1
@@ -212,7 +213,7 @@ contains
   end subroutine allocation_daily
 
 
-  subroutine allocate_leaf( pft, mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd, nv, lai, mydnleaf )
+  subroutine allocate_leaf( pft, mydcleaf, cleaf, nleaf, clabl, nlabl, meanmppfd, nv, lai, mydnleaf, plant_fluxes )
     !///////////////////////////////////////////////////////////////////
     ! LEAF ALLOCATION
     ! Sequence of steps:
@@ -222,17 +223,18 @@ contains
     ! - reduce labile pool by C and N increments
     !-------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant, get_leaf_n_canopy, get_lai, dnup, dnup_fix
+    use md_plant, only: plant_fluxes_type, params_plant, get_leaf_n_canopy, get_lai
 
     ! arguments
-    integer, intent(in)                 :: pft
-    real, intent(in)                    :: mydcleaf
-    real, intent(inout)                 :: cleaf, nleaf
-    real, intent(inout)                 :: clabl, nlabl
-    real, dimension(nmonth), intent(in) :: meanmppfd
-    real, dimension(nmonth), intent(in) :: nv
-    real, intent(out)                   :: lai
-    real, intent(out)                   :: mydnleaf
+    integer, intent(in)                    :: pft
+    real, intent(in)                       :: mydcleaf
+    real, intent(inout)                    :: cleaf, nleaf
+    real, intent(inout)                    :: clabl, nlabl
+    real, dimension(nmonth), intent(in)    :: meanmppfd
+    real, dimension(nmonth), intent(in)    :: nv
+    real, intent(out)                      :: lai
+    real, intent(out)                      :: mydnleaf
+    type(plant_fluxes_type), intent(inout) :: plant_fluxes
 
     ! local variables
     real :: nleaf0
@@ -265,8 +267,8 @@ contains
 
     ! If labile N gets negative, account gap as N fixation
     if ( nlabl < 0.0 ) then
-      plant_fluxes(pft)%dnup%n14 = plant_fluxes(pft)%dnup%n14 - nlabl
-      dnup_fix(pft) = dnup_fix(pft) - nlabl
+      plant_fluxes%dnup%n14 = plant_fluxes%dnup%n14 - nlabl
+      plant_fluxes%dnup_fix = plant_fluxes%dnup_fix - nlabl
       nlabl = 0.0
     end if
 
@@ -281,12 +283,12 @@ contains
   end subroutine allocate_leaf
 
 
-  subroutine allocate_root( pft, mydcroot, mydnroot, croot, nroot, clabl, nlabl )
+  subroutine allocate_root( pft, mydcroot, mydnroot, croot, nroot, clabl, nlabl, plant_fluxes )
     !-------------------------------------------------------------------
     ! ROOT ALLOCATION
     !-------------------------------------------------------------------
     use md_classdefs
-    use md_plant, only: params_plant, params_pft_plant, dnup, dnup_fix
+    use md_plant, only: plant_fluxes_type, params_plant, params_pft_plant
 
     ! arguments
     integer, intent(in) :: pft
@@ -294,6 +296,7 @@ contains
     real, intent(in)    :: mydnroot
     real, intent(inout) :: croot, nroot
     real, intent(inout) :: clabl, nlabl
+    type(plant_fluxes_type), intent(inout) :: plant_fluxes
 
     ! local variables
     real :: dclabl
@@ -311,7 +314,7 @@ contains
     nlabl  = nlabl - mydnroot
 
     if ( clabl < -1e-8 ) then
-      stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf C'
+      stop 'ALLOCATE_ROOT: trying to remove too much from labile pool: leaf C'
     else if ( clabl < 0.0 ) then
       ! numerical imprecision
       clabl = 0.0
@@ -319,14 +322,14 @@ contains
 
     ! If labile N gets negative, account gap as N fixation
     if ( nlabl < 0.0 ) then
-      plant_fluxes(pft)%dnup%n14 = plant_fluxes(pft)%dnup%n14 - nlabl
-      dnup_fix(pft) = dnup_fix(pft) - nlabl
+      plant_fluxes%dnup%n14 = plant_fluxes%dnup%n14 - nlabl
+      plant_fluxes%dnup_fix = plant_fluxes%dnup_fix - nlabl
       nlabl = 0.0
     end if
 
     ! XXX this is the N mass conserving way:
     ! if ( nlabl < -1e-8 ) then
-    !   stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf N'
+    !   stop 'ALLOCATE_ROOT: trying to remove too much from labile pool: leaf N'
     ! else if ( nlabl < 0.0 ) then
     !   ! numerical imprecision
     !   nlabl = 0.0

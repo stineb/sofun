@@ -85,19 +85,18 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use md_params_core, only: npft, maxgrid, nmonth, nlu, ndayyear, &
-      pft_start, pft_end
+    use md_params_core, only: nmonth, nlu, pft_start, pft_end
     use md_interface
     use md_classdefs
     use md_rates, only: ftemp, fmoist
     use md_plant, only: plant_type, params_pft_plant
     use md_waterbal, only: soilphys
-    use md_ntransform, only: pnh4, pno3
+    ! use md_ntransform, only: pnh4, pno3
     use md_tile, only: psoilphystype
 
     ! arguments
-    type(plant_type), intent(inout) :: plant
-    type(psoilphystype), intent(in) :: phy
+    type(plant_type), dimension(npft), intent(inout) :: plant
+    type(psoilphystype), dimension(nlu), intent(in)  :: phy
     integer, intent(in) :: jpngr                    ! grid cell number
     integer, intent(in) :: doy                      ! day of year
     real, intent(in)    :: dtemp                    ! daily temperature (deg C)
@@ -216,15 +215,15 @@ contains
       !-------------------------------------------------------------------------
       dlitt = orgpool( carbon(0.0), nitrogen(0.0) ) 
 
-      !////////////////////////////////////////////////////////////////
-      ! LITTER DECAY
-      ! Collect PFT-specific litter decomposition into LU-specific 
-      ! pool 'dlitt'.
-      ! All goes to daily updated litter decomposition pool
-      !----------------------------------------------------------------
       do pft=1,npft
         if (params_pft_plant(pft)%islu(lu)) then
                         
+          !////////////////////////////////////////////////////////////////
+          ! LITTER DECAY
+          ! Collect PFT-specific litter decomposition into LU-specific 
+          ! pool 'dlitt'.
+          ! All goes to daily updated litter decomposition pool
+          !----------------------------------------------------------------
           dlitt_af = orgfrac( 1.0 - exp( -klitt_af(lu)), plant(pft)%plitt_af )
           dlitt_as = orgfrac( 1.0 - exp( -klitt_as(lu)), plant(pft)%plitt_as )
           dlitt_bg = orgfrac( 1.0 - exp( -klitt_bg(lu)), plant(pft)%plitt_bg )
@@ -234,6 +233,19 @@ contains
           call orgmv( dlitt_as(pft), plant(pft)%plitt_as, dlitt )
           call orgmv( dlitt_bg(pft), plant(pft)%plitt_bg, dlitt )
       
+          !////////////////////////////////////////////////////////////////
+          ! EXUDATES DECAY
+          ! Calculate the exudates respiration before litter respiration.
+          ! Exudates are mostly short organic compounds (poly- and mono-
+          ! saccharides, amino acids, organic acids, phenolic compounds and
+          ! enzymes) and are quickly respired and released as CO2.
+          ! Exudates decay goes to soil respiration 'drsoil'.
+          ! This is executed after litter mineralisation as N fixation by 
+          ! free-living bacteria is driven by exudates availability.
+          !----------------------------------------------------------------                
+          dexu = cfrac( 1.0 - exp(-kexu(lu)), plant(pft)%pexud )
+          call cmv( dexu, plant(pft)%pexud, drsoil(lu) )
+
         end if
       end do
 
@@ -311,58 +323,58 @@ contains
         
         outaNimmo(lu,jpngr)             = outaNimmo(lu,jpngr) - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
 
-        if (netmin_litt>0.0) then
-          !----------------------------------------------------------------    
-          ! net N mineralisation
-          !----------------------------------------------------------------    
-          pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + netmin_litt
+        ! if (netmin_litt>0.0) then
+        !   !----------------------------------------------------------------    
+        !   ! net N mineralisation
+        !   !----------------------------------------------------------------    
+        !   pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + netmin_litt
           
-        else
+        ! else
 
-          if ( (-1.0 * netmin_litt) > (pnh4(lu,jpngr)%n14 + pno3(lu,jpngr)%n14) ) print*, 'too much immo'
+        !   if ( (-1.0 * netmin_litt) > (pnh4(lu,jpngr)%n14 + pno3(lu,jpngr)%n14) ) print*, 'too much immo'
 
-          !----------------------------------------------------------------    
-          ! Immobilisation: first deplete NH4 pool
-          !----------------------------------------------------------------    
-          req = -1.0 * netmin_litt
-          avl = pnh4(lu,jpngr)%n14
+        !   !----------------------------------------------------------------    
+        !   ! Immobilisation: first deplete NH4 pool
+        !   !----------------------------------------------------------------    
+        !   req = -1.0 * netmin_litt
+        !   avl = pnh4(lu,jpngr)%n14
 
-          if (avl>=req) then
-            ! enough mineral N for immobilisation
-            pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - req
-            req = 0.0
-          else
-            ! not enough NH4 for immobilisation
-            pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - avl
-            req = req - avl
+        !   if (avl>=req) then
+        !     ! enough mineral N for immobilisation
+        !     pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - req
+        !     req = 0.0
+        !   else
+        !     ! not enough NH4 for immobilisation
+        !     pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - avl
+        !     req = req - avl
 
-            !----------------------------------------------------------------    
-            ! Immobilisation: second deplete NO3 pool
-            !----------------------------------------------------------------    
-            avl = pno3(lu,jpngr)%n14
+        !     !----------------------------------------------------------------    
+        !     ! Immobilisation: second deplete NO3 pool
+        !     !----------------------------------------------------------------    
+        !     avl = pno3(lu,jpngr)%n14
 
-            if (avl>=req) then
-              ! enough mineral N for immobilisation
-              pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - req
-              req = 0.0
-            else
-              ! not enough NO3 for immobilisation
-              pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - avl
-              req = req - avl
+        !     if (avl>=req) then
+        !       ! enough mineral N for immobilisation
+        !       pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - req
+        !       req = 0.0
+        !     else
+        !       ! not enough NO3 for immobilisation
+        !       pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - avl
+        !       req = req - avl
 
-              !----------------------------------------------------------------    
-              ! N fixation by free-living bacteria in litter to satisfy remainder
-              !----------------------------------------------------------------    
-              Nfix = req
-              ! print*,'req ', req
-              req = 0.0
-              ! stop 'could not get enough N upon immobilisation'
+        !       !----------------------------------------------------------------    
+        !       ! N fixation by free-living bacteria in litter to satisfy remainder
+        !       !----------------------------------------------------------------    
+        !       Nfix = req
+        !       ! print*,'req ', req
+        !       req = 0.0
+        !       ! stop 'could not get enough N upon immobilisation'
 
-            end if
+        !     end if
 
-          end if
+        !   end if
           
-        end if
+        ! end if
 
         ! Nreq_S (= dlitt - netmin) remains in the system: 
         call ncp( nfrac( params_littersom%fastfrac      , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
@@ -385,20 +397,6 @@ contains
       end if
 
       !////////////////////////////////////////////////////////////////
-      ! EXUDATES DECAY
-      ! Calculate the exudates respiration before litter respiration.
-      ! Exudates are mostly short organic compounds (poly- and mono-
-      ! saccharides, amino acids, organic acids, phenolic compounds and
-      ! enzymes) and are quickly respired and released as CO2.
-      ! Exudates decay goes to soil respiration 'drsoil'.
-      ! This is executed after litter mineralisation as N fixation by 
-      ! free-living bacteria is driven by exudates availability.
-      !----------------------------------------------------------------                
-      dexu = cfrac( 1.0 - exp(-kexu(lu)), pexud(lu,jpngr) )
-      call cmv( dexu, pexud(lu,jpngr), drsoil(lu) )
-
-
-      !////////////////////////////////////////////////////////////////
       ! SOIL DECAY
       !----------------------------------------------------------------
       ! Calculate daily/monthly soil decomposition to the atmosphere
@@ -418,13 +416,13 @@ contains
       drhet(lu) = cplus( drhet(lu), dsoil_fs%c, dsoil_sl%c )
 
       ! Spinup trick: use projected soil N mineralisation before soil equilibration
-      if ( interface%steering%project_nmin ) then
-        ! projected soil N mineralisation
-        if (dlitt%c%c12 > 0.0) pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + eff * dlitt%c%c12 / params_littersom%cton_soil
-      else
-        ! actual soil N mineralisation
-        pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      end if
+      ! if ( interface%steering%project_nmin ) then
+      !   ! projected soil N mineralisation
+      !   if (dlitt%c%c12 > 0.0) pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + eff * dlitt%c%c12 / params_littersom%cton_soil
+      ! else
+      !   ! actual soil N mineralisation
+      !   pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      ! end if
 
       if ( psoil_fs(lu,jpngr)%c%c12 > 0.0 .and. abs( cton( psoil_fs(lu,jpngr), default=0.0 ) - params_littersom%cton_soil ) > 1e-4 ) then
         write(0,*) 'psoil_fs', cton( psoil_fs(lu,jpngr) )
@@ -653,7 +651,7 @@ contains
     use md_plant, only: plant_type
 
     ! arguments
-    type(plant_type), intent(in) :: plant
+    type(plant_type), dimension(npft), intent(in) :: plant
     integer, intent(in) :: jpngr
 
     if (interface%params_siml%loutlittersom) then

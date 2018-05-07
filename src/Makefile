@@ -30,7 +30,7 @@ GPMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.
 GPMODEL_SOURCES=sofun.f90
 
 # List of source code files for reduced setup, executing the C-only model: XXX UNDER CONSTRUCTION XXX
-CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 rates.mod.f90 params_siml.mod.f90 params_domain_siterun.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 tile_cmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 lambertw.mod.f90 plant_cmodel.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 vegdynamics_fix.mod.f90 biosphere_cmodel.mod.f90 turnover.mod.f90 npp.mod.f90 vegdynamics_fix.mod.f90 littersom_lpj.mod.f90 allocation_fix.mod.f90
+CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 rates.mod.f90 params_siml.mod.f90 params_domain_siterun.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 tile_cmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 lambertw.mod.f90 plant_cmodel.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 vegdynamics_fix.mod.f90 turnover.mod.f90 npp.mod.f90 littersom_lpj.mod.f90 allocation_cmodel.mod.f90 biosphere_cmodel.mod.f90
 CMODEL_SOURCES=sofun.f90
 
 # List of source code files for reduced setup, executing the full CN-only model:
