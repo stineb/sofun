@@ -607,7 +607,6 @@ contains
       ! stomatal conductance to H2O, expressed per unit absorbed light
       gs_unitiabs = 1.6 * lue * patm / ( ca - ci )
 
-
       ! Vcmax per unit ground area is the product of the intrinsic quantum 
       ! efficiency, the absorbed PAR, and 'n'
       vcmax = ppfdabs * params_pft_gpp(pft)%kphio * out_lue%n
@@ -1680,14 +1679,19 @@ contains
       outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * plant_fluxes(:)%dgpp
 
       if (doy==ndayyear) then
-        outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
-        outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
-        outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
-        outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
-        outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
+        if (sum(outagpp(:,jpngr))==0.0) then
+          stop 'annual GPP is zero'
+        else
+          outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
+          outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
+          outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
+          outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
+          outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
+        end if
       end if
 
     end if
+
 
   end subroutine getout_daily_gpp
 

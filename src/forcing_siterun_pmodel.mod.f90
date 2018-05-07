@@ -186,7 +186,7 @@ contains
     real, dimension(npft,domaininfo%maxgrid) :: fpc_grid_field
 
     ! local variables
-    integer :: jpngr
+    integer :: jpngr, pft
 
     jpngr = 1
 
@@ -194,16 +194,21 @@ contains
     fpc_grid_field(:,jpngr) = 0.0
 
     ! Code below must follow the same structure as in 'plant_pmodel.mod.f90'
+    pft = 0
     if ( params_siml%lTrE ) then
       ! xxx dirty: call all non-grass vegetation types 'TrE', see indeces above
-      fpc_grid_field(1,jpngr) = 1.0
+      pft = pft + 1
+      fpc_grid_field(pft,jpngr) = 1.0
 
     else if ( params_siml%lGr3 ) then
       ! xxx dirty: call all grass vegetation types 'Gr3'
-      fpc_grid_field(2,jpngr) = 1.0
+      pft = pft + 1
+      fpc_grid_field(pft,jpngr) = 1.0
     else
       stop 'get_fpc_grid: no PFT activated accoring to simulation parameter file.'
     end if
+
+    if (pft/=npft) stop 'GET_FPC_GRID: Adjust npft manually in params_core.mod.f90'
 
     return
     999  format (I2.2)

@@ -75,11 +75,12 @@ contains
     integer, intent(in) :: ngridcells
 
     ! Allocate memory for daily output variables
-    if ( interface%steering%init .and. interface%params_siml%loutdtemp  ) allocate( outdtemp (interface%params_siml%outnt,ngridcells) )
-    if ( interface%steering%init .and. interface%params_siml%loutdfapar ) allocate( outdfapar(interface%params_siml%outnt,ngridcells) )
-
-    if ( interface%params_siml%loutdtemp  ) outdtemp (:,:) = 0.0
-    if ( interface%params_siml%loutdfapar ) outdfapar(:,:) = 0.0
+    if ( interface%params_siml%loutforcing ) then
+      if ( interface%steering%init ) allocate( outdtemp (interface%params_siml%outnt,ngridcells) )
+      if ( interface%steering%init ) allocate( outdfapar(interface%params_siml%outnt,ngridcells) )
+      outdtemp (:,:) = 0.0
+      outdfapar(:,:) = 0.0
+    end if
 
   end subroutine initoutput_forcing
 
@@ -97,16 +98,16 @@ contains
     !////////////////////////////////////////////////////////////////
     ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
     !----------------------------------------------------------------
-    ! DAILY MEAN TEMPERATURE (DEG C)
-    if (interface%params_siml%loutdtemp) then
+    if (interface%params_siml%loutforcing) then
+
+      ! DAILY MEAN TEMPERATURE (DEG C)
       filnam=trim(prefix)//'.d.temp.out'
       open(950,file=filnam,err=999,status='unknown')
-    end if 
 
-    ! FRACTION OF ABSORBED PHOTOSYNTHETICALLY ACTIVE RADIATION
-    if (interface%params_siml%loutdfapar) then
+      ! FRACTION OF ABSORBED PHOTOSYNTHETICALLY ACTIVE RADIATION
       filnam=trim(prefix)//'.d.fapar.out'
       open(951,file=filnam,err=999,status='unknown')
+  
     end if     
 
     return
@@ -134,7 +135,6 @@ contains
     write(year_char,999) interface%steering%outyear
 
     prefix = "./output_nc/"//trim(interface%params_siml%runname)
-
 
     !----------------------------------------------------------------
     ! Land fraction
@@ -179,7 +179,7 @@ contains
 
       !----------------------------------------------------------------
       ! Temperature output file 
-      !----------------------------------------------------------------
+      !----------------------------------------------------------------      
       if (interface%params_siml%lncoutdtemp) then
         ncoutfilnam_temp = trim(prefix)//'.'//year_char//".d.temp.nc"
         print*,'initialising ', trim(ncoutfilnam_temp), '...'
@@ -201,8 +201,8 @@ contains
       !----------------------------------------------------------------
       ! fAPAR output file 
       !----------------------------------------------------------------
-      if (interface%params_siml%lncoutdfapar) then
-        ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar.nc"
+      if ( interface%params_siml%loutforcing .and. interface%params_siml%lncoutdfapar) then
+        ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar_prescr.nc"
         print*,'initialising ', trim(ncoutfilnam_fapar), '...'
         call init_nc_3D_time( filnam   = trim(ncoutfilnam_fapar), &
                               nlon     = interface%domaininfo%nlon, &
@@ -247,9 +247,11 @@ contains
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
-    if (interface%params_siml%loutdtemp ) outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(jpngr)%dtemp(doy) / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdfapar) outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%dfapar_field(doy,jpngr)   / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutforcing) then
+      it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
+      outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(jpngr)%dtemp(doy) / real( interface%params_siml%outdt )
+      outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%dfapar_field(doy,jpngr)   / real( interface%params_siml%outdt )
+    end if
 
     ! !----------------------------------------------------------------
     ! ! ANNUAL SUM OVER DAILY VALUES
@@ -290,24 +292,28 @@ contains
          .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
          .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      ! Write daily output only during transient simulation
-      do it=1,interface%params_siml%outnt
+      if (interface%params_siml%loutforcing) then
 
-        ! Get weighted average
-        do jpngr=1,size(interface%grid)
-          if (interface%params_siml%loutdtemp ) outdtemp_tot(it)  = outdtemp_tot(it)  + outdtemp(it,jpngr)  * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
-          if (interface%params_siml%loutdfapar) outdfapar_tot(it) = outdfapar_tot(it) + outdfapar(it,jpngr) * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
+        ! Write daily output only during transient simulation
+        do it=1,interface%params_siml%outnt
+
+          ! Get weighted average
+          do jpngr=1,size(interface%grid)
+            outdtemp_tot(it)  = outdtemp_tot(it)  + outdtemp(it,jpngr)  * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
+            outdfapar_tot(it) = outdfapar_tot(it) + outdfapar(it,jpngr) * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
+          end do
+          outdtemp_tot(it)  = outdtemp_tot(it)  / interface%domaininfo%landarea
+          outdfapar_tot(it) = outdfapar_tot(it) / interface%domaininfo%landarea
+
+          ! Define 'itime' as a decimal number corresponding to day in the year + year
+          itime = real( interface%steering%outyear ) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
+          
+          write(950,999) itime, outdtemp_tot(it)
+          write(951,999) itime, outdfapar_tot(it)
+
         end do
-        if (interface%params_siml%loutdtemp ) outdtemp_tot(it)  = outdtemp_tot(it)  / interface%domaininfo%landarea
-        if (interface%params_siml%loutdfapar) outdfapar_tot(it) = outdfapar_tot(it) / interface%domaininfo%landarea
 
-        ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real( interface%steering%outyear ) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
-        
-        if (interface%params_siml%loutdtemp)  write(950,999) itime, outdtemp_tot(it)
-        if (interface%params_siml%loutdfapar) write(951,999) itime, outdfapar_tot(it)
-
-      end do
+      end if
     end if
 
     return
@@ -383,8 +389,8 @@ contains
       !-------------------------------------------------------------------------
       ! fapar
       !-------------------------------------------------------------------------
-      if (interface%params_siml%lncoutdfapar) print*,'writing ', trim(ncoutfilnam_fapar), '...'
-      if (interface%params_siml%lncoutdfapar) call write_nc_3D_time(trim(ncoutfilnam_fapar), &
+      if (interface%params_siml%loutforcing .and. interface%params_siml%lncoutdfapar) print*,'writing ', trim(ncoutfilnam_fapar), '...'
+      if (interface%params_siml%loutforcing .and. interface%params_siml%lncoutdfapar) call write_nc_3D_time(trim(ncoutfilnam_fapar), &
                                                                     FAPAR_NAME, &
                                                                     interface%domaininfo%maxgrid, &
                                                                     interface%domaininfo%nlon, &

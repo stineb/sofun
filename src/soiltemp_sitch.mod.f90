@@ -189,15 +189,17 @@ contains
   end subroutine initio_soiltemp
 
 
-  subroutine initoutput_soiltemp()
+  subroutine initoutput_soiltemp( ngridcells )
     !////////////////////////////////////////////////////////////////
     !  Initialises soiltemp-specific output variables
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear
     use md_interface
 
+    integer, intent(in) :: ngridcells
+
     if (interface%steering%init .and. interface%params_siml%loutdtemp_soil) &
-      allocate( outdtemp_soil(nlu,ndayyear,maxgrid)  )
+      allocate( outdtemp_soil(nlu,ndayyear,ngridcells)  )
 
   end subroutine initoutput_soiltemp
 

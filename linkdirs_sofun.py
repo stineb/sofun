@@ -18,6 +18,7 @@ import os.path
 ## - "olson_cmodel"
 ## - "swbm"
 ## - "ameriwue"
+## - "fluxnet2015_cmodel"
 ##--------------------------------------------------------------------
 ## For global simulations, set simsuite to 'global'.
 ## - "global"
@@ -26,7 +27,7 @@ import os.path
 ## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
-simsuite = 'global'
+simsuite = 'fluxnet2015_cmodel'
 
 ##--------------------------------------------------------------------
 ## For an example simulation (simulation name 'EXAMPLE_global'), set 
@@ -167,20 +168,23 @@ else:
 
 	## use same site and simulation parameter files for cnmodel and cmodel simulations
 	if simsuite == 'fluxnet_fixalloc':
-	  simsuite = 'fluxnet_cnmodel'
+	  	simsuite_climate_link = 'fluxnet_cnmodel'
+	elif simsuite == 'olson_cmodel':
+	  	simsuite_climate_link = 'olson'
+	elif simsuite == 'campi_cmodel':
+	  	simsuite_climate_link = 'campi'
+	elif simsuite == 'fluxnet2015_cmodel':
+	  	simsuite_climate_link = 'fluxnet2015'
+	else:
+	  	simsuite_climate_link = simsuite
 
-	if simsuite == 'olson_cmodel':
-	  simsuite = 'olson'
-
-	if simsuite == 'campi_cmodel':
-	  simsuite = 'campi'
 
 	os.system( 'unlink run')
 	os.system( 'unlink site_paramfils')
 	os.system( 'unlink input/sitedata')
 	os.system( 'ln -sv ../input_' + simsuite + '_sofun/run run')
 	os.system( 'ln -sv ../input_' + simsuite + '_sofun/site_paramfils site_paramfils')
-	os.system( 'ln -sv ../../input_' + simsuite + '_sofun/sitedata input/sitedata')
+	os.system( 'ln -sv ../../input_' + simsuite_climate_link + '_sofun/sitedata input/sitedata')
 
 
 

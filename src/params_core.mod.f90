@@ -11,7 +11,7 @@ module md_params_core
   integer, parameter :: nmonth = 12              ! number of months in a year
   integer, parameter :: maxgrid = 1              ! number of spatial gridcells (dummy dimension for later code extension)
   integer, parameter :: nbucket = 2              ! number of buckets for soil water model
-  integer, parameter :: npft = 2                 ! number of PFTs
+  integer, parameter :: npft = 1                 ! number of PFTs
   integer, parameter :: nlu = 1                  ! number of land units (tiles)
   integer, parameter :: lunat = 1                ! ID of natural land unit
   integer, parameter :: lucrop = 2               ! ID of crop land unit
@@ -41,7 +41,7 @@ module md_params_core
   real, parameter :: kL  = 0.0065                ! temperature lapse rate, K/m (Cavcar, 2000)
   real, parameter :: kG  = 9.80665               ! gravitational acceleration, m/s^2 (Allen, 1973)
 
-  real, parameter :: eps = 9.999e-9              ! numerical imprecision allowed in mass conservation tests
+  real, parameter :: eps = 9.999e-6              ! numerical imprecision allowed in mass conservation tests
   real, parameter :: dummy = -9999.0             ! arbitrary dummy value
 
 end module md_params_core

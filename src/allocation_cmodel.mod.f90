@@ -66,7 +66,7 @@ contains
     integer :: lu
     integer :: pft
     real :: avl
-    real, parameter :: freserve = 0.0
+    real, parameter :: freserve = 0.1
 
     ! xxx debug
     type( orgpool ) :: bal1, bal2, bald
@@ -157,6 +157,7 @@ contains
           ! Update fpc_grid and fapar_ind (not lai_ind)
           !-------------------------------------------------------------------  
           plant(pft)%fapar_ind = get_fapar( plant(pft)%lai_ind )
+          print*,'plant(pft)%fapar_ind: ', plant(pft)%fapar_ind
 
           !-------------------------------------------------------------------
           ! ROOT ALLOCATION
@@ -224,6 +225,7 @@ contains
     !-------------------------------------------------------------------
     use md_classdefs
     use md_plant, only: plant_fluxes_type, params_plant, get_leaf_n_canopy, get_lai
+    use md_params_core, only: eps
 
     ! arguments
     integer, intent(in)                    :: pft
@@ -257,7 +259,7 @@ contains
     clabl  = clabl - dclabl
     nlabl  = nlabl - mydnleaf
 
-    if ( clabl < -1e-8 ) then
+    if ( clabl < (-1)*eps) then
       stop 'ALLOCATE_LEAF: trying to remove too much from labile pool: leaf C'
     else if ( clabl < 0.0 ) then
       ! numerical imprecision
@@ -289,6 +291,7 @@ contains
     !-------------------------------------------------------------------
     use md_classdefs
     use md_plant, only: plant_fluxes_type, params_plant, params_pft_plant
+    use md_params_core, only: eps
 
     ! arguments
     integer, intent(in) :: pft
@@ -313,7 +316,7 @@ contains
     clabl  = clabl - dclabl
     nlabl  = nlabl - mydnroot
 
-    if ( clabl < -1e-8 ) then
+    if ( clabl < (-1)*eps ) then
       stop 'ALLOCATE_ROOT: trying to remove too much from labile pool: leaf C'
     else if ( clabl < 0.0 ) then
       ! numerical imprecision

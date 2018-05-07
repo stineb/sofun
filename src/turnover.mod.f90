@@ -222,10 +222,13 @@ contains
     ! store leaf C and N before turnover
     lm_init = plant%pleaf
 
+
     ! reduce leaf C (given by turnover rate)
     cleaf = ( 1.0 - dleaf ) *  plant%pleaf%c%c12
 
     ! get new LAI based on cleaf
+    ! print*,'IN TURNOVER: out_pmodel(:)%actnv_unitiabs:'
+    ! print*,out_pmodel(:)%actnv_unitiabs
     lai_new = get_lai( pft, cleaf, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
 
     ! update canopy state (only variable fAPAR so far implemented)

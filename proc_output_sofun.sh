@@ -24,9 +24,9 @@ proc_sitescale_site(){
 	cdo -O mergetime output_nc/$1.*.d.gpp.nc   output_nc/$1.d.gpp.nc
 	rm output_nc/$1.*.d.gpp.nc
 
-	# ## fAPAR
-	# cdo -O mergetime output_nc/$1.*.d.fapar.nc   output_nc/$1.d.fapar.nc
-	# rm output_nc/$1.*.d.fapar.nc
+	## fAPAR
+	cdo -O mergetime output_nc/$1.*.d.fapar.nc   output_nc/$1.d.fapar.nc
+	rm output_nc/$1.*.d.fapar.nc
 
 	# ## PPFD
 	# cdo -O mergetime output_nc/$1.*.d.ppfd.nc   output_nc/$1.d.ppfd.nc

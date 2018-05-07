@@ -17,7 +17,8 @@ module md_plant
     params_plant, get_fapar, get_leaf_n_canopy, &
     initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant,     &
     writeout_ascii_plant, maxdoy, initglobal_plant, update_leaftraits, &
-    update_leaftraits_init, initpft, getout_annual_plant, get_lai, seed
+    update_leaftraits_init, initpft, getout_annual_plant, get_lai, seed, &
+    initio_nc_plant, writeout_nc_plant
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -135,14 +136,13 @@ module md_plant
   !-----------------------------------------------------------------------
   ! Fixed parameters
   !-----------------------------------------------------------------------
-  ! type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.0) )
   type( orgpool ), parameter :: seed = orgpool( carbon(5.0), nitrogen(0.12) )
-  ! type( orgpool ), parameter :: seed = orgpool( carbon(100.0), nitrogen(1 .0)
 
   !----------------------------------------------------------------
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
+  real, allocatable, dimension(:,:)   :: outdfapar
   real, allocatable, dimension(:,:,:) :: outdrleaf
   real, allocatable, dimension(:,:,:) :: outdrroot
   real, allocatable, dimension(:,:,:) :: outdrgrow
@@ -160,6 +160,14 @@ module md_plant
 
   ! required for outputting leaf trait variables in other modules
   integer, dimension(npft) :: maxdoy  ! DOY of maximum LAI
+
+  !----------------------------------------------------------------
+  ! Module-specific NetCDF output file and variable names
+  !----------------------------------------------------------------
+  character(len=256) :: ncoutfilnam_fapar
+
+  character(len=*), parameter :: FAPAR_NAME="fapar"
+
 
 contains
 
@@ -212,15 +220,23 @@ contains
       ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
       ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
       maxnv = maxval( meanmppfd(:) * nv(:) )
+      ! print*,'meanmppfd(:): ', meanmppfd(:)
+      ! print*,'nv(:): ', nv(:)
 
       alpha = maxnv * params_pft_plant(pft)%r_n_cw_v
       beta  = params_pft_plant(pft)%ncw_min
+      ! print*,'be'
       gamma = cleaf / ( c_molmass * params_pft_plant(pft)%r_ctostructn_leaf ) 
-
+      ! print*,'ni'
+      ! print*,'beta: ', beta
+      ! print*,'gamma: ', gamma
+      ! print*,'alpha: ', alpha
+      ! print*,'params_pft_plant(pft)%r_n_cw_v: ', params_pft_plant(pft)%r_n_cw_v
+      ! print*,'maxnv: ', maxnv
       arg_to_lambertw = alpha * params_plant%kbeer / beta * exp( (alpha - gamma) * params_plant%kbeer / beta )
-
+      ! print*,'sto'
       lai = 1.0 / (beta * params_plant%kbeer ) * ( -alpha * params_plant%kbeer + gamma * params_plant%kbeer + beta * calc_wapr( arg_to_lambertw, 0, nerror, 9999 ) )
-
+      ! print*,'cker'
     else
 
       lai = 0.0
@@ -619,7 +635,7 @@ contains
   end function getpftparams
 
 
-  subroutine initglobal_plant( plant, ngridcells )
+  subroutine initglobal_plant( plant, ngridcells, fpc_grid )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of all _pools on all gridcells at the beginning
     !  of the simulation.
@@ -631,6 +647,7 @@ contains
     ! argument
     type( plant_type ), dimension(npft,ngridcells), intent(inout) :: plant
     integer, intent(in) :: ngridcells
+    real, dimension(npft,ngridcells), intent(in) :: fpc_grid
 
     ! local variables
     integer :: pft
@@ -643,6 +660,11 @@ contains
       do pft=1,npft
         call initpft( plant(pft,jpngr) )
         plant(pft,jpngr)%pftno = pft
+        plant(pft,jpngr)%fpc_grid = fpc_grid(pft,jpngr)
+
+        ! add seed to get vegetation growing
+        call estab( plant(pft,jpngr), pft )
+
       end do
     end do
 
@@ -658,7 +680,18 @@ contains
     ! argument
     type( plant_type ), intent(inout) :: plant
 
-    plant%fpc_grid  = 0.0
+    plant%pleaf = orgpool(carbon(0.0), nitrogen(0.0))
+    plant%proot = orgpool(carbon(0.0), nitrogen(0.0))
+    plant%psapw = orgpool(carbon(0.0), nitrogen(0.0))
+    plant%pwood = orgpool(carbon(0.0), nitrogen(0.0))
+    plant%plabl = orgpool(carbon(0.0), nitrogen(0.0))
+    
+    plant%pexud = carbon(0.0)
+    
+    plant%plitt_af = orgpool(carbon(0.0), nitrogen(0.0))
+    plant%plitt_as = orgpool(carbon(0.0), nitrogen(0.0))
+    plant%plitt_bg = orgpool(carbon(0.0), nitrogen(0.0))
+
     plant%lai_ind   = 0.0
     plant%fapar_ind = 0.0
     plant%acrown    = 0.0
@@ -674,6 +707,48 @@ contains
     plant%r_ntoc_leaf      = 0.0
 
   end subroutine initpft
+
+
+  subroutine estab( plant, pft )
+    !//////////////////////////////////////////////////////////////////
+    ! Calculates leaf-level metabolic N content per unit leaf area as a
+    ! function of Vcmax25.
+    !------------------------------------------------------------------
+    use md_interface
+
+    ! arguments
+    type(plant_type), intent(inout) :: plant
+    integer, intent(in) :: pft
+
+    ! ! initialise all pools of this PFT with zero
+    ! call initpft( pft, jpngr )
+
+    ! add C (and N) to labile pool (available for allocation)
+    call add_seed( plant )
+    if ( .not. interface%steering%dofree_alloc ) params_plant%frac_leaf = 0.5
+    
+    if (params_pft_plant(pft)%grass) then
+      plant%nind = 1.0
+    else
+      stop 'estab not implemented for trees'
+    end if
+
+
+  end subroutine estab
+
+
+  subroutine add_seed( plant )
+    !//////////////////////////////////////////////////////////////////
+    ! To initialise plant pools, add "sapling" mass
+    !------------------------------------------------------------------
+    use md_classdefs
+
+    ! arguments
+    type(plant_type), intent(inout) :: plant
+
+    plant%plabl = orgplus( plant%plabl, seed )
+
+  end subroutine add_seed
 
 
   subroutine initdaily_plant( plant_fluxes )
@@ -702,6 +777,11 @@ contains
     integer, intent(in) :: ngridcells
     
     ! annual output variables
+    if (interface%params_siml%lncoutdfapar) then
+      if ( interface%steering%init ) allocate( outdfapar(interface%params_siml%outnt,ngridcells) )
+      outdfapar(:,:) = 0.0
+    end if
+
     if (interface%params_siml%loutplant) then
 
       if (interface%steering%init) then
@@ -740,6 +820,59 @@ contains
     end if
 
   end subroutine initoutput_plant
+
+
+  subroutine initio_nc_plant()
+    !////////////////////////////////////////////////////////////////
+    ! Opens NetCDF output files.
+    !----------------------------------------------------------------
+    use netcdf
+    use md_io_netcdf, only: init_nc_2D, init_nc_3D_time, init_nc_3D_pft, check
+    use md_interface, only: interface
+
+    ! local variables
+    character(len=256) :: prefix
+
+    character(len=*), parameter :: TITLE = "SOFUN C-model output, module md_plant"
+    character(len=4) :: year_char
+
+    integer :: jpngr, doy
+
+    write(year_char,999) interface%steering%outyear
+
+    prefix = "./output_nc/"//trim(interface%params_siml%runname)
+
+
+    if ( .not. interface%steering%spinup &
+         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
+      !----------------------------------------------------------------
+      ! fAPAR output file 
+      !----------------------------------------------------------------
+      if (interface%params_siml%lncoutdfapar) then
+        ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar.nc"
+        print*,'initialising ', trim(ncoutfilnam_fapar), '...'
+        call init_nc_3D_time( filnam   = trim(ncoutfilnam_fapar), &
+                              nlon     = interface%domaininfo%nlon, &
+                              nlat     = interface%domaininfo%nlat, &
+                              lon      = interface%domaininfo%lon, &
+                              lat      = interface%domaininfo%lat, &
+                              outyear  = interface%steering%outyear, &
+                              outdt    = interface%params_siml%outdt, &
+                              outnt    = interface%params_siml%outnt, &
+                              varnam   = FAPAR_NAME, &
+                              varunits = "unitless", &
+                              longnam  = "fraction of absorbed photosynthetically active radiation", &
+                              title    = TITLE &
+                              )
+      end if
+
+    end if
+
+    999  format (I4.4)
+
+  end subroutine initio_nc_plant
 
 
   subroutine initio_plant()
@@ -826,7 +959,7 @@ contains
   end subroutine initio_plant
 
 
-  subroutine getout_daily_plant( plant_fluxes, jpngr, moy, doy )
+  subroutine getout_daily_plant( plant, plant_fluxes, jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
     ! Note that output variables are collected only for those variables
@@ -838,10 +971,14 @@ contains
     use md_interface, only: interface
 
     ! arguments
+    type(plant_type), dimension(npft), intent(in) :: plant
     type(plant_fluxes_type), dimension(npft), intent(in) :: plant_fluxes
     integer, intent(in) :: jpngr
     integer, intent(in) :: moy
     integer, intent(in) :: doy
+
+    ! local variables
+    integer :: it, pft
 
     if (interface%params_siml%loutnpp) then
       !----------------------------------------------------------------
@@ -862,6 +999,14 @@ contains
       outargrow(:,jpngr) = outargrow(:,jpngr) + plant_fluxes(:)%drgrow
 
     end if
+
+    if (interface%params_siml%lncoutdfapar) then
+      if (npft>1) stop 'getout_daily_plant: npft>2. Think of something clever.'
+      pft = 1
+      it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
+      outdfapar(it,jpngr) = outdfapar(it,jpngr) + plant(pft)%fapar_ind  / real( interface%params_siml%outdt )
+    end if
+
 
   end subroutine getout_daily_plant
 
@@ -988,5 +1133,38 @@ contains
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_plant
+
+
+  subroutine writeout_nc_plant()
+    !/////////////////////////////////////////////////////////////////////////
+    ! Write NetCDF output
+    !-------------------------------------------------------------------------
+    use netcdf
+    use md_io_netcdf, only: write_nc_2D, write_nc_3D_time, write_nc_3D_pft, check
+    use md_interface, only: interface
+
+    if ( .not. interface%steering%spinup &
+         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
+      !-------------------------------------------------------------------------
+      ! fapar
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%lncoutdfapar) print*,'writing ', trim(ncoutfilnam_fapar), '...'
+      if (interface%params_siml%lncoutdfapar) call write_nc_3D_time(trim(ncoutfilnam_fapar), &
+                                                                    FAPAR_NAME, &
+                                                                    interface%domaininfo%maxgrid, &
+                                                                    interface%domaininfo%nlon, &
+                                                                    interface%domaininfo%nlat, &
+                                                                    interface%grid(:)%ilon, &
+                                                                    interface%grid(:)%ilat, &
+                                                                    interface%params_siml%outnt, &
+                                                                    interface%grid(:)%dogridcell, &
+                                                                    outdfapar(:,:) &
+                                                                    )
+
+    end if
+
+  end subroutine writeout_nc_plant  
 
 end module md_plant

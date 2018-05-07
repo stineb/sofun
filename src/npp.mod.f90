@@ -165,6 +165,11 @@ contains
       ! NPP available for growth first enters the labile pool ('plabl ').
       ! XXX Allocation is called here without "paying"  growth respir.?
       !-------------------------------------------------------------------------
+      print*,'GPP: ', plant_fluxes(pft)%dgpp
+      print*,'Rleaf', plant_fluxes(pft)%drleaf
+      print*,'Rroot', plant_fluxes(pft)%drroot
+      print*,'Cex  ', plant_fluxes(pft)%dcex
+
       call ccp( carbon( plant_fluxes(pft)%dcex ), plant(pft)%pexud )
       call ccp( cminus( plant_fluxes(pft)%dnpp, carbon(plant_fluxes(pft)%dcex) ), plant(pft)%plabl%c )
 

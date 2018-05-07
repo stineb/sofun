@@ -49,7 +49,7 @@ contains
     !//////////////////////////////////////////////////////////
     ! Defines dtphen, the temperature-driven phenology
     !----------------------------------------------------------
-    use md_params_core, only: ndayyear, maxgrid, nmonth, middaymonth
+    use md_params_core, only: ndayyear, maxgrid, nmonth, middaymonth, npft
     use md_plant, only: params_pft_plant
     use md_sofunutils, only: daily2monthly, monthly2daily
 
@@ -178,14 +178,12 @@ contains
     ! save monthly temperature for next year
     mtemp_pvy(:,jpngr) = mtemp(:)
 
-    ! do pft=1,npft
+    do pft=1,npft
 
       ! xxx try: really weird: when appplying a loop over pft, dtphen, sprout, 
       ! and shedleaves are all set to false after finishing each iteration
       ! therefore set to pft=1 here.
-      if (npft>1) stop 'in phenology: think of something nice'
-      pft = 1
-
+      
       do doy=2,ndayyear
 
         if (params_pft_pheno(pft)%summergreen) then
@@ -238,9 +236,11 @@ contains
       end do
 
       ! xxx debug
-      ! print*,'PHENOLOGY: overriding shedleaves'
+      print*,'PHENOLOGY: overriding shedleaves'
       out_temppheno(:,pft)%shedleaves = .false.
     
+    end do
+
     return
 
   end function get_temppheno
