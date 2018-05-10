@@ -115,7 +115,7 @@ contains
       ! !     but continuing turnover).
       ! !-------------------------------------------------------------------------
       ! ! This option (deactivate_root) leads to good results, the alternative leads to on-off growth. Unclear why.
-      ! if ( (plant(pft)%plabl%c%c12 + plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex) < 0.0 ) then
+      ! if ( (plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex) < 0.0 ) then
       !   call deactivate_root( plant_fluxes(pft)%dgpp, plant_fluxes(pft)%drleaf, plant(pft)%plabl%c%c12, plant(pft)%proot, plant_fluxes(pft)%drroot, plant_fluxes(pft)%dnpp%c12, plant_fluxes(pft)%dcex, dtemp, plant(pft)%plitt_bg )
       ! end if
 

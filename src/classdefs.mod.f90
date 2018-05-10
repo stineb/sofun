@@ -135,11 +135,6 @@ contains
     type(orgpool), intent(inout) :: to
     real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
-    ! print*, 'ORGMV'
-    ! print*,'amount ', amount
-    ! print*,'from   ', from  
-    ! print*,'to     ', to    
-
     if ( present( scale ) ) then
       call orgcp( orgfrac(scale,amount), to ) 
       call orgsub( amount, from )       

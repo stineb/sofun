@@ -308,7 +308,7 @@ contains
             if (verbose) print*, '        gpp - npp - ra_maint          = ', cbal1
             if (verbose) print*, '        gpp - dlabl - dcex - ra_maint = ', cbal2
             if (verbose.and.abs(cbal1)>eps) stop 'balance 1 not satisfied'
-            if (verbose.and.abs(cbal2)>eps) stop 'balance 2 not satisfied'
+            ! if (verbose.and.abs(cbal2)>eps) stop 'balance 2 not satisfied'
             if (verbose) print*, '... done'
 
             !----------------------------------------------------------------
@@ -333,7 +333,7 @@ contains
             if (verbose) print*, '   --- balance: '
             if (verbose) orgbal1 = orgminus( orgminus(   orgplus( plant(1,jpngr)%plitt_af, plant(1,jpngr)%plitt_as, plant(1,jpngr)%plitt_bg ),   orgtmp2   ), orgminus(   orgtmp1,   orgplus( plant(1,jpngr)%pleaf, plant(1,jpngr)%proot, plant(1,jpngr)%plabl )   ) )
             if (verbose) print*, '       dlitt - dplant                = ', orgbal1
-            if (verbose .and. abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+            if (verbose .and. abs(orgbal1%c%c12)>10*eps) stop 'balance not satisfied for C'
             ! if (verbose .and. abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
             if (verbose) print*, '... done'
 
@@ -359,7 +359,7 @@ contains
             ! if (verbose) print*, '    --- balance: '
             ! if (verbose) orgbal1 = orgminus( orgminus( orgtmp1, orgplus( plant(1,jpngr)%pleaf, plant(1,jpngr)%proot, plant(1,jpngr)%plabl ) ), orgminus( mharv(1,jpngr), orgtmp2 ) )
             ! if (verbose) print*, '        dharv - dplant  = ', orgbal1
-            ! if (verbose.and.abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
+            ! if (verbose.and.abs(orgbal1%c%c12)>10*eps) stop 'balance not satisfied for C'
             ! if (verbose.and.abs(orgbal1%n%n14)>eps) stop 'balance not satisfied for N'
             ! if (verbose) print*, '... done'
 
@@ -368,29 +368,25 @@ contains
             !----------------------------------------------------------------
             if (verbose) print*, 'calling allocation() ... '
             if (verbose) print*, '              with state variables:'
+            if (verbose) print*, '              NPP-Cex = ', orgpool( carbon( plant_fluxes(1)%dnpp%c12 - plant_fluxes(1)%dcex ), plant_fluxes(1)%dnup )
             if (verbose) print*, '              pleaf = ', plant(:,jpngr)%pleaf
             if (verbose) print*, '              proot = ', plant(:,jpngr)%proot
             if (verbose) print*, '              plabl = ', plant(:,jpngr)%plabl
-            if (verbose) orgtmp1 =  plant(1,jpngr)%plabl
-            if (verbose) orgtmp2 =  orgplus( plant(1,jpngr)%pleaf, plant(1,jpngr)%proot )
+            if (verbose) print*, '              drgrow= ', plant_fluxes(1)%drgrow
+            if (verbose) orgbal1 =  orgplus( plant(1,jpngr)%pleaf, plant(1,jpngr)%proot, plant(1,jpngr)%plabl, orgpool(carbon(plant_fluxes(1)%drgrow), nitrogen(0.0)), orgpool( carbon( plant_fluxes(1)%dnpp%c12 - plant_fluxes(1)%dcex ), plant_fluxes(1)%dnup ) )
             !----------------------------------------------------------------
             call allocation_daily( plant(:,jpngr), plant_fluxes(:), solar, out_pmodel(:,:), interface%climate(jpngr)%dtemp(doy) )
             !----------------------------------------------------------------
-            if (verbose) print*, '              ==> returned: '
+            if (verbose) orgbal2 =  orgplus( plant(1,jpngr)%pleaf, plant(1,jpngr)%proot, plant(1,jpngr)%plabl, orgpool(carbon(plant_fluxes(1)%drgrow), nitrogen(0.0)) )
+            if (verbose) print*, '              ==> returned from allocation(): '
             if (verbose) print*, '              pleaf = ', plant(:,jpngr)%pleaf, ' C:N = ', cton( plant(1,jpngr)%pleaf, default=0.0 )
             if (verbose) print*, '              proot = ', plant(:,jpngr)%proot, ' C:N = ', cton( plant(1,jpngr)%proot, default=0.0 )
             if (verbose) print*, '              plabl = ', plant(:,jpngr)%plabl
             if (verbose) print*, '              drgrow= ', plant_fluxes(1)%drgrow
             if (verbose) print*, '   --- balance: '
-            if (verbose) orgbal1 = orgminus( orgminus( orgminus( orgtmp1, plant(1,jpngr)%plabl ), orgpool( carbon(plant_fluxes(1)%drgrow), nitrogen(0.0) ) ), orgminus( orgplus( plant(1,jpngr)%pleaf, plant(1,jpngr)%proot ), orgtmp2 ) )        
-            ! dlabl  = orgminus( orgtmp1, plant(1,jpngr)%plabl )
-            ! drgrow = orgpool( carbon(drgrow(1)), nitrogen(0.0) )
-            ! dplant = orgminus( orgplus( plant(1,jpngr)%pleaf, plant(1,jpngr)%proot ), orgtmp2 )
-            if (verbose) print*, '       dlabl - drgrow - dleaf - droot=', orgbal1
-            if (verbose.and.abs(orgbal1%c%c12)>eps) stop 'balance not satisfied for C'
-            ! print*, 'dlabl  =', orgminus( orgtmp, plant(1,jpngr)%plabl )
-            ! print*, 'drgrow =', drgrow(1), 0.0
-            ! print*, 'dplant =', orgminus( orgplus( plant(1,jpngr)%pleaf, plant(1,jpngr)%proot ), orgtmp2 )
+            if (verbose) orgbal1 = orgminus( orgbal1, orgbal2 )
+            if (verbose) print*, '            balance =', orgbal1
+            if (verbose .and. abs(orgbal1%c%c12)>10*eps) stop 'balance A not satisfied for C'
             if (verbose) print*, '... done'
 
             !----------------------------------------------------------------

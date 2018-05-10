@@ -758,9 +758,12 @@ contains
     ! arguments
     type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
 
-    plant_fluxes(:)%dgpp = 0.0
-    plant_fluxes(:)%dnpp = carbon(0.0)
-    plant_fluxes(:)%drd  = 0.0
+    plant_fluxes(:)%dgpp    = 0.0
+    plant_fluxes(:)%dnpp    = carbon(0.0)
+    plant_fluxes(:)%drd     = 0.0
+    plant_fluxes(:)%drleaf  = 0.0
+    plant_fluxes(:)%drroot  = 0.0
+    plant_fluxes(:)%drgrow  = 0.0
 
   end subroutine initdaily_plant
 
