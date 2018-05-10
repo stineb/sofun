@@ -112,7 +112,8 @@ module md_gpp
     real :: vcmax25               ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
     real :: vcmax_unitfapar       ! Vcmax per fAPAR (mol CO2 m-2 s-1)
     real :: vcmax_unitiabs        ! Vcmax per unit absorbed light (xxx units)
-    real :: factor25_vcmax        ! correction factor to normalise Vcmax to 25 deg C
+    real :: ftemp_inst_vcmax      ! Instantaneous temperature response factor of Vcmax (unitless)
+    real :: ftemp_inst_rd         ! Instantaneous temperature response factor of Rd (unitless)
     real :: rd                    ! Dark respiration (mol CO2 m-2 s-1)
     real :: rd_unitfapar          ! Dark respiration per fAPAR (mol CO2 m-2 s-1)
     real :: rd_unitiabs           ! Dark respiration per unit absorbed light (mol CO2 m-2 s-1)
@@ -496,7 +497,11 @@ contains
     real :: rd                       ! Dark respiration (mol CO2 m-2 s-1)
     real :: rd_unitfapar             ! Dark respiration per fAPAR (mol CO2 m-2 s-1)
     real :: rd_unitiabs              ! Dark respiration per unit absorbed light (mol CO2 m-2 s-1)
-    real :: factor25_vcmax           ! correction factor to normalise Vcmax to 25 deg C
+    real :: rd25                     ! Dark respiration normalised to 25 deg C (mol CO2 m-2 s-1)
+    real :: rd25_unitfapar           ! Dark respiration per fAPAR normalised to 25 deg C per fAPAR (mol CO2 m-2 s-1)
+    real :: rd25_unitiabs            ! Dark respiration per absorbed light normalised to 25 deg C per unit absorbed light (mol CO2 m-2 s-1)
+    real :: ftemp_inst_vcmax         ! Instantaneous temperature response factor of Vcmax (unitless)
+    real :: ftemp_inst_rd            ! Instantaneous temperature response factor of Rd (unitless)
     real :: actnv 
     real :: actnv_unitfapar 
     real :: actnv_unitiabs 
@@ -618,22 +623,30 @@ contains
       vcmax_unitiabs = params_pft_gpp(pft)%kphio * out_lue%n 
 
       ! Vcmax25 (vcmax normalized to 25 deg C)
-      factor25_vcmax    = calc_vcmax25( 1.0, tc )
-      vcmax25           = factor25_vcmax * vcmax
-      vcmax25_unitfapar = factor25_vcmax * vcmax_unitfapar
-      vcmax25_unitiabs  = factor25_vcmax * vcmax_unitiabs
+      ftemp_inst_vcmax  = calc_ftemp_inst_vcmax( tc )
+      vcmax25           = vcmax           / ftemp_inst_vcmax
+      vcmax25_unitfapar = vcmax_unitfapar / ftemp_inst_vcmax
+      vcmax25_unitiabs  = vcmax_unitiabs  / ftemp_inst_vcmax
 
-      ! Dark respiration
-      rd = params_pft_gpp(pft)%rd_to_vcmax * vcmax
+      ! ! Dark respiration, normalised to 25 deg C proportional to Vcmax normalised to 25 deg C
+      ! rd25           = params_pft_gpp(pft)%rd_to_vcmax * vcmax25
+      ! rd25_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * vcmax25_unitfapar
+      ! rd25_unitiabs  = params_pft_gpp(pft)%rd_to_vcmax * vcmax25_unitiabs 
 
-      ! Dark respiration per unit fAPAR (assuming fAPAR=1)
-      rd_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * vcmax_unitfapar
+      ! Dark respiration at growth temperature
+      ftemp_inst_rd = calc_ftemp_inst_rd( tc )
+      ! rd            = ftemp_inst_rd * rd25
+      ! rd_unitfapar  = ftemp_inst_rd * rd25_unitfapar
+      ! rd_unitiabs   = ftemp_inst_rd * rd25_unitiabs 
 
-      ! Dark respiration per unit absorbed PPFD (assuming ppfdabs=1)
-      rd_unitiabs = params_pft_gpp(pft)%rd_to_vcmax * vcmax_unitiabs
+      print*,'temp, fr / fv: ', tc, ftemp_inst_rd / ftemp_inst_vcmax
+
+      rd           = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax
+      rd_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitfapar
+      rd_unitiabs  = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitiabs 
 
       ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
-      actnv = vcmax25 * n_v
+      actnv           = vcmax25           * n_v
       actnv_unitfapar = vcmax25_unitfapar * n_v
       actnv_unitiabs  = vcmax25_unitiabs  * n_v
 
@@ -659,7 +672,8 @@ contains
       out_pmodel%vcmax25          = vcmax25
       out_pmodel%vcmax_unitfapar  = vcmax_unitfapar
       out_pmodel%vcmax_unitiabs   = vcmax_unitiabs
-      out_pmodel%factor25_vcmax   = factor25_vcmax
+      out_pmodel%ftemp_inst_vcmax = ftemp_inst_vcmax
+      out_pmodel%ftemp_inst_rd    = ftemp_inst_rd   
       out_pmodel%rd               = rd
       out_pmodel%rd_unitfapar     = rd_unitfapar 
       out_pmodel%rd_unitiabs      = rd_unitiabs 
@@ -684,7 +698,8 @@ contains
       out_pmodel%vcmax25          = 0.0
       out_pmodel%vcmax_unitfapar  = 0.0
       out_pmodel%vcmax_unitiabs   = 0.0
-      out_pmodel%factor25_vcmax   = 0.0
+      out_pmodel%ftemp_inst_vcmax = 0.0
+      out_pmodel%ftemp_inst_rd    = 0.0
       out_pmodel%rd               = 0.0
       out_pmodel%rd_unitfapar     = 0.0
       out_pmodel%rd_unitiabs      = 0.0
@@ -1138,32 +1153,73 @@ contains
   end function calc_gstar
 
 
-  function calc_vcmax25( vcmax, tc ) result( vcmax25 )
+  function calc_ftemp_inst_vcmax( tc ) result( fv )
     !-----------------------------------------------------------------------
-    ! Output:   vcmax25  : Vcmax at 25 deg C
-    ! Features: Returns the temperature-corrected Vcmax at 25 deg C
-    ! Ref:      Analogue function like 'calc_gstar_gepisat' in Python version
-    !           and 'calc_vcmax25_colin' in R version (pmodel.R)
+    ! Output:   Factor fv to correct for instantaneous temperature response
+    !           of Vcmax for:
+    !
+    !               Vcmax(temp) = fv * Vcmax(25 deg C) 
+    !
+    ! Ref:      Wang Han et al. (in prep.)
     !-----------------------------------------------------------------------
     ! arguments
-    real, intent(in) :: vcmax   ! Vcmax at a given temperature tc 
-    real, intent(in) :: tc      ! air temperature (degrees C)
-
-    ! loal variables
-    real, parameter :: dhav = 65330    ! J/mol
-    real, parameter :: kR   = 8.3145   ! J/mol/K
-
-    real :: tk                         ! air temperature (Kelvin)
+    real, intent(in) :: tc            ! temperature (degrees C)
 
     ! function return variable
-    real :: vcmax25  ! Vcmax at 25 deg C 
+    real :: fv                        ! temperature response factor, relative to 25 deg C.
 
-    !! conversion to temperature in Kelvin
+    ! loal parameters
+    real, parameter :: Ha    = 71513  ! activation energy (J/mol)
+    real, parameter :: Hd    = 200000 ! deactivation energy (J/mol)
+    real, parameter :: Rgas  = 8.3145 ! universal gas constant (J/mol/K)
+    real, parameter :: a_ent = 1.07   ! slope of entropy vs. temperature relationship from Kattge & Knorr (2007) (J/mol/K^2)
+    real, parameter :: b_ent = 668.39 ! offset of entropy vs. temperature relationship from Kattge & Knorr (2007) (J/mol/K)
+    real, parameter :: tk25  = 298.15 ! 25 deg C in Kelvin
+
+    ! local variables
+    real :: tk                        ! temperature (Kelvin)
+    real :: dent                      ! entropy change (J/mol)
+
+    ! conversion of temperature to Kelvin
     tk = tc + 273.15
 
-    vcmax25 = vcmax * exp( -dhav/kR * (1/298.15 - 1/tk) )
+    ! calculate entropy following Kattge & Knorr (2007), negative slope and y-axis intersect is when expressed as a function of temperature in degrees Celsius, not Kelvin !!!
+    dent = a_ent * tc - b_ent
+
+    fv = exp( (Ha * (tk - tk25))/(tk * tk25 * Rgas) * (1 + exp( (tk25 * dent - Hd)/(Rgas * tk25) ) )/(1 + exp( (tk * dent - Hd)/(Rgas * tk) ) ) )
     
-  end function calc_vcmax25
+  end function calc_ftemp_inst_vcmax
+
+
+  function calc_ftemp_inst_rd( tc ) result( fr )
+    !-----------------------------------------------------------------------
+    ! Output:   Factor fr to correct for instantaneous temperature response
+    !           of Rd (dark respiration) for:
+    !
+    !               Rd(temp) = fr * Rd(25 deg C) 
+    !
+    ! Ref:      Heskel et al. (2016) used by Wang Han et al. (in prep.)
+    !-----------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: tc      ! temperature (degrees C)
+
+    ! function return variable
+    real :: fr                  ! temperature response factor, relative to 25 deg C.
+
+    ! loal parameters
+    real, parameter :: apar = 0.1012
+    real, parameter :: bpar = 0.0005
+    real, parameter :: tk25  = 298.15 ! 25 deg C in Kelvin
+
+    ! local variables
+    real :: tk                  ! temperature (Kelvin)
+
+    ! conversion of temperature to Kelvin
+    tk = tc + 273.15
+
+    fr = exp( apar * (tk - tk25) - bpar * (tk**2 - tk25**2) )
+    
+  end function calc_ftemp_inst_rd
 
 
   function calc_patm( elv ) result( patm )
@@ -1665,7 +1721,7 @@ contains
     ! if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
 
     outdvcmax(1,doy)      = dvcmax_canop(1)
-    outdvcmax25(1,doy)    = out_pmodel(1)%factor25_vcmax * dvcmax_canop(1)
+    outdvcmax25(1,doy)    = out_pmodel(1)%ftemp_inst_vcmax * dvcmax_canop(1)
 
     ! weighted by daily GPP
     if (interface%params_siml%loutgpp) then

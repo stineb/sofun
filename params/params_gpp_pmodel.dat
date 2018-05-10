@@ -5,8 +5,8 @@
 # write value behind this position:    |->
 
 # beta   244.033
-beta                                    146.0
-rd_to_vcmax                             0.015
+beta                                    146.000000
+rd_to_vcmax                             0.01400000
 kphio_Gr3                               0.05792348
 kphio_GN3                               0.05792348
 kphio_Gr4                               0.05792348

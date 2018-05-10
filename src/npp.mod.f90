@@ -43,7 +43,7 @@ contains
     ! ('rsoil'). This implies that growth respiration is "paid" also on exu-
     ! dates. 
     !-------------------------------------------------------------------------
-    use md_params_core, only: npft, ndayyear
+    use md_params_core, only: npft, ndayyear, eps
     use md_turnover, only: turnover_leaf, turnover_root, turnover_labl
     use md_plant, only: plant_type, plant_fluxes_type
     use md_interface
@@ -63,6 +63,9 @@ contains
     real, parameter :: dleaf_die = 0.012
     real, parameter :: droot_die = 0.012
     real, parameter :: dlabl_die = 0.0
+
+    ! xxx debug
+    real :: tmp
 
     ! logical, save :: check_sprout = .false.
 
@@ -103,18 +106,18 @@ contains
       plant_fluxes(pft)%dcex = calc_cexu( plant(pft)%proot%c%c12, dtemp )   
 
 
-      !/////////////////////////////////////////////////////////////////////////
-      ! SAFETY AND DEATH
-      ! If negative C balance results from GPP - Rleaf - Rroot - Cex then ...
-      ! ... first, change allocation to 100% leaves
-      ! ... second, when this still leads to a complete depletion of the labile
-      !     pool (negative values), shut down organism (zero GPP, NPP, etc., 
-      !     but continuing turnover).
-      !-------------------------------------------------------------------------
-      ! This option (deactivate_root) leads to good results, the alternative leads to on-off growth. Unclear why.
-      if ( (plant(pft)%plabl%c%c12 + plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex) < 0.0 ) then
-        call deactivate_root( plant_fluxes(pft)%dgpp, plant_fluxes(pft)%drleaf, plant(pft)%plabl%c%c12, plant(pft)%proot, plant_fluxes(pft)%drroot, plant_fluxes(pft)%dnpp%c12, plant_fluxes(pft)%dcex, dtemp, plant(pft)%plitt_bg )
-      end if
+      ! !/////////////////////////////////////////////////////////////////////////
+      ! ! SAFETY AND DEATH
+      ! ! If negative C balance results from GPP - Rleaf - Rroot - Cex then ...
+      ! ! ... first, change allocation to 100% leaves
+      ! ! ... second, when this still leads to a complete depletion of the labile
+      ! !     pool (negative values), shut down organism (zero GPP, NPP, etc., 
+      ! !     but continuing turnover).
+      ! !-------------------------------------------------------------------------
+      ! ! This option (deactivate_root) leads to good results, the alternative leads to on-off growth. Unclear why.
+      ! if ( (plant(pft)%plabl%c%c12 + plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex) < 0.0 ) then
+      !   call deactivate_root( plant_fluxes(pft)%dgpp, plant_fluxes(pft)%drleaf, plant(pft)%plabl%c%c12, plant(pft)%proot, plant_fluxes(pft)%drroot, plant_fluxes(pft)%dnpp%c12, plant_fluxes(pft)%dcex, dtemp, plant(pft)%plitt_bg )
+      ! end if
 
       ! ! -------------------------------------------------------------------------
       ! ! the alternative formulation with shutting all fluxes down and decaying
@@ -161,20 +164,23 @@ contains
 
 
       !/////////////////////////////////////////////////////////////////////////
-      ! TO LABILE POOL
-      ! NPP available for growth first enters the labile pool ('plabl ').
-      ! XXX Allocation is called here without "paying"  growth respir.?
+      ! EXUDATES
       !-------------------------------------------------------------------------
-      print*,'GPP: ', plant_fluxes(pft)%dgpp
-      print*,'Rleaf', plant_fluxes(pft)%drleaf
-      print*,'Rroot', plant_fluxes(pft)%drroot
-      print*,'Cex  ', plant_fluxes(pft)%dcex
-
       call ccp( carbon( plant_fluxes(pft)%dcex ), plant(pft)%pexud )
-      call ccp( cminus( plant_fluxes(pft)%dnpp, carbon(plant_fluxes(pft)%dcex) ), plant(pft)%plabl%c )
 
-      if (plant(pft)%plabl%c%c12< -1.0e-13) stop 'after npp labile C is neg.'
-      if (plant(pft)%plabl%n%n14< -1.0e-13) stop 'after npp labile N is neg.'
+      ! !/////////////////////////////////////////////////////////////////////////
+      ! ! TO LABILE POOL
+      ! ! NPP available for growth first enters the labile pool ('plabl ').
+      ! ! XXX Allocation is called here without "paying"  growth respir.?
+      ! !-------------------------------------------------------------------------
+      ! tmp = plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex
+      ! print*,'GPP, Rl, Rr, Cex, dC, Cl, LAI, Cb: ', plant_fluxes(pft)%dgpp, plant_fluxes(pft)%drleaf, plant_fluxes(pft)%drroot, plant_fluxes(pft)%dcex, tmp, plant(pft)%pleaf, plant(pft)%lai_ind, plant(pft)%plabl
+
+      ! call ccp( carbon( plant_fluxes(pft)%dcex ), plant(pft)%pexud )
+      ! call ccp( cminus( plant_fluxes(pft)%dnpp, carbon(plant_fluxes(pft)%dcex) ), plant(pft)%plabl%c )
+
+      ! if (plant(pft)%plabl%c%c12 < (-1)*eps) stop 'after npp labile C is neg.'
+      ! if (plant(pft)%plabl%n%n14 < (-1)*eps) stop 'after npp labile N is neg.'
 
       ! print*,'gpp, dclabl', doy, plant_fluxes(pft)%dgpp, cminus( plant_fluxes(pft)%dnpp, carbon(plant_fluxes(pft)%dcex) )
 

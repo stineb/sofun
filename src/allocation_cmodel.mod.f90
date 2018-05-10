@@ -66,7 +66,10 @@ contains
     integer :: lu
     integer :: pft
     real :: avl
-    real, parameter :: freserve = 0.1
+    real, parameter :: f_labl = 0.1
+    real, parameter :: k_labl = 0.05
+    real :: c_reserve_pot, c_to_growth, c_to_storage, c_to_growth_direct, c_to_growth_from_storage
+
 
     ! xxx debug
     type( orgpool ) :: bal1, bal2, bald
@@ -94,6 +97,42 @@ contains
 
       lu = params_pft_plant(pft)%lu_category
 
+      !/////////////////////////////////////////////////////////////////////////
+      ! Allocation to labile pool
+      !-------------------------------------------------------------------------
+      ! Get the maximum potential NSC storage pool as a function of leaf and root mass
+      c_reserve_pot = f_labl * ( plant(pft)%pleaf%c%c12 + plant(pft)%proot%c%c12 )
+
+      ! Get "demand-factor" of NSC storage pool, proportional to its "emptiness"
+      f_demand_labl = max( 0.0, 1.0 - plant(pft)%plabl%c%c12 / c_reserve_pot )
+
+      ! Get C flux to fill up NSC storage
+      c_to_storage = f_demand_labl * ( plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex )
+
+
+      ! Get C that allocated to fill up storage and used directly for growth (because storage is full)
+      c_to_growth = 0.0
+      c_to_storage = min( c_reserve_pot - plant(pft)%plabl%c%c12, ( plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex ) )
+      c_to_growth_direct = ( plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex ) - c_to_storage
+
+      ! Put C in storage
+      plant(pft)%plabl%c%c12 = plant(pft)%plabl%c%c12 + c_to_storage
+
+      ! Get C for growth from storage
+      c_to_growth_from_storage = k_labl * plant(pft)%plabl%c%c12
+      plant(pft)%plabl%c%c12 = plant(pft)%plabl%c%c12 - c_to_growth_from_storage
+
+      ! total C for growth
+      avl = c_to_growth_from_storage + c_to_growth_direct
+
+      ! tmp = plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex
+      print*,'GPP, Rl, Rr, Cex, dC, Cl, LAI, Cb: ', plant_fluxes(pft)%dgpp, plant_fluxes(pft)%drleaf, plant_fluxes(pft)%drroot, plant_fluxes(pft)%dcex, avl, plant(pft)%pleaf, plant(pft)%lai_ind, plant(pft)%plabl
+
+      ! call ccp( cminus( plant_fluxes(pft)%dnpp, carbon(plant_fluxes(pft)%dcex) ), plant(pft)%plabl%c )
+
+      ! if (plant(pft)%plabl%c%c12 < (-1)*eps) stop 'after npp labile C is neg.'
+      ! if (plant(pft)%plabl%n%n14 < (-1)*eps) stop 'after npp labile N is neg.'
+
       if (params_pft_plant(pft)%grass) then
 
         if ( plant(pft)%plabl%c%c12>0.0 .and. dtemp>0.0 ) then
@@ -109,7 +148,7 @@ contains
           end if
 
           ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
-          avl = max( 0.0, plant(pft)%plabl%c%c12 - freserve * plant(pft)%pleaf%c%c12 )
+          ! avl = max( 0.0, plant(pft)%plabl%c%c12 - f_labl * plant(pft)%pleaf%c%c12 )
           dcleaf(pft) = params_plant%frac_leaf * params_plant%growtheff * avl
           dcroot(pft) = (1.0 - params_plant%frac_leaf) * params_plant%growtheff * avl
           dnroot(pft) = dcroot(pft) * params_pft_plant(pft)%r_ntoc_root          
@@ -120,13 +159,13 @@ contains
           ! LEAF ALLOCATION
           !-------------------------------------------------------------------
           if (baltest) orgtmp1 = orgminus( orgplus( plant(pft)%pleaf, plant(pft)%proot, plant(pft)%plabl, orgpool( carbon(plant_fluxes(pft)%drgrow), nitrogen(0.0) ) ), orgpool(carbon(0.0),plant_fluxes(pft)%dnup) )
-          if (verbose) write(0,*) 'calling allocate_leaf() ... '
-          if (verbose) write(0,*) '              with state variables:'
-          if (verbose) write(0,*) '              pleaf = ', plant(:)%pleaf
-          if (verbose) write(0,*) '              proot = ', plant(:)%proot
-          if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
-          if (verbose) write(0,*) '              drgrow= ', plant_fluxes(:)%drgrow
-          if (verbose) write(0,*) '              dnup  = ', plant_fluxes(1)%dnup%n14
+          if (verbose) print*, 'calling allocate_leaf() ... '
+          if (verbose) print*, '              with state variables:'
+          if (verbose) print*, '              pleaf = ', plant(:)%pleaf
+          if (verbose) print*, '              proot = ', plant(:)%proot
+          if (verbose) print*, '              plabl = ', plant(:)%plabl
+          if (verbose) print*, '              drgrow= ', plant_fluxes(:)%drgrow
+          if (verbose) print*, '              dnup  = ', plant_fluxes(1)%dnup%n14
           call allocate_leaf( &
             pft, dcleaf(pft), &
             plant(pft)%pleaf%c%c12, plant(pft)%pleaf%n%n14, &
@@ -135,16 +174,16 @@ contains
             plant(pft)%lai_ind, dnleaf(pft), &
             plant_fluxes(pft) &
             )
-          if (verbose) write(0,*) '              ==> returned: '
-          if (verbose) write(0,*) '              pleaf = ', plant(:)%pleaf
-          if (verbose) write(0,*) '              proot = ', plant(:)%proot
-          if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
+          if (verbose) print*, '              ==> returned: '
+          if (verbose) print*, '              pleaf = ', plant(:)%pleaf
+          if (verbose) print*, '              proot = ', plant(:)%proot
+          if (verbose) print*, '              plabl = ', plant(:)%plabl
           if (baltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcleaf(pft) ) / params_plant%growtheff
-          if (verbose) write(0,*) '              drgrow= ', ctmp
-          if (verbose) write(0,*) '              dnup  = ', plant_fluxes(1)%dnup%n14
+          if (verbose) print*, '              drgrow= ', ctmp
+          if (verbose) print*, '              dnup  = ', plant_fluxes(1)%dnup%n14
           if (baltest) orgtmp2 = orgminus( orgplus( plant(pft)%pleaf, plant(pft)%proot, plant(pft)%plabl, orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),plant_fluxes(pft)%dnup) )
           if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
-          if (baltest) write(0,*) '       balance A =', orgbal1
+          if (baltest) print*, '       balance A =', orgbal1
           if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance A not satisfied for C'
           if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance A not satisfied for N'
 
@@ -157,35 +196,35 @@ contains
           ! Update fpc_grid and fapar_ind (not lai_ind)
           !-------------------------------------------------------------------  
           plant(pft)%fapar_ind = get_fapar( plant(pft)%lai_ind )
-          print*,'plant(pft)%fapar_ind: ', plant(pft)%fapar_ind
+          ! print*,'plant(pft)%fapar_ind: ', plant(pft)%fapar_ind
 
           !-------------------------------------------------------------------
           ! ROOT ALLOCATION
           !-------------------------------------------------------------------
           if (baltest) orgtmp1 = orgminus( orgplus( plant(pft)%pleaf, plant(pft)%proot, plant(pft)%plabl, orgpool( carbon(plant_fluxes(pft)%drgrow), nitrogen(0.0) ) ), orgpool(carbon(0.0),plant_fluxes(pft)%dnup) )
-          if (verbose) write(0,*) 'calling allocate_root() ... '
-          if (verbose) write(0,*) '              with state variables:'
-          if (verbose) write(0,*) '              pleaf = ', plant(:)%pleaf
-          if (verbose) write(0,*) '              proot = ', plant(:)%proot
-          if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
-          if (verbose) write(0,*) '              drgrow= ', plant_fluxes(:)%drgrow
-          if (verbose) write(0,*) '              dnup  = ', plant_fluxes(1)%dnup%n14
+          if (verbose) print*, 'calling allocate_root() ... '
+          if (verbose) print*, '              with state variables:'
+          if (verbose) print*, '              pleaf = ', plant(:)%pleaf
+          if (verbose) print*, '              proot = ', plant(:)%proot
+          if (verbose) print*, '              plabl = ', plant(:)%plabl
+          if (verbose) print*, '              drgrow= ', plant_fluxes(:)%drgrow
+          if (verbose) print*, '              dnup  = ', plant_fluxes(1)%dnup%n14
           call allocate_root( &
             pft, dcroot(pft), dnroot(pft), &
             plant(pft)%proot%c%c12, plant(pft)%proot%n%n14, &
             plant(pft)%plabl%c%c12, plant(pft)%plabl%n%n14,  &
             plant_fluxes(pft) &
             )
-          if (verbose) write(0,*) '              ==> returned: '
-          if (verbose) write(0,*) '              pleaf = ', plant(:)%pleaf
-          if (verbose) write(0,*) '              proot = ', plant(:)%proot
-          if (verbose) write(0,*) '              plabl = ', plant(:)%plabl
+          if (verbose) print*, '              ==> returned: '
+          if (verbose) print*, '              pleaf = ', plant(:)%pleaf
+          if (verbose) print*, '              proot = ', plant(:)%proot
+          if (verbose) print*, '              plabl = ', plant(:)%plabl
           if (baltest) ctmp = ( 1.0 - params_plant%growtheff ) * ( dcroot(pft) ) / params_plant%growtheff
-          if (verbose) write(0,*) '              drgrow= ', ctmp
-          if (verbose) write(0,*) '              dnup  = ', plant_fluxes(1)%dnup%n14
+          if (verbose) print*, '              drgrow= ', ctmp
+          if (verbose) print*, '              dnup  = ', plant_fluxes(1)%dnup%n14
           if (baltest) orgtmp2 = orgminus( orgplus( plant(pft)%pleaf, plant(pft)%proot, plant(pft)%plabl, orgpool( carbon(ctmp), nitrogen(0.0) ) ), orgpool(carbon(0.0),plant_fluxes(pft)%dnup) )
           if (baltest) orgbal1 = orgminus( orgtmp2, orgtmp1 )
-          if (baltest) write(0,*) '       balance B =', orgbal1
+          if (baltest) print*, '       balance B =', orgbal1
           if (baltest .and. abs(orgbal1%c%c12)>eps) stop 'balance B not satisfied for C'
           if (baltest .and. abs(orgbal1%n%n14)>eps) stop 'balance B not satisfied for N'
 
