@@ -1172,8 +1172,8 @@ contains
     real, parameter :: Ha    = 71513  ! activation energy (J/mol)
     real, parameter :: Hd    = 200000 ! deactivation energy (J/mol)
     real, parameter :: Rgas  = 8.3145 ! universal gas constant (J/mol/K)
-    real, parameter :: a_ent = 1.07   ! slope of entropy vs. temperature relationship from Kattge & Knorr (2007) (J/mol/K^2)
-    real, parameter :: b_ent = 668.39 ! offset of entropy vs. temperature relationship from Kattge & Knorr (2007) (J/mol/K)
+    real, parameter :: a_ent = 668.39 ! offset of entropy vs. temperature relationship from Kattge & Knorr (2007) (J/mol/K)
+    real, parameter :: b_ent = 1.07   ! slope of entropy vs. temperature relationship from Kattge & Knorr (2007) (J/mol/K^2)
     real, parameter :: tk25  = 298.15 ! 25 deg C in Kelvin
 
     ! local variables
@@ -1184,7 +1184,7 @@ contains
     tk = tc + 273.15
 
     ! calculate entropy following Kattge & Knorr (2007), negative slope and y-axis intersect is when expressed as a function of temperature in degrees Celsius, not Kelvin !!!
-    dent = a_ent * tc - b_ent
+    dent = a_ent - b_ent * tc
 
     fv = exp( (Ha * (tk - tk25))/(tk * tk25 * Rgas) * (1 + exp( (tk25 * dent - Hd)/(Rgas * tk25) ) )/(1 + exp( (tk * dent - Hd)/(Rgas * tk) ) ) )
     
@@ -1217,7 +1217,7 @@ contains
     ! conversion of temperature to Kelvin
     tk = tc + 273.15
 
-    fr = exp( apar * (tk - tk25) - bpar * (tk**2 - tk25**2) )
+    fr = exp( apar * (tc - 25.0) - bpar * (tc**2 - 25.0**2) )
     
   end function calc_ftemp_inst_rd
 
