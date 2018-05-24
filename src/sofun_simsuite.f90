@@ -40,7 +40,6 @@ program main
   character(len=6) :: line
   integer :: nruns, irun
 
-
   !----------------------------------------------------------------
   ! READ SIMULATION SUITE NAME AND PARAMETERS FROM STANDARD INPUT
   !----------------------------------------------------------------
@@ -161,7 +160,6 @@ program main
       ! Get external (environmental) forcing
       !----------------------------------------------------------------
       ! Climate
-      if (verbose) print*,'getting WFDEI climate ...'
       interface%climate(:) = getclimate( &
                                         interface%domaininfo, &
                                         interface%grid, &
@@ -170,7 +168,6 @@ program main
                                         interface%params_siml%in_ppfd,  &
                                         interface%params_siml%in_netrad &
                                         )
-      if (verbose) print*,'... done.'
 
       ! CO2
       interface%pco2 = getco2( &
@@ -224,13 +221,12 @@ program main
       !----------------------------------------------------------------
       ! Get prescribed fAPAR if required (otherwise set to dummy value)
       !----------------------------------------------------------------
-      if (verbose) print*,'getting fAPAR ...'
-        interface%dfapar_field(:,:) = getfapar( &
-                                              interface%domaininfo, &
-                                              interface%grid, &
-                                              interface%steering%forcingyear, &
-                                              interface%params_siml%fapar_forcing_source &
-                                              )    
+      interface%dfapar_field(:,:) = getfapar( &
+                                            interface%domaininfo, &
+                                            interface%grid, &
+                                            interface%steering%forcingyear, &
+                                            interface%params_siml%fapar_forcing_source &
+                                            )    
 
       !----------------------------------------------------------------
       ! Call SR biosphere at an annual time step but with vectors 

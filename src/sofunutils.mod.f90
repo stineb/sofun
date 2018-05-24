@@ -961,57 +961,59 @@ contains
   end function calc_patm
 
 
-  function median(X, N) result( out )
+  function median( vec, len ) result( out )
     !--------------------------------------------------------------------
-    ! This function receives an array X of N entries, copies its value
+    ! This function receives an array vec of N entries, copies its value
     ! to a local array Temp(), sorts Temp() and computes the median.
     ! The returned value is of REAL type.
     ! Copied from https://pages.mtu.edu/~shene/COURSES/cs201/NOTES/chap08/median.f90
     !--------------------------------------------------------------------
-    real, dimension(:), intent(in)     :: X
-    integer, intent(in)                :: N
+    real, dimension(:), intent(in)     :: vec
+    integer, intent(in)                :: len
 
     ! function return variable
     real                               :: out
 
     ! local variables
-    real, dimension(1:N)               :: temp
+    real, dimension(1:len)             :: tmp
     integer                            :: i
 
-    temp(:) = X(:)
+    tmp(:) = vec(:)
 
-    call  sort(temp, N)               ! sort the copy
+    call  sort(tmp, len)                ! sort the copy
 
-    if (MOD(N,2) == 0) then           ! compute the median
-       out = (temp(N/2) + temp(N/2+1)) / 2.0
+    if (mod(len,2) == 0) then           ! compute the median
+       out = (tmp(len/2) + tmp(len/2+1)) / 2.0
     else
-       out = temp(N/2+1)
+       out = tmp(len/2+1)
     end if
 
   end function median
 
 
-  subroutine sort(x, size)
+  subroutine sort( vec, len )
     !--------------------------------------------------------------------
-    ! This subroutine receives an array x() and sorts it into ascending
+    ! This subroutine receives an array vec() and sorts it into ascending
     ! order.
+    ! Copied from https://pages.mtu.edu/~shene/COURSES/cs201/NOTES/chap08/sort.f90
     !--------------------------------------------------------------------
-    real, dimension(:), intent(inout)     :: x
-    integer, intent(in)                   :: size
+    real, dimension(:), intent(inout)     :: vec
+    integer, intent(in)                   :: len
     integer                               :: i
     integer                               :: location
 
-    do i = 1, size-1             ! except for the last
-      location = find_minimum( x, i, size )  ! find min from this to last
-      call swap( x(i), x(location) )  ! swap this and the minimum
+    do i = 1, len-1                           ! eveccept for the last
+      location = find_minimum( vec, i, len )  ! find min from this to last
+      call swap( vec(i), vec(location) )      ! swap this and the minimum
     end do
 
   end subroutine sort
 
 
-  subroutine  swap(a, b)
+  subroutine  swap( a, b )
     !--------------------------------------------------------------------
     ! This subroutine swaps the values of its two formal arguments.
+    ! Copied from https://pages.mtu.edu/~shene/COURSES/cs201/NOTES/chap08/sort.f90
     !--------------------------------------------------------------------
     real, intent(inout) :: a, b
     real                :: tmp
@@ -1023,27 +1025,28 @@ contains
   end subroutine  swap
 
 
-  function  find_minimum( x, start, end ) result( out )
+  function  find_minimum( vec, start, end ) result( out )
     !--------------------------------------------------------------------
     ! This function returns the location of the minimum in the section
     ! between start and end.
+    ! Copied from https://pages.mtu.edu/~shene/COURSES/cs201/NOTES/chap08/sort.f90
     !--------------------------------------------------------------------
-    real, dimension(:), intent(in)     :: x
+    real, dimension(:), intent(in)     :: vec
     integer, intent(in)                :: start, end
     integer                            :: minimum
     integer                            :: location
     integer                            :: i
     integer                            :: out
 
-    minimum  = x(start)          ! assume the first is the min
-    location = start             ! record its position
-    do i = start+1, end          ! start with next elements
-       if (x(i) < minimum) THEN  !   if x(i) less than the min?
-          minimum  = x(i)        !      Yes, a new minimum found
-          location = i                !      record its position
-       end if
+    minimum  = vec(start)          ! assume the first is the min
+    location = start               ! record its position
+    do i = start+1, end            ! start with nevect elements
+      if (vec(i) < minimum) THEN  ! if vec(i) less than the min?
+        minimum  = vec(i)        ! Yes, a new minimum found
+        location = i             ! record its position
+      end if
     end do
-    out = location            ! return the position
+    out = location                 ! return the position
    
   end function find_minimum
 
