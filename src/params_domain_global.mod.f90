@@ -34,7 +34,7 @@ contains
     ! function return variable
     type( type_params_domain ) :: out_params_domain
   
-    write(0,*) 'reading site parameter file ', 'site_paramfils/'//trim(sitename)//'.parameter ...'
+    print*, 'reading site parameter file ', 'site_paramfils/'//trim(sitename)//'.parameter ...'
 
     call getparstring( 'site_paramfils/'//trim(sitename)//'.parameter', 'filnam_landmask',   out_params_domain%filnam_landmask )
     call getparstring( 'site_paramfils/'//trim(sitename)//'.parameter', 'filnam_topography', out_params_domain%filnam_topography )

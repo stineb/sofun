@@ -45,7 +45,7 @@ contains
     ! function return variable
     type( type_params_domain ) :: out_params_domain
   
-    write(0,*) 'reading site parameter file ', 'site_paramfils/'//trim(sitename)//'.parameter ...'
+    print*, 'reading site parameter file ', 'site_paramfils/'//trim(sitename)//'.parameter ...'
 
     out_params_domain%lon_site      = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'longitude' )
     out_params_domain%lat_site      = getparreal( 'site_paramfils/'//trim(sitename)//'.parameter', 'latitude' )

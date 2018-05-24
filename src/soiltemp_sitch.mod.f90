@@ -76,9 +76,9 @@ contains
 
     ! in first year, use this years air temperature (available for all days in this year)
     if ( interface%steering%init .and. doy==1 ) then
-      allocate( dtemp_pvy(ndayyear,ngridcells) )
-      allocate( wscal_pvy(nlu,ndayyear,ngridcells) )
-      allocate( wscal_alldays(nlu,ndayyear) )
+      if (.not.allocated(dtemp_pvy    )) allocate( dtemp_pvy(ndayyear,ngridcells) )
+      if (.not.allocated(wscal_pvy    )) allocate( wscal_pvy(nlu,ndayyear,ngridcells) )
+      if (.not.allocated(wscal_alldays)) allocate( wscal_alldays(nlu,ndayyear) )
       dtemp_pvy(:,jpngr) = dtemp(:)
     end if
 

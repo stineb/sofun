@@ -532,6 +532,7 @@ contains
     ! Read PFT parameters from respective file, given the PFT name
     !----------------------------------------------------------------
     use md_sofunutils, only: getparreal
+    use md_interface, only: interface
 
     ! arguments
     character(len=*), intent(in) :: pftname
@@ -605,7 +606,11 @@ contains
     ! out_getpftparams%r_ntolma = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'r_ntolma' )
 
     ! leaf decay constant, read in as [years-1], central value: 0.0 yr-1 for deciduous plants
-    out_getpftparams%k_decay_leaf_base = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_leaf_base' ) / ndayyear 
+    if (interface%params_siml%is_calib) then
+      out_getpftparams%k_decay_leaf_base = interface%params_calib%k_decay_tissue
+    else
+      out_getpftparams%k_decay_leaf_base = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_leaf_base' ) / ndayyear 
+    end if
 
     ! shape parameter for turnover function if LAI
     out_getpftparams%k_decay_leaf_width = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_leaf_width' )
@@ -613,11 +618,19 @@ contains
     ! sapwood decay constant [days], read in as [years-1], central value: xxx
     out_getpftparams%k_decay_sapw = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_sapw' ) / ndayyear 
 
-    ! root decay constant [days], read in as [years-1], central value: 1.04 (Shan et al., 1993; see Li et al., 2014)
-    out_getpftparams%k_decay_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_root' ) / ndayyear 
+    ! root decay constant [days], read in as [years-1], central value: 1.04 (Shan et al., 1993; see Li et al., 2014)  
+    if (interface%params_siml%is_calib) then
+      out_getpftparams%k_decay_root = interface%params_calib%k_decay_tissue
+    else
+      out_getpftparams%k_decay_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_root' ) / ndayyear 
+    end if
 
     ! root decay constant [days], read in as [years-1]
-    out_getpftparams%k_decay_labl = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_labl' ) / ndayyear 
+    if (interface%params_siml%is_calib) then
+      out_getpftparams%k_decay_labl = interface%params_calib%k_decay_tissue
+    else
+      out_getpftparams%k_decay_labl = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'k_decay_labl' ) / ndayyear 
+    end if
 
     ! root C:N and N:C ratio (gC/gN and gN/gC)
     out_getpftparams%r_cton_root = getparreal( trim('params/params_plant_'//pftname//'.dat'), 'r_cton_root' )

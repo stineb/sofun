@@ -75,14 +75,14 @@ contains
 
     ! Variables N balance test
     logical, parameter :: baltest_trans = .true.  ! set to true to do mass conservation test during transient simulation
-    logical :: verbose = .true.  ! set to true to activate verbose mode
+    logical :: verbose = .false.  ! set to true to activate verbose mode
     logical :: baltest
     type( orgpool ) :: orgtmp1, orgtmp2, orgbal1, orgbal2
     real :: ctmp
 
     !------------------------------------------------------------------
-    baltest = .true.
-    verbose = .true.
+    baltest = .false.
+    verbose = .false.
     !------------------------------------------------------------------
 
     ! initialise

@@ -89,15 +89,17 @@ COMPFLAGS += -I$(NETCDF_INC)
 DEBUGFLAGS += -I$(NETCDF_INC)
 
 # name of executable
-EXE              = runsofun
-SPLASH_EXE       = runsplash
-SWBM_EXE         = runswbm
-PMODEL_EXE       = runpmodel
-PMODEL_SWBM_EXE  = runpmodel_swbm
-GPMODEL_EXE      = rungpmodel
-CMODEL_EXE       = runcmodel
-TMODEL_EXE       = runtmodel
-CNMODEL_EXE      = runcnmodel
+EXE                 = runsofun
+SPLASH_EXE          = runsplash
+SWBM_EXE            = runswbm
+PMODEL_EXE          = runpmodel
+PMODEL_SWBM_EXE     = runpmodel_swbm
+GPMODEL_EXE         = rungpmodel
+CMODEL_EXE          = runcmodel
+TMODEL_EXE          = runtmodel
+CNMODEL_EXE         = runcnmodel
+CALIB_EXE           = runcalib
+CMODEL_SIMSUITE_EXE = runcmodel_simsuite
 
 ARCHIVES= ./src/sofun.a
 # ARLPJ= ./lpj/lpj.a (archive names when compiling with different option)
@@ -154,6 +156,16 @@ cmodel:
 	 $(FCOM) -o $(CMODEL_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
 # reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
+calib: 
+	 $(MAKE) calib -C src
+	 $(FCOM) -o $(CALIB_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
+
+# reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
+cmodel_simsuite: 
+	 $(MAKE) cmodel_simsuite -C src
+	 $(FCOM) -o $(CMODEL_SIMSUITE_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
+
+# reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
 tmodel: 
 	 $(MAKE) tmodel -C src
 	 $(FCOM) -o $(TMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
@@ -166,7 +178,7 @@ cnmodel:
 # clean: remove exe and .o and .do files
 .PHONY: clean
 clean:
-	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(GPMODEL_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE)
+	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(GPMODEL_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE) $(CALIB_EXE) $(CMODEL_SIMSUITE_EXE)
 	$(MAKE) clean -C src
 # include libraries when necessary
 #	$(MAKE) clean -C lpj/cdfcode

@@ -24,7 +24,8 @@ module md_params_siml
     integer :: outnt           ! number of output time steps per year
     
     logical :: do_spinup            ! whether this simulation does spinup 
-    
+    logical :: is_calib             ! whether this simulation is a calibration simulation (overriding parameters and no output)
+
     integer :: const_co2_year       ! is true when using constant CO2, given by first transient year in 'co2_forcing_file'
     integer :: const_ndep_year      ! is true when using constant N deposition, given by first transient year in 'ndep_forcing_file'
     integer :: const_nfert_year     ! is true when using constant N fertilisation, given by first transient year in 'nfert_forcing_file'
@@ -269,7 +270,7 @@ contains
     integer :: npft_local, pft
 
     ! Read in main model parameters
-    write(0,*) 'reading parameter file ', runname//".sofun.parameter ..."
+    print*, 'reading parameter file ', runname//".sofun.parameter ..."
 
     out_getpar_siml%runname = runname
 
@@ -383,7 +384,7 @@ contains
     if (.not.out_getpar_siml%loutdgpp     .and. out_getpar_siml%lncoutdgpp     )  out_getpar_siml%loutdgpp     = .true.
     if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%lncoutdwaterbal ) out_getpar_siml%loutwaterbal = .true.
 
-    write(0,*) "... done"
+    print*, "... done"
 
   end function getpar_siml
 

@@ -11,7 +11,12 @@ module md_interface
 
   private
   public interfacetype_biosphere, interface, initoutput_forcing, initio_forcing, &
-    initio_nc_forcing, getout_daily_forcing, writeout_ascii_forcing, writeout_nc_forcing
+    initio_nc_forcing, getout_daily_forcing, writeout_ascii_forcing, writeout_nc_forcing, &
+    outtype_biosphere
+
+  type paramstype_calib
+    real :: k_decay_tissue
+  end type paramstype_calib  
 
   type interfacetype_biosphere
     integer                                             :: year
@@ -26,7 +31,17 @@ module md_interface
     type( outtype_steering )                            :: steering
     type( paramstype_siml )                             :: params_siml
     real, dimension(:,:), allocatable                   :: fpc_grid
+    type( paramstype_calib )                            :: params_calib    ! calibratable parameters
   end type interfacetype_biosphere
+
+  !----------------------------------------------------------------
+  ! Return variable of biosphere()
+  !----------------------------------------------------------------
+  ! This is the derived type-return variable of the function biosphere(),
+  ! holding variables used for the cost function in sofun_calib.f90
+  type outtype_biosphere
+    real, dimension(ndayyear) :: fapar
+  end type outtype_biosphere
 
   !----------------------------------------------------------------
   ! Interface instance is created here 

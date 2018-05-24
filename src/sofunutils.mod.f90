@@ -961,6 +961,94 @@ contains
   end function calc_patm
 
 
+  function median(X, N) result( out )
+    !--------------------------------------------------------------------
+    ! This function receives an array X of N entries, copies its value
+    ! to a local array Temp(), sorts Temp() and computes the median.
+    ! The returned value is of REAL type.
+    ! Copied from https://pages.mtu.edu/~shene/COURSES/cs201/NOTES/chap08/median.f90
+    !--------------------------------------------------------------------
+    real, dimension(:), intent(in)     :: X
+    integer, intent(in)                :: N
+
+    ! function return variable
+    real                               :: out
+
+    ! local variables
+    real, dimension(1:N)               :: temp
+    integer                            :: i
+
+    temp(:) = X(:)
+
+    call  sort(temp, N)               ! sort the copy
+
+    if (MOD(N,2) == 0) then           ! compute the median
+       out = (temp(N/2) + temp(N/2+1)) / 2.0
+    else
+       out = temp(N/2+1)
+    end if
+
+  end function median
+
+
+  subroutine sort(x, size)
+    !--------------------------------------------------------------------
+    ! This subroutine receives an array x() and sorts it into ascending
+    ! order.
+    !--------------------------------------------------------------------
+    real, dimension(:), intent(inout)     :: x
+    integer, intent(in)                   :: size
+    integer                               :: i
+    integer                               :: location
+
+    do i = 1, size-1             ! except for the last
+      location = find_minimum( x, i, size )  ! find min from this to last
+      call swap( x(i), x(location) )  ! swap this and the minimum
+    end do
+
+  end subroutine sort
+
+
+  subroutine  swap(a, b)
+    !--------------------------------------------------------------------
+    ! This subroutine swaps the values of its two formal arguments.
+    !--------------------------------------------------------------------
+    real, intent(inout) :: a, b
+    real                :: tmp
+
+    tmp = a
+    a   = b
+    b   = tmp
+
+  end subroutine  swap
+
+
+  function  find_minimum( x, start, end ) result( out )
+    !--------------------------------------------------------------------
+    ! This function returns the location of the minimum in the section
+    ! between start and end.
+    !--------------------------------------------------------------------
+    real, dimension(:), intent(in)     :: x
+    integer, intent(in)                :: start, end
+    integer                            :: minimum
+    integer                            :: location
+    integer                            :: i
+    integer                            :: out
+
+    minimum  = x(start)          ! assume the first is the min
+    location = start             ! record its position
+    do i = start+1, end          ! start with next elements
+       if (x(i) < minimum) THEN  !   if x(i) less than the min?
+          minimum  = x(i)        !      Yes, a new minimum found
+          location = i                !      record its position
+       end if
+    end do
+    out = location            ! return the position
+   
+  end function find_minimum
+
+
+
  !  subroutine setreal(filename,paraname,default,paravalue)
  !          !////////////////////////////////////////////////////////////////
  !          ! "Low-level" SR for reading/defining parameter values from text file
