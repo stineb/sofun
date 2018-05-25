@@ -144,6 +144,7 @@ program main
 
     ! LOOP THROUGH YEARS
     print*, '-------------------START OF SIMULATION--------------------'
+    cost_annual = 0.0
     yearloop: do yr=1,interface%params_siml%runyears
 
       !----------------------------------------------------------------
