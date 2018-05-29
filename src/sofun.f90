@@ -6,7 +6,7 @@ program main
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_interface, only: interface
+  use md_interface, only: interface, outtype_biosphere
   use md_params_siml, only: getpar_siml, getsteering
   use md_params_domain, only: getpar_domain, type_params_domain
   use md_grid, only: get_domaininfo, getgrid
@@ -26,6 +26,8 @@ program main
   type( ninput_type ), dimension(maxgrid) :: nfert_field, ndep_field 
   type( type_params_domain ) :: params_domain
   logical, parameter :: verbose = .true.
+
+  type(outtype_biosphere) :: out_biosphere       ! holds all the output used for calculating the cost or maximum likelihood function 
 
   !----------------------------------------------------------------
   ! READ RUNNAME FROM STANDARD INPUT
@@ -188,7 +190,7 @@ program main
     !----------------------------------------------------------------
     ! Call biosphere (wrapper for all modules, contains gridcell loop)
     !----------------------------------------------------------------
-    c_uptake = biosphere_annual() 
+    out_biosphere = biosphere_annual() 
     !----------------------------------------------------------------
 
   enddo

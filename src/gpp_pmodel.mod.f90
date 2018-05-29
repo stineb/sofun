@@ -639,8 +639,6 @@ contains
       ! rd_unitfapar  = ftemp_inst_rd * rd25_unitfapar
       ! rd_unitiabs   = ftemp_inst_rd * rd25_unitiabs 
 
-      print*,'temp, fr / fv: ', tc, ftemp_inst_rd / ftemp_inst_vcmax
-
       rd           = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax
       rd_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitfapar
       rd_unitiabs  = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitiabs 
@@ -1186,7 +1184,7 @@ contains
     ! calculate entropy following Kattge & Knorr (2007), negative slope and y-axis intersect is when expressed as a function of temperature in degrees Celsius, not Kelvin !!!
     dent = a_ent - b_ent * tc
 
-    fv = exp( (Ha * (tk - tk25))/(tk * tk25 * Rgas) * (1 + exp( (tk25 * dent - Hd)/(Rgas * tk25) ) )/(1 + exp( (tk * dent - Hd)/(Rgas * tk) ) ) )
+    fv = exp( (Ha * (tk - tk25))/(tk * tk25 * Rgas) ) * (1 + exp( (tk25 * dent - Hd)/(Rgas * tk25) ) )/(1 + exp( (tk * dent - Hd)/(Rgas * tk) ) )
     
   end function calc_ftemp_inst_vcmax
 
