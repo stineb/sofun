@@ -24,7 +24,7 @@ program main
   integer, parameter :: maxlen_runname = 50      ! maximum length of runname (arbitrary)
   type( ninput_type ), dimension(maxgrid) :: nfert_field, ndep_field 
   type( type_params_domain ) :: params_domain
-  logical, parameter :: verbose = .true.
+  logical, parameter :: verbose = .false.
 
   type(outtype_biosphere) :: out_biosphere       ! holds all the output used for calculating the cost or maximum likelihood function 
   real :: cost_annual = 0.0                      ! annual cost (model-observation fit after Choler et al., 2010 BG)

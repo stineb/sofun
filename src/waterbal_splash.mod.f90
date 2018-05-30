@@ -30,7 +30,7 @@ module md_waterbal
     initdaily_waterbal, initio_waterbal,                               &
     getout_daily_waterbal, initoutput_waterbal,                        &
     getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, &
-    writeout_nc_waterbal, get_rlm_waterbal
+    writeout_nc_waterbal, get_rlm_waterbal, init_rlm_waterbal, getrlm_daily_waterbal
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -137,6 +137,11 @@ module md_waterbal
   real, allocatable, dimension(:)     :: outapet            ! annual total potential ET, mm r J/m2/yr depending on 'outenergy'
   real, allocatable, dimension(:,:)   :: outaaet            ! annual total actual ET, mm or J/m2/yr depending on 'outenergy'
   real, allocatable, dimension(:,:)   :: outaalpha          ! annual mean AET/PET (of daily values!), unitless
+
+  !----------------------------------------------------------------
+  ! Module-specific variables for rolling annual mean calculations
+  !----------------------------------------------------------------
+  real, allocatable, dimension(:,:)   :: rlmalpha
 
   !----------------------------------------------------------------
   ! Module-specific NetCDF output file and variable names
@@ -1525,43 +1530,33 @@ contains
     ! arguments
     integer, intent(in) :: ngridcells
 
-    ! ! Rolling mean variables
-    ! if (interface%steering%init) allocate( rlmalpha(nlu,ngridcells) )
-    ! if (interface%steering%init) rlmalpha(:,:) = 0.0
-
-    ! Annual output variables, required for rlmalpha, irrespective of loutwaterbal
+    ! Annual output variables
     if (interface%steering%init) then
-      if (interface%steering%init) allocate( outapet(ngridcells) )
-      if (interface%steering%init) allocate( outaaet(nlu,ngridcells) )
-      if (interface%steering%init) allocate( outaalpha(nlu,ngridcells) )
+      allocate( outapet(ngridcells) )
+      allocate( outaaet(nlu,ngridcells) )
+      allocate( outaalpha(nlu,ngridcells) )
     end if
     outapet(:)     = 0.0
     outaaet(:,:)   = 0.0
     outaalpha(:,:) = 0.0
 
-    ! if (interface%params_siml%loutwaterbal) then
-    !   if (interface%steering%init) then
-    !     ...
-    !   end if
-    !   ...
-    ! end if
 
     ! Daily output variables
     if (interface%params_siml%loutwaterbal) then
       if (interface%steering%init) then
-        if (interface%steering%init) allocate( outdwcont (nlu,interface%params_siml%outnt,ngridcells) )  ! daily soil moisture, mm
-        if (interface%steering%init) allocate( outdppfd (interface%params_siml%outnt,ngridcells)   )     ! daily PPFD, mol/m2
-        if (interface%steering%init) allocate( outdpet(interface%params_siml%outnt,ngridcells)     )     ! daily potential ET, mm
-        if (interface%steering%init) allocate( outdaet(nlu,interface%params_siml%outnt,ngridcells) )     ! daily actual ET, mm
-        ! if (interface%steering%init) allocate( outdra (interface%params_siml%outnt,ngridcells)     )     ! daily solar irradiation, J/m2
-        ! if (interface%steering%init) allocate( outdrn (interface%params_siml%outnt,ngridcells)     )     ! daily net radiation, J/m2
-        ! if (interface%steering%init) allocate( outdayl(interface%params_siml%outnt,ngridcells)     )     ! daily day length, h
-        ! if (interface%steering%init) allocate( outdcn (interface%params_siml%outnt,ngridcells)     )     ! daily condensation water, mm
-        ! if (interface%steering%init) allocate( outdro (nlu,interface%params_siml%outnt,ngridcells) )     ! daily runoff, mm
-        ! if (interface%steering%init) allocate( outdfleach (nlu,interface%params_siml%outnt,ngridcells) ) ! daily leaching fraction, (unitless)
-        ! if (interface%steering%init) allocate( outdeet(interface%params_siml%outnt,ngridcells)     )     ! daily equilibrium ET, mm
-        ! if (interface%steering%init) allocate( outdcpa(nlu,interface%params_siml%outnt,ngridcells) )     ! daily Cramer-Prentice-Alpha, (unitless)
-        ! if (interface%steering%init) allocate( outdecon(interface%params_siml%outnt,ngridcells) )        ! daily water-to-energy conversion factor
+        allocate( outdwcont (nlu,interface%params_siml%outnt,ngridcells) )  ! daily soil moisture, mm
+        allocate( outdppfd (interface%params_siml%outnt,ngridcells)   )     ! daily PPFD, mol/m2
+        allocate( outdpet(interface%params_siml%outnt,ngridcells)     )     ! daily potential ET, mm
+        allocate( outdaet(nlu,interface%params_siml%outnt,ngridcells) )     ! daily actual ET, mm
+        ! allocate( outdra (interface%params_siml%outnt,ngridcells)     )     ! daily solar irradiation, J/m2
+        ! allocate( outdrn (interface%params_siml%outnt,ngridcells)     )     ! daily net radiation, J/m2
+        ! allocate( outdayl(interface%params_siml%outnt,ngridcells)     )     ! daily day length, h
+        ! allocate( outdcn (interface%params_siml%outnt,ngridcells)     )     ! daily condensation water, mm
+        ! allocate( outdro (nlu,interface%params_siml%outnt,ngridcells) )     ! daily runoff, mm
+        ! allocate( outdfleach (nlu,interface%params_siml%outnt,ngridcells) ) ! daily leaching fraction, (unitless)
+        ! allocate( outdeet(interface%params_siml%outnt,ngridcells)     )     ! daily equilibrium ET, mm
+        ! allocate( outdcpa(nlu,interface%params_siml%outnt,ngridcells) )     ! daily Cramer-Prentice-Alpha, (unitless)
+        ! allocate( outdecon(interface%params_siml%outnt,ngridcells) )        ! daily water-to-energy conversion factor
       end if
       outdwcont(:,:,:)  = 0.0
       outdppfd(:,:)     = 0.0
@@ -1579,6 +1574,25 @@ contains
     end if
 
   end subroutine initoutput_waterbal
+
+
+  subroutine init_rlm_waterbal( ngridcells )
+    !////////////////////////////////////////////////////////////////
+    ! Initialises waterbalance-specific output variables
+    ! The same subroutine is used here for initialising rolling mean variables
+    !----------------------------------------------------------------
+    use md_interface, only: interface
+
+    ! arguments
+    integer, intent(in) :: ngridcells
+
+    ! Rolling mean variables
+    if (interface%steering%init) then
+      if (.not.allocated(rlmalpha)) allocate( rlmalpha(nlu,ngridcells) )
+    end if
+    rlmalpha(:,:) = 0.0
+
+  end subroutine init_rlm_waterbal
 
 
   subroutine getout_daily_waterbal( jpngr, moy, doy, solar, phy )
@@ -1644,7 +1658,28 @@ contains
   end subroutine getout_daily_waterbal
 
 
-  subroutine get_rlm_waterbal( phy )
+  subroutine getrlm_daily_waterbal( jpngr, doy )
+    !////////////////////////////////////////////////////////////////
+    ! Collect daily output variables
+    ! so far not implemented for isotopes
+    !----------------------------------------------------------------
+    use md_interface, only: interface
+    use md_tile, only: psoilphystype
+
+    ! argument
+    integer, intent(in)                               :: jpngr
+    integer, intent(in)                               :: doy    
+
+    if (evap(1)%pet > 0.0) then
+      rlmalpha(:,jpngr)  = rlmalpha(:,jpngr) + (evap(:)%aet / evap(1)%pet) / ndayyear
+    else
+      rlmalpha(:,jpngr)  = rlmalpha(:,jpngr) + 1.0 / ndayyear
+    end if
+
+  end subroutine getrlm_daily_waterbal
+
+
+  subroutine get_rlm_waterbal( phy, init )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates the rolling mean of relevant variables
     ! This requires the full arrays (all gridcells) to be stored.
@@ -1654,21 +1689,19 @@ contains
 
     ! arguments
     type( psoilphystype ), dimension(:,:), intent(inout) :: phy
+    logical :: init
 
     ! local variables
-    integer, save :: ncalls = 0
+    integer, save :: ncalls
     integer :: nyrs_uptonow
     integer :: lu
 
+    if (init) ncalls = 0
     ncalls = ncalls + 1
     nyrs_uptonow = min( ncalls, nyrs_rlmalpha )
 
     do lu=1,nlu
-      where (outapet(:) > 0.0)
-        phy(lu,:)%rlmalpha = ( phy(lu,:)%rlmalpha * (nyrs_uptonow - 1) + outaalpha(lu,:) ) / nyrs_uptonow
-      elsewhere
-        phy(lu,:)%rlmalpha = 1.0
-      end where
+      phy(lu,:)%rlmalpha = ( phy(lu,:)%rlmalpha * (nyrs_uptonow - 1) + rlmalpha(lu,:) ) / nyrs_uptonow
     end do
 
   end subroutine get_rlm_waterbal

@@ -4,7 +4,7 @@ module md_biosphere
   use md_classdefs
   use md_plant, only: plant_type, plant_fluxes_type, initdaily_plant, initglobal_plant, getout_daily_plant, getout_annual_plant, getpar_modl_plant, initoutput_plant, writeout_ascii_plant, initio_plant, initio_nc_plant, writeout_nc_plant
   use md_params_soil, only: paramtype_soil
-  use md_waterbal, only: solartype, waterbal, getsolar, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, writeout_nc_waterbal, get_rlm_waterbal
+  use md_waterbal, only: solartype, waterbal, getsolar, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, writeout_nc_waterbal, init_rlm_waterbal, get_rlm_waterbal, getrlm_daily_waterbal
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initio_gpp, initoutput_gpp, getlue, gpp, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp, initio_nc_gpp, writeout_nc_gpp
   use md_vegdynamics, only: vegdynamics
   use md_tile, only: tile_type, initglobal_tile
@@ -126,12 +126,16 @@ contains
       if (verbose) print*, '... done'
     end if
 
+    ! additional initialisation for rolling annual mean calculations (also needed in calibration mode)
+    call init_rlm_waterbal( size(interface%grid) )
+
     !----------------------------------------------------------------
     ! LOOP THROUGH GRIDCELLS
     !----------------------------------------------------------------
-    print*,'looping through gridcells ...'
+    if (verbose) print*,'looping through gridcells ...'
     gridcellloop: do jpngr=1,size(interface%grid)
     ! gridcellloop: do jpngr=48790,48790   ! negative PET in january 2010
+      
       if (interface%grid(jpngr)%dogridcell) then
 
         if (verbose) print*,'----------------------'
@@ -413,6 +417,9 @@ contains
               if (verbose) print*,'... done'
             end if
 
+            ! additional getout for rolling annual mean calculations (also needed in calibration mode)
+            call getrlm_daily_waterbal( jpngr, doy )
+
             !----------------------------------------------------------------
             ! populate function return variable
             !----------------------------------------------------------------
@@ -426,8 +433,10 @@ contains
         ! collect annual output
         !----------------------------------------------------------------
         if (.not.interface%params_siml%is_calib) then
+          if (verbose) print*,'calling getout_annual_() ... '
           call getout_annual_plant( plant(:,jpngr), jpngr )
           call getout_annual_gpp( jpngr )
+          if (verbose) print*,'... done'
         end if
 
       end if
@@ -436,7 +445,7 @@ contains
     !----------------------------------------------------------------
     ! Get rolling multi-year averages (needs to store entire arrays)
     !----------------------------------------------------------------
-    call get_rlm_waterbal( tile(:,:)%soil%phy )
+    call get_rlm_waterbal( tile(:,:)%soil%phy, interface%steering%init )
 
     !----------------------------------------------------------------
     ! Write to ascii output
@@ -450,11 +459,16 @@ contains
     ! Write to NetCDF output
     !----------------------------------------------------------------
     if (.not.interface%params_siml%is_calib) then
+      if (verbose) print*,'calling writeout_nc_() ... '
       call writeout_nc_forcing()
       call writeout_nc_gpp()
       call writeout_nc_waterbal()
       call writeout_nc_plant()
+      if (verbose) print*,'... done'
     end if
+
+
+    if (verbose) print*,'Done with biosphere for this year. Guete Rutsch!'
 
   end function biosphere_annual
 
