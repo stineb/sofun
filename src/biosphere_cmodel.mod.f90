@@ -139,7 +139,7 @@ contains
       if (interface%grid(jpngr)%dogridcell) then
 
         if (verbose) print*,'----------------------'
-        if (verbose) print*,'jpngr ', jpngr
+        if (verbose) print*,'JPNGR: ', jpngr
         if (verbose) print*,'----------------------'
 
         !----------------------------------------------------------------
@@ -423,6 +423,7 @@ contains
             !----------------------------------------------------------------
             ! populate function return variable
             !----------------------------------------------------------------
+            print*,'plant(1,jpngr)%fapar_ind', plant(1,jpngr)%fapar_ind
             out_biosphere%fapar(doy) = plant(1,jpngr)%fapar_ind
 
           end do dayloop

@@ -40,6 +40,9 @@ program main
   character(len=6) :: line
   integer :: nruns, irun
 
+  ! xxx debug
+  integer :: doy 
+
   !----------------------------------------------------------------
   ! READ SIMULATION SUITE NAME AND PARAMETERS FROM STANDARD INPUT
   !----------------------------------------------------------------
@@ -242,6 +245,11 @@ program main
       !----------------------------------------------------------------
       out_biosphere = biosphere_annual() 
       !----------------------------------------------------------------
+
+      ! xxx debug
+      do doy=1,ndayyear
+        print*,'obs, mod: ', interface%dfapar_field(doy,1), out_biosphere%fapar(doy)
+      end do
 
       ! calculate cost of mod-obs fit (sum annual costs)
       if (yr > interface%params_siml%spinupyears ) &
