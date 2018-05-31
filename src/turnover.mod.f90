@@ -61,6 +61,7 @@ contains
     real :: dlabl
     real :: dleaf
     real :: droot
+    ! real :: balance
 
     ! xxx verbose
     logical, parameter :: verbose = .false.
@@ -78,6 +79,8 @@ contains
       ! assuming no continuous leaf turnover
       !--------------------------------------------------------------
       if (params_pft_plant(pft)%grass) then
+
+        ! balance = plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex
 
         if (temppheno(pft)%shedleaves) then
 

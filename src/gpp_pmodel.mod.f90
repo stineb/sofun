@@ -42,7 +42,7 @@ module md_gpp
   real, parameter :: kPo = 101325.0        ! standard atmosphere, Pa (Allen, 1973)
   real, parameter :: kTo = 25.0            ! base temperature, deg C (Prentice, unpublished)
   real, parameter :: temp0 = 0.0           ! temperature below which all quantities are zero (deg C)
-  real, parameter :: temp1 = 12.0          ! temperature above which ramp function is 1.0 (linear between temp0 and temp1) (deg C)
+  real, parameter :: temp1 = 5.0           ! temperature above which ramp function is 1.0 (linear between temp0 and temp1) (deg C)
 
   !-----------------------------------------------------------------------
   ! Metabolic N ratio (N per unit Vcmax)
@@ -639,6 +639,7 @@ contains
       ! rd_unitfapar  = ftemp_inst_rd * rd25_unitfapar
       ! rd_unitiabs   = ftemp_inst_rd * rd25_unitiabs 
 
+      ! print*,'fr/fv: ', ftemp_inst_rd / ftemp_inst_vcmax
       rd           = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax
       rd_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitfapar
       rd_unitiabs  = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitiabs 
@@ -1403,11 +1404,11 @@ contains
     ! function return variable
     real :: ftemp
 
-    ! ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
-    ! ftemp = max( 0.0, min( 1.0, (dtemp - temp0) / temp1 ) )
+    ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
+    ftemp = max( 0.0, min( 1.0, (dtemp - temp0) / temp1 ) )
 
-    ! no temperature ramp
-    ftemp = 1.0
+    ! ! no temperature ramp
+    ! ftemp = 1.0
 
   end function ramp_gpp_lotemp
 

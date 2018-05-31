@@ -423,7 +423,7 @@ contains
             !----------------------------------------------------------------
             ! populate function return variable
             !----------------------------------------------------------------
-            print*,'plant(1,jpngr)%fapar_ind', plant(1,jpngr)%fapar_ind
+            ! print*,'plant(1,jpngr)%fapar_ind', plant(1,jpngr)%fapar_ind
             out_biosphere%fapar(doy) = plant(1,jpngr)%fapar_ind
 
           end do dayloop

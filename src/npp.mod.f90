@@ -114,10 +114,10 @@ contains
       ! !     pool (negative values), shut down organism (zero GPP, NPP, etc., 
       ! !     but continuing turnover).
       ! !-------------------------------------------------------------------------
-      ! ! This option (deactivate_root) leads to good results, the alternative leads to on-off growth. Unclear why.
-      ! if ( (plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex) < 0.0 ) then
-      !   call deactivate_root( plant_fluxes(pft)%dgpp, plant_fluxes(pft)%drleaf, plant(pft)%plabl%c%c12, plant(pft)%proot, plant_fluxes(pft)%drroot, plant_fluxes(pft)%dnpp%c12, plant_fluxes(pft)%dcex, dtemp, plant(pft)%plitt_bg )
-      ! end if
+      ! ! ! This option (deactivate_root) leads to good results, the alternative leads to on-off growth. Unclear why.
+      ! ! if ( (plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex) < 0.0 ) then
+      ! !   call deactivate_root( plant_fluxes(pft)%dgpp, plant_fluxes(pft)%drleaf, plant(pft)%plabl%c%c12, plant(pft)%proot, plant_fluxes(pft)%drroot, plant_fluxes(pft)%dnpp%c12, plant_fluxes(pft)%dcex, dtemp, plant(pft)%plitt_bg )
+      ! ! end if
 
       ! ! -------------------------------------------------------------------------
       ! ! the alternative formulation with shutting all fluxes down and decaying
@@ -161,7 +161,6 @@ contains
       !   ! if ( .not. interface%steering%dofree_alloc ) frac_leaf(pft) = 0.5
       
       ! end if
-
 
       !/////////////////////////////////////////////////////////////////////////
       ! EXUDATES

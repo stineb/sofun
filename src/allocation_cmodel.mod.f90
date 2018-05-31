@@ -65,24 +65,25 @@ contains
     ! local variables
     integer :: lu
     integer :: pft
-    real, parameter :: f_labl = 0.1
+    real, parameter :: f_labl_max = 0.5
+    real, parameter :: f_labl_min = 0.05
     real, parameter :: k_labl = 0.1
-    real :: c_reserve_pot, c_to_storage, f_to_storage, f_demand_labl
-    type( orgpool ) :: pgrow
+    real :: c_reserve_max, c_to_storage, f_to_storage, f_demand_labl
+    type( orgpool ) :: pgrow, org_reserve_min
 
     ! xxx debug
     type( orgpool ) :: bal1, bal2, bald
 
     ! Variables N balance test
     logical, parameter :: baltest_trans = .true.  ! set to true to do mass conservation test during transient simulation
-    logical :: verbose = .false.  ! set to true to activate verbose mode
+    logical :: verbose
     logical :: baltest
     type( orgpool ) :: orgtmp1, orgtmp2, orgbal1, orgbal2
     real :: ctmp
 
     !------------------------------------------------------------------
     baltest = .false.
-    verbose = .false.
+    verbose = .true.
     !------------------------------------------------------------------
 
     ! initialise
@@ -101,137 +102,150 @@ contains
       !-------------------------------------------------------------------------
       ! C available for growth in labile, leaves or roots
       pgrow = orgpool( carbon( plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex ), plant_fluxes(pft)%dnup )
-      if (verbose) print*,'pgrow 1: ', pgrow
-      if (verbose) print*,'plabl   1: ', plant(pft)%plabl
+      ! if (verbose) print*,'pgrow 1: ', pgrow
+      ! if (verbose) print*,'plabl   1: ', plant(pft)%plabl
 
-      ! Get the maximum potential NSC storage pool as a function of leaf and root mass
-      c_reserve_pot = f_labl * ( plant(pft)%pleaf%c%c12 + plant(pft)%proot%c%c12 )
+      if (pgrow%c%c12<0.0) then
 
-      ! Get "demand-factor" of NSC storage pool, proportional to its "emptiness"
-      if (c_reserve_pot==0.0) then
-        f_demand_labl = 0.0
+        ! print*,'Negative growth:', pgrow%c%c12
+
+        ! deplete labile pool and no growth this day
+        f_to_storage = 1.0
+        call orgmv( orgfrac( f_to_storage, pgrow ), pgrow, plant(pft)%plabl )
+
       else
-        f_demand_labl = max( 0.0, 1.0 - plant(pft)%plabl%c%c12 / c_reserve_pot )
-      end if
 
-      ! Get C flux to fill up NSC storage
-      c_to_storage = min( f_demand_labl * (c_reserve_pot - plant(pft)%plabl%c%c12), pgrow%c%c12 )
-      if (pgrow%c%c12==0.0) then
-        f_to_storage = 0.0
-      else
-        f_to_storage = c_to_storage / pgrow%c%c12
-      end if
-      if (verbose) print*,'fraction to storage:', f_to_storage
+        ! Get the maximum and minimum NSC storage pool as a function of leaf and root mass
+        c_reserve_max   = f_labl_max * ( plant(pft)%pleaf%c%c12 + plant(pft)%proot%c%c12 )
+        org_reserve_min = orgfrac( f_labl_min, orgplus( plant(pft)%pleaf, plant(pft)%proot ) )
 
-      ! C and N balance 1: addition to storage
-      call orgmv( orgfrac( f_to_storage, pgrow ), pgrow, plant(pft)%plabl )
-      if (verbose) print*,'pgrow 2: ', pgrow
-      if (verbose) print*,'plabl   2: ', plant(pft)%plabl
-
-      ! C and N balance 2: add C and N available for growth from turnover of NSC storage pool
-      call orgmv( orgfrac( k_labl, plant(pft)%plabl), plant(pft)%plabl, pgrow )
-      if (verbose) print*,'pgrow 3: ', pgrow
-      if (verbose) print*,'plabl   3: ', plant(pft)%plabl
-
-
-      if (params_pft_plant(pft)%grass) then
-
-        if (pgrow%c%c12>0.0 .and. dtemp>0.0) then
-          !------------------------------------------------------------------
-          ! Calculate maximum C allocatable based on current labile pool size.
-          ! Maximum is the lower of all labile C and the C to be matched by all labile N,
-          ! discounted by the yield factor.
-          !------------------------------------------------------------------
-          if (plant(pft)%pleaf%c%c12==0.0) then
-            call update_leaftraits_init( plant(pft), pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
-            ! leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
-          end if
-
-          !-------------------------------------------------------------------
-          ! GROWTH RESPIRATION, NPP
-          !-------------------------------------------------------------------
-          plant_fluxes(pft)%drgrow = (1.0 - params_plant%growtheff) * pgrow%c%c12
-          pgrow%c%c12 = pgrow%c%c12 - plant_fluxes(pft)%drgrow       
-
-          !-------------------------------------------------------------------
-          ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
-          !-------------------------------------------------------------------
-          dcleaf(pft) = params_plant%frac_leaf * pgrow%c%c12
-          dcroot(pft) = (1.0 - params_plant%frac_leaf) * pgrow%c%c12
-
-          !-------------------------------------------------------------------
-          ! LEAF ALLOCATION
-          !-------------------------------------------------------------------
-          ! if (verbose) print*, 'calling allocate_leaf() ... '
-          ! if (verbose) print*, '              with state variables:'
-          ! if (verbose) print*, '              pleaf = ', plant(:)%pleaf
-          ! if (verbose) print*, '              proot = ', plant(:)%proot
-          ! if (verbose) print*, '              pgrow = ', pgrow
-          ! if (baltest) orgbal1 = orgplus( plant(pft)%pleaf, plant(pft)%proot, pgrow )
-          call allocate_leaf( pft, &
-                              dcleaf(pft), &
-                              plant(pft)%pleaf, &
-                              plant(pft)%lai_ind, &
-                              pgrow, &
-                              solar%meanmppfd(:), &
-                              out_pmodel(pft,:)%actnv_unitiabs, &
-                              dnleaf(pft), &
-                              plant_fluxes(pft) &
-                              )
-          ! if (baltest) orgbal2 = orgplus( plant(pft)%pleaf, plant(pft)%proot, pgrow )
-          ! if (verbose) print*, '              ==> returned from allocate_leaf(): '
-          ! if (verbose) print*, '              pleaf = ', plant(:)%pleaf
-          ! if (verbose) print*, '              proot = ', plant(:)%proot
-          ! if (verbose) print*, '              pgrow = ', pgrow
-          ! if (baltest) orgbal1 = orgminus( orgbal2, orgbal1 )
-          ! if (baltest) print*, '            balance =', orgbal1
-          ! if (baltest .and. abs(orgbal1%c%c12)>eps*10) stop 'balance A not satisfied for C'
-
-          !-------------------------------------------------------------------  
-          ! Update leaf traits
-          !-------------------------------------------------------------------  
-          call update_leaftraits( plant(pft), pft, plant(pft)%lai_ind, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
-
-          !-------------------------------------------------------------------  
-          ! Update fpc_grid and fapar_ind (not lai_ind)
-          !-------------------------------------------------------------------  
-          plant(pft)%fapar_ind = get_fapar( plant(pft)%lai_ind )
-          ! print*,'plant(pft)%fapar_ind: ', plant(pft)%fapar_ind
-
-          !-------------------------------------------------------------------
-          ! ROOT ALLOCATION
-          !-------------------------------------------------------------------
-          ! if (verbose) print*, 'calling allocate_root() ... '
-          ! if (verbose) print*, '              with state variables:'
-          ! if (verbose) print*, '              pleaf = ', plant(:)%pleaf
-          ! if (verbose) print*, '              proot = ', plant(:)%proot
-          ! if (verbose) print*, '              pgrow = ', pgrow
-          ! if (baltest) orgbal1 = orgplus( plant(pft)%pleaf, plant(pft)%proot, pgrow )
-          call allocate_root( &
-                              pft, &
-                              dcroot(pft), &
-                              plant(pft)%proot, &
-                              pgrow, &
-                              dnroot(pft), &
-                              plant_fluxes(pft) &
-                              )
-          ! if (baltest) orgbal2 = orgplus( plant(pft)%pleaf, plant(pft)%proot, pgrow )
-          ! if (verbose) print*, '              ==> returned from allocate_root(): '
-          ! if (verbose) print*, '              pleaf = ', plant(:)%pleaf
-          ! if (verbose) print*, '              proot = ', plant(:)%proot
-          ! if (verbose) print*, '              pgrow = ', pgrow
-          ! if (baltest) orgbal1 = orgminus( orgbal2, orgbal1 )
-          ! if (baltest) print*, '            balance =', orgbal1
-          ! if (baltest .and. abs(orgbal1%c%c12)>eps*10) stop 'after allocate_root() balance not satisfied for C'
-          ! if (baltest .and. pgrow%c%c12>eps*10) stop 'C for growth not used up' 
-
-          if ( pgrow%n%n14<0.0 ) pgrow%n%n14 = 0.0
-
+        ! Get "demand-factor" of NSC storage pool, proportional to its "emptiness"
+        if (c_reserve_max==0.0) then
+          f_demand_labl = 0.0
+        else
+          f_demand_labl = max( 0.0, 1.0 - plant(pft)%plabl%c%c12 / c_reserve_max )
         end if
 
-      else
+        ! Get C flux to fill up NSC storage
+        c_to_storage = min( f_demand_labl * (c_reserve_max - plant(pft)%plabl%c%c12), pgrow%c%c12 )
+        if (pgrow%c%c12==0.0) then
+          f_to_storage = 0.0
+        else
+          f_to_storage = c_to_storage / pgrow%c%c12
+        end if
+        if (verbose) print*,'fraction to storage:', f_to_storage
 
-        stop 'allocation_daily not implemented for trees'
+        ! C and N balance 1: addition to storage
+        call orgmv( orgfrac( f_to_storage, pgrow ), pgrow, plant(pft)%plabl )
+        ! if (verbose) print*,'pgrow 2: ', pgrow
+        ! if (verbose) print*,'plabl   2: ', plant(pft)%plabl
+
+        ! C and N balance 2: add C and N available for growth from turnover of NSC storage pool
+        call orgmv( orgfrac( k_labl, orgminus( plant(pft)%plabl, org_reserve_min ) ), plant(pft)%plabl, pgrow )
+        ! if (verbose) print*,'pgrow 3: ', pgrow
+        ! if (verbose) print*,'plabl   3: ', plant(pft)%plabl
+
+
+        if (params_pft_plant(pft)%grass) then
+
+          if (pgrow%c%c12>0.0 .and. dtemp>0.0) then
+            !------------------------------------------------------------------
+            ! Calculate maximum C allocatable based on current labile pool size.
+            ! Maximum is the lower of all labile C and the C to be matched by all labile N,
+            ! discounted by the yield factor.
+            !------------------------------------------------------------------
+            if (plant(pft)%pleaf%c%c12==0.0) then
+              call update_leaftraits_init( plant(pft), pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+              ! leaftraits(pft) = get_leaftraits_init( pft, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+            end if
+
+            !-------------------------------------------------------------------
+            ! GROWTH RESPIRATION, NPP
+            !-------------------------------------------------------------------
+            plant_fluxes(pft)%drgrow = (1.0 - params_plant%growtheff) * pgrow%c%c12
+            pgrow%c%c12 = pgrow%c%c12 - plant_fluxes(pft)%drgrow       
+
+            !-------------------------------------------------------------------
+            ! Determine allocation to roots and leaves, fraction given by 'frac_leaf'
+            !-------------------------------------------------------------------
+            dcleaf(pft) = params_plant%frac_leaf * pgrow%c%c12
+            dcroot(pft) = (1.0 - params_plant%frac_leaf) * pgrow%c%c12
+
+            !-------------------------------------------------------------------
+            ! LEAF ALLOCATION
+            !-------------------------------------------------------------------
+            ! if (verbose) print*, 'calling allocate_leaf() ... '
+            ! if (verbose) print*, '              with state variables:'
+            ! if (verbose) print*, '              pleaf = ', plant(:)%pleaf
+            ! if (verbose) print*, '              proot = ', plant(:)%proot
+            ! if (verbose) print*, '              pgrow = ', pgrow
+            ! if (baltest) orgbal1 = orgplus( plant(pft)%pleaf, plant(pft)%proot, pgrow )
+            call allocate_leaf( pft, &
+                                dcleaf(pft), &
+                                plant(pft)%pleaf, &
+                                plant(pft)%lai_ind, &
+                                pgrow, &
+                                solar%meanmppfd(:), &
+                                out_pmodel(pft,:)%actnv_unitiabs, &
+                                dnleaf(pft), &
+                                plant_fluxes(pft) &
+                                )
+            ! if (baltest) orgbal2 = orgplus( plant(pft)%pleaf, plant(pft)%proot, pgrow )
+            ! if (verbose) print*, '              ==> returned from allocate_leaf(): '
+            ! if (verbose) print*, '              pleaf = ', plant(:)%pleaf
+            ! if (verbose) print*, '              proot = ', plant(:)%proot
+            ! if (verbose) print*, '              pgrow = ', pgrow
+            ! if (baltest) orgbal1 = orgminus( orgbal2, orgbal1 )
+            ! if (baltest) print*, '            balance =', orgbal1
+            ! if (baltest .and. abs(orgbal1%c%c12)>eps*10) stop 'balance A not satisfied for C'
+
+            !-------------------------------------------------------------------  
+            ! Update leaf traits
+            !-------------------------------------------------------------------  
+            call update_leaftraits( plant(pft), pft, plant(pft)%lai_ind, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+
+            !-------------------------------------------------------------------  
+            ! Update fpc_grid and fapar_ind (not lai_ind)
+            !-------------------------------------------------------------------  
+            plant(pft)%fapar_ind = get_fapar( plant(pft)%lai_ind )
+            ! print*,'plant(pft)%fapar_ind: ', plant(pft)%fapar_ind
+
+            !-------------------------------------------------------------------
+            ! ROOT ALLOCATION
+            !-------------------------------------------------------------------
+            ! if (verbose) print*, 'calling allocate_root() ... '
+            ! if (verbose) print*, '              with state variables:'
+            ! if (verbose) print*, '              pleaf = ', plant(:)%pleaf
+            ! if (verbose) print*, '              proot = ', plant(:)%proot
+            ! if (verbose) print*, '              pgrow = ', pgrow
+            ! if (baltest) orgbal1 = orgplus( plant(pft)%pleaf, plant(pft)%proot, pgrow )
+            call allocate_root( &
+                                pft, &
+                                dcroot(pft), &
+                                plant(pft)%proot, &
+                                pgrow, &
+                                dnroot(pft), &
+                                plant_fluxes(pft) &
+                                )
+            ! if (baltest) orgbal2 = orgplus( plant(pft)%pleaf, plant(pft)%proot, pgrow )
+            ! if (verbose) print*, '              ==> returned from allocate_root(): '
+            ! if (verbose) print*, '              pleaf = ', plant(:)%pleaf
+            ! if (verbose) print*, '              proot = ', plant(:)%proot
+            ! if (verbose) print*, '              pgrow = ', pgrow
+            ! if (baltest) orgbal1 = orgminus( orgbal2, orgbal1 )
+            ! if (baltest) print*, '            balance =', orgbal1
+            ! if (baltest .and. abs(orgbal1%c%c12)>eps*10) stop 'after allocate_root() balance not satisfied for C'
+            ! if (baltest .and. pgrow%c%c12>eps*10) stop 'C for growth not used up' 
+
+            if ( pgrow%n%n14<0.0 ) pgrow%n%n14 = 0.0
+
+          end if
+
+        else
+
+          stop 'allocation_daily not implemented for trees'
+
+        end if
 
       end if
 
@@ -366,7 +380,7 @@ contains
       plant_fluxes%dnup%n14 = plant_fluxes%dnup%n14 - pgrow%n%n14
       plant_fluxes%dnup_fix = plant_fluxes%dnup_fix - pgrow%n%n14
       pgrow%n%n14 = 0.0
-      print*,'allocate_root: warning: filling up missing N'
+      ! print*,'allocate_root: warning: filling up missing N'
     end if
   
   end subroutine allocate_root
