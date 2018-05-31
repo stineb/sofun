@@ -102,12 +102,12 @@ contains
       !-------------------------------------------------------------------------
       ! C available for growth in labile, leaves or roots
       pgrow = orgpool( carbon( plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex ), plant_fluxes(pft)%dnup )
-      ! if (verbose) print*,'pgrow 1: ', pgrow
-      ! if (verbose) print*,'plabl   1: ', plant(pft)%plabl
+      if (verbose) print*,'pgrow 1: ', pgrow
+      if (verbose) print*,'plabl   1: ', plant(pft)%plabl
 
       if (pgrow%c%c12<0.0) then
 
-        ! print*,'Negative growth:', pgrow%c%c12
+        if (verbose) print*,'Negative growth:', pgrow%c%c12
 
         ! deplete labile pool and no growth this day
         f_to_storage = 1.0
@@ -142,13 +142,12 @@ contains
 
         ! C and N balance 2: add C and N available for growth from turnover of NSC storage pool
         call orgmv( orgfrac( k_labl, orgminus( plant(pft)%plabl, org_reserve_min ) ), plant(pft)%plabl, pgrow )
-        ! if (verbose) print*,'pgrow 3: ', pgrow
-        ! if (verbose) print*,'plabl   3: ', plant(pft)%plabl
-
+        if (verbose) print*,'pgrow 3: ', pgrow
+        if (verbose) print*,'plabl   3: ', plant(pft)%plabl
 
         if (params_pft_plant(pft)%grass) then
 
-          if (pgrow%c%c12>0.0 .and. dtemp>0.0) then
+          if (pgrow%c%c12>0.0) then
             !------------------------------------------------------------------
             ! Calculate maximum C allocatable based on current labile pool size.
             ! Maximum is the lower of all labile C and the C to be matched by all labile N,

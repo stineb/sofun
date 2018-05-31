@@ -7,7 +7,7 @@
 lu_category_prov                        1.00000
 k_decay_leaf_base                       4.00000
 k_decay_leaf_width                      0.00000
-k_decay_root                            1.20000
+k_decay_root                            4.00000
 k_decay_labl                            0.00000
 k_decay_sapw                            1.00000
 r_cton_root                             37.0000

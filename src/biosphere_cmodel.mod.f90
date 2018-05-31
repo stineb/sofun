@@ -53,7 +53,7 @@ contains
     integer :: dm, moy, jpngr, doy
 
     ! xxx debug
-    logical, parameter :: verbose = .false.
+    logical, parameter :: verbose = .true.
     logical, parameter :: splashtest = .false.
     integer, parameter :: lev_splashtest = 2
     integer, parameter :: testdoy = 55
@@ -178,8 +178,8 @@ contains
         !----------------------------------------------------------------
         if (verbose) print*,'calling getlue() ... '
         if (verbose) print*,'    with argument CO2  = ', interface%pco2
-        if (verbose) print*,'    with argument temp.= ', interface%climate(jpngr)%dtemp(:)
-        if (verbose) print*,'    with argument VPD  = ', interface%climate(jpngr)%dvpd(:)
+        if (verbose) print*,'    with argument temp.= ', interface%climate(jpngr)%dtemp(1:10)
+        if (verbose) print*,'    with argument VPD  = ', interface%climate(jpngr)%dvpd(1:10)
         if (verbose) print*,'    with argument elv. = ', interface%grid(jpngr)%elv
         out_pmodel(:,:) = getlue( &
                                   interface%pco2, & 
@@ -290,6 +290,8 @@ contains
                       interface%params_siml%soilmstress &
                       )
             if (verbose) print*,'... done'
+
+            if (doy==50) stop 'beni'
 
             !----------------------------------------------------------------
             ! substract autotrophic respiration to get NPP, remainder is added 

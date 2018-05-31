@@ -97,7 +97,7 @@ contains
 
           ! constant turnover rate
           droot = params_pft_plant(pft)%k_decay_root
-          dlabl = params_pft_plant(pft)%k_decay_labl
+          dlabl = 0.0 !    params_pft_plant(pft)%k_decay_labl
 
         end if
 
