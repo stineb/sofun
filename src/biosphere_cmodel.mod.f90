@@ -53,7 +53,7 @@ contains
     integer :: dm, moy, jpngr, doy
 
     ! xxx debug
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
     logical, parameter :: splashtest = .false.
     integer, parameter :: lev_splashtest = 2
     integer, parameter :: testdoy = 55
@@ -290,8 +290,6 @@ contains
                       interface%params_siml%soilmstress &
                       )
             if (verbose) print*,'... done'
-
-            if (doy==50) stop 'beni'
 
             !----------------------------------------------------------------
             ! substract autotrophic respiration to get NPP, remainder is added 

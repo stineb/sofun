@@ -26,11 +26,14 @@ program main
   type( type_params_domain ) :: params_domain
   logical, parameter :: verbose = .false.
 
-  type(outtype_biosphere) :: out_biosphere       ! holds all the output used for calculating the cost or maximum likelihood function 
-  real :: cost_annual = 0.0                      ! annual cost (model-observation fit after Choler et al., 2010 BG)
-  real, allocatable, dimension(:) :: cost_bysite ! cost over multiple years for each site in simsuite
-  real :: cost                                   ! overall cost as median across sites
-  real :: k_decay_tissue                         ! parameter read from standard input
+  type(outtype_biosphere) :: out_biosphere           ! holds all the output used for calculating the cost or maximum likelihood function 
+  real :: cost_annual = 0.0                          ! annual cost (model-observation fit after Choler et al., 2010 BG)
+  real, allocatable, dimension(:) :: cost_bysite     ! cost over multiple years for each site in simsuite
+  real :: cost                                       ! overall cost as median across sites
+  real :: k_decay_tissue                             ! parameter read from standard input
+  real, allocatable, dimension(:,:) :: calibtargets  !
+  integer, parameter :: nvars_calib = 1
+  integer :: idx_start, idx_end
   character(len=20) :: simsuite
 
   ! For runname file reading
@@ -38,7 +41,7 @@ program main
   integer, parameter :: read_unit = 99
   character(len=6), allocatable :: runname_list(:)
   character(len=6) :: line
-  integer :: nruns, irun
+  integer :: nruns, irun, idx
 
   ! xxx debug
   integer :: doy 
@@ -103,6 +106,13 @@ program main
     ! SR getpar_siml is defined in _params_siml.mod.F
     !----------------------------------------------------------------
     interface%params_siml = getpar_siml( trim(runname) )
+
+    !----------------------------------------------------------------
+    ! Allocate memory for target variable arrays for calibration
+    !----------------------------------------------------------------
+    if (interface%params_siml%is_calib) then
+      allocate( calibtargets(interface%params_siml%nyeartrend*ndayyear, nvars_calib) )
+    end if 
 
     !----------------------------------------------------------------
     ! GET SITE PARAMETERS AND INPUT DATA
@@ -246,15 +256,32 @@ program main
       out_biosphere = biosphere_annual() 
       !----------------------------------------------------------------
 
-      ! xxx debug
-      do doy=1,ndayyear
-        print*,'obs, mod: ', interface%dfapar_field(doy,1), out_biosphere%fapar(doy)
-      end do
+      !----------------------------------------------------------------
+      ! Collect output for calibration target variables
+      !----------------------------------------------------------------
+      if (interface%params_siml%is_calib .and. yr>interface%params_siml%spinupyears) then
+        
+        idx_start = (interface%steering%year - interface%params_siml%spinupyears - 1) * ndayyear + 1
+        idx_end   = (interface%steering%year - interface%params_siml%spinupyears - 1) * ndayyear + ndayyear
 
-      ! calculate cost of mod-obs fit (sum annual costs)
-      if (yr > interface%params_siml%spinupyears ) &
-        cost_annual = cost_annual &
-          + ( sum( abs( out_biosphere%fapar(:) - interface%dfapar_field(:,1) ) ) / ndayyear ) / ( sum( interface%dfapar_field(:,1) ) / ndayyear )
+        print*,'interface%steering%year',interface%steering%year
+        print*,'interface%params_siml%spinupyears',interface%params_siml%spinupyears
+        print*,'idx_start', idx_start
+        print*,'idx_end', idx_end
+
+        calibtargets(idx_start:idx_end, 1) = out_biosphere%fapar(:)      ! 1 = fAPAR
+
+      end if
+
+      ! ! xxx debug
+      ! do doy=1,ndayyear
+      !   print*,'obs, mod: ', interface%dfapar_field(doy,1), out_biosphere%fapar(doy)
+      ! end do
+
+      ! ! calculate cost of mod-obs fit (sum annual costs)
+      ! if (yr > interface%params_siml%spinupyears ) &
+      !   cost_annual = cost_annual &
+      !     + ( sum( abs( out_biosphere%fapar(:) - interface%dfapar_field(:,1) ) ) / ndayyear ) / ( sum( interface%dfapar_field(:,1) ) / ndayyear )
 
     enddo yearloop
 
@@ -263,14 +290,33 @@ program main
     ! get final cost
     cost_bysite(irun) = cost_annual / interface%params_siml%nyeartrend
 
+    !----------------------------------------------------------------
+    ! Write target variable arrays for calibration and deallocate
+    !----------------------------------------------------------------
+    if (interface%params_siml%is_calib) then
+
+      ! write to file
+      open( irun, file="output_calib/fapar_tmp_"//trim(runname)//".txt", status="replace" )
+      write( irun, 200 ) calibtargets(:,1)
+      ! write( irun, 200 ) (calibtargets(:,idx), idx=1,(interface%params_siml%nyeartrend*ndayyear))
+      close( irun )
+
+      print*,'interface%params_siml%nyeartrend*ndayyear', interface%params_siml%nyeartrend*ndayyear
+
+      ! deallocate
+      deallocate( calibtargets )
+
+    end if 
+
   end do runloop
 
   ! Get overall cost as median across sites
   cost = median( cost_bysite(:), nruns ) 
-  print*,'cost_bysite: ', cost_bysite
+  ! print*,'cost_bysite: ', cost_bysite
   print*, cost
 
-100  format(F10.7)
+100 format(F10.7)
+200 format (F15.8)
 
 end program main
 

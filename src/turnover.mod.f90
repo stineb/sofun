@@ -268,9 +268,9 @@ contains
 
     end do
 
-    if (nitr>0) print*,'no. of iterations ', nitr
-    if (nitr>0) print*,'final reduction of leaf C ', cleaf / lm_init%c%c12
-    if (nitr>0) print*,'final reduction of leaf N ', nleaf / lm_init%n%n14
+    ! if (nitr>0) print*,'no. of iterations ', nitr
+    ! if (nitr>0) print*,'final reduction of leaf C ', cleaf / lm_init%c%c12
+    ! if (nitr>0) print*,'final reduction of leaf N ', nleaf / lm_init%n%n14
 
     ! update 
     plant%lai_ind = lai_new
