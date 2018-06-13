@@ -46,7 +46,7 @@ contains
     integer :: dm, moy, jpngr, doy
 
     ! xxx debug
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
     logical, parameter :: splashtest = .false.
     integer, parameter :: lev_splashtest = 2
     integer, parameter :: testdoy = 55
@@ -273,7 +273,6 @@ contains
             !----------------------------------------------------------------
             ! collect from daily updated state variables for annual variables
             !----------------------------------------------------------------
-            print*,'1'
             if (.not.interface%params_siml%is_calib) then
               if (verbose) print*,'calling getout_daily() ... '
               call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy )
@@ -284,10 +283,10 @@ contains
               if (verbose) print*,'... done'
             end if
 
-            ! additional getout for rolling annual mean calculations (also needed in calibration mode)
-            print*,'2'
-            call getrlm_daily_waterbal( jpngr, doy )
-            print*,'3'
+            ! ! additional getout for rolling annual mean calculations (also needed in calibration mode)
+            ! print*,'2'
+            ! call getrlm_daily_waterbal( jpngr, doy )
+            ! print*,'3'
 
 
           end do dayloop
@@ -307,10 +306,10 @@ contains
       end if
     end do gridcellloop
 
-    !----------------------------------------------------------------
-    ! Get rolling multi-year averages (needs to store entire arrays)
-    !----------------------------------------------------------------
-    call get_rlm_waterbal( tile(:,:)%soil%phy, interface%steering%init )
+    ! !----------------------------------------------------------------
+    ! ! Get rolling multi-year averages (needs to store entire arrays)
+    ! !----------------------------------------------------------------
+    ! call get_rlm_waterbal( tile(:,:)%soil%phy, interface%steering%init )
 
     !----------------------------------------------------------------
     ! Write to ascii output
