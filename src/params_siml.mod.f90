@@ -36,7 +36,6 @@ module md_params_siml
     
     character(len=256) :: runname
     character(len=256) :: sitename
-    character(len=256) :: input_dir
     character(len=256) :: co2_forcing_file
     character(len=256) :: ndep_noy_forcing_file
     character(len=256) :: ndep_nhx_forcing_file
@@ -275,18 +274,18 @@ contains
     out_getpar_siml%runname = runname
 
     ! sitename         = getparstring( 'run/'//runname//'.sofun.parameter', 'sitename' )
-    ! input_dir        = getparstring( 'run/'//runname//'.sofun.parameter', 'input_dir' )
     ! co2_forcing_file = getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file' )
 
     call getparstring( 'run/'//runname//'.sofun.parameter', 'sitename', out_getpar_siml%sitename )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'input_dir', out_getpar_siml%input_dir )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file', out_getpar_siml%co2_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_noy_forcing_file', out_getpar_siml%ndep_noy_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_nhx_forcing_file', out_getpar_siml%ndep_nhx_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_noy_forcing_file', out_getpar_siml%nfert_noy_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_nhx_forcing_file', out_getpar_siml%nfert_nhx_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
+
+    ! Reading from a different file!
+    call getparstring( 'input/sitedata/fapar/dfapar_source.txt', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
 
     out_getpar_siml%in_netrad         = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_netrad' )
     out_getpar_siml%in_ppfd           = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_ppfd' )

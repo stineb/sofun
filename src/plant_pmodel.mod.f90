@@ -12,13 +12,15 @@ module md_plant
   implicit none
 
   private
-  public plant_type, dgpp, getpar_modl_plant, params_pft_plant,              &
+  public plant_type, plant_fluxes_type, getpar_modl_plant, params_pft_plant, &
     initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant,     &
-    writeout_ascii_plant, maxdoy, initglobal_plant, get_leaftraits, initpft, &
+    writeout_ascii_plant, maxdoy, initglobal_plant, get_leaftraits,          &
     getout_annual_plant
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
+  !----------------------------------------------------------------
+  ! Pools and other variables with year-to-year memory
   !----------------------------------------------------------------
   type plant_type
 
@@ -43,8 +45,17 @@ module md_plant
 
   end type plant_type
 
-  ! fluxes
-  real, dimension(npft) :: dgpp             ! daily gross primary production [gC/m2/d]
+
+  !----------------------------------------------------------------
+  ! Fluxes and other variables with no memory
+  !----------------------------------------------------------------
+  type plant_fluxes_type
+
+    real :: dgpp     ! daily gross primary production [gC/m2/d]           
+    real :: drd      ! daily dark respiration [gC/m2/d]
+    real :: dtransp  ! daily transpiration [mm]
+
+  end type plant_fluxes_type
 
   !-----------------------------------------------------------------------
   ! Parameters. Runtime read-in
@@ -196,7 +207,6 @@ contains
     integer :: pft
     integer :: npft_site
 
-    print*,'1'
     !----------------------------------------------------------------
     ! NON-PFT DEPENDENT PARAMETERS
     !----------------------------------------------------------------
@@ -387,11 +397,16 @@ contains
   end subroutine initpft
 
 
-  subroutine initdaily_plant()
+  subroutine initdaily_plant( plant_fluxes )
+
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     !----------------------------------------------------------------
-    dgpp(:) = 0.0
+    ! arguments
+    type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
+
+    plant_fluxes(:)%dgpp    = 0.0
+    plant_fluxes(:)%drd     = 0.0
 
   end subroutine initdaily_plant
 
@@ -475,7 +490,7 @@ contains
   end subroutine initio_plant
 
 
-  subroutine getout_daily_plant( plant, jpngr, moy, doy )
+  subroutine getout_daily_plant( plant, plant_fluxes, jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
     ! Note that output variables are collected only for those variables
@@ -487,9 +502,10 @@ contains
     use md_interface, only: interface
 
     ! arguments
-    type( plant_type ), dimension(npft), intent(in) :: plant
-    integer, intent(in)                             :: jpngr
-    integer, intent(in)                             :: moy
+    type(plant_type), dimension(npft), intent(in) :: plant
+    type(plant_fluxes_type), dimension(npft), intent(in) :: plant_fluxes
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: moy
     integer, intent(in) :: doy
 
     ! local variables

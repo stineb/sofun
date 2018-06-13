@@ -38,6 +38,9 @@ program main
     stop 'runname too long'
   endif
 
+  ! set parameter to define that this is not a calibration run (otherwise sofun.f90 would not have been compiled, but sofun_simsuite.f90)
+  interface%params_siml%is_calib = .false.
+
   ! write simulation name to standard output (screen)
   write(0,*) '------------SOFUN : '//trim(runname)//'-------------'
 
