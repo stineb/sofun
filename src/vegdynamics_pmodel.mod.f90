@@ -15,7 +15,7 @@ contains
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
     use md_params_core, only: npft, nlu, nmonth, dummy
-    use md_plant, only: initpft, get_leaftraits, plant_type, params_pft_plant
+    use md_plant, only: get_leaftraits, plant_type, params_pft_plant
     use md_tile, only: tile_type
     use md_waterbal, only: solartype
     use md_gpp, only: outtype_pmodel

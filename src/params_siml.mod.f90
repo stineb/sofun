@@ -105,6 +105,7 @@ module md_params_siml
     integer :: outyear         ! year AD written to output
     logical :: spinup          ! is true during spinup
     logical :: init            ! is true in first simulation year
+    logical :: finalize        ! is true in the last simulation year
     logical :: do_soilequil    ! true in year of analytical soil equilibration (during spinup)
     logical :: average_soil    ! true in years before analytical soil equilibration, when average in and out are taken
     logical :: project_nmin    ! true in all years before analytical soil equilibration, when projected soil N mineralisation is used
@@ -217,6 +218,12 @@ contains
       out_steering%init = .false.
     endif 
 
+    if (year==params_siml%runyears) then
+      out_steering%finalize = .true.
+    else
+      out_steering%finalize = .false.
+    end if
+
     ! print*, 'out_steering%climateyear'
     ! print*, out_steering%climateyear
     ! if (year>30) stop
@@ -273,40 +280,19 @@ contains
 
     out_getpar_siml%runname = runname
 
-    ! sitename         = getparstring( 'run/'//runname//'.sofun.parameter', 'sitename' )
-    ! co2_forcing_file = getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file' )
-
+    !------------------------------------------------------------------
+    ! read simulation parameters that may change between runs within an ensemble (simsuite)
+    !------------------------------------------------------------------
     call getparstring( 'run/'//runname//'.sofun.parameter', 'sitename', out_getpar_siml%sitename )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file', out_getpar_siml%co2_forcing_file )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_noy_forcing_file', out_getpar_siml%ndep_noy_forcing_file )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_nhx_forcing_file', out_getpar_siml%ndep_nhx_forcing_file )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_noy_forcing_file', out_getpar_siml%nfert_noy_forcing_file )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_nhx_forcing_file', out_getpar_siml%nfert_nhx_forcing_file )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
 
-    out_getpar_siml%in_netrad         = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_netrad' )
-    out_getpar_siml%in_ppfd           = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_ppfd' )
-    
-    out_getpar_siml%do_spinup         = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
-    
-    out_getpar_siml%const_co2_year    = getparint( 'run/'//runname//'.sofun.parameter', 'const_co2_year' )
-    out_getpar_siml%const_ndep_year   = getparint( 'run/'//runname//'.sofun.parameter', 'const_ndep_year' )
-    out_getpar_siml%const_nfert_year  = getparint( 'run/'//runname//'.sofun.parameter', 'const_nfert_year' )
-    out_getpar_siml%const_clim_year   = getparint( 'run/'//runname//'.sofun.parameter', 'const_clim_year' )
-    out_getpar_siml%const_lu_year     = getparint( 'run/'//runname//'.sofun.parameter', 'const_lu_year' )
-
-    out_getpar_siml%soilmstress       = getparlogical( 'run/'//runname//'.sofun.parameter', 'soilmstress' )
-    
-    out_getpar_siml%spinupyears       = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
     out_getpar_siml%firstyeartrend    = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )
     out_getpar_siml%nyeartrend        = getparint( 'run/'//runname//'.sofun.parameter', 'nyeartrend' )
-    out_getpar_siml%recycle           = getparint( 'run/'//runname//'.sofun.parameter', 'recycle' )
-    
     out_getpar_siml%daily_out_startyr = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_startyr' )
     out_getpar_siml%daily_out_endyr   = getparint( 'run/'//runname//'.sofun.parameter', 'daily_out_endyr' )
-    out_getpar_siml%outdt             = getparint( 'run/'//runname//'.sofun.parameter', 'outdt' )
 
+    out_getpar_siml%spinupyears       = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
+    out_getpar_siml%recycle           = getparint( 'run/'//runname//'.sofun.parameter', 'recycle' )
+    out_getpar_siml%outdt             = getparint( 'run/'//runname//'.sofun.parameter', 'outdt' )
     out_getpar_siml%outnt = ceiling( real( ndayyear ) / real( out_getpar_siml%outdt ) )
 
     if (out_getpar_siml%do_spinup) then
@@ -338,6 +324,32 @@ contains
     print*,'found ', npft_local, ' activated PFTs.'
     if (npft/=npft_local) stop 'GETPAR_SIML: adjust number of activated PFTs by hand in params_core.'
 
+    !------------------------------------------------------------------
+    ! read simulation parameters that do not change change between runs within an ensemble (simsuite)
+    !------------------------------------------------------------------
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file', out_getpar_siml%co2_forcing_file )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_noy_forcing_file', out_getpar_siml%ndep_noy_forcing_file )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_nhx_forcing_file', out_getpar_siml%ndep_nhx_forcing_file )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_noy_forcing_file', out_getpar_siml%nfert_noy_forcing_file )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_nhx_forcing_file', out_getpar_siml%nfert_nhx_forcing_file )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
+
+    ! Reading from a different file!
+    call getparstring( 'input/sitedata/fapar/dfapar_source.txt', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
+
+    out_getpar_siml%in_netrad         = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_netrad' )
+    out_getpar_siml%in_ppfd           = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_ppfd' )
+    
+    out_getpar_siml%do_spinup         = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
+    
+    out_getpar_siml%const_co2_year    = getparint( 'run/'//runname//'.sofun.parameter', 'const_co2_year' )
+    out_getpar_siml%const_ndep_year   = getparint( 'run/'//runname//'.sofun.parameter', 'const_ndep_year' )
+    out_getpar_siml%const_nfert_year  = getparint( 'run/'//runname//'.sofun.parameter', 'const_nfert_year' )
+    out_getpar_siml%const_clim_year   = getparint( 'run/'//runname//'.sofun.parameter', 'const_clim_year' )
+    out_getpar_siml%const_lu_year     = getparint( 'run/'//runname//'.sofun.parameter', 'const_lu_year' )
+
+    out_getpar_siml%soilmstress       = getparlogical( 'run/'//runname//'.sofun.parameter', 'soilmstress' )
+    
     ! boolean for ascii output writing (core variables)
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
     out_getpar_siml%loutdrd        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdrd' )
@@ -380,6 +392,7 @@ contains
     if (.not.out_getpar_siml%loutdfapar   .and. out_getpar_siml%lncoutdfapar   )  out_getpar_siml%loutdfapar   = .true.
     if (.not.out_getpar_siml%loutdgpp     .and. out_getpar_siml%lncoutdgpp     )  out_getpar_siml%loutdgpp     = .true.
     if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%lncoutdwaterbal ) out_getpar_siml%loutwaterbal = .true.
+
 
     print*, "... done"
 

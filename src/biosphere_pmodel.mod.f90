@@ -11,7 +11,6 @@ module md_biosphere
   use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_forcing, initio_nc_forcing, writeout_ascii_forcing, writeout_nc_forcing
   use md_soiltemp, only: getout_daily_soiltemp, soiltemp, initoutput_soiltemp
 
-
   implicit none
 
   private
@@ -73,6 +72,7 @@ contains
       if (verbose) print*, 'initglobal_() ...'
       allocate( tile(  nlu,  size(interface%grid) ) )
       allocate( plant( npft, size(interface%grid) ) )
+      allocate( plant_fluxes( npft ) )
 
       call initglobal_tile(  tile(:,:),  size(interface%grid) )
       call initglobal_plant( plant(:,:), size(interface%grid) )
@@ -93,22 +93,29 @@ contains
     !----------------------------------------------------------------
     ! Open NetCDF output files (one for each year)
     !----------------------------------------------------------------
-    if (verbose) print*, 'initio_nc_() ...'
-    call initio_nc_forcing()
-    call initio_nc_gpp()
-    call initio_nc_waterbal()
-    if (verbose) print*, '... done'
-
+    if (.not.interface%params_siml%is_calib) then
+      if (verbose) print*, 'initio_nc_() ...'
+      call initio_nc_forcing()
+      call initio_nc_gpp()
+      call initio_nc_waterbal()
+      if (verbose) print*, '... done'
+    end if
+    
     !----------------------------------------------------------------
     ! Initialise output variables for this year
     !----------------------------------------------------------------
-    if (verbose) print*, 'initoutput_() ...'
-    call initoutput_waterbal( size(interface%grid) )
-    call initoutput_gpp(      size(interface%grid) )
-    call initoutput_plant(    size(interface%grid) )
-    call initoutput_forcing(  size(interface%grid) )
-    call initoutput_soiltemp( size(interface%grid) )
-    if (verbose) print*, '... done'
+    if (.not.interface%params_siml%is_calib) then
+      if (verbose) print*, 'initoutput_() ...'
+      call initoutput_waterbal( size(interface%grid) )
+      call initoutput_gpp(      size(interface%grid) )
+      call initoutput_plant(    size(interface%grid) )
+      call initoutput_forcing(  size(interface%grid) )
+      call initoutput_soiltemp( size(interface%grid) )
+      if (verbose) print*, '... done'
+    end if
+
+    ! additional initialisation for rolling annual mean calculations (also needed in calibration mode)
+    call init_rlm_waterbal( size(interface%grid) )
 
     !----------------------------------------------------------------
     ! LOOP THROUGH GRIDCELLS
@@ -198,8 +205,10 @@ contains
             !----------------------------------------------------------------
             ! initialise daily updated variables 
             !----------------------------------------------------------------
+            if (verbose) print*,'calling initdaily_() ...'
             call initdaily_plant( plant_fluxes(:) )
             call initdaily_waterbal()
+            if (verbose) print*,'... done.'
 
             !----------------------------------------------------------------
             ! get soil moisture, and runoff
@@ -269,14 +278,16 @@ contains
             !----------------------------------------------------------------
             ! collect from daily updated state variables for annual variables
             !----------------------------------------------------------------
-            if (verbose) print*,'calling getout_daily() ... '
-            call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy )
-            call getout_daily_gpp( out_pmodel(:,moy), plant_fluxes(:), jpngr, doy )
-            call getout_daily_plant( plant(:,jpngr), plant_fluxes(:), jpngr, moy, doy )
-            call getout_daily_forcing( jpngr, moy, doy )
-            call getout_daily_soiltemp( jpngr, moy, doy, tile(:,jpngr)%soil%phy )
-            if (verbose) print*,'... done'
-            ! additional getout for rolling annual mean calculations (also needed in calibration mode)
+            if (.not.interface%params_siml%is_calib) then
+              if (verbose) print*,'calling getout_daily() ... '
+              call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy )
+              call getout_daily_gpp( out_pmodel(:,moy), plant_fluxes(:), jpngr, doy )
+              call getout_daily_plant( plant(:,jpngr), plant_fluxes(:), jpngr, moy, doy )
+              call getout_daily_forcing( jpngr, moy, doy )
+              call getout_daily_soiltemp( jpngr, moy, doy, tile(:,jpngr)%soil%phy )
+              if (verbose) print*,'... done'
+            end if
+
             call getrlm_daily_waterbal( jpngr, doy )
 
             !----------------------------------------------------------------
@@ -319,11 +330,26 @@ contains
     !----------------------------------------------------------------
     ! Write to NetCDF output
     !----------------------------------------------------------------
-    call writeout_nc_forcing()
-    call writeout_nc_gpp()
-    call writeout_nc_waterbal()
+    if (.not.interface%params_siml%is_calib) then
+      if (verbose) print*,'calling writeout_nc_() ... '
+      call writeout_nc_forcing()
+      call writeout_nc_gpp()
+      call writeout_nc_waterbal()
+      if (verbose) print*,'... done'
+    end if
 
 
+    if (interface%steering%finalize) then
+      !----------------------------------------------------------------
+      ! Finazlize run: deallocating memory
+      !----------------------------------------------------------------
+      deallocate( tile )
+      deallocate( plant )
+      deallocate( plant_fluxes )
+
+    end if
+
+    if (verbose) print*,'Done with biosphere for this year. Guete Rutsch!'
 
   end function biosphere_annual
 

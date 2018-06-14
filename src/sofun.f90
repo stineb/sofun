@@ -39,14 +39,16 @@ program main
   endif
 
   ! write simulation name to standard output (screen)
-  write(0,*) '------------SOFUN : '//trim(runname)//'-------------'
+  print*, '------------SOFUN : '//trim(runname)//'-------------'
 
   !----------------------------------------------------------------
   ! GET SIMULATION PARAMETERS FROM FILE <runname>.sofun.parameter
   ! SR getpar_siml is defined in _params_siml.mod.F
   !----------------------------------------------------------------
-  print*,'starting'
   interface%params_siml = getpar_siml( trim(runname) )    
+
+  ! set parameter to define that this is not a calibration run (otherwise sofun.f90 would not have been compiled, but sofun_simsuite.f90)
+  interface%params_siml%is_calib = .false.
 
   !----------------------------------------------------------------
   ! GET SITE PARAMETERS AND INPUT DATA
@@ -90,7 +92,8 @@ program main
 
 
   ! LOOP THROUGH YEARS
-  write(0,*) '-------------------START OF SIMULATION--------------------'
+  write(0,*) 'SOFUN site-level run: ', runname
+  print*, '-------------------START OF SIMULATION--------------------'
 
   do yr=1,interface%params_siml%runyears
 
@@ -101,7 +104,7 @@ program main
     interface%steering = getsteering( yr, interface%params_siml )
 
     if (yr == interface%params_siml%spinupyears+1 ) then
-      write(0,*) '------------------TRANSIENT SIMULATION--------------------'
+      print*, '------------------TRANSIENT SIMULATION--------------------'
     endif
 
     !----------------------------------------------------------------
@@ -158,7 +161,7 @@ program main
     ! Interface holds only total reactive N input (N deposition + N fertiliser)                             
     interface%ninput_field(:) = gettot_ninput( nfert_field(:), ndep_field(:) )
                                  
-    ! write(0,*) 'SOFUN: holding harvesting regime constant at 1993 level.'
+    ! print*, 'SOFUN: holding harvesting regime constant at 1993 level.'
     interface%landuse(:) = getlanduse( &
                                       trim(runname), &
                                       interface%domaininfo, &
@@ -195,7 +198,7 @@ program main
 
   enddo
 
-  write(0,*) '--------------END OF SIMULATION---------------'
+  print*, '--------------END OF SIMULATION---------------'
 
 100  format(A,I6,I6,F8.2)
 ! 888  write(0,*) 'error opening file'

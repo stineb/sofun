@@ -149,7 +149,7 @@ contains
       ! Prescribed. Read monthly fAPAR value from file
       ! create 4-digit string for year  
       write(faparyear_char,999) min( max( 2000, year ), 2014 )
-      fapar_field(:,1) = read1year_daily( 'sitedata/fapar/'//trim(domaininfo%domain_name)//'/'//faparyear_char//'/'//trim(fapar_forcing_source)//'_'//trim(domaininfo%domain_name)//'_'//faparyear_char//'.txt' )
+      fapar_field(:,1) = read1year_daily( 'sitedata/fapar/'//trim(domaininfo%domain_name)//'/'//faparyear_char//'/'//'dfapar_'//trim(domaininfo%domain_name)//'_'//faparyear_char//'.txt' )
 
     end if
 
@@ -200,7 +200,9 @@ contains
       pft = pft + 1
       fpc_grid_field(pft,jpngr) = 1.0
 
-    else if ( params_siml%lGr3 ) then
+    end if 
+
+    if ( params_siml%lGr3 ) then
       ! xxx dirty: call all grass vegetation types 'Gr3'
       pft = pft + 1
       fpc_grid_field(pft,jpngr) = 1.0

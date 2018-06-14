@@ -14,11 +14,13 @@ module md_plant
   private
   public plant_type, plant_fluxes_type, getpar_modl_plant, params_pft_plant, &
     initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant,     &
-    writeout_ascii_plant, maxdoy, initglobal_plant, get_leaftraits, initpft, &
+    writeout_ascii_plant, maxdoy, initglobal_plant, get_leaftraits,          &
     getout_annual_plant
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
+  !----------------------------------------------------------------
+  ! Pools and other variables with year-to-year memory
   !----------------------------------------------------------------
   type plant_type
 

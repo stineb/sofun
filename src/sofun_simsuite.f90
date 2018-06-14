@@ -1,8 +1,10 @@
 program main
   !////////////////////////////////////////////////////////////////
-  !  Main program for site scale simulations, here used for 
-  !  SOFUN (Seasonal Optimisation of Fixation and Uptake of 
-  !  Nitrogen)
+  ! Main program for site scale simulations, here used for 
+  ! SOFUN (Seasonal Optimisation of Fixation and Uptake of 
+  ! Nitrogen)
+  ! Run by:
+  !   echo <simsuite> <k_decay_tissue> | ./run<model>_simuite
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
@@ -24,7 +26,6 @@ program main
   integer, parameter :: maxlen_runname = 50      ! maximum length of runname (arbitrary)
   type( ninput_type ), dimension(maxgrid) :: nfert_field, ndep_field 
   type( type_params_domain ) :: params_domain
-  logical, parameter :: verbose = .false.
 
   type(outtype_biosphere) :: out_biosphere           ! holds all the output used for calculating the cost or maximum likelihood function 
   real :: cost_annual = 0.0                          ! annual cost (model-observation fit after Choler et al., 2010 BG)
@@ -33,7 +34,9 @@ program main
   real :: k_decay_tissue                             ! parameter read from standard input
   real, allocatable, dimension(:,:) :: calibtargets  !
   integer, parameter :: nvars_calib = 1
-  integer :: idx_start, idx_end
+  integer :: totrunyears                             ! To get total number of runnyears
+  integer :: idx_start = 1                           ! Start index in array for calibration target variable 
+  integer :: idx_end                                 ! End index in array for calibration target variable 
   character(len=20) :: simsuite
 
   ! For runname file reading
@@ -87,6 +90,21 @@ program main
   allocate( cost_bysite(nruns) )
 
   !----------------------------------------------------------------
+  ! READ TOTAL NUMBER OF RUN YEARS FOR ENTIRE SIMULATION SUITE
+  !--------------------------------------------------- -------------
+  open(unit=read_unit, file='run/totrunyears.txt', iostat=ios)
+  read(read_unit, *) totrunyears
+  close(read_unit)
+
+  !----------------------------------------------------------------
+  ! Allocate memory for target variable arrays for calibration
+  ! One big array for all simulaitons 
+  !----------------------------------------------------------------
+  if (interface%params_siml%is_calib) then
+    allocate( calibtargets(totrunyears*ndayyear+nruns, nvars_calib) )
+  end if 
+
+  !----------------------------------------------------------------
   ! LOOP THROUGH RUNS
   !----------------------------------------------------------------
   runloop: do irun = 1, nruns
@@ -99,20 +117,13 @@ program main
     endif
 
     ! write simulation name to standard output (screen)
-    print*, '------------SOFUN : '//trim(runname)//'-------------'
+    write(0,*)  '------------SOFUN : '//trim(runname)//'-------------'
 
     !----------------------------------------------------------------
     ! GET SIMULATION PARAMETERS FROM FILE <runname>.sofun.parameter
     ! SR getpar_siml is defined in _params_siml.mod.F
     !----------------------------------------------------------------
     interface%params_siml = getpar_siml( trim(runname) )
-
-    !----------------------------------------------------------------
-    ! Allocate memory for target variable arrays for calibration
-    !----------------------------------------------------------------
-    if (interface%params_siml%is_calib) then
-      allocate( calibtargets(interface%params_siml%nyeartrend*ndayyear, nvars_calib) )
-    end if 
 
     !----------------------------------------------------------------
     ! GET SITE PARAMETERS AND INPUT DATA
@@ -261,15 +272,16 @@ program main
       !----------------------------------------------------------------
       if (interface%params_siml%is_calib .and. yr>interface%params_siml%spinupyears) then
         
-        idx_start = (interface%steering%year - interface%params_siml%spinupyears - 1) * ndayyear + 1
-        idx_end   = (interface%steering%year - interface%params_siml%spinupyears - 1) * ndayyear + ndayyear
-
-        print*,'interface%steering%year',interface%steering%year
-        print*,'interface%params_siml%spinupyears',interface%params_siml%spinupyears
-        print*,'idx_start', idx_start
-        print*,'idx_end', idx_end
+        idx_end = idx_start - 1 + ndayyear
 
         calibtargets(idx_start:idx_end, 1) = out_biosphere%fapar(:)      ! 1 = fAPAR
+
+        ! write dummy variable to make sure its correctly separated by runs
+        idx_end = idx_end + 1
+        calibtargets(idx_end, 1) = dummy
+
+        ! update for next year/next run
+        idx_start = idx_end + 1
 
       end if
 
@@ -287,33 +299,31 @@ program main
 
     print*, '--------------END OF SIMULATION---------------'
 
-    ! get final cost
-    cost_bysite(irun) = cost_annual / interface%params_siml%nyeartrend
-
-    !----------------------------------------------------------------
-    ! Write target variable arrays for calibration and deallocate
-    !----------------------------------------------------------------
-    if (interface%params_siml%is_calib) then
-
-      ! write to file
-      open( irun, file="output_calib/fapar_tmp_"//trim(runname)//".txt", status="replace" )
-      write( irun, 200 ) calibtargets(:,1)
-      ! write( irun, 200 ) (calibtargets(:,idx), idx=1,(interface%params_siml%nyeartrend*ndayyear))
-      close( irun )
-
-      print*,'interface%params_siml%nyeartrend*ndayyear', interface%params_siml%nyeartrend*ndayyear
-
-      ! deallocate
-      deallocate( calibtargets )
-
-    end if 
+    ! ! get final cost
+    ! cost_bysite(irun) = cost_annual / interface%params_siml%nyeartrend
 
   end do runloop
 
-  ! Get overall cost as median across sites
-  cost = median( cost_bysite(:), nruns ) 
-  ! print*,'cost_bysite: ', cost_bysite
-  print*, cost
+  !----------------------------------------------------------------
+  ! Write target variable array for calibration and deallocate
+  !----------------------------------------------------------------
+  if (interface%params_siml%is_calib) then
+
+    ! write to file
+    open( irun, file="output_calib/calibtargets_tmp_"//trim(simsuite)//".txt", status="replace" )
+    write( irun, 200 ) calibtargets(:,1)
+    close( irun )
+
+    ! deallocate
+    deallocate( calibtargets )
+
+  end if 
+
+  ! ! Get overall cost as median across sites
+  ! cost = median( cost_bysite(:), nruns ) 
+  ! ! print*,'cost_bysite: ', cost_bysite
+  ! print*, cost
+  print*,999999999
 
 100 format(F10.7)
 200 format (F15.8)

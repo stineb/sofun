@@ -94,6 +94,7 @@ SPLASH_EXE          = runsplash
 SWBM_EXE            = runswbm
 PMODEL_EXE          = runpmodel
 PMODEL_SWBM_EXE     = runpmodel_swbm
+PMODEL_SIMSUITE_EXE = runpmodel_simsuite
 GPMODEL_EXE         = rungpmodel
 CMODEL_EXE          = runcmodel
 TMODEL_EXE          = runtmodel
@@ -135,6 +136,11 @@ pmodel:
 	 $(MAKE) pmodel -C src
 	 $(FCOM) -o $(PMODEL_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
+# reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
+pmodel_simsuite: 
+	 $(MAKE) pmodel_simsuite -C src
+	 $(FCOM) -o $(PMODEL_SIMSUITE_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
+
 # reduced model setup: only SPLASH and PMODEL
 dbgpmodel: 
 	 $(MAKE) pmodel -C src
@@ -172,7 +178,7 @@ cnmodel:
 # clean: remove exe and .o and .do files
 .PHONY: clean
 clean:
-	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(GPMODEL_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE) $(CALIB_EXE) $(CMODEL_SIMSUITE_EXE)
+	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(GPMODEL_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE) $(CALIB_EXE) $(CMODEL_SIMSUITE_EXE)  $(PMODEL_SIMSUITE_EXE)
 	$(MAKE) clean -C src
 # include libraries when necessary
 #	$(MAKE) clean -C lpj/cdfcode
