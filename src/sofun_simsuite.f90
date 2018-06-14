@@ -55,6 +55,9 @@ program main
   ! READ SIMULATION SUITE NAME AND PARAMETERS FROM STANDARD INPUT
   !----------------------------------------------------------------
   ! ADJUST THIS BY HAND AND RE-COMPILE IF DIFFERENT CALIBRATION PARAMETERS ARE CHOSEN!!!
+  ! This requires a fixed order of parameters to be passed through std input:
+  ! 1. name of the simulation suite (not actually a prarameter)
+  ! 2. kphio: quantum use efficiency of photosynthesis
   !----------------------------------------------------------------
   read (*,*) simsuite, kphio
   ! print*,'PARAMETERS FOR CALIBRATION:'
