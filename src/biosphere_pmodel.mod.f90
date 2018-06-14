@@ -293,9 +293,10 @@ contains
             !----------------------------------------------------------------
             ! populate function return variable
             !----------------------------------------------------------------
-            ! print*,'plant(1,jpngr)%fapar_ind', plant(1,jpngr)%fapar_ind
-            out_biosphere%fapar(doy) = plant(1,jpngr)%fapar_ind
-
+            if (npft>1) stop 'think about npft > 1'
+            out_biosphere%fapar(doy)  = plant(1,jpngr)%fapar_ind
+            out_biosphere%gpp(doy)    = plant_fluxes(1)%dgpp
+            out_biosphere%transp(doy) = plant_fluxes(1)%dtransp
 
           end do dayloop
 

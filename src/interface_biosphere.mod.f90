@@ -41,6 +41,8 @@ module md_interface
   ! holding variables used for the cost function in sofun_calib.f90
   type outtype_biosphere
     real, dimension(ndayyear) :: fapar
+    real, dimension(ndayyear) :: gpp
+    real, dimension(ndayyear) :: transp
   end type outtype_biosphere
 
   !----------------------------------------------------------------

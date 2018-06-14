@@ -28,12 +28,13 @@ program main
   type( type_params_domain ) :: params_domain
 
   type(outtype_biosphere) :: out_biosphere           ! holds all the output used for calculating the cost or maximum likelihood function 
+  logical :: is_calib                                ! boolean specifying whether this is a calibration run.
   real :: cost_annual = 0.0                          ! annual cost (model-observation fit after Choler et al., 2010 BG)
   real, allocatable, dimension(:) :: cost_bysite     ! cost over multiple years for each site in simsuite
   real :: cost                                       ! overall cost as median across sites
   real :: k_decay_tissue                             ! parameter read from standard input
   real, allocatable, dimension(:,:) :: calibtargets  !
-  integer, parameter :: nvars_calib = 1
+  integer :: nvars_calib, icol
   integer :: totrunyears                             ! To get total number of runnyears
   integer :: idx_start = 1                           ! Start index in array for calibration target variable 
   integer :: idx_end                                 ! End index in array for calibration target variable 
@@ -61,12 +62,12 @@ program main
   interface%params_calib%k_decay_tissue = k_decay_tissue
 
   ! set parameter to define that this is a calibration run (no output, overriding parameter values)
-  interface%params_siml%is_calib = .true.
+  is_calib = .true.
 
   !----------------------------------------------------------------
   ! READ RUNNAMES FOR THIS SIMULATION SUITE
   !----------------------------------------------------------------
-  open(unit=read_unit, file='run/runnames_'//trim(simsuite)//'.txt', iostat=ios)
+  open(unit=read_unit, file='run/runnames_calib_'//trim(simsuite)//'.txt', iostat=ios)
   if ( ios /= 0 ) stop "Error opening file run/runnames_<simsuite>.txt"
 
   nruns = 0
@@ -91,17 +92,24 @@ program main
 
   !----------------------------------------------------------------
   ! READ TOTAL NUMBER OF RUN YEARS FOR ENTIRE SIMULATION SUITE
-  !--------------------------------------------------- -------------
-  open(unit=read_unit, file='run/totrunyears.txt', iostat=ios)
+  !----------------------------------------------------------------
+  open(unit=read_unit, file='run/totrunyears_calib.txt', iostat=ios)
   read(read_unit, *) totrunyears
   close(read_unit)
+
+  !----------------------------------------------------------------
+  ! READ TOTAL NUMBER OF CALIBRATION TARGET VARIABLES
+  !----------------------------------------------------------------
+  open(unit=read_unit, file='run/nvars_calib.txt', iostat=ios)
+  read(read_unit, *) nvars_calib
+  close(read_unit)  
 
   !----------------------------------------------------------------
   ! Allocate memory for target variable arrays for calibration
   ! One big array for all simulaitons 
   !----------------------------------------------------------------
-  if (interface%params_siml%is_calib) then
-    allocate( calibtargets(totrunyears*ndayyear+nruns, nvars_calib) )
+  if (is_calib) then
+    allocate( calibtargets(totrunyears*ndayyear, nvars_calib ) )
   end if 
 
   !----------------------------------------------------------------
@@ -124,6 +132,7 @@ program main
     ! SR getpar_siml is defined in _params_siml.mod.F
     !----------------------------------------------------------------
     interface%params_siml = getpar_siml( trim(runname) )
+    interface%params_siml%is_calib = is_calib   ! pass this on to interface (used in biosphere())
 
     !----------------------------------------------------------------
     ! GET SITE PARAMETERS AND INPUT DATA
@@ -270,25 +279,29 @@ program main
       !----------------------------------------------------------------
       ! Collect output for calibration target variables
       !----------------------------------------------------------------
-      if (interface%params_siml%is_calib .and. yr>interface%params_siml%spinupyears) then
+      if (is_calib .and. yr>interface%params_siml%spinupyears) then
         
         idx_end = idx_start - 1 + ndayyear
 
-        calibtargets(idx_start:idx_end, 1) = out_biosphere%fapar(:)      ! 1 = fAPAR
-
-        ! write dummy variable to make sure its correctly separated by runs
-        idx_end = idx_end + 1
-        calibtargets(idx_end, 1) = dummy
+        icol = 1
+        if (interface%params_siml%lcalibgpp) then
+          calibtargets( idx_start:idx_end, icol ) = out_biosphere%gpp(:)
+        end if
+        
+        ! if (interface%params_siml%lcalibfapar) then
+        !   icol = icol + 1
+        !   calibtargets( idx_start:idx_end, icol ) = out_biosphere%fapar(:)
+        ! end if
+        
+        ! if (interface%params_siml%lcalibtransp) then
+        !   icol = icol + 1
+        !   calibtargets( idx_start:idx_end, icol ) = out_biosphere%transp(:)
+        ! end if
 
         ! update for next year/next run
         idx_start = idx_end + 1
 
       end if
-
-      ! ! xxx debug
-      ! do doy=1,ndayyear
-      !   print*,'obs, mod: ', interface%dfapar_field(doy,1), out_biosphere%fapar(doy)
-      ! end do
 
       ! ! calculate cost of mod-obs fit (sum annual costs)
       ! if (yr > interface%params_siml%spinupyears ) &
@@ -307,7 +320,7 @@ program main
   !----------------------------------------------------------------
   ! Write target variable array for calibration and deallocate
   !----------------------------------------------------------------
-  if (interface%params_siml%is_calib) then
+  if (is_calib) then
 
     ! write to file
     open( irun, file="output_calib/calibtargets_tmp_"//trim(simsuite)//".txt", status="replace" )
@@ -326,7 +339,7 @@ program main
   print*,999999999
 
 100 format(F10.7)
-200 format (F15.8)
+200 format(F15.8)
 
 end program main
 

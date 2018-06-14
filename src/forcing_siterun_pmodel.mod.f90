@@ -199,16 +199,21 @@ contains
       ! xxx dirty: call all non-grass vegetation types 'TrE', see indeces above
       pft = pft + 1
       fpc_grid_field(pft,jpngr) = 1.0
-
     end if 
 
     if ( params_siml%lGr3 ) then
       ! xxx dirty: call all grass vegetation types 'Gr3'
       pft = pft + 1
       fpc_grid_field(pft,jpngr) = 1.0
-    else
-      stop 'get_fpc_grid: no PFT activated accoring to simulation parameter file.'
     end if
+
+    if ( params_siml%lGr4 ) then
+      ! xxx dirty: call all grass vegetation types 'Gr3'
+      pft = pft + 1
+      fpc_grid_field(pft,jpngr) = 1.0
+    end if
+
+    if (pft==0) stop 'get_fpc_grid: no PFT activated accoring to simulation parameter file.'
 
     if (pft/=npft) stop 'GET_FPC_GRID: Adjust npft manually in params_core.mod.f90'
 
