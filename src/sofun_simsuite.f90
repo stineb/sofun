@@ -33,6 +33,7 @@ program main
   real, allocatable, dimension(:) :: cost_bysite     ! cost over multiple years for each site in simsuite
   real :: cost                                       ! overall cost as median across sites
   real :: k_decay_tissue                             ! parameter read from standard input
+  real :: kphio                                      ! parameter read from standard input
   real, allocatable, dimension(:,:) :: calibtargets  !
   integer :: nvars_calib, icol
   integer :: totrunyears                             ! To get total number of runnyears
@@ -48,18 +49,20 @@ program main
   integer :: nruns, irun, idx
 
   ! xxx debug
-  integer :: doy 
+  integer :: doy
 
   !----------------------------------------------------------------
   ! READ SIMULATION SUITE NAME AND PARAMETERS FROM STANDARD INPUT
   !----------------------------------------------------------------
-  ! read (*,100) k_decay_tissue
-  read (*,*) simsuite, k_decay_tissue
-  print*,'PARAMETERS FOR CALIBRATION:'
-  print*,'k_decay_tissue: ', k_decay_tissue
-
+  ! ADJUST THIS BY HAND AND RE-COMPILE IF DIFFERENT CALIBRATION PARAMETERS ARE CHOSEN!!!
+  !----------------------------------------------------------------
+  read (*,*) simsuite, kphio
+  ! print*,'PARAMETERS FOR CALIBRATION:'
+  ! print*,'kphio: ', kphio
+  !----------------------------------------------------------------
   ! translate parameters from standard input to appropriate derived type 
-  interface%params_calib%k_decay_tissue = k_decay_tissue
+  ! interface%params_calib%k_decay_tissue = k_decay_tissue
+  interface%params_calib%kphio = kphio
 
   ! set parameter to define that this is a calibration run (no output, overriding parameter values)
   is_calib = .true.

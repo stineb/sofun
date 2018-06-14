@@ -15,7 +15,8 @@ module md_interface
     outtype_biosphere
 
   type paramstype_calib
-    real :: k_decay_tissue
+    ! real :: k_decay_tissue
+    real :: kphio
   end type paramstype_calib  
 
   type interfacetype_biosphere

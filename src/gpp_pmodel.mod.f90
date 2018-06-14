@@ -790,6 +790,7 @@ contains
     ! Subroutine reads waterbalance module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
+    use md_interface, only: interface
     use md_sofunutils, only: getparreal
     use md_plant, only: params_pft_plant
 
@@ -809,8 +810,12 @@ contains
 
     do pft=1,npft
 
-      ! ramp slope for phenology (1 for grasses: immediate phenology turning on)
-      params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
+      ! quantum yield efficiency
+      if (interface%params_siml%is_calib) then
+        params_pft_gpp(pft)%kphio = interface%params_calib%kphio  ! is provided through standard input
+      else
+        params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
+      end if
 
     end do
 
