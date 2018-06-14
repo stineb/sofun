@@ -36,7 +36,6 @@ module md_params_siml
     
     character(len=256) :: runname
     character(len=256) :: sitename
-    character(len=256) :: input_dir
     character(len=256) :: co2_forcing_file
     character(len=256) :: ndep_noy_forcing_file
     character(len=256) :: ndep_nhx_forcing_file
@@ -275,11 +274,9 @@ contains
     out_getpar_siml%runname = runname
 
     ! sitename         = getparstring( 'run/'//runname//'.sofun.parameter', 'sitename' )
-    ! input_dir        = getparstring( 'run/'//runname//'.sofun.parameter', 'input_dir' )
     ! co2_forcing_file = getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file' )
 
     call getparstring( 'run/'//runname//'.sofun.parameter', 'sitename', out_getpar_siml%sitename )
-    call getparstring( 'run/'//runname//'.sofun.parameter', 'input_dir', out_getpar_siml%input_dir )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'co2_forcing_file', out_getpar_siml%co2_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_noy_forcing_file', out_getpar_siml%ndep_noy_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'ndep_nhx_forcing_file', out_getpar_siml%ndep_nhx_forcing_file )

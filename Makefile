@@ -98,7 +98,6 @@ GPMODEL_EXE         = rungpmodel
 CMODEL_EXE          = runcmodel
 TMODEL_EXE          = runtmodel
 CNMODEL_EXE         = runcnmodel
-CALIB_EXE           = runcalib
 CMODEL_SIMSUITE_EXE = runcmodel_simsuite
 
 ARCHIVES= ./src/sofun.a
@@ -154,11 +153,6 @@ gpmodel:
 cmodel: 
 	 $(MAKE) cmodel -C src
 	 $(FCOM) -o $(CMODEL_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
-
-# reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
-calib: 
-	 $(MAKE) calib -C src
-	 $(FCOM) -o $(CALIB_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
 # reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
 cmodel_simsuite: 

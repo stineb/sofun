@@ -33,9 +33,6 @@ GPMODEL_SOURCES=sofun.f90
 CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 rates.mod.f90 params_siml.mod.f90 params_domain_siterun.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 tile_cmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 lambertw.mod.f90 plant_cmodel.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 vegdynamics_fix.mod.f90 turnover.mod.f90 npp.mod.f90 littersom_lpj.mod.f90 allocation_cmodel.mod.f90 biosphere_cmodel.mod.f90
 CMODEL_SOURCES=sofun.f90
 
-# Use different main program source file which implements parameter calibration using simulated annealing (under construction)
-CALIB_SOURCES=sofun_calib.f90
-
 ## Use different main program source file which executes all simulations belonging to a given simsuite
 SIMSUITE_SOURCES=sofun_simsuite.f90
 
@@ -81,11 +78,6 @@ CMODEL_OBJS=$(CMODEL_SOURCES:.f90=.o)
 CMODEL_MODOBJS=$(CMODEL_MODS:.f90=.o)
 DBGCMODEL_OBJS=$(CMODEL_SOURCES:.f90=.do)
 DBGCMODEL_MODOBJS=$(CMODEL_MODS:.f90=.do)
-
-CALIB_OBJS=$(CALIB_SOURCES:.f90=.o)
-CALIB_MODOBJS=$(CMODEL_MODS:.f90=.o)
-DBGCALIB_OBJS=$(CALIB_SOURCES:.f90=.do)
-DBGCALIB_MODOBJS=$(CMODEL_MODS:.f90=.do)	
 
 SIMSUITE_OBJS=$(SIMSUITE_SOURCES:.f90=.o)
 SIMSUITE_MODOBJS=$(CMODEL_MODS:.f90=.o)
@@ -189,13 +181,6 @@ cmodel: $(CMODEL_MODOBJS) $(CMODEL_OBJS)
 	-rm $(ARCHIVE)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(CMODEL_MODOBJS) $(CMODEL_OBJS) 
-
-# Online parameter calibration for C-model only model
-calib: $(CALIB_MODOBJS) $(CALIB_OBJS)
-	# $(MAKE) -C cdfcode
-	-rm $(ARCHIVE)
-	# cp $(CDFARCHIVE) $(ARCHIVE)
-	ar r $(ARCHIVE) $(CALIB_MODOBJS) $(CALIB_OBJS) 
 
 # reduced model setup: C-model only
 cmodel_simsuite: $(SIMSUITE_MODOBJS) $(SIMSUITE_OBJS)
@@ -315,12 +300,6 @@ $(DBGCMODEL_MODOBJS): %.do: %.f90
 
 $(DBGCMODEL_OBJS): %.do: %.f90
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
-
-$(CALIB_MODOBJS): %.o: %.f90
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
-
-$(CALIB_OBJS): %.o: %.f90
-	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
 $(SIMSUITE_MODOBJS): %.o: %.f90
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
