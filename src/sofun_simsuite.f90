@@ -59,9 +59,9 @@ program main
   ! 1. name of the simulation suite (not actually a prarameter)
   ! 2. kphio: quantum use efficiency of photosynthesis
   !----------------------------------------------------------------
-  read (*,*) simsuite, kphio
   ! print*,'PARAMETERS FOR CALIBRATION:'
   ! print*,'kphio: ', kphio
+  read (*,*) simsuite, kphio
   !----------------------------------------------------------------
   ! translate parameters from standard input to appropriate derived type 
   ! interface%params_calib%k_decay_tissue = k_decay_tissue
