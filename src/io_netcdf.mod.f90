@@ -16,7 +16,12 @@ contains
     globatt2_nam, globatt2_val, &
     globatt3_nam, globatt3_val, &
     globatt4_nam, globatt4_val, &
-    globatt5_nam, globatt5_val  &
+    globatt5_nam, globatt5_val, &
+    globatt6_nam, globatt6_val,  &
+    globatt7_nam, globatt7_val,  &
+    globatt8_nam, globatt8_val,  &
+    globatt9_nam, globatt9_val,  &
+    globatt10_nam, globatt10_val &
     )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to initialise a NetCDF file with one variable and lon/lat/time
@@ -34,8 +39,10 @@ contains
     character(len=*), intent(in) :: varunits
     character(len=*), intent(in) :: longnam
     character(len=*), intent(in) :: title
-    character(len=*), intent(in), optional :: globatt1_nam, globatt2_nam, globatt3_nam, globatt4_nam, globatt5_nam
-    character(len=*), intent(in), optional :: globatt1_val, globatt2_val, globatt3_val, globatt4_val, globatt5_val
+    character(len=*), intent(in), optional :: globatt1_nam, globatt2_nam, globatt3_nam, globatt4_nam, globatt5_nam, &
+        globatt6_nam, globatt7_nam, globatt8_nam, globatt9_nam, globatt10_nam
+    character(len=*), intent(in), optional :: globatt1_val, globatt2_val, globatt3_val, globatt4_val, globatt5_val, &
+        globatt6_val, globatt7_val, globatt8_val, globatt9_val, globatt10_val
 
     ! local variables
     integer :: ncid
@@ -110,6 +117,11 @@ contains
     if (present(globatt3_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt3_nam, globatt3_val ) )
     if (present(globatt4_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt4_nam, globatt4_val ) )
     if (present(globatt5_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt5_nam, globatt5_val ) )
+    if (present(globatt6_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt6_nam, globatt6_val ) )
+    if (present(globatt7_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt7_nam, globatt7_val ) )
+    if (present(globatt8_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt8_nam, globatt8_val ) )
+    if (present(globatt9_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt9_nam, globatt9_val ) )
+    if (present(globatt10_nam))call check( nf90_put_att( ncid, NF90_GLOBAL, globatt10_nam, globatt10_val ) )
 
     ! End define mode. This tells netCDF we are done defining metadata.
     call check( nf90_enddef( ncid ) )
@@ -133,7 +145,12 @@ contains
     globatt2_nam, globatt2_val, &
     globatt3_nam, globatt3_val, &
     globatt4_nam, globatt4_val, &
-    globatt5_nam, globatt5_val  &
+    globatt5_nam, globatt5_val,  &
+    globatt6_nam, globatt6_val,  &
+    globatt7_nam, globatt7_val,  &
+    globatt8_nam, globatt8_val,  &
+    globatt9_nam, globatt9_val,  &
+    globatt10_nam, globatt10_val  &
     )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to initialise a NetCDF file with one variable and lon/lat/time
@@ -151,8 +168,10 @@ contains
     character(len=*), intent(in) :: varunits
     character(len=*), intent(in) :: longnam
     character(len=*), intent(in) :: title
-    character(len=*), intent(in), optional :: globatt1_nam, globatt2_nam, globatt3_nam, globatt4_nam, globatt5_nam
-    character(len=*), intent(in), optional :: globatt1_val, globatt2_val, globatt3_val, globatt4_val, globatt5_val
+    character(len=*), intent(in), optional :: globatt1_nam, globatt2_nam, globatt3_nam, globatt4_nam, globatt5_nam, &
+        globatt6_nam, globatt7_nam, globatt8_nam, globatt9_nam, globatt10_nam
+    character(len=*), intent(in), optional :: globatt1_val, globatt2_val, globatt3_val, globatt4_val, globatt5_val, &
+        globatt6_val, globatt7_val, globatt8_val, globatt9_val, globatt10_val
 
     ! local variables
     integer :: ncid
@@ -225,6 +244,11 @@ contains
     if (present(globatt3_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt3_nam, globatt3_val ) )
     if (present(globatt4_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt4_nam, globatt4_val ) )
     if (present(globatt5_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt5_nam, globatt5_val ) )
+    if (present(globatt6_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt6_nam, globatt6_val ) )
+    if (present(globatt7_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt7_nam, globatt7_val ) )
+    if (present(globatt8_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt8_nam, globatt8_val ) )
+    if (present(globatt9_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt9_nam, globatt9_val ) )
+    if (present(globatt10_nam))call check( nf90_put_att( ncid, NF90_GLOBAL, globatt10_nam, globatt10_val ) )
 
     ! End define mode. This tells netCDF we are done defining metadata.
     call check( nf90_enddef( ncid ) )
@@ -248,7 +272,12 @@ contains
     globatt2_nam, globatt2_val, &
     globatt3_nam, globatt3_val, &
     globatt4_nam, globatt4_val, &
-    globatt5_nam, globatt5_val  &
+    globatt5_nam, globatt5_val, &
+    globatt6_nam, globatt6_val,  &
+    globatt7_nam, globatt7_val,  &
+    globatt8_nam, globatt8_val,  &
+    globatt9_nam, globatt9_val,  &
+    globatt10_nam, globatt10_val &
     )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to initialise a NetCDF file with one variable and lon/lat (no time)
@@ -265,8 +294,10 @@ contains
     character(len=*), intent(in) :: varunits
     character(len=*), intent(in) :: longnam
     character(len=*), intent(in) :: title
-    character(len=*), intent(in), optional :: globatt1_nam, globatt2_nam, globatt3_nam, globatt4_nam, globatt5_nam
-    character(len=*), intent(in), optional :: globatt1_val, globatt2_val, globatt3_val, globatt4_val, globatt5_val
+    character(len=*), intent(in), optional :: globatt1_nam, globatt2_nam, globatt3_nam, globatt4_nam, globatt5_nam, &
+        globatt6_nam, globatt7_nam, globatt8_nam, globatt9_nam, globatt10_nam
+    character(len=*), intent(in), optional :: globatt1_val, globatt2_val, globatt3_val, globatt4_val, globatt5_val, &
+        globatt6_val, globatt7_val, globatt8_val, globatt9_val, globatt10_val
 
     ! local variables
     integer :: ncid
@@ -333,6 +364,11 @@ contains
     if (present(globatt3_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt3_nam, globatt3_val ) )
     if (present(globatt4_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt4_nam, globatt4_val ) )
     if (present(globatt5_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt5_nam, globatt5_val ) )
+    if (present(globatt6_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt6_nam, globatt6_val ) )
+    if (present(globatt7_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt7_nam, globatt7_val ) )
+    if (present(globatt8_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt8_nam, globatt8_val ) )
+    if (present(globatt9_nam)) call check( nf90_put_att( ncid, NF90_GLOBAL, globatt9_nam, globatt9_val ) )
+    if (present(globatt10_nam))call check( nf90_put_att( ncid, NF90_GLOBAL, globatt10_nam, globatt10_val ) )
 
     ! End define mode. This tells netCDF we are done defining metadata.
     call check( nf90_enddef( ncid ) )
