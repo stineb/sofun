@@ -351,6 +351,8 @@ contains
     ! GPP is light use efficiency multiplied by absorbed light and soil moisture stress function
     my_dgpp = fapar * fpc_grid * dppfd * soilmstress * lue * ramp_gpp_lotemp( dtemp ) * c_molmass
 
+    ! print*,'soilmstress, ramp_gpp_lotemp', soilmstress, ramp_gpp_lotemp( dtemp )
+
   end function calc_dgpp
 
 
@@ -774,7 +776,9 @@ contains
     if (soilm > x1) then
       outstress = 1.0
     else
-      y0 = params_gpp%soilm_par_a + params_gpp%soilm_par_b * meanalpha
+      ! print*,'soilm_par_a, soilm_par_b, meanalpha', params_gpp%soilm_par_a, params_gpp%soilm_par_b, meanalpha
+
+      y0 = (params_gpp%soilm_par_a + params_gpp%soilm_par_b * meanalpha)
 
       ! if (present(isgrass)) then
       !   if (isgrass) then

@@ -86,7 +86,7 @@ program main
   ! READ RUNNAMES FOR THIS SIMULATION SUITE
   !----------------------------------------------------------------
   open(unit=read_unit, file='run/runnames_calib_'//trim(simsuite)//'.txt', iostat=ios)
-  if ( ios /= 0 ) stop "Error opening file run/runnames_<simsuite>.txt"
+  if ( ios /= 0 ) stop "Error opening file run/runnames_calib_<simsuite>.txt"
 
   nruns = 0
   do
@@ -108,6 +108,9 @@ program main
   ! allocate variables that have site-dimension 
   allocate( cost_bysite(nruns) )
 
+  ! print*,'nruns: ', nruns
+  ! stop 
+  
   !----------------------------------------------------------------
   ! READ TOTAL NUMBER OF RUN YEARS FOR ENTIRE SIMULATION SUITE
   !----------------------------------------------------------------
