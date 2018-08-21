@@ -236,7 +236,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Returns maintenance respiration
     !----------------------------------------------------------------
-    use md_gpp, only: ramp_gpp_lotemp     ! same ramp as for GPP 
+    use md_gpp, only: calc_tempstress     ! same ramp as for GPP 
 
     ! arguments
     real, intent(in) :: cmass   ! N mass per unit area [gN/m2]
@@ -246,10 +246,10 @@ contains
     ! function return variable
     real :: resp_maint                    ! return value: maintenance respiration [gC/m2]
 
-    resp_maint = cmass * rresp * ramp_gpp_lotemp( dtemp )
+    resp_maint = cmass * rresp * calc_tempstress( dtemp )
 
     ! LPX-like temperature dependeneo of respiration rates
-    ! resp_maint = cmass * rresp * ftemp( dtemp, "lloyd_and_taylor" ) * ramp_gpp_lotemp( dtemp )
+    ! resp_maint = cmass * rresp * ftemp( dtemp, "lloyd_and_taylor" ) * calc_tempstress( dtemp )
 
   end function calc_resp_maint
 
@@ -258,7 +258,7 @@ contains
     !/////////////////////////////////////////////////////////////////
     ! Constant exudation rate
     !-----------------------------------------------------------------
-    use md_gpp, only: ramp_gpp_lotemp     ! same ramp as for GPP 
+    use md_gpp, only: calc_tempstress     ! same ramp as for GPP 
 
     ! arguments
     real, intent(in)           :: croot
@@ -268,7 +268,7 @@ contains
     real :: cexu
 
     ! low-temperature ramp is included here to prevent negative C balance after exudation
-    cexu = params_plant%exurate * croot * ramp_gpp_lotemp( dtemp )
+    cexu = params_plant%exurate * croot * calc_tempstress( dtemp )
 
   end function calc_cexu
 

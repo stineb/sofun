@@ -93,6 +93,7 @@ EXE                 = runsofun
 SPLASH_EXE          = runsplash
 SWBM_EXE            = runswbm
 PMODEL_EXE          = runpmodel
+PMODEL_DEMO_EXE     = rundemo_pmodel
 PMODEL_SWBM_EXE     = runpmodel_swbm
 PMODEL_SIMSUITE_EXE = runpmodel_simsuite
 GPMODEL_EXE         = rungpmodel
@@ -102,7 +103,6 @@ CNMODEL_EXE         = runcnmodel
 CMODEL_SIMSUITE_EXE = runcmodel_simsuite
 
 ARCHIVES= ./src/sofun.a
-# ARLPJ= ./lpj/lpj.a (archive names when compiling with different option)
 
 # Export variables that are needed by Makefiles in the subdirectories (called below)
 export FCOM CPPFLAGS COMPFLAGS DEBUGFLAGS LIBS
@@ -145,6 +145,11 @@ pmodel_simsuite:
 dbgpmodel: 
 	 $(MAKE) pmodel -C src
 	 $(FCOM) -o $(PMODEL_EXE) $(DEBUGFLAGS) $(ARCHIVES) $(LIBS)
+
+# demo for P-model, simplest setup
+demo_pmodel:
+	$(MAKE) demo_pmodel -C src
+	$(FCOM) -o $(PMODEL_DEMO_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
 pmodel_swbm: 
 	 $(MAKE) pmodel_swbm -C src

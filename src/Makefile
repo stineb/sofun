@@ -14,6 +14,9 @@ MAIN=sofun.f90
 ## Use different main program source file when executing all simulations belonging to a given simsuite at once
 MAIN_SIMSUITE=sofun_simsuite.f90
 
+## Use different main program source file for demo simulation
+MAIN_DEMO_PMODEL=demo_pmodel.f90
+
 # List of source code files for reduced setup, executing only SPLASH:
 SPLASH_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_domain.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_wmodel.mod.f90 interface_biosphere.mod.f90 tile_wmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 biosphere_wmodel.mod.f90
 
@@ -22,6 +25,9 @@ SWBM_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.m
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL:
 PMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 params_siml.mod.f90 params_domain_siterun.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 tile_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 plant_pmodel.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
+
+# List of source code files for reduced setup, executing SPLASH and P-MODEL:
+DEMO_PMODEL_MODS=params_core.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 interface_demo_pmodel.mod.f90 plant_demo_pmodel.mod.f90 gpp_pmodel.mod.f90 
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL:
 PMODEL_SWBM_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 params_siml.mod.f90 params_domain.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 tile_pmodel.mod.f90 waterbal_swbm.mod.f90 soiltemp_sitch.mod.f90 plant_pmodel.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
@@ -59,6 +65,9 @@ PMODEL_OBJS=$(MAIN:.f90=.o)
 PMODEL_MODOBJS=$(PMODEL_MODS:.f90=.o)
 DBGPMODEL_OBJS=$(MAIN:.f90=.do)
 DBGPMODEL_MODOBJS=$(PMODEL_MODS:.f90=.do)
+
+DEMO_PMODEL_OBJS=$(MAIN_DEMO_PMODEL:.f90=.o)
+DEMO_PMODEL_MODOBJS=$(DEMO_PMODEL_MODS:.f90=.o)
 
 PMODEL_SWBM_OBJS=$(MAIN:.f90=.o)
 PMODEL_SWBM_MODOBJS=$(PMODEL_SWBM_MODS:.f90=.o)
@@ -142,6 +151,12 @@ pmodel: $(PMODEL_MODOBJS) $(PMODEL_OBJS)
 	-rm $(ARCHIVE)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(PMODEL_MODOBJS) $(PMODEL_OBJS) 
+
+demo_pmodel: $(DEMO_PMODEL_MODOBJS) $(DEMO_PMODEL_OBJS)
+	# $(MAKE) -C cdfcode
+	-rm $(ARCHIVE)
+	# cp $(CDFARCHIVE) $(ARCHIVE)
+	ar r $(ARCHIVE) $(DEMO_PMODEL_MODOBJS) $(DEMO_PMODEL_OBJS) 
 
 # reduced model setup: only SPLASH and PMODEL
 pmodel_simsuite: $(PMODEL_MODOBJS) $(SIMSUITE_OBJS)
@@ -266,6 +281,12 @@ $(PMODEL_MODOBJS): %.o: %.f90
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
 $(PMODEL_OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
+
+$(DEMO_PMODEL_OBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
+
+$(DEMO_PMODEL_MODOBJS): %.o: %.f90
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
 $(DBGPMODEL_MODOBJS): %.do: %.f90

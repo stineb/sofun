@@ -25,7 +25,7 @@ module md_gpp
   private
   public getpar_modl_gpp, initio_gpp, initoutput_gpp, &
     gpp, getlue, getout_daily_gpp, getout_annual_gpp, &
-    writeout_ascii_gpp, outtype_pmodel, ramp_gpp_lotemp, calc_dgpp, calc_drd, &
+    writeout_ascii_gpp, outtype_pmodel, calc_tempstress, calc_dgpp, calc_drd, &
     initio_nc_gpp, writeout_nc_gpp
     
   !----------------------------------------------------------------
@@ -171,7 +171,8 @@ module md_gpp
 
 contains
 
-  subroutine gpp( out_pmodel, solar, plant, plant_fluxes, phy, doy, moy, dtemp, do_soilmstress )
+  ! subroutine gpp( out_pmodel, solar, plant, plant_fluxes, phy, doy, moy, dtemp, do_soilmstress )
+  subroutine gpp( dppfd, dayl, meanmppfd, lue, rd_unitiabs, gs_unitiabs, vcmax_unitiabs, wscal, rlmalpha )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -207,34 +208,41 @@ contains
     ! CALCULATE PREDICTED GPP FROM P-model
     ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
     !----------------------------------------------------------------
+    ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
+    if (do_soilmstress) then
+      soilmstress = calc_soilmstress( soilphys(lu)%wscal, phy(lu)%rlmalpha, params_pft_plant(pft)%grass )
+    else
+      soilmstress = 1.0
+    end if
+
+    ! Calculate low temperature stress
+    if (do_tempstress) then
+      tempstress = calc_tempstress( dtemp )
+    else
+      tempstress = 1.0
+    end if
+
     do pft=1,npft
 
       lu = params_pft_plant(pft)%lu_category
 
       if ( plant(pft)%fpc_grid>0.0 .and. solar%dayl(doy)>0.0) then
 
-        ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
-        if (do_soilmstress) then
-          soilmstress = calc_soilmstress( soilphys(lu)%wscal, phy(lu)%rlmalpha, params_pft_plant(pft)%grass )
-        else
-          soilmstress = 1.0
-        end if
-
         ! GPP
-        plant_fluxes(pft)%dgpp = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%dppfd(doy), out_pmodel(pft)%lue, dtemp, soilmstress )
+        plant_fluxes(pft)%dgpp = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%dppfd(doy), out_pmodel(pft)%lue, tempstress, soilmstress )
 
         ! ! transpiration
-        ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp, soilmstress )
+        ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, tempstress, soilmstress )
         ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp )
 
         ! Dark respiration
-        plant_fluxes(pft)%drd = calc_drd( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, dtemp, soilmstress )
+        plant_fluxes(pft)%drd = calc_drd( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, tempstress, soilmstress )
 
         ! Leaf-level assimilation rate
-        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), dtemp, soilmstress )
+        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), tempstress, soilmstress )
 
         ! stomatal conductance
-        dgs(pft) = calc_dgs( solar%dppfd(doy), out_pmodel(pft)%gs_unitiabs, solar%dayl(doy), dtemp, soilmstress )
+        dgs(pft) = calc_dgs( solar%dppfd(doy), out_pmodel(pft)%gs_unitiabs, solar%dayl(doy), tempstress, soilmstress )
 
         ! Canopy-level Vcmax (actually changes only monthly)
         dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
@@ -330,7 +338,7 @@ contains
   end function getlue
 
 
-  function calc_dgpp( fapar, fpc_grid, dppfd, lue, dtemp, soilmstress ) result( my_dgpp )
+  function calc_dgpp( fapar, fpc_grid, dppfd, lue, tempstress, soilmstress ) result( my_dgpp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
@@ -339,19 +347,19 @@ contains
     real, intent(in) :: fpc_grid    ! foliar projective cover
     real, intent(in) :: dppfd       ! daily total photon flux density, mol m-2
     real, intent(in) :: lue         ! light use efficiency
-    real, intent(in) :: dtemp       ! this day's air temperature, deg C 
+    real, intent(in) :: tempstress  ! this day's air temperature, deg C 
     real, intent(in) :: soilmstress ! soil moisture stress factor
 
     ! function return variable
-    real :: my_dgpp                        ! Daily total gross primary productivity (gC m-2 d-1)
+    real :: my_dgpp                 ! Daily total gross primary productivity (gC m-2 d-1)
 
     ! GPP is light use efficiency multiplied by absorbed light and soil moisture stress function
-    my_dgpp = fapar * fpc_grid * dppfd * soilmstress * lue * ramp_gpp_lotemp( dtemp ) * c_molmass
+    my_dgpp = fapar * fpc_grid * dppfd * soilmstress * lue * tempstress * c_molmass
 
   end function calc_dgpp
 
 
-  function calc_dassim( dppfd, lue, daylength, dtemp, soilmstress ) result( my_dassim )
+  function calc_dassim( dppfd, lue, daylength, tempstress, soilmstress ) result( my_dassim )
     !//////////////////////////////////////////////////////////////////
     ! Calculates leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
     !------------------------------------------------------------------
@@ -359,19 +367,19 @@ contains
     real, intent(in) :: dppfd           ! daily total photon flux density, mol m-2
     real, intent(in) :: lue             ! light use efficiency, mol CO2 / mol photon
     real, intent(in) :: daylength       ! day length (h)
-    real, intent(in) :: dtemp           ! this day's air temperature, deg C
+    real, intent(in) :: tempstress      ! this day's air temperature, deg C
     real, intent(in) :: soilmstress     ! soil moisture stress factor
 
     ! function return variable
     real :: my_dassim                   ! leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
 
     ! Leaf-level assimilation rate, average over daylight hours
-    my_dassim = dppfd * soilmstress * lue * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * daylength )
+    my_dassim = dppfd * soilmstress * lue * tempstress / ( 60.0 * 60.0 * daylength )
 
   end function calc_dassim
 
 
-  function calc_dgs( dppfd, dgs_unitiabs, daylength, dtemp, soilmstress ) result( dgs )
+  function calc_dgs( dppfd, dgs_unitiabs, daylength, tempstress, soilmstress ) result( dgs )
     !//////////////////////////////////////////////////////////////////
     ! Calculates leaf-level stomatal conductance to H2O, mean over daylight hours ( mol H2O m-2 s-1 )
     !------------------------------------------------------------------
@@ -379,19 +387,19 @@ contains
     real, intent(in) :: dppfd           ! daily total photon flux density, mol m-2
     real, intent(in) :: dgs_unitiabs    ! stomatal conductance per unit absorbed light (mol H2O m-2 s-1 / mol light)
     real, intent(in) :: daylength       ! day length (h)
-    real, intent(in) :: dtemp           ! this day's air temperature, deg C
+    real, intent(in) :: tempstress      ! this day's air temperature, deg C
     real, intent(in) :: soilmstress     ! soil moisture stress factor
 
     ! function return variable
     real :: dgs                         ! leaf-level stomatal conductance to H2O, mean over daylight hours ( mol H2O m-2 s-1 )
 
     ! Leaf-level assimilation rate, average over daylight hours
-    dgs = dppfd * soilmstress * dgs_unitiabs * ramp_gpp_lotemp( dtemp ) / ( 60.0 * 60.0 * daylength )
+    dgs = dppfd * soilmstress * dgs_unitiabs * tempstress / ( 60.0 * 60.0 * daylength )
 
   end function calc_dgs
 
 
-  function calc_drd( fapar, fpc_grid, meanmppfd, rd_unitiabs, dtemp, soilmstress ) result( my_drd )
+  function calc_drd( fapar, fpc_grid, meanmppfd, rd_unitiabs, tempstress, soilmstress ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
@@ -401,19 +409,19 @@ contains
     real, intent(in) :: fpc_grid        ! foliar projective cover
     real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
     real, intent(in) :: rd_unitiabs
-    real, intent(in) :: dtemp           ! this day's air temperature, deg C
+    real, intent(in) :: tempstress      ! this day's air temperature, deg C
     real, intent(in) :: soilmstress     ! soil moisture stress factor
 
     ! function return variable
     real :: my_drd
 
     ! Dark respiration takes place during night and day (24 hours)
-    my_drd = fapar * fpc_grid * meanmppfd * soilmstress * rd_unitiabs * ramp_gpp_lotemp( dtemp ) * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * fpc_grid * meanmppfd * soilmstress * rd_unitiabs * tempstress * 60.0 * 60.0 * 24.0 * c_molmass
 
   end function calc_drd
 
 
-  function calc_dtransp( fapar, acrown, dppfd, transp_unitiabs, dtemp, soilmstress ) result( my_dtransp )
+  function calc_dtransp( fapar, acrown, dppfd, transp_unitiabs, tempstress, soilmstress ) result( my_dtransp )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP
     !------------------------------------------------------------------
@@ -422,14 +430,14 @@ contains
     real, intent(in) :: acrown
     real, intent(in) :: dppfd              ! daily total photon flux density, mol m-2
     real, intent(in) :: transp_unitiabs
-    real, intent(in) :: dtemp              ! this day's air temperature
+    real, intent(in) :: tempstress              ! this day's air temperature
     real, intent(in) :: soilmstress        ! soil moisture stress factor
 
     ! function return variable
     real :: my_dtransp
 
     ! GPP is light use efficiency multiplied by absorbed light and C-P-alpha
-    my_dtransp = fapar * acrown * dppfd * soilmstress * transp_unitiabs * ramp_gpp_lotemp( dtemp ) * h2o_molmass
+    my_dtransp = fapar * acrown * dppfd * soilmstress * transp_unitiabs * tempstress * h2o_molmass
 
   end function calc_dtransp
 
@@ -1398,7 +1406,7 @@ contains
   end function calc_viscosity_h2o
 
 
-  function ramp_gpp_lotemp( dtemp ) result( ftemp )
+  function calc_tempstress( dtemp ) result( ftemp )
     !////////////////////////////////////////////////////////////////
     ! Simple temperature inihibtion function for photosynthesis
     ! 0 at 0 deg C, 1 at 10 deg C
@@ -1415,7 +1423,7 @@ contains
     ! ! no temperature ramp
     ! ftemp = 1.0
 
-  end function ramp_gpp_lotemp
+  end function calc_tempstress
 
 
   function sigm_gpp_lotemp( dtemp ) result( ftemp )
