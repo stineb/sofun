@@ -61,6 +61,10 @@ module md_gpp
   !-----------------------------------------------------------------------
   type paramstype_gpp
     real :: beta         ! Unit cost of carboxylation (dimensionless)
+    real :: temp_ramp_edge
+    real :: soilm_par_a
+    real :: soilm_par_b
+    real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
   end type paramstype_gpp
 
   type( paramstype_gpp ) :: params_gpp
@@ -68,7 +72,6 @@ module md_gpp
   ! PFT-DEPENDENT PARAMETERS
   type pftparamstype_gpp
     real :: kphio        ! quantum efficiency (Long et al., 1993)  
-    real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
   end type pftparamstype_gpp
 
   type( pftparamstype_gpp ), dimension(npft) :: params_pft_gpp
@@ -356,6 +359,8 @@ contains
     ! GPP is light use efficiency multiplied by absorbed light and soil moisture stress function
     my_dgpp = fapar * fpc_grid * dppfd * soilmstress * lue * tempstress * c_molmass
 
+    ! print*,'soilmstress, ramp_gpp_lotemp', soilmstress, ramp_gpp_lotemp( dtemp )
+
   end function calc_dgpp
 
 
@@ -637,9 +642,9 @@ contains
       vcmax25_unitiabs  = vcmax_unitiabs  / ftemp_inst_vcmax
 
       ! ! Dark respiration, normalised to 25 deg C proportional to Vcmax normalised to 25 deg C
-      ! rd25           = params_pft_gpp(pft)%rd_to_vcmax * vcmax25
-      ! rd25_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * vcmax25_unitfapar
-      ! rd25_unitiabs  = params_pft_gpp(pft)%rd_to_vcmax * vcmax25_unitiabs 
+      ! rd25           = params_gpp%rd_to_vcmax * vcmax25
+      ! rd25_unitfapar = params_gpp%rd_to_vcmax * vcmax25_unitfapar
+      ! rd25_unitiabs  = params_gpp%rd_to_vcmax * vcmax25_unitiabs 
 
       ! Dark respiration at growth temperature
       ftemp_inst_rd = calc_ftemp_inst_rd( tc )
@@ -648,9 +653,9 @@ contains
       ! rd_unitiabs   = ftemp_inst_rd * rd25_unitiabs 
 
       ! print*,'fr/fv: ', ftemp_inst_rd / ftemp_inst_vcmax
-      rd           = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax
-      rd_unitfapar = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitfapar
-      rd_unitiabs  = params_pft_gpp(pft)%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitiabs 
+      rd           = params_gpp%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax
+      rd_unitfapar = params_gpp%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitfapar
+      rd_unitiabs  = params_gpp%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitiabs 
 
       ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
       actnv           = vcmax25           * n_v
@@ -736,6 +741,9 @@ contains
     real, intent(in) :: meanalpha   ! mean annual AET/PET (fraction)
     logical, intent(in), optional :: isgrass 
 
+    real, parameter :: x0 = 0.0
+    real, parameter :: x1 = 0.6
+
     ! ! Parameters for approach I (simulation s1a)
     ! real, parameter :: apar = 0.2617121
     ! real, parameter :: bpar = 0.5668587
@@ -760,13 +768,13 @@ contains
     ! real, parameter :: x0 = 0.0
     ! real, parameter :: x1 = 0.9
 
-    ! Parameters for approach III (simulation s1c)
-    real, parameter :: apar = 0.0515108 
-    real, parameter :: bpar = 0.1920844
-    real, parameter :: apar_grass = 0.0515108
-    real, parameter :: bpar_grass = 0.1920844
-    real, parameter :: x0 = 0.0
-    real, parameter :: x1 = 0.9
+    ! ! Parameters for approach III (simulation s1c)
+    ! real, parameter :: apar = 0.0515108 
+    ! real, parameter :: bpar = 0.1920844
+    ! real, parameter :: apar_grass = 0.0515108
+    ! real, parameter :: bpar_grass = 0.1920844
+    ! real, parameter :: x0 = 0.0
+    ! real, parameter :: x1 = 0.9
 
     real :: y0, beta
 
@@ -776,15 +784,20 @@ contains
     if (soilm > x1) then
       outstress = 1.0
     else
-      if (present(isgrass)) then
-        if (isgrass) then
-          y0 = apar_grass + bpar_grass * meanalpha
-        else
-          y0 = apar + bpar * meanalpha
-        end if
-      else
-        y0 = apar + bpar * meanalpha
-      end if
+      ! print*,'soilm_par_a, soilm_par_b, meanalpha', params_gpp%soilm_par_a, params_gpp%soilm_par_b, meanalpha
+
+      y0 = (params_gpp%soilm_par_a + params_gpp%soilm_par_b * meanalpha)
+
+      ! if (present(isgrass)) then
+      !   if (isgrass) then
+      !     y0 = apar_grass + bpar_grass * meanalpha
+      !   else
+      !     y0 = apar + bpar * meanalpha
+      !   end if
+      ! else
+      !   y0 = apar + bpar * meanalpha
+      ! end if
+
       beta = (1.0 - y0) / (x0 - x1)**2
       outstress = 1.0 - beta * ( soilm - x1 )**2
       outstress = max( 0.0, min( 1.0, outstress ) )
@@ -814,15 +827,26 @@ contains
     params_gpp%beta  = getparreal( 'params/params_gpp_pmodel.dat', 'beta' )
 
     ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
-    params_pft_gpp%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
+    params_gpp%rd_to_vcmax  = getparreal( 'params/params_gpp_pmodel.dat', 'rd_to_vcmax' )
 
+    ! Apply identical temperature ramp parameter for all PFTs
+    if (interface%params_siml%is_calib) then
+      params_gpp%temp_ramp_edge = interface%params_calib%temp_ramp_edge  ! is provided through standard input
+      params_gpp%soilm_par_a    = interface%params_calib%soilm_par_a     ! is provided through standard input
+      params_gpp%soilm_par_b    = interface%params_calib%soilm_par_b     ! is provided through standard input
+    else
+      params_gpp%temp_ramp_edge = getparreal( 'params/params_gpp_pmodel.dat', 'temp_ramp_edge' )
+      params_gpp%soilm_par_a    = getparreal( 'params/params_gpp_pmodel.dat', 'soilm_par_a' )
+      params_gpp%soilm_par_b    = getparreal( 'params/params_gpp_pmodel.dat', 'soilm_par_b' )
+    end if
+
+    ! PFT-dependent parameter(s)
     do pft=1,npft
 
-      ! quantum yield efficiency
       if (interface%params_siml%is_calib) then
-        params_pft_gpp(pft)%kphio = interface%params_calib%kphio  ! is provided through standard input
+        params_pft_gpp(pft)%kphio          = interface%params_calib%kphio  ! is provided through standard input
       else
-        params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
+        params_pft_gpp(pft)%kphio          = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
       end if
 
     end do
@@ -1417,11 +1441,16 @@ contains
     ! function return variable
     real :: ftemp
 
-    ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
-    ftemp = max( 0.0, min( 1.0, (dtemp - temp0) / temp1 ) )
+    real, parameter :: temp0 = 0.0
 
-    ! ! no temperature ramp
-    ! ftemp = 1.0
+    ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
+    if (params_gpp%temp_ramp_edge<=0.0) then
+      ! no temperature ramp. GPP set to 0 if temp below zero in function pmodel()
+      ftemp = 1.0
+    else
+      ! linear temperature ramp from 0 at 0 deg C to 1.0 at <temp_ramp_edge>
+      ftemp = max( 0.0, min( 1.0, (dtemp - temp0) / params_gpp%temp_ramp_edge ) )
+    end if
 
   end function calc_tempstress
 
@@ -1569,15 +1598,21 @@ contains
     character(len=12) :: beta_char
     character(len=12) :: rd_to_vcmax_char
     character(len=12) :: kphio_char
+    character(len=12) :: temp_ramp_edge_char
+    character(len=12) :: soilm_par_a_char
+    character(len=12) :: soilm_par_b_char
 
     integer :: jpngr, doy
 
     write(year_char,999) interface%steering%outyear
 
     ! convert parameter values to charaters
-    write(beta_char,888) params_gpp%beta
-    write(rd_to_vcmax_char,888) params_pft_gpp(1)%rd_to_vcmax
-    write(kphio_char,888) params_pft_gpp(1)%kphio
+    write(beta_char,888)           params_gpp%beta
+    write(rd_to_vcmax_char,888)    params_gpp%rd_to_vcmax
+    write(kphio_char,888)          params_pft_gpp(1)%kphio
+    write(temp_ramp_edge_char,888) params_gpp%temp_ramp_edge
+    write(soilm_par_a_char,888)    params_gpp%soilm_par_a
+    write(soilm_par_b_char,888)    params_gpp%soilm_par_b
 
     prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
@@ -1600,10 +1635,13 @@ contains
                           varunits = "gC m-2 yr-1", &
                           longnam  = "annual gross primary productivivty", &
                           title    = TITLE, &
-                          globatt1_nam = "fapar_source",      globatt1_val = interface%params_siml%fapar_forcing_source, &
-                          globatt2_nam = "param_beta",        globatt2_val = beta_char, &
-                          globatt3_nam = "param_rd_to_vcmax", globatt3_val = rd_to_vcmax_char, &
-                          globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char  &
+                          globatt1_nam = "fapar_source",         globatt1_val = interface%params_siml%fapar_forcing_source, &
+                          globatt2_nam = "param_beta",           globatt2_val = beta_char, &
+                          globatt3_nam = "param_rd_to_vcmax",    globatt3_val = rd_to_vcmax_char, &
+                          globatt4_nam = "param_kphio_GrC3",     globatt4_val = kphio_char,  &
+                          globatt5_nam = "param_temp_ramp_edge", globatt5_val = temp_ramp_edge_char,  &
+                          globatt6_nam = "param_soilm_par_a",    globatt6_val = soilm_par_a_char,  &
+                          globatt7_nam = "param_soilm_par_a",    globatt7_val = soilm_par_b_char  &
                           )
       end if
 
@@ -1630,7 +1668,10 @@ contains
                             globatt1_nam = "fapar_source",      globatt1_val = interface%params_siml%fapar_forcing_source, &
                             globatt2_nam = "param_beta",        globatt2_val = beta_char, &
                             globatt3_nam = "param_rd_to_vcmax", globatt3_val = rd_to_vcmax_char, &
-                            globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char  &
+                            globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char,  &
+                            globatt5_nam = "param_temp_ramp_edge", globatt5_val = temp_ramp_edge_char,  &
+                            globatt6_nam = "param_soilm_par_a",    globatt6_val = soilm_par_a_char,  &
+                            globatt7_nam = "param_soilm_par_a",    globatt7_val = soilm_par_b_char  &
                             )
         end if
 

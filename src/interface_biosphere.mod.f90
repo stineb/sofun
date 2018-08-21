@@ -17,6 +17,9 @@ module md_interface
   type paramstype_calib
     ! real :: k_decay_tissue
     real :: kphio
+    real :: temp_ramp_edge
+    real :: soilm_par_a
+    real :: soilm_par_b
   end type paramstype_calib  
 
   type interfacetype_biosphere
