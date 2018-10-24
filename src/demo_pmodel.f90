@@ -11,8 +11,10 @@ program main
   !
   ! Author: Benjamin D. Stocker
   !----------------------------------------------------------------
-  use md_gpp, only: getlue, calc_dgpp
-  use md_plant, only: plant_type, params_pft_plant_type, init_plant, init_params_pft_plant
+  use md_interface, only: get_interface
+  use md_tile, only: tile_type, initglobal_tile
+  use md_plant, only: plant_type, plant_fluxes_type, initglobal_plant, params_pft_plant, getpar_modl_plant, initdaily_plant
+  use md_gpp, only: pmodel, calc_dgpp, params_pft_gpp, outtype_pmodel, getpar_modl_gpp
 
   implicit none
 
@@ -26,38 +28,63 @@ program main
   real :: fapar   ! fraction of absorbed photosynthetically active radiation (unitless) 
   real :: elv     ! elevation above sea level (m)
 
-  real :: lue     ! light use efficiency (mol CO2 (mol photon)-1)
   real :: gpp     ! gross primary productivity (g C m-2 d-1)
+  real :: tempstress = 1.0
+  real :: soilmstress = 1.0 
 
-  type(plant_type) :: plant
-  type(params_pft_plant_type) :: params_pft_plant
+  integer :: pft = 1  ! index of plant functional type dimension
+
+  type(tile_type),         allocatable, dimension(:,:) :: tile
+  type(plant_type),        allocatable, dimension(:,:) :: plant
+  type(plant_fluxes_type), allocatable, dimension(:)   :: plant_fluxes
+  type(outtype_pmodel) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
 
   !----------------------------------------------------------------
   ! Read arguments from standard input.
   ! These have to be specified in a fixed order.
   !----------------------------------------------------------------
-  read (*,*) temp vpd co2 ppfd fapar elv
+  read (*,*) temp, vpd, co2, ppfd, fapar, elv
+
+  call get_interface()
 
   !----------------------------------------------------------------
   ! Initialise stuff (needed unfortunately to make it compatible 
   ! with SOFUN structure)
   !----------------------------------------------------------------
-  plant = init_plant()
-  params_pft_plant = init_params_pft_plant()
+  call getpar_modl_plant()
+  call getpar_modl_gpp()
+      
+  allocate( tile(  1, 1 ) )
+  allocate( plant( 1, 1 ) )
+  allocate( plant_fluxes( 1 ) )
+
+  call initglobal_tile(  tile(:,:),  1 )
+  call initglobal_plant( plant(:,:), 1 )
+  call initdaily_plant( plant_fluxes(:) )
 
   !----------------------------------------------------------------
-  ! Calculate light use efficiency (LUE).
+  ! Calculate GPP
   !----------------------------------------------------------------
-  lue = getlue( co2, temp, vpd, elv )
+  pft = 1
+  if ( params_pft_plant(pft)%c4 ) then
+    ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
+    out_pmodel = pmodel( params_pft_gpp(pft)%kphio, fpar = fapar, ppfd = ppfd, co2 = 3.0 * co2, tc = temp, vpd = vpd, elv = elv, method = "C4" )
 
+  else
+    ! C3
+    out_pmodel = pmodel( params_pft_gpp(pft)%kphio, fpar = fapar, ppfd = ppfd, co2 = co2, tc = temp, vpd = vpd, elv = elv, method = "C3_full" )
+    
+  end if
+  
   !----------------------------------------------------------------
   ! Calculate GPP, given LUE
   !----------------------------------------------------------------
-  gpp = calc_dgpp( fapar, 1.0, ppfd, lue, tempstress, soilmstress )
+  gpp = calc_dgpp( fapar = fapar, fpc_grid = 1.0, dppfd = ppfd, lue = out_pmodel%lue, tempstress = tempstress, soilmstress = soilmstress )
 
   !----------------------------------------------------------------
   ! Write gpp to standard output
   !----------------------------------------------------------------
+  write(0,*) out_pmodel%gpp
   write(0,*) gpp
 
 end program main

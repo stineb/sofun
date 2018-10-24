@@ -23,8 +23,8 @@ module md_gpp
   implicit none
 
   private
-  public getpar_modl_gpp, initio_gpp, initoutput_gpp, &
-    gpp, getlue, getout_daily_gpp, getout_annual_gpp, &
+  public params_pft_gpp, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
+    gpp, getlue, pmodel, getout_daily_gpp, getout_annual_gpp, &
     writeout_ascii_gpp, outtype_pmodel, calc_tempstress, calc_dgpp, calc_drd, &
     initio_nc_gpp, writeout_nc_gpp
     
@@ -67,14 +67,14 @@ module md_gpp
     real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
   end type paramstype_gpp
 
-  type( paramstype_gpp ) :: params_gpp
+  type(paramstype_gpp) :: params_gpp
 
   ! PFT-DEPENDENT PARAMETERS
   type pftparamstype_gpp
     real :: kphio        ! quantum efficiency (Long et al., 1993)  
   end type pftparamstype_gpp
 
-  type( pftparamstype_gpp ), dimension(npft) :: params_pft_gpp
+  type(pftparamstype_gpp), dimension(npft) :: params_pft_gpp
  
   !-----------------------------------------------------------------------
   ! Email from Tyler (10.3.2015):
@@ -175,7 +175,7 @@ module md_gpp
 contains
 
   ! subroutine gpp( out_pmodel, solar, plant, plant_fluxes, phy, doy, moy, dtemp, do_soilmstress )
-  subroutine gpp( dppfd, dayl, meanmppfd, lue, rd_unitiabs, gs_unitiabs, vcmax_unitiabs, wscal, rlmalpha )
+  subroutine gpp( plant, plant_fluxes, out_pmodel, dppfd, dayl, meanmppfd, wscal, rlmalpha, doy, moy, dtemp, do_soilmstress, do_tempstress )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -186,26 +186,36 @@ contains
     ! - gpp (gC/m2/d)   : gross primary production
     !
     !------------------------------------------------------------------
-    use md_params_core, only: dummy
     use md_plant, only: params_pft_plant, plant_type, plant_fluxes_type
-    use md_tile, only: psoilphystype
-    use md_waterbal, only: soilphys, solartype
+    ! use md_tile, only: psoilphystype
+    ! use md_waterbal, only: soilphys, solartype
 
     ! arguments
-    type( psoilphystype ), dimension(nlu), intent(inout) :: phy
-    type( outtype_pmodel ), dimension(npft), intent(in)  :: out_pmodel
-    type( solartype ), intent(in)                        :: solar
-    type( plant_type ), dimension(npft), intent(in) :: plant
-    type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
-    integer, intent(in)                        :: doy             ! day of year and month of year
-    integer, intent(in)                        :: moy             ! month of year and month of year
-    real,    intent(in)                        :: dtemp           ! this day's air temperature
-    logical, intent(in)                        :: do_soilmstress  ! whether empirical soil miosture stress function is applied to GPP
+    type(plant_type), dimension(npft), intent(in) :: plant
+    type(plant_fluxes_type), dimension(npft), intent(inout) :: plant_fluxes
+    type(outtype_pmodel), dimension(npft), intent(in)  :: out_pmodel
+    real, intent(in) :: dppfd            ! daily total photon flux density, mol m-2
+    real, intent(in) :: dayl             ! day length (h)
+    real, intent(in) :: meanmppfd        ! monthly mean PPFD (mol m-2 s-1)
+    real, intent(in) :: wscal            ! relative soil water content (unitless)
+    real, intent(in) :: rlmalpha         ! rolling mean alpha (mean annual AET/PET, unitless)
+
+    ! type(psoilphystype), dimension(nlu), intent(inout) :: phy
+    ! type(solartype), intent(in)                        :: solar
+    ! type(plant_type), dimension(npft), intent(in) :: plant
+    ! type(plant_fluxes_type), dimension(npft), intent(inout) :: plant_fluxes
+
+    integer, intent(in) :: doy             ! day of year and month of year
+    integer, intent(in) :: moy             ! month of year and month of year
+    real,    intent(in) :: dtemp           ! this day's air temperature
+    logical, intent(in) :: do_soilmstress  ! whether empirical soil miosture stress function is applied to GPP
+    logical, intent(in) :: do_tempstress   ! whether empirical temperature stress function is applied to GPP
 
     ! local variables
     integer :: pft
     integer :: lu
     real    :: soilmstress
+    real    :: tempstress
 
     !----------------------------------------------------------------
     ! CALCULATE PREDICTED GPP FROM P-model
@@ -213,7 +223,7 @@ contains
     !----------------------------------------------------------------
     ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
     if (do_soilmstress) then
-      soilmstress = calc_soilmstress( soilphys(lu)%wscal, phy(lu)%rlmalpha, params_pft_plant(pft)%grass )
+      soilmstress = calc_soilmstress( wscal, rlmalpha, params_pft_plant(pft)%grass )
     else
       soilmstress = 1.0
     end if
@@ -229,29 +239,29 @@ contains
 
       lu = params_pft_plant(pft)%lu_category
 
-      if ( plant(pft)%fpc_grid>0.0 .and. solar%dayl(doy)>0.0) then
+      if ( plant(pft)%fpc_grid>0.0 .and. doy>0.0) then
 
         ! GPP
-        plant_fluxes(pft)%dgpp = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%dppfd(doy), out_pmodel(pft)%lue, tempstress, soilmstress )
+        plant_fluxes(pft)%dgpp = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, dppfd, out_pmodel(pft)%lue, tempstress, soilmstress )
 
         ! ! transpiration
-        ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, tempstress, soilmstress )
-        ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, solar%dppfd(doy), out_pmodel(pft)%transp_unitiabs, dtemp )
+        ! ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, dppfd, out_pmodel(pft)%transp_unitiabs, tempstress, soilmstress )
+        ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, dppfd, out_pmodel(pft)%transp_unitiabs, dtemp )
 
         ! Dark respiration
-        plant_fluxes(pft)%drd = calc_drd( plant(pft)%fapar_ind, plant(pft)%fpc_grid, solar%meanmppfd(moy), out_pmodel(pft)%rd_unitiabs, tempstress, soilmstress )
+        plant_fluxes(pft)%drd = calc_drd( plant(pft)%fapar_ind, plant(pft)%fpc_grid, meanmppfd, out_pmodel(pft)%rd_unitiabs, tempstress, soilmstress )
 
         ! Leaf-level assimilation rate
-        dassim(pft) = calc_dassim( solar%dppfd(doy), out_pmodel(pft)%lue, solar%dayl(doy), tempstress, soilmstress )
+        dassim(pft) = calc_dassim( dppfd, out_pmodel(pft)%lue, dayl, tempstress, soilmstress )
 
         ! stomatal conductance
-        dgs(pft) = calc_dgs( solar%dppfd(doy), out_pmodel(pft)%gs_unitiabs, solar%dayl(doy), tempstress, soilmstress )
+        dgs(pft) = calc_dgs( dppfd, out_pmodel(pft)%gs_unitiabs, dayl, tempstress, soilmstress )
 
         ! Canopy-level Vcmax (actually changes only monthly)
-        dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, solar%meanmppfd(moy) )
+        dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, meanmppfd )
 
         ! Leaf-level Vcmax
-        dvcmax_leaf(pft) = out_pmodel(pft)%vcmax_unitiabs * solar%meanmppfd(moy)
+        dvcmax_leaf(pft) = out_pmodel(pft)%vcmax_unitiabs * meanmppfd
 
       else  
 
@@ -287,7 +297,7 @@ contains
     real, intent(in)                      :: elv      ! elevation above sea level (m)
 
     ! function return variable
-    type( outtype_pmodel ), dimension(npft,nmonth) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
+    type(outtype_pmodel), dimension(npft,nmonth) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
 
     ! local variables
     real, dimension(ndayyear) :: mydtemp
@@ -326,10 +336,10 @@ contains
 
         if ( params_pft_plant(pft)%c4 ) then
           ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
-          out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, 9999.9, mtemp(moy), mvpd(moy), elv, "C4" )
+          out_pmodel(pft,moy) = pmodel( params_pft_gpp(pft)%kphio, -9999.0, -9999.0, 3.0 * co2, mtemp(moy), mvpd(moy), elv, "C4" )
         else
           ! C3
-          out_pmodel(pft,moy) = pmodel( pft, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
+          out_pmodel(pft,moy) = pmodel( params_pft_gpp(pft)%kphio, -9999.0, -9999.0, co2, mtemp(moy), mvpd(moy), elv, "C3_full" )
 
           ! ! XXX PMODEL_TEST:
           ! out_pmodel(pft,moy) = pmodel( pft, 1.0, mppfd(moy), myco2, mtemp(moy), mvpd(moy), myelv, "C3_full" )
@@ -358,6 +368,16 @@ contains
 
     ! GPP is light use efficiency multiplied by absorbed light and soil moisture stress function
     my_dgpp = fapar * fpc_grid * dppfd * soilmstress * lue * tempstress * c_molmass
+
+    ! print*,'in calc_dgpp():', fapar * fpc_grid * dppfd * soilmstress * tempstress * c_molmass
+
+    ! print*,'fapar', fapar
+    ! print*,'fpc_grid', fpc_grid
+    ! print*,'dppfd', dppfd
+    ! print*,'soilmstress', soilmstress
+    ! print*,'lue', lue
+    ! print*,'tempstress', tempstress
+    ! print*,'c_molmass', c_molmass
 
     ! print*,'soilmstress, ramp_gpp_lotemp', soilmstress, ramp_gpp_lotemp( dtemp )
 
@@ -466,18 +486,18 @@ contains
   end function calc_vcmax_canop
 
 
-  function pmodel( pft, fpar, ppfd, co2, tc, vpd, elv, method ) result( out_pmodel )
+  function pmodel( kphio, fpar, ppfd, co2, tc, vpd, elv, method ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
     ! Output:   gpp (mol/m2/month)   : gross primary production
     !------------------------------------------------------------------
     ! arguments
-    integer, intent(in) :: pft         
-    real, intent(in)    :: fpar         ! monthly fraction of absorbed photosynthetically active radiation (unitless) 
-    real, intent(in)    :: ppfd         ! monthly photon flux density (mol/m2)
-    real, intent(in)    :: co2          ! atmospheric CO2 concentration (ppm)
-    real, intent(in)    :: tc           ! monthly air temperature (deg C)
-    real, intent(in)    :: vpd          ! mean monthly vapor pressure (Pa) -- CRU data is in hPa
-    real, intent(in)    :: elv          ! elevation above sea-level (m)
+    real, intent(in) :: kphio        ! apparent quantum yield efficiency       
+    real, intent(in) :: fpar         ! monthly fraction of absorbed photosynthetically active radiation (unitless) 
+    real, intent(in) :: ppfd         ! monthly photon flux density (mol/m2)
+    real, intent(in) :: co2          ! atmospheric CO2 concentration (ppm)
+    real, intent(in) :: tc           ! monthly air temperature (deg C)
+    real, intent(in) :: vpd          ! mean monthly vapor pressure (Pa) -- CRU data is in hPa
+    real, intent(in) :: elv          ! elevation above sea-level (m)
     character(len=*), intent(in) :: method
 
     ! function return value
@@ -607,7 +627,7 @@ contains
       mprime = calc_mprime( out_lue%m )
 
       ! Light use efficiency (assimilation rate per unit absorbed light)
-      lue = params_pft_gpp(pft)%kphio * mprime  ! in mol CO2 m-2 s-1 / (mol light m-2 s-1)
+      lue = kphio * mprime  ! in mol CO2 m-2 s-1 / (mol light m-2 s-1)
 
       ! Gross primary productivity = ecosystem-level assimilation rate (per unit ground area)
       assim = ppfdabs * lue ! in mol CO2 m-2 s-1
@@ -627,13 +647,13 @@ contains
 
       ! Vcmax per unit ground area is the product of the intrinsic quantum 
       ! efficiency, the absorbed PAR, and 'n'
-      vcmax = ppfdabs * params_pft_gpp(pft)%kphio * out_lue%n
+      vcmax = ppfdabs * kphio * out_lue%n
 
       ! Vcmax normalised per unit fAPAR (assuming fAPAR=1)
-      vcmax_unitfapar = ppfd * params_pft_gpp(pft)%kphio * out_lue%n 
+      vcmax_unitfapar = ppfd * kphio * out_lue%n 
 
       ! Vcmax normalised per unit absorbed PPFD (assuming ppfdabs=1)
-      vcmax_unitiabs = params_pft_gpp(pft)%kphio * out_lue%n 
+      vcmax_unitiabs = kphio * out_lue%n 
 
       ! Vcmax25 (vcmax normalized to 25 deg C)
       ftemp_inst_vcmax  = calc_ftemp_inst_vcmax( tc )
@@ -668,12 +688,12 @@ contains
       ! ! - gs = A / (ca (1-chi))
       ! ! (- chi = ci / ca)
       ! ! => E = f
-      ! transp           = (1.6 * ppfdabs * params_pft_gpp(pft)%kphio * fa * mprime * vpd) / (ca - ci)   ! gpp = ppfdabs * params_pft_gpp(pft)%kphio * fa * m
-      ! transp_unitfapar = (1.6 * ppfd * params_pft_gpp(pft)%kphio * fa * mprime * vpd) / (ca - ci)
-      ! transp_unitiabs  = (1.6 * 1.0  * params_pft_gpp(pft)%kphio * fa * mprime * vpd) / (ca - ci)
+      ! transp           = (1.6 * ppfdabs * kphio * fa * mprime * vpd) / (ca - ci)   ! gpp = ppfdabs * kphio * fa * m
+      ! transp_unitfapar = (1.6 * ppfd * kphio * fa * mprime * vpd) / (ca - ci)
+      ! transp_unitiabs  = (1.6 * 1.0  * kphio * fa * mprime * vpd) / (ca - ci)
 
       ! Construct derived type for output
-      out_pmodel%gpp              = assim
+      out_pmodel%gpp              = assim * c_molmass
       out_pmodel%gstar            = gstar
       out_pmodel%chi              = chi
       out_pmodel%ci               = co2 * chi  ! return value 'out_pmodel%ci' is used for output in units of ppm. 
@@ -821,8 +841,6 @@ contains
     !----------------------------------------------------------------
     ! PFT-independent parameters
     !----------------------------------------------------------------
-    print*,'reading gpp parameters ...' 
-
     ! unit cost of carboxylation
     params_gpp%beta  = getparreal( 'params/params_gpp_pmodel.dat', 'beta' )
 
@@ -844,14 +862,12 @@ contains
     do pft=1,npft
 
       if (interface%params_siml%is_calib) then
-        params_pft_gpp(pft)%kphio          = interface%params_calib%kphio  ! is provided through standard input
+        params_pft_gpp(pft)%kphio = interface%params_calib%kphio  ! is provided through standard input
       else
-        params_pft_gpp(pft)%kphio          = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
+        params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
       end if
 
     end do
-
-    print*,'... done'
 
     return
  
@@ -1746,8 +1762,8 @@ contains
     use md_plant, only: plant_fluxes_type
 
     ! argument
-    type( outtype_pmodel ), dimension(npft), intent(in)    :: out_pmodel
-    type( plant_fluxes_type ), dimension(npft), intent(in) :: plant_fluxes
+    type(outtype_pmodel), dimension(npft), intent(in)    :: out_pmodel
+    type(plant_fluxes_type), dimension(npft), intent(in) :: plant_fluxes
     integer, intent(in)                                    :: jpngr
     integer, intent(in)                                    :: doy
 
