@@ -12,7 +12,7 @@ program main
   ! Author: Benjamin D. Stocker
   !----------------------------------------------------------------
   use md_interface, only: get_interface
-  use md_tile, only: tile_type, initglobal_tile
+  ! use md_tile, only: tile_type, initglobal_tile
   use md_plant, only: plant_type, plant_fluxes_type, initglobal_plant, params_pft_plant, getpar_modl_plant, initdaily_plant
   use md_gpp, only: pmodel, calc_dgpp, params_pft_gpp, outtype_pmodel, getpar_modl_gpp
 
@@ -34,7 +34,7 @@ program main
 
   integer :: pft = 1  ! index of plant functional type dimension
 
-  type(tile_type),         allocatable, dimension(:,:) :: tile
+  ! type(tile_type),         allocatable, dimension(:,:) :: tile
   type(plant_type),        allocatable, dimension(:,:) :: plant
   type(plant_fluxes_type), allocatable, dimension(:)   :: plant_fluxes
   type(outtype_pmodel) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
@@ -54,11 +54,11 @@ program main
   call getpar_modl_plant()
   call getpar_modl_gpp()
       
-  allocate( tile(  1, 1 ) )
+  ! allocate( tile(  1, 1 ) )
   allocate( plant( 1, 1 ) )
   allocate( plant_fluxes( 1 ) )
 
-  call initglobal_tile(  tile(:,:),  1 )
+  ! call initglobal_tile(  tile(:,:),  1 )
   call initglobal_plant( plant(:,:), 1 )
   call initdaily_plant( plant_fluxes(:) )
 

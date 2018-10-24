@@ -174,7 +174,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( plant, plant_fluxes, out_pmodel, dppfd, dayl, meanmppfd, phy, doy, moy, dtemp, do_soilmstress, do_tempstress )
+  subroutine gpp( plant, plant_fluxes, out_pmodel, dppfd, dayl, meanmppfd, wscal, rlmalpha, doy, moy, dtemp, do_soilmstress, do_tempstress )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -186,7 +186,6 @@ contains
     !
     !------------------------------------------------------------------
     use md_plant, only: params_pft_plant, plant_type, plant_fluxes_type
-    use md_tile, only: psoilphystype
 
     ! arguments
     type(plant_type), dimension(npft), intent(in) :: plant
@@ -195,7 +194,8 @@ contains
     real, intent(in) :: dppfd            ! daily total photon flux density, mol m-2
     real, intent(in) :: dayl             ! day length (h)
     real, intent(in) :: meanmppfd        ! monthly mean PPFD (mol m-2 s-1)
-    type(psoilphystype), dimension(nlu), intent(in) :: phy
+    real, dimension(nlu), intent(in) :: wscal            ! relative soil water content (unitless)
+    real, dimension(nlu), intent(in) :: rlmalpha         ! rolling mean alpha (mean annual AET/PET, unitless)
     integer, intent(in) :: doy             ! day of year and month of year
     integer, intent(in) :: moy             ! month of year and month of year
     real,    intent(in) :: dtemp           ! this day's air temperature
@@ -218,7 +218,7 @@ contains
 
       ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
       if (do_soilmstress) then
-        soilmstress = calc_soilmstress( phy(lu)%wscal, phy(lu)%rlmalpha, params_pft_plant(pft)%grass )
+        soilmstress = calc_soilmstress( wscal(lu), rlmalpha(lu), params_pft_plant(pft)%grass )
       else
         soilmstress = 1.0
       end if

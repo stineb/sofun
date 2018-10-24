@@ -291,7 +291,8 @@ contains
                       solar%dppfd(doy), &
                       solar%dayl(doy), &
                       solar%meanmppfd(moy), &
-                      tile(:,jpngr)%soil%phy, &
+                      tile(:,jpngr)%soil%phy%wscal, &
+                      tile(:,jpngr)%soil%phy%rlmalpha, &
                       doy, &
                       moy, &
                       interface%climate(jpngr)%dtemp(doy), &
