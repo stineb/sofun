@@ -16,7 +16,7 @@ module md_waterbal
   ! updated by 'waterbal') are:
   !   - daytime net radiation ('rn')
   !   - soil water conent ('psoilphys%wcont')
-  !   - runoff ('soilphys%ro')
+  !   - runoff ('soilphys%dro')
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   ! ...
@@ -26,8 +26,8 @@ module md_waterbal
   implicit none
 
   private
-  public solartype, soilphys, evap, waterbal, getsolar,                &
-    initdaily_waterbal, initio_waterbal,                               &
+  public solartype, evap, waterbal, getsolar,                          &
+    initio_waterbal,                                                   &
     getout_daily_waterbal, initoutput_waterbal,                        &
     getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, &
     writeout_nc_waterbal, get_rlm_waterbal, init_rlm_waterbal, getrlm_daily_waterbal
@@ -35,16 +35,16 @@ module md_waterbal
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
-  ! Collection of physical soil variables used across modules
-  type soilphystype
-    real :: ro           ! daily runoff (mm)
-    real :: sw           ! evaporative supply rate (mm/h)
-    real :: wscal        ! water filled pore space (unitless)
-    real :: fleach       ! NO3 leaching fraction (unitless)
-    ! real :: soilmstress  ! soil moisture stress factor (unitless)
-  end type soilphystype
+  ! ! Collection of physical soil variables used across modules
+  ! type soilphystype
+  !   real :: ro           ! daily runoff (mm)
+  !   real :: sw           ! evaporative supply rate (mm/h)
+  !   real :: wscal        ! water filled pore space (unitless)
+  !   real :: fleach       ! NO3 leaching fraction (unitless)
+  !   ! real :: soilmstress  ! soil moisture stress factor (unitless)
+  ! end type soilphystype
 
-  type( soilphystype ), dimension(nlu) :: soilphys(nlu)
+  ! type( soilphystype ), dimension(nlu) :: soilphys(nlu)
 
   ! Collection of solar radiation-related variables used across modules
   ! Variables are a function of latitude, elevation, and 
@@ -167,25 +167,24 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( phy, doy, jpngr, lat, elv, soilparams, pr, tc, sf, netrad, splashtest, lev_splashtest, testdoy )
+  subroutine waterbal( soil, tile_fluxes, doy, jpngr, lat, elv, pr, tc, sf, netrad, splashtest, lev_splashtest, testdoy )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, ndaymonth, nlu, dummy
-    use md_tile, only: psoilphystype
-    use md_params_soil, only: paramtype_soil
+    use md_tile, only: soil_type, tile_fluxes_type
 
     ! arguments
-    type( psoilphystype ), dimension(nlu), intent(inout) :: phy
-    integer, intent(in)                                  :: doy    ! day of year
-    integer, intent(in)                                  :: jpngr  ! gridcell number
-    real, intent(in)                                     :: lat    ! latitude (degrees)
-    real, intent(in)                                     :: elv    ! altitude (m)
-    type( paramtype_soil ), intent(in)                   :: soilparams
-    real, intent(in)                                     :: pr     ! daily precip (mm) 
-    real, intent(in)                                     :: tc     ! mean monthly temperature (deg C)
-    real, intent(in)                                     :: sf     ! mean monthly sunshine fraction (unitless)
-    real, intent(in)                                     :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
+    type( soil_type ), dimension(nlu), intent(inout)        :: soil
+    type( tile_fluxes_type ), dimension(nlu), intent(inout) :: tile_fluxes
+    integer, intent(in)                                     :: doy    ! day of year
+    integer, intent(in)                                     :: jpngr  ! gridcell number
+    real, intent(in)                                        :: lat    ! latitude (degrees)
+    real, intent(in)                                        :: elv    ! altitude (m)
+    real, intent(in)                                        :: pr     ! daily precip (mm) 
+    real, intent(in)                                        :: tc     ! mean monthly temperature (deg C)
+    real, intent(in)                                        :: sf     ! mean monthly sunshine fraction (unitless)
+    real, intent(in)                                        :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
 
     logical, intent(in) :: splashtest
     integer, intent(in) :: lev_splashtest
@@ -214,59 +213,56 @@ contains
     do lu=1,nlu
 
       ! Calculate evaporative supply rate, mm/h
-      soilphys(lu)%sw = kCw * phy(lu)%wcont / soilparams%whc
+      tile_fluxes(lu)%sw = kCw * soil(lu)%phy%wcont / soil(lu)%params%whc
 
       ! Calculate radiation and evaporation quantities
       if (splashtest) then
         evap(lu) = getevap( lat=67.25, doy=55, elv=87.0, sf=sf_splashtest, tc=tc_splashtest, sw=sw_splashtest, netrad=dummy, splashtest=splashtest, testdoy=testdoy )
         if (lev_splashtest==2) stop 'end of splash test level 2'
       else
-        ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soilphys(lu)%sw
-        evap(lu) = getevap( lat, doy, elv, sf, tc, soilphys(lu)%sw, netrad, splashtest, testdoy )
+        ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
+        evap(lu) = getevap( lat, doy, elv, sf, tc, tile_fluxes(lu)%sw, netrad, splashtest, testdoy )
         ! print*,'... done'
       end if
 
       ! Update soil moisture
-      phy(lu)%wcont = phy(lu)%wcont + pr + evap(lu)%cn - evap(lu)%aet
+      soil(lu)%phy%wcont = soil(lu)%phy%wcont + pr + evap(lu)%cn - evap(lu)%aet
 
       ! Bucket model for runoff generation
-      if (phy(lu)%wcont>soilparams%whc) then
+      if (soil(lu)%phy%wcont>soil(lu)%params%whc) then
         ! -----------------------------------
         ! Bucket is full 
         ! -----------------------------------
         ! * determine NO3 leaching fraction 
-        soilphys(lu)%fleach = 1.0 - soilparams%whc / phy(lu)%wcont
-        ! print*,'fleach ', soilphys(lu)%fleach
+        tile_fluxes(lu)%dfleach = 1.0 - soil(lu)%params%whc / soil(lu)%phy%wcont
+        ! print*,'fleach ', tile_fluxes(lu)%dfleach
         ! leaching_events = leaching_events + 1
 
         ! * add remaining water to monthly runoff total
-        soilphys(lu)%ro = phy(lu)%wcont - soilparams%whc
+        tile_fluxes(lu)%dro = soil(lu)%phy%wcont - soil(lu)%params%whc
 
         ! * set soil moisture to capacity
-        phy(lu)%wcont = soilparams%whc
+        soil(lu)%phy%wcont = soil(lu)%params%whc
 
-      elseif (phy(lu)%wcont<0.0) then
+      elseif (soil(lu)%phy%wcont<0.0) then
         ! -----------------------------------
         ! Bucket is empty
         ! -----------------------------------
         ! * set soil moisture to zero
-        evap(lu)%aet              = evap(lu)%aet + phy(lu)%wcont
-        phy(lu)%wcont             = 0.0
-        soilphys(lu)%ro           = 0.0
-        soilphys(lu)%fleach       = 0.0
+        evap(lu)%aet              = evap(lu)%aet + soil(lu)%phy%wcont
+        soil(lu)%phy%wcont             = 0.0
+        tile_fluxes(lu)%dro           = 0.0
+        tile_fluxes(lu)%dfleach       = 0.0
 
       else
         ! No runoff occurrs
-        soilphys(lu)%ro     = 0.0
-        soilphys(lu)%fleach = 0.0
+        tile_fluxes(lu)%dro     = 0.0
+        tile_fluxes(lu)%dfleach = 0.0
 
       end if
 
       ! water-filled pore space
-      soilphys(lu)%wscal = phy(lu)%wcont / soilparams%whc
-
-      ! ! soil moisture stress function
-      ! soilphys(lu)%soilmstress = calc_soilmstress( soilphys(lu)%wscal, rlmalpha(lu,jpngr), params_pft_plant(pft)%grass )  
+      soil(lu)%phy%wscal = soil(lu)%phy%wcont / soil(lu)%params%whc
 
     end do
 
@@ -1214,18 +1210,6 @@ contains
   end function psychro
 
 
-  subroutine initdaily_waterbal()
-    !////////////////////////////////////////////////////////////////
-    ! Initialises all daily variables within derived type 'soilphys'.
-    !----------------------------------------------------------------
-    soilphys(:)%ro          = 0.0
-    soilphys(:)%sw          = 0.0
-    soilphys(:)%wscal       = 0.0
-    ! soilphys(:)%soilmstress = 0.0
-
-  end subroutine initdaily_waterbal
-
-
   subroutine initio_waterbal()
     !////////////////////////////////////////////////////////////////
     ! OPEN ASCII OUTPUT FILES FOR OUTPUT
@@ -1643,8 +1627,8 @@ contains
       ! outdcn(it,jpngr)       = outdcn(it,jpngr)       + evap(1)%cn / real( interface%params_siml%outdt )
       ! outdaet(:,it,jpngr)    = outdaet(:,it,jpngr)    + evap(:)%aet / real( interface%params_siml%outdt )
       ! outdcpa(:,it,jpngr)    = outdcpa(:,it,jpngr)    + evap(:)%cpa / real( interface%params_siml%outdt )
-      ! outdro(:,it,jpngr)     = outdro(:,it,jpngr)     + soilphys(:)%ro / real( interface%params_siml%outdt )
-      ! outdfleach(:,it,jpngr) = outdfleach(:,it,jpngr) + soilphys(:)%fleach / real( interface%params_siml%outdt )
+      ! outdro(:,it,jpngr)     = outdro(:,it,jpngr)     + soilphys(:)%dro / real( interface%params_siml%outdt )
+      ! outdfleach(:,it,jpngr) = outdfleach(:,it,jpngr) + soilphys(:)%dfleach / real( interface%params_siml%outdt )
       if (outenergy) then
         outdpet(it,jpngr)    = outdpet(it,jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
         outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + (evap(:)%aet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
@@ -1664,11 +1648,10 @@ contains
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
     use md_interface, only: interface
-    use md_tile, only: psoilphystype
 
     ! argument
-    integer, intent(in)                               :: jpngr
-    integer, intent(in)                               :: doy    
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: doy    
 
     if (evap(1)%pet > 0.0) then
       rlmalpha(:,jpngr)  = rlmalpha(:,jpngr) + (evap(:)%aet / evap(1)%pet) / ndayyear

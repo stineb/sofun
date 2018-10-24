@@ -174,8 +174,7 @@ module md_gpp
 
 contains
 
-  ! subroutine gpp( out_pmodel, solar, plant, plant_fluxes, phy, doy, moy, dtemp, do_soilmstress )
-  subroutine gpp( plant, plant_fluxes, out_pmodel, dppfd, dayl, meanmppfd, wscal, rlmalpha, doy, moy, dtemp, do_soilmstress, do_tempstress )
+  subroutine gpp( plant, plant_fluxes, out_pmodel, dppfd, dayl, meanmppfd, phy, doy, moy, dtemp, do_soilmstress, do_tempstress )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily GPP (gC/m2/d) from monthly acclimated photosynth-
     ! etic parameters (P-model output) and actual daily PPFD and soil
@@ -187,8 +186,7 @@ contains
     !
     !------------------------------------------------------------------
     use md_plant, only: params_pft_plant, plant_type, plant_fluxes_type
-    ! use md_tile, only: psoilphystype
-    ! use md_waterbal, only: soilphys, solartype
+    use md_tile, only: psoilphystype
 
     ! arguments
     type(plant_type), dimension(npft), intent(in) :: plant
@@ -197,14 +195,7 @@ contains
     real, intent(in) :: dppfd            ! daily total photon flux density, mol m-2
     real, intent(in) :: dayl             ! day length (h)
     real, intent(in) :: meanmppfd        ! monthly mean PPFD (mol m-2 s-1)
-    real, intent(in) :: wscal            ! relative soil water content (unitless)
-    real, intent(in) :: rlmalpha         ! rolling mean alpha (mean annual AET/PET, unitless)
-
-    ! type(psoilphystype), dimension(nlu), intent(inout) :: phy
-    ! type(solartype), intent(in)                        :: solar
-    ! type(plant_type), dimension(npft), intent(in) :: plant
-    ! type(plant_fluxes_type), dimension(npft), intent(inout) :: plant_fluxes
-
+    type(psoilphystype), dimension(nlu), intent(in) :: phy
     integer, intent(in) :: doy             ! day of year and month of year
     integer, intent(in) :: moy             ! month of year and month of year
     real,    intent(in) :: dtemp           ! this day's air temperature
@@ -221,23 +212,23 @@ contains
     ! CALCULATE PREDICTED GPP FROM P-model
     ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
     !----------------------------------------------------------------
-    ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
-    if (do_soilmstress) then
-      soilmstress = calc_soilmstress( wscal, rlmalpha, params_pft_plant(pft)%grass )
-    else
-      soilmstress = 1.0
-    end if
-
-    ! Calculate low temperature stress
-    if (do_tempstress) then
-      tempstress = calc_tempstress( dtemp )
-    else
-      tempstress = 1.0
-    end if
-
     do pft=1,npft
 
       lu = params_pft_plant(pft)%lu_category
+
+      ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
+      if (do_soilmstress) then
+        soilmstress = calc_soilmstress( phy(lu)%wscal, phy(lu)%rlmalpha, params_pft_plant(pft)%grass )
+      else
+        soilmstress = 1.0
+      end if
+
+      ! Calculate low temperature stress
+      if (do_tempstress) then
+        tempstress = calc_tempstress( dtemp )
+      else
+        tempstress = 1.0
+      end if
 
       if ( plant(pft)%fpc_grid>0.0 .and. doy>0.0) then
 
@@ -280,11 +271,9 @@ contains
 
   function getlue( co2, dtemp, dvpd, elv ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates the monthly acclimated photosynthetic parameters for 
-    ! assimilation, Vcmax, and dark respiration per unit light absorbed.
-    ! This SR is called before the daily loop. This implies that all 
-    ! input variables need to be known beforehand => no daily coupling
-    ! possible.
+    ! Averages ambient conditions across given time scale and 
+    ! calls pmodel() with averaged values.
+    ! xxx todo: abandon this and do the averaging and loop directly in biosphere_()
     !------------------------------------------------------------------
     use md_params_core, only: ndayyear, nlu
     use md_plant, only: params_pft_plant
@@ -368,18 +357,6 @@ contains
 
     ! GPP is light use efficiency multiplied by absorbed light and soil moisture stress function
     my_dgpp = fapar * fpc_grid * dppfd * soilmstress * lue * tempstress * c_molmass
-
-    ! print*,'in calc_dgpp():', fapar * fpc_grid * dppfd * soilmstress * tempstress * c_molmass
-
-    ! print*,'fapar', fapar
-    ! print*,'fpc_grid', fpc_grid
-    ! print*,'dppfd', dppfd
-    ! print*,'soilmstress', soilmstress
-    ! print*,'lue', lue
-    ! print*,'tempstress', tempstress
-    ! print*,'c_molmass', c_molmass
-
-    ! print*,'soilmstress, ramp_gpp_lotemp', soilmstress, ramp_gpp_lotemp( dtemp )
 
   end function calc_dgpp
 
@@ -488,7 +465,8 @@ contains
 
   function pmodel( kphio, fpar, ppfd, co2, tc, vpd, elv, method ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
-    ! Output:   gpp (mol/m2/month)   : gross primary production
+    ! Implements the P-model, providing predictions for ci, Vcmax, and 
+    ! light use efficiency, etc. If fpar and ppfd are provided, calculates GPP.
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: kphio        ! apparent quantum yield efficiency       

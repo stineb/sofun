@@ -40,24 +40,23 @@ module md_soiltemp
 
 contains
 
-  subroutine soiltemp( phy, dtemp, ngridcells, init, jpngr, moy, doy ) 
+  subroutine soiltemp( soil, dtemp, ngridcells, init, jpngr, moy, doy ) 
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates soil temperature based on.
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, nlu, ndaymonth, pi
     use md_sofunutils, only: running, daily2monthly
-    use md_waterbal, only: soilphys
-    use md_tile, only: psoilphystype
+    use md_tile, only: soil_type
     use md_interface
 
     ! arguments
-    type( psoilphystype ), dimension(nlu), intent(inout) :: phy
-    integer, intent(in)                   :: jpngr
-    integer, intent(in)                   :: moy        ! current month of year
-    integer, intent(in)                   :: doy        ! current day of year
-    real, dimension(ndayyear), intent(in) :: dtemp        ! daily temperature (deg C)
-    integer, intent(in) :: ngridcells
-    logical, intent(in) :: init
+    type( soil_type ), dimension(nlu), intent(inout) :: soil
+    integer, intent(in)                              :: jpngr
+    integer, intent(in)                              :: moy        ! current month of year
+    integer, intent(in)                              :: doy        ! current day of year
+    real, dimension(ndayyear), intent(in)            :: dtemp        ! daily temperature (deg C)
+    integer, intent(in)                              :: ngridcells
+    logical, intent(in)                              :: init
 
     ! local variables
     real, dimension(:,:), allocatable, save   :: dtemp_pvy    ! daily temperature of previous year (deg C)
@@ -82,7 +81,7 @@ contains
       dtemp_pvy(:,jpngr) = dtemp(:)
     end if
 
-    wscal_alldays(:,doy) = soilphys(:)%wscal
+    wscal_alldays(:,doy) = soil(:)%phy%wscal
 
     avetemp = running( dtemp, doy, ndayyear, ndayyear, "mean", dtemp_pvy(:,jpngr) ) 
 
@@ -119,7 +118,7 @@ contains
 
       ! In case of zero soil water, return with soil temp = air temp
       if (meanw1==0.0) then
-        phy(lu)%temp = dtemp(doy)
+        soil(lu)%phy%temp = dtemp(doy)
         ! dtemp_soil(lu,jpngr) = dtemp(doy)
         return
       endif
@@ -149,7 +148,7 @@ contains
           
       ! Adjust amplitude of lagged air temp to give estimated soil temp
       ! dtemp_soil(lu,jpngr) = avetemp + amp * ( lagtemp - avetemp )
-      phy(lu)%temp = avetemp + amp * ( lagtemp - avetemp )
+      soil(lu)%phy%temp = avetemp + amp * ( lagtemp - avetemp )
 
     end do
 

@@ -719,8 +719,6 @@ contains
     integer :: filehandle
     character(len=40) :: readname, readvalue
 
-    print*,'reading real value for ', paraname
-
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
     9    read(filehandle,12,end=10)readname,readvalue
@@ -746,6 +744,8 @@ contains
 
     close(filehandle)
 
+    print*,'reading real value for ', paraname, ': ', paravalue
+
     return
 
     19   write(0,*) 'getparreal: '//filename//' not found!'
@@ -768,8 +768,6 @@ contains
     integer :: filehandle
     character(len=40) :: readname, readvalue
 
-    print*,'reading integer for ', paraname
-
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
     9    read(filehandle,12,end=10)readname,readvalue
@@ -788,6 +786,8 @@ contains
     12   format(2a40)
 
     close(filehandle)
+
+    print*,'reading integer for ', paraname, ': ', paravalue
 
     return
 
@@ -811,8 +811,6 @@ contains
     integer :: filehandle
     character(len=40) :: readname, readvalue
 
-    print*,'reading logical for ', paraname
-
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
     9    read(filehandle,12,end=10)readname,readvalue
@@ -830,6 +828,8 @@ contains
     12   format(2a40)
 
     close(filehandle)
+
+    print*,'reading logical for ', paraname, ': ', paravalue
 
     return
 
@@ -849,8 +849,6 @@ contains
     integer :: filehandle,i
     character(len=40) :: readname
     character(len=1024) :: readvalue
-
-    print*, 'reading string for ', paraname
 
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
@@ -874,6 +872,8 @@ contains
     12   format(a40,a)
 
     close(filehandle)
+
+    print*, 'reading string for ', paraname, ': ', paravalue
 
     return
 

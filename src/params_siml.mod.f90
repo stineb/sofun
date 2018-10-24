@@ -33,6 +33,7 @@ module md_params_siml
     integer :: const_lu_year        ! is true when using constant land use, given by year 'firstyeartrend'
 
     logical :: soilmstress          ! when true, an empirical soil moisture stress function is applied to GPP
+    logical :: tempstress           ! when true, an empirical temperature stress function is applied to GPP
     
     character(len=256) :: runname
     character(len=256) :: sitename
@@ -354,6 +355,7 @@ contains
     out_getpar_siml%const_lu_year     = getparint( 'run/'//runname//'.sofun.parameter', 'const_lu_year' )
 
     out_getpar_siml%soilmstress       = getparlogical( 'run/'//runname//'.sofun.parameter', 'soilmstress' )
+    out_getpar_siml%tempstress        = getparlogical( 'run/'//runname//'.sofun.parameter', 'tempstress' )
     
     ! boolean for ascii output writing (core variables)
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
