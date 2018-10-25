@@ -122,23 +122,35 @@ contains
         ! dtemp_soil(lu,jpngr) = dtemp(doy)
         return
       endif
+
+      print*,'1'
           
+      print*,'%thdiff_whc15', soil(lu)%params%thdiff_whc15
+      print*,'%thdiff_wp', soil(lu)%params%thdiff_wp
+      print*,'%thdiff_fc', soil(lu)%params%thdiff_fc
+
       ! Interpolate thermal diffusivity function against soil water content
       if (meanw1<0.15) then
-        diffus = ( interface%soilparams(jpngr)%thdiff_whc15 - interface%soilparams(jpngr)%thdiff_wp ) / 0.15 * meanw1 + interface%soilparams(jpngr)%thdiff_wp
+        diffus = ( soil(lu)%params%thdiff_whc15 - soil(lu)%params%thdiff_wp ) / 0.15 * meanw1 + soil(lu)%params%thdiff_wp
       else
-        diffus = ( interface%soilparams(jpngr)%thdiff_fc - interface%soilparams(jpngr)%thdiff_whc15 ) / 0.85 * ( meanw1 - 0.15 ) + interface%soilparams(jpngr)%thdiff_whc15
+        diffus = ( soil(lu)%params%thdiff_fc - soil(lu)%params%thdiff_whc15 ) / 0.85 * ( meanw1 - 0.15 ) + soil(lu)%params%thdiff_whc15
       endif
           
       ! Convert diffusivity from mm2/s to m2/month
       ! multiplication by 1e-6 (-> m2/s) * 2.628e6 (s/month)  =  2.628
       diffus = diffus * 2.628
+
+      print*,'2'
           
+      print*,'diffus: ', diffus
+
       ! Calculate amplitude fraction and lag at soil depth 0.25 m
       alag = 0.25 / sqrt( 12.0 * diffus / pi )
       amp  = exp(-alag)
       lag  = alag * ( 6.0 / pi )                                 !convert lag from angular units to months
           
+      print*,'3'
+
       ! Calculate monthly soil temperatures for this year.  For each month,
       ! calculate average air temp for preceding 12 months (including this one)
           

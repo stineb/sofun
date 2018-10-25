@@ -18,6 +18,7 @@ module md_params_soil
     real :: thdiff_whc15
     real :: thdiff_fc
     real :: forg
+    real :: wbwp
     real :: por
     real :: fsand
     real :: fclay
@@ -29,6 +30,33 @@ contains
   function getsoil( domaininfo, grid ) result( params_soil_field )
     !////////////////////////////////////////////////////////////////
     ! Function returns the field of soil parameters
+    !
+    ! Defines soil parameters based on soil types, adopted from LPX
+    !                                                                                
+    ! Code     TEXTURE              DESCRITIPTION    sand        clay    silt    Porosity                                                              
+    !                                                content content content                                                                           
+    ! 1        coarse               loamy sand       0.82        0.06    0.12    0.421                                                                 
+    ! 2        medium               silty clay loam  0.10        0.34    0.56    0.464                                                                 
+    ! 3        fine, non-vertisol   light clay       0.22        0.58    0.20    0.468                                                                 
+    ! 4        medium-coarse        sandy loam       0.58        0.10    0.32    0.434                                                                 
+    ! 5        fine-coarse          sandy clay       0.52        0.42    0.06    0.406                                                                 
+    ! 6        fine-medium          clay loam        0.32        0.34    0.34    0.465                                                                 
+    ! 7        fine-medium-coarse   sandy clay loam  0.58        0.27    0.15    0.404                                                                 
+    ! 8        organic                               0.40        0.01    0.59    0.800                                                                 
+    ! 9        fine, vertisol                                                    0.482                                                                 
+    !                                                                                                                                           
+    ! Parameters:                                                                                                                                                      
+    ! perc_k1      : empirical parameter in percolation equation (K1) (mm/day)
+    ! thdiff_wp    : thermal diffusivity (mm2/s) at wilting point (0% WHC)
+    ! thdiff_whc15 : thermal diffusivity (mm2/s) at 15% WHC
+    ! thdiff_fc    : thermal diffusivity at field capacity (100% WHC) Thermal diffusivities follow van Duin (1963), Jury et al (1991), Fig 5.11.
+    ! forg         : volumetric fraction of organic material (m3 m-3) 
+    ! wbwp         : Water content at permanent wilting point (Hillel, 1998) From the AGRMET Handbook, 2002
+    ! por          : porosity from AGRMET Handbook, 2002
+    ! fsand        : sand content from Cosby et al., 1984  
+    ! fclay        : clay content from Cosby et al., 1984  
+    ! fsilt        : silt content from Cosby et al., 1984  
+    !
     !----------------------------------------------------------------
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo
@@ -135,11 +163,14 @@ contains
     ! close NetCDF files
     call check( nf90_close( ncid ) )
 
-    ! read from array to define grid type 
+    ! get soil parameters for each gridcell given its soil code which is read from file
     do jpngr=1,domaininfo%maxgrid
       tmp = soilparams_arr(ilon(jpngr),ilat(jpngr))
       if ( tmp/=ncfillvalue ) then
         params_soil_field(jpngr) = soilparams_per_code( int(tmp) )
+      else
+        ! for gridcells where no info is available, assume soil code 4
+        params_soil_field(jpngr) = soilparams_per_code( 4 )
       end if
     end do
 
@@ -261,6 +292,7 @@ contains
     params_soil%thdiff_whc15 = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'thdiff_whc15' )
     params_soil%thdiff_fc    = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'thdiff_fc' )
     params_soil%forg         = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'forg' )
+    params_soil%wbwp         = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'wbwp' )
     params_soil%por          = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'por' )
     params_soil%fsand        = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'fsand' )
     params_soil%fclay        = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'fclay' )

@@ -341,7 +341,7 @@ contains
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
 
     ! Reading from a different file!
-    call getparstring( 'input/sitedata/fapar/dfapar_source.txt', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
+    call getparstring( 'input/dfapar_source.txt', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
 
     out_getpar_siml%in_netrad         = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_netrad' )
     out_getpar_siml%in_ppfd           = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_ppfd' )

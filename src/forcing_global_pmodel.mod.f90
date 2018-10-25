@@ -173,7 +173,7 @@ contains
       varname = "EVI_FILLED"
       filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc"
 
-    else if (fapar_forcing_source=="fapar3g") then
+    else if (fapar_forcing_source=="fapar3g" .or. fapar_forcing_source=="fAPAR3g") then
       
       ! fAPAR data from fAPAR3g
       firstyr_data = 1982
@@ -809,8 +809,8 @@ contains
     real :: tmp
     character(len=5) :: recname = "tstep"
     integer, parameter :: firstyr_cru = 1901
-    integer, parameter :: nyrs_cru = 114
-    character(len=256), parameter :: filnam = './input/global/climate/ccov/cru_ts3.23.1901.2014.cld.dat.nc'
+    integer, parameter :: nyrs_cru = 116
+    character(len=256), parameter :: filnam = './input/global/climate/ccov/cru_ts4.01.1901.2016.cld.dat.nc'
 
     if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
 

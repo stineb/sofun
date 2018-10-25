@@ -1,5 +1,10 @@
 module md_interface
-
+  !////////////////////////////////////////////////////////////////
+  ! Module interface defines nested derived type that contains all
+  ! the necessary simulation parameters, etc.
+  !
+  ! Author: Benjamin D. Stocker
+  !----------------------------------------------------------------
   implicit none
 
   private
@@ -65,6 +70,7 @@ module md_interface
     real :: soilm_par_a
     real :: soilm_par_b
   end type paramstype_calib  
+
 
   type interfacetype_biosphere
     type( gridtype ), dimension(:),         allocatable :: grid

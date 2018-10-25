@@ -2,21 +2,10 @@ module md_gpp
   !////////////////////////////////////////////////////////////////
   ! P-MODEL GPP MODULE
   ! Contains P model functions adopted from GePiSaT
-  ! This module ontains the "main" subroutine 'pmodel' and all necessary 
+  ! This module contains the "main" subroutine 'pmodel' and all necessary 
   ! subroutines for handling input/output. 
-  ! Every module that implements 'pmodel' must contain this list 
-  ! of subroutines (names that way).
-  !   - getpar_modl_gpp
-  !   - initio_gpp
-  !   - initoutput_gpp
-  !   - getout_daily_gpp
-  !   - writeout_ascii_gpp
-  !   - pmodel
-  ! Required module-independent model state variables (necessarily 
-  ! updated by 'pmodel') are:
-  !   - xxx
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
-  ! contact: b.stocker@imperial.ac.uk
+  ! contact: benjamin.stocker@gmail.com
   !----------------------------------------------------------------
   use md_params_core, only: nmonth, npft, nlu, c_molmass, h2o_molmass, maxgrid, ndayyear
 
@@ -230,9 +219,10 @@ contains
         tempstress = 1.0
       end if
 
-      if ( plant(pft)%fpc_grid>0.0 .and. doy>0.0) then
+      if ( plant(pft)%fpc_grid>0.0 .and. doy>0.0 ) then
 
         ! GPP
+        print*,'a'
         plant_fluxes(pft)%dgpp = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, dppfd, out_pmodel(pft)%lue, tempstress, soilmstress )
 
         ! ! transpiration
@@ -240,18 +230,23 @@ contains
         ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, dppfd, out_pmodel(pft)%transp_unitiabs, dtemp )
 
         ! Dark respiration
+        print*,'b'
         plant_fluxes(pft)%drd = calc_drd( plant(pft)%fapar_ind, plant(pft)%fpc_grid, meanmppfd, out_pmodel(pft)%rd_unitiabs, tempstress, soilmstress )
 
         ! Leaf-level assimilation rate
+        print*,'c '
         dassim(pft) = calc_dassim( dppfd, out_pmodel(pft)%lue, dayl, tempstress, soilmstress )
 
         ! stomatal conductance
+        print*,'d '
         dgs(pft) = calc_dgs( dppfd, out_pmodel(pft)%gs_unitiabs, dayl, tempstress, soilmstress )
 
         ! Canopy-level Vcmax (actually changes only monthly)
+        print*,'e '
         dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, meanmppfd )
 
         ! Leaf-level Vcmax
+        print*,'f '
         dvcmax_leaf(pft) = out_pmodel(pft)%vcmax_unitiabs * meanmppfd
 
       else  
@@ -376,7 +371,11 @@ contains
     real :: my_dassim                   ! leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
 
     ! Leaf-level assimilation rate, average over daylight hours
-    my_dassim = dppfd * soilmstress * lue * tempstress / ( 60.0 * 60.0 * daylength )
+    if (daylength>0.0) then
+      my_dassim = dppfd * soilmstress * lue * tempstress / ( 60.0 * 60.0 * daylength )
+    else
+      my_dassim = 0.0
+    end if
 
   end function calc_dassim
 
@@ -396,8 +395,12 @@ contains
     real :: dgs                         ! leaf-level stomatal conductance to H2O, mean over daylight hours ( mol H2O m-2 s-1 )
 
     ! Leaf-level assimilation rate, average over daylight hours
-    dgs = dppfd * soilmstress * dgs_unitiabs * tempstress / ( 60.0 * 60.0 * daylength )
-
+    if (daylength>0.0) then
+      dgs = dppfd * soilmstress * dgs_unitiabs * tempstress / ( 60.0 * 60.0 * daylength )
+    else
+      dgs = 0.0
+    end if
+    
   end function calc_dgs
 
 

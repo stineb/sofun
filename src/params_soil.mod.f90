@@ -18,6 +18,7 @@ module md_params_soil
     real :: thdiff_whc15
     real :: thdiff_fc
     real :: forg
+    real :: wbwp
     real :: por
     real :: fsand
     real :: fclay
@@ -83,6 +84,7 @@ contains
     params_soil%thdiff_whc15 = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'thdiff_whc15' )
     params_soil%thdiff_fc    = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'thdiff_fc' )
     params_soil%forg         = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'forg' )
+    params_soil%wbwp         = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'wbwp' )
     params_soil%por          = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'por' )
     params_soil%fsand        = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'fsand' )
     params_soil%fclay        = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'fclay' )

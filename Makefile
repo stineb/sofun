@@ -155,7 +155,7 @@ pmodel_swbm:
 	 $(MAKE) pmodel_swbm -C src
 	 $(FCOM) -o $(PMODEL_SWBM_EXE) $(COMPFLAGS) $(ARCHIVES)
 
-# reduced model setup: only SPLASH and PMODEL
+# global P-model for lonlat simulations (doesn't necessarily need to cover the whole globe)
 gpmodel: 
 	 $(MAKE) gpmodel -C src
 	 $(FCOM) -o $(GPMODEL_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
