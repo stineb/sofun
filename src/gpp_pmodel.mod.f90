@@ -222,7 +222,6 @@ contains
       if ( plant(pft)%fpc_grid>0.0 .and. doy>0.0 ) then
 
         ! GPP
-        print*,'a'
         plant_fluxes(pft)%dgpp = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, dppfd, out_pmodel(pft)%lue, tempstress, soilmstress )
 
         ! ! transpiration
@@ -230,23 +229,18 @@ contains
         ! dtransp(pft) = calc_dtransp( plant(pft)%fapar_ind, plant(pft)%acrown, dppfd, out_pmodel(pft)%transp_unitiabs, dtemp )
 
         ! Dark respiration
-        print*,'b'
         plant_fluxes(pft)%drd = calc_drd( plant(pft)%fapar_ind, plant(pft)%fpc_grid, meanmppfd, out_pmodel(pft)%rd_unitiabs, tempstress, soilmstress )
 
         ! Leaf-level assimilation rate
-        print*,'c '
         dassim(pft) = calc_dassim( dppfd, out_pmodel(pft)%lue, dayl, tempstress, soilmstress )
 
         ! stomatal conductance
-        print*,'d '
         dgs(pft) = calc_dgs( dppfd, out_pmodel(pft)%gs_unitiabs, dayl, tempstress, soilmstress )
 
         ! Canopy-level Vcmax (actually changes only monthly)
-        print*,'e '
         dvcmax_canop(pft) = calc_vcmax_canop( plant(pft)%fapar_ind, out_pmodel(pft)%vcmax_unitiabs, meanmppfd )
 
         ! Leaf-level Vcmax
-        print*,'f '
         dvcmax_leaf(pft) = out_pmodel(pft)%vcmax_unitiabs * meanmppfd
 
       else  
@@ -616,7 +610,7 @@ contains
       ! Leaf-level assimilation rate (per unit leaf area), representative for top-canopy leaves
       assim_unitfapar = ppfd * lue  ! in mol m-2 s-1
 
-      ! ! XXX PMODEL_TEST: ok
+      ! XXX PMODEL_TEST: ok
       ! print*, 'lue ', lue
       ! print*, 'chi ', chi
 

@@ -75,15 +75,15 @@ program main
     
   end if
   
-  !----------------------------------------------------------------
-  ! Calculate GPP, given LUE
-  !----------------------------------------------------------------
-  gpp = calc_dgpp( fapar = fapar, fpc_grid = 1.0, dppfd = ppfd, lue = out_pmodel%lue, tempstress = tempstress, soilmstress = soilmstress )
+  ! !----------------------------------------------------------------
+  ! ! Calculate GPP, given LUE
+  ! !----------------------------------------------------------------
+  ! gpp = calc_dgpp( fapar = fapar, fpc_grid = 1.0, dppfd = ppfd, lue = out_pmodel%lue, tempstress = tempstress, soilmstress = soilmstress )
 
   !----------------------------------------------------------------
   ! Write gpp to standard output
   !----------------------------------------------------------------
-  write(0,*) out_pmodel%gpp
-  write(0,*) gpp
+  print*, out_pmodel%gpp
+  ! write(0,*) gpp
 
 end program main

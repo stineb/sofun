@@ -744,7 +744,7 @@ contains
 
     close(filehandle)
 
-    print*,'reading real value for ', paraname, ': ', paravalue
+    ! print*,'reading real value for ', paraname, ': ', paravalue
 
     return
 
@@ -787,7 +787,7 @@ contains
 
     close(filehandle)
 
-    print*,'reading integer for ', paraname, ': ', paravalue
+    ! print*,'reading integer for ', paraname, ': ', paravalue
 
     return
 
@@ -829,7 +829,7 @@ contains
 
     close(filehandle)
 
-    print*,'reading logical for ', paraname, ': ', paravalue
+    ! print*,'reading logical for ', paraname, ': ', paravalue
 
     return
 
