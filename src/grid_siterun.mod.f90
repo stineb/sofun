@@ -1,11 +1,8 @@
 module md_grid
   !////////////////////////////////////////////////////////////////
-  ! Module contains global variables defining the model grid.
-  ! A module 'gridvars_*' must contain the following subroutines:
-  ! - getgrid
+  ! Module for handling variables defining the model grid. For site-
+  ! scale simulation this is trivial but still necesssary.
   !
-  ! ... and define the following variables that are global within
-  ! 'sofun' (but passed on to 'biosphere' as arguments).
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------

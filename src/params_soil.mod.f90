@@ -1,6 +1,6 @@
 module md_params_soil
   !////////////////////////////////////////////////////////////////
-  ! Module containing soil parameters and functions to read them
+  ! Module handling soil parameters
   !----------------------------------------------------------------
   use md_grid, only: gridtype, domaininfo_type
   use netcdf
@@ -29,7 +29,8 @@ contains
 
   function getsoil( domaininfo, grid ) result( params_soil )
     !////////////////////////////////////////////////////////////////
-    ! Function returns the field of soil parameters
+    ! Function to "translate" the soil code into numerical soil 
+    ! parameters. The soil code is contained in 'domaininfo'.
     !----------------------------------------------------------------
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo

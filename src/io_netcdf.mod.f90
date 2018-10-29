@@ -1,6 +1,7 @@
 module md_io_netcdf
   !////////////////////////////////////////////////////////////////
-  ! Some additional wrapper functions
+  ! Module containing wrapper functions for initialising and 
+  ! writing NetCDF files with different dimensions.
   !----------------------------------------------------------------    
   use netcdf
   use md_params_core, only: dummy
@@ -153,7 +154,7 @@ contains
     globatt10_nam, globatt10_val  &
     )
     !////////////////////////////////////////////////////////////////
-    ! Subroutine to initialise a NetCDF file with one variable and lon/lat/time
+    ! Subroutine to initialise a NetCDF file with one variable and lon/lat/PFT
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear
 
@@ -434,7 +435,7 @@ contains
   subroutine write_nc_3D_pft( filnam, varnam, maxgrid, nlon, nlat, ilon, ilat, outnz, dogridcell, out )
     !////////////////////////////////////////////////////////////////
     ! Subroutine to put data into an already opened NetCDF file
-    ! Output array has dimensions (lon, lat, time).
+    ! Output array has dimensions (lon, lat, PFT).
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: filnam

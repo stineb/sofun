@@ -1,5 +1,29 @@
 program main
   !////////////////////////////////////////////////////////////////
+  ! Main program for SOFUN, used for multiple-site simulations (one
+  ! process for multiple sites optimises computational efficiency.)
+  ! This is used for the calibration setup (set 'is_calib' to .true.).
+  ! One large array ('calibtargets') holds all model output of 
+  ! the calibration target variables for all sites and is written 
+  ! to a text file. Writing to file shoud be made obsolte once 
+  ! direct data passing is implemented between R and Fortran with 
+  ! shared libraries.
+  ! 
+  ! - reads simulation suite name and model parameter values from standard input
+  ! - loops over runs (sites)
+  ! - invokes functions to get simulation parameters, grid definition, etc.
+  ! - loops over simulation years, including spinup
+  ! - invokes functions to get annually varying forcing
+  ! - call function biosphere()
+  ! - writes calibration target variables output to file.
+  !
+  ! Example (setup 'pmodel'):
+  ! echo RUNNAME ./runpmodel
+  ! 
+  ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
+  !----------------------------------------------------------------
+
+  !////////////////////////////////////////////////////////////////
   ! Main program for site scale simulations, here used for 
   ! SOFUN (Seasonal Optimisation of Fixation and Uptake of 
   ! Nitrogen)

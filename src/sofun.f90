@@ -1,10 +1,18 @@
 program main
   !////////////////////////////////////////////////////////////////
-  !  Main program for site scale simulations, here used for 
-  !  SOFUN (Seasonal Optimisation of Fixation and Uptake of 
-  !  Nitrogen)
+  ! Main program for SOFUN, used for single-site simulations and 
+  ! "lonlat" (=multiple points on a spatial grid) simulations.
+  ! 
+  ! - reads run name from standard input
+  ! - invokes functions to get simulation parameters, grid definition, etc.
+  ! - loops over simulation years, including spinup
+  ! - invokes functions to get annually varying forcing
+  ! - call function biosphere()
+  !
+  ! Example (setup 'pmodel'):
+  ! echo RUNNAME ./runpmodel
+  ! 
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
-  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use md_interface, only: interface, outtype_biosphere
   use md_params_siml, only: getpar_siml, getsteering
@@ -19,15 +27,14 @@ program main
   implicit none
 
   ! local variables
-  integer :: yr           ! simulation year
-  real    :: c_uptake     ! annual net global C uptake by biosphere
-  character(len=245) :: runname
+  integer :: yr                                  ! simulation year
+  character(len=245) :: runname                  ! run name
   integer, parameter :: maxlen_runname = 50      ! maximum length of runname (arbitrary)
   type( ninput_type ), dimension(maxgrid) :: nfert_field, ndep_field 
   type( type_params_domain ) :: params_domain
-  logical, parameter :: verbose = .true.
+  logical, parameter :: verbose = .true.         ! set this true for additional messages
 
-  type(outtype_biosphere) :: out_biosphere       ! holds all the output used for calculating the cost or maximum likelihood function 
+  type(outtype_biosphere) :: out_biosphere       ! derived type containing certain quantities calculated within biosphere(), not used here.
 
   !----------------------------------------------------------------
   ! READ RUNNAME FROM STANDARD INPUT
@@ -110,7 +117,7 @@ program main
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
-    ! Climate
+    ! Get climate variables for this year (full fields and 365 daily values for each variable)
     if (verbose) print*,'getting WFDEI climate ...'
     interface%climate(:) = getclimate( &
                                       interface%domaininfo, &
@@ -120,9 +127,10 @@ program main
                                       interface%params_siml%in_ppfd,  &
                                       interface%params_siml%in_netrad &
                                       )
+
     if (verbose) print*,'... done.'
 
-    ! CO2
+    ! Get annual, gobally uniform CO2
     interface%pco2 = getco2( &
                             trim(runname), &
                             interface%domaininfo, &
@@ -132,7 +140,7 @@ program main
                             interface%params_siml%co2_forcing_file&
                             )
 
-    ! Atmospheric N deposition
+    ! Atmospheric N deposition (note that actual data is not read in all SOFUN setups)
     ndep_field(:) = getninput( &
                               "ndep", &
                               trim(runname), &
@@ -145,7 +153,7 @@ program main
                               interface%climate(:)&
                               )
     
-    ! N fertiliser input
+    ! N fertiliser input (note that actual data is not read in all SOFUN setups)
     nfert_field(:) = getninput( &
                               "nfert", &
                               trim(runname), &
@@ -161,7 +169,7 @@ program main
     ! Interface holds only total reactive N input (N deposition + N fertiliser)                             
     interface%ninput_field(:) = gettot_ninput( nfert_field(:), ndep_field(:) )
                                  
-    ! print*, 'SOFUN: holding harvesting regime constant at 1993 level.'
+    ! Get land use information (note that actual data is not read in all SOFUN setups)
     interface%landuse(:) = getlanduse( &
                                       trim(runname), &
                                       interface%domaininfo, &
@@ -200,8 +208,7 @@ program main
 
   print*, '--------------END OF SIMULATION---------------'
 
-100  format(A,I6,I6,F8.2)
-! 888  write(0,*) 'error opening file'
+100  format (A,I6,I6,F8.2)
 777  format (F20.8,F20.8)
 999  format (I4.4)
 

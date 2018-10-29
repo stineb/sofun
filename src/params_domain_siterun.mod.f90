@@ -1,6 +1,6 @@
 module md_params_domain
   !////////////////////////////////////////////////////////////////
-  !  Module contains site-specific parameters read by getpar_domain
+  ! Module for handling site-specific parameters.
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
@@ -35,7 +35,13 @@ contains
 
   function getpar_domain( sitename ) result( out_params_domain )
     !////////////////////////////////////////////////////////////////
-    !  SR reads site-specific parameters from <sitename>.parameter
+    ! Reads site-specific parameters from <sitename>.parameter
+    ! Site parameters are:
+    ! - longitude
+    ! - latitude
+    ! - altitude
+    ! - water holding capacity
+    ! - soil code
     !----------------------------------------------------------------
     use md_sofunutils, only: getparreal, getparlogical, getparint, getparstring
 

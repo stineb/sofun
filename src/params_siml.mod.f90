@@ -1,6 +1,6 @@
 module md_params_siml
   !////////////////////////////////////////////////////////////////
-  !  Module contains simulation parameters read in by getpar_siml
+  ! Module for handling simulation parameters.
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
@@ -11,6 +11,9 @@ module md_params_siml
   private
   public paramstype_siml, getsteering, outtype_steering, getpar_siml
 
+  !----------------------------------------------------------------
+  ! Derived type for simulation parameters
+  !----------------------------------------------------------------
   type paramstype_siml
     
     integer :: runyears        ! number of years of entire simulation (spinup+transient)
@@ -123,9 +126,9 @@ contains
 
   function getsteering( year, params_siml ) result( out_steering )
     !////////////////////////////////////////////////////////////////
-    !  SR defines variables used for steering simulation for each 
-    !  simulation year (setting booleans for opening files, doing   
-    !  spinup etc.)
+    ! Gets variables used for steering simulation for each 
+    ! simulation year (setting booleans for opening files, doing   
+    ! spinup etc.)
     !----------------------------------------------------------------
     use md_params_core, only: dummy
 
@@ -239,7 +242,7 @@ contains
 
   function get_cycleyear( year, spinupyears, recycle ) result( cycleyear )
     !////////////////////////////////////////////////////////////////
-    ! Returns cyce year for climate recycling, given number of spinup
+    ! Returns cycle year for climate recycling, given number of spinup
     ! years and recycle period length, so that in the last year of
     ! of the spinup, 'cycleyear' is equal to 'recycle'.
     !----------------------------------------------------------------
@@ -267,8 +270,8 @@ contains
 
   function getpar_siml( runname ) result( out_getpar_siml )
     !////////////////////////////////////////////////////////////////
-    !  SR for reading and defining simulation parameters from file 
-    !  <runname>.sofun.parameter. Only once at start of simulation.
+    ! Reads simulation parameters from file 
+    ! <runname>.sofun.parameter. Only once at start of simulation.
     !----------------------------------------------------------------
     use md_params_core, only: ndayyear, npft
 
