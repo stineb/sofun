@@ -213,9 +213,11 @@ contains
     do lu=1,nlu
 
       ! Calculate evaporative supply rate, mm/h
+      ! print*,'1'
       tile_fluxes(lu)%sw = kCw * soil(lu)%phy%wcont / soil(lu)%params%whc
 
       ! Calculate radiation and evaporation quantities
+      ! print*,'2'
       if (splashtest) then
         evap(lu) = getevap( lat=67.25, doy=55, elv=87.0, sf=sf_splashtest, tc=tc_splashtest, sw=sw_splashtest, netrad=dummy, splashtest=splashtest, testdoy=testdoy )
         if (lev_splashtest==2) stop 'end of splash test level 2'
@@ -229,12 +231,14 @@ contains
       soil(lu)%phy%wcont = soil(lu)%phy%wcont + pr + evap(lu)%cn - evap(lu)%aet
 
       ! Bucket model for runoff generation
+      ! print*,'3'
       if (soil(lu)%phy%wcont>soil(lu)%params%whc) then
         ! -----------------------------------
         ! Bucket is full 
         ! -----------------------------------
         ! * determine NO3 leaching fraction 
         tile_fluxes(lu)%dfleach = 1.0 - soil(lu)%params%whc / soil(lu)%phy%wcont
+        ! print*,'4'
         ! print*,'fleach ', tile_fluxes(lu)%dfleach
         ! leaching_events = leaching_events + 1
 
@@ -263,6 +267,7 @@ contains
 
       ! water-filled pore space
       soil(lu)%phy%wscal = soil(lu)%phy%wcont / soil(lu)%params%whc
+      ! print*,'5'
 
     end do
 

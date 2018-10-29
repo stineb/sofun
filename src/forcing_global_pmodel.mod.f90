@@ -373,8 +373,8 @@ contains
     dlon = lon_arr(2) - lon_arr(1)
     dlat = lat_arr(2) - lat_arr(1)
 
-    if (dlon/=domaininfo%dlon) stop 'Longitude resolution of soil input file is not identical with model grid.'
-    if (dlat/=domaininfo%dlat) stop 'latitude resolution of soil input file is not identical with model grid.'
+    if (dlon/=domaininfo%dlon) stop 'Longitude resolution of FPC input file is not identical with model grid.'
+    if (dlat/=domaininfo%dlat) stop 'latitude resolution of FPC input file is not identical with model grid.'
 
     ! get index associations
     do jpngr=1,domaininfo%maxgrid

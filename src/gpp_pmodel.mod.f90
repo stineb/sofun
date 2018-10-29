@@ -96,6 +96,7 @@ module md_gpp
     real :: ca                    ! ambient partial pressure, (Pa)
     real :: iwue                  ! intrinsic water use efficiency (unitless)
     real :: gs_unitiabs           ! stomatal conductance to H2O, expressed per units absorbed light (mol H2O m-2 m-1 / (mol light m-2))
+    real :: assim
     real :: vcmax                 ! maximum carboxylation capacity per unit ground area (mol CO2 m-2 s-1)
     real :: vcmax25               ! Vcmax25 (vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
     real :: vcmax_unitfapar       ! Vcmax per fAPAR (mol CO2 m-2 s-1)
@@ -487,7 +488,8 @@ contains
     real :: ppfdabs                  ! absorbed photosynthetically active radiation (mol/m2)
     real :: patm                     ! atmospheric pressure as a function of elevation (Pa)
     real :: chi                      ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
-    real :: ci                       ! leaf-internal partial pressure, (Pa)
+    real :: ca                       ! ambient CO2 partial pressure, (Pa)
+    real :: ci                       ! leaf-internal CO2 partial pressure, (Pa)
     real :: iwue                     ! intrinsic water use efficiency = A / gs = ca - ci = ca ( 1 - chi ) , unitless
     real :: gs_unitiabs              ! stomatal conductance to H2O, expressed per unit absorbed light (mol H2O m-2 s-1 / (mol light m-2 -1))
     real :: gstar                    ! photorespiratory compensation point - Gamma-star (Pa)
@@ -525,7 +527,7 @@ contains
     if (tc > 0.0) then
 
       ! absorbed photosynthetically active radiation (mol/m2)
-      if (ppfd /= dummy && fapar /= dummy) ppfdabs = fapar * ppfd
+      if (ppfd /= dummy .and. fapar /= dummy) ppfdabs = fapar * ppfd
 
       ! atmospheric pressure as a function of elevation (Pa)
       patm = calc_patm( elv )
@@ -614,7 +616,7 @@ contains
 
       ! Vcmax per unit ground area is the product of the intrinsic quantum 
       ! efficiency, the absorbed PAR, and 'n'
-      if (ppfd /= dummy && fapar /= dummy) vcmax = ppfdabs * kphio * out_lue%n
+      if (ppfd /= dummy .and. fapar /= dummy) vcmax = ppfdabs * kphio * out_lue%n
 
       ! Leaf-level assimilation rate (per unit leaf area), representative for top-canopy leaves
       if (ppfd /= dummy) assim = ppfd * lue ! in mol CO2 m-2 s-1
@@ -630,7 +632,7 @@ contains
       ftemp_inst_vcmax  = calc_ftemp_inst_vcmax( tc )
       vcmax25_unitiabs  = vcmax_unitiabs  / ftemp_inst_vcmax
       if (ppfd /= dummy)                   vcmax25_unitfapar = vcmax_unitfapar / ftemp_inst_vcmax
-      if (ppfd /= dummy && fapar /= dummy) vcmax25           = vcmax           / ftemp_inst_vcmax
+      if (ppfd /= dummy .and. fapar /= dummy) vcmax25           = vcmax           / ftemp_inst_vcmax
 
       ! Dark respiration at growth temperature
       ftemp_inst_rd = calc_ftemp_inst_rd( tc )
@@ -638,12 +640,12 @@ contains
       ! print*,'fr/fv: ', ftemp_inst_rd / ftemp_inst_vcmax
       rd_unitiabs  = params_gpp%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitiabs 
       if (ppfd /= dummy)                   rd_unitfapar = params_gpp%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitfapar
-      if (ppfd /= dummy && fapar /= dummy) rd           = params_gpp%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax
+      if (ppfd /= dummy .and. fapar /= dummy) rd           = params_gpp%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax
 
       ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
       actnv_unitiabs  = vcmax25_unitiabs  * n_v
       if (ppfd /= dummy)                   actnv_unitfapar = vcmax25_unitfapar * n_v
-      if (ppfd /= dummy && fapar /= dummy) actnv           = vcmax25           * n_v
+      if (ppfd /= dummy .and. fapar /= dummy) actnv           = vcmax25           * n_v
 
       ! ! Transpiration (E)
       ! ! Using 
@@ -680,7 +682,7 @@ contains
         out_pmodel%actnv_unitfapar  = dummy
       end if
 
-      if (ppfd /= dummy && fapar /= dummy) then
+      if (ppfd /= dummy .and. fapar /= dummy) then
         out_pmodel%gpp              = fapar * assim * c_molmass
         out_pmodel%vcmax            = vcmax
         out_pmodel%vcmax25          = vcmax25

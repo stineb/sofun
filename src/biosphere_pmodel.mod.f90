@@ -52,7 +52,7 @@ contains
     real, dimension(nmonth) :: mvpd       ! monthly mean vapour pressure deficit (Pa)
 
     ! xxx debug
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
     logical, parameter :: splashtest = .false.
     integer, parameter :: lev_splashtest = 2
     integer, parameter :: testdoy = 55
@@ -81,8 +81,8 @@ contains
       allocate( plant( npft, size(interface%grid) ) )
       allocate( plant_fluxes( npft ) )
 
-      call initglobal_tile(  tile(:,:),  size(interface%grid) )
       call initglobal_plant( plant(:,:), size(interface%grid) )
+      call initglobal_tile(  tile(:,:),  size(interface%grid) )
       if (verbose) print*, '... done'
 
       !----------------------------------------------------------------
@@ -129,7 +129,6 @@ contains
     !----------------------------------------------------------------
     if (verbose) print*,'looping through gridcells ...'
     gridcellloop: do jpngr=1,size(interface%grid)
-    ! gridcellloop: do jpngr=48790,48790   ! negative PET in january 2010
       
       if (interface%grid(jpngr)%dogridcell) then
 
@@ -221,19 +220,6 @@ contains
             !----------------------------------------------------------------
             if (verbose) print*,'calling waterbal() ... '
             ! print*,'lon,lat,ilon,ilat,jpngr', interface%grid(jpngr)%lon, interface%grid(jpngr)%lat, interface%grid(jpngr)%ilon, interface%grid(jpngr)%ilat, jpngr
-
-            print*,tile(:,jpngr)%soil
-            print*,tile_fluxes(:)
-            print*,doy
-            print*,jpngr 
-            print*,interface%grid(jpngr)%lat 
-            print*,interface%grid(jpngr)%elv 
-            print*,interface%climate(jpngr)%dprec(doy) 
-            print*,interface%climate(jpngr)%dtemp(doy) 
-            print*,interface%climate(jpngr)%dfsun(doy)
-            print*,interface%climate(jpngr)%dnetrad(doy)
-
-
             call waterbal( &
                             tile(:,jpngr)%soil, &
                             tile_fluxes(:), &
@@ -249,20 +235,20 @@ contains
                             )
             if (verbose) print*,'... done'
 
-            !----------------------------------------------------------------
-            ! calculate soil temperature
-            !----------------------------------------------------------------
-            if (verbose) print*, 'calling soiltemp() ... '
-            call soiltemp(&
-                          tile(:,jpngr)%soil, &
-                          interface%climate(jpngr)%dtemp(:), &
-                          size(interface%grid), &
-                          interface%steering%init, &
-                          jpngr, & 
-                          moy, & 
-                          doy & 
-                          )
-            if (verbose) print*, '... done'
+            ! !----------------------------------------------------------------
+            ! ! calculate soil temperature
+            ! !----------------------------------------------------------------
+            ! if (verbose) print*, 'calling soiltemp() ... '
+            ! call soiltemp(&
+            !               tile(:,jpngr)%soil, &
+            !               interface%climate(jpngr)%dtemp(:), &
+            !               size(interface%grid), &
+            !               interface%steering%init, &
+            !               jpngr, & 
+            !               moy, & 
+            !               doy & 
+            !               )
+            ! if (verbose) print*, '... done'
 
             !----------------------------------------------------------------
             ! update canopy and tile variables and simulate daily 
@@ -282,9 +268,6 @@ contains
             ! calculate GPP
             !----------------------------------------------------------------
             if (verbose) print*,'calling gpp() ... '
-            print*,'acrown', plant(1,1)%acrown
-            print*,'in biosphere: fapar', plant(1,1)%fapar_ind
-            print*,'in biosphere: acrown', plant(1,1)%acrown
             call gpp( plant(:,jpngr), &
                       plant_fluxes(:), &
                       out_pmodel(:,moy), &

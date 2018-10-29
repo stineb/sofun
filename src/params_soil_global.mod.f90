@@ -25,6 +25,9 @@ module md_params_soil
     real :: fsilt
   end type
 
+  ! Module-specific parameters
+  integer, parameter :: nsoilcodes = 9
+
 contains
 
   function getsoil( domaininfo, grid ) result( params_soil_field )
@@ -92,7 +95,7 @@ contains
     !----------------------------------------------------------------  
     ! Get soil parameters per code
     !----------------------------------------------------------------  
-    do isoilcode=1,1
+    do isoilcode=1,nsoilcodes
       soilparams_per_code(isoilcode) = get_soilparams_per_code( isoilcode )
     end do
 
@@ -166,7 +169,7 @@ contains
     ! get soil parameters for each gridcell given its soil code which is read from file
     do jpngr=1,domaininfo%maxgrid
       tmp = soilparams_arr(ilon(jpngr),ilat(jpngr))
-      if ( tmp/=ncfillvalue ) then
+      if ( tmp/=ncfillvalue .and. tmp/=0.0 ) then
         params_soil_field(jpngr) = soilparams_per_code( int(tmp) )
       else
         ! for gridcells where no info is available, assume soil code 4
