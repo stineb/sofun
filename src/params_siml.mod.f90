@@ -63,42 +63,23 @@ module md_params_siml
 
     integer :: npft        ! number of activated PFTs
 
-    ! booleans defining whether variable is written to ascii output
-    logical :: loutdgpp       
-    logical :: loutdrd
-    logical :: loutdtransp    
-    logical :: loutdnpp       
-    logical :: loutdnup       
-    logical :: loutdcex       
-    logical :: loutdcleaf     
-    logical :: loutdcroot     
-    logical :: loutdclabl     
-    logical :: loutdnlabl     
-    logical :: loutdclitt     
-    logical :: loutdnlitt     
-    logical :: loutdlai       
-    logical :: loutdfapar
-    logical :: loutdtemp_soil 
-    logical :: loutdtemp
-
-    ! booleans defining whether module-specific output variables are to be written to output
+    ! Module-specific booleans defining whether a set of variables is written to annual output
     logical :: loutplant
-    logical :: loutalloc
     logical :: loutgpp
-    logical :: loutnpp
-    logical :: loutntransform
-    logical :: loutwaterbal  
-    logical :: loutlittersom
-    logical :: loutnuptake
-    logical :: loutlanduse
+    logical :: loutwaterbal
     logical :: loutforcing
-    logical :: loutturnover
 
-    ! booleans defining whether variable is written to NetCDF output
-    logical :: lncoutdtemp
-    logical :: lncoutdgpp
-    logical :: lncoutdfapar
-    logical :: lncoutdwaterbal
+    ! Module-specific booleans whether a single variable is written to daily output
+    logical :: loutdgpp
+    logical :: loutdrd
+    logical :: loutdtransp
+    logical :: loutdwcont
+    logical :: loutdaet
+    logical :: loutdpet
+    logical :: loutdalpha
+    logical :: loutdtemp
+    logical :: loutdfapar
+    logical :: loutdtemp_soil
 
     ! booleans defining whether variable is used as calibration target
     logical :: lcalibgpp
@@ -292,6 +273,7 @@ contains
     !------------------------------------------------------------------
     ! read simulation parameters that may change between runs within an ensemble (simsuite)
     !------------------------------------------------------------------
+    print*,'1'
     call getparstring( 'run/'//runname//'.sofun.parameter', 'sitename', out_getpar_siml%sitename )
 
     out_getpar_siml%firstyeartrend    = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )
@@ -310,6 +292,8 @@ contains
       out_getpar_siml%runyears = out_getpar_siml%nyeartrend
       out_getpar_siml%spinupyears = 0
     endif
+
+    print*,'2'
 
     ! activated PFTs
     out_getpar_siml%lTrE = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTrE' )
@@ -333,6 +317,8 @@ contains
     print*,'found ', npft_local, ' activated PFTs.'
     if (npft/=npft_local) stop 'GETPAR_SIML: adjust number of activated PFTs by hand in params_core.'
 
+    print*,'3'
+
     !------------------------------------------------------------------
     ! read simulation parameters that do not change change between runs within an ensemble (simsuite)
     !------------------------------------------------------------------
@@ -342,6 +328,8 @@ contains
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_noy_forcing_file', out_getpar_siml%nfert_noy_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_nhx_forcing_file', out_getpar_siml%nfert_nhx_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
+
+    print*,'4'
 
     ! Reading from a different file!
     call getparstring( 'input/dfapar_source.txt', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
@@ -360,53 +348,48 @@ contains
     out_getpar_siml%soilmstress       = getparlogical( 'run/'//runname//'.sofun.parameter', 'soilmstress' )
     out_getpar_siml%tempstress        = getparlogical( 'run/'//runname//'.sofun.parameter', 'tempstress' )
     
-    ! boolean for ascii output writing (core variables)
+    print*,'4'
+
+    ! Module-specific booleans defining whether a set of variables is written to annual output
+    out_getpar_siml%loutplant     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
+    out_getpar_siml%loutgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutgpp' )
+    out_getpar_siml%loutwaterbal  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal' )
+
+    print*,'5'
+
+    ! Module-specific booleans whether a single variable is written to daily output
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
     out_getpar_siml%loutdrd        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdrd' )
     out_getpar_siml%loutdtransp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtransp' )
-    out_getpar_siml%loutdnpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnpp' )
-    out_getpar_siml%loutdnup       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnup' )
-    out_getpar_siml%loutdcex       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdcex' )
-    out_getpar_siml%loutdcleaf     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCleaf' )
-    out_getpar_siml%loutdcroot     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdCroot' )
-    out_getpar_siml%loutdclabl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdClabl' )
-    out_getpar_siml%loutdnlabl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNlabl' )
-    out_getpar_siml%loutdclitt     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdClitt' )
-    out_getpar_siml%loutdnlitt     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdNlitt' )
-    out_getpar_siml%loutdlai       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdlai' )
+    out_getpar_siml%loutdwcont     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdwcont' )
+    out_getpar_siml%loutdaet       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdaet' )
+    out_getpar_siml%loutdpet       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdpet' )
+    out_getpar_siml%loutdalpha     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdalpha' )
+    out_getpar_siml%loutdtemp      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp' )
     out_getpar_siml%loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
-    out_getpar_siml%loutdtemp      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp' )
 
-    ! boolean for ascii output writing (module variables)
-    out_getpar_siml%loutplant      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
-    out_getpar_siml%loutalloc      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutalloc' )
-    out_getpar_siml%loutgpp        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutgpp' )
-    out_getpar_siml%loutnpp        = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnpp' )
-    out_getpar_siml%loutntransform = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutntransform') 
-    out_getpar_siml%loutwaterbal   = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal')
-    out_getpar_siml%loutlittersom  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlittersom' )
-    out_getpar_siml%loutnuptake    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnuptake' )
-    out_getpar_siml%loutlanduse    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutlanduse' )
-    out_getpar_siml%loutforcing    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutforcing' )
-    out_getpar_siml%loutturnover   = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutturnover' )
-
-    ! boolean for NetCDF output writing
-    out_getpar_siml%lncoutdtemp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdtemp' )
-    out_getpar_siml%lncoutdfapar   = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdfapar' )
-    out_getpar_siml%lncoutdgpp     = getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdgpp' )
-    out_getpar_siml%lncoutdwaterbal= getparlogical( 'run/'//runname//'.sofun.parameter', 'lncoutdwaterbal' )
+    print*,'6'
 
     ! If NetCDF output writing is true and ascii output writing is false, then overwrite
-    if (.not.out_getpar_siml%loutdtemp    .and. out_getpar_siml%lncoutdtemp    )  out_getpar_siml%loutdtemp    = .true.
-    if (.not.out_getpar_siml%loutdfapar   .and. out_getpar_siml%lncoutdfapar   )  out_getpar_siml%loutdfapar   = .true.
-    if (.not.out_getpar_siml%loutdgpp     .and. out_getpar_siml%lncoutdgpp     )  out_getpar_siml%loutdgpp     = .true.
-    if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%lncoutdwaterbal ) out_getpar_siml%loutwaterbal = .true.
+    if (.not.out_getpar_siml%loutgpp      .and. out_getpar_siml%loutdgpp   ) out_getpar_siml%loutgpp      = .true.
+    if (.not.out_getpar_siml%loutgpp      .and. out_getpar_siml%loutdrd    ) out_getpar_siml%loutgpp      = .true.
+    if (.not.out_getpar_siml%loutgpp      .and. out_getpar_siml%loutdtransp) out_getpar_siml%loutgpp      = .true.
+    if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdpet   ) out_getpar_siml%loutwaterbal = .true.
+    if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdwcont ) out_getpar_siml%loutwaterbal = .true.
+    if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdaet   ) out_getpar_siml%loutwaterbal = .true.
+    if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdalpha ) out_getpar_siml%loutwaterbal = .true.
+    if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdtemp  ) out_getpar_siml%loutforcing  = .true.
+    if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdfapar ) out_getpar_siml%loutforcing  = .true.
+
+    print*,'7'
 
     ! boolean to define which variables are used as calibration target
     out_getpar_siml%lcalibgpp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibgpp' )
     out_getpar_siml%lcalibfapar  = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibfapar' )
     out_getpar_siml%lcalibtransp = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibtransp' )
+
+    print*,'8'
 
     print*, "... done"
 

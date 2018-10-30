@@ -32,9 +32,9 @@ module md_gpp
   implicit none
 
   private
-  public params_pft_gpp, getpar_modl_gpp, initio_gpp, initoutput_gpp, &
+  public params_pft_gpp, getpar_modl_gpp, initoutput_gpp, &
     gpp, getlue, pmodel, getout_daily_gpp, getout_annual_gpp, &
-    writeout_ascii_gpp, outtype_pmodel, calc_tempstress, calc_dgpp, calc_drd, &
+    outtype_pmodel, calc_tempstress, calc_dgpp, calc_drd, &
     initio_nc_gpp, writeout_nc_gpp
     
   !----------------------------------------------------------------
@@ -1472,115 +1472,115 @@ contains
   ! end function sigm_gpp_lotemp
 
 
-  subroutine initio_gpp()
-    !////////////////////////////////////////////////////////////////
-    ! Initlialises module-specific ASCII output files.
-    !
-    ! This is designed for use within SOFUN and requires arguments as
-    ! derived-types, defined elsewhere. For other applications, implement 
-    ! the function calls (e.g., calc_dgpp()) differently and 
-    ! comment/delete this subroutine.
-    !----------------------------------------------------------------
-    use md_interface
+  ! subroutine initio_gpp()
+  !   !////////////////////////////////////////////////////////////////
+  !   ! Initlialises module-specific ASCII output files.
+  !   !
+  !   ! This is designed for use within SOFUN and requires arguments as
+  !   ! derived-types, defined elsewhere. For other applications, implement 
+  !   ! the function calls (e.g., calc_dgpp()) differently and 
+  !   ! comment/delete this subroutine.
+  !   !----------------------------------------------------------------
+  !   use md_interface
 
-    ! local variables
-    character(len=256) :: prefix
-    character(len=256) :: filnam
+  !   ! local variables
+  !   character(len=256) :: prefix
+  !   character(len=256) :: filnam
 
-    prefix = "./output/"//trim(interface%params_siml%runname)
+  !   prefix = "./output/"//trim(interface%params_siml%runname)
 
-    !----------------------------------------------------------------
-    ! DAILY OUTPUT
-    !----------------------------------------------------------------
-    ! GPP
-    if (interface%params_siml%loutdgpp) then
-      filnam=trim(prefix)//'.d.gpp.out'
-      print*,'filnam ', filnam
-      open(101,file=filnam,err=888,status='unknown')
-    end if 
+  !   !----------------------------------------------------------------
+  !   ! DAILY OUTPUT
+  !   !----------------------------------------------------------------
+  !   ! GPP
+  !   if (interface%params_siml%loutdgpp) then
+  !     filnam=trim(prefix)//'.d.gpp.out'
+  !     print*,'filnam ', filnam
+  !     open(101,file=filnam,err=888,status='unknown')
+  !   end if 
 
-    ! RD
-    if (interface%params_siml%loutdrd) then
-      filnam=trim(prefix)//'.d.rd.out'
-      open(135,file=filnam,err=888,status='unknown')
-    end if 
+  !   ! RD
+  !   if (interface%params_siml%loutdrd) then
+  !     filnam=trim(prefix)//'.d.rd.out'
+  !     open(135,file=filnam,err=888,status='unknown')
+  !   end if 
 
-    ! TRANSPIRATION
-    if (interface%params_siml%loutdtransp) then
-      filnam=trim(prefix)//'.d.transp.out'
-      open(114,file=filnam,err=888,status='unknown')
-    end if
+  !   ! TRANSPIRATION
+  !   if (interface%params_siml%loutdtransp) then
+  !     filnam=trim(prefix)//'.d.transp.out'
+  !     open(114,file=filnam,err=888,status='unknown')
+  !   end if
 
-    ! xxx: not yet included in writeout_ascii_gpp()
-    ! !----------------------------------------------------------------
-    ! ! MONTHLY OUTPUT
-    ! !----------------------------------------------------------------
-    ! ! GPP
-    ! if (interface%params_siml%loutdgpp) then     ! monthly and daily output switch are identical
-    !   filnam=trim(prefix)//'.m.gpp.out'
-    !   open(151,file=filnam,err=888,status='unknown')
-    ! end if 
+  !   ! xxx: not yet included in writeout_ascii_gpp()
+  !   ! !----------------------------------------------------------------
+  !   ! ! MONTHLY OUTPUT
+  !   ! !----------------------------------------------------------------
+  !   ! ! GPP
+  !   ! if (interface%params_siml%loutdgpp) then     ! monthly and daily output switch are identical
+  !   !   filnam=trim(prefix)//'.m.gpp.out'
+  !   !   open(151,file=filnam,err=888,status='unknown')
+  !   ! end if 
 
-    ! ! RD
-    ! if (interface%params_siml%loutdrd) then     ! monthly and daily output switch are identical
-    !   filnam=trim(prefix)//'.m.rd.out'
-    !   open(152,file=filnam,err=888,status='unknown')
-    ! end if 
+  !   ! ! RD
+  !   ! if (interface%params_siml%loutdrd) then     ! monthly and daily output switch are identical
+  !   !   filnam=trim(prefix)//'.m.rd.out'
+  !   !   open(152,file=filnam,err=888,status='unknown')
+  !   ! end if 
 
-    ! ! TRANSP
-    ! if (interface%params_siml%loutdtransp) then     ! monthly and daily output switch are identical
-    !   filnam=trim(prefix)//'.m.transp.out'
-    !   open(153,file=filnam,err=888,status='unknown')
-    ! end if 
+  !   ! ! TRANSP
+  !   ! if (interface%params_siml%loutdtransp) then     ! monthly and daily output switch are identical
+  !   !   filnam=trim(prefix)//'.m.transp.out'
+  !   !   open(153,file=filnam,err=888,status='unknown')
+  !   ! end if 
 
-    !----------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    !----------------------------------------------------------------
-    if (interface%params_siml%loutgpp) then
+  !   !----------------------------------------------------------------
+  !   ! ANNUAL OUTPUT
+  !   !----------------------------------------------------------------
+  !   if (interface%params_siml%loutgpp) then
 
-      ! GPP 
-      filnam=trim(prefix)//'.a.gpp.out'
-      open(310,file=filnam,err=888,status='unknown')
+  !     ! GPP 
+  !     filnam=trim(prefix)//'.a.gpp.out'
+  !     open(310,file=filnam,err=888,status='unknown')
 
-      ! VCMAX (canopy-level, annual maximum) (mol m-2 s-1)
-      filnam=trim(prefix)//'.a.vcmax.out'
-      open(323,file=filnam,err=888,status='unknown')
+  !     ! VCMAX (canopy-level, annual maximum) (mol m-2 s-1)
+  !     filnam=trim(prefix)//'.a.vcmax.out'
+  !     open(323,file=filnam,err=888,status='unknown')
 
-      ! 25degC-normalised VCMAX (annual maximum) (mol m-2 s-1)
-      filnam=trim(prefix)//'.a.vcmax25.out'
-      open(654,file=filnam,err=888,status='unknown')
+  !     ! 25degC-normalised VCMAX (annual maximum) (mol m-2 s-1)
+  !     filnam=trim(prefix)//'.a.vcmax25.out'
+  !     open(654,file=filnam,err=888,status='unknown')
 
-      ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
-      filnam=trim(prefix)//'.a.chi.out'
-      open(652,file=filnam,err=888,status='unknown')
+  !     ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
+  !     filnam=trim(prefix)//'.a.chi.out'
+  !     open(652,file=filnam,err=888,status='unknown')
 
-      ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
-      filnam=trim(prefix)//'.a.lue.out'
-      open(653,file=filnam,err=888,status='unknown')
+  !     ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
+  !     filnam=trim(prefix)//'.a.lue.out'
+  !     open(653,file=filnam,err=888,status='unknown')
 
-      ! ci: leaf-internal CO2 partial pressure (Pa)
-      filnam=trim(prefix)//'.a.ci.out'
-      open(655,file=filnam,err=888,status='unknown')
+  !     ! ci: leaf-internal CO2 partial pressure (Pa)
+  !     filnam=trim(prefix)//'.a.ci.out'
+  !     open(655,file=filnam,err=888,status='unknown')
 
-      ! gs: stomatal conductance
-      filnam=trim(prefix)//'.a.gs.out'
-      open(656,file=filnam,err=888,status='unknown')
+  !     ! gs: stomatal conductance
+  !     filnam=trim(prefix)//'.a.gs.out'
+  !     open(656,file=filnam,err=888,status='unknown')
 
-      ! VCMAX (leaf-level, annual mean) (mol m-2 s-1)
-      filnam=trim(prefix)//'.a.vcmax_mean.out'
-      open(657,file=filnam,err=888,status='unknown')
+  !     ! VCMAX (leaf-level, annual mean) (mol m-2 s-1)
+  !     filnam=trim(prefix)//'.a.vcmax_mean.out'
+  !     open(657,file=filnam,err=888,status='unknown')
 
-      ! intrinsic water use efficiency
-      filnam=trim(prefix)//'.a.iwue.out'
-      open(658,file=filnam,err=888,status='unknown')
+  !     ! intrinsic water use efficiency
+  !     filnam=trim(prefix)//'.a.iwue.out'
+  !     open(658,file=filnam,err=888,status='unknown')
 
-    end if
+  !   end if
 
-    return
+  !   return
 
-    888  stop 'INITIO_GPP: error opening output files'
+  !   888  stop 'INITIO_GPP: error opening output files'
 
-  end subroutine initio_gpp
+  ! end subroutine initio_gpp
 
 
   subroutine initio_nc_gpp()
@@ -1656,7 +1656,7 @@ contains
         !----------------------------------------------------------------
         ! Daily GPP output file 
         !----------------------------------------------------------------
-        if (interface%params_siml%lncoutdgpp) then
+        if (interface%params_siml%loutdgpp) then
           ncoutfilnam_dgpp = trim(prefix)//'.'//year_char//".d.gpp.nc"
           print*,'initialising ', trim(ncoutfilnam_dgpp), '...'
           call init_nc_3D_time(  filnam  = trim(ncoutfilnam_dgpp), &
@@ -1706,9 +1706,9 @@ contains
     integer, intent(in) :: ngridcells
 
     ! daily
-    if ( interface%steering%init.and.interface%params_siml%loutdgpp )   allocate( outdgpp(interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init.and. interface%params_siml%loutdrd    ) allocate( outdrd(interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init.and. interface%params_siml%loutdtransp) allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and.interface%params_siml%loutdgpp    ) allocate( outdgpp(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
 
     if (interface%params_siml%loutdgpp )   outdgpp(:,:)    = 0.0
     if (interface%params_siml%loutdrd    ) outdrd(:,:)     = 0.0
@@ -1800,7 +1800,11 @@ contains
 
       if (doy==ndayyear) then
         if (sum(outagpp(:,jpngr))==0.0) then
-          stop 'annual GPP is zero'
+          outachi       (:,jpngr) = dummy
+          outaiwue      (:,jpngr) = dummy
+          outaci        (:,jpngr) = dummy
+          outags        (:,jpngr) = dummy
+          outavcmax_leaf(:,jpngr) = dummy
         else
           outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
           outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
@@ -1845,72 +1849,72 @@ contains
   end subroutine getout_annual_gpp
 
 
-  subroutine writeout_ascii_gpp()
-    !/////////////////////////////////////////////////////////////////////////
-    ! Write module-specific ASCII output.
-    !
-    ! This is designed for use within SOFUN and requires arguments as
-    ! derived-types, defined elsewhere. For other applications, implement 
-    ! the function calls (e.g., calc_dgpp()) differently and 
-    ! comment/delete this subroutine.
-    !-------------------------------------------------------------------------
-    use md_interface
+  ! subroutine writeout_ascii_gpp()
+  !   !/////////////////////////////////////////////////////////////////////////
+  !   ! Write module-specific ASCII output.
+  !   !
+  !   ! This is designed for use within SOFUN and requires arguments as
+  !   ! derived-types, defined elsewhere. For other applications, implement 
+  !   ! the function calls (e.g., calc_dgpp()) differently and 
+  !   ! comment/delete this subroutine.
+  !   !-------------------------------------------------------------------------
+  !   use md_interface
 
-    ! local variables
-    real :: itime
-    integer :: it, jpngr
+  !   ! local variables
+  !   real :: itime
+  !   integer :: it, jpngr
 
-    ! xxx implement this: sum over gridcells? single output per gridcell?
-    if (maxgrid>1) stop 'writeout_ascii_gpp: think of something ...'
-    jpngr = 1
+  !   ! xxx implement this: sum over gridcells? single output per gridcell?
+  !   if (maxgrid>1) stop 'writeout_ascii_gpp: think of something ...'
+  !   jpngr = 1
 
-    !-------------------------------------------------------------------------
-    ! DAILY OUTPUT
-    !-------------------------------------------------------------------------
-    if ( .not. interface%steering%spinup &
-         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+  !   !-------------------------------------------------------------------------
+  !   ! DAILY OUTPUT
+  !   !-------------------------------------------------------------------------
+  !   if ( .not. interface%steering%spinup &
+  !        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+  !        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      ! Write daily output only during transient simulation
-      do it=1,interface%params_siml%outnt
+  !     ! Write daily output only during transient simulation
+  !     do it=1,interface%params_siml%outnt
 
-        ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
+  !       ! Define 'itime' as a decimal number corresponding to day in the year + year
+  !       itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
         
-        if (interface%params_siml%loutdgpp  )  write(101,999) itime, outdgpp(it,jpngr)
-        if (interface%params_siml%loutdrd    ) write(135,999) itime, outdrd(it,jpngr)
-        if (interface%params_siml%loutdtransp) write(114,999) itime, outdtransp(it,jpngr)
+  !       if (interface%params_siml%loutdgpp  )  write(101,999) itime, outdgpp(it,jpngr)
+  !       if (interface%params_siml%loutdrd    ) write(135,999) itime, outdrd(it,jpngr)
+  !       if (interface%params_siml%loutdtransp) write(114,999) itime, outdtransp(it,jpngr)
 
-      end do
+  !     end do
 
-    end if
+  !   end if
 
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    if (interface%params_siml%loutgpp) then
+  !   !-------------------------------------------------------------------------
+  !   ! ANNUAL OUTPUT
+  !   ! Write annual value, summed over all PFTs / LUs
+  !   ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+  !   !-------------------------------------------------------------------------
+  !   if (interface%params_siml%loutgpp) then
   
-      itime = real(interface%steering%outyear)
+  !     itime = real(interface%steering%outyear)
 
-      write(310,999) itime, sum(outagpp(:,jpngr))
-      write(323,999) itime, sum(outavcmax(:,jpngr))
-      write(654,999) itime, sum(outavcmax_25(:,jpngr))
-      write(653,999) itime, sum(outalue(:,jpngr))
-      write(652,999) itime, sum(outachi(:,jpngr))
-      write(658,999) itime, sum(outaiwue(:,jpngr)) * 1e6 / 1.6 ! converting from unitless to micro-mol CO2 / mol H2O
-      write(655,999) itime, sum(outaci(:,jpngr))
-      write(656,999) itime, sum(outags(:,jpngr))
-      write(657,999) itime, sum(outavcmax_leaf(:,jpngr))
+  !     write(310,999) itime, sum(outagpp(:,jpngr))
+  !     write(323,999) itime, sum(outavcmax(:,jpngr))
+  !     write(654,999) itime, sum(outavcmax_25(:,jpngr))
+  !     write(653,999) itime, sum(outalue(:,jpngr))
+  !     write(652,999) itime, sum(outachi(:,jpngr))
+  !     write(658,999) itime, sum(outaiwue(:,jpngr)) * 1e6 / 1.6 ! converting from unitless to micro-mol CO2 / mol H2O
+  !     write(655,999) itime, sum(outaci(:,jpngr))
+  !     write(656,999) itime, sum(outags(:,jpngr))
+  !     write(657,999) itime, sum(outavcmax_leaf(:,jpngr))
 
-    end if
+  !   end if
 
-    return
+  !   return
     
-    999 format (F20.8,F20.8)
+  !   999 format (F20.8,F20.8)
 
-  end subroutine writeout_ascii_gpp
+  ! end subroutine writeout_ascii_gpp
 
 
   subroutine writeout_nc_gpp()
@@ -1947,8 +1951,8 @@ contains
         !-------------------------------------------------------------------------
         ! Daily GPP
         !-------------------------------------------------------------------------
-        if (interface%params_siml%lncoutdgpp) print*,'writing ', trim(ncoutfilnam_dgpp), '...'
-        if (interface%params_siml%lncoutdgpp) call write_nc_3D_time( trim(ncoutfilnam_dgpp), &
+        if (interface%params_siml%loutdgpp) print*,'writing ', trim(ncoutfilnam_dgpp), '...'
+        if (interface%params_siml%loutdgpp) call write_nc_3D_time( trim(ncoutfilnam_dgpp), &
                                                                 GPP_NAME, &
                                                                 interface%domaininfo%maxgrid, &
                                                                 interface%domaininfo%nlon, &

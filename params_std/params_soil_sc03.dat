@@ -4,16 +4,16 @@
 #                                      |
 # write value behind this position:    |->
 
-perc_k1                                 5.0        
+perc_k1                                 3.0        
 thdiff_wp                               0.2          
-thdiff_whc15                            0.8
-thdiff_fc                               0.4          
+thdiff_whc15                            0.5
+thdiff_fc                               0.4  
 forg                                    0.01
-wbwp                                    0.029  
-por                                     0.421    
-fsand                                   0.82      
-fclay                                   0.06      
-fsilt                                   0.12      
+wbwp                                    0.139    
+por                                     0.468    
+fsand                                   0.22    
+fclay                                   0.58      
+fsilt                                   0.20      
 
 #                                      |
 # write value *behind* this position:  |->

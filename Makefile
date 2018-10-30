@@ -45,8 +45,8 @@ COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overfl
 # # System libraries
 # LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
 
-NETCDF_INC = /opt/local/include
-NETCDF_LIB = /opt/local/lib
+NETCDF_INC = /usr/local/include
+NETCDF_LIB = /usr/local/lib
 # LIBS = -L $(NETCDF_LIB) -lnetcdf
 LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran
 
