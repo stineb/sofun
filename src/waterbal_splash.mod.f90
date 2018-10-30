@@ -117,19 +117,19 @@ module md_waterbal
   !----------------------------------------------------------------
   ! Module-specific output variables, daily
   !----------------------------------------------------------------
-  real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
-  real, allocatable, dimension(:,:)   :: outdra             ! daily solar irradiation, J/m2
-  real, allocatable, dimension(:,:)   :: outdrn             ! daily net radiation, J/m2
-  real, allocatable, dimension(:,:)   :: outdppfd           ! daily PPFD, mol/m2
-  real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
-  real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
-  real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
-  real, allocatable, dimension(:,:,:) :: outdfleach         ! daily NO3 leaching fraction, (unitless)
-  real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
   real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm r J/m2/d depending on 'outenergy'
   real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm or J/m2/d depending on 'outenergy'
-  real, allocatable, dimension(:,:,:) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
-  real, allocatable, dimension(:,:)   :: outdecon           ! daily water-to-energy conversion factor m TJ-1 = mm GJ-1
+  real, allocatable, dimension(:,:,:) :: outdalpha            ! daily Cramer-Prentice-Alpha, (unitless)
+  real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
+  ! real, allocatable, dimension(:,:)   :: outdra             ! daily solar irradiation, J/m2
+  ! real, allocatable, dimension(:,:)   :: outdrn             ! daily net radiation, J/m2
+  ! real, allocatable, dimension(:,:)   :: outdalpha           ! daily PPFD, mol/m2
+  ! real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
+  ! real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
+  ! real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
+  ! real, allocatable, dimension(:,:,:) :: outdfleach         ! daily NO3 leaching fraction, (unitless)
+  ! real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
+  ! real, allocatable, dimension(:,:)   :: outdecon           ! daily water-to-energy conversion factor m TJ-1 = mm GJ-1
 
   !----------------------------------------------------------------
   ! Module-specific output variables, annual
@@ -153,12 +153,11 @@ module md_waterbal
 
   ! Daily output files
   character(len=256) :: ncoutfilnam_dwcont
-  character(len=256) :: ncoutfilnam_dppfd
+  character(len=256) :: ncoutfilnam_dalpha
   character(len=256) :: ncoutfilnam_dpet
   character(len=256) :: ncoutfilnam_daet
 
   character(len=*), parameter :: WCONT_NAME="wcont"
-  character(len=*), parameter :: PPFD_NAME="ppfd"
   character(len=*), parameter :: PET_NAME="pet"
   character(len=*), parameter :: AET_NAME="aet"
   character(len=*), parameter :: ALPHA_NAME="alpha"
@@ -1240,9 +1239,9 @@ contains
       ! filnam=trim(prefix)//'.d.rn.out'
       ! open(252,file=filnam,err=888,status='unknown')
 
-      ! PPFD: daily PPFD, mol/m2
-      filnam=trim(prefix)//'.d.ppfd.out'
-      open(253,file=filnam,err=888,status='unknown')
+      ! ! PPFD: daily PPFD, mol/m2
+      ! filnam=trim(prefix)//'.d.ppfd.out'
+      ! open(253,file=filnam,err=888,status='unknown')
 
       ! ! CN: daily condensation water, mm
       ! filnam=trim(prefix)//'.d.cn.out'
@@ -1438,25 +1437,25 @@ contains
                           globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
                           )
 
-          ! !----------------------------------------------------------------
-          ! ! Daily PPFD output file 
-          ! !----------------------------------------------------------------
-          ! ncoutfilnam_dppfd = trim(prefix)//'.'//year_char//".d.ppfd.nc"
-          ! print*,'initialising ', trim(ncoutfilnam_dppfd), '...'
-          ! call init_nc_3D_time( filnam  = trim(ncoutfilnam_dppfd), &
-          !                 nlon     = interface%domaininfo%nlon, &
-          !                 nlat     = interface%domaininfo%nlat, &
-          !                 lon      = interface%domaininfo%lon, &
-          !                 lat      = interface%domaininfo%lat, &
-          !                 outyear  = interface%steering%outyear, &
-          !                 outdt    = interface%params_siml%outdt, &
-          !                 outnt    = interface%params_siml%outnt, &
-          !                 varnam   = PPFD_NAME, &
-          !                 varunits = "mol m-2 d-1", &
-          !                 longnam  = "photosynthetic photon flux density", &
-          !                 title    = TITLE, &
-          !                 globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
-          !                 )
+          !----------------------------------------------------------------
+          ! Daily ALPHA (AET/PET) 
+          !----------------------------------------------------------------
+          ncoutfilnam_dalpha = trim(prefix)//'.'//year_char//".d.alpha.nc"
+          print*,'initialising ', trim(ncoutfilnam_dalpha), '...'
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_dalpha), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = ALPHA_NAME, &
+                          varunits = "", &
+                          longnam  = "AET/PET", &
+                          title    = TITLE, &
+                          globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                          )
 
           !----------------------------------------------------------------
           ! Daily PET output file 
@@ -1533,10 +1532,11 @@ contains
     ! Daily output variables
     if (interface%params_siml%loutwaterbal) then
       if (interface%steering%init) then
-        allocate( outdwcont (nlu,interface%params_siml%outnt,ngridcells) )  ! daily soil moisture, mm
-        allocate( outdppfd (interface%params_siml%outnt,ngridcells)   )     ! daily PPFD, mol/m2
         allocate( outdpet(interface%params_siml%outnt,ngridcells)     )     ! daily potential ET, mm
         allocate( outdaet(nlu,interface%params_siml%outnt,ngridcells) )     ! daily actual ET, mm
+        allocate( outdwcont (nlu,interface%params_siml%outnt,ngridcells) )  ! daily soil moisture, mm
+        allocate( outdalpha(nlu,interface%params_siml%outnt,ngridcells) )     ! daily Cramer-Prentice-Alpha, (unitless)
+        ! allocate( outdalpha (interface%params_siml%outnt,ngridcells)   )     ! daily PPFD, mol/m2
         ! allocate( outdra (interface%params_siml%outnt,ngridcells)     )     ! daily solar irradiation, J/m2
         ! allocate( outdrn (interface%params_siml%outnt,ngridcells)     )     ! daily net radiation, J/m2
         ! allocate( outdayl(interface%params_siml%outnt,ngridcells)     )     ! daily day length, h
@@ -1544,13 +1544,13 @@ contains
         ! allocate( outdro (nlu,interface%params_siml%outnt,ngridcells) )     ! daily runoff, mm
         ! allocate( outdfleach (nlu,interface%params_siml%outnt,ngridcells) ) ! daily leaching fraction, (unitless)
         ! allocate( outdeet(interface%params_siml%outnt,ngridcells)     )     ! daily equilibrium ET, mm
-        ! allocate( outdcpa(nlu,interface%params_siml%outnt,ngridcells) )     ! daily Cramer-Prentice-Alpha, (unitless)
         ! allocate( outdecon(interface%params_siml%outnt,ngridcells) )        ! daily water-to-energy conversion factor
       end if
       outdwcont(:,:,:)  = 0.0
-      outdppfd(:,:)     = 0.0
       outdpet(:,:)      = 0.0
       outdaet(:,:,:)    = 0.0
+      outdalpha(:,:,:)    = 0.0
+      ! outdalpha(:,:)     = 0.0
       ! outdra(:,:)       = 0.0
       ! outdrn(:,:)       = 0.0
       ! outdayl(:,:)      = 0.0
@@ -1558,7 +1558,6 @@ contains
       ! outdro(:,:,:)     = 0.0
       ! outdfleach(:,:,:) = 0.0
       ! outdeet(:,:)      = 0.0
-      ! outdcpa(:,:,:)    = 0.0
       ! outdecon(:,:)     = 0.0
     end if
 
@@ -1622,16 +1621,14 @@ contains
 
     ! Daily output variables
     if (interface%params_siml%loutwaterbal) then
-      outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr)  + phy(:)%wcont / real( interface%params_siml%outdt )
-      outdppfd(it,jpngr)     = outdppfd(it,jpngr)     + solar%dppfd(doy) / real( interface%params_siml%outdt )
+      outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr)   + phy(:)%wcont / real( interface%params_siml%outdt )
+      outdalpha(:,it,jpngr)    = outdalpha(:,it,jpngr) + evap(:)%cpa / real( interface%params_siml%outdt )
       ! outdra(it,jpngr)       = outdra(it,jpngr)       + solar%dra(doy) / real( interface%params_siml%outdt )
       ! outdayl(it,jpngr)      = outdayl(it,jpngr)      + solar%dayl(doy) / real( interface%params_siml%outdt )
       ! outdrn(it,jpngr)       = outdrn(it,jpngr)       + evap(1)%rn / real( interface%params_siml%outdt )
       ! outdeet(it,jpngr)      = outdeet(it,jpngr)      + evap(1)%eet / real( interface%params_siml%outdt )
-      ! outdpet(it,jpngr)      = outdpet(it,jpngr)      + evap(1)%pet / real( interface%params_siml%outdt )
       ! outdcn(it,jpngr)       = outdcn(it,jpngr)       + evap(1)%cn / real( interface%params_siml%outdt )
       ! outdaet(:,it,jpngr)    = outdaet(:,it,jpngr)    + evap(:)%aet / real( interface%params_siml%outdt )
-      ! outdcpa(:,it,jpngr)    = outdcpa(:,it,jpngr)    + evap(:)%cpa / real( interface%params_siml%outdt )
       ! outdro(:,it,jpngr)     = outdro(:,it,jpngr)     + soilphys(:)%dro / real( interface%params_siml%outdt )
       ! outdfleach(:,it,jpngr) = outdfleach(:,it,jpngr) + soilphys(:)%dfleach / real( interface%params_siml%outdt )
       if (outenergy) then
@@ -1729,9 +1726,9 @@ contains
 
           ! xxx lu-area weighted sum if nlu>0
           write(255,999) itime, outdwcont(1,it,jpngr)
-          write(253,999) itime, outdppfd(it,jpngr)
           write(259,999) itime, outdpet(it,jpngr)
           write(260,999) itime, outdaet(1,it,jpngr)
+          ! write(253,999) itime, outdalpha(it,jpngr)
           ! write(251,999) itime, outdra(it,jpngr)
           ! write(252,999) itime, outdrn(it,jpngr)
           ! write(254,999) itime, outdcn(it,jpngr)
@@ -1739,7 +1736,7 @@ contains
           ! write(263,999) itime, outdfleach(1,it,jpngr)
           ! write(258,999) itime, outdeet(it,jpngr)
           ! write(261,999) itime, outdayl(it,jpngr)
-          ! write(262,999) itime, outdcpa(1,it,jpngr)
+          ! write(262,999) itime, outdalpha(1,it,jpngr)
           ! write(264,999) itime, outdecon(it,jpngr)
 
         end do
@@ -1761,6 +1758,8 @@ contains
     use netcdf
     use md_io_netcdf, only: write_nc_2D, write_nc_3D_time, check
     use md_interface, only: interface
+
+    if (nlu>1) stop 'writeout_nc_waterbal(): nlu > 1. Think of something...'
 
     if ( .not. interface%steering%spinup ) then
       !-------------------------------------------------------------------------
@@ -1837,21 +1836,21 @@ contains
                             outdwcont(1,:,:) &
                             )
 
-          ! !-------------------------------------------------------------------------
-          ! ! PPFD
-          ! !-------------------------------------------------------------------------
-          ! print*,'writing ', trim(ncoutfilnam_dppfd), '...'
-          ! call write_nc_3D_time( trim(ncoutfilnam_dppfd), &
-          !                   PPFD_NAME, &
-          !                   interface%domaininfo%maxgrid, &
-          !                   interface%domaininfo%nlon, &
-          !                   interface%domaininfo%nlat, &
-          !                   interface%grid(:)%ilon, &
-          !                   interface%grid(:)%ilat, &
-          !                   interface%params_siml%outnt, &
-          !                   interface%grid(:)%dogridcell, &
-          !                   outdppfd(:,:) &
-          !                   )
+          !-------------------------------------------------------------------------
+          ! ALPHA
+          !-------------------------------------------------------------------------
+          print*,'writing ', trim(ncoutfilnam_dalpha), '...'
+          call write_nc_3D_time( trim(ncoutfilnam_dalpha), &
+                            ALPHA_NAME, &
+                            interface%domaininfo%maxgrid, &
+                            interface%domaininfo%nlon, &
+                            interface%domaininfo%nlat, &
+                            interface%grid(:)%ilon, &
+                            interface%grid(:)%ilat, &
+                            interface%params_siml%outnt, &
+                            interface%grid(:)%dogridcell, &
+                            outdalpha(1,:,:) &
+                            )
 
           !-------------------------------------------------------------------------
           ! PET
