@@ -273,7 +273,6 @@ contains
     !------------------------------------------------------------------
     ! read simulation parameters that may change between runs within an ensemble (simsuite)
     !------------------------------------------------------------------
-    print*,'1'
     call getparstring( 'run/'//runname//'.sofun.parameter', 'sitename', out_getpar_siml%sitename )
 
     out_getpar_siml%firstyeartrend    = getparint( 'run/'//runname//'.sofun.parameter', 'firstyeartrend' )
@@ -292,8 +291,6 @@ contains
       out_getpar_siml%runyears = out_getpar_siml%nyeartrend
       out_getpar_siml%spinupyears = 0
     endif
-
-    print*,'2'
 
     ! activated PFTs
     out_getpar_siml%lTrE = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTrE' )
@@ -317,8 +314,6 @@ contains
     print*,'found ', npft_local, ' activated PFTs.'
     if (npft/=npft_local) stop 'GETPAR_SIML: adjust number of activated PFTs by hand in params_core.'
 
-    print*,'3'
-
     !------------------------------------------------------------------
     ! read simulation parameters that do not change change between runs within an ensemble (simsuite)
     !------------------------------------------------------------------
@@ -328,8 +323,6 @@ contains
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_noy_forcing_file', out_getpar_siml%nfert_noy_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'nfert_nhx_forcing_file', out_getpar_siml%nfert_nhx_forcing_file )
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
-
-    print*,'4'
 
     ! Reading from a different file!
     call getparstring( 'input/dfapar_source.txt', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
@@ -348,14 +341,10 @@ contains
     out_getpar_siml%soilmstress       = getparlogical( 'run/'//runname//'.sofun.parameter', 'soilmstress' )
     out_getpar_siml%tempstress        = getparlogical( 'run/'//runname//'.sofun.parameter', 'tempstress' )
     
-    print*,'4'
-
     ! Module-specific booleans defining whether a set of variables is written to annual output
     out_getpar_siml%loutplant     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
     out_getpar_siml%loutgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutgpp' )
     out_getpar_siml%loutwaterbal  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal' )
-
-    print*,'5'
 
     ! Module-specific booleans whether a single variable is written to daily output
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
@@ -369,8 +358,6 @@ contains
     out_getpar_siml%loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
 
-    print*,'6'
-
     ! If NetCDF output writing is true and ascii output writing is false, then overwrite
     if (.not.out_getpar_siml%loutgpp      .and. out_getpar_siml%loutdgpp   ) out_getpar_siml%loutgpp      = .true.
     if (.not.out_getpar_siml%loutgpp      .and. out_getpar_siml%loutdrd    ) out_getpar_siml%loutgpp      = .true.
@@ -382,14 +369,10 @@ contains
     if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdtemp  ) out_getpar_siml%loutforcing  = .true.
     if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdfapar ) out_getpar_siml%loutforcing  = .true.
 
-    print*,'7'
-
     ! boolean to define which variables are used as calibration target
     out_getpar_siml%lcalibgpp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibgpp' )
     out_getpar_siml%lcalibfapar  = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibfapar' )
     out_getpar_siml%lcalibtransp = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibtransp' )
-
-    print*,'8'
 
     print*, "... done"
 
