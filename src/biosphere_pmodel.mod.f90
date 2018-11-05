@@ -354,6 +354,7 @@ contains
       ! Finazlize run: deallocating memory
       !----------------------------------------------------------------
       deallocate( tile )
+      deallocate( tile_fluxes )
       deallocate( plant )
       deallocate( plant_fluxes )
 

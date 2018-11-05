@@ -1622,6 +1622,8 @@ contains
 
     prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
+    print*,'interface%steering%spinup :', interface%steering%spinup 
+
     if ( .not. interface%steering%spinup ) then
       !----------------------------------------------------------------
       ! Annual GPP output file 
@@ -1653,6 +1655,7 @@ contains
 
       if ( interface%steering%outyear>=interface%params_siml%daily_out_startyr .and. &
         interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
         !----------------------------------------------------------------
         ! Daily GPP output file 
         !----------------------------------------------------------------

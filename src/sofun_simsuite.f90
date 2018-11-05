@@ -258,34 +258,34 @@ program main
                               interface%params_siml%co2_forcing_file&
                               )
 
-      ! Atmospheric N deposition
-      ndep_field(:) = getninput( &
-                                "ndep", &
-                                trim(runname), &
-                                interface%domaininfo, &
-                                interface%steering%forcingyear, &
-                                interface%params_siml%firstyeartrend, &
-                                interface%params_siml%const_ndep_year, &
-                                interface%params_siml%ndep_noy_forcing_file, &
-                                interface%params_siml%ndep_nhx_forcing_file, &
-                                interface%climate(:)&
-                                )
+      ! ! Atmospheric N deposition
+      ! ndep_field(:) = getninput( &
+      !                           "ndep", &
+      !                           trim(runname), &
+      !                           interface%domaininfo, &
+      !                           interface%steering%forcingyear, &
+      !                           interface%params_siml%firstyeartrend, &
+      !                           interface%params_siml%const_ndep_year, &
+      !                           interface%params_siml%ndep_noy_forcing_file, &
+      !                           interface%params_siml%ndep_nhx_forcing_file, &
+      !                           interface%climate(:)&
+      !                           )
       
-      ! N fertiliser input
-      nfert_field(:) = getninput( &
-                                "nfert", &
-                                trim(runname), &
-                                interface%domaininfo, &
-                                interface%steering%forcingyear, &
-                                interface%params_siml%firstyeartrend, &
-                                interface%params_siml%const_nfert_year, &
-                                interface%params_siml%nfert_noy_forcing_file, &
-                                interface%params_siml%nfert_nhx_forcing_file, &
-                                interface%climate(:)&
-                                )
+      ! ! N fertiliser input
+      ! nfert_field(:) = getninput( &
+      !                           "nfert", &
+      !                           trim(runname), &
+      !                           interface%domaininfo, &
+      !                           interface%steering%forcingyear, &
+      !                           interface%params_siml%firstyeartrend, &
+      !                           interface%params_siml%const_nfert_year, &
+      !                           interface%params_siml%nfert_noy_forcing_file, &
+      !                           interface%params_siml%nfert_nhx_forcing_file, &
+      !                           interface%climate(:)&
+      !                           )
 
-      ! Interface holds only total reactive N input (N deposition + N fertiliser)                             
-      interface%ninput_field(:) = gettot_ninput( nfert_field(:), ndep_field(:) )
+      ! ! Interface holds only total reactive N input (N deposition + N fertiliser)                             
+      ! interface%ninput_field(:) = gettot_ninput( nfert_field(:), ndep_field(:) )
                                    
       ! 'SOFUN: holding harvesting regime constant at 1993 level.'
       interface%landuse(:) = getlanduse( &
@@ -381,7 +381,7 @@ program main
   ! cost = median( cost_bysite(:), nruns ) 
   ! ! print*,'cost_bysite: ', cost_bysite
   ! print*, cost
-  print*,999999999
+  ! print*, 999999999
 
 100 format(F10.7)
 200 format(F15.8)
