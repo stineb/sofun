@@ -67,11 +67,11 @@ program main
   pft = 1
   if ( params_pft_plant(pft)%c4 ) then
     ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
-    out_pmodel = pmodel( params_pft_gpp(pft)%kphio, fpar = fapar, ppfd = ppfd, co2 = 3.0 * co2, tc = temp, vpd = vpd, elv = elv, method = "C4" )
+    out_pmodel = pmodel( params_pft_gpp(pft)%kphio, fapar = fapar, ppfd = ppfd, co2 = 3.0 * co2, tc = temp, vpd = vpd, elv = elv, method = "C4" )
 
   else
     ! C3
-    out_pmodel = pmodel( params_pft_gpp(pft)%kphio, fpar = fapar, ppfd = ppfd, co2 = co2, tc = temp, vpd = vpd, elv = elv, method = "C3_full" )
+    out_pmodel = pmodel( params_pft_gpp(pft)%kphio, fapar = fapar, ppfd = ppfd, co2 = co2, tc = temp, vpd = vpd, elv = elv, method = "C3_full" )
     
   end if
   
