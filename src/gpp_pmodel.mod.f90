@@ -89,7 +89,7 @@ module md_gpp
   !----------------------------------------------------------------
   ! Function return variables as derived types
   type outtype_pmodel
-    real :: gpp
+    real :: gpp                   ! gross primary productivity (g C m-2, calculated only if fAPAR and PPFD are not 'dummy')
     real :: gstar                 ! photorespiratory compensation point - Gamma-star (Pa)
     real :: chi                   ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: ci                    ! leaf-internal partial pressure, (Pa)
