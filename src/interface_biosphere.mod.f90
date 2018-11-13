@@ -10,8 +10,8 @@ module md_interface
   implicit none
 
   private
-  public interfacetype_biosphere, interface, initoutput_forcing, initio_forcing, &
-    initio_nc_forcing, getout_daily_forcing, writeout_ascii_forcing, writeout_nc_forcing, &
+  public interfacetype_biosphere, interface, initoutput_forcing, &
+    initio_nc_forcing, getout_daily_forcing, writeout_nc_forcing, &
     outtype_biosphere
 
   type paramstype_calib
@@ -95,47 +95,49 @@ contains
     ! arguments
     integer, intent(in) :: ngridcells
 
-    ! Allocate memory for daily output variables
-    if ( interface%params_siml%loutforcing ) then
-      if ( interface%steering%init ) allocate( outdtemp (interface%params_siml%outnt,ngridcells) )
-      if ( interface%steering%init ) allocate( outdfapar(interface%params_siml%outnt,ngridcells) )
-      outdtemp (:,:) = 0.0
-      outdfapar(:,:) = 0.0
+    if (interface%params_siml%loutforcing) then
+
+      ! Allocate memory for daily output variables
+      if (interface%steering%init .and. interface%params_siml%loutdtemp ) allocate( outdtemp (interface%params_siml%outnt,ngridcells) )
+      if (interface%steering%init .and. interface%params_siml%loutdfapar) allocate( outdfapar(interface%params_siml%outnt,ngridcells) )
+      if (interface%params_siml%loutdtemp ) outdtemp (:,:) = 0.0
+      if (interface%params_siml%loutdfapar) outdfapar(:,:) = 0.0
+
     end if
 
   end subroutine initoutput_forcing
 
 
-  subroutine initio_forcing()
-    !////////////////////////////////////////////////////////////////
-    ! Opens ascii output files.
-    !----------------------------------------------------------------
-    ! local variables
-    character(len=256) :: prefix
-    character(len=256) :: filnam
+  ! subroutine initio_forcing()
+  !   !////////////////////////////////////////////////////////////////
+  !   ! Opens ascii output files.
+  !   !----------------------------------------------------------------
+  !   ! local variables
+  !   character(len=256) :: prefix
+  !   character(len=256) :: filnam
 
-    prefix = "./output/"//trim(interface%params_siml%runname)
+  !   prefix = "./output/"//trim(interface%params_siml%runname)
 
-    !////////////////////////////////////////////////////////////////
-    ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
-    !----------------------------------------------------------------
-    if (interface%params_siml%loutforcing) then
+  !   !////////////////////////////////////////////////////////////////
+  !   ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
+  !   !----------------------------------------------------------------
+  !   if (interface%params_siml%loutforcing) then
 
-      ! DAILY MEAN TEMPERATURE (DEG C)
-      filnam=trim(prefix)//'.d.temp.out'
-      open(950,file=filnam,err=999,status='unknown')
+  !     ! DAILY MEAN TEMPERATURE (DEG C)
+  !     filnam=trim(prefix)//'.d.temp.out'
+  !     open(950,file=filnam,err=999,status='unknown')
 
-      ! FRACTION OF ABSORBED PHOTOSYNTHETICALLY ACTIVE RADIATION
-      filnam=trim(prefix)//'.d.fapar.out'
-      open(951,file=filnam,err=999,status='unknown')
+  !     ! FRACTION OF ABSORBED PHOTOSYNTHETICALLY ACTIVE RADIATION
+  !     filnam=trim(prefix)//'.d.fapar.out'
+  !     open(951,file=filnam,err=999,status='unknown')
   
-    end if     
+  !   end if     
 
-    return
+  !   return
 
-    999  stop 'INITIO: error opening output files'
+  !   999  stop 'INITIO: error opening output files'
 
-  end subroutine initio_forcing
+  ! end subroutine initio_forcing
 
 
   subroutine initio_nc_forcing()
@@ -201,7 +203,7 @@ contains
       !----------------------------------------------------------------
       ! Temperature output file 
       !----------------------------------------------------------------      
-      if (interface%params_siml%lncoutdtemp) then
+      if (interface%params_siml%loutdtemp) then
         ncoutfilnam_temp = trim(prefix)//'.'//year_char//".d.temp.nc"
         print*,'initialising ', trim(ncoutfilnam_temp), '...'
         call init_nc_3D_time( filnam   = trim(ncoutfilnam_temp), &
@@ -222,7 +224,7 @@ contains
       !----------------------------------------------------------------
       ! fAPAR output file 
       !----------------------------------------------------------------
-      if ( interface%params_siml%loutforcing .and. interface%params_siml%lncoutdfapar) then
+      if ( interface%params_siml%loutdfapar) then
         ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar_prescr.nc"
         print*,'initialising ', trim(ncoutfilnam_fapar), '...'
         call init_nc_3D_time( filnam   = trim(ncoutfilnam_fapar), &
@@ -263,85 +265,85 @@ contains
     ! local variables
     integer :: it
 
-    !----------------------------------------------------------------
-    ! DAILY
-    ! Collect daily output variables
-    ! so far not implemented for isotopes
-    !----------------------------------------------------------------
     if (interface%params_siml%loutforcing) then
+      !----------------------------------------------------------------
+      ! DAILY
+      ! Collect daily output variables
+      ! so far not implemented for isotopes
+      !----------------------------------------------------------------
       it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
-      outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(jpngr)%dtemp(doy) / real( interface%params_siml%outdt )
-      outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%dfapar_field(doy,jpngr)   / real( interface%params_siml%outdt )
-    end if
+      if (interface%params_siml%loutdtemp)  outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(jpngr)%dtemp(doy) / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdfapar) outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%dfapar_field(doy,jpngr)   / real( interface%params_siml%outdt )
 
-    ! !----------------------------------------------------------------
-    ! ! ANNUAL SUM OVER DAILY VALUES
-    ! ! Collect annual output variables as sum of daily values
-    ! !----------------------------------------------------------------
-    ! if (interface%params_siml%loutforcing) then
-    !   outatemp(jpngr)  = outatemp(jpngr)  + interface%climate(jpngr)%dtemp(doy) / ndayyear
-    !   outanin(:,jpngr) = outanin(:,jpngr) + interface%ninput_field(jpngr)%dtot(doy)
-    ! end if
+      ! !----------------------------------------------------------------
+      ! ! ANNUAL SUM OVER DAILY VALUES
+      ! ! Collect annual output variables as sum of daily values
+      ! !----------------------------------------------------------------
+      ! if (interface%params_siml%loutforcing) then
+      !   outatemp(jpngr)  = outatemp(jpngr)  + interface%climate(jpngr)%dtemp(doy) / ndayyear
+      !   outanin(:,jpngr) = outanin(:,jpngr) + interface%ninput_field(jpngr)%dtot(doy)
+      ! end if
+    end if
 
   end subroutine getout_daily_forcing
 
 
-  subroutine writeout_ascii_forcing()
-    !/////////////////////////////////////////////////////////////////////////
-    ! Write daily ASCII output
-    !-------------------------------------------------------------------------
-    ! use md_params_siml, only: spinup, interface%params_siml%daily_out_startyr, &
-    use md_params_core, only: ndayyear
+  ! subroutine writeout_ascii_forcing()
+  !   !/////////////////////////////////////////////////////////////////////////
+  !   ! Write daily ASCII output
+  !   !-------------------------------------------------------------------------
+  !   ! use md_params_siml, only: spinup, interface%params_siml%daily_out_startyr, &
+  !   use md_params_core, only: ndayyear
 
-    ! local variables
-    real :: itime
-    integer :: it, moy, jpngr
-    real, dimension(ndayyear) :: outdtemp_tot
-    real, dimension(ndayyear) :: outdfapar_tot
+  !   ! local variables
+  !   real :: itime
+  !   integer :: it, moy, jpngr
+  !   real, dimension(ndayyear) :: outdtemp_tot
+  !   real, dimension(ndayyear) :: outdfapar_tot
 
-    outdtemp_tot(:)  = 0.0
-    outdfapar_tot(:) = 0.0
+  !   outdtemp_tot(:)  = 0.0
+  !   outdfapar_tot(:) = 0.0
 
-    if (nlu>1) stop 'Output only for one LU category implemented.'
+  !   if (nlu>1) stop 'Output only for one LU category implemented.'
 
-    !-------------------------------------------------------------------------
-    ! DAILY OUTPUT
-    ! Write daily value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    if ( .not. interface%steering%spinup &
-         .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-         .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+  !   !-------------------------------------------------------------------------
+  !   ! DAILY OUTPUT
+  !   ! Write daily value, summed over all PFTs / LUs
+  !   ! xxx implement taking sum over PFTs (and gridcells) in this land use category
+  !   !-------------------------------------------------------------------------
+  !   if ( .not. interface%steering%spinup &
+  !        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+  !        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      if (interface%params_siml%loutforcing) then
+  !     if (interface%params_siml%loutforcing) then
 
-        ! Write daily output only during transient simulation
-        do it=1,interface%params_siml%outnt
+  !       ! Write daily output only during transient simulation
+  !       do it=1,interface%params_siml%outnt
 
-          ! Get weighted average
-          do jpngr=1,size(interface%grid)
-            outdtemp_tot(it)  = outdtemp_tot(it)  + outdtemp(it,jpngr)  * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
-            outdfapar_tot(it) = outdfapar_tot(it) + outdfapar(it,jpngr) * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
-          end do
-          outdtemp_tot(it)  = outdtemp_tot(it)  / interface%domaininfo%landarea
-          outdfapar_tot(it) = outdfapar_tot(it) / interface%domaininfo%landarea
+  !         ! Get weighted average
+  !         do jpngr=1,size(interface%grid)
+  !           outdtemp_tot(it)  = outdtemp_tot(it)  + outdtemp(it,jpngr)  * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
+  !           outdfapar_tot(it) = outdfapar_tot(it) + outdfapar(it,jpngr) * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
+  !         end do
+  !         outdtemp_tot(it)  = outdtemp_tot(it)  / interface%domaininfo%landarea
+  !         outdfapar_tot(it) = outdfapar_tot(it) / interface%domaininfo%landarea
 
-          ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real( interface%steering%outyear ) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
+  !         ! Define 'itime' as a decimal number corresponding to day in the year + year
+  !         itime = real( interface%steering%outyear ) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
           
-          write(950,999) itime, outdtemp_tot(it)
-          write(951,999) itime, outdfapar_tot(it)
+  !         write(950,999) itime, outdtemp_tot(it)
+  !         write(951,999) itime, outdfapar_tot(it)
 
-        end do
+  !       end do
 
-      end if
-    end if
+  !     end if
+  !   end if
 
-    return
+  !   return
 
-    999 format (F20.8,F20.8)
+  !   999 format (F20.8,F20.8)
 
-  end subroutine writeout_ascii_forcing
+  ! end subroutine writeout_ascii_forcing
 
 
   subroutine writeout_nc_forcing()
@@ -390,39 +392,41 @@ contains
          .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
          .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      !-------------------------------------------------------------------------
-      ! dtemp
-      !-------------------------------------------------------------------------
-      if (interface%params_siml%lncoutdtemp) print*,'writing ', trim(ncoutfilnam_temp), '...'
-      if (interface%params_siml%lncoutdtemp) call write_nc_3D_time( trim(ncoutfilnam_temp), &
-                                                                    TEMP_NAME, &
-                                                                    interface%domaininfo%maxgrid, &
-                                                                    interface%domaininfo%nlon, &
-                                                                    interface%domaininfo%nlat, &
-                                                                    interface%grid(:)%ilon, &
-                                                                    interface%grid(:)%ilat, &
-                                                                    interface%params_siml%outnt, &
-                                                                    interface%grid(:)%dogridcell, &
-                                                                    outdtemp(:,:) &
-                                                                    )
+      if (interface%params_siml%loutforcing) then
+        !-------------------------------------------------------------------------
+        ! dtemp
+        !-------------------------------------------------------------------------
+        if (interface%params_siml%loutdtemp) print*,'writing ', trim(ncoutfilnam_temp), '...'
+        if (interface%params_siml%loutdtemp) call write_nc_3D_time( trim(ncoutfilnam_temp), &
+                                                                      TEMP_NAME, &
+                                                                      interface%domaininfo%maxgrid, &
+                                                                      interface%domaininfo%nlon, &
+                                                                      interface%domaininfo%nlat, &
+                                                                      interface%grid(:)%ilon, &
+                                                                      interface%grid(:)%ilat, &
+                                                                      interface%params_siml%outnt, &
+                                                                      interface%grid(:)%dogridcell, &
+                                                                      outdtemp(:,:) &
+                                                                      )
 
 
-      !-------------------------------------------------------------------------
-      ! fapar
-      !-------------------------------------------------------------------------
-      if (interface%params_siml%loutforcing .and. interface%params_siml%lncoutdfapar) print*,'writing ', trim(ncoutfilnam_fapar), '...'
-      if (interface%params_siml%loutforcing .and. interface%params_siml%lncoutdfapar) call write_nc_3D_time(trim(ncoutfilnam_fapar), &
-                                                                    FAPAR_NAME, &
-                                                                    interface%domaininfo%maxgrid, &
-                                                                    interface%domaininfo%nlon, &
-                                                                    interface%domaininfo%nlat, &
-                                                                    interface%grid(:)%ilon, &
-                                                                    interface%grid(:)%ilat, &
-                                                                    interface%params_siml%outnt, &
-                                                                    interface%grid(:)%dogridcell, &
-                                                                    outdfapar(:,:) &
-                                                                    )
+        !-------------------------------------------------------------------------
+        ! fapar
+        !-------------------------------------------------------------------------
+        if (interface%params_siml%loutdfapar) print*,'writing ', trim(ncoutfilnam_fapar), '...'
+        if (interface%params_siml%loutdfapar) call write_nc_3D_time(trim(ncoutfilnam_fapar), &
+                                                                      FAPAR_NAME, &
+                                                                      interface%domaininfo%maxgrid, &
+                                                                      interface%domaininfo%nlon, &
+                                                                      interface%domaininfo%nlat, &
+                                                                      interface%grid(:)%ilon, &
+                                                                      interface%grid(:)%ilat, &
+                                                                      interface%params_siml%outnt, &
+                                                                      interface%grid(:)%dogridcell, &
+                                                                      outdfapar(:,:) &
+                                                                      )
 
+      end if
     end if
 
   end subroutine writeout_nc_forcing
