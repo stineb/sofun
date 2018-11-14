@@ -331,7 +331,7 @@ contains
     real, intent(in) :: fapar       ! fraction of absorbed photosynthetically active radiation (unitless)
     real, intent(in) :: fpc_grid    ! foliar projective cover, used for dividing grid cell area (unitless)
     real, intent(in) :: dppfd       ! daily total photon flux density (mol m-2)
-    real, intent(in) :: lue         ! light use efficiency (mol mol-1)
+    real, intent(in) :: lue         ! light use efficiency (g CO2 mol-1)
     real, intent(in) :: tempstress  ! air temperature (deg C)
     real, intent(in) :: soilmstress ! soil moisture stress factor (unitless)
 
@@ -339,7 +339,7 @@ contains
     real :: my_dgpp                 ! Daily total gross primary productivity (gC m-2 d-1)
 
     ! GPP is light use efficiency multiplied by absorbed light and soil moisture stress function
-    my_dgpp = fapar * fpc_grid * dppfd * soilmstress * lue * tempstress * c_molmass
+    my_dgpp = fapar * fpc_grid * dppfd * soilmstress * lue * tempstress
 
   end function calc_dgpp
 
@@ -527,7 +527,7 @@ contains
     gstar   = calc_gstar( tc )
 
     ! XXX PMODEL_TEST: ok
-    print*, 'gstar ', gstar
+    ! print*, 'gstar ', gstar
 
     ! Michaelis-Menten coef. (Pa)
     kmm  = calc_k( tc, patm )
@@ -538,7 +538,7 @@ contains
     ns_star = ns / ns25                       ! (unitless)
 
     ! XXX PMODEL_TEST: ok
-    print*, 'ns_star ', ns_star
+    ! print*, 'ns_star ', ns_star
 
     select case (method)
 
@@ -578,19 +578,22 @@ contains
     chi = out_lue%chi
 
     ! ! XXX PMODEL_TEST: ok
-    print*, 'm ', out_lue%m
+    ! print*, 'm ', out_lue%m
 
     ! ! XXX PMODEL_TEST: ok
-    print*, 'chi ', chi
+    ! print*, 'chi ', chi
 
     ! Include effect of Jmax limitation
     mprime   = calc_mprime( out_lue%m )
 
     ! ! XXX PMODEL_TEST: ok
-    print*, 'mprime ', mprime
+    ! print*, 'mprime ', mprime
 
     ! Light use efficiency (assimilation rate per unit absorbed light)
-    lue = kphio * mprime ! in mol CO2 m-2 s-1 / (mol light m-2 s-1)
+    lue = kphio * mprime * c_molmass ! in g CO2 m-2 s-1 / (mol light m-2 s-1)
+
+    ! ! XXX PMODEL_TEST: ok
+    ! print*, 'lue ', lue
 
     ! leaf-internal CO2 partial pressure (Pa)
     ci = chi * ca
@@ -642,9 +645,9 @@ contains
       rd_unitfapar = ppfd * rd_unitiabs
 
       ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
-      actnv_unitfapar = vcmax25_unitfapar * n_v
+      actnv_unitfapar = ppfd * actnv_unitiabs
 
-      if (ppfd /= dummy) then
+      if (fapar /= dummy) then
         !-----------------------------------------------------------------------
         ! Calculate quantities scaling with absorbed light
         !-----------------------------------------------------------------------
@@ -652,38 +655,38 @@ contains
         iabs = fapar * ppfd 
 
         ! XXX PMODEL_TEST: ok
-        print*, 'iabs ', iabs
+        ! print*, 'iabs ', iabs
 
         ! Canopy-level quantities 
         ! Defined per unit ground level -> scaling with aborbed light (iabs)
         !-----------------------------------------------------------------------
         ! Gross primary productivity
-        gpp = iabs * lue * c_molmass ! in g C m-2 s-1
+        gpp = iabs * lue ! in g C m-2 s-1
 
         ! XXX PMODEL_TEST: ok
-        print*, 'gpp ', gpp
+        ! print*, 'gpp ', gpp
 
         ! Vcmax per unit ground area is the product of the intrinsic quantum 
         ! efficiency, the absorbed PAR, and 'n'
         vcmax = iabs * vcmax_unitiabs  ! = iabs * kphio * n 
 
         ! XXX PMODEL_TEST: ok
-        print*, 'vcmax ', vcmax
+        ! print*, 'vcmax ', vcmax
 
         ! (vcmax normalized to 25 deg C)
         vcmax25 = iabs * vcmax25_unitiabs  ! = factor25_vcmax * vcmax
 
         ! XXX PMODEL_TEST: ok
-        print*, 'vcmax25 ', vcmax25
+        ! print*, 'vcmax25 ', vcmax25
 
         ! Dark respiration
         rd = iabs * rd_unitiabs ! = rd_to_vcmax * vcmax
 
         ! XXX PMODEL_TEST: ok
-        print*, 'rd ', rd
+        ! print*, 'rd ', rd
 
         ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
-        actnv = vcmax25_unitiabs * n_v ! = vcmax25 * n_v
+        actnv = iabs * actnv_unitiabs ! = vcmax25 * n_v
 
       else
 
@@ -697,13 +700,16 @@ contains
 
     else
 
-      ! assim = dummy
-      ! gs = dummy
-      iabs = dummy
       vcmax_unitfapar = dummy
       vcmax25_unitfapar = dummy
       rd_unitfapar = dummy
       actnv_unitfapar = dummy
+
+      gpp = dummy
+      vcmax = dummy
+      vcmax25 = dummy
+      rd = dummy
+      actnv = dummy
 
     end if
 
@@ -712,8 +718,6 @@ contains
     out_pmodel%chi = chi
     out_pmodel%iwue = iwue
     out_pmodel%lue = lue
-    ! out_pmodel%assim = assim
-    ! out_pmodel%gs_unitiabs      = gs_unitiabs
     out_pmodel%gpp = gpp
     out_pmodel%vcmax = vcmax
     out_pmodel%vcmax25 = vcmax25
@@ -727,8 +731,6 @@ contains
     out_pmodel%actnv = actnv
     out_pmodel%actnv_unitfapar = actnv_unitfapar
     out_pmodel%actnv_unitiabs = actnv_unitiabs
-    out_pmodel%transp = transp
-
 
     ! if (tc > 0.0) then
 

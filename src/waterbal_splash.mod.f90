@@ -194,6 +194,10 @@ contains
     integer :: idx                       ! day of year corresponding to yesterday
     integer :: dm                        ! day of month
 
+    ! for the case netrad is prescribed following SWBM
+    real, parameter :: beta = 0.66
+    real, parameter :: exp_et = 0.06
+
     ! xxx debug
     integer, save :: leaching_events = 0
 
@@ -217,12 +221,26 @@ contains
       ! Calculate radiation and evaporation quantities
       ! print*,'2'
       if (splashtest) then
-        evap(lu) = getevap( lat=67.25, doy=55, elv=87.0, sf=sf_splashtest, tc=tc_splashtest, sw=sw_splashtest, netrad=dummy, splashtest=splashtest, testdoy=testdoy )
+        evap(lu) = getevap( lat=67.25, doy=55, elv=87.0, sf=sf_splashtest, tc=tc_splashtest, sw=sw_splashtest, netrad=netrad, splashtest=splashtest, testdoy=testdoy )
         if (lev_splashtest==2) stop 'end of splash test level 2'
       else
         ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
         evap(lu) = getevap( lat, doy, elv, sf, tc, tile_fluxes(lu)%sw, netrad, splashtest, testdoy )
         ! print*,'... done'
+      end if
+
+      if (netrad/=dummy) then
+        ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ! 21. Estimate daily AET (out_evap%aet), mm d-1
+        ! WARNING: This follows SWBM not SPLASH
+        ! Needs to be done here because wcont is not available in getevap()
+        ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ! calculate actual ET from potential ET and Eq. 2 in Orth et al., 2013, limited to <=1
+        evap(lu)%aet = evap(lu)%pet * beta * min( 1.0, ( soil(lu)%phy%wcont / soil(lu)%params%whc )**exp_et )
+        ! print*,'aet: ', evap(lu)%aet
+
+        evap(lu)%cpa = max( 0.0, evap(lu)%aet / evap(lu)%eet )
+
       end if
 
       ! Update soil moisture
@@ -485,7 +503,7 @@ contains
     ! - daily AET (out_evap%aet), mm
     ! - daily condensation (out_evap%cn), mm
     !-------------------------------------------------------------------------  
-    use md_params_core, only: ndayyear, pi
+    use md_params_core, only: ndayyear, pi, dummy
     use md_sofunutils, only: calc_patm
 
     ! arguments
@@ -495,7 +513,7 @@ contains
     real,    intent(in) :: sf            ! fraction of sunshine hours
     real,    intent(in) :: tc            ! mean daily air temperature, C
     real,    intent(in) :: sw            ! evaporative supply rate, mm/hr
-    real,    intent(in) :: netrad        ! net radiation (W m-2)
+    real,    intent(in) :: netrad        ! net radiation, integrated over day (J m-2 d-1)
 
     logical, intent(in) :: splashtest
     integer, intent(in) :: testdoy
@@ -521,83 +539,9 @@ contains
     real :: hi, cos_hi                   ! intersection hour angle, degrees
     real, dimension(2) :: out_ru_rv      ! function return variable containing 'ru' and 'rv'.
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 3. Calculate distance factor (dr), unitless
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    dr = calc_dr( out_berger(doy)%nu )
-    
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 4. Calculate declination angle (delta), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    delta = calc_delta( out_berger(doy)%lambda )
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 5. Calculate variable substitutes (u and v), unitless
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    out_ru_rv = calc_ru_rv( delta, lat )
-    ru = out_ru_rv(1)
-    rv = out_ru_rv(2)
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 6. Calculate the sunset hour angle (hs), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    hs = calc_hs( ru, rv )
-    
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 8. Calculate transmittivity (tau), unitless
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    tau = calc_tau( sf, elv )
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 10. Estimate net longwave radiation (out_evap%rnl), W/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
-    out_evap%rnl = ( kb + (1.0 - kb ) * sf ) * ( kA - tc )
-
-    if (splashtest .and. doy==testdoy) print*,'net longwave radiation: ', out_evap%rnl
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 11. Calculate variable substitute (rw), W/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rw = ( 1.0 - kalb_sw ) * tau * kGsc * dr
-    
-    if (splashtest .and. doy==testdoy) print*,'variable substitute, rw: ', rw
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 12. Calculate net radiation cross-over hour angle (hn), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if ((out_evap%rnl - rw*ru)/(rw*rv) >= 1.0) then
-      ! Net radiation negative all day
-      hn = 0.0
-    else if ((out_evap%rnl - rw*ru)/(rw*rv) <= -1.0) then
-      ! Net radiation positive all day
-      hn = 180.0
-    else
-      !hn = degrees( dacos((out_evap%rnl - rw*ru)/(rw*rv)) )
-      hn = degrees( acos((out_evap%rnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
-    end if
-
-    if (splashtest .and. doy==testdoy) print*,'cross-over hour angle: ', hn
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 53, SPLASH 2.0 Documentation
-    out_evap%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
-
-    if (splashtest .and. doy==testdoy) print*,'daytime net radiation: ', out_evap%rn
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 56, SPLASH 2.0 Documentation
-    ! adopted bugfix from Python version (iss#13)
-    out_evap%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) - out_evap%rnl * (pi - radians(hn)))
-
-    if (splashtest .and. doy==testdoy) print*,'nighttime net radiation: ', out_evap%rnn
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 15. Calculate water-to-energy conversion (econ), m^3/J
+    ! Calculate water-to-energy conversion (econ), m^3/J
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Slope of saturation vap press temp curve, Pa/K
     s = sat_slope(tc)
@@ -623,67 +567,185 @@ contains
 
     out_evap%econ = 1.0 / ( lv * pw ) ! this is to convert energy into mass (water)
 
-    ! print*,'Econ alternative: ', 1.0 / (lv * pw)
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 16. Calculate daily condensation (out_evap%cn), mm d-1
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 68, SPLASH 2.0 Documentation
-    out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
-    if (splashtest .and. doy==testdoy) print*,'daily condensation: ', out_evap%cn
+    if (netrad/=dummy) then
+      !--------------------------------------------------
+      ! MODE 1: Net radiation is prescribed
+      ! ==> get condensation from negative net radiation
+      !--------------------------------------------------
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 17. Estimate daily EET (out_evap%eet), mm d-1
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 70, SPLASH 2.0 Documentation
-    out_evap%eet = 1000.0 * econ * out_evap%rn
-    if (splashtest .and. doy==testdoy) print*,'daily EET: ', out_evap%eet
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 13./14. Note: this corresponds to daytime plus nighttime net radiation (out_evap%rn), J/m^2
+      ! ==> coppy prescribed value to state variable net radiation, 'rn'
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      out_evap%rn = netrad      
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 18. Estimate daily PET (out_evap%pet), mm d-1
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 72, SPLASH 2.0 Documentation
-    out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
-    if (splashtest .and. doy==testdoy) print*,'daily PET: ', out_evap%pet
-    ! out_evap%pet_e = out_evap%pet / (econ * 1000)
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 17. Estimate daily EET (out_evap%eet), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 70, SPLASH 2.0 Documentation
+      out_evap%eet = 1000.0 * econ * out_evap%rn
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * econ
-    if (splashtest .and. doy==testdoy) print*,'variable substitute, rx: ', rx
-    
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 20. Calculate the intersection hour angle (hi), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    cos_hi = sw/(rw*rv*rx) + out_evap%rnl/(rw*rv) - ru/rv   ! sw contains info of soil moisture (evaporative supply rate)
-    if (cos_hi >= 1.0) then
-      ! Supply exceeds demand:
-      hi = 0.0
-    elseif (cos_hi <= -1.0) then
-      ! Supply limits demand everywhere:
-      hi = 180.0
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 18. Estimate daily PET (out_evap%pet), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 72, SPLASH 2.0 Documentation
+      out_evap%pet = ( 1.0 + kw ) * out_evap%eet
+      ! print*,'pet: ', out_evap%pet
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 16.A. Calculate daily condensation in case net radiation is negative (out_evap%cn), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      if (out_evap%rn < 0.0) then
+        out_evap%cn = 1000.0 * econ * abs(out_evap%rn)
+      else
+        out_evap%cn = 0.0
+      end if
+
     else
-      hi = degrees(acos(cos_hi))
-    end if
-    if (splashtest .and. doy==testdoy) print*,'intersection hour angle, hi: ', hi
+      !--------------------------------------------------
+      ! MODE 2: Net radiation is calculated online
+      !--------------------------------------------------
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 21. Estimate daily AET (out_evap%aet), mm d-1
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 81, SPLASH 2.0 Documentation
-    out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
-    ! out_evap%aet_e = out_evap%aet / (econ * 1000)
-    if (splashtest .and. doy==testdoy) print*,'daily AET set to: ', out_evap%aet
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 3. Calculate distance factor (dr), unitless
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      dr = calc_dr( out_berger(doy)%nu )
+      
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 4. Calculate declination angle (delta), degrees
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      delta = calc_delta( out_berger(doy)%lambda )
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if (out_evap%eet>0.0) then 
-      out_evap%cpa = out_evap%aet / out_evap%eet
-    else
-      out_evap%cpa = 1.0 + kw
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 5. Calculate variable substitutes (u and v), unitless
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      out_ru_rv = calc_ru_rv( delta, lat )
+      ru = out_ru_rv(1)
+      rv = out_ru_rv(2)
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 6. Calculate the sunset hour angle (hs), degrees
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      hs = calc_hs( ru, rv )
+      
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 8. Calculate transmittivity (tau), unitless
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      tau = calc_tau( sf, elv )
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 10. Estimate net longwave radiation (out_evap%rnl), W/m^2
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
+      out_evap%rnl = ( kb + (1.0 - kb ) * sf ) * ( kA - tc )
+
+      if (splashtest .and. doy==testdoy) print*,'net longwave radiation: ', out_evap%rnl
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 11. Calculate variable substitute (rw), W/m^2
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      rw = ( 1.0 - kalb_sw ) * tau * kGsc * dr
+      
+      if (splashtest .and. doy==testdoy) print*,'variable substitute, rw: ', rw
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 12. Calculate net radiation cross-over hour angle (hn), degrees
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      if ((out_evap%rnl - rw*ru)/(rw*rv) >= 1.0) then
+        ! Net radiation negative all day
+        hn = 0.0
+      else if ((out_evap%rnl - rw*ru)/(rw*rv) <= -1.0) then
+        ! Net radiation positive all day
+        hn = 180.0
+      else
+        !hn = degrees( dacos((out_evap%rnl - rw*ru)/(rw*rv)) )
+        hn = degrees( acos((out_evap%rnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
+      end if
+
+      if (splashtest .and. doy==testdoy) print*,'cross-over hour angle: ', hn
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 53, SPLASH 2.0 Documentation
+      out_evap%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
+
+      if (splashtest .and. doy==testdoy) print*,'daytime net radiation: ', out_evap%rn
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 56, SPLASH 2.0 Documentation
+      ! adopted bugfix from Python version (iss#13)
+      out_evap%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) - out_evap%rnl * (pi - radians(hn)))
+
+      if (splashtest .and. doy==testdoy) print*,'nighttime net radiation: ', out_evap%rnn
+
+      ! print*,'Econ alternative: ', 1.0 / (lv * pw)
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 16. Calculate daily condensation (out_evap%cn), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 68, SPLASH 2.0 Documentation
+      out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
+      if (splashtest .and. doy==testdoy) print*,'daily condensation: ', out_evap%cn
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 17. Estimate daily EET (out_evap%eet), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 70, SPLASH 2.0 Documentation
+      out_evap%eet = 1000.0 * econ * out_evap%rn
+      if (splashtest .and. doy==testdoy) print*,'daily EET: ', out_evap%eet
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 18. Estimate daily PET (out_evap%pet), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 72, SPLASH 2.0 Documentation
+      out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
+      if (splashtest .and. doy==testdoy) print*,'daily PET: ', out_evap%pet
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * econ
+      if (splashtest .and. doy==testdoy) print*,'variable substitute, rx: ', rx
+      
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 20. Calculate the intersection hour angle (hi), degrees
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      cos_hi = sw/(rw*rv*rx) + out_evap%rnl/(rw*rv) - ru/rv   ! sw contains info of soil moisture (evaporative supply rate)
+      if (cos_hi >= 1.0) then
+        ! Supply exceeds demand:
+        hi = 0.0
+      elseif (cos_hi <= -1.0) then
+        ! Supply limits demand everywhere:
+        hi = 180.0
+      else
+        hi = degrees(acos(cos_hi))
+      end if
+      if (splashtest .and. doy==testdoy) print*,'intersection hour angle, hi: ', hi
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 21. Estimate daily AET (out_evap%aet), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 81, SPLASH 2.0 Documentation
+      out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
+      ! out_evap%aet_e = out_evap%aet / (econ * 1000)
+      if (splashtest .and. doy==testdoy) print*,'daily AET set to: ', out_evap%aet
+      ! print*,'aet ', out_evap%aet
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      if (out_evap%eet>0.0) then 
+        out_evap%cpa = out_evap%aet / out_evap%eet
+      else
+        out_evap%cpa = 1.0 + kw
+      end if
+
     end if
+
 
     ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! ! 23. CRUDEFIX: When temperature is below zero, set bot PET and AET to zero. 
