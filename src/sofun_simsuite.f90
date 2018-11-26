@@ -154,6 +154,7 @@ program main
   ! One big array for all simulaitons 
   !----------------------------------------------------------------
   if (is_calib) then
+    print*,'Allocating array calibtargets with dimensions ', totrunyears*ndayyear, nvars_calib
     allocate( calibtargets(totrunyears*ndayyear, nvars_calib ) )
   end if 
 
@@ -325,7 +326,7 @@ program main
       ! Collect output for calibration target variables
       !----------------------------------------------------------------
       if (is_calib .and. yr>interface%params_siml%spinupyears) then
-        
+
         idx_end = idx_start - 1 + ndayyear
 
         icol = 1

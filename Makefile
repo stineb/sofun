@@ -37,7 +37,9 @@ ifeq ($(PROFILE),gfortran)
 # Compiler and options
 FCOM=gfortran
 CPPFLAGS=-cpp -E
-COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow
+COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow ## for normal setup
+# COMPFLAGS=-g -O0 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -Wall -Wextra -fcheck=all -fbacktrace ## for debug setup
+
 # COMPFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform  # debug flags, real8
 #COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
 # DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
