@@ -1006,7 +1006,7 @@ contains
   end subroutine sort
 
 
-  subroutine  swap( a, b )
+  subroutine swap( a, b )
     !--------------------------------------------------------------------
     ! This subroutine swaps the values of its two formal arguments.
     ! Copied from https://pages.mtu.edu/~shene/COURSES/cs201/NOTES/chap08/sort.f90
@@ -1021,7 +1021,7 @@ contains
   end subroutine  swap
 
 
-  function  find_minimum( vec, start, end ) result( out )
+  function find_minimum( vec, start, end ) result( out )
     !--------------------------------------------------------------------
     ! This function returns the location of the minimum in the section
     ! between start and end.
@@ -1045,6 +1045,33 @@ contains
     out = location                 ! return the position
    
   end function find_minimum
+
+
+  function findroot_quadratic( a, b, c ) result( root )
+    !-----------------------------------------------------------------------
+    ! Returns the solution for a quadratic function:
+    ! a + bx + cx**2 = 0
+    ! Per default returns root2 
+    !-----------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: a, b, c
+
+    ! function return variable
+    real, dimension(2) :: root
+
+    ! local variables
+    real :: d, root1, root2
+
+    d = b*b - 4.0*a*c
+    if (d >= 0.0) then              ! is it solvable?
+      d = sqrt(d)
+      root(1) = (-b + d)/(2.0*c)    ! first root
+      root(2) = (-b - d)/(2.0*c)    ! second root
+    else                            ! complex roots
+      stop 'findroot_quadratic(): There is no real root.'
+    end if
+
+  end function findroot_quadratic
 
 
 end module md_sofunutils

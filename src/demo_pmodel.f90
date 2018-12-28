@@ -65,16 +65,8 @@ program main
   ! Calculate GPP
   !----------------------------------------------------------------
   pft = 1
-  if ( params_pft_plant(pft)%c4 ) then
-    ! C4: use infinite CO2 for ci (note lower quantum efficiency 'kphio' parameter for C4)
-    out_pmodel = pmodel( params_pft_gpp(pft)%kphio, fapar = fapar, ppfd = ppfd, co2 = 3.0 * co2, tc = temp, vpd = vpd, elv = elv, method = "C4" )
+  out_pmodel = pmodel( params_pft_gpp(pft)%kphio, fapar = fapar, ppfd = ppfd, co2 = co2, tc = temp, vpd = vpd, elv = elv, c4 = params_pft_plant(pft)%c4, method_optci = "prentice14", method_jmaxlim = "wang17" )
 
-  else
-    ! C3
-    out_pmodel = pmodel( params_pft_gpp(pft)%kphio, fapar = fapar, ppfd = ppfd, co2 = co2, tc = temp, vpd = vpd, elv = elv, method = "C3_full" )
-    
-  end if
-  
   ! !----------------------------------------------------------------
   ! ! Calculate GPP, given LUE
   ! !----------------------------------------------------------------
@@ -83,7 +75,7 @@ program main
   !----------------------------------------------------------------
   ! Write gpp to standard output
   !----------------------------------------------------------------
-  print*, out_pmodel%gpp
+  print*, out_pmodel
   ! write(0,*) gpp
 
 end program main
