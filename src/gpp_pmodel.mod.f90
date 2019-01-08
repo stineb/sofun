@@ -556,6 +556,14 @@ contains
       ! B.2 FULL FORMULATION
       !-----------------------------------------------------------------------
       out_optchi = calc_optimal_chi( kmm, gammastar, ns_star, ca, vpd )
+      
+      ! ! xxx test
+      ! print*,'kmm       : ', kmm
+      ! print*,'gammastar : ', gammastar 
+      ! print*,'ns_star   : ', ns_star
+      ! print*,'ca        : ', ca
+      ! print*,'vpd       : ', vpd
+      ! stop 
 
     else
 
@@ -633,6 +641,12 @@ contains
       ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
       vcmax_unitiabs = kphio * out_optchi%mjoc * mprime / out_optchi%mj
 
+      ! ! xxx test
+      ! print*,'kphio           : ', kphio
+      ! print*,'out_optchi%mjoc : ', out_optchi%mjoc 
+      ! print*,'mprime          : ', mprime
+      ! print*,'out_optchi%mj   : ', out_optchi%mj
+      ! stop 
 
     else if (method_jmaxlim=="smith19") then
 
@@ -1056,21 +1070,15 @@ contains
     real, intent(in) :: patm             ! atmospheric pressure, Pa
 
     ! local variables
-    real, parameter :: dhac = 79430      ! J/mol
-    real, parameter :: dhao = 36380      ! J/mol
-    real, parameter :: kc25_0 = 41.03    ! Pa, assuming 25 deg C & 1013.25 mbar atmospheric pressure
-    real, parameter :: ko25_0 = 28210    ! Pa, assuming 25 deg C & 1013.25 mbar atmospheric pressure
+    real, parameter :: dhac = 79430      ! J/mol, Activation energy, Bernacchi et al. (2001)
+    real, parameter :: dhao = 36380      ! J/mol, Activation energy, Bernacchi et al. (2001)
+    real, parameter :: kc25 = 39.97      ! Pa, assuming 25 deg C & assuming elevation of 227.076 m.a.s.l.
+    real, parameter :: ko25 = 27480      ! Pa, assuming 25 deg C & assuming elevation of 227.076 m.a.s.l.
     real, parameter :: kco  = 2.09476e5  ! ppm, US Standard Atmosphere
-    real :: kc, ko, po, rat, kc25, ko25, tk
+    real :: kc, ko, po, rat, tk
 
     ! function return variable
     real :: kmm                           ! temperature & pressure dependent Michaelis-Menten coefficient, K (Pa).
-
-    ! Correct parameters for pressure-dependence
-    ! This is adopted from Nick Smith's implementation.
-    rat  = patm / calc_patm(0.0)
-    kc25 = kc25_0 * rat 
-    ko25 = ko25_0 * rat 
 
     ! convert to Kelvin
     tk = tc + 273.15
@@ -1097,38 +1105,21 @@ contains
     real, intent(in) :: patm               ! air pressure (Pa)
 
     ! local variables
+    real, parameter :: dha    = 37830      ! J/mol, activation energy, Bernacchi et al. (2001)
     real, parameter :: gs25_0 = 4.332      ! Pa, assuming 25 deg C and sea level (1013.25 mbar)
-    real, parameter :: kR     = 8.3145     ! J/mol/K
-    real, parameter :: dha    = 37830      ! J/mol
-    real, parameter :: oxygen = 2.09476d5  ! ppm
 
     real :: tk           ! air temperature (Kelvin)
-    real :: patm0        ! atmospheric pressure at sea level (Pa)
-    real :: oxygen_0     ! partial pressure of oxygen at sea level (Pa)
-    real :: oxygen_z     ! partial pressure of oxygen at current pressure (Pa)
-    real :: rat          ! proportionality factor to correct for current pressure 
-    real :: gammastar25  ! photorespiratory compensation point at 25 degrees C (Pa)
-    real :: gammastar_pa ! photorespiratory compensation point at current temperature, not corrected for pressure-dependent oxygen availability
+    real :: gammastar25  ! photorespiratory compensation point at 25 deg C and corrected for atmospheric pressure
 
     ! function return variable
     real :: gammastar   ! gamma-star (Pa)
 
-    patm0    = calc_patm(0.0)
-    oxygen_0 = oxygen * 1.0d-6 * patm0
-    oxygen_z = oxygen * 1.0d-6 * patm
-    rat      = patm / patm0
-
-    gammastar25 = gs25_0 * rat
+    gammastar25 = gs25_0 * patm / calc_patm(0.0) 
 
     ! conversion to temperature in Kelvin
     tk = tc + 273.15
+    gammastar = gammastar25 * calc_ftemp_arrhenius( tk, dha )
 
-    gammastar_pa = gammastar25 * calc_ftemp_arrhenius( tk, dha )
-    gammastar = gammastar_pa * (oxygen_z / oxygen_0) ! vary based on oxygen due to Rubisco specificity factor
-
-    ! equivalent to using 'calc_ftemp_arrhenius()'
-    ! gammastar = gs25 * exp( ( dha / kR ) * ( 1.0/298.15 - 1.0/tk ) )
-    
   end function calc_gammastar
 
 
