@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>P-model</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+<link rel="stylesheet" href="site_libs/font-awesome-4.5.0/css/font-awesome.css" type="text/css" />
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+  padding-left: 25px;
+  text-indent: 0;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">SOFUN</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="usage.html">Usage</a>
+</li>
+<li>
+  <a href="pmodel.html">P-model</a>
+</li>
+<li>
+  <a href="cnmodel.html">CN-model</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Input / Output
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="input_sitelevel.html">Input site-level</a>
+    </li>
+    <li>
+      <a href="input_global.html">Input global</a>
+    </li>
+    <li>
+      <a href="output.html">Output</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/stineb/sofun">
+    <span class="fab fa fab fa-github fa-lg"></span>
+     
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">P-model</h1>
+
+</div>
+
+
+<p><em>The following derivation and text is adopted and modified from <a href="https://www.nature.com/articles/s41477-017-0006-8?error=cookies_not_supported&amp;code=878efd7b-d536-4a36-8b65-e24b054ba011">Wang Han et al. (2017)</a>.</em></p>
+<p>The P-model centers around a prediction for the ratio of leaf-internal to ambient CO<span class="math inline">\(_2\)</span> (c<span class="math inline">\(_i\)</span>:c<span class="math inline">\(_a\)</span>), governed by the trade-off between the costs arising from the maintenance of carboxylation capacity (<span class="math inline">\(V_{\mathrm{cmax}}\)</span>) and transpiration (E). It is founded on the standard model for C3 plant photosynthesis (Farquhar et al., 1980), the coordination hypothesis (Maire et al., 2012) and the least-cost hypothesis (Wright et al., 2003; Prentice et al., 2014). Thereby, it simulates how photosynthetic parameters (ci, stomatal conductance, <span class="math inline">\(V_{\mathrm{cmax}}\)</span>, and <span class="math inline">\(J_{\mathrm{max}}\)</span>) and rates (assimilation, light use efficiency) acclimate to environmental conditions (CO<span class="math inline">\(_2\)</span>, temperature, PPFD, VPD).</p>
+<div id="the-farquhar-model" class="section level2">
+<h2>The Farquhar model</h2>
+<p> Following the Farquhar model for photosynthesis of C3 plants, instantaneous assimilation rates <span class="math inline">\(A\)</span> are limited either by the capacity of Rubisco for carboxylation of RuBP or the electron transport rate for the regeneration of RuBP. The Rubisco-limited photosynthetic rate <span class="math inline">\(A_C\)</span> is given by: <span class="math display">\[
+\label{eq:rubiscolimited}
+    A_C = V_{\mathrm{cmax}} \; \frac{\chi\;c_a-\Gamma^{\ast}}{\chi\;c_a + K}
+\]</span> where <span class="math inline">\(V_{\mathrm{cmax}}\)</span> is the Rubisco activity, ca is the ambient partial pressure of CO2, χ is the ratio of leaf-internal to ambient  partial pressures, <span class="math inline">\(\Gamma^{\ast}\)</span> is the  compensation point in the absence of mitochondrial respiration, and <span class="math inline">\(K\)</span> is the effective Michaelis-Menten coefficient of Rubisco for carboxylation. Both <span class="math inline">\(\Gamma^{\ast}\)</span> and <span class="math inline">\(K\)</span> are influenced by the partial pressure of oxygen. <span class="math inline">\(V_{\mathrm{cmax}}\)</span>, <span class="math inline">\(\Gamma^{\ast}\)</span> and <span class="math inline">\(K\)</span> are temperature-dependent, following Arrhenius kinetics.</p>
+<p>The electron-transport limited photosynthetic rate <span class="math inline">\(A_J\)</span> is given by: <span class="math display">\[
+\label{eq:lightlimited}
+    A_J = \phi_0 \; I\; \frac{\chi \; c_a - \Gamma^{\ast}}{\chi\;c_a + 2\Gamma^{\ast}}
+\]</span> for low PPFD (I) where <span class="math inline">\(\phi_0\)</span> is the intrinsic quantum efficiency of photosynthesis. With increasing PPFD, I must be substituted with a saturating function of the electron-transport capacity <span class="math inline">\(J_{\mathrm{max}}\)</span>; various empirical functions have been used. The actual photosynthetic rate is then given by: <span class="math display">\[
+    A = \min(A_C, A_J)
+\]</span></p>
+</div>
+<div id="the-coordination-hypothesis" class="section level2">
+<h2>The coordination hypothesis</h2>
+<p> Light use efficiency (LUE) models provide a powerful method and estimate assimilation rates as a linear function of absorbed light over a given time interval. But the connection between the Farquhar and LUE models is not obvious. Equation Eq. predicts that electron-transport limited photosynthesis is proportional to absorbed PPFD but only applies at relatively low PPFD, and in any case, Equation  for Rubisco-limited photosynthesis is expected to apply at high PPFD. The conundrum is this: how can GPP (the time-integral of photosynthesis) be proportional to PPFD, which is the basis of the LUE model, if the response of photosynthesis to PPFD saturates, as it should according to the Farquhar model? This question has surfaced occasionally in the literature, but not been fully resolved. Medlyn10 reviewed some alternative explanations.</p>
+<p>One of the explanations discussed by Medlyn10 invokes the co-ordination (or co-limitation) hypothesis, which states that <span class="math inline">\(V_{\mathrm{cmax}}\)</span> of leaves at any level in the canopy acclimates spatially and temporally to the prevailing daytime incident PPFD in such a way as to be neither in excess (entailing additional, futile maintenance respiration), nor less than required for full exploitation of the available light. In other words, under typical daytime condition when most photosynthesis takes place, the following is valid: <span class="math display">\[
+    A_J \approx A_C
+\]</span> This hypothesis also requires that <span class="math inline">\(J_{\mathrm{max}}\)</span> maintain a ratio to <span class="math inline">\(V_{\mathrm{cmax}}\)</span> such that strong limitation by <span class="math inline">\(J_{\mathrm{max}}\)</span> is avoided. Evidence for the co-ordination hypothesis was presented by Haxeltine and Prentice11, and Dewar12, who noted that it can explain many otherwise unexplained responses of C3 plants to environmental changes: including changes in leaf C:N ratios along environmental gradients, and the widely observed reduction of <span class="math inline">\(V_{\mathrm{cmax}}\)</span> under experimentally increased atmospheric CO2. More recently Maire et al.13 showed very good agreement between typical daytime values of <span class="math inline">\(A_J\)</span> and <span class="math inline">\(A_C\)</span> as calculated under the prevailing growth conditions for 31 species (293 data points) based on published studies. The co-ordination hypothesis allows a simple approximation by which equation S2 is applied to predict GPP over time scales for which acclimation of <span class="math inline">\(V_{\mathrm{cmax}}\)</span> is possible, with <span class="math inline">\(I\)</span> now representing daily, rather than instantaneous, PPFD.</p>
+</div>
+<div id="the-least-cost-hypothesis" class="section level2">
+<h2>The least-cost hypothesis</h2>
+<p> Missing from the Farquhar model is an equation to predict χ, which constrains both the Rubisco- and electron-transport limited rates of carbon fixation and therefore appears in both equations S1 and S2. <span class="math inline">\(\chi\)</span> at any moment must be consistent both with the rate of carbon fixation and with the rate of diffusion of  through the stomata. Although the mechanism of stomatal control is still an active research topic, there is abundant evidence that <span class="math inline">\(\chi\)</span> is closely regulated to remain within a narrow range. All current Earth System Models include a ‘closure’ that predicts either stomatal conductance or <span class="math inline">\(\chi\)</span>. The most commonly used closures are the one-parameter Ball-Berry equation14 and the two-parameter Leuning equation15 (or equivalently, the ‘Jacobs closure’16). Both are empirical, and incomplete in the sense that they allow <span class="math inline">\(\chi\)</span> to react only to relative humidity (Ball-Berry) or VPD (Leuning/Jacobs). Although superficially similar, these equations make substantially different predictions. For example, Ball-Berry allows <span class="math inline">\(\chi\)</span> to approach unity as VPD tends to zero, whereas Leuning/Jacobs caps <span class="math inline">\(\chi\)</span> at a maximum value. Both equations are usually implemented with different parameter values for different PFTs, but with no strong basis for the distinctions.</p>
+<p>The least-cost hypothesis by Prentice et al. (2014), first proposed by Wright et al. (2003), states that <span class="math inline">\(\chi\)</span> should minimize the combined cost (per unit of assimilation) of maintaining the capacities for carboxylation and transpiration. If <span class="math inline">\(a\)</span> and <span class="math inline">\(b\)</span> are dimensionless cost factors (maintenance respiration per unit assimilation) for the maximum rates of water transport (<span class="math inline">\(E\)</span>) and carbon fixation (<span class="math inline">\(V_{\mathrm{cmax}}\)</span>) respectively, the optimality criterion is: <span class="math display">\[
+\label{eq:leastcost}
+    a \; \frac{\partial (E/A)}{\partial \chi} = -b \; \frac{\partial (V_{\mathrm{cmax}}/A)}{\partial \chi}
+\]</span></p>
+<div id="predicting-chi" class="section level3">
+<h3>Predicting <span class="math inline">\(\chi\)</span></h3>
+The following section provides a derivation of optimal <span class="math inline">\(\chi\)</span> using Fick’s Law, above stated hypotheses and the Farquhar model for C3 photosynthesis. Transpiration <span class="math inline">\(E\)</span> and assimilation <span class="math inline">\(A\)</span> are coupled through stomatal conductance (<span class="math inline">\(g_s\)</span>). According to the Fick’s Law of diffusion:
+<span class="math display">\[\begin{align}
+    E &amp;= 1.6 \; g_s \; D \\
+    A &amp;= g_s \; c_a \; (1-\chi)
+\end{align}\]</span>
+<p>Therefore, <span class="math display">\[
+    E/A = \frac{1.6 \; D}{c_a\;(1-\chi)}
+\]</span> The derivative term on the left-hand-side of Eq. can thus be written as <span class="math display">\[
+\label{eq:partial1}
+    \frac{\partial (E/A)}{\partial \chi} = \frac{1.6\;D}{c_a\;(1-\chi)^2}\;.
+\]</span> Using Equation  and the simplification <span class="math inline">\(\Gamma^{\ast}=0\)</span>, the derivative term on the right-hand-side of Eq. can be written as <span class="math display">\[
+\label{eq:partial2}
+    \frac{\partial (V_{\mathrm{cmax}}/A)}{\partial \chi} = - \frac{K}{c_a\;\chi^2}
+\]</span> Using equations  and , Eq.  can be written as <span class="math display">\[
+    a\;\frac{1.6\;D}{c_a\;(1-\chi)^2} = b\;\frac{K}{c_a\;\chi^2}
+\]</span> and solved for <span class="math inline">\(\chi\)</span>: <span class="math display">\[
+    \chi = \frac{\zeta}{\zeta + \sqrt{D}} \\ 
+    \zeta = \sqrt{\frac{b\;K}{1.6\;a}}
+\]</span> The exact solution, without the simplification <span class="math inline">\(\Gamma^{\ast}=0\)</span>, is <span class="math display">\[
+    \chi = \frac{\Gamma^{\ast}}{c_a} + \left(1- \frac{\Gamma^{\ast}}{c_a}\right)\;\frac{\zeta}{\zeta + \sqrt{D}}\\
+    \zeta = \sqrt{\frac{b(K+\Gamma^{\ast})}{1.6\;a}}
+\]</span> This can also be written as <span class="math display">\[
+\label{eq:ci}
+    c_i = \frac{\Gamma^{\ast}\sqrt{D}+ \zeta\;c_a}{\zeta + \sqrt{D}} \\ 
+\]</span></p>
+</div>
+</div>
+<div id="the-light-use-efficiency-model" class="section level2">
+<h2>The light use efficiency model</h2>
+<p>With this prediction for <span class="math inline">\(c_i\)</span>, acclimated at a time scale on the order of weeks, the assimilation rate, Eq.  can be used in the sense of a light use efficiency model, whereby the total assimilation is proportional to the total absorbed PPFD over a given time interval: <span class="math display">\[
+\label{eq:lue}
+        A_J = \phi_0 \; I_{\mathrm{abs}}\;\underbrace{\frac{c_i - \Gamma^{\ast}}{c_i + 2\Gamma^{\ast}}}_{m}
+\]</span> Using Eq.  and <span class="math inline">\(\beta=b/a\)</span>, <span class="math inline">\(m\)</span> can be written as <span class="math display">\[
+    m = \frac{c_a - \Gamma^{\ast}}{c_a + 2 \Gamma^{\ast} + 3 \Gamma^{\ast} \sqrt{\frac{1.6 \eta^{\ast} D }{\beta\;(K+\Gamma^{\ast})}}}
+\]</span> This provides an expression for predicting the assimilation rate from first principles as a function of temperature, moisture (vapour pressure deficit <span class="math inline">\(D\)</span>), elevation and atmospheric CO<span class="math inline">\(_2\)</span> partial pressure.</p>
+</div>
+<div id="introducing-j_mathrmmax-limitation" class="section level2">
+<h2>Introducing <span class="math inline">\(J_{\mathrm{max}}\)</span> limitation</h2>
+<p>Equation  is correct only if the response of GPP (<span class="math inline">\(A\)</span>) to increasing PPFD remains linear up to the co-limitation point. By considering a non-rectangular hyperbola relationship between <span class="math inline">\(A_J\)</span> and <span class="math inline">\(I_{\mathrm{abs}}\)</span> (ref 26), we allow for the effect of finite <span class="math inline">\(J_{\mathrm{max}}\)</span>: <span class="math display">\[
+\label{eq:ajlim}
+    A_J = \phi_0 \; I_{\mathrm{abs}} \; m \; \underbrace{ \frac{1}{\sqrt{1+ \left( \frac{4\;\phi_0\;I_{\mathrm{abs}}}{J_{\mathrm{max}}} \right)^{2}}} }_{L}
+\]</span> In the following, we aim for an expression of the limitation factor <span class="math inline">\(L\)</span> as a function of a <span class="math inline">\(J_{\mathrm{max}}\)</span> cost factor <span class="math inline">\(c^{\ast}\)</span>. We define two dimensionless quantities, <span class="math inline">\(a_0\)</span> and <span class="math inline">\(k\)</span>: <span class="math display">\[
+\label{eq:a0}
+    a_0 = \frac{J_{\mathrm{max}}}{4\;\phi_0\;I_{\mathrm{abs}}}
+\]</span> <span class="math display">\[
+    k = \frac{J_{\mathrm{max}}}{4\;V_{\mathrm{cmax}}}\;.
+\]</span> The model equations for <span class="math inline">\(A_J\)</span> and <span class="math inline">\(A_C\)</span> can then be re-written as: <span class="math display">\[
+\label{eq:ajlim2}
+    A_J = \phi_0 \; I_{\mathrm{abs}} \; \; \frac{c_i - \Gamma^{\ast}}{c_i + 2\Gamma^{\ast}} \frac{1}{\sqrt{1+a_0^{-2}}}
+\]</span> and <span class="math display">\[
+    A_C = \frac{J_{\mathrm{max}}}{4\;k} \cdot \frac{c_i - \Gamma^{\ast}}{c_i + K}
+\]</span> Under the assumption of the coordination hypothesis, we set again <span class="math inline">\(A_J = A_C\)</span> and solve for <span class="math inline">\(k\)</span> to define the ratio of <span class="math inline">\(J_{\mathrm{max}}\)</span> to <span class="math inline">\(V_{\mathrm{cmax}}\)</span>: <span class="math display">\[
+\label{eq:k}
+    k = \frac{c_i + 2\Gamma^{\ast}}{c_i + K} \; \sqrt{a_0^2 + 1}
+\]</span> Solving Eq.  for <span class="math inline">\(a_0\)</span> and substituting this into Eq.  we can express the <span class="math inline">\(J_{\mathrm{max}}\)</span> limitation factor <span class="math inline">\(L\)</span> as: <span class="math display">\[
+\label{eq:ajlim3}
+    L = \frac{1}{\sqrt{1 - \left( \frac{c_i+2\Gamma^{\ast}}{k(c_i+K)} \right)^{2}}}
+\]</span></p>
+<p>To obtain an estimate of the optimum value of <span class="math inline">\(J_{\mathrm{max}}\)</span> we assume that (a) there is a cost associated with <span class="math inline">\(J_{\mathrm{max}}\)</span> that is equal to the product of <span class="math inline">\(J_{\mathrm{max}}\)</span> and a constant <span class="math inline">\(c^{\ast}\)</span>, and (b) that the value of <span class="math inline">\(J_{\mathrm{max}}\)</span> maximizes the benefit (<span class="math inline">\(A_J\)</span>) minus the cost. This maximum is obtained when <span class="math display">\[
+\label{eq:jmaxpartial}
+    \frac{\partial A_J}{\partial a_0} = c \; \frac{\partial J_{\mathrm{max}}}{\partial a_0}\;.
+\]</span> Using Eq. , the left-hand-side of Eq.  is <span class="math display">\[
+    \frac{\partial A_J}{\partial a_0} = \phi_0 \; I_{\mathrm{abs}} \; \; \frac{c_i - \Gamma^{\ast}}{c_i + 2\Gamma^{\ast}} \left( a_0^{-2} + 1 \right) ^{-2/3} a_0^{-3}
+\]</span> Using Eq. , the right-hand-side of Eq.  is <span class="math display">\[
+    \frac{\partial J_{\mathrm{max}}}{\partial a_0} = 4 \; \phi_0 \; I_{\mathrm{abs}}\;.
+\]</span> Now, we can solve Eq.  for <span class="math inline">\(a_0^2\)</span>: <span class="math display">\[
+a_0^2 = \frac{(c_i - \Gamma^{\ast})^{2/3}}{c^{2/3} \; (c_i+2\Gamma^{\ast})^{2/3}}-1
+\]</span> and use this in Eq.  to solve for <span class="math inline">\(k^2\)</span>: <span class="math display">\[
+\label{eq:k2}
+k^2 = (c_i+ \Gamma^{\ast})^{4/3} \; (c_i - \Gamma^{\ast})^{2/3} \; (c_i + K)^{-2} \; c^{-2/3}
+\]</span> and for <span class="math inline">\(c\)</span>: <span class="math display">\[
+\label{eq:c}
+    c = \frac{(c_i+2\Gamma^{\ast})^2\;(c_i-\Gamma^{\ast})}{k^3\;(c_i+K)^3}
+\]</span> Eq.  can be plugged into Eq.  to express <span class="math inline">\(L\)</span> as <span class="math display">\[
+    L = \sqrt{1-c^{2/3} \; \left( \frac{c_i+2\Gamma^{\ast}}{c_i-\Gamma^{\ast}}\right)^{2/3}  }
+\]</span> Using the prediction of <span class="math inline">\(c_i\)</span> from Eq. , this can be written as <span class="math display">\[
+    L =  \sqrt{1 - \left( \frac{c}{m} \right)^{2/3} }
+\]</span> The revised LUE model thus becomes <span class="math display">\[
+\label{eq:ajlim4}
+    A_J = \phi_0 \; I_{\mathrm{abs}} \; m \; \sqrt{1 - \left( \frac{c}{m} \right)^{2/3} }
+\]</span> Taking typical values of <span class="math inline">\(k\)</span> = 0.4726 and <span class="math inline">\(\chi\)</span> = 0.820, we estimate (using Eq. ) c = 0.41.</p>
+</div>
+<div id="corollary-of-the-chi-prediction" class="section level2">
+<h2>Corollary of the <span class="math inline">\(\chi\)</span> prediction</h2>
+<div id="stomatal-conductance" class="section level3">
+<h3>Stomatal conductance</h3>
+<p>Stomatal conductance <span class="math inline">\(g_s\)</span> follows from the prediction of <span class="math inline">\(\chi\)</span> given by Eq.  and <span class="math inline">\(g_s = A / ( c_a\;(1-\chi) )\)</span> (from Eq. ). Stomatal contuctance can thus be written as <span class="math display">\[
+    g_s = \left( 1 + \frac{\zeta}{\sqrt{D}} \right) \frac{A}{c_a}
+\]</span> This is equivalent to the form derived by Medlyn et al., 2011, apart from the <span class="math inline">\(g_0\)</span> parameter that is missing here.</p>
+</div>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

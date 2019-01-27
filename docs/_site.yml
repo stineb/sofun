@@ -1,0 +1,29 @@
+name: "website_sofun"
+navbar:
+  title: "SOFUN"
+  left:
+    - text: "Home"
+      href: index.html
+    - text: "Usage"
+      href: usage.html
+    - text: "P-model"
+      href: pmodel.html
+    - text: "CN-model"
+      href: cnmodel.html
+    - text: "Input / Output"
+      href: inputoutput.html
+      menu:
+        - text: "Input site-level"
+          href: input_sitelevel.html
+        - text: "Input global"
+          href: input_global.html
+        - text: "Output"
+          href: output.html
+  right:
+    - icon: fab fa-github fa-lg
+      href: https://github.com/stineb/sofun
+output: 
+  html_document:
+     css: site_libs/font-awesome-4.5.0/css/font-awesome.css
+     self_contained: no
+output_dir: "."

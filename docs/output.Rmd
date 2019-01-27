@@ -1,0 +1,33 @@
+---
+title: "Output"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+## Selection of output variables
+
+Output, both for site-scale and global simulations, is written to NetCDF files. Most variables are written at a daily timestep, some are aggregated to annual values online, i.e., during model runtime. 
+
+The set of output variables to be written is defined by the user in the simulation parameter file (`sofun/run/<simname>.sofun.parameter`). The following line defines, e.g., whether daily GPP output is to be written:
+```{bash eval=FALSE}
+# Variables written to output (core)
+loutdgpp                                .true.
+```	
+
+## Output processing
+
+Output is written into separate files for each simulation year. This limits memory usage by the program, but requires an additional processing step to work with the model outputs: stacking multiple years together into a single file. The file `sofun/proc_output_sofun.sh` defines two functions:
+
+- `proc_sitescale_site()`: Combines files of multiple years into a single file, for each variable and simulation (site) separately.
+- `proc_sitescale_simsuite()`: Executes `proc_sitescale_site()` for an entire simulation suite of site-scale simulations. This first creates a file `sofun/sitelist.txt` with a list of all sites in the given simulation suite, using the python script `get_sitelist_simsuite.py`. Set the name of the simulation suite manually in the header of `get_sitelist_simsuite.py`.
+
+Execute the output processing by:
+```{bash eval=FALSE}
+source proc_output_sofun.sh
+proc_sitescale_simsuite
+```
+
+Note that the output processing takes much more time than the execution of the model itself :-(

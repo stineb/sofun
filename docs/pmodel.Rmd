@@ -1,0 +1,190 @@
+---
+title: "P-model"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+*The following derivation and text is adopted and modified from [Wang Han et al. (2017)](https://www.nature.com/articles/s41477-017-0006-8?error=cookies_not_supported&code=878efd7b-d536-4a36-8b65-e24b054ba011).*
+
+The P-model centers around a prediction for the ratio of leaf-internal to ambient CO$_2$ (c$_i$:c$_a$), governed by the trade-off between the costs arising from the maintenance of carboxylation capacity ($V_{\mathrm{cmax}}$) and transpiration (E). It is founded on the standard model for C3 plant photosynthesis (Farquhar et al., 1980), the coordination hypothesis (Maire et al., 2012) and the least-cost hypothesis (Wright et al., 2003; Prentice et al., 2014). Thereby, it simulates how photosynthetic parameters (ci, stomatal conductance, $V_{\mathrm{cmax}}$, and $J_{\mathrm{max}}$) and rates (assimilation, light use efficiency) acclimate to environmental conditions (CO$_2$, temperature, PPFD, VPD). 
+
+## The Farquhar model
+\label{sec:farquhar}
+Following the Farquhar model for photosynthesis of C3 plants, instantaneous assimilation rates $A$ are limited either by the capacity of Rubisco for carboxylation of RuBP or the electron transport rate for the regeneration of RuBP. The Rubisco-limited photosynthetic rate $A_C$ is given by:
+$$
+\label{eq:rubiscolimited}
+    A_C = V_{\mathrm{cmax}} \; \frac{\chi\;c_a-\Gamma^{\ast}}{\chi\;c_a + K}
+$$
+where $V_{\mathrm{cmax}}$ is the Rubisco activity, ca is the ambient partial pressure of CO2, χ is the ratio of leaf-internal to ambient \coo\ partial pressures, $\Gamma^{\ast}$ is the \coo\ compensation point in the absence of mitochondrial respiration, and $K$ is the effective Michaelis-Menten coefficient of Rubisco for carboxylation. Both $\Gamma^{\ast}$ and $K$ are influenced by the partial pressure of oxygen. $V_{\mathrm{cmax}}$, $\Gamma^{\ast}$ and $K$ are temperature-dependent, following Arrhenius kinetics.
+
+The electron-transport limited photosynthetic rate $A_J$ is given by:
+$$
+\label{eq:lightlimited}
+    A_J = \phi_0 \; I\; \frac{\chi \; c_a - \Gamma^{\ast}}{\chi\;c_a + 2\Gamma^{\ast}}
+$$
+for low PPFD (I) where $\phi_0$ is the intrinsic quantum efficiency of photosynthesis. With increasing PPFD, I must be substituted with a saturating function of the electron-transport capacity $J_{\mathrm{max}}$; various empirical functions have been used. The actual photosynthetic rate is then given by:
+$$
+    A = \min(A_C, A_J)
+$$
+
+## The coordination hypothesis
+\label{sec:coordination}
+Light use efficiency (LUE) models provide a powerful method and estimate assimilation rates as a linear function of absorbed light over a given time interval. But the connection between the Farquhar and LUE models is not obvious. Equation Eq.\ref{eq:lightlimited} predicts that electron-transport limited photosynthesis is proportional to absorbed PPFD but only applies at relatively low PPFD, and in any case, Equation \ref{eq:rubiscolimited} for Rubisco-limited photosynthesis is expected to apply at high PPFD. The conundrum is this: how can GPP (the time-integral of photosynthesis) be proportional to PPFD, which is the basis of the LUE model, if the response of photosynthesis to PPFD saturates, as it should according to the Farquhar model? This question has surfaced occasionally in the literature, but not been fully resolved. Medlyn10 reviewed some alternative explanations.
+ 
+One of the explanations discussed by Medlyn10 invokes the co-ordination (or co-limitation) hypothesis, which states that $V_{\mathrm{cmax}}$ of leaves at any level in the canopy acclimates spatially and temporally to the prevailing daytime incident PPFD in such a way as to be neither in excess (entailing additional, futile maintenance respiration), nor less than required for full exploitation of the available light. In other words, under typical daytime condition when most photosynthesis takes place, the following is valid:
+$$
+    A_J \approx A_C
+$$
+This hypothesis also requires that $J_{\mathrm{max}}$ maintain a ratio to $V_{\mathrm{cmax}}$ such that strong limitation by $J_{\mathrm{max}}$ is avoided. Evidence for the co-ordination hypothesis was presented by Haxeltine and Prentice11, and Dewar12, who noted that it can explain many otherwise unexplained responses of C3 plants to environmental changes: including changes in leaf C:N ratios along environmental gradients, and the widely observed reduction of $V_{\mathrm{cmax}}$ under experimentally increased atmospheric CO2. More recently Maire et al.13 showed very good agreement between typical daytime values of $A_J$ and $A_C$ as calculated under the prevailing growth conditions for 31 species (293 data points) based on published studies. The co-ordination hypothesis allows a simple approximation by which equation S2 is applied to predict GPP over time scales for which acclimation of $V_{\mathrm{cmax}}$ is possible, with $I$ now representing daily, rather than instantaneous, PPFD.
+
+## The least-cost hypothesis
+\label{sec:least-cost}
+Missing from the Farquhar model is an equation to predict χ, which constrains both the Rubisco- and electron-transport limited rates of carbon fixation and therefore appears in both equations S1 and S2. $\chi$ at any moment must be consistent both with the rate of carbon fixation and with the rate of diffusion of \coo\ through the stomata. Although the mechanism of stomatal control is still an active research topic, there is abundant evidence that $\chi$ is closely regulated to remain within a narrow range. All current Earth System Models include a 'closure' that predicts either stomatal conductance or $\chi$. The most commonly used closures are the one-parameter Ball-Berry equation14 and the two-parameter Leuning equation15 (or equivalently, the ‘Jacobs closure’16). Both are empirical, and incomplete in the sense that they allow $\chi$ to react only to relative humidity (Ball-Berry) or VPD (Leuning/Jacobs). Although superficially similar, these equations make substantially different predictions. For example, Ball-Berry allows $\chi$ to approach unity as VPD tends to zero, whereas Leuning/Jacobs caps $\chi$ at a maximum value. Both equations are usually implemented with different parameter values for different PFTs, but with no strong basis for the distinctions.
+
+The least-cost hypothesis by Prentice et al. (2014), first proposed by Wright et al. (2003), states that $\chi$ should minimize the combined cost (per unit of assimilation) of maintaining the capacities for carboxylation and transpiration. If $a$ and $b$ are dimensionless cost factors (maintenance respiration per unit assimilation) for the maximum rates of water transport ($E$) and carbon fixation ($V_{\mathrm{cmax}}$) respectively, the optimality criterion is:
+$$
+\label{eq:leastcost}
+    a \; \frac{\partial (E/A)}{\partial \chi} = -b \; \frac{\partial (V_{\mathrm{cmax}}/A)}{\partial \chi}
+$$
+
+### Predicting $\chi$
+The following section provides a derivation of optimal $\chi$ using Fick's Law, above stated hypotheses and the Farquhar model for C3 photosynthesis. Transpiration $E$ and assimilation $A$ are coupled through stomatal conductance ($g_s$). According to the Fick's Law of diffusion:
+\begin{align}
+    E &= 1.6 \; g_s \; D \\
+    A &= g_s \; c_a \; (1-\chi)
+\end{align}
+Therefore,
+$$
+    E/A = \frac{1.6 \; D}{c_a\;(1-\chi)}
+$$
+The derivative term on the left-hand-side of Eq.\label{eq:leastcost} can thus be written as
+$$
+\label{eq:partial1}
+    \frac{\partial (E/A)}{\partial \chi} = \frac{1.6\;D}{c_a\;(1-\chi)^2}\;.
+$$
+Using Equation \ref{eq:rubiscolimited} and the simplification $\Gamma^{\ast}=0$, the derivative term on the right-hand-side of Eq.\label{eq:leastcost} can be written as
+$$
+\label{eq:partial2}
+    \frac{\partial (V_{\mathrm{cmax}}/A)}{\partial \chi} = - \frac{K}{c_a\;\chi^2}
+$$
+Using equations \ref{eq:partial1} and \ref{eq:partial2}, Eq. \ref{eq:leastcost} can be written as
+$$
+    a\;\frac{1.6\;D}{c_a\;(1-\chi)^2} = b\;\frac{K}{c_a\;\chi^2}
+$$
+and solved for $\chi$:
+$$
+    \chi = \frac{\zeta}{\zeta + \sqrt{D}} \\ 
+    \zeta = \sqrt{\frac{b\;K}{1.6\;a}}
+$$
+The exact solution, without the simplification $\Gamma^{\ast}=0$, is 
+$$
+    \chi = \frac{\Gamma^{\ast}}{c_a} + \left(1- \frac{\Gamma^{\ast}}{c_a}\right)\;\frac{\zeta}{\zeta + \sqrt{D}}\\
+    \zeta = \sqrt{\frac{b(K+\Gamma^{\ast})}{1.6\;a}}
+$$
+This can also be written as
+$$
+\label{eq:ci}
+    c_i = \frac{\Gamma^{\ast}\sqrt{D}+ \zeta\;c_a}{\zeta + \sqrt{D}} \\ 
+$$
+
+## The light use efficiency model
+With this prediction for $c_i$, acclimated at a time scale on the order of weeks, the assimilation rate, Eq. \ref{eq:lightlimited} can be used in the sense of a light use efficiency model, whereby the total assimilation is proportional to the total absorbed PPFD over a given time interval:
+$$
+\label{eq:lue}
+        A_J = \phi_0 \; I_{\mathrm{abs}}\;\underbrace{\frac{c_i - \Gamma^{\ast}}{c_i + 2\Gamma^{\ast}}}_{m}
+$$
+Using Eq. \ref{eq:ci} and $\beta=b/a$, $m$ can be written as
+$$
+    m = \frac{c_a - \Gamma^{\ast}}{c_a + 2 \Gamma^{\ast} + 3 \Gamma^{\ast} \sqrt{\frac{1.6 \eta^{\ast} D }{\beta\;(K+\Gamma^{\ast})}}}
+$$
+This provides an expression for predicting the assimilation rate from first principles as a function of temperature, moisture (vapour pressure deficit $D$), elevation and atmospheric CO$_2$ partial pressure.
+
+## Introducing $J_{\mathrm{max}}$ limitation
+Equation \ref{eq:lue} is correct only if the response of GPP ($A$) to increasing PPFD remains linear up to the co-limitation point. By considering a non-rectangular hyperbola relationship between $A_J$ and $I_{\mathrm{abs}}$ (ref 26), we allow for the effect of finite $J_{\mathrm{max}}$:
+$$
+\label{eq:ajlim}
+    A_J = \phi_0 \; I_{\mathrm{abs}} \; m \; \underbrace{ \frac{1}{\sqrt{1+ \left( \frac{4\;\phi_0\;I_{\mathrm{abs}}}{J_{\mathrm{max}}} \right)^{2}}} }_{L}
+$$
+In the following, we aim for an expression of the limitation factor $L$ as a function of a $J_{\mathrm{max}}$ cost factor $c^{\ast}$. We define two dimensionless quantities, $a_0$ and $k$:
+$$
+\label{eq:a0}
+    a_0 = \frac{J_{\mathrm{max}}}{4\;\phi_0\;I_{\mathrm{abs}}}
+$$
+$$
+    k = \frac{J_{\mathrm{max}}}{4\;V_{\mathrm{cmax}}}\;.
+$$
+The model equations for $A_J$ and $A_C$ can then be re-written as:
+$$
+\label{eq:ajlim2}
+    A_J = \phi_0 \; I_{\mathrm{abs}} \; \; \frac{c_i - \Gamma^{\ast}}{c_i + 2\Gamma^{\ast}} \frac{1}{\sqrt{1+a_0^{-2}}}
+$$
+and
+$$
+    A_C = \frac{J_{\mathrm{max}}}{4\;k} \cdot \frac{c_i - \Gamma^{\ast}}{c_i + K}
+$$
+Under the assumption of the coordination hypothesis, we set again $A_J = A_C$ and solve for $k$ to define the ratio of $J_{\mathrm{max}}$ to $V_{\mathrm{cmax}}$:
+$$
+\label{eq:k}
+    k = \frac{c_i + 2\Gamma^{\ast}}{c_i + K} \; \sqrt{a_0^2 + 1}
+$$
+Solving Eq. \ref{eq:k} for $a_0$ and substituting this into Eq. \ref{eq:ajlim} we can express the $J_{\mathrm{max}}$ limitation factor $L$ as:
+$$
+\label{eq:ajlim3}
+    L = \frac{1}{\sqrt{1 - \left( \frac{c_i+2\Gamma^{\ast}}{k(c_i+K)} \right)^{2}}}
+$$
+
+To obtain an estimate of the optimum value of $J_{\mathrm{max}}$ we assume that (a) there is a cost associated with $J_{\mathrm{max}}$ that is equal to the product of $J_{\mathrm{max}}$ and a constant $c^{\ast}$, and (b) that the value of $J_{\mathrm{max}}$ maximizes the benefit ($A_J$) minus the cost. This maximum is obtained when
+$$
+\label{eq:jmaxpartial}
+    \frac{\partial A_J}{\partial a_0} = c \; \frac{\partial J_{\mathrm{max}}}{\partial a_0}\;.
+$$
+Using Eq. \ref{eq:ajlim2}, the left-hand-side of Eq. \ref{eq:jmaxpartial} is 
+$$
+    \frac{\partial A_J}{\partial a_0} = \phi_0 \; I_{\mathrm{abs}} \; \; \frac{c_i - \Gamma^{\ast}}{c_i + 2\Gamma^{\ast}} \left( a_0^{-2} + 1 \right) ^{-2/3} a_0^{-3}
+$$
+Using Eq. \ref{eq:a0}, the right-hand-side of Eq. \ref{eq:jmaxpartial} is 
+$$
+    \frac{\partial J_{\mathrm{max}}}{\partial a_0} = 4 \; \phi_0 \; I_{\mathrm{abs}}\;.
+$$
+Now, we can solve Eq. \ref{eq:jmaxpartial} for $a_0^2$:
+$$
+a_0^2 = \frac{(c_i - \Gamma^{\ast})^{2/3}}{c^{2/3} \; (c_i+2\Gamma^{\ast})^{2/3}}-1
+$$
+and use this in Eq. \ref{eq:k} to solve for $k^2$:
+$$
+\label{eq:k2}
+k^2 = (c_i+ \Gamma^{\ast})^{4/3} \; (c_i - \Gamma^{\ast})^{2/3} \; (c_i + K)^{-2} \; c^{-2/3}
+$$
+and for $c$:
+$$
+\label{eq:c}
+    c = \frac{(c_i+2\Gamma^{\ast})^2\;(c_i-\Gamma^{\ast})}{k^3\;(c_i+K)^3}
+$$
+Eq. \ref{eq:k2} can be plugged into Eq. \ref{eq:ajlim3} to express $L$ as
+$$
+    L = \sqrt{1-c^{2/3} \; \left( \frac{c_i+2\Gamma^{\ast}}{c_i-\Gamma^{\ast}}\right)^{2/3}  }
+$$
+Using the prediction of $c_i$ from Eq. \ref{eq:ci}, this can be written as
+$$
+    L =  \sqrt{1 - \left( \frac{c}{m} \right)^{2/3} }
+$$
+The revised LUE model thus becomes
+$$
+\label{eq:ajlim4}
+    A_J = \phi_0 \; I_{\mathrm{abs}} \; m \; \sqrt{1 - \left( \frac{c}{m} \right)^{2/3} }
+$$
+Taking typical values of $k$ = 0.4726 and $\chi$ = 0.820, we estimate (using Eq. \ref{eq:c}) c = 0.41.
+
+
+
+## Corollary of the $\chi$ prediction
+
+### Stomatal conductance
+
+Stomatal conductance $g_s$ follows from the prediction of $\chi$ given by Eq. \ref{eq:chi_exact} and $g_s = A / ( c_a\;(1-\chi) )$ (from Eq. \ref{eq:fick}). Stomatal contuctance can thus be written as
+$$
+    g_s = \left( 1 + \frac{\zeta}{\sqrt{D}} \right) \frac{A}{c_a}
+$$
+This is equivalent to the form derived by Medlyn et al., 2011, apart from the $g_0$ parameter that is missing here.

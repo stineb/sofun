@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>Usage</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+<link rel="stylesheet" href="site_libs/font-awesome-4.5.0/css/font-awesome.css" type="text/css" />
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+  padding-left: 25px;
+  text-indent: 0;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">SOFUN</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="usage.html">Usage</a>
+</li>
+<li>
+  <a href="pmodel.html">P-model</a>
+</li>
+<li>
+  <a href="cnmodel.html">CN-model</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Input / Output
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="input_sitelevel.html">Input site-level</a>
+    </li>
+    <li>
+      <a href="input_global.html">Input global</a>
+    </li>
+    <li>
+      <a href="output.html">Output</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/stineb/sofun">
+    <span class="fab fa fab fa-github fa-lg"></span>
+     
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Usage</h1>
+
+</div>
+
+
+<p>SOFUN is designed in a modular fashion that allows for alternative process representations and levels of integration (see figure below) to be implemented within the same modelling framework. Its levels of integration are described below.</p>
+<div class="figure">
+<img src="fig/sofun_modularframework.png" />
+
+</div>
+<p><em>Above: Illustration of the modular hierarchy of integration. SOFUN can either be run mode <strong>SPLASH</strong> (simulating evapotranspiration and the soil water balance, given precipitation), mode <strong>P-model</strong> (simulating ci:ca, light use efficiency and GPP, globally, given temperature, PAR, VPD, and CO<span class="math inline">\(_2\)</span>), mode <strong>C-model</strong> (simulating the cycling of C in a grassland with fixed allocation), or mode <strong>CN-model</strong> (simulating the cycling of C and N in a grassland with flexible allocation). The P-model setup requires fAPAR to be prescribed, while the C-model and CN-model setups simulate LAI and fAPAR internally.</em></p>
+<div id="levels-of-integration" class="section level2">
+<h2>Levels of integration</h2>
+<p>SOFUN can be executed at different levels of integration.</p>
+<div id="splash" class="section level3">
+<h3>SPLASH</h3>
+<p>This setup simulates potential evapotranspiration (Priestly-Taylor equation) and the soil water balance (bucket model), given precipitation and cloud cover as inputs. The model is described in <a href="https://www.geosci-model-dev.net/10/689/2017/">Davis et al. (2107)</a>. The photosyntetically active radiation calculated by SPLASH may be used to drive the P-model. Soil moisture calculated by SPLASH may be used for an empirical estimate of the reduction in light use efficiency in the P-model.</p>
+<p>Compile and execute the model by</p>
+<pre class="bash"><code>make splash
+echo example_splash_sitescale | ./runsplash</code></pre>
+<p>An alternative implementation of the soil water balance follows the Simple Water Balance Model by <a href="http://journals.ametsoc.org/doi/abs/10.1175/JHM-D-12-099.1">Orth et al. (2013)</a>, where runoff is generated before 100% water holding capacity is reached. This version can be compiled and executed by</p>
+<pre class="bash"><code>make swbm
+echo example_swbm_sitescale | ./runswbm</code></pre>
+</div>
+<div id="p-model" class="section level3">
+<h3>P-model</h3>
+<p>This setup implements the P-model descrbed by <a href="http://onlinelibrary.wiley.com/doi/10.1111/ele.12211/abstract">Prentice et al. (2013)</a> and <a href="https://www.nature.com/articles/s41477-017-0006-8?error=cookies_not_supported&amp;code=878efd7b-d536-4a36-8b65-e24b054ba011">Wang Han et al. (2017)</a>. See also <a href="https://stineb.github.io/pmodel.html">P-model</a>. In combination with prescribed rates of absorbed photosynthetically active radiation, the P-model can be applied as a light use efficiency model for simulating ecosystem-level gross primary productivity.</p>
+<p>Compile and execute for site-scale simulations by</p>
+<pre class="bash"><code>make pmodel
+echo example_sitescale | ./runpmodel</code></pre>
+<p>Compile and execute for global simulations by</p>
+<pre class="bash"><code>make gpmodel
+echo example_global | ./rungpmodel</code></pre>
+</div>
+<div id="cn-model" class="section level3">
+<h3>CN-model</h3>
+<p>This implements a fully integrated model for the cycling of carbon and nitrogen in a grassland (see <a href="https://stineb.github.io/cnmodel.html">here</a>). Currently only implemented for site-scale simulations.</p>
+<pre class="bash"><code>make cnmodel
+echo example_sitescale | ./runcnmodel</code></pre>
+</div>
+<div id="c-model" class="section level3">
+<h3>C-model</h3>
+<p>This implements the same components as the CN-model, but assumes a fixed allocation (root-to-shoot ratio) and does not close the N budget. It mimics a C-only model.</p>
+<pre class="bash"><code>make cmodel
+echo example_sitescale | ./runcmodel</code></pre>
+</div>
+</div>
+<div id="run-sofun" class="section level2">
+<h2>Run SOFUN</h2>
+<div id="overview-of-steps" class="section level3">
+<h3>Overview of steps</h3>
+<p>Steps to run SOFUN are:</p>
+<ol style="list-style-type: decimal">
+<li>Get code</li>
+<li>Get forcing data (see ‘Input’ XXX)</li>
+<li>Get site and simulation parameter files</li>
+<li>Link files and directories</li>
+<li>Compile and run</li>
+</ol>
+</div>
+<div id="get-code" class="section level3">
+<h3>1. Get code</h3>
+<p>The repository <a href="https://bitbucket.org/labprentice/sofun">sofun</a> contains all the model code (Fortran 90) that implements the P-model and additional levels of model integration (water balance only, closed C, closed C and N cycles, see also <a href="https://stineb.github.io">here</a>).</p>
+<p>Clone the SOFUN repository and switch to branch pnmodel (XXX) using command line:</p>
+<pre class="bash"><code>cd your_chosen_home
+git clone https://bitbucket.org/labprentice/sofun
+cd sofun
+git checkout pnmodel</code></pre>
+</div>
+<div id="get-forcing-data-see-input-xxx" class="section level3">
+<h3>2. Get forcing data (see ‘Input’ XXX)</h3>
+</div>
+<div id="get-site-and-simulation-parameter-files" class="section level3">
+<h3>3. Get site and simulation parameter files</h3>
+<p>P-model simulations are done for each FLUXNET 2015 Tier 1 site separately, covering years for which data is available. After having prepared all the model forcing data by the steps described above, we now prepare the simulation and site parameter files. Here, we’re conducting one simulation per site.</p>
+<p>Two types of paramter files have to be created:</p>
+<ol style="list-style-type: decimal">
+<li><strong>Site parameter files:</strong> Define the geographical location, elevation and soil parameters (or soil type) for each site.</li>
+<li><strong>Simulation parameter files:</strong> Define the simulation start, and end years, number of spinup years, forcing data types, output variables, etc.</li>
+</ol>
+<p>Both are created by <code>prepare_paramfils.R</code> available from the repository <a href="https://bitbucket.org/labprentice/getin">getin</a>. In the header adjust manually:</p>
+<pre class="r"><code>##--------------------------------------------------------------------
+## MANUAL SETTINGS
+##--------------------------------------------------------------------
+myhome           = &quot;/alphadata01/bstocker/&quot;
+simsuite         = &quot;fluxnet2015&quot;  
+overwrite        = TRUE
+##--------------------------------------------------------------------
+## uncomment:
+systr &lt;- &quot;&#39;&#39;&quot;    # for Mac
+##--------------------------------------------------------------------</code></pre>
+<p>Then run in R:</p>
+<pre class="r"><code>setwd(&quot;your_chosen_home/getin&quot;)
+source(&quot;prepare_paramfils.R&quot;)</code></pre>
+</div>
+<div id="get-compile-and-run-sofun" class="section level3">
+<h3>5. Get, compile and run SOFUN</h3>
+<p>The repository <a href="https://bitbucket.org/labprentice/sofun">sofun</a> contains all the model code (Fortran 90) that implements the P-model and additional levels of model integration (water balance only, closed C, closed C and N cycles, see also <a href="https://stineb.github.io">here</a>). Typically, a certain tag from a certain branch is desired. Let’s say you wish to checkout version 1.1.0, corresponding to the git tag <code>v1.1.0</code> from the git branch <code>pnmodel</code>. For this, do the following in your shell:</p>
+<pre class="bash"><code>cd your_chosen_home
+git clone https://github.com/stineb/sofun.git
+git remote set-url origin https://github.com/stineb/sofun.git
+git fetch origin
+git checkout tags/v1\.1\.0 -b pnmodel</code></pre>
+<p>You may avoid the backslashes above (<code>\</code>) - I had to write it, otherwise a bug prevented this code snippet to be displayed.</p>
+<p>Then, create soft links to input and parameter file directories by executing the Python script <code>linkdirs_sofun.py</code>. Before executing, specify the simulation suite inside this script manually:</p>
+<pre class="py"><code>simsuite = &#39;fluxnet2015&#39;</code></pre>
+<p>The following specification is required only for global simulations to link input fields (climate, fAPAR) to locations where data is read by SOFUN:</p>
+<pre class="py"><code>dataroot = &#39;your_chosen_home/data/&#39;</code></pre>
+<p>Then</p>
+<pre class="bash"><code>python linkdirs_sofun.py</code></pre>
+</div>
+<div id="compile-and-run" class="section level3">
+<h3>5. Compile and run</h3>
+<p>Running the set of simulations for the suite <code>fluxnet2015</code> is done be simply executing the Python script (after setting manually: <code>simsuite = 'fluxnet2015'</code>):</p>
+<pre class="bash"><code>python submitjobs_sofun.py</code></pre>
+<p>This executes the following basic statements that compile and run SOFUN:</p>
+<pre class="bash"><code>make pmodel
+echo simulation_name | ./runpmodel</code></pre>
+<p>This setup compiles with the open-access GNU compiler for Fortran 90 gfortran and with the (non-open access) Portland Group Fortran Compiler.</p>
+</div>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
