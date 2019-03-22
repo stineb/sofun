@@ -33,7 +33,7 @@ module md_params_core
   ! Defined here because parameters are used by climate input data unit conversions and
   ! because these are well-known parameters.
   real, parameter :: kTo = 288.15                ! base temperature, K (Prentice, unpublished)
-  real, parameter :: kR  = 8.3143                ! universal gas constant, J/mol/K (Allen, 1973)
+  real, parameter :: kR  = 8.3145                ! universal gas constant, J/mol/K (Allen, 1973)
   real, parameter :: kMv = 18.02                 ! molecular weight of water vapor, g/mol (Tsilingiris, 2008)
   real, parameter :: kMa = 28.963                ! molecular weight of dry air, g/mol (Tsilingiris, 2008)
   real, parameter :: kfFEC = 2.04                ! from flux to energy conversion, umol/J (Meek et al., 1984)

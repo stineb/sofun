@@ -622,13 +622,17 @@ contains
     ! Vcmax and light use efficiency
     !-----------------------------------------------------------------------
     if (c4) then
+      ! Identical to method_jmaxlim = "wang17"
+
+      ! Include effect of Jmax limitation.
+      ! In this case, out_optchi%mj = 1, and mprime = 0.669
+      mprime = calc_mprime( out_optchi%mj )
 
       ! Light use efficiency (gpp per unit absorbed light)
-      lue = kphio * c_molmass
+      lue = kphio * mprime * c_molmass  ! in g CO2 m-2 s-1 / (mol light m-2 s-1)
 
       ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
-      vcmax_unitiabs = kphio
-
+      vcmax_unitiabs = kphio * out_optchi%mjoc * mprime / out_optchi%mj
 
     else if (method_jmaxlim=="wang17") then
 
@@ -921,10 +925,10 @@ contains
     type(outtype_chi) :: out_chi
 
     ! return derived type
-    out_chi%chi=dummy
-    out_chi%mj=1
-    out_chi%mc=1
-    out_chi%mjoc=1
+    out_chi%chi  = 9999.9
+    out_chi%mj   = 1.0
+    out_chi%mc   = 1.0
+    out_chi%mjoc = 1.0
   
   end function calc_chi_c4
 
@@ -1074,7 +1078,7 @@ contains
     real, parameter :: dhao = 36380      ! J/mol, Activation energy, Bernacchi et al. (2001)
     real, parameter :: kc25 = 39.97      ! Pa, assuming 25 deg C & assuming elevation of 227.076 m.a.s.l.
     real, parameter :: ko25 = 27480      ! Pa, assuming 25 deg C & assuming elevation of 227.076 m.a.s.l.
-    real, parameter :: kco  = 2.09476e5  ! ppm, US Standard Atmosphere
+    real, parameter :: kco  = 2.09476d5  ! ppm, US Standard Atmosphere
     real :: kc, ko, po, rat, tk
 
     ! function return variable
@@ -1139,6 +1143,8 @@ contains
     !
     ! Ref:      Wang Han et al. (in prep.)
     !-----------------------------------------------------------------------
+    use md_params_core, only: kR           ! Universal gas constant, J/mol/K
+
     ! arguments
     real, intent(in) :: tcleaf
     real, intent(in) :: tcgrowth
@@ -1150,7 +1156,6 @@ contains
     ! loal parameters
     real, parameter :: Ha    = 71513  ! activation energy (J/mol)
     real, parameter :: Hd    = 200000 ! deactivation energy (J/mol)
-    real, parameter :: Rgas  = 8.3145 ! universal gas constant (J/mol/K)
     real, parameter :: a_ent = 668.39 ! offset of entropy vs. temperature relationship from Kattge & Knorr (2007) (J/mol/K)
     real, parameter :: b_ent = 1.07   ! slope of entropy vs. temperature relationship from Kattge & Knorr (2007) (J/mol/K^2)
     
@@ -1171,7 +1176,7 @@ contains
     ! calculate entropy following Kattge & Knorr (2007), negative slope and y-axis intersect is when expressed as a function of temperature in degrees Celsius, not Kelvin !!!
     dent = a_ent - b_ent * tcgrowth   ! 'tcgrowth' corresponds to 'tmean' in Nicks, 'tc25' is 'to' in Nick's
     fva = calc_ftemp_arrhenius( tkleaf, Ha, tkref )
-    fvb = (1.0 + exp( (tkref * dent - Hd)/(Rgas * tkref) ) ) / (1.0 + exp( (tkleaf * dent - Hd)/(Rgas * tkleaf) ) )
+    fvb = (1.0 + exp( (tkref * dent - Hd)/(kR * tkref) ) ) / (1.0 + exp( (tkleaf * dent - Hd)/(kR * tkleaf) ) )
     fv  = fva * fvb
 
   end function calc_ftemp_inst_vcmax
@@ -1217,13 +1222,14 @@ contains
     !
     ! T_ref is 25 deg C (=298.13 K) per default.
     !-----------------------------------------------------------------------
+    use md_params_core, only: kR           ! Universal gas constant, J/mol/K
+
     ! arguments
     real, intent(in) :: tk                 ! temperature (Kelvin)
     real, intent(in) :: dha                ! activation energy (J/mol)
     real, intent(in), optional :: tkref    ! reference temperature 
 
     ! local variables
-    real, parameter :: kR = 8.3145         ! J/mol/K
     real :: mytkref                        ! reference temperature 
 
     ! function return variable
