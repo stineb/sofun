@@ -129,7 +129,7 @@ contains
     !----------------------------------------------------------------
     if (verbose) print*,'looping through gridcells ...'
     gridcellloop: do jpngr=1,size(interface%grid)
-      
+
       if (interface%grid(jpngr)%dogridcell) then
 
         if (verbose) print*,'----------------------'
@@ -153,7 +153,7 @@ contains
           interface%climate(jpngr)%dppfd(:) = dummy
           solar = getsolar( 67.25, 87.0, interface%climate(jpngr)%dfsun(:), interface%climate(jpngr)%dppfd(:), splashtest=splashtest, testdoy=testdoy )
           if (lev_splashtest==1) stop 'end of splash test level 1'
-        else          
+        else
           solar = getsolar( &
                             interface%grid(jpngr)%lat, & 
                             interface%grid(jpngr)%elv, & 
@@ -221,18 +221,18 @@ contains
             if (verbose) print*,'calling waterbal() ... '
             ! print*,'lon,lat,ilon,ilat,jpngr', interface%grid(jpngr)%lon, interface%grid(jpngr)%lat, interface%grid(jpngr)%ilon, interface%grid(jpngr)%ilat, jpngr
             call waterbal( &
-                            tile(:,jpngr)%soil, &
-                            tile_fluxes(:), &
-                            doy, &
-                            jpngr, & 
-                            interface%grid(jpngr)%lat, & 
-                            interface%grid(jpngr)%elv, & 
-                            interface%climate(jpngr)%dprec(doy), & 
-                            interface%climate(jpngr)%dtemp(doy), & 
-                            interface%climate(jpngr)%dfsun(doy), &
-                            interface%climate(jpngr)%dnetrad(doy), &
-                            splashtest=splashtest, lev_splashtest=lev_splashtest, testdoy=testdoy &
-                            )
+                          tile(:,jpngr)%soil, &
+                          tile_fluxes(:), &
+                          doy, &
+                          jpngr, & 
+                          interface%grid(jpngr)%lat, & 
+                          interface%grid(jpngr)%elv, & 
+                          interface%climate(jpngr)%dprec(doy), & 
+                          interface%climate(jpngr)%dtemp(doy), & 
+                          interface%climate(jpngr)%dfsun(doy), &
+                          interface%climate(jpngr)%dnetrad(doy), &
+                          splashtest=splashtest, lev_splashtest=lev_splashtest, testdoy=testdoy &
+                          )
             if (verbose) print*,'... done'
 
             ! !----------------------------------------------------------------
@@ -357,7 +357,6 @@ contains
       deallocate( tile_fluxes )
       deallocate( plant )
       deallocate( plant_fluxes )
-
     end if
 
     if (verbose) print*,'Done with biosphere for this year. Guete Rutsch!'
