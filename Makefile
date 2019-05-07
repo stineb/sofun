@@ -47,16 +47,19 @@ COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overfl
 # # System libraries
 # LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
 
-## On Beni's laptop, use this:
-NETCDF_INC = /opt/local/include
-NETCDF_LIB = /opt/local/lib
+# ## On Beni's laptop, use this:
+# NETCDF_INC = /opt/local/include
+# NETCDF_LIB = /opt/local/lib
 
 # ## On Beni's work computer use this:
 # NETCDF_INC = /usr/local/include
 # NETCDF_LIB = /usr/local/lib
+# LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's work computer
 
-# LIBS = -L $(NETCDF_LIB) -lnetcdf
-LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran
+# On Imperial CX1, use this:
+NETCDF_INC = /apps/netcdf/4.0.1-mcmodel-medium/include
+NETCDF_LIB = /apps/netcdf/4.0.1-mcmodel-medium/lib -lnetcdf
+LIBS = -L $(NETCDF_LIB) -lnetcdf
 
 endif
 
