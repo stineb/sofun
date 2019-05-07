@@ -1,11 +1,11 @@
 module md_biosphere
 
   use md_params_core
-  use md_params_siml
-  use md_params_site
+  use md_classdefs
   use md_params_soil, only: paramtype_soil
-  use md_waterbal, only: solartype, waterbal, getsolar, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
-  use md_tile, only: tile_type, initglobal_tile
+  use md_waterbal, only: solartype, waterbal, getsolar, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, initio_nc_waterbal, writeout_nc_waterbal, init_rlm_waterbal, get_rlm_waterbal, getrlm_daily_waterbal
+  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile
+  use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_nc_forcing, writeout_nc_forcing
 
   implicit none
 
@@ -15,12 +15,16 @@ module md_biosphere
   !----------------------------------------------------------------
   ! Module-specific (private) variables
   !----------------------------------------------------------------
-  type( tile_type ) , dimension(nlu,maxgrid)     :: tile
+  ! derived types from L1 modules
+  type( tile_type ),         allocatable, dimension(:,:) :: tile
+  type( tile_fluxes_type ),  allocatable, dimension(:)   :: tile_fluxes
+
+  ! derived types from L2 modules
   type( solartype )                              :: solar
 
 contains
 
-  function biosphere_annual() result( c_uptake )
+  function biosphere_annual() result( out_biosphere )
     !////////////////////////////////////////////////////////////////
     ! function BIOSPHERE_annual calculates net ecosystem exchange (nee)
     ! in response to environmental boundary conditions (atmospheric 
@@ -29,16 +33,19 @@ contains
     ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use md_interface, only: interface
+    use md_interface, only: interface, outtype_biosphere
   
     ! return variable
-    real :: c_uptake   ! annual net global C uptake by biosphere (gC/yr)
+    type(outtype_biosphere) :: out_biosphere
 
     ! local variables
-    integer :: dm, moy, jpngr, day
+    integer :: dm, moy, jpngr, doy
 
-    ! xxx verbose
+    ! xxx debug
     logical, parameter :: verbose = .false.
+    logical, parameter :: splashtest = .false.
+    integer, parameter :: lev_splashtest = 2
+    integer, parameter :: testdoy = 55
 
     !----------------------------------------------------------------
     ! INITIALISATIONS
@@ -49,109 +56,182 @@ contains
       ! GET MODEL PARAMETERS
       ! read model parameters that may be varied for optimisation
       !----------------------------------------------------------------
+      if (verbose) print*, 'getpar_modl() ...'
       call getpar_modl_waterbal()
+      if (verbose) print*, '... done'
 
       !----------------------------------------------------------------
       ! Initialise pool variables and/or read from restart file (not implemented)
       !----------------------------------------------------------------
-      call initglobal_tile( tile(:,:) )
+      if (verbose) print*, 'initglobal_() ...'
+      allocate( tile(  nlu,  size(interface%grid) ) )
+      allocate( tile_fluxes(  nlu ) )
 
-      !----------------------------------------------------------------
-      ! Open input/output files
-      !----------------------------------------------------------------
-      call initio_waterbal()
+      call initglobal_tile(  tile(:,:),  size(interface%grid) )
 
-    endif 
+      if (verbose) print*, '... done'
 
+    endif
+
+    !----------------------------------------------------------------
+    ! Open NetCDF output files (one for each year)
+    !----------------------------------------------------------------
+    if (.not.interface%params_siml%is_calib) then
+      if (verbose) print*, 'initio_nc_() ...'
+      call initio_nc_forcing()
+      call initio_nc_waterbal()
+      if (verbose) print*, '... done'
+    end if
+    
     !----------------------------------------------------------------
     ! Initialise output variables for this year
     !----------------------------------------------------------------
-    call initoutput_waterbal()
+    if (.not.interface%params_siml%is_calib) then
+      if (verbose) print*, 'initoutput_() ...'
+      call initoutput_forcing(  size(interface%grid) )
+      call initoutput_waterbal( size(interface%grid) )
+      if (verbose) print*, '... done'
+    end if
+
+    ! additional initialisation for rolling annual mean calculations (also needed in calibration mode)
+    call init_rlm_waterbal( size(interface%grid) )
 
     !----------------------------------------------------------------
     ! LOOP THROUGH GRIDCELLS
     !----------------------------------------------------------------
-    gridcellloop: do jpngr=1,maxgrid
+    if (verbose) print*,'looping through gridcells ...'
+    gridcellloop: do jpngr=1,size(interface%grid)
 
-      !----------------------------------------------------------------
-      ! Get radiation based on daily temperature, sunshine fraction, and 
-      ! elevation.
-      ! This is not compatible with a daily biosphere-climate coupling. I.e., 
-      ! there is a daily loop within 'getsolar'!
-      !----------------------------------------------------------------
-      if (verbose) write(0,*) 'calling getsolar() ... '
-      if (verbose) write(0,*) '    with argument lat = ', interface%grid(jpngr)%lat
-      if (verbose) write(0,*) '    with argument elv = ', interface%grid(jpngr)%elv
-      if (verbose) write(0,*) '    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
-      solar = getsolar( &
-        interface%grid(jpngr)%lat, & 
-        interface%grid(jpngr)%elv, & 
-        interface%climate(jpngr)%dfsun(:), & 
-        interface%climate(jpngr)%dppfd(:) & 
-        )
-      if (verbose) write(0,*) '... done'
+      if (interface%grid(jpngr)%dogridcell) then
 
-      !----------------------------------------------------------------
-      ! LOOP THROUGH MONTHS
-      !----------------------------------------------------------------
-      day=0
-      monthloop: do moy=1,nmonth
+        if (verbose) print*,'----------------------'
+        if (verbose) print*,'JPNGR: ', jpngr
+        if (verbose) print*,'----------------------'
 
         !----------------------------------------------------------------
-        ! LOOP THROUGH DAYS
+        ! Get radiation based on daily temperature, sunshine fraction, and 
+        ! elevation.
+        ! This is not compatible with a daily biosphere-climate coupling. I.e., 
+        ! there is a daily loop within 'getsolar'!
         !----------------------------------------------------------------
-        dayloop: do dm=1,ndaymonth(moy)
-          day=day+1
+        if (verbose) print*,'calling getsolar() ... '
+        if (verbose) print*,'    with argument lat = ', interface%grid(jpngr)%lat
+        if (verbose) print*,'    with argument elv = ', interface%grid(jpngr)%elv
+        if (verbose) print*,'    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
+        if (verbose) print*,'    with argument dppfd (ann. mean) = ', sum( interface%climate(jpngr)%dppfd(:) / ndayyear )
+        if (splashtest) then
+          ! for comparison with Python SPLASH
+          interface%climate(jpngr)%dfsun(:) = 0.562000036
+          interface%climate(jpngr)%dppfd(:) = dummy
+          solar = getsolar( 67.25, 87.0, interface%climate(jpngr)%dfsun(:), interface%climate(jpngr)%dppfd(:), splashtest=splashtest, testdoy=testdoy )
+          if (lev_splashtest==1) stop 'end of splash test level 1'
+        else
+          solar = getsolar( &
+                            interface%grid(jpngr)%lat, & 
+                            interface%grid(jpngr)%elv, & 
+                            interface%climate(jpngr)%dfsun(:), & 
+                            interface%climate(jpngr)%dppfd(:),  & 
+                            splashtest = splashtest, testdoy=testdoy &
+                            )
+        end if
+        if (verbose) print*,'... done'
 
-          if (verbose) write(0,*) '----------------------'
-          if (verbose) write(0,*) 'YEAR, DAY ', interface%steering%year, day
-          if (verbose) write(0,*) '----------------------'
+        !----------------------------------------------------------------
+        ! LOOP THROUGH MONTHS
+        !----------------------------------------------------------------
+        doy=0
+        monthloop: do moy=1,nmonth
 
           !----------------------------------------------------------------
-          ! initialise daily updated variables 
+          ! LOOP THROUGH DAYS
           !----------------------------------------------------------------
-          call initdaily_waterbal()
+          dayloop: do dm=1,ndaymonth(moy)
+            doy=doy+1
 
-          !----------------------------------------------------------------
-          ! get soil moisture, and runoff
-          !----------------------------------------------------------------
-          if (verbose) write(0,*) 'calling waterbal() ... '
-          call waterbal( &
-            tile(:,jpngr)%soil%phy, &
-            day, & 
-            interface%grid(jpngr)%lat, & 
-            interface%grid(jpngr)%elv, & 
-            interface%climate(jpngr)%dprec(day), & 
-            interface%climate(jpngr)%dtemp(day), & 
-            interface%climate(jpngr)%dfsun(day), &
-            interface%climate(jpngr)%dnetrad(day)&
-            )
-          if (verbose) write(0,*) '... done'
+            if (verbose) print*,'----------------------'
+            if (verbose) print*,'YEAR, DOY ', interface%steering%year, doy
+            if (verbose) print*,'----------------------'
 
-          !----------------------------------------------------------------
-          ! collect from daily updated state variables for annual variables
-          !----------------------------------------------------------------
-          if (verbose) write(0,*) 'calling getout_daily() ... '
-          call getout_daily_waterbal( jpngr, moy, day, solar, tile(:,jpngr)%soil%phy )
-          if (verbose) write(0,*) '... done'
+            !----------------------------------------------------------------
+            ! initialise daily updated variables 
+            !----------------------------------------------------------------
+            if (verbose) print*,'calling initdaily_() ...'
+            call initdaily_tile( tile_fluxes(:) )
+            if (verbose) print*,'... done.'
 
-        end do dayloop
+            !----------------------------------------------------------------
+            ! get soil moisture, and runoff
+            !----------------------------------------------------------------
+            if (verbose) print*,'calling waterbal() ... '
+            ! print*,'lon,lat,ilon,ilat,jpngr', interface%grid(jpngr)%lon, interface%grid(jpngr)%lat, interface%grid(jpngr)%ilon, interface%grid(jpngr)%ilat, jpngr
+            call waterbal( &
+                          tile(:,jpngr)%soil, &
+                          tile_fluxes(:), &
+                          doy, &
+                          jpngr, & 
+                          interface%grid(jpngr)%lat, & 
+                          interface%grid(jpngr)%elv, & 
+                          interface%climate(jpngr)%dprec(doy), & 
+                          interface%climate(jpngr)%dtemp(doy), & 
+                          interface%climate(jpngr)%dfsun(doy), &
+                          interface%climate(jpngr)%dnetrad(doy), &
+                          splashtest=splashtest, lev_splashtest=lev_splashtest, testdoy=testdoy &
+                          )
+            if (verbose) print*,'... done'
 
-      end do monthloop
+            !----------------------------------------------------------------
+            ! collect from daily updated state variables for annual variables
+            !----------------------------------------------------------------
+            if (.not.interface%params_siml%is_calib) then
+              if (verbose) print*,'calling getout_daily() ... '
+              call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy )
+              call getout_daily_forcing( jpngr, moy, doy )
+              if (verbose) print*,'... done'
+            end if
 
-      !----------------------------------------------------------------
-      ! collect annual output
-      !----------------------------------------------------------------
+            call getrlm_daily_waterbal( jpngr, doy )
 
-      !----------------------------------------------------------------
-      ! Write to output
-      !----------------------------------------------------------------
-      call writeout_ascii_waterbal()
+            !----------------------------------------------------------------
+            ! populate function return variable
+            !----------------------------------------------------------------
+            if (npft>1) stop 'think about npft > 1'
+            ! out_biosphere%fapar(doy)  = plant(1,jpngr)%fapar_ind
+
+          end do dayloop
+
+        end do monthloop
+
+        ! !----------------------------------------------------------------
+        ! ! collect annual output
+        ! !----------------------------------------------------------------
+        ! if (.not.interface%params_siml%is_calib) then
+        !   if (verbose) print*,'calling getout_annual_() ... '
+        !   if (verbose) print*,'... done'
+        ! end if
+
+      end if
 
     end do gridcellloop
 
-    ! xxx insignificant
-    c_uptake = 0.0
+    !----------------------------------------------------------------
+    ! Write to NetCDF output
+    !----------------------------------------------------------------
+    if (.not.interface%params_siml%is_calib) then
+      if (verbose) print*,'calling writeout_nc_() ... '
+      call writeout_nc_forcing()
+      call writeout_nc_waterbal()
+      if (verbose) print*,'... done'
+    end if
+
+    if (interface%steering%finalize) then
+      !----------------------------------------------------------------
+      ! Finazlize run: deallocating memory
+      !----------------------------------------------------------------
+      deallocate( tile )
+      deallocate( tile_fluxes )
+    end if
+
+    if (verbose) print*,'Done with biosphere for this year. Guete Rutsch!'
 
   end function biosphere_annual
 
