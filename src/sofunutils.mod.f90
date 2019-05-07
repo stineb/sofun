@@ -1,11 +1,8 @@
 module md_sofunutils
   !/////////////////////////////////////////////////////////////////////////
-  ! Contains utility functions to deal with arrays containing 365 daily 
-  ! values or 12 monthly values representing one year.
-  ! - running: calculates running mean
-  ! - daily2monthly: calculates monthly mean/sum of daily values for resp. mo.
+  ! Contains various utility functions for use in SOFUN, including a weather 
+  ! generator.
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
-  ! contact: b.stocker@imperial.ac.uk
   !-------------------------------------------------------------------------
   implicit none
 
@@ -13,7 +10,7 @@ contains
 
   function running( presval, inow, lenval, lenper, method, prevval ) result( runningval )
     !/////////////////////////////////////////////////////////////////////////
-    ! Returns running sum or average over. 'prevval' is optional, if not pro-
+    ! Returns running sum or average. 'prevval' is optional, if not pro-
     ! vided, sum/average is taken only over preceeding days/months of current
     ! year.
     !-------------------------------------------------------------------------
@@ -69,15 +66,12 @@ contains
   function daily2monthly( dval, method ) result( mval )
     !/////////////////////////////////////////////////////////////////////////
     ! Returns monthly values as a mean over daily values in each month.
-    ! Arguments:
-    ! - dval   : vector containing 365 (366 in case lapyear is TRUE) daily values
-    ! - method : true of monthly values represent total of daily values in resp. month
     !-------------------------------------------------------------------------
     use md_params_core, only: ndaymonth, cumdaymonth, ndayyear, nmonth
 
     ! arguments
-    real, intent(in), dimension(ndayyear) :: dval
-    character(len=*), intent(in) :: method
+    real, intent(in), dimension(ndayyear) :: dval ! vector containing 365 (366 in case lapyear is TRUE) daily values
+    character(len=*), intent(in) :: method        ! true of monthly values represent total of daily values in resp. month
 
     ! function return variable
     real, dimension(nmonth) :: mval
@@ -107,7 +101,8 @@ contains
 
 
   function monthly2daily_weather( mval_prec, mval_wet, prdaily_random ) result( dval_prec )
-    !--------------------------------------------------------------------
+    !/////////////////////////////////////////////////////////////////////////
+    ! Weather (rain) generator.
     ! Distributes monthly total precipitation to days, given number of 
     ! monthly wet days. Adopted from LPX.
     !--------------------------------------------------------------------
@@ -480,7 +475,7 @@ contains
 
   function read1year_monthly( filename )
     !////////////////////////////////////////////////////////////////
-    ! Function reads a file that contains 365 lines, each line for
+    ! Function reads a file that contains 12 lines, each line for
     ! a daily value. 
     !----------------------------------------------------------------
     use md_params_core, only: nmonth
@@ -571,13 +566,14 @@ contains
 
   function getvalreal_STANDARD( filename, realyear, mo, dm, day, realyear_decimal ) result( valreal )
     !////////////////////////////////////////////////////////////////
-    !  SR reads one (annual) value corresponding to the given year 
+    !  Reads one (annual) value corresponding to the given year 
     !  from a time series ascii file. File has to be located in 
     !  ./input/ and has to contain only rows formatted like
     !  '2002  1  1 0.496632 0.054053', which represents 
     !  'YYYY MM DM      GPP GPP err.'. DM is the day within the month.
     !  If 'realyear' is dummy (-9999), then it's interpreted as to 
     !  represent a mean climatology for the course of a year.
+    ! XXX THIS IS NOT IN USE IN SOFUN ANYMORE XXX
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: filename
@@ -702,12 +698,15 @@ contains
   end function getvalreal_STANDARD
 
 
-  function getparreal( filename, paraname ) result( paravalue )
+  function getparreal( filename, paraname, try ) result( paravalue )
     !////////////////////////////////////////////////////////////////
-    !  "Low-level" function for reading parameter values from text file
+    ! Low-level function for reading real parameter value from text file.
     !----------------------------------------------------------------
+    use md_params_core, only: dummy
+
     ! arguments
-    character(len=*), intent(in) :: filename, paraname
+    character(len=*), intent(in)  :: filename, paraname
+    logical, intent(in), optional :: try
 
     ! function return value
     real :: paravalue
@@ -715,8 +714,6 @@ contains
     ! local variables
     integer :: filehandle
     character(len=40) :: readname, readvalue
-
-    print*,'reading real value for ', paraname
 
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
@@ -728,13 +725,22 @@ contains
       goto 9
     endif
     10   continue
-    write(0,*) 'getparreal: '//paraname//' of type real not found'
-    stop
 
+    if (present(try)) then
+      if (try) then
+        paravalue = dummy
+      end if
+    else
+      write(0,*) 'getparreal: '//paraname//' of type real not found'
+      stop
+    end if
+    
     11   continue
     12   format(2a40)
 
     close(filehandle)
+
+    ! print*,'reading real value for ', paraname, ': ', paravalue
 
     return
 
@@ -746,7 +752,7 @@ contains
 
   function getparint( filename, paraname ) result( paravalue )
     !////////////////////////////////////////////////////////////////
-    ! "Low-level" function for reading parameter values from text file
+    ! Low-level function for reading integer parameter value from text file
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: filename, paraname 
@@ -757,8 +763,6 @@ contains
     ! local variables
     integer :: filehandle
     character(len=40) :: readname, readvalue
-
-    print*,'reading integer for ', paraname
 
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
@@ -779,6 +783,8 @@ contains
 
     close(filehandle)
 
+    ! print*,'reading integer for ', paraname, ': ', paravalue
+
     return
 
     19   write(0,*) 'getparint: file '//filename//' not found:'
@@ -790,7 +796,7 @@ contains
 
   function getparlogical( filename, paraname ) result( paravalue )
     !////////////////////////////////////////////////////////////////
-    ! "Low-level" function for reading parameter values from text file
+    ! Low-level function for reading boolean parameter value from text file
     !----------------------------------------------------------------
     ! arguments
     character(len=*), intent(in) :: filename, paraname
@@ -800,8 +806,6 @@ contains
     ! local variables
     integer :: filehandle
     character(len=40) :: readname, readvalue
-
-    print*,'reading logical for ', paraname
 
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
@@ -821,6 +825,8 @@ contains
 
     close(filehandle)
 
+    ! print*,'reading logical for ', paraname, ': ', paravalue
+
     return
 
     19   write(0,*) 'GETPARLOGICAL: '//filename//' not found!'
@@ -831,7 +837,7 @@ contains
 
   subroutine getparstring( filename, paraname, paravalue )
     !////////////////////////////////////////////////////////////////
-    ! "Low-level" function for reading parameter values from text file
+    ! Low-level function for reading parameter value (string) from text file
     !----------------------------------------------------------------
     character(len=*), intent(in) :: filename, paraname
     character(len=*) :: paravalue
@@ -839,8 +845,6 @@ contains
     integer :: filehandle,i
     character(len=40) :: readname
     character(len=1024) :: readvalue
-
-    print*, 'reading string for ', paraname
 
     filehandle = 111
     open(filehandle,status='old',err=19,file=filename)
@@ -865,6 +869,8 @@ contains
 
     close(filehandle)
 
+    print*, 'reading string for ', paraname, ': ', paravalue
+
     return
 
     19   write(0,*) 'GETSTRING: '//filename//' not found!'
@@ -875,7 +881,7 @@ contains
 
   function getparchar( filename, paraname ) result( paravalue )
     !////////////////////////////////////////////////////////////////
-    ! "Low-level" function for reading parameter values from text file
+    ! Low-level function for reading parameter value from text file
     !----------------------------------------------------------------
     character(len=*), intent(in) :: filename, paraname
     character(len=1) :: paravalue
@@ -908,191 +914,164 @@ contains
 
   end function getparchar
 
- !  subroutine setreal(filename,paraname,default,paravalue)
- !          !////////////////////////////////////////////////////////////////
- !          ! "Low-level" SR for reading/defining parameter values from text file
- !          !----------------------------------------------------------------
 
- !          implicit none
+  function area( lat, dx, dy ) result( out_area )
+    !////////////////////////////////////////////////////////////////
+    ! Calculates grid cell area in m2 on a spherical Earth
+    !----------------------------------------------------------------
+    use md_params_core, only: pi
 
- !          integer filehandle
- !          character(len=40) :: readname, readvalue
- !          character(len=*), intent(in) :: filename, paraname
+    ! arguments
+    real, intent(in) :: lat      ! latitude (degrees N)
+    real, intent(in) :: dx       ! resolution in longitude (degrees)
+    real, intent(in) :: dy       ! resolution in latitude (degrees)
 
- !          real,intent(out) :: paravalue
- !          real,intent(in)  :: default
+    ! function return variable
+    real :: out_area             ! gridcell surface area (m2)
 
- !          filehandle = 111
- !          open(filehandle,status='old',err=19,file=filename)
- ! 9        read(filehandle,12,end=10)readname,readvalue
- !          if (trim(readname)==paraname) then
- !             read(readvalue,*) paravalue
- !             goto 11
- !          else
- !             goto 9
- !          endif
- ! 10       continue
- !          paravalue = default
+    ! local variables
+    real, parameter :: r_earth = 6370000
 
- ! 11       continue
- ! 12       format(2a40)
+    out_area = 4.0 * r_earth**2 * 0.5 * dx * pi / 180.0 * cos( abs(lat) * pi / 180.0 ) * sin( 0.5 * dy * pi / 180.0 )    
 
- !          close(filehandle)
-
- !          return
-
- ! 19       stop 'GETPAR: '//filename//' not found!'
-
- !          end
-
- !          subroutine setint(filename,paraname,default,paravalue)
- !          !////////////////////////////////////////////////////////////////
- !          ! "Low-level" SR for reading/defining parameter values from text file
- !          !----------------------------------------------------------------
-
- !          implicit none
-
- !          integer filehandle
- !          character(len=40) :: readname, readvalue
- !          character(len=*), intent(in) :: filename, paraname
-
- !          integer, intent(out) :: paravalue
- !          integer :: default
-
- !          filehandle = 111
- !          open(filehandle,status='old',err=19,file=filename)
- ! 9        read(filehandle,12,end=10)readname,readvalue
- !          if (trim(readname)==paraname) then
- !             read(readvalue,*) paravalue
- !             goto 11
- !          else
- !             goto 9
- !          endif
- ! 10       continue
- !          paravalue = default
-
- ! 11       continue
- ! 12       format(2a40)
-
- !          close(filehandle)
-
- !          return
-
- ! 19       stop 'GETPAR: '//filename//' not found!'
-
- !          end
-
- !          subroutine setlogical(filename,paraname,default,paravalue)
- !          !////////////////////////////////////////////////////////////////
- !          ! "Low-level" SR for reading/defining parameter values from text file
- !          !----------------------------------------------------------------
-
- !          implicit none
-
- !          character(len=*), intent(in) :: filename, paraname
- !          logical, intent(out) :: paravalue
-
- !          integer filehandle
- !          character(len=40) :: readname, readvalue
- !          logical :: default
-
- !          filehandle = 111
- !          open(filehandle,status='old',err=19,file=filename)
- ! 9        read(filehandle,12,end=10)readname,readvalue
- !          if (trim(readname)==paraname) then
- !             read(readvalue,*) paravalue
- !             goto 11
- !          else
- !             goto 9
- !          endif
- ! 10       continue
- !          paravalue = default
-
- ! 11       continue
- ! 12       format(2a40)
-
- !          close(filehandle)
-
- !          return
-
- ! 19       stop 'GETPAR: '//filename//' not found!'
-
- !          end
+  end function area
 
 
- !          subroutine setstring(filename,paraname,default,paravalue)
- !          !////////////////////////////////////////////////////////////////
- !          ! "Low-level" SR for reading/defining parameter values from text file
- !          !----------------------------------------------------------------
+  function calc_patm( elv ) result( patm )
+    !----------------------------------------------------------------   
+    ! Calculates atmospheric pressure for a given elevation, assuming
+    ! standard atmosphere at sea level (kPo)
+    ! Ref:      Allen et al. (1998)
+    ! This function is copied from SPLASH
+    !----------------------------------------------------------------
+    use md_params_core, only: kPo, kL, kTo, kG, kMa, kR
 
- !          implicit none
+    ! arguments
+    real, intent(in) :: elv ! elevation above sea level, m
 
- !          ! Arguments
- !          character(len=*), intent(in) :: filename, paraname
- !          character(len=*), intent(out) :: paravalue, default
+    ! function return value
+    real ::  patm ! atmospheric pressure (Pa)
 
- !          ! Local variables
- !          integer filehandle,i
- !          character readname*40,readvalue*1024
+    patm = kPo * (1.0 - kL*elv/kTo)**(kG*kMa*1e-3/(kR*kL))
 
- !          filehandle = 111
- !          open(filehandle,status='old',err=19,file=filename)
- ! 9        read(filehandle,12,end=10)readname,readvalue
- !          if (trim(readname)==paraname) then
- !             ! Strip leading and trailing whitespace from readvalue
- !             i=1
- !             do while (readvalue(i:i)==' ' .and. i.lt.len(readvalue))
- !                i=i+1
- !             enddo
- !             paravalue = trim(readvalue(i:))
- !             goto 11
- !          else
- !             goto 9
- !          endif
- ! 10       continue
- !          paravalue = default
-
- ! 11       continue
-
- ! 12       format(a40,a)
-
- !          close(filehandle)
-
- !          return
-
- ! 19       stop 'GETPAR: '//filename//' not found!'
-
- !          end
+  end function calc_patm
 
 
+  function median( vec, len ) result( out )
+    !--------------------------------------------------------------------
+    ! This function receives an array vec of N entries, copies its value
+    ! to a local array Temp(), sorts Temp() and computes the median.
+    ! The returned value is of REAL type.
+    ! Copied from https://pages.mtu.edu/~shene/COURSES/cs201/NOTES/chap08/median.f90
+    !--------------------------------------------------------------------
+    real, dimension(:), intent(in)     :: vec
+    integer, intent(in)                :: len
 
-  ! function icumsum( arr, seed )
-  !   !/////////////////////////////////////////////////////////////////////////
-  !   ! Returns the running (cumulative) sum of a vector of integers. 
-  !   ! Adopted from: 
-  !   ! Numerical Recipes in Fortran 90: Volume 2, edited by William H. Press
-  !   !-------------------------------------------------------------------------
-  !   implicit none 
+    ! function return variable
+    real                               :: out
 
-  !   ! arguments
-  !   integer, dimension(:), intent(in)  :: arr
-  !   integer, intent(in), optional      :: seed
-  !   integer, dimension(:), intent(out) :: icumsum
+    ! local variables
+    real, dimension(1:len)             :: tmp
+    integer                            :: i
 
-  !   ! local variables
-  !   integer :: n, j
-  !   integer :: sd
+    tmp(:) = vec(:)
 
-  !   n = size(arr)
-  !   if (n==0) return
-  !   sd = 0
-  !   if ( present(seed) ) sd = seed
-  !   icumsum(1) = arr(1) + sd
-  !   do j=2,n
-  !     icumsum(j) = icumsum(j-1) + arr(j)
-  !   end do
+    call  sort(tmp, len)                ! sort the copy
 
-  ! end function icumsum
+    if (mod(len,2) == 0) then           ! compute the median
+       out = (tmp(len/2) + tmp(len/2+1)) / 2.0
+    else
+       out = tmp(len/2+1)
+    end if
+
+  end function median
+
+
+  subroutine sort( vec, len )
+    !--------------------------------------------------------------------
+    ! This subroutine receives an array vec() and sorts it into ascending
+    ! order.
+    ! Copied from https://pages.mtu.edu/~shene/COURSES/cs201/NOTES/chap08/sort.f90
+    !--------------------------------------------------------------------
+    real, dimension(:), intent(inout)     :: vec
+    integer, intent(in)                   :: len
+    integer                               :: i
+    integer                               :: location
+
+    do i = 1, len-1                           ! eveccept for the last
+      location = find_minimum( vec, i, len )  ! find min from this to last
+      call swap( vec(i), vec(location) )      ! swap this and the minimum
+    end do
+
+  end subroutine sort
+
+
+  subroutine swap( a, b )
+    !--------------------------------------------------------------------
+    ! This subroutine swaps the values of its two formal arguments.
+    ! Copied from https://pages.mtu.edu/~shene/COURSES/cs201/NOTES/chap08/sort.f90
+    !--------------------------------------------------------------------
+    real, intent(inout) :: a, b
+    real                :: tmp
+
+    tmp = a
+    a   = b
+    b   = tmp
+
+  end subroutine  swap
+
+
+  function find_minimum( vec, start, end ) result( out )
+    !--------------------------------------------------------------------
+    ! This function returns the location of the minimum in the section
+    ! between start and end.
+    ! Copied from https://pages.mtu.edu/~shene/COURSES/cs201/NOTES/chap08/sort.f90
+    !--------------------------------------------------------------------
+    real, dimension(:), intent(in)     :: vec
+    integer, intent(in)                :: start, end
+    integer                            :: minimum
+    integer                            :: location
+    integer                            :: i
+    integer                            :: out
+
+    minimum  = vec(start)          ! assume the first is the min
+    location = start               ! record its position
+    do i = start+1, end            ! start with nevect elements
+      if (vec(i) < minimum) THEN  ! if vec(i) less than the min?
+        minimum  = vec(i)        ! Yes, a new minimum found
+        location = i             ! record its position
+      end if
+    end do
+    out = location                 ! return the position
+   
+  end function find_minimum
+
+
+  function findroot_quadratic( a, b, c ) result( root )
+    !-----------------------------------------------------------------------
+    ! Returns the solution for a quadratic function:
+    ! a + bx + cx**2 = 0
+    ! Per default returns root2 
+    !-----------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: a, b, c
+
+    ! function return variable
+    real, dimension(2) :: root
+
+    ! local variables
+    real :: d, root1, root2
+
+    d = b*b - 4.0*a*c
+    if (d >= 0.0) then              ! is it solvable?
+      d = sqrt(d)
+      root(1) = (-b + d)/(2.0*c)    ! first root
+      root(2) = (-b - d)/(2.0*c)    ! second root
+    else                            ! complex roots
+      stop 'findroot_quadratic(): There is no real root.'
+    end if
+
+  end function findroot_quadratic
 
 
 end module md_sofunutils

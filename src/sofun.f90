@@ -1,28 +1,40 @@
 program main
   !////////////////////////////////////////////////////////////////
-  !  Main program for site scale simulations, here used for 
-  !  SOFUN (Seasonal Optimisation of Fixation and Uptake of 
-  !  Nitrogen)
+  ! Main program for SOFUN, used for single-site simulations and 
+  ! "lonlat" (=multiple points on a spatial grid) simulations.
+  ! 
+  ! - reads run name from standard input
+  ! - invokes functions to get simulation parameters, grid definition, etc.
+  ! - loops over simulation years, including spinup
+  ! - invokes functions to get annually varying forcing
+  ! - call function biosphere()
+  !
+  ! Example (setup 'pmodel'):
+  ! echo RUNNAME ./runpmodel
+  ! 
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
-  ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_interface, only: interface
+  use md_interface, only: interface, outtype_biosphere
   use md_params_siml, only: getpar_siml, getsteering
-  use md_params_site, only: getpar_site
-  use md_grid, only: getgrid
-  use md_params_soil, only: getsoil_field
-  use md_forcing_siterun, only: getclimate_site, getninput, ninput_type, gettot_ninput, getfapar, getlanduse, getco2
-  use md_params_core, only: dummy, maxgrid
+  use md_params_domain, only: getpar_domain, type_params_domain
+  use md_grid, only: get_domaininfo, getgrid
+  use md_params_soil, only: getsoil
+  use md_forcing, only: get_fpc_grid, getclimate, getninput, ninput_type, gettot_ninput, &
+    getfapar, getlanduse, getco2
+  use md_params_core, only: dummy, maxgrid, ndayyear, npft
   use md_biosphere, only: biosphere_annual
 
   implicit none
 
   ! local variables
-  integer :: yr           ! simulation year
-  real    :: c_uptake     ! annual net global C uptake by biosphere
-  character(len=245) :: runname
+  integer :: yr                                  ! simulation year
+  character(len=245) :: runname                  ! run name
   integer, parameter :: maxlen_runname = 50      ! maximum length of runname (arbitrary)
   type( ninput_type ), dimension(maxgrid) :: nfert_field, ndep_field 
+  type( type_params_domain ) :: params_domain
+  logical, parameter :: verbose = .true.         ! set this true for additional messages
+
+  type(outtype_biosphere) :: out_biosphere       ! derived type containing certain quantities calculated within biosphere(), not used here.
 
   !----------------------------------------------------------------
   ! READ RUNNAME FROM STANDARD INPUT
@@ -30,18 +42,20 @@ program main
   read (*,*) runname
   ! make sure runname length is smaller/equal than maxlen_runname
   if (len_trim(runname)>=maxlen_runname) then
-    stop'runname too long'
+    stop 'runname too long'
   endif
 
   ! write simulation name to standard output (screen)
-  write(0,*) '------------SOFUN : '//trim(runname)//'-------------'
+  print*, '------------SOFUN : '//trim(runname)//'-------------'
 
   !----------------------------------------------------------------
   ! GET SIMULATION PARAMETERS FROM FILE <runname>.sofun.parameter
   ! SR getpar_siml is defined in _params_siml.mod.F
   !----------------------------------------------------------------
-  print*,'starting'
-  interface%params_siml = getpar_siml( trim(runname) )
+  interface%params_siml = getpar_siml( trim(runname) )    
+
+  ! set parameter to define that this is not a calibration run (otherwise sofun.f90 would not have been compiled, but sofun_simsuite.f90)
+  interface%params_siml%is_calib = .false.
 
   !----------------------------------------------------------------
   ! GET SITE PARAMETERS AND INPUT DATA
@@ -49,16 +63,26 @@ program main
   ! SR getpar_site is defined in _params_site.mod.F. 
   ! 'sitename' is global variable
   !----------------------------------------------------------------
-  interface%params_site = getpar_site( trim(interface%params_siml%sitename) )
+  params_domain = getpar_domain( trim(interface%params_siml%sitename) )
 
   !----------------------------------------------------------------
   ! GET GRID INFORMATION
   ! longitude, latitude, elevation
   !----------------------------------------------------------------
-  interface%grid(:) = getgrid( trim(interface%params_siml%sitename) )
+  ! temporarily get full grid information (full lon-lat-array)
+  interface%domaininfo = get_domaininfo( params_domain )
 
-  ! Get soil parameters (if not defined in <sitename>.parameter)
-  !call getsoilpar
+  ! allocate variable size arrays
+  allocate( interface%grid(         interface%domaininfo%maxgrid ) )
+  allocate( interface%climate(      interface%domaininfo%maxgrid ) )
+  allocate( interface%ninput_field( interface%domaininfo%maxgrid ) )
+  allocate( interface%landuse(      interface%domaininfo%maxgrid ) )
+  allocate( interface%soilparams(   interface%domaininfo%maxgrid ) )
+  allocate( interface%dfapar_field( ndayyear, interface%domaininfo%maxgrid ) )
+  allocate( interface%fpc_grid( npft, interface%domaininfo%maxgrid ) )
+
+  ! vectorise 2D array, keeping only land gridcells
+  interface%grid(:) = getgrid( interface%domaininfo, params_domain )
 
   ! Obtain land unit dependent parameters, define decomposition _rates
   !call luparameters
@@ -66,10 +90,17 @@ program main
   !----------------------------------------------------------------
   ! GET SOIL PARAMETERS
   !----------------------------------------------------------------
-  interface%soilparams(:) = getsoil_field( interface%params_site%soilcode )
+  interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
+
+  !----------------------------------------------------------------
+  ! GET VEGETATION COVER (fractional projective cover by PFT)
+  !----------------------------------------------------------------
+  interface%fpc_grid(:,:) = get_fpc_grid( interface%domaininfo, interface%grid(:), interface%params_siml )
+
 
   ! LOOP THROUGH YEARS
-  write(0,*) '------------START OF SIMULATION-------------'
+  write(0,*) 'SOFUN site-level run: ', runname
+  print*, '-------------------START OF SIMULATION--------------------'
 
   do yr=1,interface%params_siml%runyears
 
@@ -80,37 +111,40 @@ program main
     interface%steering = getsteering( yr, interface%params_siml )
 
     if (yr == interface%params_siml%spinupyears+1 ) then
-      write(0,*) '-----------TRANSIENT SIMULATION-------------'
+      print*, '------------------TRANSIENT SIMULATION--------------------'
     endif
 
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
-    ! Climate
-    interface%climate(:) = getclimate_site( &
-                                          trim(interface%params_siml%sitename), &
-                                          ! 1992 &
-                                          interface%steering%climateyear, &
-                                          interface%params_siml%in_ppfd,  &
-                                          interface%params_siml%in_netrad &
-                                          )
-    ! CO2
+    ! Get climate variables for this year (full fields and 365 daily values for each variable)
+    if (verbose) print*,'getting WFDEI climate ...'
+    interface%climate(:) = getclimate( &
+                                      interface%domaininfo, &
+                                      interface%grid, &
+                                      interface%steering%init, &
+                                      interface%steering%climateyear, &
+                                      interface%params_siml%in_ppfd,  &
+                                      interface%params_siml%in_netrad &
+                                      )
+
+    if (verbose) print*,'... done.'
+
+    ! Get annual, gobally uniform CO2
     interface%pco2 = getco2( &
                             trim(runname), &
-                            trim(interface%params_siml%sitename), &
-                            ! 1993, &
+                            interface%domaininfo, &
                             interface%steering%forcingyear, &
                             interface%params_siml%const_co2_year, &
                             interface%params_siml%firstyeartrend,&
                             interface%params_siml%co2_forcing_file&
                             )
 
-    ! Atmospheric N deposition
+    ! Atmospheric N deposition (note that actual data is not read in all SOFUN setups)
     ndep_field(:) = getninput( &
                               "ndep", &
                               trim(runname), &
-                              trim(interface%params_siml%sitename), &
-                              ! 1993, &
+                              interface%domaininfo, &
                               interface%steering%forcingyear, &
                               interface%params_siml%firstyeartrend, &
                               interface%params_siml%const_ndep_year, &
@@ -119,12 +153,11 @@ program main
                               interface%climate(:)&
                               )
     
-    ! N fertiliser input
+    ! N fertiliser input (note that actual data is not read in all SOFUN setups)
     nfert_field(:) = getninput( &
                               "nfert", &
                               trim(runname), &
-                              trim(interface%params_siml%sitename), &
-                              ! 1993, &
+                              interface%domaininfo, &
                               interface%steering%forcingyear, &
                               interface%params_siml%firstyeartrend, &
                               interface%params_siml%const_nfert_year, &
@@ -136,11 +169,10 @@ program main
     ! Interface holds only total reactive N input (N deposition + N fertiliser)                             
     interface%ninput_field(:) = gettot_ninput( nfert_field(:), ndep_field(:) )
                                  
-    ! write(0,*) 'SOFUN: holding harvesting regime constant at 1993 level.'
+    ! Get land use information (note that actual data is not read in all SOFUN setups)
     interface%landuse(:) = getlanduse( &
                                       trim(runname), &
-                                      trim(interface%params_siml%sitename), &
-                                      ! 1993, &
+                                      interface%domaininfo, &
                                       interface%steering%forcingyear, &
                                       interface%params_siml%do_grharvest_forcing_file, &
                                       interface%params_siml%const_lu_year, &
@@ -150,31 +182,34 @@ program main
     !----------------------------------------------------------------
     ! Get prescribed fAPAR if required (otherwise set to dummy value)
     !----------------------------------------------------------------
-    interface%dfapar_field(:,:) = getfapar( &
-                                          trim(runname), &
-                                          trim(interface%params_siml%sitename), &
-                                          interface%steering%forcingyear, &
-                                          interface%params_siml%fapar_forcing_source &
-                                          )
+    if (verbose) print*,'getting fAPAR ...'
+      interface%dfapar_field(:,:) = getfapar( &
+                                            interface%domaininfo, &
+                                            interface%grid, &
+                                            interface%steering%forcingyear, &
+                                            interface%params_siml%fapar_forcing_source &
+                                            )    
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
     ! containing data for each day of this year.
     !----------------------------------------------------------------
-    write(0,100) 'sim. year, year AD', yr, interface%steering%forcingyear
-
+    print*,'--------------------------------------------------------'
+    print*,'Simulation year: ', interface%steering%year, ' - Real year: ', interface%steering%outyear
+    print*,'--------------------------------------------------------'
+    
     !----------------------------------------------------------------
+    ! Call biosphere (wrapper for all modules, contains gridcell loop)
     !----------------------------------------------------------------
-    c_uptake = biosphere_annual() 
-    !----------------------------------------------------------------
+    out_biosphere = biosphere_annual() 
     !----------------------------------------------------------------
 
   enddo
 
-  write(0,*) '--------------END OF SIMULATION---------------'
+  print*, '--------------END OF SIMULATION---------------'
 
-100  format(A,I6,I6,F8.2)
-! 888  write(0,*) 'error opening file'
+100  format (A,I6,I6,F8.2)
 777  format (F20.8,F20.8)
+999  format (I4.4)
 
 end program main

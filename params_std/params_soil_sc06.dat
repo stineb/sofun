@@ -1,0 +1,20 @@
+###############################################################
+# MODEL PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+perc_k1                                 3.5        
+thdiff_wp                               0.2          
+thdiff_whc15                            0.575
+thdiff_fc                               0.4  
+forg                                    0.01
+wbwp                                    0.103   
+por                                     0.465    
+fsand                                   0.32   
+fclay                                   0.34     
+fsilt                                   0.34      
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 

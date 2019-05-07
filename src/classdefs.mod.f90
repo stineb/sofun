@@ -1,12 +1,17 @@
 module md_classdefs
   !////////////////////////////////////////////////////////////////
-  !  Module contains Fortran 90 derived-type declarations to define
-  !  objects
+  ! Module contains Fortran 90 derived-type declarations to define
+  ! material pools in SOFUN and functions applicable to pool types.
+  ! 
+  ! Pools can be 
+  ! - carbon, consisting of C-12
+  ! - nitrogen, consisting of N-14
+  ! - organic material, consisting of carbon and nitrogen (inherits
+  !   their defitions).
+  !
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-#include "sofun_module_control.inc"
-
   implicit none
 
   private
@@ -17,6 +22,9 @@ module md_classdefs
 
   ! Minimum precision
   real, parameter :: epsilon = 1.0e-5 
+
+  ! additional checks
+  logical, parameter :: check_sanity = .false.
 
   ! Carbon, so far contains only c12 (to be extended for c13)
   type carbon
@@ -59,13 +67,13 @@ contains
       call ncp( amount%n,to%n)
     end if
 
-    !         if (present(d13C)) then
-    !           to%c%c12 = amount%c%c12 + to%c%c12
-    !           to%n%n14 = amount%n%n14 + to%n%n14
-    !         else
-    !           to%c%c12 = amount%c%c12 + to%c%c12
-    !           to%n%n14 = amount%n%n14 + to%n%n14
-    !         end if
+    ! if (present(d13C)) then
+    !   to%c%c12 = amount%c%c12 + to%c%c12
+    !   to%n%n14 = amount%n%n14 + to%n%n14
+    ! else
+    !   to%c%c12 = amount%c%c12 + to%c%c12
+    !   to%n%n14 = amount%n%n14 + to%n%n14
+    ! end if
 
   end subroutine orgcp
 
@@ -103,17 +111,17 @@ contains
     ! print*,'amount ', amount
     ! print*,'from   ', from  
 
-#if _check_sanity
-    if ( amount%c%c12>from%c%c12+epsilon) then
-      stop 'in ORGSUB: attempting to remove C amount > from-pool'
-    else if ( amount%n%n14>from%n%n14+epsilon) then
-      stop 'in ORGSUB: attempting to remove N amount > from-pool'
-    else if (from%c%c12<0.0) then
-      stop 'in ORGSUB: C in from-pool negative'
-    else if (from%n%n14<0.0) then
-      stop 'in ORGSUB: N in from-pool negative'
-    endif
-#endif
+    if (check_sanity) then
+      if ( amount%c%c12>from%c%c12+epsilon) then
+        stop 'in ORGSUB: attempting to remove C amount > from-pool'
+      else if ( amount%n%n14>from%n%n14+epsilon) then
+        stop 'in ORGSUB: attempting to remove N amount > from-pool'
+      else if (from%c%c12<0.0) then
+        stop 'in ORGSUB: C in from-pool negative'
+      else if (from%n%n14<0.0) then
+        stop 'in ORGSUB: N in from-pool negative'
+      end if
+    end if
 
     call csub( amount%c,from%c)
     call nsub( amount%n,from%n)
@@ -133,18 +141,13 @@ contains
     type(orgpool), intent(inout) :: to
     real, intent(in), optional :: scale ! scale source ('from') to be added to destination ('to')
 
-    ! print*, 'ORGMV'
-    ! print*,'amount ', amount
-    ! print*,'from   ', from  
-    ! print*,'to     ', to    
-
     if ( present( scale ) ) then
       call orgcp( orgfrac(scale,amount), to ) 
       call orgsub( amount, from )       
     else
       call orgcp( amount, to )
       call orgsub( amount, from )
-    endif  
+    end if  
 
   end subroutine orgmv
 
@@ -173,7 +176,7 @@ contains
       outn = outn + amount%n%n14
       call orgcp( amount, to)
       call orgsub( amount, from )
-    endif  
+    end if  
 
   end subroutine orgmvRec
 
@@ -210,7 +213,7 @@ contains
     else
       call ccp( amount, to)
       call csub( amount, from )
-    endif
+    end if
 
   end subroutine cmv
 
@@ -237,7 +240,7 @@ contains
       outc = outc + amount%c12
       call ccp( amount, to)
       call csub( amount, from )
-    endif
+    end if
 
   end subroutine cmvRec
 
@@ -301,14 +304,15 @@ contains
     type(carbon), intent(in) :: amount
     type(carbon), intent(inout) :: from
 
-#if _check_sanity
-    if ( amount%c12 > from%c12+epsilon) then
-      write(0,*) 'amount', amount%c12
-      write(0,*) 'from  ', from%c12
-      write(0,*) 'in CSUB: attempting to remove amount > from-pool'
-      stop
-    endif
-#endif
+
+    if (check_sanity) then
+      if ( amount%c12 > from%c12+epsilon) then
+        write(0,*) 'amount', amount%c12
+        write(0,*) 'from  ', from%c12
+        write(0,*) 'in CSUB: attempting to remove amount > from-pool'
+        stop
+      end if
+    end if
     from%c12 = from%c12 - amount%c12
      
   end subroutine csub
@@ -345,7 +349,7 @@ contains
     else
       call ncp( amount, to)
       call nsub( amount, from )
-    endif
+    end if
 
   end subroutine nmv
 
@@ -371,7 +375,7 @@ contains
       outn = outn + amount%n14
       call ncp( amount, to)
       call nsub( amount, from )
-    endif
+    end if
 
   end subroutine nmvRec
 
@@ -417,11 +421,12 @@ contains
     type(nitrogen), intent(in) :: amount
     type(nitrogen), intent(inout) :: from
 
-#if _check_sanity
-    if ( amount%n14>from%n14+epsilon) then
-      stop 'in NSUB: attempting to remove amount > from-pool'
-    endif
-#endif
+
+    if (check_sanity) then
+      if ( amount%n14>from%n14+epsilon) then
+        stop 'in NSUB: attempting to remove amount > from-pool'
+      end if
+    end if
     from%n14 = from%n14 - amount%n14
 
     return
@@ -730,14 +735,15 @@ contains
         out_cton = pool%c%c12 / pool%n%n14
       end if
     else
-#if _check_sanity
-    if (pool%n%n14==0.) then
-      stop 'in CTON: N is zero'
-    endif
-    if (pool%n%n14<0.0 .or. pool%c%c12<0.0) then
-      stop 'in CTON: C and/or N is negative'
-    endif
-#endif
+
+    if (check_sanity) then
+      if (pool%n%n14==0.) then
+        stop 'in CTON: N is zero'
+      end if
+      if (pool%n%n14<0.0 .or. pool%c%c12<0.0) then
+        stop 'in CTON: C and/or N is negative'
+      end if
+    end if
     out_cton = pool%c%c12 / pool%n%n14
     end if
 
@@ -763,14 +769,15 @@ contains
         out_ntoc = pool%n%n14 / pool%c%c12
       end if
     else
-#if _check_sanity
+
+    if (check_sanity) then
       if (pool%c%c12==0.) then
         stop 'in NTOC: C is zero'
-      endif
+      end if
       if (pool%n%n14<0.0 .or. pool%c%c12<0.0) then
         stop 'in NTOC: C and/or N is negative'
-      endif
-#endif
+      end if
+    end if
       out_ntoc = pool%n%n14 / pool%c%c12
     end if
 

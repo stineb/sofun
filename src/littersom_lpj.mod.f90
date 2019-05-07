@@ -76,7 +76,7 @@ module md_littersom
 
 contains
 
-  subroutine littersom( jpngr, doy, dtemp )
+  subroutine littersom( plant, phy, jpngr, doy, dtemp )
     !////////////////////////////////////////////////////////////////
     !  Litter and SOM decomposition and nitrogen mineralisation.
     !  1st order decay of litter and SOM _pools, governed by temperature
@@ -85,17 +85,18 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use md_params_core, only: npft, maxgrid, nmonth, nlu, ndayyear, &
-      pft_start, pft_end
+    use md_params_core, only: nmonth, nlu, pft_start, pft_end
     use md_interface
     use md_classdefs
     use md_rates, only: ftemp, fmoist
-    use md_plant, only: params_pft_plant, plitt_af, plitt_as, plitt_bg, pexud
+    use md_plant, only: plant_type, params_pft_plant
     use md_waterbal, only: soilphys
-    use md_soiltemp, only: dtemp_soil
-    use md_ntransform, only: pnh4, pno3
+    ! use md_ntransform, only: pnh4, pno3
+    use md_tile, only: psoilphystype
 
     ! arguments
+    type(plant_type), dimension(npft), intent(inout) :: plant
+    type(psoilphystype), dimension(nlu), intent(in)  :: phy
     integer, intent(in) :: jpngr                    ! grid cell number
     integer, intent(in) :: doy                      ! day of year
     real, intent(in)    :: dtemp                    ! daily temperature (deg C)
@@ -191,10 +192,10 @@ contains
           ! Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
           !-------------------------------------------------------------------------
           ! define decomposition _rates for current soil temperature and moisture 
-          klitt_af(lu) = params_littersom%klitt_af10 * ftemp( dtemp,                "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
-          klitt_as(lu) = params_littersom%klitt_as10 * ftemp( dtemp,                "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
-          klitt_bg(lu) = params_littersom%klitt_bg10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
-          kexu(lu)     = params_littersom%kexu10     * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_af(lu) = params_littersom%klitt_af10 * ftemp( dtemp,        "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_as(lu) = params_littersom%klitt_as10 * ftemp( dtemp,        "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          klitt_bg(lu) = params_littersom%klitt_bg10 * ftemp( phy(lu)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
+          kexu(lu)     = params_littersom%kexu10     * ftemp( phy(lu)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" ) ! alternative: "gerten"
 
         end if
       end do
@@ -205,8 +206,8 @@ contains
       ! Moisture: Foley, 1995; Fang and Moncrieff, 1999; Gerten et al., 2004;
       !           Wania et al., 2009; Frolking et al., 2010; Spahni et al., 2012
       !-------------------------------------------------------------------------
-      ksoil_fs(lu) = params_littersom%ksoil_fs10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
-      ksoil_sl(lu) = params_littersom%ksoil_sl10 * ftemp( dtemp_soil(lu,jpngr), "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
+      ksoil_fs(lu) = params_littersom%ksoil_fs10 * ftemp( phy(lu)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
+      ksoil_sl(lu) = params_littersom%ksoil_sl10 * ftemp( phy(lu)%temp, "lloyd_and_taylor" ) * fmoist( soilphys(lu)%wscal, "foley" )     ! alternative: "gerten"
 
       !-------------------------------------------------------------------------
       ! Initialisation of decomposing pool 
@@ -214,24 +215,37 @@ contains
       !-------------------------------------------------------------------------
       dlitt = orgpool( carbon(0.0), nitrogen(0.0) ) 
 
-      !////////////////////////////////////////////////////////////////
-      ! LITTER DECAY
-      ! Collect PFT-specific litter decomposition into LU-specific 
-      ! pool 'dlitt'.
-      ! All goes to daily updated litter decomposition pool
-      !----------------------------------------------------------------
       do pft=1,npft
         if (params_pft_plant(pft)%islu(lu)) then
                         
-          dlitt_af = orgfrac( 1.0 - exp( -klitt_af(lu)), plitt_af(pft,jpngr) )
-          dlitt_as = orgfrac( 1.0 - exp( -klitt_as(lu)), plitt_as(pft,jpngr) )
-          dlitt_bg = orgfrac( 1.0 - exp( -klitt_bg(lu)), plitt_bg(pft,jpngr) )
+          !////////////////////////////////////////////////////////////////
+          ! LITTER DECAY
+          ! Collect PFT-specific litter decomposition into LU-specific 
+          ! pool 'dlitt'.
+          ! All goes to daily updated litter decomposition pool
+          !----------------------------------------------------------------
+          dlitt_af = orgfrac( 1.0 - exp( -klitt_af(lu)), plant(pft)%plitt_af )
+          dlitt_as = orgfrac( 1.0 - exp( -klitt_as(lu)), plant(pft)%plitt_as )
+          dlitt_bg = orgfrac( 1.0 - exp( -klitt_bg(lu)), plant(pft)%plitt_bg )
 
           ! Update the litter _pools
-          call orgmv( dlitt_af(pft), plitt_af(pft,jpngr), dlitt )
-          call orgmv( dlitt_as(pft), plitt_as(pft,jpngr), dlitt )
-          call orgmv( dlitt_bg(pft), plitt_bg(pft,jpngr), dlitt )
+          call orgmv( dlitt_af(pft), plant(pft)%plitt_af, dlitt )
+          call orgmv( dlitt_as(pft), plant(pft)%plitt_as, dlitt )
+          call orgmv( dlitt_bg(pft), plant(pft)%plitt_bg, dlitt )
       
+          !////////////////////////////////////////////////////////////////
+          ! EXUDATES DECAY
+          ! Calculate the exudates respiration before litter respiration.
+          ! Exudates are mostly short organic compounds (poly- and mono-
+          ! saccharides, amino acids, organic acids, phenolic compounds and
+          ! enzymes) and are quickly respired and released as CO2.
+          ! Exudates decay goes to soil respiration 'drsoil'.
+          ! This is executed after litter mineralisation as N fixation by 
+          ! free-living bacteria is driven by exudates availability.
+          !----------------------------------------------------------------                
+          dexu = cfrac( 1.0 - exp(-kexu(lu)), plant(pft)%pexud )
+          call cmv( dexu, plant(pft)%pexud, drsoil(lu) )
+
         end if
       end do
 
@@ -309,58 +323,58 @@ contains
         
         outaNimmo(lu,jpngr)             = outaNimmo(lu,jpngr) - netmin_litt  ! minus because netmin_litt < 0 for immobilisation
 
-        if (netmin_litt>0.0) then
-          !----------------------------------------------------------------    
-          ! net N mineralisation
-          !----------------------------------------------------------------    
-          pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + netmin_litt
+        ! if (netmin_litt>0.0) then
+        !   !----------------------------------------------------------------    
+        !   ! net N mineralisation
+        !   !----------------------------------------------------------------    
+        !   pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + netmin_litt
           
-        else
+        ! else
 
-          if ( (-1.0 * netmin_litt) > (pnh4(lu,jpngr)%n14 + pno3(lu,jpngr)%n14) ) print*, 'too much immo'
+        !   if ( (-1.0 * netmin_litt) > (pnh4(lu,jpngr)%n14 + pno3(lu,jpngr)%n14) ) print*, 'too much immo'
 
-          !----------------------------------------------------------------    
-          ! Immobilisation: first deplete NH4 pool
-          !----------------------------------------------------------------    
-          req = -1.0 * netmin_litt
-          avl = pnh4(lu,jpngr)%n14
+        !   !----------------------------------------------------------------    
+        !   ! Immobilisation: first deplete NH4 pool
+        !   !----------------------------------------------------------------    
+        !   req = -1.0 * netmin_litt
+        !   avl = pnh4(lu,jpngr)%n14
 
-          if (avl>=req) then
-            ! enough mineral N for immobilisation
-            pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - req
-            req = 0.0
-          else
-            ! not enough NH4 for immobilisation
-            pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - avl
-            req = req - avl
+        !   if (avl>=req) then
+        !     ! enough mineral N for immobilisation
+        !     pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - req
+        !     req = 0.0
+        !   else
+        !     ! not enough NH4 for immobilisation
+        !     pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 - avl
+        !     req = req - avl
 
-            !----------------------------------------------------------------    
-            ! Immobilisation: second deplete NO3 pool
-            !----------------------------------------------------------------    
-            avl = pno3(lu,jpngr)%n14
+        !     !----------------------------------------------------------------    
+        !     ! Immobilisation: second deplete NO3 pool
+        !     !----------------------------------------------------------------    
+        !     avl = pno3(lu,jpngr)%n14
 
-            if (avl>=req) then
-              ! enough mineral N for immobilisation
-              pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - req
-              req = 0.0
-            else
-              ! not enough NO3 for immobilisation
-              pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - avl
-              req = req - avl
+        !     if (avl>=req) then
+        !       ! enough mineral N for immobilisation
+        !       pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - req
+        !       req = 0.0
+        !     else
+        !       ! not enough NO3 for immobilisation
+        !       pno3(lu,jpngr)%n14 = pno3(lu,jpngr)%n14 - avl
+        !       req = req - avl
 
-              !----------------------------------------------------------------    
-              ! N fixation by free-living bacteria in litter to satisfy remainder
-              !----------------------------------------------------------------    
-              Nfix = req
-              ! print*,'req ', req
-              req = 0.0
-              ! stop 'could not get enough N upon immobilisation'
+        !       !----------------------------------------------------------------    
+        !       ! N fixation by free-living bacteria in litter to satisfy remainder
+        !       !----------------------------------------------------------------    
+        !       Nfix = req
+        !       ! print*,'req ', req
+        !       req = 0.0
+        !       ! stop 'could not get enough N upon immobilisation'
 
-            end if
+        !     end if
 
-          end if
+        !   end if
           
-        end if
+        ! end if
 
         ! Nreq_S (= dlitt - netmin) remains in the system: 
         call ncp( nfrac( params_littersom%fastfrac      , nitrogen(Nreq_S) ), psoil_fs(lu,jpngr)%n )
@@ -383,20 +397,6 @@ contains
       end if
 
       !////////////////////////////////////////////////////////////////
-      ! EXUDATES DECAY
-      ! Calculate the exudates respiration before litter respiration.
-      ! Exudates are mostly short organic compounds (poly- and mono-
-      ! saccharides, amino acids, organic acids, phenolic compounds and
-      ! enzymes) and are quickly respired and released as CO2.
-      ! Exudates decay goes to soil respiration 'drsoil'.
-      ! This is executed after litter mineralisation as N fixation by 
-      ! free-living bacteria is driven by exudates availability.
-      !----------------------------------------------------------------                
-      dexu = cfrac( 1.0 - exp(-kexu(lu)), pexud(lu,jpngr) )
-      call cmv( dexu, pexud(lu,jpngr), drsoil(lu) )
-
-
-      !////////////////////////////////////////////////////////////////
       ! SOIL DECAY
       !----------------------------------------------------------------
       ! Calculate daily/monthly soil decomposition to the atmosphere
@@ -416,13 +416,13 @@ contains
       drhet(lu) = cplus( drhet(lu), dsoil_fs%c, dsoil_sl%c )
 
       ! Spinup trick: use projected soil N mineralisation before soil equilibration
-      if ( interface%steering%project_nmin ) then
-        ! projected soil N mineralisation
-        if (dlitt%c%c12 > 0.0) pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + eff * dlitt%c%c12 / params_littersom%cton_soil
-      else
-        ! actual soil N mineralisation
-        pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
-      end if
+      ! if ( interface%steering%project_nmin ) then
+      !   ! projected soil N mineralisation
+      !   if (dlitt%c%c12 > 0.0) pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + eff * dlitt%c%c12 / params_littersom%cton_soil
+      ! else
+      !   ! actual soil N mineralisation
+      !   pnh4(lu,jpngr)%n14 = pnh4(lu,jpngr)%n14 + dsoil_fs%n%n14 + dsoil_sl%n%n14
+      ! end if
 
       if ( psoil_fs(lu,jpngr)%c%c12 > 0.0 .and. abs( cton( psoil_fs(lu,jpngr), default=0.0 ) - params_littersom%cton_soil ) > 1e-4 ) then
         write(0,*) 'psoil_fs', cton( psoil_fs(lu,jpngr) )
@@ -643,18 +643,19 @@ contains
   end subroutine initoutput_littersom
 
 
-  subroutine getout_annual_littersom( jpngr )
+  subroutine getout_annual_littersom( plant, jpngr )
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
     use md_interface
-    use md_plant, only: plitt_af, plitt_as, plitt_bg
+    use md_plant, only: plant_type
 
     ! arguments
+    type(plant_type), dimension(npft), intent(in) :: plant
     integer, intent(in) :: jpngr
 
     if (interface%params_siml%loutlittersom) then
-      outaclitt(:,jpngr) = plitt_af(:,jpngr)%c%c12 + plitt_as(:,jpngr)%c%c12 + plitt_bg(:,jpngr)%c%c12
+      outaclitt(:,jpngr) = plant(:)%plitt_af%c%c12 + plant(:)%plitt_as%c%c12 + plant(:)%plitt_bg%c%c12
       outacsoil(:,jpngr) = psoil_sl(:,jpngr)%c%c12 + psoil_fs(:,jpngr)%c%c12
     end if
 

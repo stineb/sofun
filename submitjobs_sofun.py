@@ -18,7 +18,16 @@ from subprocess import call
 ## - "olson"
 ## - "olson_cmodel"
 ##--------------------------------------------------------------------
-simsuite = 'ameriwue'
+## For global simulations, set simsuite to 'global'.
+## This links NetCDF input files from directories mirrored locally from
+## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
+## input directory structure required for SOFUN.
+##--------------------------------------------------------------------
+## For an example simulation (simulation name 'EXAMPLE_global'), set 
+## simsuite to 'example'. This should work after cloning this repo 
+## from github.
+##--------------------------------------------------------------------
+simsuite = 'fluxnet2015'
 
 ##--------------------------------------------------------------------
 ## set options
@@ -43,6 +52,7 @@ defaultvar = 'gpp'
 ## set model setup, given simsuite (shorter code below)
 ##--------------------------------------------------------------------
 do_cnmodel     = False
+do_gpmodel     = False
 do_pmodel      = False
 do_pmodel_swbm = False
 do_cmodel      = False
@@ -61,6 +71,10 @@ if simsuite == 'fluxnet' or simsuite == 'pmodel_test' or simsuite == 'atkinfull'
         do_pmodel_swbm = True
     else:
         do_pmodel = True
+
+## Example global P-model simulation
+if simsuite == 'example':
+    do_gpmodel = True
 
 ##--------------------------------------------------------------------
 ## in some cases use same experiment info file
@@ -89,6 +103,9 @@ elif do_cmodel:
 elif do_cnmodel:
     exe = 'runcnmodel'
     compiling_opt = 'cnmodel'
+elif do_gpmodel:
+    exe = 'rungpmodel'
+    compiling_opt = 'gpmodel'
 else:
     print 'simsuite not valid'
 
@@ -103,46 +120,54 @@ filnam_siteinfo_csv = '../input_' + simsuite + '_sofun/experiments_' + simsuite 
 if os.path.exists( filnam_siteinfo_csv ):
     print 'reading site information file ' + filnam_siteinfo_csv + '...'
     siteinfo = pandas.read_csv( filnam_siteinfo_csv )
+elif simsuite == 'example':
+    print 'Executing single example simulation...'
 else:
     print 'site info file does not exist: ' + filnam_siteinfo_csv
     
 ##--------------------------------------------------------------------
 ## Loop over site/experiment names and submit job for each site
 ##--------------------------------------------------------------------
-for index, row in siteinfo.iterrows():
+if simsuite == 'example':
 
-    ## set whether simulation should be submitted (and previous output overwritten)
-    outfil = 'output/' + row['expname'] + '.a.' + defaultvar + '.out'
-    if overwrite:
-        do_submit = True
-    else: 
-        if os.path.exists( outfil ):
-            do_submit = False
-        else:
+    ## Single example simulation, global, P-model only
+    os.system( 'echo EXAMPLE_global | ./' + exe )
+
+else:
+    for index, row in siteinfo.iterrows():
+
+        ## set whether simulation should be submitted (and previous output overwritten)
+        outfil = 'output_nc/' + row['expname'] + '.d.' + defaultvar + '.nc'
+        if overwrite:
             do_submit = True
-
-    ## select only grasslands
-    if simsuite == 'fluxnet_cmodel':
-        if row['classid'] == 'GRA':
-            print 'submitting job for site ' + row['mysitename'] + '...'
-            os.system( 'echo ' + row['mysitename'] + '| ./' + exe + '>' + row['mysitename'] + '.out' + '2>' + row['mysitename'] + '.out' )
-
-    ## normal case
-    else:
-        if do_submit:
-            print 'submitting job for experiment ' + row['expname'] + '...'
-            if out_to_file:
-                outfile = row['expname'] + '.out'
-                cmd = 'echo ' + row['expname'] + '| ./' + exe+ ' >' + outfile + ' 2>' + outfile
-                os.system( cmd )        
+        else: 
+            if os.path.exists( outfil ):
+                do_submit = False
             else:
-                cmd = 'echo ' + row['expname'] + '| ./' + exe
-                os.system( cmd )   
+                do_submit = True
 
+        ## select only grasslands
+        if simsuite == 'fluxnet_cmodel':
+            if row['classid'] == 'GRA':
+                print 'submitting job for site ' + row['mysitename'] + '...'
+                os.system( 'echo ' + row['mysitename'] + '| ./' + exe + '>' + row['mysitename'] + '.out' + '2>' + row['mysitename'] + '.out' )
+
+        ## normal case
         else:
-            print 'NOT submitting for experiment ' + row['expname'] + '...'
+            if do_submit:
+                print 'submitting job for experiment ' + row['expname'] + '...'
+                if out_to_file:
+                    outfile = row['expname'] + '.out'
+                    cmd = 'echo ' + row['expname'] + '| ./' + exe+ ' >' + outfile + ' 2>' + outfile
+                    os.system( cmd )        
+                else:
+                    cmd = 'echo ' + row['expname'] + '| ./' + exe
+                    os.system( cmd )   
 
-    # raw_input('Press any key to continue')
+            else:
+                print 'NOT submitting for experiment ' + row['expname'] + '...'
+
+        # raw_input('Press any key to continue')
 
 
 

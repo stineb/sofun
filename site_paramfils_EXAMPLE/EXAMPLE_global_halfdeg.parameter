@@ -1,14 +1,12 @@
 ###############################################################
-# PMODEL PARAMETERS
+# SITE-SPECIFIC PARAMETERS FOR THE SOFUN MODEL
 #--------------------------------------------------------------
 #                                      |
 # write value behind this position:    |->
 
-beta                                    244.033
-rd_to_vcmax                             0.015
-kphio_GrC3                              0.093
-kphio_GNC3                              0.093
-kphio_GrC4                              0.055
+filnam_landmask                         gicew_halfdeg.cdf
+filnam_topography                       WFDEI-elevation.nc
+filnam_soil                             soilfile_global_halfdeg.nc
 
 #                                      |
 # write value *behind* this position:  |->

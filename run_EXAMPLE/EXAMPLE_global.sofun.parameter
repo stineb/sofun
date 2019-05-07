@@ -1,0 +1,104 @@
+###############################################################
+# SIMULATION PARAMETERS FOR THE SOFUN MODEL
+# read in by SR getpar_siml
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+# Standard site name (reading <sitename>.parameter)
+sitename                                EXAMPLE_global_halfdeg
+
+# Model spinup setting
+spinup                                  .true.
+spinupyears                             5
+recycle                                 1
+
+# Start and length of simulation in years (AD)
+firstyeartrend                          1982
+nyeartrend                              30
+
+# Model parameter file (not PFT-specific)
+modparfil                               params_modl.dat
+
+# input files
+input_dir                               /alphadata01/bstocker/sofun/trunk/input/
+co2_forcing_file                        cCO2_rcp85_const850-1765.dat
+ndep_noy_forcing_file                   XXXnoydepfilnamXXX
+ndep_nhx_forcing_file                   XXXnhxdepfilnamXXX
+nfert_noy_forcing_file                  XXXnoyfertfilnamXXX
+nfert_nhx_forcing_file                  XXXnhxfertfilnamXXX
+do_grharvest_forcing_file               XXXgrharvestfilnamXXX
+
+# Select one of 'fapar3g', 'evi_modis', or 'fpar_modis' (not implemented)
+fapar_forcing_source                    fapar3g
+
+# switch for applying soil moisture stress function on GPP
+soilmstress                             .false.
+
+# switches for reading data in as forcing or calculating it online
+in_netrad                               .false.
+in_ppfd                                 .true.
+
+# switches for constant environmental boundary conditions
+const_clim_year                         -9999
+const_lu_year                           -9999
+const_co2_year                          -9999
+const_ndep_year                         -9999
+const_nfert_year                        -9999
+
+# limit period for which daily output is written
+daily_out_startyr                       2001
+daily_out_endyr                         2011
+
+# NetCDF output periodicity (d)
+outdt                                   1
+
+# boolean defining which PFTs to include (lpft1: pftcode=1)
+lTeBE                                   .false.
+lTeBS                                   .false.
+lGrC3                                   .true.
+lGNC3                                   .false.
+lGrC4                                   .false.
+
+# Variables written to ascii output (core)
+loutdgpp                                .false.
+loutdrd                                 .false.
+loutdtransp                             .false.
+loutdnpp                                .false.
+loutdnup                                .false.
+loutdcex                                .false.
+loutdCleaf                              .false.
+loutdCroot                              .false.
+loutdClabl                              .false.
+loutdNlabl                              .false.
+loutdClitt                              .false.
+loutdNlitt                              .false.
+loutdCsoil                              .false.
+loutdNsoil                              .false.
+loutdlai                                .false.
+loutdfapar                              .false.
+loutdninorg                             .false.
+loutdtemp_soil                          .false.
+loutdtemp                               .false.
+
+# Variables written to NetCDF output (core)
+lncoutdtemp                             .false.
+lncoutdfapar                            .false.
+lncoutdgpp                              .false. 
+lncoutwaterbal                          .false. 
+
+# Variables written to output by module
+loutplant                               .true.
+loutalloc                               .false.
+loutgpp                                 .false.
+loutnpp                                 .false.
+loutwaterbal                            .true.
+loutntransform                          .false.
+loutnuptake                             .false.
+loutlittersom                           .false.
+loutlanduse                             .false.
+loutforcing                             .false.
+
+#                                      |
+# write value behind this position:    |->
+## EOF 

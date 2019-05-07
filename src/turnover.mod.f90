@@ -27,22 +27,33 @@ module md_turnover
   implicit none
 
   private
-  public turnover, turnover_root, turnover_leaf, turnover_labl
+  public turnover, turnover_root, turnover_leaf, turnover_labl, initoutput_turnover
+
+  !----------------------------------------------------------------
+  ! Module-specific output variables
+  !----------------------------------------------------------------
+  real, dimension(:,:), allocatable :: outaCveg2lit
+  real, dimension(:,:), allocatable :: outaNveg2lit
 
 contains
 
-  subroutine turnover( jpngr, doy )
+  subroutine turnover( plant, out_pmodel, solar, temppheno )
     !////////////////////////////////////////////////////////////////
     !  Annual vegetation biomass turnover, called at the end of the
     !  year.
     !----------------------------------------------------------------
     use md_classdefs
-    use md_params_core, only: npft, eps
-    use md_phenology, only: shedleaves
+    use md_params_core, only: npft, eps, nmonth
+    use md_plant, only: plant_type
+    use md_waterbal, only: solartype
+    use md_gpp, only: outtype_pmodel
+    use md_phenology, only: temppheno_type
 
     ! arguments
-    integer, intent(in) :: jpngr
-    integer, intent(in) :: doy
+    type( plant_type ), dimension(npft), intent(inout)         :: plant ! npft counts over PFTs in all land units (tiles)
+    type( outtype_pmodel ), dimension(npft,nmonth), intent(in) :: out_pmodel
+    type( solartype ), intent(in)                              :: solar
+    type(temppheno_type), dimension(npft), intent(in)          :: temppheno
 
     ! local variables
     integer :: pft
@@ -50,6 +61,7 @@ contains
     real :: dlabl
     real :: dleaf
     real :: droot
+    ! real :: balance
 
     ! xxx verbose
     logical, parameter :: verbose = .false.
@@ -57,8 +69,8 @@ contains
 
     do pft=1,npft
 
-      if (plabl(pft,jpngr)%c%c12 < -1.0*eps) stop 'before turnover labile C is neg.'
-      if (plabl(pft,jpngr)%n%n14 < -1.0*eps) stop 'before turnover labile N is neg.'
+      if (plant(pft)%plabl%c%c12 < -1.0*eps) stop 'before turnover labile C is neg.'
+      if (plant(pft)%plabl%n%n14 < -1.0*eps) stop 'before turnover labile N is neg.'
 
       !--------------------------------------------------------------
       ! Get turnover fractions
@@ -68,7 +80,9 @@ contains
       !--------------------------------------------------------------
       if (params_pft_plant(pft)%grass) then
 
-        if (shedleaves(doy,pft)) then
+        ! balance = plant_fluxes(pft)%dnpp%c12 - plant_fluxes(pft)%dcex
+
+        if (temppheno(pft)%shedleaves) then
 
           droot = 1.0
           dleaf = 1.0
@@ -79,11 +93,11 @@ contains
         else
 
           ! Increase turnover rate towards high LAI ( when using non-zero value for k_decay_leaf_width, e.g. 0.08 )
-          dleaf =  (lai_ind(pft,jpngr)*params_pft_plant(pft)%k_decay_leaf_width)**8 + params_pft_plant(pft)%k_decay_leaf_base
+          dleaf =  ( plant(pft)%lai_ind * params_pft_plant(pft)%k_decay_leaf_width )**8 + params_pft_plant(pft)%k_decay_leaf_base
 
           ! constant turnover rate
           droot = params_pft_plant(pft)%k_decay_root
-          dlabl = params_pft_plant(pft)%k_decay_labl
+          dlabl = 0.0 !    params_pft_plant(pft)%k_decay_labl
 
         end if
 
@@ -98,25 +112,25 @@ contains
       !--------------------------------------------------------------
       if (verbose) print*, 'calling turnover_leaf() ... '
       if (verbose) print*, '              with state variables:'
-      if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
-      if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
-      if (verbose) orgtmp  =  pleaf(pft,jpngr)
-      if (verbose) orgtmp2 =  plitt_af(pft,jpngr)
+      if (verbose) print*, '              pleaf = ', plant(pft)%pleaf
+      if (verbose) print*, '              plitt = ', plant(pft)%plitt_af
+      if (verbose) orgtmp  =  plant(pft)%pleaf
+      if (verbose) orgtmp2 =  plant(pft)%plitt_af
       !--------------------------------------------------------------
-      if ( dleaf>0.0 )                 call turnover_leaf( dleaf, pft, jpngr )
+      if ( dleaf>0.0 ) call turnover_leaf( dleaf, plant(pft), out_pmodel(pft,:), solar, pft ) !, jpngr
       !--------------------------------------------------------------
       if (verbose) print*, '              ==> returned: '
-      if (verbose) print*, '              pleaf = ', pleaf(:,jpngr)
-      if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
+      if (verbose) print*, '              pleaf = ', plant(pft)%pleaf
+      if (verbose) print*, '              plitt = ', plant(pft)%plitt_af
       if (verbose) print*, '              --- balance: '
       if (verbose) print*, '                  dlitt - dleaf                = ',  orgminus( &
                                                                                     orgminus( &
-                                                                                      plitt_af(pft,jpngr), &
+                                                                                      plant(pft)%plitt_af, &
                                                                                       orgtmp2 &
                                                                                       ), &
                                                                                     orgminus( &
                                                                                       orgtmp, &
-                                                                                      pleaf(pft,jpngr) &
+                                                                                      plant(pft)%pleaf &
                                                                                       ) &
                                                                                     )
 
@@ -125,25 +139,25 @@ contains
       !--------------------------------------------------------------
       if (verbose) print*, 'calling turnover_root() ... '
       if (verbose) print*, '              with state variables:'
-      if (verbose) print*, '              pleaf = ', proot(:,jpngr)
-      if (verbose) print*, '              plitt = ', plitt_bg(pft,jpngr)
-      if (verbose) orgtmp  =  proot(pft,jpngr)
-      if (verbose) orgtmp2 =  plitt_bg(pft,jpngr)
+      if (verbose) print*, '              pleaf = ', plant(pft)%proot
+      if (verbose) print*, '              plitt = ', plant(pft)%plitt_bg
+      if (verbose) orgtmp  =  plant(pft)%proot
+      if (verbose) orgtmp2 =  plant(pft)%plitt_bg
       !--------------------------------------------------------------
-      if ( droot>0.0 )                 call turnover_root( droot, pft, jpngr )
+      if ( droot>0.0 ) call turnover_root( droot, plant(pft) )  ! pft, jpngr
       !--------------------------------------------------------------
       if (verbose) print*, '              ==> returned: '
-      if (verbose) print*, '              proot = ', proot(:,jpngr)
-      if (verbose) print*, '              plitt = ', plitt_bg(pft,jpngr)
+      if (verbose) print*, '              proot = ', plant(pft)%proot
+      if (verbose) print*, '              plitt = ', plant(pft)%plitt_bg
       if (verbose) print*, '              --- balance: '
       if (verbose) print*, '                  dlitt - droot                = ',  orgminus( &
                                                                                     orgminus( &
-                                                                                      plitt_bg(pft,jpngr), &
+                                                                                      plant(pft)%plitt_bg, &
                                                                                       orgtmp2 &
                                                                                       ), &
                                                                                     orgminus( &
                                                                                       orgtmp, &
-                                                                                      proot(pft,jpngr) &
+                                                                                      plant(pft)%proot &
                                                                                       ) &
                                                                                     )
 
@@ -152,25 +166,25 @@ contains
       !--------------------------------------------------------------
       if (verbose) print*, 'calling turnover_root() ... '
       if (verbose) print*, '              with state variables:'
-      if (verbose) print*, '              pleaf = ', plabl(:,jpngr)
-      if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
-      if (verbose) orgtmp  =  plabl(pft,jpngr)
-      if (verbose) orgtmp2 =  plitt_af(pft,jpngr)
+      if (verbose) print*, '              pleaf = ', plant(:)%plabl
+      if (verbose) print*, '              plitt = ', plant(pft)%plitt_af
+      if (verbose) orgtmp  =  plant(pft)%plabl
+      if (verbose) orgtmp2 =  plant(pft)%plitt_af
       !--------------------------------------------------------------
-      if ( dlabl>0.0 )                 call turnover_labl( dlabl, pft, jpngr )
+      if ( dlabl>0.0 ) call turnover_labl( dlabl, plant(pft) )  !  pft, jpngr
       !--------------------------------------------------------------
       if (verbose) print*, '              ==> returned: '
-      if (verbose) print*, '              plabl = ', plabl(:,jpngr)
-      if (verbose) print*, '              plitt = ', plitt_af(pft,jpngr)
+      if (verbose) print*, '              plabl = ', plant(:)%plabl
+      if (verbose) print*, '              plitt = ', plant(pft)%plitt_af
       if (verbose) print*, '              --- balance: '
       if (verbose) print*, '                  dlitt - dlabl                = ',  orgminus( &
                                                                                     orgminus( &
-                                                                                      plitt_af(pft,jpngr), &
+                                                                                      plant(pft)%plitt_af, &
                                                                                       orgtmp2 &
                                                                                       ), &
                                                                                     orgminus( &
                                                                                       orgtmp, &
-                                                                                      proot(pft,jpngr) &
+                                                                                      plant(pft)%proot &
                                                                                       ) &
                                                                                     )
     enddo                     !pft
@@ -178,18 +192,21 @@ contains
   end subroutine turnover
 
 
-  subroutine turnover_leaf( dleaf, pft, jpngr )
+  subroutine turnover_leaf( dleaf, plant, out_pmodel, solar, pft )  ! pft, jpngr
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction dleaf for leaf pool
     !------------------------------------------------------------------
-    use md_params_core, only: eps
-    use md_waterbal, only: solar
-    use md_gpp, only: out_pmodel
+    use md_params_core, only: npft, eps, nmonth
+    use md_waterbal, only: solartype
+    use md_gpp, only: outtype_pmodel
+    use md_plant, only: plant_type, get_fapar
 
     ! arguments
     real, intent(in)    :: dleaf
+    type( plant_type ), intent(inout)  :: plant ! npft counts over PFTs in all land units (tiles)
+    type( outtype_pmodel ), dimension(nmonth), intent(in) :: out_pmodel
+    type( solartype ), intent(in)      :: solar
     integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
 
     ! local variables
     type(orgpool) :: lm_turn
@@ -206,22 +223,26 @@ contains
     nitr = 0
 
     ! store leaf C and N before turnover
-    lm_init = pleaf(pft,jpngr)
+    lm_init = plant%pleaf
+
 
     ! reduce leaf C (given by turnover rate)
-    cleaf = ( 1.0 - dleaf ) *  pleaf(pft,jpngr)%c%c12
+    cleaf = ( 1.0 - dleaf ) *  plant%pleaf%c%c12
 
     ! get new LAI based on cleaf
-    lai_new = get_lai( pft, cleaf, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+    ! print*,'IN TURNOVER: out_pmodel(:)%actnv_unitiabs:'
+    ! print*,out_pmodel(:)%actnv_unitiabs
+    lai_new = get_lai( pft, cleaf, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
 
     ! update canopy state (only variable fAPAR so far implemented)
-    canopy(pft) = get_canopy( lai_new )
+    plant%fapar_ind = get_fapar( lai_new )
 
     ! re-calculate metabolic and structural N, given new LAI and fAPAR
-    leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+    call update_leaftraits( plant, pft, lai_new, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
+    ! leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel%actnv_unitiabs )
 
     ! get updated leaf N
-    nleaf = leaftraits(pft)%narea_canopy
+    nleaf = plant%narea_canopy
 
     do while ( nleaf > lm_init%n%n14 )
 
@@ -231,32 +252,33 @@ contains
       cleaf = cleaf * lm_init%n%n14 / nleaf
 
       ! get new LAI based on cleaf
-      lai_new = get_lai( pft, cleaf, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+      lai_new = get_lai( pft, cleaf, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
 
       ! update canopy state (only variable fAPAR so far implemented)
-      canopy(pft) = get_canopy( lai_new )
+      plant%fapar_ind = get_fapar( lai_new )
 
       ! re-calculate metabolic and structural N, given new LAI and fAPAR
-      leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
+      call update_leaftraits( plant, pft, lai_new, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
+      ! leaftraits(pft) = get_leaftraits( pft, lai_new, solar%meanmppfd(:), out_pmodel(:)%actnv_unitiabs )
 
       ! get updated leaf N
-      nleaf = leaftraits(pft)%narea_canopy
+      nleaf = plant%narea_canopy
 
       if (nitr>30) exit
 
     end do
 
-    if (nitr>0) print*,'no. of iterations ', nitr
-    if (nitr>0) print*,'final reduction of leaf C ', cleaf / lm_init%c%c12
-    if (nitr>0) print*,'final reduction of leaf N ', nleaf / lm_init%n%n14
+    ! if (nitr>0) print*,'no. of iterations ', nitr
+    ! if (nitr>0) print*,'final reduction of leaf C ', cleaf / lm_init%c%c12
+    ! if (nitr>0) print*,'final reduction of leaf N ', nleaf / lm_init%n%n14
 
     ! update 
-    lai_ind(pft,jpngr) = lai_new
-    pleaf(pft,jpngr)%c%c12 = cleaf
-    pleaf(pft,jpngr)%n%n14 = nleaf
+    plant%lai_ind = lai_new
+    plant%pleaf%c%c12 = cleaf
+    plant%pleaf%n%n14 = nleaf
 
     ! determine C and N turned over
-    lm_turn = orgminus( lm_init, pleaf(pft,jpngr) )
+    lm_turn = orgminus( lm_init, plant%pleaf )
 
     if ( lm_turn%c%c12 < -1.0*eps ) then
       stop 'negative turnover C'
@@ -270,75 +292,107 @@ contains
     end if
 
     ! add all organic (fixed) C to litter
-    call cmvRec( lm_turn%c, lm_turn%c, plitt_af(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
-    ! call cmv( lm_turn%c, lm_turn%c, plitt_af(pft,jpngr)%c, scale=nind(pft,jpngr) )
+    ! call cmvRec( lm_turn%c, lm_turn%c, plant%plitt_af%c, outaCveg2lit(pft,jpngr), scale=plant%nind)
+    call cmv( lm_turn%c, lm_turn%c, plant%plitt_af%c, scale=plant%nind )
 
     ! retain fraction of N
-    call nmv( nfrac( params_plant%f_nretain, lm_turn%n ), lm_turn%n, plabl(pft,jpngr)%n )
+    call nmv( nfrac( params_plant%f_nretain, lm_turn%n ), lm_turn%n, plant%plabl%n )
 
     ! rest goes to litter
-    call nmvRec( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
-    ! call nmv( lm_turn%n, lm_turn%n, plitt_af(pft,jpngr)%n, scale=nind(pft,jpngr) )
+    ! call nmvRec( lm_turn%n, lm_turn%n, plant%plitt_af%n, outaNveg2lit(pft,jpngr), scale=plant%nind )
+    call nmv( lm_turn%n, lm_turn%n, plant%plitt_af%n, scale=plant%nind )
 
   end subroutine turnover_leaf
 
 
-  subroutine turnover_root( droot, pft, jpngr )
+  subroutine turnover_root( droot, plant ) ! pft, jpngr
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction droot for root pool
     !------------------------------------------------------------------
+    use md_plant, only: plant_type
+
     ! arguments
     real, intent(in)    :: droot
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
+    type( plant_type ), intent(inout) :: plant ! npft counts over PFTs in all land units (tiles)
+    ! integer, intent(in) :: pft
+    ! integer, intent(in) :: jpngr
 
     ! local variables
     type(orgpool) :: rm_turn
 
     ! determine absolute turnover
-    rm_turn = orgfrac( droot, proot(pft,jpngr) ) ! root turnover
+    rm_turn = orgfrac( droot, plant%proot ) ! root turnover
 
     ! reduce leaf mass and root mass
-    call orgsub( rm_turn, proot(pft,jpngr) )
+    call orgsub( rm_turn, plant%proot )
 
     ! add all organic (fixed) C to litter
-    call cmvRec( rm_turn%c, rm_turn%c, plitt_bg(pft,jpngr)%c, outaCveg2lit(pft,jpngr), scale=nind(pft,jpngr))
-    ! call cmv( rm_turn%c, rm_turn%c, plitt_bg(pft,jpngr)%c, scale=nind(pft,jpngr))
+    ! call cmvRec( rm_turn%c, rm_turn%c, plant%plitt_bg%c, outaCveg2lit(pft,jpngr), scale=plant%nind)
+    call cmv( rm_turn%c, rm_turn%c, plant%plitt_bg%c, scale=plant%nind)
 
     ! retain fraction of N
-    call nmv( nfrac( params_plant%f_nretain, rm_turn%n ), rm_turn%n, plabl(pft,jpngr)%n )
+    call nmv( nfrac( params_plant%f_nretain, rm_turn%n ), rm_turn%n, plant%plabl%n )
 
     ! rest goes to litter
-    call nmvRec( rm_turn%n, rm_turn%n, plitt_bg(pft,jpngr)%n, outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
-    ! call nmv( rm_turn%n, rm_turn%n, plitt_bg(pft,jpngr)%n, scale=nind(pft,jpngr) )
+    ! call nmvRec( rm_turn%n, rm_turn%n, plant%plitt_bg%n, outaNveg2lit(pft,jpngr), scale=plant%nind )
+    call nmv( rm_turn%n, rm_turn%n, plant%plitt_bg%n, scale=plant%nind )
 
   end subroutine turnover_root
 
 
-  subroutine turnover_labl( dlabl, pft, jpngr )
+  subroutine turnover_labl( dlabl, plant ) ! pft, jpngr
     !//////////////////////////////////////////////////////////////////
     ! Execute turnover of fraction dlabl for labl pool
     !------------------------------------------------------------------
+    use md_plant, only: plant_type
+
     ! arguments
     real, intent(in)    :: dlabl
-    integer, intent(in) :: pft
-    integer, intent(in) :: jpngr
+    type( plant_type ), intent(inout) :: plant ! npft counts over PFTs in all land units (tiles)
+    ! integer, intent(in) :: pft
+    ! integer, intent(in) :: jpngr
 
     ! local variables
     type(orgpool) :: lb_turn
 
     ! detelbine absolute turnover
-    lb_turn = orgfrac( dlabl, plabl(pft,jpngr) ) ! labl turnover
+    lb_turn = orgfrac( dlabl, plant%plabl ) ! labl turnover
 
     !! xxx think of something more plausible to put the labile C and N to
 
     ! reduce leaf mass and labl mass
-    call orgsub( lb_turn, plabl(pft,jpngr) )
+    call orgsub( lb_turn, plant%plabl )
 
-    call orgmvRec( lb_turn, lb_turn, plitt_af(pft,jpngr), outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr), scale=nind(pft,jpngr) )
-
+    ! call orgmvRec( lb_turn, lb_turn, plant%plitt_af, outaCveg2lit(pft,jpngr), outaNveg2lit(pft,jpngr), scale=plant%nind )
+    call orgmv( lb_turn, lb_turn, plant%plitt_af, scale=plant%nind )
 
   end subroutine turnover_labl
 
+
+  subroutine initoutput_turnover( ngridcells )
+    !////////////////////////////////////////////////////////////////
+    ! Initialises all daily variables with zero.
+    ! Called at the beginning of each year by 'biosphere'.
+    !----------------------------------------------------------------
+    use md_interface, only: interface
+    use md_params_core, only: npft
+
+    ! arguments
+    integer, intent(in) :: ngridcells
+    
+    ! annual output variables
+    if (interface%params_siml%loutturnover) then
+
+      if (interface%steering%init) then
+        allocate( outaCveg2lit(npft,ngridcells) )
+        allocate( outaCveg2lit(npft,ngridcells) )
+      end if
+      
+      outaCveg2lit(:,:) = 0.0
+      outaCveg2lit(:,:) = 0.0
+
+    end if
+
+  end subroutine initoutput_turnover
 
 end module md_turnover

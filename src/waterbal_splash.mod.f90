@@ -16,33 +16,34 @@ module md_waterbal
   ! updated by 'waterbal') are:
   !   - daytime net radiation ('rn')
   !   - soil water conent ('psoilphys%wcont')
-  !   - runoff ('soilphys%ro')
+  !   - runoff ('soilphys%dro')
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   ! ...
   !----------------------------------------------------------------
-  use md_params_core, only: ndayyear, nmonth, nlu, maxgrid
+  use md_params_core, only: ndayyear, nmonth, nlu, maxgrid, kTo, kR, kMv, kMa, kfFEC
 
   implicit none
 
   private
-  public solartype, soilphys, evap, waterbal, getsolar,                &
-    initdaily_waterbal, initio_waterbal,                               &
+  public solartype, evap, waterbal, getsolar,                          &
     getout_daily_waterbal, initoutput_waterbal,                        &
-    getpar_modl_waterbal, writeout_ascii_waterbal
+    getpar_modl_waterbal, initio_nc_waterbal, &
+    writeout_nc_waterbal, get_rlm_waterbal, init_rlm_waterbal, getrlm_daily_waterbal
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
-  ! Collection of physical soil variables used across modules
-  type soilphystype
-    real :: ro         ! daily runoff (mm)
-    real :: sw         ! evaporative supply rate (mm/h)
-    real :: wscal      ! water filled pore space (unitless)
-    real :: fleach     ! NO3 leaching fraction (unitless)
-  end type soilphystype
+  ! ! Collection of physical soil variables used across modules
+  ! type soilphystype
+  !   real :: ro           ! daily runoff (mm)
+  !   real :: sw           ! evaporative supply rate (mm/h)
+  !   real :: wscal        ! water filled pore space (unitless)
+  !   real :: fleach       ! NO3 leaching fraction (unitless)
+  !   ! real :: soilmstress  ! soil moisture stress factor (unitless)
+  ! end type soilphystype
 
-  type( soilphystype ), dimension(nlu) :: soilphys(nlu)
+  ! type( soilphystype ), dimension(nlu) :: soilphys(nlu)
 
   ! Collection of solar radiation-related variables used across modules
   ! Variables are a function of latitude, elevation, and 
@@ -54,23 +55,6 @@ module md_waterbal
     real, dimension(nmonth)   :: mppfd       ! monthly total PPFD (mol m-2 month-1)
     real, dimension(nmonth)   :: meanmppfd   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
   end type solartype
-
-  !----------------------------------------------------------------
-  ! Module-specific output variables
-  !----------------------------------------------------------------
-  real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
-  real, allocatable, dimension(:,:)   :: outdra             ! daily solar irradiation, J/m2
-  real, allocatable, dimension(:,:)   :: outdrn             ! daily net radiation, J/m2
-  real, allocatable, dimension(:,:)   :: outdppfd           ! daily PPFD, mol/m2
-  real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
-  real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
-  real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
-  real, allocatable, dimension(:,:,:) :: outdfleach         ! daily NO3 leaching fraction, (unitless)
-  real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
-  real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm r J/m2/d depending on 'outenergy'
-  real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm or J/m2/d depending on 'outenergy'
-  real, allocatable, dimension(:,:,:) :: outdcpa            ! daily Cramer-Prentice-Alpha, (unitless)
-  real, allocatable, dimension(:,:)   :: outdecon           ! daily water-to-energy conversion factor m TJ-1 = mm GJ-1
 
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
@@ -84,16 +68,7 @@ module md_waterbal
   real :: kd                ! angular coefficient of transmittivity (Linacre, 1968)
   real :: ke                ! eccentricity for 2000 CE (Berger, 1978)
   real :: keps              ! obliquity for 2000 CE, degrees (Berger, 1978)
-  real :: kfFEC             ! from flux to energy conversion, umol/J (Meek et al., 1984)
-  real :: kG                ! gravitational acceleration, m/s^2 (Allen, 1973)
   real :: kGsc              ! solar constant, W/m^2 (Kopp & Lean, 2011)
-  real :: kL                ! temperature lapse rate, K/m (Cavcar, 2000)
-  real :: kMa               ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
-  real :: kMv               ! molecular weight of water vapor, kg/mol (Tsilingiris, 2008)
-  real :: kPo               ! standard atmosphere, Pa (Allen, 1973)
-  real :: kR                ! gas constant, J/mol/K (Allen, 1973)
-  real :: kTo               ! base temperature, K (Prentice, unpublished)
-  real :: kWm               ! soil moisture capacity, mm (Cramer & Prentice, 1988)
   real :: kw                ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
   real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
 
@@ -130,26 +105,88 @@ module md_waterbal
   ! MODULE-SPECIFIC, KNOWN PARAMETERS
   !----------------------------------------------------------------
   real, parameter :: secs_per_day = 86400.0
-  logical :: outenergy = .true.
+  logical :: outenergy = .false.
+
+  !----------------------------------------------------------------
+  ! Module-specific rolling mean variables
+  !----------------------------------------------------------------
+  ! real, allocatable, dimension(:,:), save :: rlmalpha       ! rolling mean of annual mean alpha (AET/PET)
+  integer, parameter :: nyrs_rlmalpha = 5                   ! number of years for rolling mean (=width of sliding window)
+
+  !----------------------------------------------------------------
+  ! Module-specific output variables, daily
+  !----------------------------------------------------------------
+  real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm r J/m2/d depending on 'outenergy'
+  real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm or J/m2/d depending on 'outenergy'
+  real, allocatable, dimension(:,:,:) :: outdalpha            ! daily Cramer-Prentice-Alpha, (unitless)
+  real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
+  ! real, allocatable, dimension(:,:)   :: outdra             ! daily solar irradiation, J/m2
+  ! real, allocatable, dimension(:,:)   :: outdrn             ! daily net radiation, J/m2
+  ! real, allocatable, dimension(:,:)   :: outdalpha           ! daily PPFD, mol/m2
+  ! real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
+  ! real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
+  ! real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
+  ! real, allocatable, dimension(:,:,:) :: outdfleach         ! daily NO3 leaching fraction, (unitless)
+  ! real, allocatable, dimension(:,:)   :: outdeet            ! daily equilibrium ET, mm
+  ! real, allocatable, dimension(:,:)   :: outdecon           ! daily water-to-energy conversion factor m TJ-1 = mm GJ-1
+
+  !----------------------------------------------------------------
+  ! Module-specific output variables, annual
+  !----------------------------------------------------------------
+  real, allocatable, dimension(:)     :: outapet            ! annual total potential ET, mm r J/m2/yr depending on 'outenergy'
+  real, allocatable, dimension(:,:)   :: outaaet            ! annual total actual ET, mm or J/m2/yr depending on 'outenergy'
+  real, allocatable, dimension(:,:)   :: outaalpha          ! annual mean AET/PET (of daily values!), unitless
+
+  !----------------------------------------------------------------
+  ! Module-specific variables for rolling annual mean calculations
+  !----------------------------------------------------------------
+  real, allocatable, dimension(:,:)   :: rlmalpha
+
+  !----------------------------------------------------------------
+  ! Module-specific NetCDF output file and variable names
+  !----------------------------------------------------------------
+  ! Annual output files
+  character(len=256) :: ncoutfilnam_apet
+  character(len=256) :: ncoutfilnam_aaet
+  character(len=256) :: ncoutfilnam_aalpha
+
+  ! Daily output files
+  character(len=256) :: ncoutfilnam_dwcont
+  character(len=256) :: ncoutfilnam_dalpha
+  character(len=256) :: ncoutfilnam_dpet
+  character(len=256) :: ncoutfilnam_daet
+
+  character(len=*), parameter :: WCONT_NAME="wcont"
+  character(len=*), parameter :: PET_NAME="pet"
+  character(len=*), parameter :: AET_NAME="aet"
+  character(len=*), parameter :: ALPHA_NAME="alpha"
+
+  character(len=7) :: in_ppfd       ! information whether PPFD is prescribed from meteo file for global attribute in NetCDF file
 
 contains
 
-  subroutine waterbal( phy, doy, lat, elv, pr, tc, sf, netrad )
+  subroutine waterbal( soil, tile_fluxes, doy, jpngr, lat, elv, pr, tc, sf, netrad, splashtest, lev_splashtest, testdoy )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
-    use md_params_core, only: ndayyear, ndaymonth, nlu
-    use md_tile, only: psoilphystype
+    use md_params_core, only: ndayyear, ndaymonth, nlu, dummy
+    use md_tile, only: soil_type, tile_fluxes_type
 
     ! arguments
-    type( psoilphystype ), dimension(nlu), intent(inout) :: phy
-    integer, intent(in)                                  :: doy    ! day of year
-    real, intent(in)                                     :: lat    ! latitude (degrees)
-    real, intent(in)                                     :: elv    ! altitude (m)
-    real, intent(in)                                     :: pr     ! daily precip (mm) 
-    real, intent(in)                                     :: tc     ! mean monthly temperature (deg C)
-    real, intent(in)                                     :: sf     ! mean monthly sunshine fraction (unitless)
-    real, intent(in)                                     :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
+    type( soil_type ), dimension(nlu), intent(inout)        :: soil
+    type( tile_fluxes_type ), dimension(nlu), intent(inout) :: tile_fluxes
+    integer, intent(in)                                     :: doy    ! day of year
+    integer, intent(in)                                     :: jpngr  ! gridcell number
+    real, intent(in)                                        :: lat    ! latitude (degrees)
+    real, intent(in)                                        :: elv    ! altitude (m)
+    real, intent(in)                                        :: pr     ! daily precip (mm) 
+    real, intent(in)                                        :: tc     ! mean monthly temperature (deg C)
+    real, intent(in)                                        :: sf     ! mean monthly sunshine fraction (unitless)
+    real, intent(in)                                        :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
+
+    logical, intent(in) :: splashtest
+    integer, intent(in) :: lev_splashtest
+    integer, intent(in) :: testdoy
 
     ! local variables
     integer :: lu                        ! land unit (gridcell tile)
@@ -157,68 +194,103 @@ contains
     integer :: idx                       ! day of year corresponding to yesterday
     integer :: dm                        ! day of month
 
+    ! for the case netrad is prescribed following SWBM
+    real, parameter :: beta = 0.66
+    real, parameter :: exp_et = 0.06
+
     ! xxx debug
     integer, save :: leaching_events = 0
 
-    ! Reset monthly totals
-    !call initmonthly
+    real, parameter :: sf_splashtest = 0.562000036
+    real, parameter :: tc_splashtest = -40.2450562
+    real, parameter :: sw_splashtest = 0.573677897
+
+    if (splashtest) then
+      print*,'sf_splashtest ', sf_splashtest
+      print*,'tc_splashtest ', tc_splashtest
+      print*,'sw_splashtest ', sw_splashtest
+    end if
 
     ! Loop over gricell tiles
     do lu=1,nlu
 
       ! Calculate evaporative supply rate, mm/h
-      soilphys(lu)%sw = kCw * phy(lu)%wcont / kWm
+      ! print*,'1'
+      tile_fluxes(lu)%sw = kCw * soil(lu)%phy%wcont / soil(lu)%params%whc
 
       ! Calculate radiation and evaporation quantities
-      ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soilphys(lu)%sw
-      evap(lu) = getevap( lat, doy, elv, sf, tc, soilphys(lu)%sw, netrad )
-      ! print*,'... done'
+      ! print*,'2'
+      if (splashtest) then
+        evap(lu) = getevap( lat=67.25, doy=55, elv=87.0, sf=sf_splashtest, tc=tc_splashtest, sw=sw_splashtest, netrad=netrad, splashtest=splashtest, testdoy=testdoy )
+        if (lev_splashtest==2) stop 'end of splash test level 2'
+      else
+        ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
+        evap(lu) = getevap( lat, doy, elv, sf, tc, tile_fluxes(lu)%sw, netrad, splashtest, testdoy )
+        ! print*,'... done'
+      end if
+
+      if (netrad/=dummy) then
+        ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ! 21. Estimate daily AET (out_evap%aet), mm d-1
+        ! WARNING: This follows SWBM not SPLASH
+        ! Needs to be done here because wcont is not available in getevap()
+        ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ! calculate actual ET from potential ET and Eq. 2 in Orth et al., 2013, limited to <=1
+        evap(lu)%aet = evap(lu)%pet * beta * min( 1.0, ( soil(lu)%phy%wcont / soil(lu)%params%whc )**exp_et )
+        ! print*,'aet: ', evap(lu)%aet
+
+        evap(lu)%cpa = max( 0.0, evap(lu)%aet / evap(lu)%eet )
+
+      end if
 
       ! Update soil moisture
-      phy(lu)%wcont = phy(lu)%wcont + pr + evap(lu)%cn - evap(lu)%aet
+      soil(lu)%phy%wcont = soil(lu)%phy%wcont + pr + evap(lu)%cn - evap(lu)%aet
 
       ! Bucket model for runoff generation
-      if (phy(lu)%wcont>kWm) then
+      ! print*,'3'
+      if (soil(lu)%phy%wcont>soil(lu)%params%whc) then
         ! -----------------------------------
         ! Bucket is full 
         ! -----------------------------------
         ! * determine NO3 leaching fraction 
-        soilphys(lu)%fleach = 1.0 - kWm / phy(lu)%wcont
-        ! print*,'fleach ', soilphys(lu)%fleach
+        tile_fluxes(lu)%dfleach = 1.0 - soil(lu)%params%whc / soil(lu)%phy%wcont
+        ! print*,'4'
+        ! print*,'fleach ', tile_fluxes(lu)%dfleach
         ! leaching_events = leaching_events + 1
 
         ! * add remaining water to monthly runoff total
-        soilphys(lu)%ro = phy(lu)%wcont - kWm
+        tile_fluxes(lu)%dro = soil(lu)%phy%wcont - soil(lu)%params%whc
 
         ! * set soil moisture to capacity
-        phy(lu)%wcont = kWm
+        soil(lu)%phy%wcont = soil(lu)%params%whc
 
-      elseif (phy(lu)%wcont<0.0) then
+      elseif (soil(lu)%phy%wcont<0.0) then
         ! -----------------------------------
         ! Bucket is empty
         ! -----------------------------------
         ! * set soil moisture to zero
-        evap(lu)%aet              = evap(lu)%aet + phy(lu)%wcont
-        phy(lu)%wcont = 0.0
-        soilphys(lu)%ro           = 0.0
-        soilphys(lu)%fleach       = 0.0
+        evap(lu)%aet              = evap(lu)%aet + soil(lu)%phy%wcont
+        soil(lu)%phy%wcont             = 0.0
+        tile_fluxes(lu)%dro           = 0.0
+        tile_fluxes(lu)%dfleach       = 0.0
 
       else
         ! No runoff occurrs
-        soilphys(lu)%ro     = 0.0
-        soilphys(lu)%fleach = 0.0
+        tile_fluxes(lu)%dro     = 0.0
+        tile_fluxes(lu)%dfleach = 0.0
 
       end if
 
       ! water-filled pore space
-      soilphys(lu)%wscal = phy(lu)%wcont / kWm
+      soil(lu)%phy%wscal = soil(lu)%phy%wcont / soil(lu)%params%whc
+      ! print*,'5'
 
     end do
 
   end subroutine waterbal
 
 
-  function getsolar( lat, elv, sf, ppfd ) result( out_solar )
+  function getsolar( lat, elv, sf, ppfd, splashtest, testdoy ) result( out_solar )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily PPFD. Code is an extract of the subroutine
     ! 'evap', adopted from the evap() function in GePiSaT (Python version). 
@@ -235,6 +307,8 @@ contains
     real, intent(in)                      :: elv           ! elevation, metres
     real, intent(in), dimension(ndayyear) :: sf            ! fraction of sunshine hours 
     real, intent(in), dimension(ndayyear) :: ppfd          ! photon flux density (mol m-2 d-1), may be dummy (in which case this is not used)
+    logical, intent(in)                   :: splashtest
+    integer, intent(in)                   :: testdoy
 
     ! function return variable
     type( solartype ) :: out_solar
@@ -253,7 +327,6 @@ contains
     real, dimension(ndayyear) :: daysecs ! daylight seconds for each DOY
     real, dimension(nmonth)   :: monsecs ! daylight seconds for each MOY
 
-
     ! initialise members of solartype
     out_solar%dayl(:)      = 0.0
     out_solar%dra(:)       = 0.0
@@ -262,6 +335,10 @@ contains
     out_solar%meanmppfd(:) = 0.0
 
     do doy=1,ndayyear
+
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'day of year: ', doy
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
       ! Store daily return values for later use in subroutine 'evap'.
@@ -273,15 +350,25 @@ contains
       ! Berger (1978)
       out_berger(doy) = get_berger_tls( doy )
 
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'true anomaly, nu: ', out_berger(doy)%nu
+      if (splashtest .and. doy==testdoy) print*,'true longitude, lambda: ', out_berger(doy)%lambda
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 3. Calculate distance factor (dr), unitless
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       dr = calc_dr( out_berger(doy)%nu )
 
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'distance factor, dr: ', dr
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 4. Calculate declination angle (delta), degrees
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       delta = calc_delta( out_berger(doy)%lambda )
+
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'declination, delta: ', delta
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 5. Calculate variable substitutes (u and v), unitless
@@ -290,10 +377,17 @@ contains
       ru = out_ru_rv(1)
       rv = out_ru_rv(2)
 
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'variable substitute, ru: ', ru
+      if (splashtest .and. doy==testdoy) print*,'variable substitute, rv: ', rv
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 6. Calculate the sunset hour angle (hs), degrees
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       hs = calc_hs( ru, rv )
+
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'sunset angle, hs: ', hs
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 6.a Calculate day length from sunset hour angle, h
@@ -306,20 +400,31 @@ contains
       ! Eq. 1.10.3, Duffy & Beckman (1993)
       out_solar%dra(doy) = ( secs_per_day / pi ) * kGsc * dr * ( radians(ru) * hs + rv * dgsin(hs) )
 
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'daily TOA radiation: ', (1.0e-6)*out_solar%dra(doy)
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 8. Calculate transmittivity (tau), unitless
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       tau = calc_tau( sf(doy), elv )
+
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'transmittivity, tau: ', tau
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 9. Calculate daily PPFD (dppfd), mol/m^2
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       if (ppfd(1)/=dummy) then
         out_solar%dppfd(doy) = ppfd(doy)
+        in_ppfd = ".true. "
       else
         ! Eq. 57, SPLASH 2.0 Documentation
         out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
+        in_ppfd = ".false."
       end if
+
+      ! Test for comparison with Python SPLASH
+      if (splashtest .and. doy==testdoy) print*,'daily PPFD: ', out_solar%dppfd(doy)
 
     end do
 
@@ -384,7 +489,7 @@ contains
   end function getsolar
 
 
-  function getevap( lat, doy, elv, sf, tc, sw, netrad ) result( out_evap )
+  function getevap( lat, doy, elv, sf, tc, sw, netrad, splashtest, testdoy ) result( out_evap )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily evaporation quantities. Code is 
     ! adopted from the evap() function in GePiSaT (Python version). 
@@ -398,7 +503,8 @@ contains
     ! - daily AET (out_evap%aet), mm
     ! - daily condensation (out_evap%cn), mm
     !-------------------------------------------------------------------------  
-    use md_params_core, only: ndayyear, pi
+    use md_params_core, only: ndayyear, pi, dummy
+    use md_sofunutils, only: calc_patm
 
     ! arguments
     real,    intent(in) :: lat           ! latitude, degrees
@@ -407,7 +513,10 @@ contains
     real,    intent(in) :: sf            ! fraction of sunshine hours
     real,    intent(in) :: tc            ! mean daily air temperature, C
     real,    intent(in) :: sw            ! evaporative supply rate, mm/hr
-    real,    intent(in) :: netrad        ! net radiation (W m-2)
+    real,    intent(in) :: netrad        ! net radiation, integrated over day (J m-2 d-1)
+
+    logical, intent(in) :: splashtest
+    integer, intent(in) :: testdoy
 
     ! function return variable
     type( evaptype )  :: out_evap
@@ -430,141 +539,253 @@ contains
     real :: hi, cos_hi                   ! intersection hour angle, degrees
     real, dimension(2) :: out_ru_rv      ! function return variable containing 'ru' and 'rv'.
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 3. Calculate distance factor (dr), unitless
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    dr = calc_dr( out_berger(doy)%nu )
-    
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 4. Calculate declination angle (delta), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    delta = calc_delta( out_berger(doy)%lambda )
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 5. Calculate variable substitutes (u and v), unitless
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    out_ru_rv = calc_ru_rv( delta, lat )
-    ru = out_ru_rv(1)
-    rv = out_ru_rv(2)
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 6. Calculate the sunset hour angle (hs), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    hs = calc_hs( ru, rv )
-    
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 8. Calculate transmittivity (tau), unitless
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    tau = calc_tau( sf, elv )
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 10. Estimate net longwave radiation (out_evap%rnl), W/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
-    out_evap%rnl = ( kb + (1.0 - kb ) * sf ) * ( kA - tc )
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 11. Calculate variable substitute (rw), W/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rw = ( 1.0 - kalb_sw ) * tau * kGsc * dr
-    
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 12. Calculate net radiation cross-over hour angle (hn), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if ((out_evap%rnl - rw*ru)/(rw*rv) >= 1.0) then
-      ! Net radiation negative all day
-      hn = 0.0
-    else if ((out_evap%rnl - rw*ru)/(rw*rv) <= -1.0) then
-      ! Net radiation positive all day
-      hn = 180.0
-    else
-      !hn = degrees( dacos((out_evap%rnl - rw*ru)/(rw*rv)) )
-      hn = degrees( acos((out_evap%rnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
-    end if
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 53, SPLASH 2.0 Documentation
-    out_evap%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
-    
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 56, SPLASH 2.0 Documentation
-    out_evap%rnn = (secs_per_day/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) + out_evap%rnl*(pi - 2.0*radians(hs) + radians(hn)))
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 15. Calculate water-to-energy conversion (econ), m^3/J
+    ! Calculate water-to-energy conversion (econ), m^3/J
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Slope of saturation vap press temp curve, Pa/K
     s = sat_slope(tc)
+    if (splashtest .and. doy==testdoy) print*,'slope of saturation, s', s
+
     ! Enthalpy of vaporization, J/kg
     lv = enthalpy_vap(tc)
+    if (splashtest .and. doy==testdoy) print*,'enthalpy of vaporization: ', lv
+
     ! Density of water, kg/m^3
-    pw = density_h2o(tc, elv2pres(elv))
+    pw = density_h2o(tc, calc_patm(elv))
+    if (splashtest .and. doy==testdoy) print*,'water density at 1 atm calculated: ', pw
+
     ! Psychrometric constant, Pa/K
-    g = psychro(tc, elv2pres(elv))
+    if (splashtest .and. doy==testdoy) print*,'calculating psychrometric const. with (tc, elv): ', tc, elv
+    g = psychro(tc, calc_patm(elv))
+    if (splashtest .and. doy==testdoy) print*,'calculating psychrometric const. with patm: ', calc_patm(elv)
+    if (splashtest .and. doy==testdoy) print*,'psychrometric constant: ', g
 
     ! Eq. 51, SPLASH 2.0 Documentation
     econ = s/(lv*pw*(s + g))
+    if (splashtest .and. doy==testdoy) print*,'Econ: ', Econ
+
     out_evap%econ = 1.0 / ( lv * pw ) ! this is to convert energy into mass (water)
 
-    ! print*,'Econ alternative: ', 1.0 / (lv * pw)
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 16. Calculate daily condensation (out_evap%cn), mm d-1
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 68, SPLASH 2.0 Documentation
-    out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
+    if (netrad/=dummy) then
+      !--------------------------------------------------
+      ! MODE 1: Net radiation is prescribed
+      ! ==> get condensation from negative net radiation
+      !--------------------------------------------------
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 17. Estimate daily EET (out_evap%eet), mm d-1
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 70, SPLASH 2.0 Documentation
-    out_evap%eet = 1000.0 * econ * out_evap%rn
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 13./14. Note: this corresponds to daytime plus nighttime net radiation (out_evap%rn), J/m^2
+      ! ==> coppy prescribed value to state variable net radiation, 'rn'
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      out_evap%rn = netrad      
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 18. Estimate daily PET (out_evap%pet), mm d-1
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 72, SPLASH 2.0 Documentation
-    out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
-    ! out_evap%pet_e = out_evap%pet / (econ * 1000)
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 17. Estimate daily EET (out_evap%eet), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 70, SPLASH 2.0 Documentation
+      out_evap%eet = 1000.0 * econ * out_evap%rn
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * econ
-    
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 20. Calculate the intersection hour angle (hi), degrees
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    cos_hi = sw/(rw*rv*rx) + out_evap%rnl/(rw*rv) - ru/rv   ! sw contains info of soil moisture (evaporative supply rate)
-    if (cos_hi >= 1.0) then
-      ! Supply exceeds demand:
-      hi = 0.0
-    elseif (cos_hi <= -1.0) then
-      ! Supply limits demand everywhere:
-      hi = 180.0
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 18. Estimate daily PET (out_evap%pet), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 72, SPLASH 2.0 Documentation
+      out_evap%pet = ( 1.0 + kw ) * out_evap%eet
+      ! print*,'pet: ', out_evap%pet
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 16.A. Calculate daily condensation in case net radiation is negative (out_evap%cn), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      if (out_evap%rn < 0.0) then
+        out_evap%cn = 1000.0 * econ * abs(out_evap%rn)
+      else
+        out_evap%cn = 0.0
+      end if
+
     else
-      hi = degrees(acos(cos_hi))
+      !--------------------------------------------------
+      ! MODE 2: Net radiation is calculated online
+      !--------------------------------------------------
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 3. Calculate distance factor (dr), unitless
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      dr = calc_dr( out_berger(doy)%nu )
+      
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 4. Calculate declination angle (delta), degrees
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      delta = calc_delta( out_berger(doy)%lambda )
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 5. Calculate variable substitutes (u and v), unitless
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      out_ru_rv = calc_ru_rv( delta, lat )
+      ru = out_ru_rv(1)
+      rv = out_ru_rv(2)
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 6. Calculate the sunset hour angle (hs), degrees
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      hs = calc_hs( ru, rv )
+      
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 8. Calculate transmittivity (tau), unitless
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      tau = calc_tau( sf, elv )
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 10. Estimate net longwave radiation (out_evap%rnl), W/m^2
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
+      out_evap%rnl = ( kb + (1.0 - kb ) * sf ) * ( kA - tc )
+
+      if (splashtest .and. doy==testdoy) print*,'net longwave radiation: ', out_evap%rnl
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 11. Calculate variable substitute (rw), W/m^2
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      rw = ( 1.0 - kalb_sw ) * tau * kGsc * dr
+      
+      if (splashtest .and. doy==testdoy) print*,'variable substitute, rw: ', rw
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 12. Calculate net radiation cross-over hour angle (hn), degrees
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      if ((out_evap%rnl - rw*ru)/(rw*rv) >= 1.0) then
+        ! Net radiation negative all day
+        hn = 0.0
+      else if ((out_evap%rnl - rw*ru)/(rw*rv) <= -1.0) then
+        ! Net radiation positive all day
+        hn = 180.0
+      else
+        !hn = degrees( dacos((out_evap%rnl - rw*ru)/(rw*rv)) )
+        hn = degrees( acos((out_evap%rnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
+      end if
+
+      if (splashtest .and. doy==testdoy) print*,'cross-over hour angle: ', hn
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 53, SPLASH 2.0 Documentation
+      out_evap%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
+
+      if (splashtest .and. doy==testdoy) print*,'daytime net radiation: ', out_evap%rn
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 56, SPLASH 2.0 Documentation
+      ! adopted bugfix from Python version (iss#13)
+      out_evap%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) - out_evap%rnl * (pi - radians(hn)))
+
+      if (splashtest .and. doy==testdoy) print*,'nighttime net radiation: ', out_evap%rnn
+
+      ! print*,'Econ alternative: ', 1.0 / (lv * pw)
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 16. Calculate daily condensation (out_evap%cn), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 68, SPLASH 2.0 Documentation
+      out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
+      if (splashtest .and. doy==testdoy) print*,'daily condensation: ', out_evap%cn
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 17. Estimate daily EET (out_evap%eet), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 70, SPLASH 2.0 Documentation
+      out_evap%eet = 1000.0 * econ * out_evap%rn
+      if (splashtest .and. doy==testdoy) print*,'daily EET: ', out_evap%eet
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 18. Estimate daily PET (out_evap%pet), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 72, SPLASH 2.0 Documentation
+      out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
+      if (splashtest .and. doy==testdoy) print*,'daily PET: ', out_evap%pet
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * econ
+      if (splashtest .and. doy==testdoy) print*,'variable substitute, rx: ', rx
+      
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 20. Calculate the intersection hour angle (hi), degrees
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      cos_hi = sw/(rw*rv*rx) + out_evap%rnl/(rw*rv) - ru/rv   ! sw contains info of soil moisture (evaporative supply rate)
+      if (cos_hi >= 1.0) then
+        ! Supply exceeds demand:
+        hi = 0.0
+      elseif (cos_hi <= -1.0) then
+        ! Supply limits demand everywhere:
+        hi = 180.0
+      else
+        hi = degrees(acos(cos_hi))
+      end if
+      if (splashtest .and. doy==testdoy) print*,'intersection hour angle, hi: ', hi
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 21. Estimate daily AET (out_evap%aet), mm d-1
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Eq. 81, SPLASH 2.0 Documentation
+      out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
+      ! out_evap%aet_e = out_evap%aet / (econ * 1000)
+      if (splashtest .and. doy==testdoy) print*,'daily AET set to: ', out_evap%aet
+      ! print*,'aet ', out_evap%aet
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      if (out_evap%eet>0.0) then 
+        out_evap%cpa = out_evap%aet / out_evap%eet
+      else
+        out_evap%cpa = 1.0 + kw
+      end if
+
     end if
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 21. Estimate daily AET (out_evap%aet), mm d-1
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Eq. 81, SPLASH 2.0 Documentation
-    out_evap%aet   = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
-    ! out_evap%aet_e = out_evap%aet / (econ * 1000)
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if (out_evap%eet>0.0) then 
-      out_evap%cpa = out_evap%aet / out_evap%eet
-    else
-      out_evap%cpa = 1.0 + kw
-    end if
+    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! ! 23. CRUDEFIX: When temperature is below zero, set bot PET and AET to zero. 
+    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! if (tc < 0.0) then
+    !   out_evap%pet = 0.0
+    !   out_evap%eet = 0.0
+    !   out_evap%aet = 0.0
+    ! end if
+
+    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! ! 24. CRUDEFIX: When AET > PET, set AET to PET
+    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! if (out_evap%aet > out_evap%pet) then
+    !   out_evap%aet = out_evap%pet
+    ! end if
+
+    ! ! checks
+    ! if (out_evap%pet< -5.0) then
+    !   print*,'doy:', doy
+    !   print*,'lat', lat
+    !   print*,'doy', doy
+    !   print*,'elv', elv
+    !   print*,'sf', sf
+    !   print*,'tc', tc
+    !   print*,'sw', sw
+    !   print*,'pet', out_evap%pet
+    !   stop 'pet < -5.0'
+    ! end if
+
+    ! if (out_evap%aet>out_evap%pet) then
+    !   print*,'doy:', doy
+    !   print*,'lat', lat
+    !   print*,'doy', doy
+    !   print*,'elv', elv
+    !   print*,'sf', sf
+    !   print*,'tc', tc
+    !   print*,'sw', sw
+    !   stop 'aet > pet'
+    ! end if
 
     !-------------------------------------------------------------   
     ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 
@@ -730,6 +951,8 @@ contains
     !----------------------------------------------------------------
     use md_sofunutils, only: getparreal
 
+    print*,'reading waterbal parameters ...'
+
     ! constant for dRnl (Monteith & Unsworth, 1990)
     kA       = getparreal( 'params/params_waterbal_splash.dat', 'kA' )
     
@@ -756,42 +979,17 @@ contains
     
     ! obliquity for 2000 CE, degrees (Berger, 1978)
     keps     = getparreal( 'params/params_waterbal_splash.dat', 'keps' )
-    
-    ! from flux to energy conversion, umol/J (Meek et al., 1984)
-    kfFEC    = getparreal( 'params/params_waterbal_splash.dat', 'kfFEC' )
-    
-    ! gravitational acceleration, m/s^2 (Allen, 1973)
-    kG       = getparreal( 'params/params_waterbal_splash.dat', 'kG' )
-    
+
     ! solar constant, W/m^2 (Kopp & Lean, 2011)
     kGsc     = getparreal( 'params/params_waterbal_splash.dat', 'kGsc' )
-    
-    ! temperature lapse rate, K/m (Cavcar, 2000)
-    kL       = getparreal( 'params/params_waterbal_splash.dat', 'kL' )
-    
-    ! molecular weight of dry air, kg/mol (Tsilingiris, 2008)
-    kMa      = getparreal( 'params/params_waterbal_splash.dat', 'kMa' )
-    
-    ! molecular weight of water vapor, kg/mol (Tsilingiris, 2008)
-    kMv      = getparreal( 'params/params_waterbal_splash.dat', 'kMv' )
-    
-    ! standard atmosphere, Pa (Allen, 1973)
-    kPo      = getparreal( 'params/params_waterbal_splash.dat', 'kPo' )
-    
-    ! universal gas constant, J/mol/K (Allen, 1973)
-    kR       = getparreal( 'params/params_waterbal_splash.dat', 'kR' )
-    
-    ! base temperature, K (Prentice, unpublished)
-    kTo      = getparreal( 'params/params_waterbal_splash.dat', 'kTo' )
-    
-    ! soil moisture capacity, mm (Cramer & Prentice, 1988)
-    kWm      = getparreal( 'params/params_waterbal_splash.dat', 'kWm' )
     
     ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
     kw       = getparreal( 'params/params_waterbal_splash.dat', 'kw' )
     
     ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
     komega   = getparreal( 'params/params_waterbal_splash.dat', 'komega' )
+
+    print*,'... done'
 
   end subroutine getpar_modl_waterbal
 
@@ -936,7 +1134,6 @@ contains
     ! Calculates the slope of the sat pressure temp curve, Pa/K
     ! Ref:      Eq. 13, Allen et al. (1998)
     !----------------------------------------------------------------   
-
     ! arguments
     real, intent(in) :: tc ! air temperature, degrees C
 
@@ -963,23 +1160,6 @@ contains
     enthalpy_vap = 1.91846e6*((tc + 273.15)/(tc + 273.15 - 33.91))**2
 
   end function enthalpy_vap
-
-
-  function elv2pres( alt )
-    !----------------------------------------------------------------   
-    ! Calculates atm. pressure for a given elevation
-    ! Ref:      Allen et al. (1998)
-    !----------------------------------------------------------------   
-
-    ! arguments
-    real, intent(in) :: alt ! elevation above sea level, m
-
-    ! function return value
-    real ::  elv2pres ! atm. pressure for a given elevation
-
-    elv2pres = kPo*(1.0 - kL*alt/kTo)**(kG*kMa/(kR*kL))
-
-  end function elv2pres
 
 
   function density_h2o( tc, press )
@@ -1052,9 +1232,8 @@ contains
     ! Calculates the psychrometric constant for a given temperature and pressure
     ! Ref: Allen et al. (1998); Tsilingiris (2008) 
     !----------------------------------------------------------------   
-
     ! arguments
-    real, intent(in) :: tc ! air temperature, degrees C
+    real, intent(in) :: tc     ! air temperature, degrees C
     real, intent(in) :: press  ! atmospheric pressure, Pa
 
     ! local variables
@@ -1064,15 +1243,26 @@ contains
     ! function return value
     real :: psychro  ! psychrometric constant, Pa/K
 
+    ! local variables
+    real :: my_tc    ! adjusted temperature to avoid numerical blow-up 
+
+    ! Adopted temperature adjustment from SPLASH, Python version
+    my_tc = tc
+    if (my_tc < 0) then
+      my_tc = 0.0
+    else if (my_tc > 100) then
+      my_tc = 100.0
+    end if
+
     ! Calculate the specific heat capacity of water, J/kg/K
     ! Eq. 47, Tsilingiris (2008)
     cp = 1.0e3*(&
                1.0045714270&
-             + 2.050632750e-3  *tc&
-             - 1.631537093e-4  *tc*tc&
-             + 6.212300300e-6  *tc*tc*tc&
-             - 8.830478888e-8  *tc*tc*tc*tc&
-             + 5.071307038e-10 *tc*tc*tc*tc*tc&
+             + 2.050632750e-3  *my_tc&
+             - 1.631537093e-4  *my_tc*my_tc&
+             + 6.212300300e-6  *my_tc*my_tc*my_tc&
+             - 8.830478888e-8  *my_tc*my_tc*my_tc*my_tc&
+             + 5.071307038e-10 *my_tc*my_tc*my_tc*my_tc*my_tc&
             )
 
     ! Calculate latent heat of vaporization, J/kg
@@ -1083,17 +1273,6 @@ contains
     psychro = cp*kMa*press/(kMv*lv)
 
   end function psychro
-
-
-  subroutine initdaily_waterbal()
-    !////////////////////////////////////////////////////////////////
-    ! Initialises all daily variables within derived type 'soilphys'.
-    !----------------------------------------------------------------
-    soilphys(:)%ro    = 0.0
-    soilphys(:)%sw    = 0.0
-    soilphys(:)%wscal = 0.0
-
-  end subroutine initdaily_waterbal
 
 
   subroutine initio_waterbal()
@@ -1113,41 +1292,41 @@ contains
     !----------------------------------------------------------------
     if (interface%params_siml%loutwaterbal) then
 
-      ! RA: daily solar irradiation, J/m2
-      filnam=trim(prefix)//'.d.ra.out'
-      open(251,file=filnam,err=888,status='unknown')
+      ! ! RA: daily solar irradiation, J/m2
+      ! filnam=trim(prefix)//'.d.ra.out'
+      ! open(251,file=filnam,err=888,status='unknown')
 
-      ! RN: daily net radiation, J/m2
-      filnam=trim(prefix)//'.d.rn.out'
-      open(252,file=filnam,err=888,status='unknown')
+      ! ! RN: daily net radiation, J/m2
+      ! filnam=trim(prefix)//'.d.rn.out'
+      ! open(252,file=filnam,err=888,status='unknown')
 
-      ! PPFD: daily PPFD, mol/m2
-      filnam=trim(prefix)//'.d.ppfd.out'
-      open(253,file=filnam,err=888,status='unknown')
+      ! ! PPFD: daily PPFD, mol/m2
+      ! filnam=trim(prefix)//'.d.ppfd.out'
+      ! open(253,file=filnam,err=888,status='unknown')
 
-      ! CN: daily condensation water, mm
-      filnam=trim(prefix)//'.d.cn.out'
-      open(254,file=filnam,err=888,status='unknown')
+      ! ! CN: daily condensation water, mm
+      ! filnam=trim(prefix)//'.d.cn.out'
+      ! open(254,file=filnam,err=888,status='unknown')
 
       ! WCONT: daily soil moisture, mm
       filnam=trim(prefix)//'.d.wcont.out'
       open(255,file=filnam,err=888,status='unknown')
 
-      ! ! PN: daily precipitation, mm
-      ! filnam=trim(prefix)//'.d.pn.out'
-      ! open(256,file=filnam,err=888,status='unknown')
+      ! ! ! PN: daily precipitation, mm
+      ! ! filnam=trim(prefix)//'.d.pn.out'
+      ! ! open(256,file=filnam,err=888,status='unknown')
 
-      ! RO: daily runoff, mm
-      filnam=trim(prefix)//'.d.ro.out'
-      open(257,file=filnam,err=888,status='unknown')
+      ! ! RO: daily runoff, mm
+      ! filnam=trim(prefix)//'.d.ro.out'
+      ! open(257,file=filnam,err=888,status='unknown')
 
-      ! FLEACH: daily leaching fraction, (unitless)
-      filnam=trim(prefix)//'.d.fleach.out'
-      open(263,file=filnam,err=888,status='unknown')
+      ! ! FLEACH: daily leaching fraction, (unitless)
+      ! filnam=trim(prefix)//'.d.fleach.out'
+      ! open(263,file=filnam,err=888,status='unknown')
 
-      ! eet: daily equilibrium ET, mm
-      filnam=trim(prefix)//'.d.eet.out'
-      open(258,file=filnam,err=888,status='unknown')
+      ! ! eet: daily equilibrium ET, mm
+      ! filnam=trim(prefix)//'.d.eet.out'
+      ! open(258,file=filnam,err=888,status='unknown')
 
       ! PET: daily potential ET, mm
       filnam=trim(prefix)//'.d.pet.out'
@@ -1157,17 +1336,17 @@ contains
       filnam=trim(prefix)//'.d.aet.out'
       open(260,file=filnam,err=888,status='unknown')
 
-      ! DAYL: day length, h
-      filnam=trim(prefix)//'.d.dayl.out'
-      open(261,file=filnam,err=888,status='unknown')
+      ! ! DAYL: day length, h
+      ! filnam=trim(prefix)//'.d.dayl.out'
+      ! open(261,file=filnam,err=888,status='unknown')
 
-      ! CPA: cramer-prentice alpha, unitless
-      filnam=trim(prefix)//'.d.cpa.out'
-      open(262,file=filnam,err=888,status='unknown')
+      ! ! CPA: cramer-prentice alpha, unitless
+      ! filnam=trim(prefix)//'.d.cpa.out'
+      ! open(262,file=filnam,err=888,status='unknown')
 
-      ! ECON: daily water-to-energy conversion factor, mm GJ-1 = m TJ-1
-      filnam=trim(prefix)//'.d.econ.out'
-      open(264,file=filnam,err=888,status='unknown')
+      ! ! ECON: daily water-to-energy conversion factor, mm GJ-1 = m TJ-1
+      ! filnam=trim(prefix)//'.d.econ.out'
+      ! open(264,file=filnam,err=888,status='unknown')
 
     end if
 
@@ -1206,50 +1385,258 @@ contains
   end subroutine initio_waterbal
 
 
-  subroutine initoutput_waterbal()
+  subroutine initio_nc_waterbal()
     !////////////////////////////////////////////////////////////////
-    !  Initialises waterbalance-specific output variables
+    ! Opens NetCDF output files.
+    !----------------------------------------------------------------
+    use netcdf
+    use md_io_netcdf, only: init_nc_3D_time, check
+    use md_interface, only: interface
+
+    ! local variables
+    character(len=256) :: prefix
+
+    character(len=*), parameter :: TITLE = "SOFUN GP-model output, module md_waterbal (SPLASH)"
+    character(len=4) :: year_char
+
+    integer :: jpngr, doy
+
+    write(year_char,999) interface%steering%outyear
+
+    prefix = "./output_nc/"//trim(interface%params_siml%runname)
+
+    if ( .not. interface%steering%spinup ) then
+      !----------------------------------------------------------------
+      ! Annual NetCDF output
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutwaterbal) then
+        !----------------------------------------------------------------
+        ! Annual PET output file 
+        !----------------------------------------------------------------
+        ncoutfilnam_apet = trim(prefix)//'.'//year_char//".a.pet.nc"
+        print*,'initialising ', trim(ncoutfilnam_apet), '...'
+        call init_nc_3D_time( filnam  = trim(ncoutfilnam_apet), &
+                        nlon     = interface%domaininfo%nlon, &
+                        nlat     = interface%domaininfo%nlat, &
+                        lon      = interface%domaininfo%lon, &
+                        lat      = interface%domaininfo%lat, &
+                        outyear  = interface%steering%outyear, &
+                        outdt    = 365, &
+                        outnt    = 1, &
+                        varnam   = PET_NAME, &
+                        varunits = "mm yr-1", &
+                        longnam  = "potential evapotranspiration", &
+                        title    = TITLE, &
+                        globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                        )
+
+        !----------------------------------------------------------------
+        ! Annual AET output file 
+        !----------------------------------------------------------------
+        ncoutfilnam_aaet = trim(prefix)//'.'//year_char//".a.aet.nc"
+        print*,'initialising ', trim(ncoutfilnam_aaet), '...'
+        call init_nc_3D_time( filnam  = trim(ncoutfilnam_aaet), &
+                        nlon     = interface%domaininfo%nlon, &
+                        nlat     = interface%domaininfo%nlat, &
+                        lon      = interface%domaininfo%lon, &
+                        lat      = interface%domaininfo%lat, &
+                        outyear  = interface%steering%outyear, &
+                        outdt    = 365, &
+                        outnt    = 1, &
+                        varnam   = AET_NAME, &
+                        varunits = "mm yr-1", &
+                        longnam  = "actual evapotranspiration", &
+                        title    = TITLE, &
+                        globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                        )
+
+        !----------------------------------------------------------------
+        ! Annual ALPHA (AET/PET) output file 
+        !----------------------------------------------------------------
+        ncoutfilnam_aalpha = trim(prefix)//'.'//year_char//".a.alpha.nc"
+        print*,'initialising ', trim(ncoutfilnam_aalpha), '...'
+        call init_nc_3D_time( filnam  = trim(ncoutfilnam_aalpha), &
+                        nlon     = interface%domaininfo%nlon, &
+                        nlat     = interface%domaininfo%nlat, &
+                        lon      = interface%domaininfo%lon, &
+                        lat      = interface%domaininfo%lat, &
+                        outyear  = interface%steering%outyear, &
+                        outdt    = 365, &
+                        outnt    = 1, &
+                        varnam   = ALPHA_NAME, &
+                        varunits = "", &
+                        longnam  = "AET/PET, mean of daily values", &
+                        title    = TITLE, &
+                        globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                        )
+      end if
+
+
+      if (       interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+           .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then      
+        !----------------------------------------------------------------
+        ! Daily NetCDF output
+        !----------------------------------------------------------------
+
+        !----------------------------------------------------------------
+        ! Daily WCONT output file 
+        !----------------------------------------------------------------
+        if (interface%params_siml%loutdwcont) then
+          ncoutfilnam_dwcont = trim(prefix)//'.'//year_char//".d.wcont.nc"
+          print*,'initialising ', trim(ncoutfilnam_dwcont), '...'
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_dwcont), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = WCONT_NAME, &
+                          varunits = "mm", &
+                          longnam  = "soil water content", &
+                          title    = TITLE, &
+                          globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                          )
+        end if
+
+        !----------------------------------------------------------------
+        ! Daily ALPHA (AET/PET) 
+        !----------------------------------------------------------------
+        if (interface%params_siml%loutdalpha) then
+          ncoutfilnam_dalpha = trim(prefix)//'.'//year_char//".d.alpha.nc"
+          print*,'initialising ', trim(ncoutfilnam_dalpha), '...'
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_dalpha), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = ALPHA_NAME, &
+                          varunits = "", &
+                          longnam  = "AET/PET", &
+                          title    = TITLE, &
+                          globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                          )
+        end if
+
+        !----------------------------------------------------------------
+        ! Daily PET output file 
+        !----------------------------------------------------------------
+        if (interface%params_siml%loutdpet) then
+          ncoutfilnam_dpet = trim(prefix)//'.'//year_char//".d.pet.nc"
+          print*,'initialising ', trim(ncoutfilnam_dpet), '...'
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_dpet), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = PET_NAME, &
+                          varunits = "mm d-1", &
+                          longnam  = "potential evapotranspiration", &
+                          title    = TITLE, &
+                          globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                          )
+        end if
+
+        !----------------------------------------------------------------
+        ! Daily AET output file 
+        !----------------------------------------------------------------
+        if (interface%params_siml%loutdaet) then
+          ncoutfilnam_daet = trim(prefix)//'.'//year_char//".d.aet.nc"
+          print*,'initialising ', trim(ncoutfilnam_daet), '...'
+          call init_nc_3D_time( filnam  = trim(ncoutfilnam_daet), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = interface%params_siml%outdt, &
+                          outnt    = interface%params_siml%outnt, &
+                          varnam   = AET_NAME, &
+                          varunits = "mm d-1", &
+                          longnam  = "actual evapotranspiration", &
+                          title    = TITLE, &
+                          globatt2_nam = "in_ppfd",   globatt2_val = trim(in_ppfd)   &
+                          )        
+        end if
+
+      end if
+
+    end if
+
+    888  format (F12.6)
+    999  format (I4.4)
+    
+  end subroutine initio_nc_waterbal
+
+
+  subroutine initoutput_waterbal( ngridcells )
+    !////////////////////////////////////////////////////////////////
+    ! Initialises waterbalance-specific output variables
+    ! The same subroutine is used here for initialising rolling mean variables
     !----------------------------------------------------------------
     use md_interface, only: interface
 
+    ! arguments
+    integer, intent(in) :: ngridcells
+
+    ! Annual output variables
     if (interface%params_siml%loutwaterbal) then
 
-      if (interface%steering%init) allocate( outdwcont (nlu,ndayyear,maxgrid) )  ! daily soil moisture, mm
-      if (interface%steering%init) allocate( outdra (ndayyear,maxgrid)     )     ! daily solar irradiation, J/m2
-      if (interface%steering%init) allocate( outdrn (ndayyear,maxgrid)     )     ! daily net radiation, J/m2
-      if (interface%steering%init) allocate( outdppfd (ndayyear,maxgrid)   )     ! daily PPFD, mol/m2
-      if (interface%steering%init) allocate( outdayl(ndayyear,maxgrid)     )     ! daily day length, h
-      if (interface%steering%init) allocate( outdcn (ndayyear,maxgrid)     )     ! daily condensation water, mm
-      if (interface%steering%init) allocate( outdro (nlu,ndayyear,maxgrid) )     ! daily runoff, mm
-      if (interface%steering%init) allocate( outdfleach (nlu,ndayyear,maxgrid) ) ! daily leaching fraction, (unitless)
-      if (interface%steering%init) allocate( outdeet(ndayyear,maxgrid)     )     ! daily equilibrium ET, mm
-      if (interface%steering%init) allocate( outdpet(ndayyear,maxgrid)     )     ! daily potential ET, mm
-      if (interface%steering%init) allocate( outdaet(nlu,ndayyear,maxgrid) )     ! daily actual ET, mm
-      if (interface%steering%init) allocate( outdcpa(nlu,ndayyear,maxgrid) )     ! daily Cramer-Prentice-Alpha, (unitless)
-      if (interface%steering%init) allocate( outdecon(ndayyear,maxgrid) )        ! daily water-to-energy conversion factor
-
-      outdwcont(:,:,:)  = 0.0
-      outdra(:,:)       = 0.0
-      outdrn(:,:)       = 0.0
-      outdppfd(:,:)     = 0.0
-      outdayl(:,:)      = 0.0
-      outdcn(:,:)       = 0.0
-      outdro(:,:,:)     = 0.0
-      outdfleach(:,:,:) = 0.0
-      outdeet(:,:)      = 0.0
-      outdpet(:,:)      = 0.0
-      outdaet(:,:,:)    = 0.0
-      outdcpa(:,:,:)    = 0.0
-      outdecon(:,:)     = 0.0
-
+      if (interface%steering%init) then
+        allocate( outapet(ngridcells) )
+        allocate( outaaet(nlu,ngridcells) )
+        allocate( outaalpha(nlu,ngridcells) )
+      end if
+      outapet(:)     = 0.0
+      outaaet(:,:)   = 0.0
+      outaalpha(:,:) = 0.0
     end if
+
+    ! Daily output variables
+    if (interface%steering%init) then
+      if (interface%params_siml%loutdpet)   allocate( outdpet(interface%params_siml%outnt,ngridcells)     )     ! daily potential ET, mm
+      if (interface%params_siml%loutdaet)   allocate( outdaet(nlu,interface%params_siml%outnt,ngridcells) )     ! daily actual ET, mm
+      if (interface%params_siml%loutdwcont) allocate( outdwcont (nlu,interface%params_siml%outnt,ngridcells) )  ! daily soil moisture, mm
+      if (interface%params_siml%loutdalpha) allocate( outdalpha(nlu,interface%params_siml%outnt,ngridcells) )     ! daily Cramer-Prentice-Alpha, (unitless)
+    end if
+    if (interface%params_siml%loutdwcont) outdwcont(:,:,:)  = 0.0
+    if (interface%params_siml%loutdpet)   outdpet(:,:)      = 0.0
+    if (interface%params_siml%loutdaet)   outdaet(:,:,:)    = 0.0
+    if (interface%params_siml%loutdalpha) outdalpha(:,:,:)  = 0.0
 
   end subroutine initoutput_waterbal
 
 
+  subroutine init_rlm_waterbal( ngridcells )
+    !////////////////////////////////////////////////////////////////
+    ! Initialises waterbalance-specific output variables
+    ! The same subroutine is used here for initialising rolling mean variables
+    !----------------------------------------------------------------
+    use md_interface, only: interface
+
+    ! arguments
+    integer, intent(in) :: ngridcells
+
+    ! Rolling mean variables
+    if (interface%steering%init) then
+      if (.not.allocated(rlmalpha)) allocate( rlmalpha(nlu,ngridcells) )
+    end if
+    rlmalpha(:,:) = 0.0
+
+  end subroutine init_rlm_waterbal
+
+
   subroutine getout_daily_waterbal( jpngr, moy, doy, solar, phy )
     !////////////////////////////////////////////////////////////////
-    !  SR called daily to sum up output variables.
+    ! Collect daily output variables
+    ! so far not implemented for isotopes
     !----------------------------------------------------------------
     use md_interface, only: interface
     use md_tile, only: psoilphystype
@@ -1261,97 +1648,295 @@ contains
     type( solartype ), intent(in)                     :: solar
     type( psoilphystype ), dimension(nlu), intent(in) :: phy
 
-    ! Save the daily totals:
-    ! xxx add lu-dimension and jpngr-dimension
+    ! local variables
+    integer :: it
+
+    it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
+
+    ! Annual output variables
     if (interface%params_siml%loutwaterbal) then
-
-      outdra(doy,jpngr)       = solar%dra(doy)
-      outdppfd(doy,jpngr)     = solar%dppfd(doy)
-      outdayl(doy,jpngr)      = solar%dayl(doy)
-      
-      outdrn(doy,jpngr)       = evap(1)%rn
-      outdeet(doy,jpngr)      = evap(1)%eet
-      outdpet(doy,jpngr)      = evap(1)%pet
-      outdcn(doy,jpngr)       = evap(1)%cn
-      outdaet(:,doy,jpngr)    = evap(:)%aet
-      outdcpa(:,doy,jpngr)    = evap(:)%cpa
-      
-      outdwcont(:,doy,jpngr)  = phy(:)%wcont
-      outdro(:,doy,jpngr)     = soilphys(:)%ro
-      outdfleach(:,doy,jpngr) = soilphys(:)%fleach
-
       if (outenergy) then
-        outdpet(doy,jpngr)    = evap(1)%pet / (evap(1)%econ * 1000.0)
-        outdaet(:,doy,jpngr)  = evap(:)%aet / (evap(1)%econ * 1000.0)
+        outapet(jpngr)    = outapet(jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0))
+        outaaet(:,jpngr)  = outaaet(:,jpngr) + (evap(:)%aet / (evap(1)%econ * 1000.0))
       else 
-        outdpet(doy,jpngr)    = evap(1)%pet
-        outdaet(:,doy,jpngr)  = evap(:)%aet
+        outapet(jpngr)    = outapet(jpngr)   + evap(1)%pet
+        outaaet(:,jpngr)  = outaaet(:,jpngr) + evap(:)%aet
       end if
-
-      outdecon(doy,jpngr)     = evap(1)%econ * 1.0e12 ! converting from m J-1 to mm GJ-1 = m TJ-1
-
+      if (evap(1)%pet > 0.0) then
+        outaalpha(:,jpngr)  = outaalpha(:,jpngr) + (evap(:)%aet / evap(1)%pet) / ndayyear
+      else
+        outaalpha(:,jpngr)  = outaalpha(:,jpngr) + 1.0 / ndayyear
+      end if
     end if
+
+    ! Daily output variables
+    if (interface%params_siml%loutdwcont) outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr) + phy(:)%wcont / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdalpha) outdalpha(:,it,jpngr)  = outdalpha(:,it,jpngr) + evap(:)%cpa / real( interface%params_siml%outdt )
+    if (outenergy) then
+      if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + (evap(:)%aet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
+    else 
+      if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + evap(1)%pet / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + evap(:)%aet / real( interface%params_siml%outdt )
+    end if
+    ! outdecon(it,jpngr)     = outdecon(it,jpngr)    + evap(1)%econ * 1.0e12 / real( interface%params_siml%outdt ) ! converting from m J-1 to mm GJ-1 = m TJ-1
 
   end subroutine getout_daily_waterbal
 
 
-  subroutine writeout_ascii_waterbal()
-    !/////////////////////////////////////////////////////////////////////////
-    ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
-    !-------------------------------------------------------------------------
-    use md_params_core, only: ndayyear, nmonth
+  subroutine getrlm_daily_waterbal( jpngr, doy )
+    !////////////////////////////////////////////////////////////////
+    ! Collect daily output variables
+    ! so far not implemented for isotopes
+    !----------------------------------------------------------------
     use md_interface, only: interface
 
-    ! Local variables
-    real :: itime
-    integer :: day, moy, jpngr
-    
-    ! xxx implement this: sum over gridcells? single output per gridcell?
-    if (maxgrid>1) stop 'writeout_ascii_waterbal: think of something ...'
-    jpngr = 1
+    ! argument
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: doy    
 
-    !-------------------------------------------------------------------------
-    ! DAILY OUTPUT
-    !-------------------------------------------------------------------------
-    if (interface%params_siml%loutwaterbal) then
-
-      if ( .not. interface%steering%spinup &
-        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
-
-        ! Write daily output only during transient simulation
-        do day=1,ndayyear
-
-          ! Define 'itime' as a decimal number corresponding to day in the year + year
-          itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
-
-          if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
-
-          ! xxx lu-area weighted sum if nlu>0
-          write(251,999) itime, outdra(day,jpngr)
-          write(252,999) itime, outdrn(day,jpngr)
-          write(253,999) itime, outdppfd(day,jpngr)
-          write(254,999) itime, outdcn(day,jpngr)
-          write(255,999) itime, outdwcont(1,day,jpngr)
-          write(257,999) itime, outdro(1,day,jpngr)
-          write(263,999) itime, outdfleach(1,day,jpngr)
-          write(258,999) itime, outdeet(day,jpngr)
-          write(259,999) itime, outdpet(day,jpngr)
-          write(260,999) itime, outdaet(1,day,jpngr)
-          write(261,999) itime, outdayl(day,jpngr)
-          write(262,999) itime, outdcpa(1,day,jpngr)
-          write(264,999) itime, outdecon(day,jpngr)
-
-        end do
-      end if
+    if (evap(1)%pet > 0.0) then
+      rlmalpha(:,jpngr)  = rlmalpha(:,jpngr) + (evap(:)%aet / evap(1)%pet) / ndayyear
+    else
+      rlmalpha(:,jpngr)  = rlmalpha(:,jpngr) + 1.0 / ndayyear
     end if
 
-    return
+  end subroutine getrlm_daily_waterbal
+
+
+  subroutine get_rlm_waterbal( phy, init )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Calculates the rolling mean of relevant variables
+    ! This requires the full arrays (all gridcells) to be stored.
+    !-------------------------------------------------------------------------
+    use md_params_core, only: nlu
+    use md_tile, only: psoilphystype
+
+    ! arguments
+    type( psoilphystype ), dimension(:,:), intent(inout) :: phy
+    logical :: init
+
+    ! local variables
+    integer, save :: ncalls
+    integer :: nyrs_uptonow
+    integer :: lu
+
+    if (init) ncalls = 0
+    ncalls = ncalls + 1
+    nyrs_uptonow = min( ncalls, nyrs_rlmalpha )
+
+    do lu=1,nlu
+      phy(lu,:)%rlmalpha = ( phy(lu,:)%rlmalpha * (nyrs_uptonow - 1) + rlmalpha(lu,:) ) / nyrs_uptonow
+    end do
+
+  end subroutine get_rlm_waterbal
+
+
+  ! subroutine writeout_ascii_waterbal()
+  !   !/////////////////////////////////////////////////////////////////////////
+  !   ! WRITE WATERBALANCE-SPECIFIC VARIABLES TO OUTPUT
+  !   !-------------------------------------------------------------------------
+  !   use md_params_core, only: ndayyear, nmonth
+  !   use md_interface, only: interface
+
+  !   ! Local variables
+  !   real :: itime
+  !   integer :: it, jpngr
     
-    888 format (F20.8,E20.8)
-    999 format (F20.8,F20.8)
+  !   ! xxx implement this: sum over gridcells? single output per gridcell?
+  !   if (maxgrid>1) stop 'writeout_ascii_waterbal: think of something ...'
+  !   jpngr = 20000
 
-  end subroutine writeout_ascii_waterbal
+  !   !-------------------------------------------------------------------------
+  !   ! DAILY OUTPUT
+  !   !-------------------------------------------------------------------------
+  !   if (interface%params_siml%loutwaterbal) then
 
+  !     if ( .not. interface%steering%spinup &
+  !          .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+  !          .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+
+  !       ! Write daily output only during transient simulation
+  !       do it=1,interface%params_siml%outnt
+
+  !         ! Define 'itime' as a decimal number corresponding to day in the year + year
+  !         itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
+
+  !         if (nlu>1) stop 'writeout_ascii_waterbal: write out lu-area weighted sum'
+
+  !         ! xxx lu-area weighted sum if nlu>0
+  !         write(255,999) itime, outdwcont(1,it,jpngr)
+  !         write(259,999) itime, outdpet(it,jpngr)
+  !         write(260,999) itime, outdaet(1,it,jpngr)
+  !         ! write(253,999) itime, outdalpha(it,jpngr)
+  !         ! write(251,999) itime, outdra(it,jpngr)
+  !         ! write(252,999) itime, outdrn(it,jpngr)
+  !         ! write(254,999) itime, outdcn(it,jpngr)
+  !         ! write(257,999) itime, outdro(1,it,jpngr)
+  !         ! write(263,999) itime, outdfleach(1,it,jpngr)
+  !         ! write(258,999) itime, outdeet(it,jpngr)
+  !         ! write(261,999) itime, outdayl(it,jpngr)
+  !         ! write(262,999) itime, outdalpha(1,it,jpngr)
+  !         ! write(264,999) itime, outdecon(it,jpngr)
+
+  !       end do
+  !     end if
+  !   end if
+
+  !   return
+    
+  !   888 format (F20.8,E20.8)
+  !   999 format (F20.8,F20.8)
+
+  ! end subroutine writeout_ascii_waterbal
+
+
+  subroutine writeout_nc_waterbal()
+    !/////////////////////////////////////////////////////////////////////////
+    ! Write NetCDF output
+    !-------------------------------------------------------------------------
+    use netcdf
+    use md_io_netcdf, only: write_nc_2D, write_nc_3D_time, check
+    use md_interface, only: interface
+
+    if (nlu>1) stop 'writeout_nc_waterbal(): nlu > 1. Think of something...'
+
+    if ( .not. interface%steering%spinup ) then
+      !-------------------------------------------------------------------------
+      ! Annual output
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutwaterbal) then
+        !-------------------------------------------------------------------------
+        ! PET
+        !-------------------------------------------------------------------------
+        print*,'writing ', trim(ncoutfilnam_apet), '...'
+        call write_nc_2D( trim(ncoutfilnam_apet), &
+                          PET_NAME, &
+                          interface%domaininfo%maxgrid, &
+                          interface%domaininfo%nlon, &
+                          interface%domaininfo%nlat, &
+                          interface%grid(:)%ilon, &
+                          interface%grid(:)%ilat, &
+                          interface%grid(:)%dogridcell, &
+                          outapet(:) &
+                          )
+
+        !-------------------------------------------------------------------------
+        ! AET
+        !-------------------------------------------------------------------------
+        if (nlu>1) stop 'writeout_nc_waterbal: nlu>1. Think of something clever!'
+        print*,'writing ', trim(ncoutfilnam_aaet), '...'
+        call write_nc_2D( trim(ncoutfilnam_aaet), &
+                          AET_NAME, &
+                          interface%domaininfo%maxgrid, &
+                          interface%domaininfo%nlon, &
+                          interface%domaininfo%nlat, &
+                          interface%grid(:)%ilon, &
+                          interface%grid(:)%ilat, &
+                          interface%grid(:)%dogridcell, &
+                          outaaet(1,:) &
+                          )
+
+        !-------------------------------------------------------------------------
+        ! ALPHA (AET/PET)
+        !-------------------------------------------------------------------------
+        print*,'writing ', trim(ncoutfilnam_aalpha), '...'
+        call write_nc_2D( trim(ncoutfilnam_aalpha), &
+                          ALPHA_NAME, &
+                          interface%domaininfo%maxgrid, &
+                          interface%domaininfo%nlon, &
+                          interface%domaininfo%nlat, &
+                          interface%grid(:)%ilon, &
+                          interface%grid(:)%ilat, &
+                          interface%grid(:)%dogridcell, &
+                          outaalpha(1,:) &
+                          )        
+
+      end if
+
+      if (       interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+           .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+        !-------------------------------------------------------------------------
+        ! Daily output
+        !-------------------------------------------------------------------------
+
+        !-------------------------------------------------------------------------
+        ! soil water content
+        !-------------------------------------------------------------------------
+        if (interface%params_siml%loutdwcont) then
+          print*,'writing ', trim(ncoutfilnam_dwcont), '...'
+          call write_nc_3D_time( trim(ncoutfilnam_dwcont), &
+                            WCONT_NAME, &
+                            interface%domaininfo%maxgrid, &
+                            interface%domaininfo%nlon, &
+                            interface%domaininfo%nlat, &
+                            interface%grid(:)%ilon, &
+                            interface%grid(:)%ilat, &
+                            interface%params_siml%outnt, &
+                            interface%grid(:)%dogridcell, &
+                            outdwcont(1,:,:) &
+                            )
+        end if
+
+        !-------------------------------------------------------------------------
+        ! ALPHA
+        !-------------------------------------------------------------------------
+        if (interface%params_siml%loutdalpha) then
+          print*,'writing ', trim(ncoutfilnam_dalpha), '...'
+          call write_nc_3D_time( trim(ncoutfilnam_dalpha), &
+                            ALPHA_NAME, &
+                            interface%domaininfo%maxgrid, &
+                            interface%domaininfo%nlon, &
+                            interface%domaininfo%nlat, &
+                            interface%grid(:)%ilon, &
+                            interface%grid(:)%ilat, &
+                            interface%params_siml%outnt, &
+                            interface%grid(:)%dogridcell, &
+                            outdalpha(1,:,:) &
+                            )
+        end if
+
+        !-------------------------------------------------------------------------
+        ! PET
+        !-------------------------------------------------------------------------
+        if (interface%params_siml%loutdpet) then
+          print*,'writing ', trim(ncoutfilnam_dpet), '...'
+          call write_nc_3D_time( trim(ncoutfilnam_dpet), &
+                            PET_NAME, &
+                            interface%domaininfo%maxgrid, &
+                            interface%domaininfo%nlon, &
+                            interface%domaininfo%nlat, &
+                            interface%grid(:)%ilon, &
+                            interface%grid(:)%ilat, &
+                            interface%params_siml%outnt, &
+                            interface%grid(:)%dogridcell, &
+                            outdpet(:,:) &
+                            )
+        end if
+
+        !-------------------------------------------------------------------------
+        ! AET
+        !-------------------------------------------------------------------------
+        if (interface%params_siml%loutdaet) then
+          if (nlu>1) stop 'writeout_nc_waterbal: nlu>1. Think of something clever!'
+          print*,'writing ', trim(ncoutfilnam_daet), '...'
+          call write_nc_3D_time( trim(ncoutfilnam_daet), &
+                            AET_NAME, &
+                            interface%domaininfo%maxgrid, &
+                            interface%domaininfo%nlon, &
+                            interface%domaininfo%nlat, &
+                            interface%grid(:)%ilon, &
+                            interface%grid(:)%ilat, &
+                            interface%params_siml%outnt, &
+                            interface%grid(:)%dogridcell, &
+                            outdaet(1,:,:) &
+                            )
+        end if
+
+      end if
+
+    end if
+
+  end subroutine writeout_nc_waterbal
 
 end module md_waterbal

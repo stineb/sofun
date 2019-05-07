@@ -5,12 +5,12 @@
 # write value behind this position:    |->
 
 gddbase                                 5.0
-ramp_pft_GrC3                           0.0
-ramp_pft_GNC3                           0.0
-ramp_pft_GrC4                           0.0
-phentype_pft_GrC3                       2.0
-phentype_pft_GNC3                       2.0
-phentype_pft_GrC4                       2.0
+ramp_pft_Gr3                            0.0
+ramp_pft_GN3                            0.0
+ramp_pft_Gr4                            0.0
+phentype_pft_Gr3                        2.0
+phentype_pft_GN3                        2.0
+phentype_pft_Gr4                        2.0
 
 #                                      |
 # write value *behind* this position:  |->

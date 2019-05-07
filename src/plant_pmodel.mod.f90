@@ -12,13 +12,15 @@ module md_plant
   implicit none
 
   private
-  public plant_type, dgpp, getpar_modl_plant, params_pft_plant,              &
+  public plant_type, plant_fluxes_type, getpar_modl_plant, params_pft_plant, &
     initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant,     &
-    writeout_ascii_plant, maxdoy, initglobal_plant, get_leaftraits, initpft, &
+    writeout_ascii_plant, maxdoy, initglobal_plant, get_leaftraits,          &
     getout_annual_plant
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
+  !----------------------------------------------------------------
+  ! Pools and other variables with year-to-year memory
   !----------------------------------------------------------------
   type plant_type
 
@@ -26,6 +28,7 @@ module md_plant
     integer :: pftno
 
     ! canopy
+    real :: fpc_grid            ! fractional projective cover
     real :: lai_ind             ! fraction of absorbed photosynthetically active radiation
     real :: fapar_ind           ! fraction of absorbed photosynthetically active radiation
     real :: acrown              ! crown area
@@ -42,8 +45,17 @@ module md_plant
 
   end type plant_type
 
-  ! fluxes
-  real, dimension(npft) :: dgpp             ! daily gross primary production [gC/m2/d]
+
+  !----------------------------------------------------------------
+  ! Fluxes and other variables with no memory
+  !----------------------------------------------------------------
+  type plant_fluxes_type
+
+    real :: dgpp     ! daily gross primary production [gC/m2/d]           
+    real :: drd      ! daily dark respiration [gC/m2/d]
+    real :: dtransp  ! daily transpiration [mm]
+
+  end type plant_fluxes_type
 
   !-----------------------------------------------------------------------
   ! Parameters. Runtime read-in
@@ -76,15 +88,13 @@ module md_plant
   ! Module-specific output variables
   !----------------------------------------------------------------
   ! daily
-  real, allocatable, dimension(:,:,:) :: outdgpp    ! daily gross primary production [gC/m2/d]
 
   ! annual
-  real, dimension(npft,maxgrid) :: outagpp
-  real, dimension(npft,maxgrid) :: outanarea_mb
-  real, dimension(npft,maxgrid) :: outanarea_cw
-  real, dimension(npft,maxgrid) :: outalai
-  real, dimension(npft,maxgrid) :: outalma
-  real, dimension(npft,maxgrid) :: outacton_lm
+  real, dimension(:,:), allocatable :: outanarea_mb
+  real, dimension(:,:), allocatable :: outanarea_cw
+  real, dimension(:,:), allocatable :: outalai
+  real, dimension(:,:), allocatable :: outalma
+  real, dimension(:,:), allocatable :: outacton_lm
 
   ! required for outputting leaf trait variables in other modules
   integer, dimension(npft) :: maxdoy  ! DOY of maximum LAI
@@ -209,26 +219,43 @@ contains
     ! important: Keep this order of reading PFT parameters fixed.
     !----------------------------------------------------------------
     pft = 0
-    if ( interface%params_siml%lTeBE ) then
+    if ( interface%params_siml%lTrE ) then
       pft = pft + 1
-      params_pft_plant(pft) = getpftparams( 'TeBE' )
-
-    else if ( interface%params_siml%lGrC3 ) then
-      pft = pft + 1
-      params_pft_plant(pft) = getpftparams( 'GrC3' )
-
-    else if ( interface%params_siml%lGNC3 ) then
-      pft = pft + 1
-      params_pft_plant(pft) = getpftparams( 'GNC3' )
-
-    else if ( interface%params_siml%lGrC4 ) then
-      pft = pft + 1
-      params_pft_plant(pft) = getpftparams( 'GrC4' )
-
-    else
-      stop 'PLANT:GETPAR_MODL_PLANT: PFT name not valid. See run/<simulationname>.sofun.parameter'
+      params_pft_plant(pft) = getpftparams( 'TrE' )
     end if
+
+    if ( interface%params_siml%lTNE ) then
+      pft = pft + 1
+      params_pft_plant(pft) = getpftparams( 'TNE' )
+    end if
+
+    if ( interface%params_siml%lTrD ) then
+      pft = pft + 1
+      params_pft_plant(pft) = getpftparams( 'TrD' )
+    end if
+
+    if ( interface%params_siml%lTND ) then
+      pft = pft + 1
+      params_pft_plant(pft) = getpftparams( 'TND' )
+    end if
+
+    if ( interface%params_siml%lGr3 ) then
+      pft = pft + 1
+      params_pft_plant(pft) = getpftparams( 'Gr3' )
+    end if
+
+    if ( interface%params_siml%lGN3 ) then
+      pft = pft + 1
+      params_pft_plant(pft) = getpftparams( 'GN3' )
+    end if
+
+    if ( interface%params_siml%lGr4 ) then
+      pft = pft + 1
+      params_pft_plant(pft) = getpftparams( 'Gr4' )
+    end if
+
     npft_site = pft
+    if (npft_site==0) stop 'PLANT:GETPAR_MODL_PLANT: PFT name not valid. See run/<simulationname>.sofun.parameter'
 
   end subroutine getpar_modl_plant
 
@@ -254,26 +281,44 @@ contains
     out_getpftparams%pftname = pftname
 
     ! PFT names
-    ! GrC3 : C3 grass                          
-    ! GrC4 : C4 grass     
-    if (trim(pftname)=='GrC3') then
+    ! Gr3 : C3 grass                          
+    ! Gr4 : C4 grass     
+    if (trim(pftname)=='Gr3') then
       out_getpftparams%grass   = .true.
       out_getpftparams%tree    = .false.
       out_getpftparams%c3      = .true.
       out_getpftparams%c4      = .false.
       out_getpftparams%nfixer  = .false.
-    else if (trim(pftname)=='GNC3') then
+    else if (trim(pftname)=='GN3') then
       out_getpftparams%grass   = .true.
       out_getpftparams%tree    = .false.
       out_getpftparams%c3      = .true.
       out_getpftparams%c4      = .false.
       out_getpftparams%nfixer  = .true.
-    else if (trim(pftname)=='GrC4') then
+    else if (trim(pftname)=='Gr4') then
       out_getpftparams%grass   = .true.
       out_getpftparams%tree    = .false.
       out_getpftparams%c3      = .false.
       out_getpftparams%c4      = .true.
       out_getpftparams%nfixer  = .false.
+    else if (trim(pftname)=='TrE') then
+      out_getpftparams%grass   = .false.
+      out_getpftparams%tree    = .true.
+      out_getpftparams%c3      = .true.
+      out_getpftparams%c4      = .false.
+      out_getpftparams%nfixer  = .false.
+    else if (trim(pftname)=='TNE') then
+      out_getpftparams%grass   = .false.
+      out_getpftparams%tree    = .true.
+      out_getpftparams%c3      = .true.
+      out_getpftparams%c4      = .false.
+      out_getpftparams%nfixer  = .true.
+    else if (trim(pftname)=='TND') then
+      out_getpftparams%grass   = .false.
+      out_getpftparams%tree    = .true.
+      out_getpftparams%c3      = .true.
+      out_getpftparams%c4      = .false.
+      out_getpftparams%nfixer  = .true.
     end if      
 
     ! land use category associated with PFT (provisional) 
@@ -295,17 +340,18 @@ contains
   end function getpftparams
 
 
-  subroutine initglobal_plant( plant )
+  subroutine initglobal_plant( plant, ngridcells )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of all _pools on all gridcells at the beginning
     !  of the simulation.
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use md_params_core, only: npft, maxgrid
+    use md_params_core, only: npft
 
     ! argument
-    type( plant_type ), dimension(npft,maxgrid), intent(inout) :: plant
+    type( plant_type ), dimension(npft,ngridcells), intent(inout) :: plant
+    integer, intent(in) :: ngridcells
 
     ! local variables
     integer :: pft
@@ -314,7 +360,7 @@ contains
     !-----------------------------------------------------------------------------
     ! derive which PFTs are present from fpc_grid (which is prescribed)
     !-----------------------------------------------------------------------------
-    do jpngr=1,maxgrid
+    do jpngr=1,ngridcells
       do pft=1,npft
         call initpft( plant(pft,jpngr) )
         plant(pft,jpngr)%pftno = pft
@@ -333,7 +379,10 @@ contains
     ! argument
     type( plant_type ), intent(inout) :: plant
 
-    plant%acrown = 1.0 ! dummy
+    plant%fpc_grid  = 0.0
+    plant%lai_ind   = 0.0
+    plant%fapar_ind = 0.0
+    plant%acrown    = 0.0
 
     ! canpopy state variables
     plant%narea            = 0.0
@@ -348,34 +397,48 @@ contains
   end subroutine initpft
 
 
-  subroutine initdaily_plant()
+  subroutine initdaily_plant( plant_fluxes )
+
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     !----------------------------------------------------------------
-    dgpp(:) = 0.0
+    ! arguments
+    type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
+
+    plant_fluxes(:)%dgpp    = 0.0
+    plant_fluxes(:)%drd     = 0.0
+    plant_fluxes(:)%dtransp = 0.0
 
   end subroutine initdaily_plant
 
 
-  subroutine initoutput_plant()
+  subroutine initoutput_plant( ngridcells )
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
     use md_interface, only: interface
 
-    if ( interface%steering%init .and. interface%params_siml%loutdgpp ) allocate( outdgpp(npft,ndayyear,maxgrid) )
-
-    outdgpp  (:,:,:) = 0.0
+    ! arguments
+    integer, intent(in) :: ngridcells
     
     ! annual output variables
     if (interface%params_siml%loutplant) then
-      outagpp(:,:)      = 0.0
+
+      if (interface%steering%init) then
+        allocate( outanarea_mb(npft,ngridcells) )
+        allocate( outanarea_cw(npft,ngridcells) )
+        allocate( outalai(npft,ngridcells) )
+        allocate( outalma(npft,ngridcells) )
+        allocate( outacton_lm(npft,ngridcells) )
+      end if
+      
       outanarea_mb(:,:) = 0.0
       outanarea_cw(:,:) = 0.0
       outalai     (:,:) = 0.0
       outalma     (:,:) = 0.0
       outacton_lm (:,:) = 0.0
+
     end if
 
   end subroutine initoutput_plant
@@ -396,20 +459,12 @@ contains
     !////////////////////////////////////////////////////////////////
     ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
     !----------------------------------------------------------------
-    ! GPP
-    if (interface%params_siml%loutdgpp) then
-      filnam=trim(prefix)//'.d.gpp.out'
-      open(101,file=filnam,err=999,status='unknown')
-    end if 
+
 
     !////////////////////////////////////////////////////////////////
     ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
     !----------------------------------------------------------------
     if (interface%params_siml%loutplant) then
-
-      ! GPP 
-      filnam=trim(prefix)//'.a.gpp.out'
-      open(310,file=filnam,err=999,status='unknown')
 
       ! METABOLIC NAREA (AT ANNUAL LAI MAXIMUM)
       filnam=trim(prefix)//'.a.narea_mb.out'
@@ -436,7 +491,7 @@ contains
   end subroutine initio_plant
 
 
-  subroutine getout_daily_plant( plant, jpngr, moy, doy )
+  subroutine getout_daily_plant( plant, plant_fluxes, jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
     ! Note that output variables are collected only for those variables
@@ -448,28 +503,30 @@ contains
     use md_interface, only: interface
 
     ! arguments
-    type( plant_type ), dimension(npft), intent(in) :: plant
-    integer, intent(in)                             :: jpngr
-    integer, intent(in)                             :: moy
+    type(plant_type), dimension(npft), intent(in) :: plant
+    type(plant_fluxes_type), dimension(npft), intent(in) :: plant_fluxes
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: moy
     integer, intent(in) :: doy
 
-    ! LOCAL VARIABLES
+    ! local variables
     integer :: pft
+    integer :: it
 
     !----------------------------------------------------------------
-    ! DAILY
+    ! DAILY FOR HIGH FREQUENCY OUTPUT
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
-    if ( interface%params_siml%loutdgpp ) outdgpp(:,doy,jpngr) = dgpp(:)
+    ! it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables as sum of daily values
     !----------------------------------------------------------------
-    if (interface%params_siml%loutplant) then
-      outagpp(:,jpngr)     = outagpp(:,jpngr) + dgpp(:)
-    end if
+    ! if (interface%params_siml%loutplant) then
+    !   ! nothing yet
+    ! end if
 
   end subroutine getout_daily_plant
 
@@ -512,7 +569,7 @@ contains
 
     ! local variables
     real :: itime
-    integer :: day, moy, jpngr
+    integer :: it, moy, jpngr
 
     ! xxx implement this: sum over gridcells? single output per gridcell?
     if (maxgrid>1) stop 'writeout_ascii: think of something ...'
@@ -523,20 +580,18 @@ contains
     ! Write daily value, summed over all PFTs / LUs
     ! xxx implement taking sum over PFTs (and gridcells) in this land use category
     !-------------------------------------------------------------------------
-    if ( .not. interface%steering%spinup &
-      .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
+    ! if ( .not. interface%steering%spinup &
+    !      .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
+    !      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
 
-      ! Write daily output only during transient simulation
-      do day=1,ndayyear
+    !   ! Write daily output only during transient simulation
+    !   do it=1,interface%params_siml%outnt
 
-        ! Define 'itime' as a decimal number corresponding to day in the year + year
-        itime = real(interface%steering%outyear) + real(day-1)/real(ndayyear)
+    !     ! Define 'itime' as a decimal number corresponding to day in the year + year
+    !     itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
         
-        if (interface%params_siml%loutdgpp  ) write(101,999) itime, sum(outdgpp(:,day,jpngr))
-
-      end do
-    end if
+    !   end do
+    ! end if
 
     !-------------------------------------------------------------------------
     ! ANNUAL OUTPUT
@@ -547,7 +602,6 @@ contains
 
       itime = real(interface%steering%outyear)
 
-      write(310,999) itime, sum(outagpp(:,jpngr))
       write(319,999) itime, sum(outanarea_mb(:,jpngr))
       write(320,999) itime, sum(outanarea_cw(:,jpngr))
       write(321,999) itime, sum(outacton_lm(:,jpngr))
@@ -560,6 +614,5 @@ contains
     999 format (F20.8,F20.8)
 
   end subroutine writeout_ascii_plant
-
 
 end module md_plant

@@ -9,13 +9,13 @@ module md_vegdynamics
 
 contains
 
-  subroutine vegdynamics( tile, plant, solar, out_pmodel, fapar_prescr )
+  subroutine vegdynamics( tile, plant, solar, out_pmodel, fapar_prescr, fpc_grid_prescr )
     !//////////////////////////////////////////////////////////////////
     ! Updates canopy and tile variables and calls 'estab' to 
     ! simulate establishment of new individuals
     !------------------------------------------------------------------
     use md_params_core, only: npft, nlu, nmonth, dummy
-    use md_plant, only: initpft, get_leaftraits, plant_type, params_pft_plant
+    use md_plant, only: get_leaftraits, plant_type, params_pft_plant
     use md_tile, only: tile_type
     use md_waterbal, only: solartype
     use md_gpp, only: outtype_pmodel
@@ -28,6 +28,7 @@ contains
 
     ! arguments (may be dummy)
     real, intent(in) :: fapar_prescr
+    real, dimension(npft), intent(in) :: fpc_grid_prescr
 
     ! local variables
     integer :: pft, lu
@@ -39,15 +40,11 @@ contains
       do pft=1,npft
         if (params_pft_plant(pft)%lu_category==lu) then
 
-          ! Override interactively simulated fAPAR with data
+          ! Override interactively simulated fAPAR and foliar projective cover with data
+          ! if (sum(fpc_grid_prescr(:))==0.0) print*,'sum of fpc_grid',sum(fpc_grid_prescr(:))
+
           if (fapar_prescr/=dummy) plant(pft)%fapar_ind = fapar_prescr
-
-          ! initialise all pools of this PFT with zero
-          call initpft( plant(pft) )
-
-          ! Set stuff that is required but obsolete for P-model
-          plant(pft)%acrown        = 1.0
-          tile(lu)%canopy%fpc_grid = 1.0
+          plant(pft)%fpc_grid = fpc_grid_prescr(pft)
 
           ! get annually updated leaf traits (vary because of variations in light and CO2)
           call get_leaftraits( plant(pft), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )
