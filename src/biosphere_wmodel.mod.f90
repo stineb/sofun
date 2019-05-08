@@ -194,10 +194,10 @@ contains
             !----------------------------------------------------------------
             ! populate function return variable
             !----------------------------------------------------------------
-            if (npft>1) stop 'think about npft > 1'
-            out_biosphere%fapar(doy)  = 0.0
-            out_biosphere%gpp(doy)    = 0.0
-            out_biosphere%transp(doy) = 0.0
+            ! if (npft>1) stop 'think about npft > 1'
+            out_biosphere%fapar(doy)   = 0.0
+            out_biosphere%gpp(doy)     = 0.0
+            out_biosphere%transp(doy)  = 0.0
 
           end do dayloop
 

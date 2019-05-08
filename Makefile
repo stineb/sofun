@@ -10,9 +10,9 @@
 # gfor    - gfortran compiler
 # intel   - ifort compiler
 
-PROFILE=gfortran
+# PROFILE=gfortran
 # PROFILE=pgi
-# PROFILE=intel
+PROFILE=intel
 
 ##################
 ## pgf profile ##
@@ -56,29 +56,25 @@ NETCDF_LIB = /opt/local/lib
 # NETCDF_LIB = /usr/local/lib
 # LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's work computer
 
-# # On Imperial CX1, use this:
-# NETCDF_INC = /apps/netcdf/4.0.1-mcmodel-medium/include
-# NETCDF_LIB = /apps/netcdf/4.0.1-mcmodel-medium/lib -lnetcdf
-# LIBS = -L $(NETCDF_LIB) -lnetcdf
-
 endif
 
-#####################
-## intel profile ##
-#####################
+######################
+## intel profile    ##
+## for Imperial CX1 ##
+######################
 ifeq ($(PROFILE),intel)
+
 # Compiler and options
 FCOM=ifort
 CPPFLAGS=-e -fpp -preprocess_only -E
 COMPFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -free -g -traceback ##-r8 -i4 -align -pc64 -fp-model strict 
 DEBUGFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -free -warn all -implicitnone -g -traceback -fpe0 -fpstkchk -CU
 
-# System libraries
-# Get netcdf-fortran library by 'sudo port install netcdf-fortran'
-# and to see where it's been installed 'port contents netcdf-fortran'
-# NETCDF_INC = /opt/local/include
-# NETCDF_LIB = /opt/local/lib
-# LIBS = -L $(NETCDF_LIB) -lnetcdf
+# On Imperial CX1, use this:
+NETCDF_INC = /apps/netcdf/4.0.1-mcmodel-medium/include
+NETCDF_LIB = /apps/netcdf/4.0.1-mcmodel-medium/lib -lnetcdf
+LIBS = -L$(NETCDF_LIB) -lnetcdf
+
 endif
 
 ####################

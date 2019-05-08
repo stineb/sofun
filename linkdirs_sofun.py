@@ -27,7 +27,7 @@ import os.path
 ## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
-simsuite = 'fluxnet2015_cmodel'
+simsuite = 'global'
 
 ##--------------------------------------------------------------------
 ## For an example simulation (simulation name 'EXAMPLE_global'), set 
@@ -39,8 +39,10 @@ example = False
 ## Manually et the root directory for the local mirror of 
 ## /work/bstocker/labprentice/data
 ##--------------------------------------------------------------------
-dataroot = '/Users/benjaminstocker/data/'
+# dataroot = '/Users/benjaminstocker/data/'
 # dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
+dataroot = '/rds/general/project/lab-prentice-realm-data/live/data/'
+mydataroot = '/rds/general/user/bstocker/home/mydata/'
 
 ##--------------------------------------------------------------------
 ## Link directories
@@ -76,7 +78,7 @@ if simsuite == 'global':
 	## CO2
 	##--------------------------------------
 	dirn = 'input/global/co2'
-	call(['ln', '-svf', dataroot + 'co2/cCO2_rcp85_const850-1765.dat', dirn ])
+	call(['cp', dataroot + 'co2/cCO2_rcp85_const850-1765.dat', dirn ])
 
 	## fapar (fapar3g)
 	##--------------------------------------
@@ -87,9 +89,10 @@ if simsuite == 'global':
 	## soil
 	##--------------------------------------
 	dirn = 'input/global/soil'
+        ## WARNING: using mydataroot for soil files!
 	os.system( 'mkdir -p ' + dirn )
-	call(['ln', '-svf', dataroot + 'soil/soilgrids/whc_soilgrids_halfdeg_FILLED.nc', dirn ])
-	call(['ln', '-svf', dataroot + 'soil/hwsd/soil_type_hwsd_halfdeg.cdf', dirn ])
+	call(['ln', '-svf', mydataroot + 'soil/soilgrids/whc_soilgrids_halfdeg_FILLED.nc', dirn ])
+	call(['ln', '-svf', mydataroot + 'soil/hwsd/soil_type_hwsd_halfdeg.cdf', dirn ])
 
 	## land cover
 	##--------------------------------------
@@ -140,7 +143,7 @@ if simsuite == 'global':
 	## CRU climate input data (only ccov)
 	##--------------------------------------
 	## cloud cover
-	src = dataroot + 'cru/ts_3.23/cru_ts3.23.1901.2014.cld.dat.nc'
+	src = dataroot + 'cru/ts_4.01/cru_ts4.01.1901.2016.cld.dat.nc'
 	dst = 'input/global/climate/ccov'
 	if not os.path.isdir( dst ):
 		os.system( 'mkdir -p ' + dst )
