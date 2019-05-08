@@ -185,6 +185,7 @@ contains
 
     else
 
+      print*,'fapar_forcing_source: ', fapar_forcing_source
       stop 'getfapar: argument fapar_forcing_source is invalid'
 
     end if
@@ -555,6 +556,7 @@ contains
     real :: ncfillvalue                                  ! _FillValue attribute in NetCDF file
     integer :: nmissing                                  ! number of land cells where climate data is not available
     character(len=5) :: recname = "tstep"
+    logical, parameter :: verbose = .true.
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
@@ -571,6 +573,7 @@ contains
 
       ! out_arrsize_2D = get_arrsize_2D( filnam )
 
+      !print*,'Opening climate file to get lon and lat: ', trim(filnam)
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_temp ) )
 
       ! get dimension ID for latitude
@@ -661,23 +664,28 @@ contains
       ! open NetCDF files to get ncid_*
       ! temperature
       filnam = './input/global/climate/temp/Tair_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
+      if (verbose) print*,'opening ', filnam
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_temp ) )
 
       ! precipitation (rain)
       filnam = './input/global/climate/prec/Rainf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
+      if (verbose) print*,'opening ', filnam
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_prec ) )
 
       ! precipitation (snow)
       filnam = './input/global/climate/prec/Snowf_daily_WFDEI_CRU_'//climateyear_char//moy_char//'.nc'
+      if (verbose) print*,'opening ', filnam
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_snow ) )
 
       ! VPD from Qair
       filnam = './input/global/climate/humd/Qair_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
+      if (verbose) print*,'opening ', filnam
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_humd ) )
 
       ! PPFD from SWdown
       if (in_ppfd) then
         filnam = './input/global/climate/srad/SWdown_daily_WFDEI_'//climateyear_char//moy_char//'.nc'
+        if (verbose) print*,'opening ', filnam
         call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ppfd ) )
       end if
 
@@ -773,7 +781,7 @@ contains
     end do monthloop
 
     if (init) print*,'number of land cells without climate data: ', nmissing
-
+    if (verbose) print*,'done with getclimate_wfdei.'
     return
     888  format (I2.2)
     999  format (I4.4)
@@ -811,6 +819,7 @@ contains
     integer, parameter :: firstyr_cru = 1901
     integer, parameter :: nyrs_cru = 116
     character(len=256), parameter :: filnam = './input/global/climate/ccov/cru_ts4.01.1901.2016.cld.dat.nc'
+    logical, parameter :: verbose = .true.
 
     if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
 
@@ -819,6 +828,7 @@ contains
     !----------------------------------------------------------------    
     if (init) then
 
+      if (verbose) print*,'opening CRU climate file ', filnam, '...'
       call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ccov ) )
 
       ! get dimension ID for latitude
