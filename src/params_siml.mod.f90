@@ -76,6 +76,7 @@ module md_params_siml
     logical :: loutdwcont
     logical :: loutdaet
     logical :: loutdpet
+    logical :: loutdnetrad
     logical :: loutdalpha
     logical :: loutdtemp
     logical :: loutdfapar
@@ -353,6 +354,7 @@ contains
     out_getpar_siml%loutdwcont     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdwcont' )
     out_getpar_siml%loutdaet       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdaet' )
     out_getpar_siml%loutdpet       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdpet' )
+    out_getpar_siml%loutdnetrad    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnetrad' )
     out_getpar_siml%loutdalpha     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdalpha' )
     out_getpar_siml%loutdtemp      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp' )
     out_getpar_siml%loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
@@ -363,6 +365,7 @@ contains
     if (.not.out_getpar_siml%loutgpp      .and. out_getpar_siml%loutdrd    ) out_getpar_siml%loutgpp      = .true.
     if (.not.out_getpar_siml%loutgpp      .and. out_getpar_siml%loutdtransp) out_getpar_siml%loutgpp      = .true.
     if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdpet   ) out_getpar_siml%loutwaterbal = .true.
+    if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdnetrad) out_getpar_siml%loutwaterbal = .true.
     if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdwcont ) out_getpar_siml%loutwaterbal = .true.
     if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdaet   ) out_getpar_siml%loutwaterbal = .true.
     if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdalpha ) out_getpar_siml%loutwaterbal = .true.

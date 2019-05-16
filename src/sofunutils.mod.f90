@@ -952,7 +952,7 @@ contains
     ! function return value
     real ::  patm ! atmospheric pressure (Pa)
 
-    patm = kPo * (1.0 - kL*elv/kTo)**(kG*kMa*1e-3/(kR*kL))
+    patm = kPo * (1.0 - kL * elv / kTo) ** (kG * kMa / (kR * kL))
 
   end function calc_patm
 

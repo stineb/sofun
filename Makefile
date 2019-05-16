@@ -10,9 +10,9 @@
 # gfor    - gfortran compiler
 # intel   - ifort compiler
 
-# PROFILE=gfortran
+PROFILE=gfortran
 # PROFILE=pgi
-PROFILE=intel
+# PROFILE=intel
 
 ##################
 ## pgf profile ##
@@ -50,6 +50,7 @@ COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overfl
 ## On Beni's laptop, use this (display by nc-config --libdir and nc-config --includedir)
 NETCDF_INC = /opt/local/include
 NETCDF_LIB = /opt/local/lib
+LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's laptop
 
 # ## On Beni's work computer use this:
 # NETCDF_INC = /usr/local/include
@@ -118,7 +119,7 @@ export FCOM CPPFLAGS COMPFLAGS DEBUGFLAGS LIBS
 # -------
 standard: 
 	 $(MAKE) -C src
-	 $(FCOM) -o $(EXE) $(COMPFLAGS) $(ARCHIVES)
+	 $(FCOM) -o $(EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 	 
 #  include libraries when necessary
 #	 $(FCOM) -o $(EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
@@ -128,15 +129,15 @@ debug:
 	$(MAKE) debug -C src
 	$(FCOM) -o $(EXE) $(DEBUGFLAGS) $(ARCHIVES) #$(LIBS)
 
-# reduced model setup: only SPLASH
+# reduced model setup: only water balance model, following SPLASH
 splash: 
 	 $(MAKE) splash -C src
-	 $(FCOM) -o $(SPLASH_EXE) $(COMPFLAGS) $(ARCHIVES)
+	 $(FCOM) -o $(SPLASH_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
-# reduced model setup: only SPLASH
+# reduced model setup: only water balance model, following SWBM
 swbm: 
 	 $(MAKE) swbm -C src
-	 $(FCOM) -o $(SWBM_EXE) $(COMPFLAGS) $(ARCHIVES)
+	 $(FCOM) -o $(SWBM_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
 # reduced model setup: only SPLASH and PMODEL
 pmodel: 
@@ -160,7 +161,7 @@ demo_pmodel:
 
 pmodel_swbm: 
 	 $(MAKE) pmodel_swbm -C src
-	 $(FCOM) -o $(PMODEL_SWBM_EXE) $(COMPFLAGS) $(ARCHIVES)
+	 $(FCOM) -o $(PMODEL_SWBM_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
 # global P-model for lonlat simulations (doesn't necessarily need to cover the whole globe)
 gpmodel: 
@@ -180,12 +181,12 @@ cmodel_simsuite:
 # reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
 tmodel: 
 	 $(MAKE) tmodel -C src
-	 $(FCOM) -o $(TMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
+	 $(FCOM) -o $(TMODEL_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
 # full model setup
 cnmodel: 
 	 $(MAKE) cnmodel -C src
-	 $(FCOM) -o $(CNMODEL_EXE) $(COMPFLAGS) $(ARCHIVES)
+	 $(FCOM) -o $(CNMODEL_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
 # clean: remove exe and .o and .do files
 .PHONY: clean

@@ -23,7 +23,7 @@ subroutine biosphere( &
   use _vars_core, only: initannual, initdaily, initglobal, initpft
   use _soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, writeout_ascii_soiltemp
   use _params_soil, only: paramtype_soil
-  use _waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
+  use _waterbal, only: waterbal, get_solar_alldays, initdaily_waterbal, initglobal_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal
   use _gpp, only: getpar_modl_gpp, initio_gpp, initoutput_gpp, initdaily_gpp, getlue, gpp, getout_daily_gpp, writeout_ascii_gpp
 
   implicit none
@@ -110,9 +110,9 @@ subroutine biosphere( &
     ! Get radiation based on daily temperature, sunshine fraction, and 
     ! elevation.
     ! This is not compatible with a daily biosphere-climate coupling. I.e., 
-    ! there is a daily loop within 'getsolar'!
+    ! there is a daily loop within 'get_solar'!
     !----------------------------------------------------------------
-    call getsolar_alldays( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
+    call get_solar_alldays( lat(jpngr), elv(jpngr), dfsun_field(:,jpngr) )
 
     !----------------------------------------------------------------
     ! LOOP THROUGH MONTHS

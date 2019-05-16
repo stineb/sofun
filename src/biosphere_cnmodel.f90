@@ -18,7 +18,7 @@ subroutine biosphere( c_uptake )
   use md_soiltemp, only: soiltemp, initoutput_soiltemp, initio_soiltemp, getout_daily_soiltemp, &
     writeout_ascii_soiltemp
   use md_params_soil, only: paramtype_soil
-  use md_waterbal, only: waterbal, getsolar_alldays, initdaily_waterbal, initglobal_waterbal, &
+  use md_waterbal, only: waterbal, get_solar_alldays, initdaily_waterbal, initglobal_waterbal, &
     initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, &
     writeout_ascii_waterbal
   use md_phenology, only: gettempphenology, getpar_modl_phenology
@@ -150,10 +150,10 @@ subroutine biosphere( c_uptake )
     ! Get radiation based on daily temperature, sunshine fraction, and 
     ! elevation.
     ! This is not compatible with a daily biosphere-climate coupling. I.e., 
-    ! there is a daily loop within 'getsolar'!
+    ! there is a daily loop within 'get_solar'!
     !----------------------------------------------------------------
-    if (verbose) write(0,*) 'calling getsolar_alldays() ...'
-    call getsolar_alldays( &
+    if (verbose) write(0,*) 'calling get_solar_alldays() ...'
+    call get_solar_alldays( &
       interface%grid(jpngr)%lat, & 
       interface%grid(jpngr)%elv, & 
       interface%climate(jpngr)%dfsun(:) & 

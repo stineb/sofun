@@ -4,7 +4,7 @@ module md_biosphere
   use md_classdefs
   use md_plant, only: plant_type, plant_fluxes_type, initdaily_plant, initglobal_plant, getout_daily_plant, getout_annual_plant, getpar_modl_plant, initoutput_plant, writeout_ascii_plant, initio_plant, initio_nc_plant, writeout_nc_plant
   use md_params_soil, only: paramtype_soil
-  use md_waterbal, only: solartype, waterbal, getsolar, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, writeout_nc_waterbal, init_rlm_waterbal, get_rlm_waterbal, getrlm_daily_waterbal
+  use md_waterbal, only: solartype, waterbal, get_solar, initdaily_waterbal, initio_waterbal, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, writeout_ascii_waterbal, initio_nc_waterbal, writeout_nc_waterbal, init_rlm_waterbal, get_rlm_waterbal, getrlm_daily_waterbal
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initio_gpp, initoutput_gpp, getlue, gpp, getout_daily_gpp, getout_annual_gpp, writeout_ascii_gpp, initio_nc_gpp, writeout_nc_gpp
   use md_vegdynamics, only: vegdynamics
   use md_tile, only: tile_type, initglobal_tile
@@ -146,9 +146,9 @@ contains
         ! Get radiation based on daily temperature, sunshine fraction, and 
         ! elevation.
         ! This is not compatible with a daily biosphere-climate coupling. I.e., 
-        ! there is a daily loop within 'getsolar'!
+        ! there is a daily loop within 'get_solar'!
         !----------------------------------------------------------------
-        if (verbose) print*,'calling getsolar() ... '
+        if (verbose) print*,'calling get_solar() ... '
         if (verbose) print*,'    with argument lat = ', interface%grid(jpngr)%lat
         if (verbose) print*,'    with argument elv = ', interface%grid(jpngr)%elv
         if (verbose) print*,'    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
@@ -157,10 +157,10 @@ contains
           ! for comparison with Python SPLASH
           interface%climate(jpngr)%dfsun(:) = 0.562000036
           interface%climate(jpngr)%dppfd(:) = dummy
-          solar = getsolar( 67.25, 87.0, interface%climate(jpngr)%dfsun(:), interface%climate(jpngr)%dppfd(:), splashtest=splashtest, testdoy=testdoy )
+          solar = get_solar( 67.25, 87.0, interface%climate(jpngr)%dfsun(:), interface%climate(jpngr)%dppfd(:), splashtest=splashtest, testdoy=testdoy )
           if (lev_splashtest==1) stop 'end of splash test level 1'
         else          
-          solar = getsolar( &
+          solar = get_solar( &
                             interface%grid(jpngr)%lat, & 
                             interface%grid(jpngr)%elv, & 
                             interface%climate(jpngr)%dfsun(:), & 

@@ -21,15 +21,17 @@ module md_waterbal
   ! contact: b.stocker@imperial.ac.uk
   ! ...
   !----------------------------------------------------------------
-  use md_params_core, only: ndayyear, nmonth, nlu, maxgrid, kTo, kR, kMv, kMa, kfFEC
+  use md_params_core, only: ndayyear, nmonth, nlu, maxgrid, kTo, kR, &
+    kMv, kMa, kfFEC, secs_per_day
 
   implicit none
 
   private
-  public solartype, evap, waterbal, getsolar,                          &
+  public solartype, evap, waterbal, get_solar,                         &
     getout_daily_waterbal, initoutput_waterbal,                        &
-    getpar_modl_waterbal, initio_nc_waterbal, &
-    writeout_nc_waterbal, get_rlm_waterbal, init_rlm_waterbal, getrlm_daily_waterbal
+    getpar_modl_waterbal, initio_nc_waterbal,                          &
+    writeout_nc_waterbal, get_rlm_waterbal, init_rlm_waterbal,         &
+    getrlm_daily_waterbal
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
@@ -104,7 +106,6 @@ module md_waterbal
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, KNOWN PARAMETERS
   !----------------------------------------------------------------
-  real, parameter :: secs_per_day = 86400.0
   logical :: outenergy = .false.
 
   !----------------------------------------------------------------
@@ -114,7 +115,7 @@ module md_waterbal
   integer, parameter :: nyrs_rlmalpha = 5                   ! number of years for rolling mean (=width of sliding window)
 
   !----------------------------------------------------------------
-  ! Module-specific output variables, daily
+  ! Daily module-specific output variables
   !----------------------------------------------------------------
   real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm r J/m2/d depending on 'outenergy'
   real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm or J/m2/d depending on 'outenergy'
@@ -131,7 +132,7 @@ module md_waterbal
   ! real, allocatable, dimension(:,:)   :: outdecon           ! daily water-to-energy conversion factor m TJ-1 = mm GJ-1
 
   !----------------------------------------------------------------
-  ! Module-specific output variables, annual
+  ! Annual module-specific output variables
   !----------------------------------------------------------------
   real, allocatable, dimension(:)     :: outapet            ! annual total potential ET, mm r J/m2/yr depending on 'outenergy'
   real, allocatable, dimension(:,:)   :: outaaet            ! annual total actual ET, mm or J/m2/yr depending on 'outenergy'
@@ -221,11 +222,11 @@ contains
       ! Calculate radiation and evaporation quantities
       ! print*,'2'
       if (splashtest) then
-        evap(lu) = getevap( lat=67.25, doy=55, elv=87.0, sf=sf_splashtest, tc=tc_splashtest, sw=sw_splashtest, netrad=netrad, splashtest=splashtest, testdoy=testdoy )
+        evap(lu) = get_evap( lat=67.25, doy=55, elv=87.0, sf=sf_splashtest, tc=tc_splashtest, sw=sw_splashtest, netrad=netrad, splashtest=splashtest, testdoy=testdoy )
         if (lev_splashtest==2) stop 'end of splash test level 2'
       else
         ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
-        evap(lu) = getevap( lat, doy, elv, sf, tc, tile_fluxes(lu)%sw, netrad, splashtest, testdoy )
+        evap(lu) = get_evap( lat, doy, elv, sf, tc, tile_fluxes(lu)%sw, netrad, splashtest, testdoy )
         ! print*,'... done'
       end if
 
@@ -233,7 +234,7 @@ contains
         ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         ! 21. Estimate daily AET (out_evap%aet), mm d-1
         ! WARNING: This follows SWBM not SPLASH
-        ! Needs to be done here because wcont is not available in getevap()
+        ! Needs to be done here because wcont is not available in get_evap()
         ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         ! calculate actual ET from potential ET and Eq. 2 in Orth et al., 2013, limited to <=1
         evap(lu)%aet = evap(lu)%pet * beta * min( 1.0, ( soil(lu)%phy%wcont / soil(lu)%params%whc )**exp_et )
@@ -290,11 +291,11 @@ contains
   end subroutine waterbal
 
 
-  function getsolar( lat, elv, sf, ppfd, splashtest, testdoy ) result( out_solar )
+  function get_solar( lat, elv, sf, ppfd, splashtest, testdoy ) result( out_solar )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily PPFD. Code is an extract of the subroutine
     ! 'evap', adopted from the evap() function in GePiSaT (Python version). 
-    ! This subroutine ('getsolar') is called before the daily loop.
+    ! This subroutine ('get_solar') is called before the daily loop.
     ! Output:
     ! - daily extraterrestrial solar radiation (dra), J/m^2
     ! - daily PPFD (dppfd), mol/m^2
@@ -486,10 +487,10 @@ contains
     !         Tech. rep. NASA-TM-X-164. National Aeronautics and Space 
     !         Administration (NASA).
     !-------------------------------------------------------------   
-  end function getsolar
+  end function get_solar
 
 
-  function getevap( lat, doy, elv, sf, tc, sw, netrad, splashtest, testdoy ) result( out_evap )
+  function get_evap( lat, doy, elv, sf, tc, sw, netrad, splashtest, testdoy ) result( out_evap )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily evaporation quantities. Code is 
     ! adopted from the evap() function in GePiSaT (Python version). 
@@ -530,25 +531,24 @@ contains
     real :: tau                          ! transmittivity (unitless)
     real :: rw                           ! variable substitute (W/m^2)
     real :: hn                           ! net radiation cross-over hour angle
-    real :: s                            ! slope of saturation vap press temp curve, Pa/K
+    real :: sat_slope                    ! slope of saturation vap press temp curve, Pa/K
     real :: pw                           ! density of water, kg/m^3
     real :: lv                           ! enthalpy of vaporization, J/kg
-    real :: g                            ! psychrometric constant, Pa/K
+    real :: gamma                        ! psychrometric constant, Pa/K
     real :: econ                         ! Eq. 58, SPLASH 2.0 Documentation
     real :: rx                           ! variable substitute (mm/hr)/(W/m^2)
     real :: hi, cos_hi                   ! intersection hour angle, degrees
     real, dimension(2) :: out_ru_rv      ! function return variable containing 'ru' and 'rv'.
 
-
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Calculate water-to-energy conversion (econ), m^3/J
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Slope of saturation vap press temp curve, Pa/K
-    s = sat_slope(tc)
-    if (splashtest .and. doy==testdoy) print*,'slope of saturation, s', s
+    sat_slope = calc_sat_slope(tc)
+    if (splashtest .and. doy==testdoy) print*,'slope of saturation, s', sat_slope
 
     ! Enthalpy of vaporization, J/kg
-    lv = enthalpy_vap(tc)
+    lv = calc_enthalpy_vap(tc)
     if (splashtest .and. doy==testdoy) print*,'enthalpy of vaporization: ', lv
 
     ! Density of water, kg/m^3
@@ -557,15 +557,14 @@ contains
 
     ! Psychrometric constant, Pa/K
     if (splashtest .and. doy==testdoy) print*,'calculating psychrometric const. with (tc, elv): ', tc, elv
-    g = psychro(tc, calc_patm(elv))
+    gamma = psychro(tc, calc_patm(elv))
     if (splashtest .and. doy==testdoy) print*,'calculating psychrometric const. with patm: ', calc_patm(elv)
-    if (splashtest .and. doy==testdoy) print*,'psychrometric constant: ', g
+    if (splashtest .and. doy==testdoy) print*,'psychrometric constant: ', gamma
 
     ! Eq. 51, SPLASH 2.0 Documentation
-    econ = s/(lv*pw*(s + g))
-    if (splashtest .and. doy==testdoy) print*,'Econ: ', Econ
-
-    out_evap%econ = 1.0 / ( lv * pw ) ! this is to convert energy into mass (water)
+    ! out_evap%econ = 1.0 / ( lv * pw ) ! this is to convert energy into mass (water)
+    out_evap%econ = sat_slope / (lv * pw * (sat_slope + gamma)) ! MORE PRECISELY - this is to convert energy into mass (water)
+    if (splashtest .and. doy==testdoy) print*,'Econ: ', out_evap%econ
 
 
     if (netrad/=dummy) then
@@ -584,7 +583,7 @@ contains
       ! 17. Estimate daily EET (out_evap%eet), mm d-1
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 70, SPLASH 2.0 Documentation
-      out_evap%eet = 1000.0 * econ * out_evap%rn
+      out_evap%eet = 1000.0 * out_evap%econ * out_evap%rn
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 18. Estimate daily PET (out_evap%pet), mm d-1
@@ -597,7 +596,7 @@ contains
       ! 16.A. Calculate daily condensation in case net radiation is negative (out_evap%cn), mm d-1
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       if (out_evap%rn < 0.0) then
-        out_evap%cn = 1000.0 * econ * abs(out_evap%rn)
+        out_evap%cn = 1000.0 * out_evap%econ * abs(out_evap%rn)
       else
         out_evap%cn = 0.0
       end if
@@ -682,20 +681,20 @@ contains
 
       if (splashtest .and. doy==testdoy) print*,'nighttime net radiation: ', out_evap%rnn
 
-      ! print*,'Econ alternative: ', 1.0 / (lv * pw)
+      ! print*,'out_evap%econ alternative: ', 1.0 / (lv * pw)
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 16. Calculate daily condensation (out_evap%cn), mm d-1
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 68, SPLASH 2.0 Documentation
-      out_evap%cn = 1000.0 * econ * abs(out_evap%rnn)
+      out_evap%cn = 1000.0 * out_evap%econ * abs(out_evap%rnn)
       if (splashtest .and. doy==testdoy) print*,'daily condensation: ', out_evap%cn
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 17. Estimate daily EET (out_evap%eet), mm d-1
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 70, SPLASH 2.0 Documentation
-      out_evap%eet = 1000.0 * econ * out_evap%rn
+      out_evap%eet = 1000.0 * out_evap%econ * out_evap%rn
       if (splashtest .and. doy==testdoy) print*,'daily EET: ', out_evap%eet
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -708,7 +707,7 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * econ
+      rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * out_evap%econ
       if (splashtest .and. doy==testdoy) print*,'variable substitute, rx: ', rx
       
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -731,7 +730,7 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 81, SPLASH 2.0 Documentation
       out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
-      ! out_evap%aet_e = out_evap%aet / (econ * 1000)
+      ! out_evap%aet_e = out_evap%aet / (out_evap%econ * 1000)
       if (splashtest .and. doy==testdoy) print*,'daily AET set to: ', out_evap%aet
       ! print*,'aet ', out_evap%aet
 
@@ -1129,7 +1128,7 @@ contains
   end function get_berger_tls
 
 
-  function sat_slope( tc )
+  function calc_sat_slope( tc ) result( sat_slope )
     !----------------------------------------------------------------   
     ! Calculates the slope of the sat pressure temp curve, Pa/K
     ! Ref:      Eq. 13, Allen et al. (1998)
@@ -1142,10 +1141,10 @@ contains
 
     sat_slope = (17.269)*(237.3)*(610.78)*(exp(tc*17.269/(tc + 237.3))/((tc + 237.3)**2))
 
-  end function sat_slope
+  end function calc_sat_slope
 
 
-  function enthalpy_vap( tc )
+  function calc_enthalpy_vap( tc ) result( enthalpy_vap )
     !----------------------------------------------------------------   
     ! Calculates the enthalpy of vaporization, J/kg
     ! Ref:      Eq. 8, Henderson-Sellers (1984)
@@ -1159,7 +1158,7 @@ contains
 
     enthalpy_vap = 1.91846e6*((tc + 273.15)/(tc + 273.15 - 33.91))**2
 
-  end function enthalpy_vap
+  end function calc_enthalpy_vap
 
 
   function density_h2o( tc, press )
@@ -1266,123 +1265,13 @@ contains
             )
 
     ! Calculate latent heat of vaporization, J/kg
-    lv = enthalpy_vap(tc)
+    lv = calc_enthalpy_vap(tc)
 
     ! Calculate psychrometric constant, Pa/K
     ! Eq. 8, Allen et al. (1998)
-    psychro = cp*kMa*press/(kMv*lv)
+    psychro = cp * kMa * press / (kMv * lv)
 
   end function psychro
-
-
-  subroutine initio_waterbal()
-    !////////////////////////////////////////////////////////////////
-    ! OPEN ASCII OUTPUT FILES FOR OUTPUT
-    !----------------------------------------------------------------
-    use md_interface, only: interface
-
-    ! local variables
-    character(len=256) :: prefix
-    character(len=256) :: filnam
-
-    prefix = "./output/"//trim(interface%params_siml%runname)
-
-    !----------------------------------------------------------------
-    ! DAILY OUTPUT
-    !----------------------------------------------------------------
-    if (interface%params_siml%loutwaterbal) then
-
-      ! ! RA: daily solar irradiation, J/m2
-      ! filnam=trim(prefix)//'.d.ra.out'
-      ! open(251,file=filnam,err=888,status='unknown')
-
-      ! ! RN: daily net radiation, J/m2
-      ! filnam=trim(prefix)//'.d.rn.out'
-      ! open(252,file=filnam,err=888,status='unknown')
-
-      ! ! PPFD: daily PPFD, mol/m2
-      ! filnam=trim(prefix)//'.d.ppfd.out'
-      ! open(253,file=filnam,err=888,status='unknown')
-
-      ! ! CN: daily condensation water, mm
-      ! filnam=trim(prefix)//'.d.cn.out'
-      ! open(254,file=filnam,err=888,status='unknown')
-
-      ! WCONT: daily soil moisture, mm
-      filnam=trim(prefix)//'.d.wcont.out'
-      open(255,file=filnam,err=888,status='unknown')
-
-      ! ! ! PN: daily precipitation, mm
-      ! ! filnam=trim(prefix)//'.d.pn.out'
-      ! ! open(256,file=filnam,err=888,status='unknown')
-
-      ! ! RO: daily runoff, mm
-      ! filnam=trim(prefix)//'.d.ro.out'
-      ! open(257,file=filnam,err=888,status='unknown')
-
-      ! ! FLEACH: daily leaching fraction, (unitless)
-      ! filnam=trim(prefix)//'.d.fleach.out'
-      ! open(263,file=filnam,err=888,status='unknown')
-
-      ! ! eet: daily equilibrium ET, mm
-      ! filnam=trim(prefix)//'.d.eet.out'
-      ! open(258,file=filnam,err=888,status='unknown')
-
-      ! PET: daily potential ET, mm
-      filnam=trim(prefix)//'.d.pet.out'
-      open(259,file=filnam,err=888,status='unknown')
-
-      ! AET: daily actual ET, mm
-      filnam=trim(prefix)//'.d.aet.out'
-      open(260,file=filnam,err=888,status='unknown')
-
-      ! ! DAYL: day length, h
-      ! filnam=trim(prefix)//'.d.dayl.out'
-      ! open(261,file=filnam,err=888,status='unknown')
-
-      ! ! CPA: cramer-prentice alpha, unitless
-      ! filnam=trim(prefix)//'.d.cpa.out'
-      ! open(262,file=filnam,err=888,status='unknown')
-
-      ! ! ECON: daily water-to-energy conversion factor, mm GJ-1 = m TJ-1
-      ! filnam=trim(prefix)//'.d.econ.out'
-      ! open(264,file=filnam,err=888,status='unknown')
-
-    end if
-
-    ! !----------------------------------------------------------------
-    ! ! MONTHLY OUTPUT
-    ! !----------------------------------------------------------------
-
-    ! ! eq_m
-    ! filnam=trim(prefix)//'.m.eq_m.out'
-    ! open(211,file=filnam,err=888,status='unknown')
-
-    ! ! ep_m
-    ! filnam=trim(prefix)//'.m.ep_m.out'
-    ! open(212,file=filnam,err=888,status='unknown')
-
-    ! ! ea_m
-    ! filnam=trim(prefix)//'.m.ea_m.out'
-    ! open(213,file=filnam,err=888,status='unknown')
-
-    ! ! cpa
-    ! filnam=trim(prefix)//'.m.cpa.out'
-    ! open(214,file=filnam,err=888,status='unknown')
-
-    ! ! cwd
-    ! filnam=trim(prefix)//'.m.cwd.out'
-    ! open(215,file=filnam,err=888,status='unknown')
-
-    ! ! qm
-    ! filnam=trim(prefix)//'.m.qm.out'
-    ! open(216,file=filnam,err=888,status='unknown')
-
-    return
-
-  888  stop 'INITIO_WATERBAL: error opening output files'
-
-  end subroutine initio_waterbal
 
 
   subroutine initio_nc_waterbal()

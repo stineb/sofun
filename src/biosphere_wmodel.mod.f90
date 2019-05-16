@@ -3,7 +3,7 @@ module md_biosphere
   use md_params_core
   use md_classdefs
   use md_params_soil, only: paramtype_soil
-  use md_waterbal, only: solartype, waterbal, getsolar, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, initio_nc_waterbal, writeout_nc_waterbal, init_rlm_waterbal, get_rlm_waterbal, getrlm_daily_waterbal
+  use md_waterbal, only: solartype, waterbal, get_solar, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, initio_nc_waterbal, writeout_nc_waterbal, init_rlm_waterbal, get_rlm_waterbal, getrlm_daily_waterbal
   use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile
   use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_nc_forcing, writeout_nc_forcing
 
@@ -20,7 +20,7 @@ module md_biosphere
   type( tile_fluxes_type ),  allocatable, dimension(:)   :: tile_fluxes
 
   ! derived types from L2 modules
-  type( solartype )                              :: solar
+  type( solartype ) :: solar
 
 contains
 
@@ -43,9 +43,6 @@ contains
 
     ! xxx debug
     logical, parameter :: verbose = .false.
-    logical, parameter :: splashtest = .false.
-    integer, parameter :: lev_splashtest = 2
-    integer, parameter :: testdoy = 55
 
     !----------------------------------------------------------------
     ! INITIALISATIONS
@@ -112,28 +109,19 @@ contains
         ! Get radiation based on daily temperature, sunshine fraction, and 
         ! elevation.
         ! This is not compatible with a daily biosphere-climate coupling. I.e., 
-        ! there is a daily loop within 'getsolar'!
+        ! there is a daily loop within 'get_solar'!
         !----------------------------------------------------------------
-        if (verbose) print*,'calling getsolar() ... '
+        if (verbose) print*,'calling get_solar() ... '
         if (verbose) print*,'    with argument lat = ', interface%grid(jpngr)%lat
         if (verbose) print*,'    with argument elv = ', interface%grid(jpngr)%elv
         if (verbose) print*,'    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
         if (verbose) print*,'    with argument dppfd (ann. mean) = ', sum( interface%climate(jpngr)%dppfd(:) / ndayyear )
-        if (splashtest) then
-          ! for comparison with Python SPLASH
-          interface%climate(jpngr)%dfsun(:) = 0.562000036
-          interface%climate(jpngr)%dppfd(:) = dummy
-          solar = getsolar( 67.25, 87.0, interface%climate(jpngr)%dfsun(:), interface%climate(jpngr)%dppfd(:), splashtest=splashtest, testdoy=testdoy )
-          if (lev_splashtest==1) stop 'end of splash test level 1'
-        else
-          solar = getsolar( &
-                            interface%grid(jpngr)%lat, & 
-                            interface%grid(jpngr)%elv, & 
-                            interface%climate(jpngr)%dfsun(:), & 
-                            interface%climate(jpngr)%dppfd(:),  & 
-                            splashtest = splashtest, testdoy=testdoy &
-                            )
-        end if
+        solar = get_solar( &
+                          interface%grid(jpngr)%lat, & 
+                          interface%grid(jpngr)%elv, & 
+                          interface%climate(jpngr)%dfsun(:), & 
+                          interface%climate(jpngr)%dppfd(:)  & 
+                          )
         if (verbose) print*,'... done'
 
         !----------------------------------------------------------------
@@ -174,8 +162,7 @@ contains
                           interface%climate(jpngr)%dprec(doy), & 
                           interface%climate(jpngr)%dtemp(doy), & 
                           interface%climate(jpngr)%dfsun(doy), &
-                          interface%climate(jpngr)%dnetrad(doy), &
-                          splashtest=splashtest, lev_splashtest=lev_splashtest, testdoy=testdoy &
+                          interface%climate(jpngr)%dnetrad(doy)&
                           )
             if (verbose) print*,'... done'
 
