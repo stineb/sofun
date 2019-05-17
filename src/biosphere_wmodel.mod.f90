@@ -159,10 +159,11 @@ contains
                           jpngr, & 
                           interface%grid(jpngr)%lat, & 
                           interface%grid(jpngr)%elv, & 
-                          interface%climate(jpngr)%dprec(doy), & 
-                          interface%climate(jpngr)%dtemp(doy), & 
-                          interface%climate(jpngr)%dfsun(doy), &
-                          interface%climate(jpngr)%dnetrad(doy)&
+                          interface%climate(jpngr)%dprec(doy),  & 
+                          interface%climate(jpngr)%dtemp(doy),  & 
+                          interface%climate(jpngr)%dfsun(doy),  &
+                          interface%climate(jpngr)%dnetrad(doy),&
+                          interface%dfapar_field(doy,jpngr)     &
                           )
             if (verbose) print*,'... done'
 

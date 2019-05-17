@@ -98,7 +98,7 @@ module md_waterbal
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, KNOWN PARAMETERS
   !----------------------------------------------------------------
-  logical :: outenergy = .false.
+  logical :: outenergy = .true.
 
   !----------------------------------------------------------------
   ! Module-specific rolling mean variables
@@ -161,7 +161,7 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( soil, tile_fluxes, doy, jpngr, lat, elv, pr, tc, sf, netrad )
+  subroutine waterbal( soil, tile_fluxes, doy, jpngr, lat, elv, pr, tc, sf, netrad, fapar )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
@@ -171,14 +171,15 @@ contains
     ! arguments
     type( soil_type ), dimension(nlu), intent(inout)        :: soil
     type( tile_fluxes_type ), dimension(nlu), intent(inout) :: tile_fluxes
-    integer, intent(in)                                     :: doy    ! day of year
-    integer, intent(in)                                     :: jpngr  ! gridcell number
-    real, intent(in)                                        :: lat    ! latitude (degrees)
-    real, intent(in)                                        :: elv    ! altitude (m)
-    real, intent(in)                                        :: pr     ! daily precip (mm) 
-    real, intent(in)                                        :: tc     ! mean monthly temperature (deg C)
-    real, intent(in)                                        :: sf     ! mean monthly sunshine fraction (unitless)
-    real, intent(in)                                        :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
+    integer, intent(in) :: doy    ! day of year
+    integer, intent(in) :: jpngr  ! gridcell number
+    real, intent(in)    :: lat    ! latitude (degrees)
+    real, intent(in)    :: elv    ! altitude (m)
+    real, intent(in)    :: pr     ! daily precip (mm) 
+    real, intent(in)    :: tc     ! mean monthly temperature (deg C)
+    real, intent(in)    :: sf     ! mean monthly sunshine fraction (unitless)
+    real, intent(in)    :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
+    real, intent(in)    :: fapar  ! fraction of absorbed photosynthetically active radiation
 
     ! local variables
     real :: wcont_prev                   ! soil moisture (water content) before being updated (mm)
@@ -212,7 +213,7 @@ contains
       out_infiltr = get_infiltr( out_snow_rain%liquid_to_soil, soil(lu)%phy%wcont, soil(lu)%params%whc )
 
       ! XXX is 5.0 a permanent wilting point parameter? ==> should be moved to evap()
-      evap(lu)%aet = min( evap(lu)%aet, soil(lu)%phy%wcont - 5.0 )
+      evap(lu)%aet = min( fapar * evap(lu)%aet, soil(lu)%phy%wcont - 5.0 )
 
       ! Update soil moisture, implicit solution, see Eq. 7 in Orth et al., 2013
       wcont_prev = soil(lu)%phy%wcont
@@ -1465,7 +1466,7 @@ contains
     ! Daily output variables
     if (interface%params_siml%loutdwcont)  outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr) + phy(:)%wcont / real( interface%params_siml%outdt )
     if (interface%params_siml%loutdalpha)  outdalpha(:,it,jpngr)  = outdalpha(:,it,jpngr) + evap(:)%cpa  / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdnetrad) outdrn(:,it,jpngr)     = outdrn(:,it,jpngr)    + evap(:)%rn   / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdnetrad) outdrn(:,it,jpngr)     = outdrn(:,it,jpngr)    + (evap(:)%rn + evap(:)%rnn) / real( interface%params_siml%outdt ) ! daytime plus nighttime
     if (outenergy) then
       if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
       if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + (evap(:)%aet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
