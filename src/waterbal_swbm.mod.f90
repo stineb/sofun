@@ -213,7 +213,7 @@ contains
       out_infiltr = get_infiltr( out_snow_rain%liquid_to_soil, soil(lu)%phy%wcont, soil(lu)%params%whc )
 
       ! XXX is 5.0 a permanent wilting point parameter? ==> should be moved to evap()
-      evap(lu)%aet = min( fapar * evap(lu)%aet, soil(lu)%phy%wcont - 5.0 )
+      evap(lu)%aet = min( max((fapar - 0.1), 0.0)/(1.0 - 0.1) * evap(lu)%aet, soil(lu)%phy%wcont - 5.0 )
 
       ! Update soil moisture, implicit solution, see Eq. 7 in Orth et al., 2013
       wcont_prev = soil(lu)%phy%wcont
