@@ -151,6 +151,10 @@ contains
       write(faparyear_char,999) min( max( 2000, year ), 2014 )
       fapar_field(:,1) = read1year_daily( 'sitedata/fapar/'//trim(domaininfo%domain_name)//'/'//faparyear_char//'/'//'dfapar_'//trim(domaininfo%domain_name)//'_'//faparyear_char//'.txt' )
 
+      ! "Correct" fAPAR
+      print*,"WARNING: normalising fAPAR to within 0.1 and 1.0."
+      fapar_field(:,1) = max((fapar_field(:,1) - 0.1), 0.0)/(1.0 - 0.1)
+
     end if
 
     return
