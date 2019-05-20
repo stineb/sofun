@@ -172,7 +172,7 @@ contains
             !----------------------------------------------------------------
             if (.not.interface%params_siml%is_calib) then
               if (verbose) print*,'calling getout_daily() ... '
-              call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy )
+              call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy, tile_fluxes(:) )
               call getout_daily_forcing( jpngr, moy, doy )
               if (verbose) print*,'... done'
             end if
