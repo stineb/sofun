@@ -57,15 +57,6 @@ contains
     ! function return variable
     real :: pco2
 
-    ! local variables 
-    integer :: readyear
-
-    if (const_co2_year/=int(dummy)) then
-      readyear = const_co2_year
-    else  
-      readyear = forcingyear
-    end if
-    ! write(0,*) 'GETCO2: use CO2 data of year ', readyear
     pco2 = dummy
 
   end function getco2
@@ -116,9 +107,9 @@ contains
     type( ninput_type ), dimension(maxgrid) :: out_gettot_ninput 
 
     do jpngr=1,maxgrid
-      out_gettot_ninput(jpngr)%dnoy(:) = ninput1(jpngr)%dnoy(:) + ninput2(jpngr)%dnoy(:)
-      out_gettot_ninput(jpngr)%dnhx(:) = ninput1(jpngr)%dnhx(:) + ninput2(jpngr)%dnhx(:)
-      out_gettot_ninput(jpngr)%dtot(:) = ninput1(jpngr)%dtot(:) + ninput2(jpngr)%dtot(:)
+      out_gettot_ninput(jpngr)%dnoy(:) = dummy
+      out_gettot_ninput(jpngr)%dnhx(:) = dummy
+      out_gettot_ninput(jpngr)%dtot(:) = dummy
     end do
 
   end function gettot_ninput
@@ -182,9 +173,8 @@ contains
     fpc_grid_field(:,1) = 1.0
 
     return
-    999  format (I2.2)
 
-  end function get_fpc_grid  
+  end function get_fpc_grid
 
 
   function getclimate( domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
