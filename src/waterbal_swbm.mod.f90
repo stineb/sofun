@@ -238,6 +238,7 @@ contains
 
       ! save daily water balance for output
       tile_fluxes(lu)%dwbal = wbal
+      if (wbal<0) print*,'wbal ', wbal
 
     end do
 
@@ -1482,7 +1483,7 @@ contains
     end if
     ! outdecon(it,jpngr)     = outdecon(it,jpngr)    + evap(1)%econ * 1.0e12 / real( interface%params_siml%outdt ) ! converting from m J-1 to mm GJ-1 = m TJ-1
 
-    print*,'outdwbal(:,it,jpngr)', outdwbal(:,it,jpngr)
+    ! if (outdwbal(:,it,jpngr)<0) print*,'outdwbal(:,it,jpngr)', outdwbal(:,it,jpngr)
 
   end subroutine getout_daily_waterbal
 
