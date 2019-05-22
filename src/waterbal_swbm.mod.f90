@@ -201,7 +201,7 @@ contains
       tile_fluxes(lu)%sw = kCw * soil(lu)%phy%wcont / soil(lu)%params%whc
 
       ! Calculate radiation and evaporation quantities
-      ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
+      ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soil(lu)%phy%wcont, tile_fluxes(lu)%sw, netrad, soil(lu)%params%whc
       evap(lu) = get_evap( lat, doy, elv, sf, tc, soil(lu)%phy%wcont, tile_fluxes(lu)%sw, netrad, soil(lu)%params%whc )
       ! print*,'... done'
 
@@ -238,7 +238,8 @@ contains
 
       ! save daily water balance for output
       tile_fluxes(lu)%dwbal = wbal
-      if (wbal<0) print*,'wbal ', wbal
+      ! if (wbal<0) print*,'wbal ', wbal
+      ! print*,'pet ', evap(lu)%pet
 
     end do
 

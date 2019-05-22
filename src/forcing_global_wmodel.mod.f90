@@ -516,7 +516,9 @@ contains
         call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ppfd ) )
       end if
 
-      if (in_netrad) stop 'getclimate_wfdei: simulation parameter in_netrad cannot be true'
+      if (in_netrad) then
+        stop 'getclimate_wfdei: simulation parameter in_netrad cannot be true'
+      end if
 
       ! get dimension IDs
       call check( nf90_inq_dimid( ncid_temp, recname, recdimid ) )
@@ -574,6 +576,13 @@ contains
             else
               out_climate(jpngr)%dppfd(doy) = dummy
             end if
+
+            if (in_netrad) then
+              stop 'getclimate_wfdei: simulation parameter in_netrad cannot be true'
+            else
+              out_climate(jpngr)%dnetrad(doy) = dummy
+            end if
+
 
           else
             nmissing = nmissing + 1
