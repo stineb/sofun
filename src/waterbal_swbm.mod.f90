@@ -201,7 +201,7 @@ contains
       tile_fluxes(lu)%sw = kCw * soil(lu)%phy%wcont / soil(lu)%params%whc
 
       ! Calculate radiation and evaporation quantities
-      ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
+      print*,'calling evap with arguments ', lat, doy, elv, sf, tc, soil(lu)%phy%wcont, tile_fluxes(lu)%sw, netrad, soil(lu)%params%whc
       evap(lu) = get_evap( lat, doy, elv, sf, tc, soil(lu)%phy%wcont, tile_fluxes(lu)%sw, netrad, soil(lu)%params%whc )
       ! print*,'... done'
 
@@ -238,6 +238,9 @@ contains
 
       ! save daily water balance for output
       tile_fluxes(lu)%dwbal = wbal
+      if (wbal<0) print*,'wbal ', wbal
+      print*,'aet', evap(lu)%aet
+      print*,'pet', evap(lu)%pet
 
     end do
 
@@ -1482,7 +1485,7 @@ contains
     end if
     ! outdecon(it,jpngr)     = outdecon(it,jpngr)    + evap(1)%econ * 1.0e12 / real( interface%params_siml%outdt ) ! converting from m J-1 to mm GJ-1 = m TJ-1
 
-    print*,'outdwbal(:,it,jpngr)', outdwbal(:,it,jpngr)
+    !print*,'outdwbal(:,it,jpngr)', outdwbal(:,it,jpngr)
 
   end subroutine getout_daily_waterbal
 
@@ -1697,6 +1700,10 @@ contains
                             interface%grid(:)%dogridcell, &
                             outdwbal(1,:,:) &
                             )
+          !print*,'outdwbal '
+          !print*,outdwbal(1,:,:)
+          !stop
+
         end if
 
         !-------------------------------------------------------------------------

@@ -10,9 +10,9 @@
 # gfor    - gfortran compiler
 # intel   - ifort compiler
 
-PROFILE=gfortran
+# PROFILE=gfortran
 # PROFILE=pgi
-# PROFILE=intel
+PROFILE=intel
 
 ##################
 ## pgf profile ##
