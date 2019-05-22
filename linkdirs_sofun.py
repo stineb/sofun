@@ -86,6 +86,9 @@ if simsuite == 'global':
 	os.system( 'mkdir -p ' + dirn )
 	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
 
+	## write fapar info to file
+	os.system('echo \'fapar_forcing_source                    fapar3g\' >./input/dfapar_source.txt')
+
 	## soil
 	##--------------------------------------
 	dirn = 'input/global/soil'

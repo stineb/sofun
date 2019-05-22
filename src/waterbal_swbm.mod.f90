@@ -184,6 +184,7 @@ contains
 
     ! local variables
     real :: wcont_prev                   ! soil moisture (water content) before being updated (mm)
+    real :: wbal                         ! daily water balance (mm), temporary variable
 
     integer :: lu                        ! land unit (gridcell tile)
     integer :: moy                       ! month of year
@@ -217,8 +218,8 @@ contains
 
       ! Update soil moisture, implicit solution, see Eq. 7 in Orth et al., 2013
       wcont_prev = soil(lu)%phy%wcont
-      tile_fluxes(lu)%dwbal = ( out_infiltr%infiltr - evap(lu)%aet ) / ( 1.0 + evap(lu)%daet - out_infiltr%dinfiltr )
-      soil(lu)%phy%wcont = soil(lu)%phy%wcont + tile_fluxes(lu)%dwbal
+      wbal = ( ( out_infiltr%infiltr - evap(lu)%aet ) / ( 1.0 + evap(lu)%daet - out_infiltr%dinfiltr ) )
+      soil(lu)%phy%wcont = soil(lu)%phy%wcont + wbal
 
       ! calculate runoff
       if ( soil(lu)%phy%wcont < 0.0 ) then 
@@ -234,6 +235,9 @@ contains
 
       ! water-filled pore space
       soil(lu)%phy%wscal = soil(lu)%phy%wcont / soil(lu)%params%whc
+
+      ! save daily water balance for output
+      tile_fluxes(lu)%dwbal = wbal
 
     end do
 
@@ -1466,15 +1470,15 @@ contains
     end if
 
     ! Daily output variables
-    if (interface%params_siml%loutdwcont)  outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr) + phy(1)%wcont / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdwbal)   outdwbal(:,it,jpngr)   = outdwbal(:,it,jpngr)  + tile_fluxes(1)%dwbal / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdnetrad) outdrn(:,it,jpngr)     = outdrn(:,it,jpngr)    + (evap(1)%rn + evap(1)%rnn) / real( interface%params_siml%outdt ) ! daytime plus nighttime
+    if (interface%params_siml%loutdwcont)  outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr) + phy(:)%wcont / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdwbal)   outdwbal(:,it,jpngr)   = outdwbal(:,it,jpngr)  + tile_fluxes(:)%dwbal / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdnetrad) outdrn(:,it,jpngr)     = outdrn(:,it,jpngr)    + (evap(:)%rn + evap(1)%rnn) / real( interface%params_siml%outdt ) ! daytime plus nighttime
     if (outenergy) then
       if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
-      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + (evap(1)%aet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + (evap(:)%aet / (evap(:)%econ * 1000.0)) / real( interface%params_siml%outdt )
     else 
       if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + evap(1)%pet / real( interface%params_siml%outdt )
-      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + evap(1)%aet / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + evap(:)%aet / real( interface%params_siml%outdt )
     end if
     ! outdecon(it,jpngr)     = outdecon(it,jpngr)    + evap(1)%econ * 1.0e12 / real( interface%params_siml%outdt ) ! converting from m J-1 to mm GJ-1 = m TJ-1
 
