@@ -228,6 +228,7 @@ contains
                           interface%grid(jpngr)%lat, & 
                           interface%grid(jpngr)%elv, & 
                           interface%climate(jpngr)%dprec(doy), & 
+                          interface%climate(jpngr)%dsnow(doy), & 
                           interface%climate(jpngr)%dtemp(doy), & 
                           interface%climate(jpngr)%dfsun(doy), &
                           interface%climate(jpngr)%dnetrad(doy), &

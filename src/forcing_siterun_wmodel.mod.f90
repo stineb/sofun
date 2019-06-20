@@ -23,6 +23,7 @@ module md_forcing
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
     real, dimension(ndayyear) :: dprec  ! mm d-1
+    real, dimension(ndayyear) :: dsnow  ! mm d-1 water equivalents
     real, dimension(ndayyear) :: dfsun  ! unitless
     real, dimension(ndayyear) :: dvpd   ! Pa
     real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
@@ -194,6 +195,8 @@ contains
 
     ! local variables
     character(len=4) :: climateyear_char
+    character(len=256) :: snowf_name
+    logical :: snowf_exists
 
     ! function return variable
     type( climate_type ), dimension(domaininfo%maxgrid) :: out_climate
@@ -218,6 +221,15 @@ contains
       out_climate(1)%dfsun(:) = dummy
     else
       out_climate(1)%dfsun(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dfsun_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
+    end if
+
+    ! read snow file if it exists
+    snowf_name = 'sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dsnow_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt'
+    INQUIRE(FILE = trim(snowf_name), EXIST = snowf_exists)
+    if (snowf_exists) then
+      out_climate(1)%dsnow(:) = read1year_daily(snowf_name)
+    else
+      out_climate(1)%dsnow(:) = 0.0
     end if
 
     return

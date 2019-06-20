@@ -17,6 +17,7 @@ kGsc                                    1360.8
 kWm                                     220.0   
 kw                                      0.26    
 komega                                  283.0
+maxmeltrate                             3.0
 
 #                                      |
 # write value *behind* this position:  |->

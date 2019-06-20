@@ -23,6 +23,7 @@ module md_forcing
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
     real, dimension(ndayyear) :: dprec  ! mm d-1
+    real, dimension(ndayyear) :: dsnow  ! mm d-1 water equivalents
     real, dimension(ndayyear) :: dfsun  ! unitless
     real, dimension(ndayyear) :: dvpd   ! Pa
     real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
@@ -116,9 +117,9 @@ contains
     type( ninput_type ), dimension(maxgrid) :: out_gettot_ninput 
 
     do jpngr=1,maxgrid
-      out_gettot_ninput(jpngr)%dnoy(:) = ninput1(jpngr)%dnoy(:) + ninput2(jpngr)%dnoy(:)
-      out_gettot_ninput(jpngr)%dnhx(:) = ninput1(jpngr)%dnhx(:) + ninput2(jpngr)%dnhx(:)
-      out_gettot_ninput(jpngr)%dtot(:) = ninput1(jpngr)%dtot(:) + ninput2(jpngr)%dtot(:)
+      out_gettot_ninput(jpngr)%dnoy(:) = dummy
+      out_gettot_ninput(jpngr)%dnhx(:) = dummy
+      out_gettot_ninput(jpngr)%dtot(:) = dummy
     end do
 
   end function gettot_ninput
@@ -247,6 +248,9 @@ contains
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
+    character(len=*) :: snowf_name
+    logical :: snowf_exists
+
     out_climate(1)%dtemp(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dtemp_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
     out_climate(1)%dprec(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dprec_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
     out_climate(1)%dvpd(:)  = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dvpd_' //trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
@@ -264,6 +268,15 @@ contains
       out_climate(1)%dfsun(:) = dummy
     else
       out_climate(1)%dfsun(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dfsun_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
+    end if
+
+    ! read snow file if it exists
+    snowf_name = 'sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dsnow_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt'
+    inquire(file=snowf_name, exists=snowf_exists)
+    if (snowf_exists) then
+      out_climate(1)%dsnow(:) = read1year_daily(snowf_name)
+    else
+      out_climate(1)%dsnow(:) = 0.0
     end if
 
     return

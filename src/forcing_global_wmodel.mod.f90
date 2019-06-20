@@ -25,6 +25,7 @@ module md_forcing
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
     real, dimension(ndayyear) :: dprec  ! mm d-1
+    real, dimension(ndayyear) :: dsnow  ! mm d-1 water equivalents
     real, dimension(ndayyear) :: dfsun  ! unitless
     real, dimension(ndayyear) :: dvpd   ! Pa
     real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
@@ -383,7 +384,7 @@ contains
     real :: ncfillvalue                                  ! _FillValue attribute in NetCDF file
     integer :: nmissing                                  ! number of land cells where climate data is not available
     character(len=5) :: recname = "tstep"
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
@@ -567,7 +568,8 @@ contains
             
             ! required input variables
             out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
-            out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            out_climate(jpngr)%dprec(doy) = prec_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            out_climate(jpngr)%dsnow(doy) = snow_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
             out_climate(jpngr)%dvpd(doy)  = calc_vpd( qair_arr(ilon(jpngr),ilat(jpngr),dom), out_climate(jpngr)%dtemp(doy), grid(jpngr)%elv )
             
             ! optional input variables
@@ -588,6 +590,7 @@ contains
             nmissing = nmissing + 1
             out_climate(jpngr)%dtemp(doy) = dummy
             out_climate(jpngr)%dprec(doy) = dummy
+            out_climate(jpngr)%dsnow(doy) = dummy
             out_climate(jpngr)%dppfd(doy) = dummy
             out_climate(jpngr)%dvpd (doy) = dummy
             grid(jpngr)%dogridcell = .false.
@@ -645,7 +648,7 @@ contains
     integer, parameter :: firstyr_cru = 1901
     integer, parameter :: nyrs_cru = 116
     character(len=256), parameter :: filnam = './input/global/climate/ccov/cru_ts4.01.1901.2016.cld.dat.nc'
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
 
     if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
 
