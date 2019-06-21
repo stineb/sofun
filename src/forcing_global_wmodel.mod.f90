@@ -219,6 +219,9 @@ contains
     dlon = lon_arr(2) - lon_arr(1)
     dlat = lat_arr(2) - lat_arr(1)
 
+    if (dlon/=domaininfo%dlon) print*,'dlon in fapar file:', dlon, 'dlon required:', dlon
+    if (dlat/=domaininfo%dlat) print*,'dlat in fapar file:', dlat, 'dlat required:', dlat
+
     if (dlon/=domaininfo%dlon) stop 'Longitude resolution of fapar (modis evi) input file not identical with model grid.'
     if (dlat/=domaininfo%dlat) stop 'latitude resolution of fapar (modis evi) input file not identical with model grid.'
 
