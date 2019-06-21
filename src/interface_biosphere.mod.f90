@@ -225,7 +225,7 @@ contains
       ! fAPAR output file 
       !----------------------------------------------------------------
       if ( interface%params_siml%loutdfapar) then
-        ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar_prescr.nc"
+        ncoutfilnam_fapar = trim(prefix)//'.'//year_char//".d.fapar.nc"
         print*,'initialising ', trim(ncoutfilnam_fapar), '...'
         call init_nc_3D_time( filnam   = trim(ncoutfilnam_fapar), &
                               nlon     = interface%domaininfo%nlon, &
