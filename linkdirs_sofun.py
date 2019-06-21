@@ -84,10 +84,13 @@ if simsuite == 'global':
 	##--------------------------------------
 	dirn = 'input/global/fapar'
 	os.system( 'mkdir -p ' + dirn )
-	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
+	# call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
+	call(['ln', '-svf', dataroot + 'modis_monthly-evi/zmaw_data/halfdeg/modis_vegetation__LPDAAC__v5__halfdegMAX_mean2000.nc', dirn ])
 
 	## write fapar info to file
-	os.system('echo \'fapar_forcing_source                    fapar3g\' >./input/dfapar_source.txt')
+	# os.system('echo \'fapar_forcing_source                    fapar3g\' >./input/dfapar_source.txt')
+	os.system('echo \'fapar_forcing_source                    evi_modis\' >./input/dfapar_source.txt')
+	
 
 	## soil
 	##--------------------------------------

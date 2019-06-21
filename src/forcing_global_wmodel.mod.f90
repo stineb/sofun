@@ -25,6 +25,7 @@ module md_forcing
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
     real, dimension(ndayyear) :: dprec  ! mm d-1
+    real, dimension(ndayyear) :: dsnow  ! mm d-1 water equivalents
     real, dimension(ndayyear) :: dfsun  ! unitless
     real, dimension(ndayyear) :: dvpd   ! Pa
     real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
@@ -155,13 +156,21 @@ contains
     !----------------------------------------------------------------    
     if (fapar_forcing_source=="evi_modis") then
 
-      ! fAPAR data from MODIS EVI
-      firstyr_data = 2001
+      ! ! fAPAR data from MODIS EVI
+      ! firstyr_data = 2001
+      ! nyrs_data = 15
+      ! lonname ="LON"
+      ! latname = "LAT"
+      ! varname = "EVI_FILLED"
+      ! filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc"
+
+      ! fAPAR data from MODIS EVI, regridded by maximum
+      firstyr_data = 2000
       nyrs_data = 15
-      lonname ="LON"
-      latname = "LAT"
-      varname = "EVI_FILLED"
-      filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc"
+      lonname ="lon"
+      latname = "lat"
+      varname = "evi"
+      filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__halfdegMAX_mean2000.nc"
 
     else if (fapar_forcing_source=="fapar3g" .or. fapar_forcing_source=="fAPAR3g") then
       
@@ -383,7 +392,7 @@ contains
     real :: ncfillvalue                                  ! _FillValue attribute in NetCDF file
     integer :: nmissing                                  ! number of land cells where climate data is not available
     character(len=5) :: recname = "tstep"
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
@@ -567,7 +576,8 @@ contains
             
             ! required input variables
             out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
-            out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            out_climate(jpngr)%dprec(doy) = prec_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            out_climate(jpngr)%dsnow(doy) = snow_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
             out_climate(jpngr)%dvpd(doy)  = calc_vpd( qair_arr(ilon(jpngr),ilat(jpngr),dom), out_climate(jpngr)%dtemp(doy), grid(jpngr)%elv )
             
             ! optional input variables
@@ -588,6 +598,7 @@ contains
             nmissing = nmissing + 1
             out_climate(jpngr)%dtemp(doy) = dummy
             out_climate(jpngr)%dprec(doy) = dummy
+            out_climate(jpngr)%dsnow(doy) = dummy
             out_climate(jpngr)%dppfd(doy) = dummy
             out_climate(jpngr)%dvpd (doy) = dummy
             grid(jpngr)%dogridcell = .false.

@@ -7,7 +7,7 @@ module md_waterbal
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use md_params_core, only: ndayyear, nmonth, nlu, maxgrid, kTo, kR, &
-    kMv, kMa, kfFEC, secs_per_day
+    kMv, kMa, kfFEC, secs_per_day, dummy
 
   implicit none
 
@@ -162,11 +162,11 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( soil, tile_fluxes, doy, jpngr, lat, elv, pr, tc, sf, netrad, fapar )
+  subroutine waterbal( soil, tile_fluxes, doy, jpngr, lat, elv, pr, sn, tc, sf, netrad, fapar )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
-    use md_params_core, only: ndayyear, ndaymonth, nlu, dummy
+    use md_params_core, only: ndayyear, ndaymonth
     use md_tile, only: soil_type, tile_fluxes_type
 
     ! arguments
@@ -176,7 +176,8 @@ contains
     integer, intent(in) :: jpngr  ! gridcell number
     real, intent(in)    :: lat    ! latitude (degrees)
     real, intent(in)    :: elv    ! altitude (m)
-    real, intent(in)    :: pr     ! daily precip (mm) 
+    real, intent(in)    :: pr     ! daily precip as rain (liquid) (mm) 
+    real, intent(in)    :: sn     ! daily precip as snow (mm water equivalent) 
     real, intent(in)    :: tc     ! mean monthly temperature (deg C)
     real, intent(in)    :: sf     ! mean monthly sunshine fraction (unitless)
     real, intent(in)    :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
@@ -206,7 +207,7 @@ contains
       ! print*,'... done'
 
       ! Update soil moisture and snow pack
-      out_snow_rain = get_snow_rain( pr + evap(lu)%cn, tc, soil(lu)%phy%snow )
+      out_snow_rain = get_snow_rain( pr + evap(lu)%cn, sn, tc, soil(lu)%phy%snow )
       soil(lu)%phy%snow = out_snow_rain%snow_updated 
 
       ! get infiltration rate
@@ -242,58 +243,6 @@ contains
     end do
 
   end subroutine waterbal
-
-
-  function get_snow_rain( pr, tc, snow ) result( out_snow_rain )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Translates precipitation into change in snow depth and liquid water
-    ! input to soil.
-    !-------------------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: pr     ! daily precip (mm), includes condensation
-    real, intent(in) :: tc     ! mean monthly temperature (deg C)
-    real, intent(in) :: snow   ! snow depth, water equivalents (mm)
-
-    ! function return variable
-    type( outtype_snow_rain ) :: out_snow_rain
-
-    ! local variables
-    real :: fsnow                             ! fraction of precipitation as snow (temperature dependent)
-    real :: melt                              ! snow melting rate (mm d-1)
-    real, parameter :: temp_threshold = 1.0   ! deg C
-
-    fsnow = max( min( 1.0,  1.0 - ( 1.0 / 2.0 ) * tc ), 0.0 )
-    if ( snow > 0.0 .and. tc > temp_threshold ) then
-      melt  = min( snow, maxmeltrate * ( tc - temp_threshold ) )
-    else
-      melt = 0.0
-    end if 
-
-    out_snow_rain%snow_updated   = snow + fsnow * pr - melt
-    out_snow_rain%liquid_to_soil = pr * ( 1.0 - fsnow ) + melt
-
-  end function get_snow_rain
-
-
-  function get_infiltr( pr, wcont, whc ) result( out_infiltr )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Calculate infiltr based on Orth et al. (2013)
-    !-------------------------------------------------------------------------  
-    ! arguments
-    real, intent(in) :: pr     ! daily precip (mm) 
-    real, intent(in) :: wcont  ! soil moisture (water content), mm
-    real, intent(in) :: whc    ! water holding capacity, mm
-
-    ! function return variable
-    type( outtype_get_infiltr ) :: out_infiltr
-
-    ! calculate infiltr (P-Q) from Eq. 3 in Orth et al., 2013
-    out_infiltr%infiltr  = ( 1.0 - min( 1.0,( ( wcont / whc )**exp_runoff ) ) ) * pr
-
-    ! calculate derivative of infiltr w.r.t. soil moisture
-    out_infiltr%dinfiltr = (-1.0) * min( max( 0.0, whc - wcont ), ( exp_runoff / whc ) ) * ( ( wcont / whc )**( exp_runoff - 1.0 ) ) * pr
-
-  end function get_infiltr
 
 
   function get_solar( lat, elv, sf, ppfd ) result( out_solar )
@@ -393,9 +342,11 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       if (ppfd(1)/=dummy) then
         out_solar%dppfd(doy) = ppfd(doy)
+        in_ppfd = ".true. "
       else
         ! Eq. 57, SPLASH 2.0 Documentation
         out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
+        in_ppfd = ".false."
       end if
 
     end do
@@ -722,6 +673,65 @@ contains
     !         Administration (NASA).
     !-------------------------------------------------------------   
   end function get_evap
+
+  
+  function get_snow_rain( pr, sn, tc, snow ) result( out_snow_rain )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Translates precipitation into change in snow depth and liquid water
+    ! input to soil.
+    !-------------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: pr     ! daily precip (mm), includes condensation
+    real, intent(in) :: sn     ! daily precip as snow (mm water equivalent) 
+    real, intent(in) :: tc     ! mean monthly temperature (deg C)
+    real, intent(in) :: snow   ! snow depth, water equivalents (mm)
+
+    ! function return variable
+    type( outtype_snow_rain ) :: out_snow_rain
+
+    ! local variables
+    real :: fsnow                             ! fraction of precipitation as snow (temperature dependent)
+    real :: melt                              ! snow melting rate (mm d-1)
+    real, parameter :: temp_threshold = 1.0   ! deg C
+
+    if ( snow > 0.0 .and. tc > temp_threshold ) then
+      melt  = min( snow, maxmeltrate * ( tc - temp_threshold ) )
+    else
+      melt = 0.0
+    end if 
+
+    if (sn==dummy) then
+      fsnow = max( min( 1.0,  1.0 - ( 1.0 / 2.0 ) * tc ), 0.0 )
+      out_snow_rain%snow_updated   = snow + fsnow * pr - melt
+      out_snow_rain%liquid_to_soil = pr * ( 1.0 - fsnow ) + melt
+    else
+      out_snow_rain%snow_updated   = snow + sn - melt
+      out_snow_rain%liquid_to_soil = pr + melt
+    end if
+
+
+  end function get_snow_rain
+
+
+  function get_infiltr( pr, wcont, whc ) result( out_infiltr )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Calculate infiltr based on Orth et al. (2013)
+    !-------------------------------------------------------------------------  
+    ! arguments
+    real, intent(in) :: pr     ! daily precip (mm) 
+    real, intent(in) :: wcont  ! soil moisture (water content), mm
+    real, intent(in) :: whc    ! water holding capacity, mm
+
+    ! function return variable
+    type( outtype_get_infiltr ) :: out_infiltr
+
+    ! calculate infiltr (P-Q) from Eq. 3 in Orth et al., 2013
+    out_infiltr%infiltr  = ( 1.0 - min( 1.0,( ( wcont / whc )**exp_runoff ) ) ) * pr
+
+    ! calculate derivative of infiltr w.r.t. soil moisture
+    out_infiltr%dinfiltr = (-1.0) * min( max( 0.0, whc - wcont ), ( exp_runoff / whc ) ) * ( ( wcont / whc )**( exp_runoff - 1.0 ) ) * pr
+
+  end function get_infiltr
 
 
   function calc_dr( nu ) result( dr )
@@ -1140,15 +1150,26 @@ contains
     ! function return value
     real :: psychro  ! psychrometric constant, Pa/K
 
+    ! local variables
+    real :: my_tc    ! adjusted temperature to avoid numerical blow-up 
+
+    ! Adopted temperature adjustment from SPLASH, Python version
+    my_tc = tc
+    if (my_tc < 0) then
+      my_tc = 0.0
+    else if (my_tc > 100) then
+      my_tc = 100.0
+    end if
+
     ! Calculate the specific heat capacity of water, J/kg/K
     ! Eq. 47, Tsilingiris (2008)
     cp = 1.0e3*(&
                1.0045714270&
-             + 2.050632750e-3  *tc&
-             - 1.631537093e-4  *tc*tc&
-             + 6.212300300e-6  *tc*tc*tc&
-             - 8.830478888e-8  *tc*tc*tc*tc&
-             + 5.071307038e-10 *tc*tc*tc*tc*tc&
+             + 2.050632750e-3  *my_tc&
+             - 1.631537093e-4  *my_tc*my_tc&
+             + 6.212300300e-6  *my_tc*my_tc*my_tc&
+             - 8.830478888e-8  *my_tc*my_tc*my_tc*my_tc&
+             + 5.071307038e-10 *my_tc*my_tc*my_tc*my_tc*my_tc&
             )
 
     ! Calculate latent heat of vaporization, J/kg

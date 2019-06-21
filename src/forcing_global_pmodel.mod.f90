@@ -25,6 +25,7 @@ module md_forcing
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
     real, dimension(ndayyear) :: dprec  ! mm d-1
+    real, dimension(ndayyear) :: dsnow  ! mm d-1 water equivalents
     real, dimension(ndayyear) :: dfsun  ! unitless
     real, dimension(ndayyear) :: dvpd   ! Pa
     real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
@@ -119,9 +120,9 @@ contains
     type( ninput_type ), dimension(maxgrid) :: out_gettot_ninput 
 
     do jpngr=1,maxgrid
-      out_gettot_ninput(jpngr)%dnoy(:) = ninput1(jpngr)%dnoy(:) + ninput2(jpngr)%dnoy(:)
-      out_gettot_ninput(jpngr)%dnhx(:) = ninput1(jpngr)%dnhx(:) + ninput2(jpngr)%dnhx(:)
-      out_gettot_ninput(jpngr)%dtot(:) = ninput1(jpngr)%dtot(:) + ninput2(jpngr)%dtot(:)
+      out_gettot_ninput(jpngr)%dnoy(:) = dummy
+      out_gettot_ninput(jpngr)%dnhx(:) = dummy
+      out_gettot_ninput(jpngr)%dtot(:) = dummy
     end do
 
   end function gettot_ninput
@@ -736,7 +737,8 @@ contains
             
             ! required input variables
             out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
-            out_climate(jpngr)%dprec(doy) = ( prec_arr(ilon(jpngr),ilat(jpngr),dom) + snow_arr(ilon(jpngr),ilat(jpngr),dom) ) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            out_climate(jpngr)%dprec(doy) = prec_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            out_climate(jpngr)%dsnow(doy) = snow_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
             out_climate(jpngr)%dvpd(doy)  = calc_vpd( qair_arr(ilon(jpngr),ilat(jpngr),dom), out_climate(jpngr)%dtemp(doy), grid(jpngr)%elv )
             
             ! optional input variables
@@ -762,6 +764,7 @@ contains
             nmissing = nmissing + 1
             out_climate(jpngr)%dtemp(doy) = dummy
             out_climate(jpngr)%dprec(doy) = dummy
+            out_climate(jpngr)%dsnow(doy) = dummy
             out_climate(jpngr)%dppfd(doy) = dummy
             out_climate(jpngr)%dvpd (doy) = dummy
             grid(jpngr)%dogridcell = .false.
