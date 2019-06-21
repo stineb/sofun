@@ -9,7 +9,8 @@ module md_forcing
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu, dummy
+  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, 
+    nlu, dummy, eps
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
   use md_grid, only: gridtype, domaininfo_type
@@ -219,11 +220,11 @@ contains
     dlon = lon_arr(2) - lon_arr(1)
     dlat = lat_arr(2) - lat_arr(1)
 
-    if (dlon/=domaininfo%dlon) print*,'dlon in fapar file:', dlon, 'dlon required:', dlon
-    if (dlat/=domaininfo%dlat) print*,'dlat in fapar file:', dlat, 'dlat required:', dlat
+    if (abs(dlon-domaininfo%dlon) > eps) print*,'dlon in fapar file:', dlon, 'dlon required:', dlon
+    if (abs(dlat-domaininfo%dlat) > eps) print*,'dlat in fapar file:', dlat, 'dlat required:', dlat
 
-    if (dlon/=domaininfo%dlon) stop 'Longitude resolution of fapar (modis evi) input file not identical with model grid.'
-    if (dlat/=domaininfo%dlat) stop 'latitude resolution of fapar (modis evi) input file not identical with model grid.'
+    if (abs(dlon-domaininfo%dlon) > eps) stop 'Longitude resolution of fapar (modis evi) input file not identical with model grid.'
+    if (abs(dlat-domaininfo%dlat) > eps) stop 'latitude resolution of fapar (modis evi) input file not identical with model grid.'
 
     ! get index associations
     do jpngr=1,domaininfo%maxgrid
