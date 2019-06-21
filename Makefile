@@ -105,6 +105,7 @@ PMODEL_DEMO_EXE     = rundemo_pmodel
 PMODEL_SWBM_EXE     = runpmodel_swbm
 PMODEL_SIMSUITE_EXE = runpmodel_simsuite
 GPMODEL_EXE         = rungpmodel
+GSPLASH_EXE         = rungsplash
 GSWBM_EXE           = rungswbm
 CMODEL_EXE          = runcmodel
 TMODEL_EXE          = runtmodel
@@ -174,6 +175,11 @@ gswbm:
 	 $(MAKE) gswbm -C src
 	 $(FCOM) -o $(GSWBM_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
+# global W-model (SPLASH water balance) for lonlat simulations (doesn't necessarily need to cover the whole globe)
+gsplash: 
+	 $(MAKE) gsplash -C src
+	 $(FCOM) -o $(GSPLASH_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
+
 # reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
 cmodel: 
 	 $(MAKE) cmodel -C src
@@ -197,7 +203,7 @@ cnmodel:
 # clean: remove exe and .o and .do files
 .PHONY: clean
 clean:
-	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(GPMODEL_EXE) $(GSWBM_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE) $(CALIB_EXE) $(CMODEL_SIMSUITE_EXE)  $(PMODEL_SIMSUITE_EXE)
+	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(GPMODEL_EXE) $(GSWBM_EXE) $(GSPLASH_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE) $(CALIB_EXE) $(CMODEL_SIMSUITE_EXE)  $(PMODEL_SIMSUITE_EXE)
 	$(MAKE) clean -C src
 # include libraries when necessary
 #	$(MAKE) clean -C lpj/cdfcode

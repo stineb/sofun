@@ -156,13 +156,21 @@ contains
     !----------------------------------------------------------------    
     if (fapar_forcing_source=="evi_modis") then
 
-      ! fAPAR data from MODIS EVI
-      firstyr_data = 2001
+      ! ! fAPAR data from MODIS EVI
+      ! firstyr_data = 2001
+      ! nyrs_data = 15
+      ! lonname ="LON"
+      ! latname = "LAT"
+      ! varname = "EVI_FILLED"
+      ! filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc"
+
+      ! fAPAR data from MODIS EVI, regridded by maximum
+      firstyr_data = 2000
       nyrs_data = 15
-      lonname ="LON"
-      latname = "LAT"
-      varname = "EVI_FILLED"
-      filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc"
+      lonname ="lon"
+      latname = "lat"
+      varname = "evi"
+      filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__halfdegMAX_mean2000.nc"
 
     else if (fapar_forcing_source=="fapar3g" .or. fapar_forcing_source=="fAPAR3g") then
       

@@ -154,12 +154,12 @@ module md_waterbal
   character(len=256) :: ncoutfilnam_daet
   character(len=256) :: ncoutfilnam_drn
 
-  character(len=*), parameter :: WCONT_NAME="wcont"
-  character(len=*), parameter :: PET_NAME="pet"
-  character(len=*), parameter :: AET_NAME="aet"
-  character(len=*), parameter :: RN_NAME="netrad"
-  character(len=*), parameter :: ALPHA_NAME="alpha"
-  character(len=*), parameter :: WBAL_NAME="wbal"
+  character(len =*), parameter :: WCONT_NAME="wcont"
+  character(len =*), parameter :: PET_NAME="pet"
+  character(len =*), parameter :: AET_NAME="aet"
+  character(len =*), parameter :: RN_NAME="netrad"
+  character(len =*), parameter :: ALPHA_NAME="alpha"
+  character(len =*), parameter :: WBAL_NAME="wbal"
 
   character(len=7) :: in_ppfd       ! information whether PPFD is prescribed from meteo file for global attribute in NetCDF file
 
