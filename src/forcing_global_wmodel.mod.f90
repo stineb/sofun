@@ -9,7 +9,7 @@ module md_forcing
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, 
+  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, &
     nlu, dummy, eps
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
@@ -220,8 +220,8 @@ contains
     dlon = lon_arr(2) - lon_arr(1)
     dlat = lat_arr(2) - lat_arr(1)
 
-    if (abs(dlon-domaininfo%dlon) > eps) print*,'dlon in fapar file:', dlon, 'dlon required:', dlon
-    if (abs(dlat-domaininfo%dlat) > eps) print*,'dlat in fapar file:', dlat, 'dlat required:', dlat
+    if (abs(dlon-domaininfo%dlon) > eps) print*,'dlon in fapar file:', dlon, 'dlon required:', domaininfo%dlon
+    if (abs(dlat-domaininfo%dlat) > eps) print*,'dlat in fapar file:', dlat, 'dlat required:', domaininfo%dlat
 
     if (abs(dlon-domaininfo%dlon) > eps) stop 'Longitude resolution of fapar (modis evi) input file not identical with model grid.'
     if (abs(dlat-domaininfo%dlat) > eps) stop 'latitude resolution of fapar (modis evi) input file not identical with model grid.'
@@ -300,7 +300,7 @@ contains
     ! 10:CRO: type13 + type15 = "croplands" + "cropland (natural vegetation mosaic)";
     !----------------------------------------------------------------
     use md_params_siml, only: paramstype_siml
-    use md_params_core, only: npft, eps
+    use md_params_core, only: npft
 
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo
