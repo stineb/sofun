@@ -42,7 +42,7 @@ contains
     integer :: dm, moy, jpngr, doy
 
     ! xxx debug
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
 
     !----------------------------------------------------------------
     ! INITIALISATIONS

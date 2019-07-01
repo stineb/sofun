@@ -201,8 +201,6 @@ contains
     real, parameter :: beta = 0.66
     real, parameter :: exp_et = 0.06
 
-    print*,'1'
-
 
     ! Loop over gricell tiles
     do lu=1,nlu
@@ -313,8 +311,6 @@ contains
     real, dimension(ndayyear) :: daysecs ! daylight seconds for each DOY
     real, dimension(nmonth)   :: monsecs ! daylight seconds for each MOY
 
-
-    print*,'2'
 
     ! initialise members of solartype
     out_solar%dayl(:)      = 0.0
