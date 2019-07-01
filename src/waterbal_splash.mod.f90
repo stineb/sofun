@@ -102,7 +102,7 @@ module md_waterbal
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, KNOWN PARAMETERS
   !----------------------------------------------------------------
-  logical :: outenergy = .true.
+  logical :: outenergy = .false.
 
   !----------------------------------------------------------------
   ! Module-specific rolling mean variables
@@ -115,11 +115,10 @@ module md_waterbal
   !----------------------------------------------------------------
   real, allocatable, dimension(:,:)   :: outdpet            ! daily potential ET, mm r J/m2/d depending on 'outenergy'
   real, allocatable, dimension(:,:,:) :: outdaet            ! daily actual ET, mm or J/m2/d depending on 'outenergy'
-  real, allocatable, dimension(:,:,:) :: outdwbal          ! daily Cramer-Prentice-Alpha, (unitless)
+  real, allocatable, dimension(:,:,:) :: outdwbal           ! daily water balance, mm
   real, allocatable, dimension(:,:,:) :: outdwcont          ! daily water content = soil moisture, mm
   real, allocatable, dimension(:,:,:) :: outdrn             ! daily net radiation, J/m2
   ! real, allocatable, dimension(:,:)   :: outdra             ! daily solar irradiation, J/m2
-  ! real, allocatable, dimension(:,:)   :: outdwbal           ! daily PPFD, mol/m2
   ! real, allocatable, dimension(:,:)   :: outdayl            ! daily day length, h
   ! real, allocatable, dimension(:,:)   :: outdcn             ! daily condensation water, mm
   ! real, allocatable, dimension(:,:,:) :: outdro             ! daily runoff, mm
