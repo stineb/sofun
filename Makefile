@@ -12,7 +12,7 @@
 
 # PROFILE=gfortran
 # PROFILE=pgi
-PROFILE=intel
+PROFILE=gfortran
 
 ##################
 ## pgf profile ##
