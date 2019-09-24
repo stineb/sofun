@@ -152,6 +152,10 @@ contains
       write(faparyear_char,999) min( max( 2000, year ), 2014 )
       fapar_field(:,1) = read1year_daily( 'sitedata/fapar/'//trim(domaininfo%domain_name)//'/'//faparyear_char//'/'//'dfapar_'//trim(domaininfo%domain_name)//'_'//faparyear_char//'.txt' )
 
+      ! "Correct" fAPAR
+      print*,"WARNING: normalising fAPAR to within 0.1 and 1.0."
+      fapar_field(:,1) = max((fapar_field(:,1) - 0.1), 0.0)/(1.0 - 0.1)
+
     end if
 
     return
@@ -241,15 +245,14 @@ contains
 
     ! local variables
     character(len=4) :: climateyear_char
+    character(len=256) :: snowf_name
+    logical :: snowf_exists
 
     ! function return variable
     type( climate_type ), dimension(domaininfo%maxgrid) :: out_climate
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
-
-    character(len=*) :: snowf_name
-    logical :: snowf_exists
 
     out_climate(1)%dtemp(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dtemp_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
     out_climate(1)%dprec(:) = read1year_daily('sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dprec_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt')
@@ -272,7 +275,7 @@ contains
 
     ! read snow file if it exists
     snowf_name = 'sitedata/climate/'//trim(domaininfo%domain_name)//'/'//climateyear_char//'/'//'dsnow_'//trim(domaininfo%domain_name)//'_'//climateyear_char//'.txt'
-    inquire(file=snowf_name, exists=snowf_exists)
+    INQUIRE(FILE = trim(snowf_name), EXIST = snowf_exists)
     if (snowf_exists) then
       out_climate(1)%dsnow(:) = read1year_daily(snowf_name)
     else

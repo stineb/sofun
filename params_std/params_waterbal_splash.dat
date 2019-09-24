@@ -18,6 +18,9 @@ kWm                                     220.0
 kw                                      0.26    
 komega                                  283.0
 maxmeltrate                             3.0
+vpdstress_par_a                         1.0
+vpdstress_par_b                         0.1
+vpdstress_par_m                         0.2
 
 #                                      |
 # write value *behind* this position:  |->

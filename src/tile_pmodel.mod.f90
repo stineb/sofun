@@ -60,6 +60,7 @@ module md_tile
     real :: sw        ! evaporative supply rate (mm/h)
     real :: dro       ! daily runoff (mm = kg/m2)
     real :: dfleach   ! daily fraction of total mineral soil nutrients leached 
+    real :: dwbal     ! daily water balance as precipitation and snow melt minus runoff and evapotranspiration (mm d-1)
 
   end type tile_fluxes_type
 

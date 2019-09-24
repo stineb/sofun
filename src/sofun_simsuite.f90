@@ -58,9 +58,11 @@ program main
   real :: cost                                       ! overall cost as median across sites
   real :: k_decay_tissue                             ! parameter read from standard input
   real :: kphio                                      ! GPP-quantum yield efficiency parameter read from standard input
-  real :: temp_ramp_edge                             ! temperature ramp parameter read from standard input
   real :: soilm_par_a                                ! soil moisture stress function parameter read from standard input
   real :: soilm_par_b                                ! soil moisture stress function parameter read from standard input
+  real :: vpdstress_par_a                            ! VPD stress function parameter read from standard input
+  real :: vpdstress_par_b                            ! VPD stress function parameter read from standard input
+  real :: vpdstress_par_m                            ! VPD stress function parameter read from standard input
   real, allocatable, dimension(:,:) :: calibtargets  !
   integer :: nvars_calib, icol
   integer :: totrunyears                             ! To get total number of runnyears
@@ -85,23 +87,26 @@ program main
   ! This requires a fixed order of parameters to be passed through std input:
   ! 1. name of the simulation suite (not actually a prarameter)
   ! 2. kphio: quantum use efficiency of photosynthesis
-  ! 2. temp_ramp_edge: GPP-quantum yield efficiency parameter
   ! 2. soilm_par_a: soil moisture stress function parameter
   ! 2. soilm_par_b: soil moisture stress function parameter
   !----------------------------------------------------------------
-  read (*,*) simsuite, kphio, temp_ramp_edge, soilm_par_a, soilm_par_b
+  read (*,*) simsuite, kphio, soilm_par_a, soilm_par_b, vpdstress_par_a, vpdstress_par_b, vpdstress_par_m
   print*,'PARAMETERS FOR CALIBRATION:'
   print*,'kphio:          ', kphio
-  print*,'temp_ramp_edge: ', temp_ramp_edge
   print*,'soilm_par_a:    ', soilm_par_a
   print*,'soilm_par_b:    ', soilm_par_b
+  print*,'vpdstress_par_a:', vpdstress_par_a
+  print*,'vpdstress_par_b:', vpdstress_par_b
+  print*,'vpdstress_par_m:', vpdstress_par_m
   !----------------------------------------------------------------
   ! translate parameters from standard input to appropriate derived type 
   ! interface%params_calib%k_decay_tissue = k_decay_tissue
-  interface%params_calib%kphio          = kphio
-  interface%params_calib%temp_ramp_edge = temp_ramp_edge
-  interface%params_calib%soilm_par_a    = soilm_par_a
-  interface%params_calib%soilm_par_b    = soilm_par_b
+  interface%params_calib%kphio           = kphio
+  interface%params_calib%soilm_par_a     = soilm_par_a
+  interface%params_calib%soilm_par_b     = soilm_par_b
+  interface%params_calib%vpdstress_par_a = vpdstress_par_a
+  interface%params_calib%vpdstress_par_b = vpdstress_par_b
+  interface%params_calib%vpdstress_par_m = vpdstress_par_m
 
   ! set parameter to define that this is a calibration run (no output, overriding parameter values)
   is_calib = .true.

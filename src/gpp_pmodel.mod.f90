@@ -70,7 +70,6 @@ module md_gpp
   !-----------------------------------------------------------------------
   type paramstype_gpp
     real :: beta         ! Unit cost of carboxylation (dimensionless)
-    real :: temp_ramp_edge
     real :: soilm_par_a
     real :: soilm_par_b
     real :: rd_to_vcmax  ! Ratio of Rdark to Vcmax25, number from Atkin et al., 2015 for C3 herbaceous
@@ -1513,17 +1512,6 @@ contains
 
     ftemp = 0.352 + 0.022 * dtemp - 3.4d-4 * dtemp**2
 
-    ! real, parameter :: temp0 = 0.0
-
-    ! ! ftemp is a linear ramp down from 1.0 at 12 deg C to 0.0 at 0 deg C
-    ! if (params_gpp%temp_ramp_edge<=0.0) then
-    !   ! no temperature ramp. GPP set to 0 if temp below zero in function pmodel()
-    !   ftemp = 1.0
-    ! else
-    !   ! linear temperature ramp from 0 at 0 deg C to 1.0 at <temp_ramp_edge>
-    !   ftemp = max( 0.0, min( 1.0, (dtemp - temp0) / params_gpp%temp_ramp_edge ) )
-    ! end if
-
   end function calc_ftemp_kphio
 
 
@@ -1549,11 +1537,9 @@ contains
 
     ! Apply identical temperature ramp parameter for all PFTs
     if (interface%params_siml%is_calib) then
-      params_gpp%temp_ramp_edge = interface%params_calib%temp_ramp_edge  ! is provided through standard input
       params_gpp%soilm_par_a    = interface%params_calib%soilm_par_a     ! is provided through standard input
       params_gpp%soilm_par_b    = interface%params_calib%soilm_par_b     ! is provided through standard input
     else
-      params_gpp%temp_ramp_edge = getparreal( 'params/params_gpp_pmodel.dat', 'temp_ramp_edge' )
       params_gpp%soilm_par_a    = getparreal( 'params/params_gpp_pmodel.dat', 'soilm_par_a' )
       params_gpp%soilm_par_b    = getparreal( 'params/params_gpp_pmodel.dat', 'soilm_par_b' )
     end if
@@ -1729,7 +1715,6 @@ contains
     character(len=12) :: beta_char
     character(len=12) :: rd_to_vcmax_char
     character(len=12) :: kphio_char
-    character(len=12) :: temp_ramp_edge_char
     character(len=12) :: soilm_par_a_char
     character(len=12) :: soilm_par_b_char
 
@@ -1741,7 +1726,6 @@ contains
     write(beta_char,888)           params_gpp%beta
     write(rd_to_vcmax_char,888)    params_gpp%rd_to_vcmax
     write(kphio_char,888)          params_pft_gpp(1)%kphio
-    write(temp_ramp_edge_char,888) params_gpp%temp_ramp_edge
     write(soilm_par_a_char,888)    params_gpp%soilm_par_a
     write(soilm_par_b_char,888)    params_gpp%soilm_par_b
 
@@ -1772,9 +1756,8 @@ contains
                           globatt2_nam = "param_beta",           globatt2_val = beta_char, &
                           globatt3_nam = "param_rd_to_vcmax",    globatt3_val = rd_to_vcmax_char, &
                           globatt4_nam = "param_kphio_GrC3",     globatt4_val = kphio_char,  &
-                          globatt5_nam = "param_temp_ramp_edge", globatt5_val = temp_ramp_edge_char,  &
-                          globatt6_nam = "param_soilm_par_a",    globatt6_val = soilm_par_a_char,  &
-                          globatt7_nam = "param_soilm_par_a",    globatt7_val = soilm_par_b_char  &
+                          globatt5_nam = "param_soilm_par_a",    globatt5_val = soilm_par_a_char,  &
+                          globatt6_nam = "param_soilm_par_a",    globatt6_val = soilm_par_b_char  &
                           )
       end if
 
@@ -1803,9 +1786,8 @@ contains
                             globatt2_nam = "param_beta",        globatt2_val = beta_char, &
                             globatt3_nam = "param_rd_to_vcmax", globatt3_val = rd_to_vcmax_char, &
                             globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char,  &
-                            globatt5_nam = "param_temp_ramp_edge", globatt5_val = temp_ramp_edge_char,  &
-                            globatt6_nam = "param_soilm_par_a",    globatt6_val = soilm_par_a_char,  &
-                            globatt7_nam = "param_soilm_par_a",    globatt7_val = soilm_par_b_char  &
+                            globatt5_nam = "param_soilm_par_a", globatt5_val = soilm_par_a_char,  &
+                            globatt6_nam = "param_soilm_par_a", globatt6_val = soilm_par_b_char  &
                             )
         end if
 

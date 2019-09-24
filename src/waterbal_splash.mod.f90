@@ -63,6 +63,9 @@ module md_waterbal
   real :: kGsc              ! solar constant, W/m^2 (Kopp & Lean, 2011)
   real :: kw                ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
   real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
+  real :: vpdstress_par_a   ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
+  real :: vpdstress_par_b   ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
+  real :: vpdstress_par_m   ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, PRIVATE VARIABLES
@@ -165,7 +168,7 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( soil, tile_fluxes, doy, jpngr, lat, elv, pr, sn, tc, sf, netrad, fapar )
+  subroutine waterbal( soil, tile_fluxes, doy, jpngr, lat, elv, pr, sn, tc, sf, netrad, fapar, vpd )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
@@ -184,7 +187,8 @@ contains
     real, intent(in)    :: tc     ! mean monthly temperature (deg C)
     real, intent(in)    :: sf     ! mean monthly sunshine fraction (unitless)
     real, intent(in)    :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
-    real, intent(in)    :: fapar  ! fraction of absorbed photosynthetically active radiation
+    real, intent(in)    :: fapar  ! fraction of absorbed photosynthetically active radiation (unitless)
+    real, intent(in)    :: vpd    ! vapour pressure deficit (Pa)
 
     ! local variables
     real :: wcont_prev                   ! soil moisture (water content) before being updated (mm)
@@ -211,6 +215,9 @@ contains
       ! Calculate radiation and evaporation quantities
       ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
       evap(lu) = get_evap( lat, doy, elv, sf, tc, tile_fluxes(lu)%sw, netrad )
+
+      ! Overwrite AET by vdpstress * fapar * pet
+      evap(lu)%aet = calc_vdpstress(vpd) * fapar * evap(lu)%pet
 
       if (netrad/=dummy) then
         ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -335,25 +342,15 @@ contains
       ! Berger (1978)
       out_berger(doy) = get_berger_tls( doy )
 
-      ! Test for comparison with Python SPLASH
-      
-      
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 3. Calculate distance factor (dr), unitless
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       dr = calc_dr( out_berger(doy)%nu )
 
-      ! Test for comparison with Python SPLASH
-      
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 4. Calculate declination angle (delta), degrees
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       delta = calc_delta( out_berger(doy)%lambda )
-
-      ! Test for comparison with Python SPLASH
-      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 5. Calculate variable substitutes (u and v), unitless
@@ -362,17 +359,10 @@ contains
       ru = out_ru_rv(1)
       rv = out_ru_rv(2)
 
-      ! Test for comparison with Python SPLASH
-      
-      
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 6. Calculate the sunset hour angle (hs), degrees
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       hs = calc_hs( ru, rv )
-
-      ! Test for comparison with Python SPLASH
-      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 6.a Calculate day length from sunset hour angle, h
@@ -385,16 +375,10 @@ contains
       ! Eq. 1.10.3, Duffy & Beckman (1993)
       out_solar%dra(doy) = ( secs_per_day / pi ) * kGsc * dr * ( radians(ru) * hs + rv * dgsin(hs) )
 
-      ! Test for comparison with Python SPLASH
-      
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 8. Calculate transmittivity (tau), unitless
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       tau = calc_tau( sf(doy), elv )
-
-      ! Test for comparison with Python SPLASH
-      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 9. Calculate daily PPFD (dppfd), mol/m^2
@@ -407,9 +391,6 @@ contains
         out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
         in_ppfd = ".false."
       end if
-
-      ! Test for comparison with Python SPLASH
-      
 
     end do
 
@@ -527,26 +508,18 @@ contains
     ! Slope of saturation vap press temp curve, Pa/K
     sat_slope = calc_sat_slope(tc)
     
-
     ! Enthalpy of vaporization, J/kg
     lv = calc_enthalpy_vap(tc)
     
-
     ! Density of water, kg/m^3
     pw = density_h2o(tc, calc_patm(elv))
     
-
     ! Psychrometric constant, Pa/K
-    
     gamma = psychro(tc, calc_patm(elv))
     
-    
-
     ! Eq. 51, SPLASH 2.0 Documentation
     ! out_evap%econ = 1.0 / ( lv * pw ) ! this is to convert energy into mass (water)
     out_evap%econ = sat_slope / (lv * pw * (sat_slope + gamma)) ! MORE PRECISELY - this is to convert energy into mass (water)
-    
-
 
     if (netrad/=dummy) then
       !--------------------------------------------------
@@ -628,15 +601,11 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
       out_evap%rnl = ( kb + (1.0 - kb ) * sf ) * ( kA - tc )
-
-      
-
+    
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 11. Calculate variable substitute (rw), W/m^2
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       rw = ( 1.0 - kalb_sw ) * tau * kGsc * dr
-      
-      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 12. Calculate net radiation cross-over hour angle (hn), degrees
@@ -652,15 +621,11 @@ contains
         hn = degrees( acos((out_evap%rnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
       end if
 
-      
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 53, SPLASH 2.0 Documentation
       out_evap%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
-
-      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
@@ -669,36 +634,28 @@ contains
       ! adopted bugfix from Python version (iss#13)
       out_evap%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) - out_evap%rnl * (pi - radians(hn)))
 
-      
-
-      ! print*,'out_evap%econ alternative: ', 1.0 / (lv * pw)
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 16. Calculate daily condensation (out_evap%cn), mm d-1
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 68, SPLASH 2.0 Documentation
       out_evap%cn = 1000.0 * out_evap%econ * abs(out_evap%rnn)
       
-
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 17. Estimate daily EET (out_evap%eet), mm d-1
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 70, SPLASH 2.0 Documentation
       out_evap%eet = 1000.0 * out_evap%econ * out_evap%rn
-      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 18. Estimate daily PET (out_evap%pet), mm d-1
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 72, SPLASH 2.0 Documentation
       out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
-      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * out_evap%econ
-      
       
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 20. Calculate the intersection hour angle (hi), degrees
@@ -713,7 +670,6 @@ contains
       else
         hi = degrees(acos(cos_hi))
       end if
-      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 21. Estimate daily AET (out_evap%aet), mm d-1
@@ -721,8 +677,6 @@ contains
       ! Eq. 81, SPLASH 2.0 Documentation
       out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
       ! out_evap%aet_e = out_evap%aet / (out_evap%econ * 1000)
-      
-      ! print*,'aet ', out_evap%aet
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
@@ -862,6 +816,35 @@ contains
   end function get_snow_rain
 
 
+  function calc_vdpstress( vpd ) result( out_vpdstress )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Calculates a VPD stress function based on Oren et al. 2001 Eq. 4
+    ! Reference: 
+    ! Oren et al.: Sensitivity of mean canopy stomatal conductance
+    ! to vapor pressure deficit in a flooded Taxodium distichum L. forest:
+    ! hydraulic and non-hydraulic effectsOecologia (2001) 126:21–29, 
+    ! DOI 10.1007/s004420000497
+    !-------------------------------------------------------------------------
+    ! arguments
+    real, intent(in) :: vpd    ! Vapour pressure deficit (Pa)
+
+    ! function return variable
+    real :: out_vpdstress
+
+    print*,'1'
+    print*,'vpd', vpd
+    if (vpd<1) then
+      out_vpdstress = 1.0
+    else
+      out_vpdstress = vpdstress_par_a * (vpdstress_par_b - vpdstress_par_m * (log(0.001) + log(vpd)))
+      if (out_vpdstress > 1.0) out_vpdstress = 1.0
+      if (out_vpdstress < 0.0) out_vpdstress = 0.0
+    end if
+    print*,'2'
+
+  end function calc_vdpstress
+
+
   function calc_dr( nu ) result( dr )
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Calculates distance factor (dr), unitless
@@ -976,6 +959,7 @@ contains
     ! from input file
     !----------------------------------------------------------------
     use md_sofunutils, only: getparreal
+    use md_interface, only: interface
 
     print*,'reading waterbal parameters ...'
 
@@ -1017,6 +1001,31 @@ contains
 
     ! maximum snow melting rate (mm d-1) (Orth et al., 2013)
     maxmeltrate = getparreal( 'params/params_waterbal_splash.dat', 'maxmeltrate' )
+
+    if (interface%params_siml%is_calib) then
+
+      ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
+      vpdstress_par_a = interface%params_calib%vpdstress_par_a
+
+      ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
+      vpdstress_par_b = interface%params_calib%vpdstress_par_b
+
+      ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
+      vpdstress_par_m = interface%params_calib%vpdstress_par_m
+
+
+    else
+
+      ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
+      vpdstress_par_a = getparreal( 'params/params_waterbal_splash.dat', 'vpdstress_par_a' )
+
+      ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
+      vpdstress_par_b = getparreal( 'params/params_waterbal_splash.dat', 'vpdstress_par_b' )
+
+      ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
+      vpdstress_par_m = getparreal( 'params/params_waterbal_splash.dat', 'vpdstress_par_m' )
+
+    end if
 
     print*,'... done'
 

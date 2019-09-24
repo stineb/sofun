@@ -50,12 +50,7 @@ contains
     integer :: dm, moy, jpngr, doy
     real, dimension(nmonth) :: mtemp      ! monthly mean air temperature (deg C)
     real, dimension(nmonth) :: mvpd       ! monthly mean vapour pressure deficit (Pa)
-
-    ! xxx debug
-    logical, parameter :: verbose = .false.
-    logical, parameter :: splashtest = .false.
-    integer, parameter :: lev_splashtest = 2
-    integer, parameter :: testdoy = 55
+    logical, parameter :: verbose = .true.
 
     !----------------------------------------------------------------
     ! INITIALISATIONS
@@ -147,21 +142,12 @@ contains
         if (verbose) print*,'    with argument elv = ', interface%grid(jpngr)%elv
         if (verbose) print*,'    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
         if (verbose) print*,'    with argument dppfd (ann. mean) = ', sum( interface%climate(jpngr)%dppfd(:) / ndayyear )
-        if (splashtest) then
-          ! for comparison with Python SPLASH
-          interface%climate(jpngr)%dfsun(:) = 0.562000036
-          interface%climate(jpngr)%dppfd(:) = dummy
-          solar = get_solar( 67.25, 87.0, interface%climate(jpngr)%dfsun(:), interface%climate(jpngr)%dppfd(:), splashtest=splashtest, testdoy=testdoy )
-          if (lev_splashtest==1) stop 'end of splash test level 1'
-        else
-          solar = get_solar( &
-                            interface%grid(jpngr)%lat, & 
-                            interface%grid(jpngr)%elv, & 
-                            interface%climate(jpngr)%dfsun(:), & 
-                            interface%climate(jpngr)%dppfd(:),  & 
-                            splashtest = splashtest, testdoy=testdoy &
-                            )
-        end if
+        solar = get_solar( &
+                          interface%grid(jpngr)%lat, & 
+                          interface%grid(jpngr)%elv, & 
+                          interface%climate(jpngr)%dfsun(:), & 
+                          interface%climate(jpngr)%dppfd(:)  &
+                          )
         if (verbose) print*,'... done'
 
         !----------------------------------------------------------------
@@ -232,7 +218,8 @@ contains
                           interface%climate(jpngr)%dtemp(doy), & 
                           interface%climate(jpngr)%dfsun(doy), &
                           interface%climate(jpngr)%dnetrad(doy), &
-                          splashtest=splashtest, lev_splashtest=lev_splashtest, testdoy=testdoy &
+                          interface%dfapar_field(doy,jpngr), &
+                          interface%climate(jpngr)%dvpd(doy) &
                           )
             if (verbose) print*,'... done'
 
@@ -290,7 +277,7 @@ contains
             !----------------------------------------------------------------
             if (.not.interface%params_siml%is_calib) then
               if (verbose) print*,'calling getout_daily() ... '
-              call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy )
+              call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy, tile_fluxes(:) )
               call getout_daily_gpp( out_pmodel(:,moy), plant_fluxes(:), jpngr, doy )
               call getout_daily_plant( plant(:,jpngr), plant_fluxes(:), jpngr, moy, doy )
               call getout_daily_forcing( jpngr, moy, doy )

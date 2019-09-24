@@ -7,7 +7,9 @@
 # beta   244.033
 beta                                    146.000000
 rd_to_vcmax                             0.01400000
-temp_ramp_edge                          0.00000000
+vpdstress_par_a                         0.00000000
+vpdstress_par_b                         0.00000000
+vpdstress_par_m                         0.00000000
 soilm_par_a                             1.00000000
 soilm_par_b                             0.00000000
 
