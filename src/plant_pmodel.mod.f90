@@ -54,6 +54,7 @@ module md_plant
     real :: dgpp     ! daily gross primary production [gC/m2/d]           
     real :: drd      ! daily dark respiration [gC/m2/d]
     real :: dtransp  ! daily transpiration [mm]
+    real :: dlatenth ! daily latent heat flux [J m-2 d-1]
 
   end type plant_fluxes_type
 

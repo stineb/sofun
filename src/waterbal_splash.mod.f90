@@ -85,10 +85,10 @@ module md_waterbal
     real :: rnl        ! net longwave radiation (W/m^2)
     real :: eet        ! daily EET (mm d-1)
     real :: pet        ! daily PET (mm d-1)
-    ! real :: pet_e      ! daily PET (J m-2 d-1)
+    real :: pet_e      ! daily PET (J m-2 d-1)
     real :: cn         ! daily condensation (mm d-1)
     real :: aet        ! daily AET (mm d-1)
-    ! real :: aet_e      ! daily AET (J m-2 d-1)
+    real :: aet_e      ! daily AET (J m-2 d-1)
     real :: cpa        ! Cramer-Prentice-Alpha = AET / EET (unitless)
     real :: econ       ! water-to-energy conversion factor (econ), m^3/J
   end type evaptype
@@ -168,16 +168,18 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( soil, tile_fluxes, doy, jpngr, lat, elv, pr, sn, tc, sf, netrad, fapar, vpd )
+  subroutine waterbal( soil, tile_fluxes, plant_fluxes, doy, jpngr, lat, elv, pr, sn, tc, sf, netrad, fapar, vpd )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
-    use md_params_core, only: ndayyear, ndaymonth
+    use md_params_core, only: ndayyear, ndaymonth, npft
     use md_tile, only: soil_type, tile_fluxes_type
+    use md_plant, only: plant_fluxes_type
 
     ! arguments
     type( soil_type ), dimension(nlu), intent(inout)        :: soil
     type( tile_fluxes_type ), dimension(nlu), intent(inout) :: tile_fluxes
+    type(plant_fluxes_type), dimension(npft), intent(inout) :: plant_fluxes  ! derived type containing plant-related flux variables  (overwritten at each time step)
     integer, intent(in) :: doy    ! day of year
     integer, intent(in) :: jpngr  ! gridcell number
     real, intent(in)    :: lat    ! latitude (degrees)
@@ -216,8 +218,13 @@ contains
       ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
       evap(lu) = get_evap( lat, doy, elv, sf, tc, tile_fluxes(lu)%sw, netrad )
 
-      ! Overwrite AET by vdpstress * fapar * pet
-      evap(lu)%aet = calc_vdpstress(vpd) * fapar * evap(lu)%pet
+      ! Overwrite AET calculated by get_evap(), instead using vdpstress * fapar * pet
+      evap(lu)%aet = calc_vdpstress( vpd ) * fapar * evap(lu)%pet
+      evap(lu)%aet_e = evap(lu)%aet / (evap(lu)%econ * 1000.0)
+
+      ! take acual evaporation
+      if (npft>1) stop 'waterbal_splash: Think of soething when npft > 1.'
+      plant_fluxes(:)%dlatenth = evap(lu)%aet_e
 
       if (netrad/=dummy) then
         ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -651,6 +658,7 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 72, SPLASH 2.0 Documentation
       out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
+      out_evap%pet_e = out_evap%pet / (out_evap%econ * 1000)
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
@@ -676,7 +684,7 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 81, SPLASH 2.0 Documentation
       out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
-      ! out_evap%aet_e = out_evap%aet / (out_evap%econ * 1000)
+      out_evap%aet_e = out_evap%aet / (out_evap%econ * 1000)
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
@@ -831,8 +839,6 @@ contains
     ! function return variable
     real :: out_vpdstress
 
-    print*,'1'
-    print*,'vpd', vpd
     if (vpd<1) then
       out_vpdstress = 1.0
     else
@@ -840,7 +846,6 @@ contains
       if (out_vpdstress > 1.0) out_vpdstress = 1.0
       if (out_vpdstress < 0.0) out_vpdstress = 0.0
     end if
-    print*,'2'
 
   end function calc_vdpstress
 
@@ -1609,8 +1614,8 @@ contains
     ! Annual output variables
     if (interface%params_siml%loutwaterbal) then
       if (outenergy) then
-        outapet(jpngr)    = outapet(jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0))
-        outaaet(:,jpngr)  = outaaet(:,jpngr) + (evap(1)%aet / (evap(1)%econ * 1000.0))
+        outapet(jpngr)    = outapet(jpngr)   + evap(1)%pet_e
+        outaaet(:,jpngr)  = outaaet(:,jpngr) + evap(1)%aet_e
       else 
         outapet(jpngr)    = outapet(jpngr)   + evap(1)%pet
         outaaet(:,jpngr)  = outaaet(:,jpngr) + evap(1)%aet
@@ -1627,8 +1632,8 @@ contains
     if (interface%params_siml%loutdwbal)   outdwbal(:,it,jpngr)   = outdwbal(:,it,jpngr)  + tile_fluxes(:)%dwbal / real( interface%params_siml%outdt )
     if (interface%params_siml%loutdnetrad) outdrn(:,it,jpngr)     = outdrn(:,it,jpngr)    + (evap(:)%rn + evap(1)%rnn) / real( interface%params_siml%outdt ) ! daytime plus nighttime
     if (outenergy) then
-      if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + (evap(1)%pet / (evap(1)%econ * 1000.0)) / real( interface%params_siml%outdt )
-      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + (evap(:)%aet / (evap(:)%econ * 1000.0)) / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + evap(1)%pet_e / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + evap(:)%aet_e / real( interface%params_siml%outdt )
     else 
       if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + evap(1)%pet / real( interface%params_siml%outdt )
       if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + evap(:)%aet / real( interface%params_siml%outdt )

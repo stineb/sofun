@@ -46,9 +46,10 @@ module md_interface
   ! This is the derived type-return variable of the function biosphere(),
   ! holding variables used for the cost function in sofun_calib.f90
   type outtype_biosphere
-    real, dimension(ndayyear) :: fapar
     real, dimension(ndayyear) :: gpp
+    real, dimension(ndayyear) :: fapar
     real, dimension(ndayyear) :: transp
+    real, dimension(ndayyear) :: latenth
   end type outtype_biosphere
 
   !----------------------------------------------------------------

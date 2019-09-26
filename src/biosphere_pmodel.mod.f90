@@ -50,7 +50,7 @@ contains
     integer :: dm, moy, jpngr, doy
     real, dimension(nmonth) :: mtemp      ! monthly mean air temperature (deg C)
     real, dimension(nmonth) :: mvpd       ! monthly mean vapour pressure deficit (Pa)
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
 
     !----------------------------------------------------------------
     ! INITIALISATIONS
@@ -209,6 +209,7 @@ contains
             call waterbal( &
                           tile(:,jpngr)%soil, &
                           tile_fluxes(:), &
+                          plant_fluxes(:), &
                           doy, &
                           jpngr, & 
                           interface%grid(jpngr)%lat, & 
@@ -291,9 +292,10 @@ contains
             ! populate function return variable
             !----------------------------------------------------------------
             !if (npft>1) stop 'think about npft > 1'
-            out_biosphere%fapar(doy)  = plant(1,jpngr)%fapar_ind
-            out_biosphere%gpp(doy)    = plant_fluxes(1)%dgpp
-            out_biosphere%transp(doy) = plant_fluxes(1)%dtransp
+            out_biosphere%fapar(doy)   = plant(1,jpngr)%fapar_ind
+            out_biosphere%gpp(doy)     = plant_fluxes(1)%dgpp
+            out_biosphere%transp(doy)  = plant_fluxes(1)%dtransp
+            out_biosphere%latenth(doy) = plant_fluxes(1)%dlatenth
 
           end do dayloop
 

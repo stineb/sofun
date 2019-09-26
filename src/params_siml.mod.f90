@@ -86,6 +86,7 @@ module md_params_siml
     logical :: lcalibgpp
     logical :: lcalibfapar
     logical :: lcalibtransp
+    logical :: lcaliblatenth
 
   end type paramstype_siml
 
@@ -373,9 +374,10 @@ contains
     if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdfapar ) out_getpar_siml%loutforcing  = .true.
 
     ! boolean to define which variables are used as calibration target
-    out_getpar_siml%lcalibgpp    = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibgpp' )
-    out_getpar_siml%lcalibfapar  = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibfapar' )
-    out_getpar_siml%lcalibtransp = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibtransp' )
+    out_getpar_siml%lcalibgpp     = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibgpp' )
+    out_getpar_siml%lcalibfapar   = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibfapar' )
+    out_getpar_siml%lcalibtransp  = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcalibtransp' )
+    out_getpar_siml%lcaliblatenth = getparlogical( 'run/'//runname//'.sofun.parameter', 'lcaliblatenth' )
 
     print*, "... done"
 

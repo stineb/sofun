@@ -338,7 +338,10 @@ program main
         if (interface%params_siml%lcalibgpp) then
           calibtargets( idx_start:idx_end, icol ) = out_biosphere%gpp(:)
         end if
-        
+        if (interface%params_siml%lcaliblatenth) then
+          calibtargets( idx_start:idx_end, icol ) = out_biosphere%latenth(:)
+        end if
+
         ! if (interface%params_siml%lcalibfapar) then
         !   icol = icol + 1
         !   calibtargets( idx_start:idx_end, icol ) = out_biosphere%fapar(:)
@@ -390,7 +393,7 @@ program main
   ! print*, 999999999
 
 100 format(F10.7)
-200 format(F15.8)
+200 format(F15.6)
 
 end program main
 
