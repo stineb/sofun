@@ -105,7 +105,7 @@ module md_waterbal
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, KNOWN PARAMETERS
   !----------------------------------------------------------------
-  logical :: outenergy = .false.
+  logical :: outenergy = .true.
 
   !----------------------------------------------------------------
   ! Module-specific rolling mean variables

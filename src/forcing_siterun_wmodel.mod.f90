@@ -144,8 +144,8 @@ contains
       fapar_field(:,1) = read1year_daily( 'sitedata/fapar/'//trim(domaininfo%domain_name)//'/'//faparyear_char//'/'//'dfapar_'//trim(domaininfo%domain_name)//'_'//faparyear_char//'.txt' )
 
       ! "Correct" fAPAR
-      print*,"WARNING: normalising fAPAR to within 0.1 and 1.0."
-      fapar_field(:,1) = max((fapar_field(:,1) - 0.1), 0.0)/(1.0 - 0.1)
+      print*,"WARNING: normalising fAPAR to within 0.12 and 1.0."
+      fapar_field(:,1) = max((fapar_field(:,1) - 0.12), 0.0)/(1.0 - 0.12)
 
     end if
 

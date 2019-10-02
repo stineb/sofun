@@ -24,7 +24,7 @@ SPLASH_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.m
 SWBM_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 params_siml.mod.f90 params_domain_siterun.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_wmodel.mod.f90 interface_biosphere.mod.f90 tile_wmodel.mod.f90 waterbal_swbm.mod.f90 soiltemp_sitch.mod.f90 biosphere_wmodel.mod.f90
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL:
-PMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 params_siml.mod.f90 params_domain_siterun.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 tile_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 plant_pmodel.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
+PMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 params_siml.mod.f90 params_domain_siterun.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 tile_pmodel.mod.f90 plant_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL:
 DEMO_PMODEL_MODS=params_core.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 interface_demo_pmodel.mod.f90 plant_demo_pmodel.mod.f90 gpp_pmodel.mod.f90 
