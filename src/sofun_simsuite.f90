@@ -176,7 +176,7 @@ program main
     endif
 
     ! write simulation name to standard output (screen)
-    write(0,*)  '------------SOFUN : '//trim(runname)//'-------------'
+    ! write(0,*)  '------------SOFUN : '//trim(runname)//'-------------'
 
     !----------------------------------------------------------------
     ! GET SIMULATION PARAMETERS FROM FILE <runname>.sofun.parameter

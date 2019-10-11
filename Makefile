@@ -4,88 +4,113 @@
 ############################
 
 ##################################
-## Select configuration profile ##
+# Select configuration profile
+# Set PROFILE to one of benilaptop, cx1, euler, pgi, or benistation
 ##################################
-# pgf     - PGF95 compiler
-# gfor    - gfortran compiler
-# intel   - ifort compiler
-
-# PROFILE=gfortran
-# PROFILE=pgi
-PROFILE=gfortran
+PROFILE=benilaptop
 
 ##################
-## pgf profile ##
+# pgf profile
 ##################
-ifeq ($(PROFILE),pgi)
-# Compiler and options
-FCOM=pgf95 
-CPPFLAGS=-E
-COMPFLAGS=-r8 -Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
-# COMPFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform  # debug flags, real8
-#COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
-DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
+ifeq ($(PROFILE),benilaptop)
 
-# System libraries
-# LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
+	# Compiler and options
+	FCOM=gfortran
+	CPPFLAGS=-cpp -E
+	COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow # for normal setup
+	# COMPFLAGS=-g -O0 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -Wall -Wextra -fcheck=all -fbacktrace # for debug setup
+
+	# COMPFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform  # debug flags, real8
+	#COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
+	# DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
+
+	# # System libraries
+	# LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
+
+	# On Beni's laptop, use this (display by nc-config --libdir and nc-config --includedir)
+	NETCDF_INC = /opt/local/include
+	NETCDF_LIB = /opt/local/lib
+
+	LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's laptop
+
+else
+
+	ifeq ($(PROFILE),cx1)
+
+		# Compiler and options
+		FCOM=ifort
+		CPPFLAGS=-e -fpp -preprocess_only -E
+		COMPFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -free -g -traceback ##-r8 -i4 -align -pc64 -fp-model strict 
+		DEBUGFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -free -warn all -implicitnone -g -traceback -fpe0 -fpstkchk -CU
+
+		# On Imperial CX1, use this:
+		NETCDF_INC = /apps/netcdf/4.0.1-mcmodel-medium/include
+		NETCDF_LIB = /apps/netcdf/4.0.1-mcmodel-medium/lib -lnetcdf
+
+		LIBS = -L$(NETCDF_LIB) -lnetcdf
+
+	else
+
+		ifeq ($(PROFILE),euler)
+
+			# gfortran compiler
+			FCOM=gfortran
+			CPPFLAGS=-cpp -E
+			COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow ## for normal setup
+
+			# On ETH Scicomp EULER
+			NETCDF_INC = /cluster/apps/netcdf/4.3.2/x86_64/gcc_4.8.2/openmpi_1.6.5/include
+			NETCDF_LIB = /cluster/apps/netcdf/4.3.2/x86_64/gcc_4.8.2/openmpi_1.6.5/lib
+
+			LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's laptop
+
+		else
+
+			ifeq ($(PROFILE),benistation)
+
+				FCOM=gfortran
+				CPPFLAGS=-cpp -E
+				COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow ## for normal setup
+
+				NETCDF_INC = /usr/local/include
+				NETCDF_LIB = /usr/local/lib
+
+				LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's work computer
+
+			else
+
+				ifeq ($(PROFILE),pgi)
+	
+					# Compiler and options
+					FCOM=pgf95 
+					CPPFLAGS=-E
+					COMPFLAGS=-r8 -Mextend -Mfreeform -Mdalign -Kieee -Ktrap=fp -O2
+					# COMPFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform  # debug flags, real8
+					#COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
+					DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
+
+				    # System libraries
+					LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
+
+				else				
+
+					# Error: select valid profile
+					$(error 'ERROR. Select a valid configuration profile in the Makefile (e.g. PROFILE=gfor).')
+
+				endif
+
+			endif
+
+		endif		
+
+	endif	
+
 endif
 
-#################
-## gfortran profile ##
-##################
-ifeq ($(PROFILE),gfortran)
-# Compiler and options
-FCOM=gfortran
-CPPFLAGS=-cpp -E
-COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow ## for normal setup
-# COMPFLAGS=-g -O0 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -Wall -Wextra -fcheck=all -fbacktrace ## for debug setup
-
-# COMPFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform  # debug flags, real8
-#COMPFLAGS= -Mextend -Mdalign -Kieee -Ktrap=fp -O2 -Mprof=lines # to analyze computation time by subroutines
-# DEBUGFLAGS=-g -O0 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform
-
-# # System libraries
-# LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff
-
-## On Beni's laptop, use this (display by nc-config --libdir and nc-config --includedir)
-NETCDF_INC = /opt/local/include
-NETCDF_LIB = /opt/local/lib
-LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's laptop
-
-# ## On Beni's work computer use this:
-# NETCDF_INC = /usr/local/include
-# NETCDF_LIB = /usr/local/lib
-# LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's work computer
-
-endif
-
-######################
-## intel profile    ##
-## for Imperial CX1 ##
-######################
-ifeq ($(PROFILE),intel)
-
-# Compiler and options
-FCOM=ifort
-CPPFLAGS=-e -fpp -preprocess_only -E
-COMPFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -free -g -traceback ##-r8 -i4 -align -pc64 -fp-model strict 
-DEBUGFLAGS=-O3 -xSSE4.2 -axAVX,CORE-AVX-I,CORE-AVX2 -extend_source -free -warn all -implicitnone -g -traceback -fpe0 -fpstkchk -CU
-
-# On Imperial CX1, use this:
-NETCDF_INC = /apps/netcdf/4.0.1-mcmodel-medium/include
-NETCDF_LIB = /apps/netcdf/4.0.1-mcmodel-medium/lib -lnetcdf
-LIBS = -L$(NETCDF_LIB) -lnetcdf
-
-endif
 
 ####################
-## general config ##
+# general config ##
 ####################
-
-# Check if FCOM is set
-ifeq ($(strip $(FCOM)),)
-$(error 'ERROR. Select a valid configuration profile in the Makefile (e.g. PROFILE=gfor).')
-endif
 
 # Add flags for MPI parallelization (enable the following lines when the parallel_mpi feature is turned on)
 #LIBS += $(shell mpif90 --showme:link)
