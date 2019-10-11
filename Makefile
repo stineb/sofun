@@ -59,8 +59,8 @@ else
 			COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow ## for normal setup
 
 			# On ETH Scicomp EULER
-			NETCDF_INC = /cluster/apps/netcdf/4.3.2/x86_64/gcc_4.8.2/openmpi_1.6.5/include
-			NETCDF_LIB = /cluster/apps/netcdf/4.3.2/x86_64/gcc_4.8.2/openmpi_1.6.5/lib
+			NETCDF_INC = /cluster/apps/netcdf/4.3.2/x86_64/gcc_4.8.2/serial/include
+			NETCDF_LIB = /cluster/apps/netcdf/4.3.2/x86_64/gcc_4.8.2/serial/lib
 
 			LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's laptop
 
