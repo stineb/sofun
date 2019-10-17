@@ -218,9 +218,9 @@ contains
       ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
       evap(lu) = get_evap( lat, doy, elv, sf, tc, tile_fluxes(lu)%sw, netrad )
 
-      ! Overwrite AET calculated by get_evap(), instead using vdpstress * fapar * pet
-      evap(lu)%aet = calc_vdpstress( vpd ) * fapar * evap(lu)%pet
-      evap(lu)%aet_e = evap(lu)%aet / (evap(lu)%econ * 1000.0)
+      ! ! Overwrite AET calculated by get_evap(), instead using vdpstress * fapar * pet
+      ! evap(lu)%aet = calc_vdpstress( vpd ) * fapar * evap(lu)%pet
+      ! evap(lu)%aet_e = evap(lu)%aet / (evap(lu)%econ * 1000.0)
 
       ! take acual evaporation
       if (npft>1) stop 'waterbal_splash: Think of soething when npft > 1.'
