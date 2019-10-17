@@ -287,6 +287,8 @@ contains
     out_getpar_siml%outdt             = getparint( 'run/'//runname//'.sofun.parameter', 'outdt' )
     out_getpar_siml%outnt = ceiling( real( ndayyear ) / real( out_getpar_siml%outdt ) )
 
+    out_getpar_siml%do_spinup         = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
+
     if (out_getpar_siml%do_spinup) then
       out_getpar_siml%runyears = out_getpar_siml%nyeartrend + out_getpar_siml%spinupyears
     else
@@ -331,9 +333,7 @@ contains
 
     out_getpar_siml%in_netrad         = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_netrad' )
     out_getpar_siml%in_ppfd           = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_ppfd' )
-    
-    out_getpar_siml%do_spinup         = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
-    
+        
     out_getpar_siml%const_co2_year    = getparint( 'run/'//runname//'.sofun.parameter', 'const_co2_year' )
     out_getpar_siml%const_ndep_year   = getparint( 'run/'//runname//'.sofun.parameter', 'const_ndep_year' )
     out_getpar_siml%const_nfert_year  = getparint( 'run/'//runname//'.sofun.parameter', 'const_nfert_year' )
