@@ -237,8 +237,8 @@ contains
         ! print*,'aet: ', evap(lu)%aet
 
         evap(lu)%cpa = max( 0.0, evap(lu)%aet / evap(lu)%eet )
-
       end if
+
 
       ! Update soil moisture and snow pack
       out_snow_rain = get_snow_rain( pr + evap(lu)%cn, sn, tc, soil(lu)%phy%snow )
@@ -248,7 +248,6 @@ contains
       soil(lu)%phy%wcont = soil(lu)%phy%wcont + out_snow_rain%liquid_to_soil - evap(lu)%aet
 
       ! Bucket model for runoff generation
-      ! print*,'3'
       if (soil(lu)%phy%wcont>soil(lu)%params%whc) then
         ! -----------------------------------
         ! Bucket is full 

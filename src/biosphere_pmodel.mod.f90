@@ -156,6 +156,7 @@ contains
         ! light absorbed light.
         ! Photosynthetic parameters acclimate at ~monthly time scale
         !----------------------------------------------------------------
+        if (verbose) print*,'calling getlue() ... '
         if (verbose) print*,'    with argument CO2  = ', interface%pco2
         if (verbose) print*,'    with argument temp.= ', interface%climate(jpngr)%dtemp(1:10)
         if (verbose) print*,'    with argument VPD  = ', interface%climate(jpngr)%dvpd(1:10)

@@ -167,6 +167,7 @@ contains
     if (fapar_forcing_source=="evi_modis") then
 
       ! fAPAR data from MODIS EVI
+      print*,'Using MODIS EVI from file modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc ...'
       firstyr_data = 2001
       nyrs_data = 15
       lonname ="LON"
@@ -557,7 +558,7 @@ contains
     real :: ncfillvalue                                  ! _FillValue attribute in NetCDF file
     integer :: nmissing                                  ! number of land cells where climate data is not available
     character(len=5) :: recname = "tstep"
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
@@ -754,11 +755,11 @@ contains
             !   out_climate(jpngr)%dfsun(doy) = 1111
             ! end if
 
-            ! if (in_netrad) then
-            !   out_climate(jpngr)%dnetrad(:) = 1111
-            ! else
-            !   out_climate(jpngr)%dnetrad(:) = dummy
-            ! end if
+            if (in_netrad) then
+              out_climate(jpngr)%dnetrad(:) = 1111.0
+            else
+              out_climate(jpngr)%dnetrad(:) = dummy
+            end if
 
           else
             nmissing = nmissing + 1
@@ -822,7 +823,7 @@ contains
     integer, parameter :: firstyr_cru = 1901
     integer, parameter :: nyrs_cru = 116
     character(len=256), parameter :: filnam = './input/global/climate/ccov/cru_ts4.01.1901.2016.cld.dat.nc'
-    logical, parameter :: verbose = .true.
+    logical, parameter :: verbose = .false.
 
     if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
 
