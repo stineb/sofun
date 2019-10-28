@@ -100,8 +100,6 @@ contains
     integer :: jpngr, ilon, ilat
     integer :: maxgrid_test
 
-    print*,'getting grid ...'
-
     allocate( out_grid(domaininfo%maxgrid) )
 
     out_grid(1)%ilon = 1
@@ -115,8 +113,6 @@ contains
     out_grid(1)%lon = domaininfo%lon(1)
     out_grid(1)%lat = domaininfo%lat(1)
     out_grid(1)%elv = params_domain%elv_site
-
-    print*,'...done'
 
   end function getgrid
 

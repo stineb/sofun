@@ -5,9 +5,9 @@
 
 ##################################
 # Select configuration profile
-# Set PROFILE to one of benilaptop, cx1, euler, pgi, or benistation
+# Set PROFILE to one of benilaptop, cx1, euler, pgi, or beniimac
 ##################################
-PROFILE=benilaptop
+PROFILE=beniimac
 
 ##################
 # pgf profile
@@ -66,14 +66,14 @@ else
 
 		else
 
-			ifeq ($(PROFILE),benistation)
+			ifeq ($(PROFILE),beniimac)
 
 				FCOM=gfortran
 				CPPFLAGS=-cpp -E
 				COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow ## for normal setup
 
-				NETCDF_INC = /usr/local/include
-				NETCDF_LIB = /usr/local/lib
+				NETCDF_INC = /opt/local/include
+				NETCDF_LIB = /opt/local/lib
 
 				LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's work computer
 
