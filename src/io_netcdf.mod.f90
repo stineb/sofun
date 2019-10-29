@@ -302,21 +302,17 @@ contains
 
     ! local variables
     integer :: ncid
-    integer, parameter :: nz = 1
-    integer, parameter :: zvals = 1
-    integer, parameter :: nt = 1
-    integer, parameter :: tvals = 1
-    integer, parameter :: ndims = 4
+    integer, parameter :: ndims = 2
     integer :: dimids(ndims)
 
     integer :: londimid, latdimid, zdimid, tdimid
-    integer :: varid_lat, varid_lon, varid_z, varid_t
+    integer :: varid_lat, varid_lon
     integer :: varid_var
 
     character(len=*), parameter :: LAT_NAME  = "lat"
     character(len=*), parameter :: LON_NAME  = "lon"
-    character(len=*), parameter :: Z_NAME    = "z"
-    character(len=*), parameter :: T_NAME    = "t"
+    ! character(len=*), parameter :: Z_NAME    = "z"
+    ! character(len=*), parameter :: T_NAME    = "t"
     character(len=*), parameter :: UNITS     = "units"
     character(len=*), parameter :: LAT_UNITS = "degrees_north"
     character(len=*), parameter :: LON_UNITS = "degrees_east"
@@ -326,16 +322,12 @@ contains
     ! Define the dimensions. NetCDF will hand back an ID for each. 
     call check( nf90_def_dim( ncid, LON_NAME, nlon, londimid  ) )
     call check( nf90_def_dim( ncid, LAT_NAME, nlat, latdimid  ) )
-    call check( nf90_def_dim( ncid, Z_NAME,   nz,   zdimid    ) )
-    call check( nf90_def_dim( ncid, T_NAME,   nt,   tdimid  ) )
 
     ! Define the coordinate variables. They will hold the coordinate
     ! information, that is, the latitudes and longitudes. A varid is
     ! returned for each.
     call check( nf90_def_var( ncid, LAT_NAME, NF90_REAL, latdimid,  varid_lat ) )
     call check( nf90_def_var( ncid, LON_NAME, NF90_REAL, londimid,  varid_lon ) )
-    call check( nf90_def_var( ncid, Z_NAME,   NF90_INT,  zdimid,    varid_z   ) )
-    call check( nf90_def_var( ncid, T_NAME,   NF90_INT , tdimid,    varid_t   ) )
 
     ! Assign units attributes to coordinate var data. This attaches a
     ! text attribute to each of the coordinate variables, containing the
@@ -346,7 +338,7 @@ contains
     ! The dimids array is used to pass the IDs of the dimensions of
     ! the variables. Note that in fortran arrays are stored in
     ! column-major format.
-    dimids = (/ londimid, latdimid, zdimid, tdimid /)
+    dimids = (/ londimid, latdimid /)
 
     ! Define the variable. The type of the variable in this case is
     ! NF90_DOUBLE.
@@ -378,8 +370,6 @@ contains
     ! and longitudes of our data grid into the netCDF file.
     call check( nf90_put_var( ncid, varid_lat, lat   ) )
     call check( nf90_put_var( ncid, varid_lon, lon   ) )
-    call check( nf90_put_var( ncid, varid_z,   zvals ) )
-    call check( nf90_put_var( ncid, varid_t,   tvals ) )
 
     ! Close the file. This frees up any internal netCDF resources
     ! associated with the file, and flushes any buffers.
@@ -490,16 +480,17 @@ contains
     real, dimension(maxgrid), intent(in) :: out
 
     ! local variables
-    real, dimension(:,:,:,:), allocatable :: outarr
+    ! real, dimension(:,:,:,:), allocatable :: outarr
+    real, dimension(:,:), allocatable :: outarr
     integer :: jpngr
     integer :: ncid, varid
 
-    allocate( outarr(nlon,nlat,1,1) )
-    outarr(:,:,:,:) = dummy        
+    allocate( outarr(nlon,nlat) )
+    outarr(:,:) = dummy            
 
     ! Populate output array
     do jpngr=1,maxgrid
-      if (dogridcell(jpngr)) outarr(ilon(jpngr),ilat(jpngr),1,1) = out(jpngr)
+      if (dogridcell(jpngr)) outarr(ilon(jpngr),ilat(jpngr)) = out(jpngr)
     end do
 
     ! open NetCDF output file
@@ -509,7 +500,7 @@ contains
     call check( nf90_inq_varid( ncid, varnam, varid ) )
 
     ! write the data into the file
-    call check( nf90_put_var( ncid, varid, outarr(:,:,:,:) ) )
+    call check( nf90_put_var( ncid, varid, outarr(:,:) ) )
 
     ! close NetCDF output file
     call check( nf90_close( ncid ) )

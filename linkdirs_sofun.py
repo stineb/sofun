@@ -20,14 +20,14 @@ import os.path
 ## - "ameriwue"
 ## - "fluxnet2015_cmodel"
 ##--------------------------------------------------------------------
-## For global simulations, set simsuite to 'global'.
+## For global simulations, set name to 'global'.
 ## - "global"
 ##--------------------------------------------------------------------
 ## This links NetCDF input files from directories mirrored locally from
 ## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
-simsuite = 'global'
+name = 'global'
 
 ##--------------------------------------------------------------------
 ## For an example simulation (simulation name 'EXAMPLE_global'), set 
@@ -39,26 +39,23 @@ example = False
 ## Manually et the root directory for the local mirror of 
 ## /work/bstocker/labprentice/data
 ##--------------------------------------------------------------------
+dataroot = '/Users/bestocke/data/'
+mydataroot = '/Users/bestocke/data/'
 # dataroot = '/Users/benjaminstocker/data/'
-# dataroot = '/Users/benjaminstocker/alphadata01/bstocker/data/'
-dataroot = '/rds/general/project/lab-prentice-realm-data/live/data/'
-mydataroot = '/rds/general/user/bstocker/home/mydata/'
+# mydataroot = '/Users/benjaminstocker/data/'
+# dataroot = '/rds/general/project/lab-prentice-realm-data/live/data/'
+# mydataroot = '/rds/general/user/bstocker/home/mydata/'
 
 ##--------------------------------------------------------------------
 ## Link directories
 ##--------------------------------------------------------------------
 ## link output direcories
-## ASCII output
-os.system( 'unlink output' )
-os.system( 'ln -svf ../output_' + simsuite + '_sofun output'  )
-
-## NetCDF output
 os.system( 'unlink output_nc' )
 os.system( 'ln -svf ../output_nc_' + simsuite + '_sofun output_nc'  )
 
 
 ## link NetCDF input files for global simulations
-if simsuite == 'global':
+if name == 'global':
 	##--------------------------------------
 	## GLOBAL SIMULATIONS
 	##--------------------------------------
@@ -78,14 +75,15 @@ if simsuite == 'global':
 	## CO2
 	##--------------------------------------
 	dirn = 'input/global/co2'
-	call(['cp', dataroot + 'co2/cCO2_rcp85_const850-1765.dat', dirn ])
+	os.system( 'mkdir -p ' + dirn )
+	call(['ln', '-svf', dataroot + 'co2/cCO2_rcp85_const850-1765.dat', dirn ])
 
 	## fapar (fapar3g)
 	##--------------------------------------
 	dirn = 'input/global/fapar'
 	os.system( 'mkdir -p ' + dirn )
 	# call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
-	call(['ln', '-svf', dataroot + 'modis_monthly-evi/zmaw_data/halfdeg/modis_vegetation__LPDAAC__v5__halfdegMAX_mean2000.nc', dirn ])
+	call(['ln', '-svf', dataroot + 'modis_monthly-evi/zmaw_data/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc', dirn ])
 
 	## write fapar info to file
 	# os.system('echo \'fapar_forcing_source                    fapar3g\' >./input/dfapar_source.txt')
@@ -167,8 +165,8 @@ if simsuite == 'global':
 	else:
 		os.system( 'unlink run')
 		os.system( 'unlink site_paramfils')
-		os.system( 'ln -sv ../input_' + simsuite + '_sofun/run run')
-		os.system( 'ln -sv ../input_' + simsuite + '_sofun/site_paramfils site_paramfils')
+		os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/run run')
+		os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/site_paramfils site_paramfils')
 
 else:
 	##--------------------------------------
@@ -176,13 +174,13 @@ else:
 	##--------------------------------------
 
 	## use same site and simulation parameter files for cnmodel and cmodel simulations
-	if simsuite == 'fluxnet_fixalloc':
+	if name == 'fluxnet_fixalloc':
 	  	simsuite_climate_link = 'fluxnet_cnmodel'
-	elif simsuite == 'olson_cmodel':
+	elif name == 'olson_cmodel':
 	  	simsuite_climate_link = 'olson'
-	elif simsuite == 'campi_cmodel':
+	elif name == 'campi_cmodel':
 	  	simsuite_climate_link = 'campi'
-	elif simsuite == 'fluxnet2015_cmodel':
+	elif name == 'fluxnet2015_cmodel':
 	  	simsuite_climate_link = 'fluxnet2015'
 	else:
 	  	simsuite_climate_link = simsuite
@@ -190,11 +188,8 @@ else:
 
 	os.system( 'unlink run')
 	os.system( 'unlink site_paramfils')
-	os.system( 'unlink input/sitedata')
-	os.system( 'ln -sv ../input_' + simsuite + '_sofun/run run')
-	os.system( 'ln -sv ../input_' + simsuite + '_sofun/site_paramfils site_paramfils')
-	os.system( 'ln -sv ../../input_' + simsuite_climate_link + '_sofun/sitedata input/sitedata')
-
-
+	os.system( 'unlink input/global')
+	os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/run .')
+	os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/site_paramfils .')
 
 

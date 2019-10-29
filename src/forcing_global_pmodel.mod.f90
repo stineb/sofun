@@ -135,7 +135,7 @@ contains
     !----------------------------------------------------------------
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo
-    type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(inout) :: grid
     integer, intent(in) :: year
     character(len=*), intent(in) :: fapar_forcing_source
 
@@ -159,15 +159,15 @@ contains
     real :: dlat, dlon
     character(len=100) :: lonname, latname, varname
     integer :: firstyr_data, nyrs_data
-    character(len=100) :: filnam
+    character(len=256) :: filnam
 
     !----------------------------------------------------------------  
     ! Set file-specific variables
     !----------------------------------------------------------------    
     if (fapar_forcing_source=="evi_modis") then
 
-      ! fAPAR data from MODIS EVI
-      print*,'Using MODIS EVI from file modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc ...'
+      ! fAPAR data from MODIS EVI ZMAW data file
+      print*,'Using MODIS EVI from ./input/global/fapar/file modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc ...'
       firstyr_data = 2001
       nyrs_data = 15
       lonname ="LON"
@@ -185,6 +185,17 @@ contains
       varname = "FAPAR_FILLED"
       filnam = "./input/global/fapar/fAPAR3g_v2_1982_2016_FILLED.nc"
 
+    else if (fapar_forcing_source=="fpar_modis") then
+
+      ! fAPAR data from MODIS FPAR ZMAW data file
+      print*,'Using ./input/global/fapar/MODIS FPAR from file MODIS-C006_MOD15A2__LAI_FPAR__LPDAAC__GLOBAL_0.5degree__UHAM-ICDC__2000_2018__MON__fv0.02.nc ...'
+      firstyr_data = 2000
+      nyrs_data = 19
+      lonname ="lon"
+      latname = "lat"
+      varname = "fpar"
+      filnam = "./input/global/fapar/MODIS-C006_MOD15A2__LAI_FPAR__LPDAAC__GLOBAL_0.5degree__UHAM-ICDC__2000_2018__MON__fv0.02.nc"
+
     else
 
       print*,'fapar_forcing_source: ', fapar_forcing_source
@@ -194,7 +205,7 @@ contains
 
     !----------------------------------------------------------------  
     ! Read arrays of all months of current year from file  
-    !----------------------------------------------------------------    
+    !----------------------------------------------------------------   
     call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
 
     ! get dimension ID for latitude
@@ -248,6 +259,12 @@ contains
 
     ! Read the array, only current year
     read_idx = ( min( max( year - firstyr_data + 1, 1 ), nyrs_data ) - 1 ) * nmonth + 1
+
+    ! Jan 2000 is not available. First index in file is Feb 2000.
+    if (fapar_forcing_source=="fpar_modis") then
+      read_idx = read_idx - 1
+    end if
+
     call check( nf90_get_var( ncid, varid, fapar_arr, start=(/1, 1, 1, read_idx/), count=(/nlon_arr, nlat_arr, 1, nmonth/) ) )
 
     ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
@@ -267,6 +284,7 @@ contains
             fapar_field(doy,jpngr) = tmp
           else
             fapar_field(doy,jpngr) = 0.0
+            grid(jpngr)%dogridcell = .false.
           end if
         end do
       end do

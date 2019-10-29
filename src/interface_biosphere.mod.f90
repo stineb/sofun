@@ -111,38 +111,6 @@ contains
   end subroutine initoutput_forcing
 
 
-  ! subroutine initio_forcing()
-  !   !////////////////////////////////////////////////////////////////
-  !   ! Opens ascii output files.
-  !   !----------------------------------------------------------------
-  !   ! local variables
-  !   character(len=256) :: prefix
-  !   character(len=256) :: filnam
-
-  !   prefix = "./output/"//trim(interface%params_siml%runname)
-
-  !   !////////////////////////////////////////////////////////////////
-  !   ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
-  !   !----------------------------------------------------------------
-  !   if (interface%params_siml%loutforcing) then
-
-  !     ! DAILY MEAN TEMPERATURE (DEG C)
-  !     filnam=trim(prefix)//'.d.temp.out'
-  !     open(950,file=filnam,err=999,status='unknown')
-
-  !     ! FRACTION OF ABSORBED PHOTOSYNTHETICALLY ACTIVE RADIATION
-  !     filnam=trim(prefix)//'.d.fapar.out'
-  !     open(951,file=filnam,err=999,status='unknown')
-  
-  !   end if     
-
-  !   return
-
-  !   999  stop 'INITIO: error opening output files'
-
-  ! end subroutine initio_forcing
-
-
   subroutine initio_nc_forcing()
     !////////////////////////////////////////////////////////////////
     ! Opens NetCDF output files.
@@ -289,64 +257,6 @@ contains
     end if
 
   end subroutine getout_daily_forcing
-
-
-  ! subroutine writeout_ascii_forcing()
-  !   !/////////////////////////////////////////////////////////////////////////
-  !   ! Write daily ASCII output
-  !   !-------------------------------------------------------------------------
-  !   ! use md_params_siml, only: spinup, interface%params_siml%daily_out_startyr, &
-  !   use md_params_core, only: ndayyear
-
-  !   ! local variables
-  !   real :: itime
-  !   integer :: it, moy, jpngr
-  !   real, dimension(ndayyear) :: outdtemp_tot
-  !   real, dimension(ndayyear) :: outdfapar_tot
-
-  !   outdtemp_tot(:)  = 0.0
-  !   outdfapar_tot(:) = 0.0
-
-  !   if (nlu>1) stop 'Output only for one LU category implemented.'
-
-  !   !-------------------------------------------------------------------------
-  !   ! DAILY OUTPUT
-  !   ! Write daily value, summed over all PFTs / LUs
-  !   ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-  !   !-------------------------------------------------------------------------
-  !   if ( .not. interface%steering%spinup &
-  !        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-  !        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
-
-  !     if (interface%params_siml%loutforcing) then
-
-  !       ! Write daily output only during transient simulation
-  !       do it=1,interface%params_siml%outnt
-
-  !         ! Get weighted average
-  !         do jpngr=1,size(interface%grid)
-  !           outdtemp_tot(it)  = outdtemp_tot(it)  + outdtemp(it,jpngr)  * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
-  !           outdfapar_tot(it) = outdfapar_tot(it) + outdfapar(it,jpngr) * interface%grid(jpngr)%landfrac * interface%grid(jpngr)%area
-  !         end do
-  !         outdtemp_tot(it)  = outdtemp_tot(it)  / interface%domaininfo%landarea
-  !         outdfapar_tot(it) = outdfapar_tot(it) / interface%domaininfo%landarea
-
-  !         ! Define 'itime' as a decimal number corresponding to day in the year + year
-  !         itime = real( interface%steering%outyear ) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
-          
-  !         write(950,999) itime, outdtemp_tot(it)
-  !         write(951,999) itime, outdfapar_tot(it)
-
-  !       end do
-
-  !     end if
-  !   end if
-
-  !   return
-
-  !   999 format (F20.8,F20.8)
-
-  ! end subroutine writeout_ascii_forcing
 
 
   subroutine writeout_nc_forcing()

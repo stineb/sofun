@@ -87,6 +87,18 @@ proc_global(){
 	cdo -O mergetime output_nc/$1.*.d.gpp.nc   output_nc/$1.d.gpp.nc
 	rm output_nc/$1.*.d.gpp.nc
 
+	## AET
+	cdo -O mergetime output_nc/$1.*.d.aet.nc   output_nc/$1.d.aet.nc
+	rm output_nc/$1.*.d.aet.nc
+
+	## PET
+	cdo -O mergetime output_nc/$1.*.d.pet.nc   output_nc/$1.d.pet.nc
+	rm output_nc/$1.*.d.pet.nc
+
+	## GPP
+	cdo -O mergetime output_nc/$1.*.d.gpp.nc   output_nc/$1.d.gpp.nc
+	rm output_nc/$1.*.d.gpp.nc
+
 	## Soil water content
 	cdo -O mergetime output_nc/$1.*.d.wcont.nc   output_nc/$1.d.wcont.nc
 	rm output_nc/$1.*.d.wcont.nc
@@ -94,6 +106,10 @@ proc_global(){
 	##-------------------------------------
 	## Annual
 	##-------------------------------------
+	## GPP
+	cdo -O mergetime output_nc/$1.*.a.gpp.nc   output_nc/$1.a.gpp.nc
+	rm output_nc/$1.*.a.gpp.nc
+
 	## AET
 	cdo -O mergetime output_nc/$1.*.a.pet.nc   output_nc/$1.a.pet.nc
 	rm output_nc/$1.*.a.pet.nc
