@@ -82,14 +82,16 @@ if name == 'global':
 	##--------------------------------------
 	dirn = 'input/global/fapar'
 	os.system( 'mkdir -p ' + dirn )
-	# call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
-	# call(['ln', '-svf', dataroot + 'modis_ndvi_evi_zmaw/halfdeg/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc', dirn ])
-	call(['ln', '-svf', dataroot + 'modis_lai_fpar_zmaw/MODIS-C006_MOD15A2__LAI_FPAR__LPDAAC__GLOBAL_0.5degree__UHAM-ICDC__2000_2018__MON__fv0.02.nc', dirn ])
 
-	## write fapar info to file
+	# call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
 	# os.system('echo \'fapar_forcing_source                    fapar3g\' >./input/dfapar_source.txt')
+
+	# call(['ln', '-svf', dataroot + 'modis_ndvi_evi_zmaw/halfdeg/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc', dirn ])
+	# os.system('echo \'fapar_forcing_source                    evi_modis\' >./input/dfapar_source.txt')
+
+	call(['ln', '-svf', dataroot + 'modis_lai_fpar_zmaw/MODIS-C006_MOD15A2__LAI_FPAR__LPDAAC__GLOBAL_0.5degree__UHAM-ICDC__2000_2018__MON__fv0.02.nc', dirn ])
 	os.system('echo \'fapar_forcing_source                    fpar_modis\' >./input/dfapar_source.txt')
-	
+
 
 	## soil
 	##--------------------------------------

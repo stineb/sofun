@@ -126,7 +126,7 @@ contains
     !----------------------------------------------------------------
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo
-    type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(inout) :: grid
     integer, intent(in) :: year
     character(len=*), intent(in) :: fapar_forcing_source
 
@@ -150,30 +150,24 @@ contains
     real :: dlat, dlon
     character(len=100) :: lonname, latname, varname
     integer :: firstyr_data, nyrs_data
-    character(len=100) :: filnam
+    character(len=256) :: filnam
 
     !----------------------------------------------------------------  
     ! Set file-specific variables
     !----------------------------------------------------------------    
-    if (fapar_forcing_source=="evi_modis") then
+    print*,'fapar_forcing_source: *', trim(fapar_forcing_source), '*' 
+    if (trim(fapar_forcing_source)=="evi_modis") then
 
-      ! ! fAPAR data from MODIS EVI
-      ! firstyr_data = 2001
-      ! nyrs_data = 15
-      ! lonname ="LON"
-      ! latname = "LAT"
-      ! varname = "EVI_FILLED"
-      ! filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc"
-
-      ! fAPAR data from MODIS EVI, regridded by maximum
-      firstyr_data = 2000
+      ! fAPAR data from MODIS EVI ZMAW data file
+      print*,'Using MODIS EVI from ./input/global/fapar/file modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc ...'
+      firstyr_data = 2001
       nyrs_data = 15
       lonname ="lon"
       latname = "lat"
       varname = "evi"
       filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__halfdegMAX_mean2000.nc"
 
-    else if (fapar_forcing_source=="fapar3g" .or. fapar_forcing_source=="fAPAR3g") then
+    else if (trim(fapar_forcing_source)=="fapar3g" .or. trim(fapar_forcing_source)=="fAPAR3g") then
       
       ! fAPAR data from fAPAR3g
       firstyr_data = 1982
@@ -183,6 +177,17 @@ contains
       varname = "FAPAR_FILLED"
       filnam = "./input/global/fapar/fAPAR3g_v2_1982_2016_FILLED.nc"
 
+    else if (trim(fapar_forcing_source)=="fpar_modis") then
+
+      ! fAPAR data from MODIS FPAR ZMAW data file
+      firstyr_data = 2000
+      nyrs_data = 19
+      lonname ="lon"
+      latname = "lat"
+      varname = "fpar"
+      ! filnam = "./input/global/fapar/MODIS-C006_MOD15A2__LAI_FPAR__LPDAAC__GLOBAL_0.5degree__UHAM-ICDC__2000_2018__MON__fv0.02.nc"
+      filnam = "./input/global/fapar/fpar_MODIS-C006-MOD15A2_SUBSET_writtenbyR.nc"
+
     else
 
       print*,'fapar_forcing_source: ', fapar_forcing_source
@@ -190,22 +195,26 @@ contains
 
     end if
 
+    print*,'Using fapar data from file: ', trim(filnam), ' ...'
+
     !----------------------------------------------------------------  
     ! Read arrays of all months of current year from file  
-    !----------------------------------------------------------------    
-    call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
+    !----------------------------------------------------------------   
+    print*,'1'
+    call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_fapar ) )
+    print*,'2'
 
     ! get dimension ID for latitude
-    call check( nf90_inq_dimid( ncid, trim(latname), latdimid ) )
+    call check( nf90_inq_dimid( ncid_fapar, trim(latname), latdimid ) )
 
     ! Get latitude information: nlat
-    call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
+    call check( nf90_inquire_dimension( ncid_fapar, latdimid, len = nlat_arr ) )
 
     ! get dimension ID for longitude
-    call check( nf90_inq_dimid( ncid, trim(lonname), londimid ) )
+    call check( nf90_inq_dimid( ncid_fapar, trim(lonname), londimid ) )
 
     ! Get latitude information: nlon
-    call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
+    call check( nf90_inquire_dimension( ncid_fapar, londimid, len = nlon_arr ) )
 
     ! for index association, get ilon and ilat vectors
     ! Allocate array sizes now knowing nlon and nlat 
@@ -213,18 +222,15 @@ contains
     allocate( lat_arr(nlat_arr) )
 
     ! Get longitude and latitude values
-    call check( nf90_get_var( ncid, londimid, lon_arr ) )
-    call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+    call check( nf90_get_var( ncid_fapar, londimid, lon_arr ) )
+    call check( nf90_get_var( ncid_fapar, latdimid, lat_arr ) )
 
     ! Check if the resolution of the climate input files is identical to the model grid resolution
     dlon = lon_arr(2) - lon_arr(1)
     dlat = lat_arr(2) - lat_arr(1)
 
-    if (abs(dlon-domaininfo%dlon) > eps) print*,'dlon in fapar file:', dlon, 'dlon required:', domaininfo%dlon
-    if (abs(dlat-domaininfo%dlat) > eps) print*,'dlat in fapar file:', dlat, 'dlat required:', domaininfo%dlat
-
-    if (abs(dlon-domaininfo%dlon) > eps) stop 'Longitude resolution of fapar (modis evi) input file not identical with model grid.'
-    if (abs(dlat-domaininfo%dlat) > eps) stop 'latitude resolution of fapar (modis evi) input file not identical with model grid.'
+    if (dlon/=domaininfo%dlon) stop 'Longitude resolution of fapar (modis evi) input file not identical with model grid.'
+    if (dlat/=domaininfo%dlat) stop 'latitude resolution of fapar (modis evi) input file not identical with model grid.'
 
     ! get index associations
     do jpngr=1,domaininfo%maxgrid
@@ -244,42 +250,70 @@ contains
     ! allocate size of output array
     allocate( fapar_arr(nlon_arr,nlat_arr,nmonth) )
 
+    ! xxx debug
+    ! fapar_arr(:,:,:) = 0.0
+
     ! Get the varid of the data variable, based on its name
-    call check( nf90_inq_varid( ncid, trim(varname), varid ) )
+    call check( nf90_inq_varid( ncid_fapar, trim(varname), varid ) )
 
     ! Read the array, only current year
     read_idx = ( min( max( year - firstyr_data + 1, 1 ), nyrs_data ) - 1 ) * nmonth + 1
-    call check( nf90_get_var( ncid, varid, fapar_arr, start=(/1, 1, 1, read_idx/), count=(/nlon_arr, nlat_arr, 1, nmonth/) ) )
+
+    ! Jan 2000 is not available. First index in file is Feb 2000.
+    ! if (fapar_forcing_source=="fpar_modis") then
+    !   read_idx = read_idx - 1
+    ! end if
+
+    call check( nf90_get_var( ncid_fapar, varid, fapar_arr, start=(/1, 1, 1, read_idx/), count=(/nlon_arr, nlat_arr, 1, nmonth/) ) )
 
     ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
-    call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
+    call check( nf90_get_att( ncid_fapar, varid, "_FillValue", ncfillvalue ) )
 
     ! close NetCDF files
-    call check( nf90_close( ncid ) )
+    call check( nf90_close( ncid_fapar ) )
 
     ! read from array to define grid type 
-    do jpngr=1,domaininfo%maxgrid
-      doy = 0
-      do moy=1,nmonth
-        do dom=1,ndaymonth(moy)
-          doy = doy + 1
-          tmp = fapar_arr(ilon(jpngr),ilat(jpngr),moy)
-          if ( tmp/=ncfillvalue ) then
-            fapar_field(doy,jpngr) = tmp
-          else
-            fapar_field(doy,jpngr) = 0.0
-          end if
+    if (trim(fapar_forcing_source)=="fpar_modis") then
+      do jpngr=1,domaininfo%maxgrid
+        doy = 0
+        do moy=1,nmonth
+          do dom=1,ndaymonth(moy)
+            doy = doy + 1
+            tmp = fapar_arr(ilon(jpngr),ilat(jpngr),moy)
+            if ( tmp/=ncfillvalue ) then
+              fapar_field(doy,jpngr) = tmp / 100.0   ! data is given in percent
+              if (tmp>0.5 .and. moy == 1) print*,'read_idx, jpngr, ilon(jpngr), ilat(jpngr), moy, tmp', read_idx, jpngr, ilon(jpngr), ilat(jpngr), moy, tmp
+            else
+              fapar_field(doy,jpngr) = 0.0
+              grid(jpngr)%dogridcell = .false.
+            end if
+          end do
         end do
       end do
-    end do
+    else
+      do jpngr=1,domaininfo%maxgrid
+        doy = 0
+        do moy=1,nmonth
+          do dom=1,ndaymonth(moy)
+            doy = doy + 1
+            tmp = fapar_arr(ilon(jpngr),ilat(jpngr),moy)
+            ! print*,'jpngr, moy, fapar_arr: ', jpngr, moy, tmp
+            if ( tmp/=ncfillvalue ) then
+              fapar_field(doy,jpngr) = tmp
+            else
+              fapar_field(doy,jpngr) = 0.0
+              grid(jpngr)%dogridcell = .false.
+            end if
+          end do
+        end do
+      end do
+    end if
+
+    ! xxx debug
+    print*,'fapar read from file:', fapar_arr(ilon(4452),ilat(4452),2) !fapar_field(50,100)
 
     ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
     deallocate( fapar_arr )
-
-    ! "Correct" fAPAR
-    print*,"WARNING: normalising fAPAR to within 0.1 and 1.0."
-    fapar_field(:,:) = max((fapar_field(:,:) - 0.1), 0.0)/(1.0 - 0.1)
-
 
   end function getfapar
 
@@ -300,7 +334,7 @@ contains
     ! 10:CRO: type13 + type15 = "croplands" + "cropland (natural vegetation mosaic)";
     !----------------------------------------------------------------
     use md_params_siml, only: paramstype_siml
-    use md_params_core, only: npft
+    use md_params_core, only: npft, eps
 
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo
@@ -459,9 +493,6 @@ contains
       allocate( lon_arr(nlon_arr) )
       allocate( lat_arr(nlat_arr) )
 
-      ! Open the file
-      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_temp ) )
-
       ! Get longitude and latitude values
       call check( nf90_get_var( ncid_temp, londimid, lon_arr ) )
       call check( nf90_get_var( ncid_temp, latdimid, lat_arr ) )
@@ -597,7 +628,6 @@ contains
               out_climate(jpngr)%dnetrad(doy) = dummy
             end if
 
-
           else
             nmissing = nmissing + 1
             out_climate(jpngr)%dtemp(doy) = dummy
@@ -645,8 +675,8 @@ contains
     ! local variables
     integer :: doy, dom, moy, read_idx
     integer :: jpngr = 1
-    integer :: ncid_ccov
-    integer :: varid_ccov
+    integer :: ncid
+    integer :: varid
     integer :: latdimid, londimid
     integer, dimension(100000), save :: ilon, ilat
     integer, save :: nlon_arr, nlat_arr, ilat_arr, ilon_arr, nrec_arr
@@ -659,7 +689,7 @@ contains
     character(len=5) :: recname = "tstep"
     integer, parameter :: firstyr_cru = 1901
     integer, parameter :: nyrs_cru = 116
-    character(len=256), parameter :: filnam = './input/global/climate/ccov/cru_ts4.01.1901.2016.cld.dat.nc'
+    character(len=256), parameter :: filnam_ccov = './input/global/climate/ccov/cru_ts4.01.1901.2016.cld.dat.nc'
     logical, parameter :: verbose = .false.
 
     if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
@@ -669,34 +699,33 @@ contains
     !----------------------------------------------------------------    
     if (init) then
 
-      if (verbose) print*,'opening CRU climate file ', filnam, '...'
-      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ccov ) )
+      if (verbose) print*,'opening CRU climate file ', filnam_ccov, '...'
+
+      ! Open the file
+      call check( nf90_open( trim(filnam_ccov), NF90_NOWRITE, ncid ) )
 
       ! get dimension ID for latitude
-      call check( nf90_inq_dimid( ncid_ccov, "lat", latdimid ) )
+      call check( nf90_inq_dimid( ncid, "lat", latdimid ) )
 
       ! Get latitude information: nlat
-      call check( nf90_inquire_dimension( ncid_ccov, latdimid, len = nlat_arr ) )
+      call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
 
       ! get dimension ID for longitude
-      call check( nf90_inq_dimid( ncid_ccov, "lon", londimid ) )
+      call check( nf90_inq_dimid( ncid, "lon", londimid ) )
 
       ! Get latitude information: nlon
-      call check( nf90_inquire_dimension( ncid_ccov, londimid, len = nlon_arr ) )
+      call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
 
       ! for index association, get ilon and ilat vectors
       ! Allocate array sizes now knowing nlon and nlat 
       allocate( lon_arr(nlon_arr) )
       allocate( lat_arr(nlat_arr) )
 
-      ! Open the file
-      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ccov ) )
-
       ! Get longitude and latitude values
-      call check( nf90_get_var( ncid_ccov, londimid, lon_arr ) )
-      call check( nf90_get_var( ncid_ccov, latdimid, lat_arr ) )
+      call check( nf90_get_var( ncid, londimid, lon_arr ) )
+      call check( nf90_get_var( ncid, latdimid, lat_arr ) )
 
-      call check( nf90_close( ncid_ccov ) )
+      call check( nf90_close( ncid ) )
 
       ! Check if the resolution of the climate input files is identical to the model grid resolution
       dlon_clim = lon_arr(2) - lon_arr(1)
@@ -729,26 +758,26 @@ contains
     !----------------------------------------------------------------
     ! open NetCDF files to get ncid_*
     ! temperature
-    call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ccov ) )
+    call check( nf90_open( trim(filnam_ccov), NF90_NOWRITE, ncid ) )
 
     ! allocate size of output array
     allocate( ccov_arr(nlon_arr,nlat_arr,nmonth) )
 
     ! Get the varid of the data variable, based on its name
-    call check( nf90_inq_varid( ncid_ccov, "cld",  varid_ccov ) )
+    call check( nf90_inq_varid( ncid, "cld",  varid ) )
 
     ! Read the full array data (years before 1901 are set to 1901, years after)
     read_idx = ( min( max( climateyear - firstyr_cru + 1, 1 ), nyrs_cru ) - 1 ) * nmonth + 1
-    call check( nf90_get_var( ncid_ccov, varid_ccov, ccov_arr, start = (/1,1,read_idx/), count = (/nlon_arr, nlat_arr, nmonth/) ) )
+    call check( nf90_get_var( ncid, varid, ccov_arr, start = (/1,1,read_idx/), count = (/nlon_arr, nlat_arr, nmonth/) ) )
 
     ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
-    call check( nf90_get_att( ncid_ccov, varid_ccov, "_FillValue", ncfillvalue ) )
+    call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
 
     ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
-    call check( nf90_get_att( ncid_ccov, varid_ccov, "_FillValue", ncfillvalue ) )
+    call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
 
     ! close NetCDF files
-    call check( nf90_close( ncid_ccov ) )
+    call check( nf90_close( ncid ) )
 
     ! read from array to define grid type 
     gridcellloop: do jpngr=1,domaininfo%maxgrid

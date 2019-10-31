@@ -114,11 +114,26 @@ program main
       print*, '------------------TRANSIENT SIMULATION--------------------'
     endif
 
+    print*,'--------------------------------------------------------'
+    print*,'Simulation year: ', interface%steering%year, ' - Real year: ', interface%steering%outyear
+    print*,'--------------------------------------------------------'
+    
+    !----------------------------------------------------------------
+    ! Get prescribed fAPAR if required (otherwise set to dummy value)
+    !----------------------------------------------------------------
+    if (verbose) print*,'getting fAPAR ...'
+    interface%dfapar_field(:,:) = getfapar( &
+                                          interface%domaininfo, &
+                                          interface%grid, &
+                                          interface%steering%forcingyear, &
+                                          interface%params_siml%fapar_forcing_source &
+                                          )    
+
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
     ! Get climate variables for this year (full fields and 365 daily values for each variable)
-    if (verbose) print*,'getting WFDEI climate ...'
+    if (verbose) print*,'getting climate ...'
     interface%climate(:) = getclimate( &
                                       interface%domaininfo, &
                                       interface%grid, &
@@ -127,10 +142,10 @@ program main
                                       interface%params_siml%in_ppfd,  &
                                       interface%params_siml%in_netrad &
                                       )
-
     if (verbose) print*,'... done.'
 
     ! Get annual, gobally uniform CO2
+    if (verbose) print*,'getting CO2 ...'
     interface%pco2 = getco2( &
                             trim(runname), &
                             interface%domaininfo, &
@@ -139,6 +154,7 @@ program main
                             interface%params_siml%firstyeartrend,&
                             interface%params_siml%co2_forcing_file&
                             )
+    if (verbose) print*,'... done.'
 
     ! Atmospheric N deposition (note that actual data is not read in all SOFUN setups)
     ndep_field(:) = getninput( &
@@ -179,29 +195,28 @@ program main
                                       interface%params_siml%firstyeartrend &
                                       )
 
-    !----------------------------------------------------------------
-    ! Get prescribed fAPAR if required (otherwise set to dummy value)
-    !----------------------------------------------------------------
-    if (verbose) print*,'getting fAPAR ...'
-      interface%dfapar_field(:,:) = getfapar( &
-                                            interface%domaininfo, &
-                                            interface%grid, &
-                                            interface%steering%forcingyear, &
-                                            interface%params_siml%fapar_forcing_source &
-                                            )    
+    ! !----------------------------------------------------------------
+    ! ! Get prescribed fAPAR if required (otherwise set to dummy value)
+    ! !----------------------------------------------------------------
+    ! if (verbose) print*,'getting fAPAR ...'
+    ! interface%dfapar_field(:,:) = getfapar( &
+    !                                       interface%domaininfo, &
+    !                                       interface%grid, &
+    !                                       interface%steering%forcingyear, &
+    !                                       interface%params_siml%fapar_forcing_source &
+    !                                       )    
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
     ! containing data for each day of this year.
     !----------------------------------------------------------------
-    print*,'--------------------------------------------------------'
-    print*,'Simulation year: ', interface%steering%year, ' - Real year: ', interface%steering%outyear
-    print*,'--------------------------------------------------------'
-    
+
     !----------------------------------------------------------------
     ! Call biosphere (wrapper for all modules, contains gridcell loop)
     !----------------------------------------------------------------
+    if (verbose) print*,'calling biosphere ...'
     out_biosphere = biosphere_annual() 
+    if (verbose) print*,'... done.'
     !----------------------------------------------------------------
 
   enddo

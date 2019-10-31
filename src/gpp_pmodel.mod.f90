@@ -154,7 +154,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( plant, plant_fluxes, out_pmodel, dppfd, dayl, meanmppfd, wscal, rlmalpha, doy, moy, dtemp, do_soilmstress, do_tempstress )
+  subroutine gpp( plant, plant_fluxes, out_pmodel, dppfd, dayl, meanmppfd, wscal, rlmalpha, doy, moy, dtemp, do_soilmstress, do_tempstress, fapar )
     !//////////////////////////////////////////////////////////////////
     ! Wrapper subroutine for invoking function calls to calculate daily
     ! rates (gross primary productivity, dark respiration), and other
@@ -182,6 +182,7 @@ contains
     real,    intent(in) :: dtemp           ! this day's air temperature (deg C)
     logical, intent(in) :: do_soilmstress  ! whether empirical soil miosture stress function is applied to GPP
     logical, intent(in) :: do_tempstress   ! whether empirical temperature stress function is applied to GPP
+    real, intent(in)    :: fapar  ! fraction of absorbed photosynthetically active radiation (unitless)
 
     ! local variables
     integer :: pft
@@ -216,6 +217,7 @@ contains
       if ( plant(pft)%fpc_grid > 0.0 .and. dayl > 0.0 .and. dtemp > -5.0 ) then
 
         ! GPP
+        ! print*,'md_gpp: ppfd = ', dppfd
         plant_fluxes(pft)%dgpp = calc_dgpp( plant(pft)%fapar_ind, plant(pft)%fpc_grid, dppfd, out_pmodel(pft)%lue, ftemp_kphio, soilmstress )
 
         ! ! transpiration
@@ -246,6 +248,9 @@ contains
         dvcmax_leaf(pft)          = 0.0
 
       end if 
+
+      ! ! xxx debug
+      ! plant_fluxes(pft)%dgpp = fapar
 
     end do
 

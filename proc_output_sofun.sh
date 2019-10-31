@@ -9,68 +9,68 @@ proc_sitescale_site(){
 	## Daily
 	##-------------------------------------
 	## GPP
-	cdo -O mergetime output_nc/$1.*.d.wcont.nc   output_nc/$1.d.wcont.nc
-	rm output_nc/$1.*.d.wcont.nc
+	cdo -O mergetime output_nc/$1.????.d.wcont.nc   output_nc/$1.d.wcont.nc
+	rm output_nc/$1.????.d.wcont.nc
 
 	## AET
-	cdo -O mergetime output_nc/$1.*.d.pet.nc   output_nc/$1.d.pet.nc
-	rm output_nc/$1.*.d.pet.nc
+	cdo -O mergetime output_nc/$1.????.d.pet.nc   output_nc/$1.d.pet.nc
+	rm output_nc/$1.????.d.pet.nc
 
 	## PET
-	cdo -O mergetime output_nc/$1.*.d.aet.nc   output_nc/$1.d.aet.nc
-	rm output_nc/$1.*.d.aet.nc
+	cdo -O mergetime output_nc/$1.????.d.aet.nc   output_nc/$1.d.aet.nc
+	rm output_nc/$1.????.d.aet.nc
 
 	## WCONT
-	cdo -O mergetime output_nc/$1.*.d.gpp.nc   output_nc/$1.d.gpp.nc
-	rm output_nc/$1.*.d.gpp.nc
+	cdo -O mergetime output_nc/$1.????.d.gpp.nc   output_nc/$1.d.gpp.nc
+	rm output_nc/$1.????.d.gpp.nc
 
 	## fAPAR
-	cdo -O mergetime output_nc/$1.*.d.fapar.nc   output_nc/$1.d.fapar.nc
-	rm output_nc/$1.*.d.fapar.nc
+	cdo -O mergetime output_nc/$1.????.d.fapar.nc   output_nc/$1.d.fapar.nc
+	rm output_nc/$1.????.d.fapar.nc
 
 	# ## PPFD
-	# cdo -O mergetime output_nc/$1.*.d.ppfd.nc   output_nc/$1.d.ppfd.nc
-	# rm output_nc/$1.*.d.ppfd.nc
+	# cdo -O mergetime output_nc/$1.????.d.ppfd.nc   output_nc/$1.d.ppfd.nc
+	# rm output_nc/$1.????.d.ppfd.nc
 
 	# ## TEMPERATURE
-	# cdo -O mergetime output_nc/$1.*.d.temp.nc   output_nc/$1.d.temp.nc
-	# rm output_nc/$1.*.d.temp.nc
+	# cdo -O mergetime output_nc/$1.????.d.temp.nc   output_nc/$1.d.temp.nc
+	# rm output_nc/$1.????.d.temp.nc
 
 
 	##-------------------------------------
 	## Annual
 	##-------------------------------------
 	## GPP
-	cdo -O mergetime output_nc/$1.*.a.wcont.nc   output_nc/$1.a.wcont.nc
-	rm output_nc/$1.*.a.wcont.nc
+	cdo -O mergetime output_nc/$1.????.a.wcont.nc   output_nc/$1.a.wcont.nc
+	rm output_nc/$1.????.a.wcont.nc
 
 	## AET
-	cdo -O mergetime output_nc/$1.*.a.pet.nc   output_nc/$1.a.pet.nc
-	rm output_nc/$1.*.a.pet.nc
+	cdo -O mergetime output_nc/$1.????.a.pet.nc   output_nc/$1.a.pet.nc
+	rm output_nc/$1.????.a.pet.nc
 
 	## PET
-	cdo -O mergetime output_nc/$1.*.a.aet.nc   output_nc/$1.a.aet.nc
-	rm output_nc/$1.*.a.aet.nc
+	cdo -O mergetime output_nc/$1.????.a.aet.nc   output_nc/$1.a.aet.nc
+	rm output_nc/$1.????.a.aet.nc
 
 	## WCONT
-	cdo -O mergetime output_nc/$1.*.a.gpp.nc   output_nc/$1.a.gpp.nc
-	rm output_nc/$1.*.a.gpp.nc
+	cdo -O mergetime output_nc/$1.????.a.gpp.nc   output_nc/$1.a.gpp.nc
+	rm output_nc/$1.????.a.gpp.nc
 
 	## fAPAR
-	cdo -O mergetime output_nc/$1.*.a.fapar.nc   output_nc/$1.a.fapar.nc
-	rm output_nc/$1.*.a.fapar.nc
+	cdo -O mergetime output_nc/$1.????.a.fapar.nc   output_nc/$1.a.fapar.nc
+	rm output_nc/$1.????.a.fapar.nc
 
 	## PPFD
-	cdo -O mergetime output_nc/$1.*.a.ppfd.nc   output_nc/$1.a.ppfd.nc
-	rm output_nc/$1.*.a.ppfd.nc
+	cdo -O mergetime output_nc/$1.????.a.ppfd.nc   output_nc/$1.a.ppfd.nc
+	rm output_nc/$1.????.a.ppfd.nc
 
 	## TEMPERATURE
-	cdo -O mergetime output_nc/$1.*.a.temp.nc   output_nc/$1.a.temp.nc
-	rm output_nc/$1.*.a.temp.nc
+	cdo -O mergetime output_nc/$1.????.a.temp.nc   output_nc/$1.a.temp.nc
+	rm output_nc/$1.????.a.temp.nc
 
 	## ALPHA (AET/PET)
-	cdo -O mergetime output_nc/$1.*.a.alpha.nc   output_nc/$1.a.alpha.nc
-	rm output_nc/$1.*.a.alpha.nc	
+	cdo -O mergetime output_nc/$1.????.a.alpha.nc   output_nc/$1.a.alpha.nc
+	rm output_nc/$1.????.a.alpha.nc	
 
 	return 0
 }
@@ -84,43 +84,47 @@ proc_global(){
 	## Daily
 	##-------------------------------------
 	## GPP
-	cdo -O mergetime output_nc/$1.*.d.gpp.nc   output_nc/$1.d.gpp.nc
-	rm output_nc/$1.*.d.gpp.nc
+	cdo -O mergetime output_nc/$1.????.d.gpp.nc   output_nc/$1.d.gpp.nc
+	rm output_nc/$1.????.d.gpp.nc
 
 	## AET
-	cdo -O mergetime output_nc/$1.*.d.aet.nc   output_nc/$1.d.aet.nc
-	rm output_nc/$1.*.d.aet.nc
+	cdo -O mergetime output_nc/$1.????.d.aet.nc   output_nc/$1.d.aet.nc
+	rm output_nc/$1.????.d.aet.nc
 
 	## PET
-	cdo -O mergetime output_nc/$1.*.d.pet.nc   output_nc/$1.d.pet.nc
-	rm output_nc/$1.*.d.pet.nc
+	cdo -O mergetime output_nc/$1.????.d.pet.nc   output_nc/$1.d.pet.nc
+	rm output_nc/$1.????.d.pet.nc
 
 	## GPP
-	cdo -O mergetime output_nc/$1.*.d.gpp.nc   output_nc/$1.d.gpp.nc
-	rm output_nc/$1.*.d.gpp.nc
+	cdo -O mergetime output_nc/$1.????.d.gpp.nc   output_nc/$1.d.gpp.nc
+	rm output_nc/$1.????.d.gpp.nc
 
 	## Soil water content
-	cdo -O mergetime output_nc/$1.*.d.wcont.nc   output_nc/$1.d.wcont.nc
-	rm output_nc/$1.*.d.wcont.nc
+	cdo -O mergetime output_nc/$1.????.d.wcont.nc   output_nc/$1.d.wcont.nc
+	rm output_nc/$1.????.d.wcont.nc
+
+	## fapar
+	cdo -O mergetime output_nc/$1.????.d.fapar.nc   output_nc/$1.d.fapar.nc
+	rm output_nc/$1.????.d.fapar.nc
 
 	##-------------------------------------
 	## Annual
 	##-------------------------------------
 	## GPP
-	cdo -O mergetime output_nc/$1.*.a.gpp.nc   output_nc/$1.a.gpp.nc
-	rm output_nc/$1.*.a.gpp.nc
+	cdo -O mergetime output_nc/$1.????.a.gpp.nc   output_nc/$1.a.gpp.nc
+	rm output_nc/$1.????.a.gpp.nc
 
 	## AET
-	cdo -O mergetime output_nc/$1.*.a.pet.nc   output_nc/$1.a.pet.nc
-	rm output_nc/$1.*.a.pet.nc
+	cdo -O mergetime output_nc/$1.????.a.pet.nc   output_nc/$1.a.pet.nc
+	rm output_nc/$1.????.a.pet.nc
 
 	## PET
-	cdo -O mergetime output_nc/$1.*.a.aet.nc   output_nc/$1.a.aet.nc
-	rm output_nc/$1.*.a.aet.nc
+	cdo -O mergetime output_nc/$1.????.a.aet.nc   output_nc/$1.a.aet.nc
+	rm output_nc/$1.????.a.aet.nc
 
 	## ALPHA (AET/PET)
-	cdo -O mergetime output_nc/$1.*.a.alpha.nc   output_nc/$1.a.alpha.nc
-	rm output_nc/$1.*.a.alpha.nc	
+	cdo -O mergetime output_nc/$1.????.a.alpha.nc   output_nc/$1.a.alpha.nc
+	rm output_nc/$1.????.a.alpha.nc	
 
 	return 0
 }

@@ -164,7 +164,8 @@ contains
     !----------------------------------------------------------------  
     ! Set file-specific variables
     !----------------------------------------------------------------    
-    if (fapar_forcing_source=="evi_modis") then
+    print*,'fapar_forcing_source: *', trim(fapar_forcing_source), '*' 
+    if (trim(fapar_forcing_source)=="evi_modis") then
 
       ! fAPAR data from MODIS EVI ZMAW data file
       print*,'Using MODIS EVI from ./input/global/fapar/file modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc ...'
@@ -175,7 +176,7 @@ contains
       varname = "EVI_FILLED"
       filnam = "./input/global/fapar/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc"
 
-    else if (fapar_forcing_source=="fapar3g" .or. fapar_forcing_source=="fAPAR3g") then
+    else if (trim(fapar_forcing_source)=="fapar3g" .or. trim(fapar_forcing_source)=="fAPAR3g") then
       
       ! fAPAR data from fAPAR3g
       firstyr_data = 1982
@@ -185,10 +186,9 @@ contains
       varname = "FAPAR_FILLED"
       filnam = "./input/global/fapar/fAPAR3g_v2_1982_2016_FILLED.nc"
 
-    else if (fapar_forcing_source=="fpar_modis") then
+    else if (trim(fapar_forcing_source)=="fpar_modis") then
 
       ! fAPAR data from MODIS FPAR ZMAW data file
-      print*,'Using ./input/global/fapar/MODIS FPAR from file MODIS-C006_MOD15A2__LAI_FPAR__LPDAAC__GLOBAL_0.5degree__UHAM-ICDC__2000_2018__MON__fv0.02.nc ...'
       firstyr_data = 2000
       nyrs_data = 19
       lonname ="lon"
@@ -259,13 +259,28 @@ contains
 
     ! Read the array, only current year
     read_idx = ( min( max( year - firstyr_data + 1, 1 ), nyrs_data ) - 1 ) * nmonth + 1
-
-    ! Jan 2000 is not available. First index in file is Feb 2000.
-    if (fapar_forcing_source=="fpar_modis") then
-      read_idx = read_idx - 1
+    if (trim(fapar_forcing_source)=="fpar_modis") then
+      read_idx = max(1, read_idx - 1)
     end if
 
-    call check( nf90_get_var( ncid, varid, fapar_arr, start=(/1, 1, 1, read_idx/), count=(/nlon_arr, nlat_arr, 1, nmonth/) ) )
+    if (trim(fapar_forcing_source)=="evi_modis") then
+
+      call check( nf90_get_var( ncid, varid, fapar_arr, start=(/1, 1, read_idx/), count=(/nlon_arr, nlat_arr, nmonth/) ) )
+
+    else if (trim(fapar_forcing_source)=="fapar3g" .or. trim(fapar_forcing_source)=="fAPAR3g") then
+
+      call check( nf90_get_var( ncid, varid, fapar_arr, start=(/1, 1, 1, read_idx/), count=(/nlon_arr, nlat_arr, 1, nmonth/) ) )
+
+    else if (trim(fapar_forcing_source)=="fpar_modis") then
+
+      call check( nf90_get_var( ncid, varid, fapar_arr, start=(/1, 1, read_idx/), count=(/nlon_arr, nlat_arr, nmonth/) ) )
+
+    else
+
+      print*,'fapar_forcing_source: ', fapar_forcing_source
+      stop 'getfapar: argument fapar_forcing_source is invalid'
+
+    end if
 
     ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
     call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
@@ -282,9 +297,10 @@ contains
           tmp = fapar_arr(ilon(jpngr),ilat(jpngr),moy)
           if ( tmp/=ncfillvalue ) then
             fapar_field(doy,jpngr) = tmp
+            ! ! xxx debug
+            ! if (lat_arr(ilat(jpngr))>67.0 .and. tmp>0.5) print*,'jpngr, lat,  ilon(jpngr), ilat(jpngr), time_idx, moy, doy, tmp', jpngr, lat_arr(ilat(jpngr)), ilon(jpngr), ilat(jpngr), read_idx + moy - 1, moy, doy, tmp
           else
             fapar_field(doy,jpngr) = 0.0
-            grid(jpngr)%dogridcell = .false.
           end if
         end do
       end do
@@ -581,6 +597,8 @@ contains
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
 
+    if (verbose) print*,'Start getclimate_wfdei() ...'
+
     if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
 
     !----------------------------------------------------------------    
@@ -638,9 +656,6 @@ contains
       ! Allocate array sizes now knowing nlon and nlat 
       allocate( lon_arr(nlon_arr) )
       allocate( lat_arr(nlat_arr) )
-
-      ! Open the file
-      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_temp ) )
 
       ! Get longitude and latitude values
       call check( nf90_get_var( ncid_temp, londimid, lon_arr ) )
@@ -776,7 +791,7 @@ contains
             if (in_netrad) then
               out_climate(jpngr)%dnetrad(:) = 1111.0
             else
-              out_climate(jpngr)%dnetrad(:) = dummy
+              out_climate(jpngr)%dnetrad(doy) = dummy
             end if
 
           else
@@ -803,7 +818,7 @@ contains
     end do monthloop
 
     if (init) print*,'number of land cells without climate data: ', nmissing
-    if (verbose) print*,'done with getclimate_wfdei.'
+    if (verbose) print*,'done with getclimate_wfdei().'
     return
     888  format (I2.2)
     999  format (I4.4)
@@ -826,8 +841,8 @@ contains
     ! local variables
     integer :: doy, dom, moy, read_idx
     integer :: jpngr = 1
-    integer :: ncid_ccov
-    integer :: varid_ccov
+    integer :: ncid
+    integer :: varid
     integer :: latdimid, londimid
     integer, dimension(100000), save :: ilon, ilat
     integer, save :: nlon_arr, nlat_arr, ilat_arr, ilon_arr, nrec_arr
@@ -844,40 +859,40 @@ contains
     logical, parameter :: verbose = .false.
 
     if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
+    if (verbose) print*,'start with getclimate_cru()....'
 
     !----------------------------------------------------------------    
     ! Get longitude and latitude information from CRU file
     !----------------------------------------------------------------    
     if (init) then
 
-      if (verbose) print*,'opening CRU climate file ', filnam, '...'
-      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ccov ) )
+      if (verbose) print*,'opening CRU climate file ', trim(filnam), '...'
+
+      ! Open the file
+      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
 
       ! get dimension ID for latitude
-      call check( nf90_inq_dimid( ncid_ccov, "lat", latdimid ) )
+      call check( nf90_inq_dimid( ncid, "lat", latdimid ) )
 
       ! Get latitude information: nlat
-      call check( nf90_inquire_dimension( ncid_ccov, latdimid, len = nlat_arr ) )
+      call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
 
       ! get dimension ID for longitude
-      call check( nf90_inq_dimid( ncid_ccov, "lon", londimid ) )
+      call check( nf90_inq_dimid( ncid, "lon", londimid ) )
 
       ! Get latitude information: nlon
-      call check( nf90_inquire_dimension( ncid_ccov, londimid, len = nlon_arr ) )
+      call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
 
       ! for index association, get ilon and ilat vectors
       ! Allocate array sizes now knowing nlon and nlat 
       allocate( lon_arr(nlon_arr) )
       allocate( lat_arr(nlat_arr) )
 
-      ! Open the file
-      call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ccov ) )
-
       ! Get longitude and latitude values
-      call check( nf90_get_var( ncid_ccov, londimid, lon_arr ) )
-      call check( nf90_get_var( ncid_ccov, latdimid, lat_arr ) )
+      call check( nf90_get_var( ncid, londimid, lon_arr ) )
+      call check( nf90_get_var( ncid, latdimid, lat_arr ) )
 
-      call check( nf90_close( ncid_ccov ) )
+      call check( nf90_close( ncid ) )
 
       ! Check if the resolution of the climate input files is identical to the model grid resolution
       dlon_clim = lon_arr(2) - lon_arr(1)
@@ -908,28 +923,27 @@ contains
     !----------------------------------------------------------------    
     ! Read climate fields for each month (and day) this year
     !----------------------------------------------------------------
-    ! open NetCDF files to get ncid_*
-    ! temperature
-    call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ccov ) )
+    ! open file
+    call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
 
     ! allocate size of output array
     allocate( ccov_arr(nlon_arr,nlat_arr,nmonth) )
 
     ! Get the varid of the data variable, based on its name
-    call check( nf90_inq_varid( ncid_ccov, "cld",  varid_ccov ) )
+    call check( nf90_inq_varid( ncid, "cld",  varid ) )
 
     ! Read the full array data (years before 1901 are set to 1901, years after)
     read_idx = ( min( max( climateyear - firstyr_cru + 1, 1 ), nyrs_cru ) - 1 ) * nmonth + 1
-    call check( nf90_get_var( ncid_ccov, varid_ccov, ccov_arr, start = (/1,1,read_idx/), count = (/nlon_arr, nlat_arr, nmonth/) ) )
+    call check( nf90_get_var( ncid, varid, ccov_arr, start = (/1,1,read_idx/), count = (/nlon_arr, nlat_arr, nmonth/) ) )
 
     ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
-    call check( nf90_get_att( ncid_ccov, varid_ccov, "_FillValue", ncfillvalue ) )
+    call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
 
     ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
-    call check( nf90_get_att( ncid_ccov, varid_ccov, "_FillValue", ncfillvalue ) )
+    call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
 
     ! close NetCDF files
-    call check( nf90_close( ncid_ccov ) )
+    call check( nf90_close( ncid ) )
 
     ! read from array to define grid type 
     gridcellloop: do jpngr=1,domaininfo%maxgrid
@@ -949,6 +963,8 @@ contains
 
     ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
     deallocate( ccov_arr )
+
+    if (verbose) print*,'done with getclimate_cru().'
 
     return
     888  format (I2.2)

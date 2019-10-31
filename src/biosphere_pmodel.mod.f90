@@ -270,7 +270,8 @@ contains
                       moy, &
                       interface%climate(jpngr)%dtemp(doy), &
                       interface%params_siml%soilmstress, &
-                      interface%params_siml%tempstress &
+                      interface%params_siml%tempstress, &
+                      interface%dfapar_field(doy,jpngr) &
                       )
             if (verbose) print*,'... done'
 

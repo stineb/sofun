@@ -76,8 +76,8 @@ contains
     use md_interface, only: interface
 
     ! argument
-    type( tile_type ), dimension(nlu,ngridcells), intent(inout) :: tile
     integer, intent(in) :: ngridcells
+    type( tile_type ), dimension(nlu,ngridcells), intent(inout) :: tile
 
     ! local variables
     integer :: lu

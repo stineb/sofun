@@ -351,8 +351,8 @@ contains
     use md_params_core, only: npft
 
     ! argument
-    type( plant_type ), dimension(npft,ngridcells), intent(inout) :: plant
     integer, intent(in) :: ngridcells
+    type( plant_type ), dimension(npft,ngridcells), intent(inout) :: plant
 
     ! local variables
     integer :: pft

@@ -16,9 +16,9 @@ contains
     !-------------------------------------------------------------------------
     ! arguments
     ! xxx instead of dimension declaration with 'lenval', use size(presval)
+    integer, intent(in) :: lenval                             ! number of timesteps per year
     real, dimension(lenval), intent(in) :: presval            ! vector containing 'lenvals' values for each timestep in this year
     integer, intent(in) :: inow                               ! index corresponding to "now" (day of year or month of year)  
-    integer, intent(in) :: lenval                             ! number of timesteps per year
     integer, intent(in) :: lenper                             ! number of timesteps over which to average/sum
     character(len=*), intent(in) :: method                    ! either "sum" or "mean" for running sum or running mean
     real, dimension(lenval), intent(in), optional :: prevval  ! vector containing 'lenvals' values for each timestep in previous year
