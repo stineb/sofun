@@ -1591,138 +1591,6 @@ contains
   end subroutine getpar_modl_gpp
 
 
-  ! function sigm_gpp_lotemp( dtemp ) result( ftemp )
-  !   !////////////////////////////////////////////////////////////////
-  !   ! Simple temperature inihibtion function for photosynthesis
-  !   ! 0 at 0 deg C, 1 at 10 deg C
-  !   !----------------------------------------------------------------
-  !   ! arguments
-  !   real, intent(in) :: dtemp
-
-  !   ! function return variable
-  !   real :: ftemp
-
-
-  !   ftemp = max(  0.0, &
-  !                 min(  1.0, &
-  !                       ( ( ( 1.0 / ( 1.0 + exp( -0.7 * dtemp ) ) ) - 0.5 ) * 2.0 ) &
-  !                     ) &
-  !               ) 
-
-  ! end function sigm_gpp_lotemp
-
-
-  ! subroutine initio_gpp()
-  !   !////////////////////////////////////////////////////////////////
-  !   ! Initlialises module-specific ASCII output files.
-  !   !
-  !   ! This is designed for use within SOFUN and requires arguments as
-  !   ! derived-types, defined elsewhere. For other applications, implement 
-  !   ! the function calls (e.g., calc_dgpp()) differently and 
-  !   ! comment/delete this subroutine.
-  !   !----------------------------------------------------------------
-  !   use md_interface
-
-  !   ! local variables
-  !   character(len=256) :: prefix
-  !   character(len=256) :: filnam
-
-  !   prefix = "./output/"//trim(interface%params_siml%runname)
-
-  !   !----------------------------------------------------------------
-  !   ! DAILY OUTPUT
-  !   !----------------------------------------------------------------
-  !   ! GPP
-  !   if (interface%params_siml%loutdgpp) then
-  !     filnam=trim(prefix)//'.d.gpp.out'
-  !     print*,'filnam ', filnam
-  !     open(101,file=filnam,err=888,status='unknown')
-  !   end if 
-
-  !   ! RD
-  !   if (interface%params_siml%loutdrd) then
-  !     filnam=trim(prefix)//'.d.rd.out'
-  !     open(135,file=filnam,err=888,status='unknown')
-  !   end if 
-
-  !   ! TRANSPIRATION
-  !   if (interface%params_siml%loutdtransp) then
-  !     filnam=trim(prefix)//'.d.transp.out'
-  !     open(114,file=filnam,err=888,status='unknown')
-  !   end if
-
-  !   ! xxx: not yet included in writeout_ascii_gpp()
-  !   ! !----------------------------------------------------------------
-  !   ! ! MONTHLY OUTPUT
-  !   ! !----------------------------------------------------------------
-  !   ! ! GPP
-  !   ! if (interface%params_siml%loutdgpp) then     ! monthly and daily output switch are identical
-  !   !   filnam=trim(prefix)//'.m.gpp.out'
-  !   !   open(151,file=filnam,err=888,status='unknown')
-  !   ! end if 
-
-  !   ! ! RD
-  !   ! if (interface%params_siml%loutdrd) then     ! monthly and daily output switch are identical
-  !   !   filnam=trim(prefix)//'.m.rd.out'
-  !   !   open(152,file=filnam,err=888,status='unknown')
-  !   ! end if 
-
-  !   ! ! TRANSP
-  !   ! if (interface%params_siml%loutdtransp) then     ! monthly and daily output switch are identical
-  !   !   filnam=trim(prefix)//'.m.transp.out'
-  !   !   open(153,file=filnam,err=888,status='unknown')
-  !   ! end if 
-
-  !   !----------------------------------------------------------------
-  !   ! ANNUAL OUTPUT
-  !   !----------------------------------------------------------------
-  !   if (interface%params_siml%loutgpp) then
-
-  !     ! GPP 
-  !     filnam=trim(prefix)//'.a.gpp.out'
-  !     open(310,file=filnam,err=888,status='unknown')
-
-  !     ! VCMAX (canopy-level, annual maximum) (mol m-2 s-1)
-  !     filnam=trim(prefix)//'.a.vcmax.out'
-  !     open(323,file=filnam,err=888,status='unknown')
-
-  !     ! 25degC-normalised VCMAX (annual maximum) (mol m-2 s-1)
-  !     filnam=trim(prefix)//'.a.vcmax25.out'
-  !     open(654,file=filnam,err=888,status='unknown')
-
-  !     ! chi = ci:ca (annual mean, weighted by monthly PPFD) (unitless)
-  !     filnam=trim(prefix)//'.a.chi.out'
-  !     open(652,file=filnam,err=888,status='unknown')
-
-  !     ! LUE (annual  mean, weighted by monthly PPFD) (unitless)
-  !     filnam=trim(prefix)//'.a.lue.out'
-  !     open(653,file=filnam,err=888,status='unknown')
-
-  !     ! ci: leaf-internal CO2 partial pressure (Pa)
-  !     filnam=trim(prefix)//'.a.ci.out'
-  !     open(655,file=filnam,err=888,status='unknown')
-
-  !     ! gs: stomatal conductance
-  !     filnam=trim(prefix)//'.a.gs.out'
-  !     open(656,file=filnam,err=888,status='unknown')
-
-  !     ! VCMAX (leaf-level, annual mean) (mol m-2 s-1)
-  !     filnam=trim(prefix)//'.a.vcmax_mean.out'
-  !     open(657,file=filnam,err=888,status='unknown')
-
-  !     ! intrinsic water use efficiency
-  !     filnam=trim(prefix)//'.a.iwue.out'
-  !     open(658,file=filnam,err=888,status='unknown')
-
-  !   end if
-
-  !   return
-
-  !   888  stop 'INITIO_GPP: error opening output files'
-
-  ! end subroutine initio_gpp
-
-
   subroutine initio_nc_gpp()
     !////////////////////////////////////////////////////////////////
     ! Initialises module-specific NetCDF output files.
@@ -1746,6 +1614,8 @@ contains
     character(len=12) :: kphio_char
     character(len=12) :: soilm_par_a_char
     character(len=12) :: soilm_par_b_char
+    character(len=12) :: tempstress_char
+    character(len=12) :: soilmstress_char
 
     integer :: jpngr, doy
 
@@ -1757,6 +1627,16 @@ contains
     write(kphio_char,888)          params_pft_gpp(1)%kphio
     write(soilm_par_a_char,888)    params_gpp%soilm_par_a
     write(soilm_par_b_char,888)    params_gpp%soilm_par_b
+    if (interface%params_siml%soilmstress) then
+      soilmstress_char = ".true."
+    else
+      soilmstress_char = ".false."
+    end if
+    if (interface%params_siml%tempstress) then
+      tempstress_char = ".true."
+    else
+      tempstress_char = ".false."
+    end if
 
     prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
@@ -1784,7 +1664,9 @@ contains
                           globatt3_nam = "param_rd_to_vcmax",    globatt3_val = rd_to_vcmax_char, &
                           globatt4_nam = "param_kphio_GrC3",     globatt4_val = kphio_char,  &
                           globatt5_nam = "param_soilm_par_a",    globatt5_val = soilm_par_a_char,  &
-                          globatt6_nam = "param_soilm_par_a",    globatt6_val = soilm_par_b_char  &
+                          globatt6_nam = "param_soilm_par_b",    globatt6_val = soilm_par_b_char,  &
+                          globatt7_nam = "soilmstress",          globatt7_val = soilmstress_char,  &
+                          globatt8_nam = "tempstress",           globatt8_val = tempstress_char    &
                           )
       end if
 
@@ -1814,7 +1696,9 @@ contains
                             globatt3_nam = "param_rd_to_vcmax", globatt3_val = rd_to_vcmax_char, &
                             globatt4_nam = "param_kphio_GrC3",  globatt4_val = kphio_char,  &
                             globatt5_nam = "param_soilm_par_a", globatt5_val = soilm_par_a_char,  &
-                            globatt6_nam = "param_soilm_par_a", globatt6_val = soilm_par_b_char  &
+                            globatt6_nam = "param_soilm_par_b", globatt6_val = soilm_par_b_char,  &
+                            globatt7_nam = "soilmstress",       globatt7_val = soilmstress_char,  &
+                            globatt8_nam = "tempstress",        globatt8_val = tempstress_char    &
                             )
         end if
 
