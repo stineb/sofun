@@ -53,6 +53,12 @@ mydataroot = '/Users/bestocke/data/'
 os.system( 'unlink output_nc' )
 os.system( 'ln -svf ~/sofun_outputs/output_nc_' + name + '_sofun output_nc'  )
 
+##--------------------------------------------------------------------
+## Copy parameter files
+##--------------------------------------------------------------------
+os.system( 'mkdir params' )
+os.system( 'cp params_std/* params' )
+
 
 ## link NetCDF input files for global simulations
 if name == 'global':
