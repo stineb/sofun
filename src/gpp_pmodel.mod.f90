@@ -525,7 +525,7 @@ contains
     type(outtype_chi) :: out_optchi
 
     ! Prevent floating point exception for extremely low temperatures
-    if (tc > -20.00) then
+    if (tc > 0.00) then
       !-----------------------------------------------------------------------
       ! Calculate photosynthesis model parameters depending on temperature, pressure, and CO2.
       !-----------------------------------------------------------------------
@@ -662,7 +662,7 @@ contains
         lue = kphio * mprime * c_molmass  ! in g CO2 m-2 s-1 / (mol light m-2 s-1)
 
         ! XXX PMODEL_TEST: ok
-        print*, 'lue ', lue
+        print*, 'lue ', lue / c_molmass
         stop
 
         ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
