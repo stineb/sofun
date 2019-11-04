@@ -1047,8 +1047,10 @@ contains
     wair = qair / ( 1 - qair )
 
     ! calculate atmopheric pressure (Pa) assuming standard conditions at sea level (elv=0)
+    print*,'1'
     patm = calc_patm( elv )
-
+    print*,'2'
+    
     ! xxx debug
     print*,'in calc_vpd(): '
     print*,'qair     ', qair
