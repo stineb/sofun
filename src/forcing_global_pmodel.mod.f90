@@ -808,6 +808,15 @@ contains
 
         end do gridcellloop
 
+        print*,'VPD calculation in forcing: '
+        print*,'moy                                   ', moy
+        print*,'dom                                   ', dom
+        print*,'qair_arr(ilon(10000),ilat(10000),1 )  ', qair_arr(ilon(10000),ilat(10000),1)
+        print*,'out_climate(10000)%dtemp(1)           ', out_climate(10000)%dtemp(1)
+        print*,'grid(10000)%elv                       ', grid(10000)%elv
+        print*,'out_climate(10000)%dvpd(1)            ', out_climate(10000)%dvpd(1)
+        stop
+
       end do domloop
 
       ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
