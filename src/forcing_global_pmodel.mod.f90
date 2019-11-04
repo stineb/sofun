@@ -1049,6 +1049,16 @@ contains
     ! calculate atmopheric pressure (Pa) assuming standard conditions at sea level (elv=0)
     patm = calc_patm( elv )
 
+    print*,'in calc_vpd(): '
+    print*,'qair     ', qair
+    print*,'elv      ', elv
+    print*,'temp     ', temp
+    print*,'patm     ', patm
+    print*,'kR       ', kR  
+    print*,'kMv      ', kMv 
+    print*,'kMa      ', kMa
+    stop
+
     ! calculate water vapor pressure 
     rv = kR / kMv
     rd = kR / kMa
