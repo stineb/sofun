@@ -80,28 +80,18 @@ contains
       call initglobal_tile(  tile(:,:),  size(interface%grid) )
       if (verbose) print*, '... done'
 
-      !----------------------------------------------------------------
-      ! Open ascii output files
-      !----------------------------------------------------------------
-      ! if (verbose) print*, 'initio_() ...'
-      ! call initio_waterbal()
-      ! call initio_gpp()
-      ! call initio_plant()
-      ! call initio_forcing()
-      ! if (verbose) print*, '... done'
-
     endif 
 
-    !----------------------------------------------------------------
-    ! Open NetCDF output files (one for each year)
-    !----------------------------------------------------------------
-    if (.not.interface%params_siml%is_calib) then
-      if (verbose) print*, 'initio_nc_() ...'
-      call initio_nc_forcing()
-      call initio_nc_gpp()
-      call initio_nc_waterbal()
-      if (verbose) print*, '... done'
-    end if
+    ! !----------------------------------------------------------------
+    ! ! Open NetCDF output files (one for each year)
+    ! !----------------------------------------------------------------
+    ! if (.not.interface%params_siml%is_calib) then
+    !   if (verbose) print*, 'initio_nc_() ...'
+    !   call initio_nc_forcing()
+    !   call initio_nc_gpp()
+    !   call initio_nc_waterbal()
+    !   if (verbose) print*, '... done'
+    ! end if
     
     !----------------------------------------------------------------
     ! Initialise output variables for this year
@@ -325,24 +315,16 @@ contains
     !----------------------------------------------------------------
     call get_rlm_waterbal( tile(:,:)%soil%phy, interface%steering%init )
 
-    !----------------------------------------------------------------
-    ! Write to ascii output
-    !----------------------------------------------------------------
-    ! call writeout_ascii_waterbal()
-    ! call writeout_ascii_gpp()
-    ! call writeout_ascii_plant()
-    ! call writeout_ascii_forcing()
-
-    !----------------------------------------------------------------
-    ! Write to NetCDF output
-    !----------------------------------------------------------------
-    if (.not.interface%params_siml%is_calib) then
-      if (verbose) print*,'calling writeout_nc_() ... '
-      call writeout_nc_forcing()
-      call writeout_nc_gpp()
-      call writeout_nc_waterbal()
-      if (verbose) print*,'... done'
-    end if
+    ! !----------------------------------------------------------------
+    ! ! Write to NetCDF output
+    ! !----------------------------------------------------------------
+    ! if (.not.interface%params_siml%is_calib) then
+    !   if (verbose) print*,'calling writeout_nc_() ... '
+    !   call writeout_nc_forcing()
+    !   call writeout_nc_gpp()
+    !   call writeout_nc_waterbal()
+    !   if (verbose) print*,'... done'
+    ! end if
 
 
     if (interface%steering%finalize) then

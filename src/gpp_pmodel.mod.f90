@@ -539,10 +539,16 @@ contains
       gammastar = calc_gammastar( tc, patm )
 
       ! XXX PMODEL_TEST: ok
-      ! print*, 'gammastar ', gammastar
+      print*,'tc     ', tc
+      print*,'patm   ', patm
+      print*,'elv    ', elv
+      print*,'gstar  ', gammastar
 
       ! Michaelis-Menten coef. (Pa)
       kmm  = calc_kmm( tc, patm )
+      
+      ! XXX PMODEL_TEST: ok
+      print*, 'kmm ', kmm
 
       ! viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
       ns      = calc_viscosity_h2o( tc, patm )  ! Pa s 
@@ -550,7 +556,7 @@ contains
       ns_star = ns / ns25                       ! (unitless)
 
       ! XXX PMODEL_TEST: ok
-      ! print*, 'ns_star ', ns_star
+      print*, 'ns_star ', ns_star
 
       !-----------------------------------------------------------------------
       ! Optimal ci
@@ -615,6 +621,9 @@ contains
 
       ! ratio of leaf internal to ambient CO2
       chi = out_optchi%chi
+      ! XXX PMODEL_TEST: ok
+      print*, 'chi ', chi
+
 
       ! leaf-internal CO2 partial pressure (Pa)
       ci = out_optchi%chi * ca  
@@ -651,6 +660,10 @@ contains
 
         ! Light use efficiency (gpp per unit absorbed light)
         lue = kphio * mprime * c_molmass  ! in g CO2 m-2 s-1 / (mol light m-2 s-1)
+
+        ! XXX PMODEL_TEST: ok
+        print*, 'lue ', lue
+        stop
 
         ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
         vcmax_unitiabs = kphio * out_optchi%mjoc * mprime / out_optchi%mj
@@ -1155,6 +1168,14 @@ contains
     ! conversion to temperature in Kelvin
     tk = tc + 273.15
     gammastar = gammastar25 * calc_ftemp_arrhenius( tk, dha )
+
+    print*,'calc_gammastar():'
+    print*,'    gs25_0      ', gs25_0
+    print*,'    patm0       ', calc_patm(0.0)  
+    print*,'    tk          ', tk        
+    print*,'    gammastar25 ', gammastar25   
+    print*,'    dha         ', dha
+    print*,'    ftemp       ', calc_ftemp_arrhenius( tk, dha )       
 
   end function calc_gammastar
 

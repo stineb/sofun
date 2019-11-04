@@ -808,14 +808,15 @@ contains
 
         end do gridcellloop
 
-        print*,'VPD calculation in forcing: '
-        print*,'moy                                   ', moy
-        print*,'dom                                   ', dom
-        print*,'qair_arr(ilon(10000),ilat(10000),1 )  ', qair_arr(ilon(10000),ilat(10000),1)
-        print*,'out_climate(10000)%dtemp(1)           ', out_climate(10000)%dtemp(1)
-        print*,'grid(10000)%elv                       ', grid(10000)%elv
-        print*,'out_climate(10000)%dvpd(1)            ', out_climate(10000)%dvpd(1)
-        stop
+        ! ! xxx debug
+        ! print*,'VPD calculation in forcing: '
+        ! print*,'moy                                   ', moy
+        ! print*,'dom                                   ', dom
+        ! print*,'qair_arr(ilon(10000),ilat(10000),1 )  ', qair_arr(ilon(10000),ilat(10000),1)
+        ! print*,'out_climate(10000)%dtemp(1)           ', out_climate(10000)%dtemp(1)
+        ! print*,'grid(10000)%elv                       ', grid(10000)%elv
+        ! print*,'out_climate(10000)%dvpd(1)            ', out_climate(10000)%dvpd(1)
+        ! stop
 
       end do domloop
 
@@ -1047,20 +1048,20 @@ contains
     wair = qair / ( 1 - qair )
 
     ! calculate atmopheric pressure (Pa) assuming standard conditions at sea level (elv=0)
-    print*,'1'
+    ! print*,'1'
     patm = calc_patm( elv )
-    print*,'2'
+    ! print*,'2'
     
-    ! xxx debug
-    print*,'in calc_vpd(): '
-    print*,'qair     ', qair
-    print*,'elv      ', elv
-    print*,'temp     ', temp
-    print*,'patm     ', patm
-    print*,'kR       ', kR  
-    print*,'kMv      ', kMv 
-    print*,'kMa      ', kMa
-    stop
+    ! ! xxx debug
+    ! print*,'in calc_vpd(): '
+    ! print*,'qair     ', qair
+    ! print*,'elv      ', elv
+    ! print*,'temp     ', temp
+    ! print*,'patm     ', patm
+    ! print*,'kR       ', kR  
+    ! print*,'kMv      ', kMv 
+    ! print*,'kMa      ', kMa
+    ! stop
 
     ! calculate water vapor pressure 
     rv = kR / kMv
