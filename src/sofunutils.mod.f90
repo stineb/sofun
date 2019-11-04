@@ -962,6 +962,7 @@ contains
     print*,'kG    ', kG
     print*,'kMa   ', kMa
     print*,'kR    ', kR
+    print*,'patm  ', patm
     ! stop
 
   end function calc_patm
