@@ -298,6 +298,9 @@ contains
     mtemp(:) = daily2monthly( mydtemp(:), "mean" )
     mvpd(:)  = daily2monthly( dvpd(:), "mean" )
 
+    print*,' mtemp(:) ',  mtemp(:)
+    print*,' mvpd(:)  ',  mvpd(:)
+
     ! ! xxx try out: -- THIS WORKS PERFECTLY -- 
     ! print*, 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
     ! myco2   = 376.0

@@ -259,6 +259,8 @@ contains
 
     ! Read the array, only current year
     read_idx = ( min( max( year - firstyr_data + 1, 1 ), nyrs_data ) - 1 ) * nmonth + 1
+
+    ! file has no data for january 2000
     if (trim(fapar_forcing_source)=="fpar_modis") then
       read_idx = max(1, read_idx - 1)
     end if

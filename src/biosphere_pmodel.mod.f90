@@ -50,7 +50,7 @@ contains
     integer :: dm, moy, jpngr, doy
     real, dimension(nmonth) :: mtemp      ! monthly mean air temperature (deg C)
     real, dimension(nmonth) :: mvpd       ! monthly mean vapour pressure deficit (Pa)
-    logical, parameter :: verbose = .false.
+    logical, parameter :: verbose = .true.
 
     !----------------------------------------------------------------
     ! INITIALISATIONS
@@ -123,7 +123,8 @@ contains
     ! LOOP THROUGH GRIDCELLS
     !----------------------------------------------------------------
     if (verbose) print*,'looping through gridcells ...'
-    gridcellloop: do jpngr=1,size(interface%grid)
+    ! gridcellloop: do jpngr=1,size(interface%grid)
+    gridcellloop: do jpngr=10000,10000
 
       if (interface%grid(jpngr)%dogridcell) then
 
@@ -158,8 +159,8 @@ contains
         !----------------------------------------------------------------
         if (verbose) print*,'calling getlue() ... '
         if (verbose) print*,'    with argument CO2  = ', interface%pco2
-        if (verbose) print*,'    with argument temp.= ', interface%climate(jpngr)%dtemp(1:10)
-        if (verbose) print*,'    with argument VPD  = ', interface%climate(jpngr)%dvpd(1:10)
+        ! if (verbose) print*,'    with argument temp.= ', interface%climate(jpngr)%dtemp(1:10)
+        ! if (verbose) print*,'    with argument VPD  = ', interface%climate(jpngr)%dvpd(1:10)
         if (verbose) print*,'    with argument elv. = ', interface%grid(jpngr)%elv
         out_pmodel(:,:) = getlue( &
                                   interface%pco2, & 
@@ -167,6 +168,9 @@ contains
                                   interface%climate(jpngr)%dvpd(:), & 
                                   interface%grid(jpngr)%elv & 
                                   )
+        ! print*,'shape(out_pmodel) ', shape(out_pmodel)
+        print*,'out_pmodel(1,7)%lue: ', out_pmodel(1,7)%lue
+        stop 'test'
         ! ! xxx trevortest
         ! interface%climate(jpngr)%dtemp(:) = 20.0
         ! interface%climate(jpngr)%dvpd(:) = 1000.0
