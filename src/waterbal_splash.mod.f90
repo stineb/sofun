@@ -522,6 +522,14 @@ contains
     
     ! Psychrometric constant, Pa/K
     gamma = psychro(tc, calc_patm(elv))
+
+    print*,'in waterbal_splash():'
+    print*,'tc     ', tc
+    print*,'elv    ', elv
+    print*,'patm   ', calc_patm(elv)
+    print*,'pw     ', pw
+    print*,'gamma  ', gamma
+    stop
     
     ! Eq. 51, SPLASH 2.0 Documentation
     ! out_evap%econ = 1.0 / ( lv * pw ) ! this is to convert energy into mass (water)

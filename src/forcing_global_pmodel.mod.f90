@@ -1049,6 +1049,7 @@ contains
     ! calculate atmopheric pressure (Pa) assuming standard conditions at sea level (elv=0)
     patm = calc_patm( elv )
 
+    ! xxx debug
     print*,'in calc_vpd(): '
     print*,'qair     ', qair
     print*,'elv      ', elv
