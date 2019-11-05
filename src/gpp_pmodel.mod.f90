@@ -522,7 +522,7 @@ contains
     type(outtype_chi) :: out_optchi
 
     ! Prevent floating point exception for extremely low temperatures
-    if (tc > 0.00) then
+    if (tc > -20.0) then
       !-----------------------------------------------------------------------
       ! Calculate photosynthesis model parameters depending on temperature, pressure, and CO2.
       !-----------------------------------------------------------------------
