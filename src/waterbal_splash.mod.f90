@@ -166,6 +166,8 @@ module md_waterbal
   character(len=7) :: in_ppfd       ! information whether PPFD is prescribed from meteo file for global attribute in NetCDF file
 
 
+  logical, parameter :: splashtest = .false.
+
 contains
 
   subroutine waterbal( soil, tile_fluxes, plant_fluxes, doy, jpngr, lat, elv, pr, sn, tc, sf, netrad, fapar, vpd )
@@ -335,7 +337,6 @@ contains
     do doy=1,ndayyear
 
       ! Test for comparison with Python SPLASH
-      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
@@ -396,6 +397,19 @@ contains
         ! Eq. 57, SPLASH 2.0 Documentation
         out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
         in_ppfd = ".false."
+      end if
+
+      if (splashtest) then
+        print*,'transmittivity, tau: ', tau
+        print*,'daily TOA radiation: ', (1.0e-6)*out_solar%dra(doy)
+        print*,'sunset angle, hs: ', hs
+        print*,'true anomaly, nu: ', out_berger(doy)%nu
+        print*,'true longitude, lambda: ', out_berger(doy)%lambda
+        print*,'distance factor, dr: ', dr
+        print*,'declination, delta: ', delta
+        print*,'variable substitute, ru: ', ru
+        print*,'variable substitute, rv: ', rv
+        print*,'daily PPFD: ', out_solar%dppfd(doy)
       end if
 
     end do
@@ -513,23 +527,15 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Slope of saturation vap press temp curve, Pa/K
     sat_slope = calc_sat_slope(tc)
-    
+
     ! Enthalpy of vaporization, J/kg
     lv = calc_enthalpy_vap(tc)
     
     ! Density of water, kg/m^3
     pw = density_h2o(tc, calc_patm(elv))
-    
+
     ! Psychrometric constant, Pa/K
     gamma = psychro(tc, calc_patm(elv))
-
-    print*,'in waterbal_splash():'
-    print*,'tc     ', tc
-    print*,'elv    ', elv
-    print*,'patm   ', calc_patm(elv)
-    print*,'pw     ', pw
-    print*,'gamma  ', gamma
-    stop
     
     ! Eq. 51, SPLASH 2.0 Documentation
     ! out_evap%econ = 1.0 / ( lv * pw ) ! this is to convert energy into mass (water)
@@ -654,11 +660,13 @@ contains
       ! Eq. 68, SPLASH 2.0 Documentation
       out_evap%cn = 1000.0 * out_evap%econ * abs(out_evap%rnn)
       
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 17. Estimate daily EET (out_evap%eet), mm d-1
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Eq. 70, SPLASH 2.0 Documentation
       out_evap%eet = 1000.0 * out_evap%econ * out_evap%rn
+
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 18. Estimate daily PET (out_evap%pet), mm d-1
@@ -666,12 +674,14 @@ contains
       ! Eq. 72, SPLASH 2.0 Documentation
       out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
       out_evap%pet_e = out_evap%pet / (out_evap%econ * 1000)
+      
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * out_evap%econ
-      
+
+
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 20. Calculate the intersection hour angle (hi), degrees
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -685,6 +695,7 @@ contains
       else
         hi = degrees(acos(cos_hi))
       end if
+  
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 21. Estimate daily AET (out_evap%aet), mm d-1
@@ -692,6 +703,23 @@ contains
       ! Eq. 81, SPLASH 2.0 Documentation
       out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
       out_evap%aet_e = out_evap%aet / (out_evap%econ * 1000)
+  
+
+      ! xxx debug
+      if (splashtest) then
+        print*,'slope of saturation, s', sat_slope
+        print*,'enthalpy of vaporization: ', lv
+        print*,'water density at 1 atm calculated: ', pw
+        print*,'calculating psychrometric const. with (tc, elv): ', tc, elv
+        print*,'calculating psychrometric const. with patm: ', calc_patm(elv)
+        print*,'psychrometric constant: ', gamma
+        print*,'daily condensation: ', out_evap%cn
+        print*,'daily EET: ', out_evap%eet
+        print*,'daily PET: ', out_evap%pet
+        print*,'variable substitute, rx: ', rx
+        print*,'intersection hour angle, hi: ', hi
+        print*,'daily AET set to: ', out_evap%aet
+      end if
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
