@@ -155,11 +155,20 @@ if name == 'global':
 
 	## CRU climate input data (only ccov)
 	##--------------------------------------
-	## cloud cover
-	src = dataroot + 'cru/ts_4.01/cru_ts4.01.1901.2016.cld.dat.nc'
 	dst = 'input/global/climate/ccov'
 	if not os.path.isdir( dst ):
 		os.system( 'mkdir -p ' + dst )
+
+	## cloud cover
+	src = dataroot + 'cru/ts_4.01/cru_ts4.01.1901.2016.cld.dat.nc'
+	os.system( 'ln -svf ' + src + ' ' + dst )
+
+	## daily minimum temperature
+	src = dataroot + 'cru/ts_4.01/cru_ts4.01.1901.2016.tmn.dat.nc'
+	os.system( 'ln -svf ' + src + ' ' + dst )
+
+	## daily maximum temperature
+	src = dataroot + 'cru/ts_4.01/cru_ts4.01.1901.2016.tmx.dat.nc'
 	os.system( 'ln -svf ' + src + ' ' + dst )
 
 

@@ -17,7 +17,8 @@ ifeq ($(PROFILE),benilaptop)
 	# Compiler and options
 	FCOM=gfortran
 	CPPFLAGS=-cpp -E
-	COMPFLAGS=-g -O2 -fdefault-real-8 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -pedantic-errors # for normal setup
+	COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -pedantic-errors # for normal setup
+    # COMPFLAGS=-g -O2 -fdefault-real-8 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -pedantic-errors # double precision by default
 	# COMPFLAGS=-g -O0 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -Wall -Wextra -fcheck=all -fbacktrace # for debug setup
 
 	# COMPFLAGS=-g -O0 -r8 -Mextend -Mbounds -Minfo -Minform=inform -Kieee -Ktrap=fp -Mfreeform  # debug flags, real8

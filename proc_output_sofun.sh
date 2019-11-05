@@ -81,6 +81,26 @@ proc_global(){
 	## 1. argument runname/site name
 
 	##-------------------------------------
+	## Annual
+	##-------------------------------------
+	## GPP
+	cdo -O mergetime output_nc/$1.????.a.gpp.nc   output_nc/$1.a.gpp.nc
+	rm output_nc/$1.????.a.gpp.nc
+
+	## AET
+	cdo -O mergetime output_nc/$1.????.a.pet.nc   output_nc/$1.a.pet.nc
+	rm output_nc/$1.????.a.pet.nc
+
+	## PET
+	cdo -O mergetime output_nc/$1.????.a.aet.nc   output_nc/$1.a.aet.nc
+	rm output_nc/$1.????.a.aet.nc
+
+	## ALPHA (AET/PET)
+	cdo -O mergetime output_nc/$1.????.a.alpha.nc   output_nc/$1.a.alpha.nc
+	rm output_nc/$1.????.a.alpha.nc	
+
+	
+	##-------------------------------------
 	## Daily
 	##-------------------------------------
 	## GPP
@@ -106,25 +126,6 @@ proc_global(){
 	## fapar
 	cdo -O mergetime output_nc/$1.????.d.fapar.nc   output_nc/$1.d.fapar.nc
 	rm output_nc/$1.????.d.fapar.nc
-
-	##-------------------------------------
-	## Annual
-	##-------------------------------------
-	## GPP
-	cdo -O mergetime output_nc/$1.????.a.gpp.nc   output_nc/$1.a.gpp.nc
-	rm output_nc/$1.????.a.gpp.nc
-
-	## AET
-	cdo -O mergetime output_nc/$1.????.a.pet.nc   output_nc/$1.a.pet.nc
-	rm output_nc/$1.????.a.pet.nc
-
-	## PET
-	cdo -O mergetime output_nc/$1.????.a.aet.nc   output_nc/$1.a.aet.nc
-	rm output_nc/$1.????.a.aet.nc
-
-	## ALPHA (AET/PET)
-	cdo -O mergetime output_nc/$1.????.a.alpha.nc   output_nc/$1.a.alpha.nc
-	rm output_nc/$1.????.a.alpha.nc	
 
 	return 0
 }

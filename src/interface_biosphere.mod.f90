@@ -146,6 +146,7 @@ contains
                         longnam  = "gridcell fraction covered by land", &
                         title    = TITLE &
                         )
+      print*,'... done.'
     end if
 
     !----------------------------------------------------------------
@@ -165,6 +166,7 @@ contains
                             longnam  = "gridcell fraction covered by vegetation type", &
                             title    = TITLE &
                             )
+      print*,'... done.'
     end if
 
     if ( .not. interface%steering%spinup &
