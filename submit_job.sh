@@ -1,10 +1,5 @@
-#BSUB -L /bin/bash
-#BSUB -W 1:00
-#BSUB -n 1
-#BSUB -e ~/hpc_log/%J.err
-#BSUB -o ~/hpc_log/%J.out
+#!/bin/bash
 
-module load gcc/4.8.2 cdo/1.6.4
-module load new mesa/12.0.6 rstudio/0.99.669 netcdf/4.3.2
+## argument 1: SOFUN job name
 
-echo test | ./rungpmodel
+bsub -N -o ~/hpc_log/$1_%J.out -e ~/hpc_log/$1_%J.err -n 1 -W 1:00 -R "rusage[mem=5000]" -J $1 "echo $1 | ./rungpmodel"
