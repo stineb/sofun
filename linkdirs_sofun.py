@@ -39,8 +39,11 @@ example = False
 ## Manually et the root directory for the local mirror of 
 ## /work/bstocker/labprentice/data
 ##--------------------------------------------------------------------
-dataroot = '/Users/bestocke/data/'
-mydataroot = '/Users/bestocke/data/'
+dataroot = '/cluster/home/bestocke/data/'
+mydataroot = '/cluster/home/bestocke/data/'
+
+# dataroot = '/Users/bestocke/data/'
+# mydataroot = '/Users/bestocke/data/'
 # dataroot = '/Users/benjaminstocker/data/'
 # mydataroot = '/Users/benjaminstocker/data/'
 # dataroot = '/rds/general/project/lab-prentice-realm-data/live/data/'
