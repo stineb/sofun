@@ -1056,7 +1056,7 @@ contains
     real :: vpd         ! vapor pressure deficit as the mean of vpd_min and vpd_max
 
     ! local variables
-    real :: wair         ! mass mising ratio of water vapor to dry air (dimensionless)
+    real :: wair         ! mass mixing ratio of water vapor to dry air (dimensionless)
     real :: patm         ! atmopheric pressure (Pa)
     real :: rv           ! specific gas constant of water vapor (J g-1 K-1)
     real :: rd           ! specific gas constant of dry air (J g-1 K-1)
