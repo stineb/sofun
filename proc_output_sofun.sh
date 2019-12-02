@@ -127,6 +127,15 @@ proc_global(){
 	cdo -O mergetime output_nc/$1.????.d.fapar.nc   output_nc/$1.d.fapar.nc
 	rm output_nc/$1.????.d.fapar.nc
 
+
+	##-------------------------------------
+	## Take statistics
+	##-------------------------------------
+	## Mean across all years
+	cdo -O timmean output_nc/$1.a.gpp.nc output_nc/$1.a.gpp_MEANANN.nc
+	cdo -O timmean output_nc/$1.a.aet.nc output_nc/$1.a.aet_MEANANN.nc
+	cdo -O timmean output_nc/$1.a.pet.nc output_nc/$1.a.pet_MEANANN.nc
+
 	return 0
 }
 
