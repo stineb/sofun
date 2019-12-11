@@ -170,7 +170,7 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( soil, tile_fluxes, plant_fluxes, doy, jpngr, lat, elv, pr, sn, tc, sf, netrad, fapar, vpd )
+  subroutine waterbal( soil, tile_fluxes, plant_fluxes, doy, jpngr, lat, elv, pr, sn, tc, sf, netrad, vpd, fapar )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
@@ -191,8 +191,8 @@ contains
     real, intent(in)    :: tc     ! mean monthly temperature (deg C)
     real, intent(in)    :: sf     ! mean monthly sunshine fraction (unitless)
     real, intent(in)    :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
-    real, intent(in)    :: fapar  ! fraction of absorbed photosynthetically active radiation (unitless)
     real, intent(in)    :: vpd    ! vapour pressure deficit (Pa)
+    real, intent(in)    :: fapar  ! fraction of absorbed photosynthetically active radiation (unitless)
 
     ! local variables
     real :: wcont_prev                   ! soil moisture (water content) before being updated (mm)

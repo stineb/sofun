@@ -9,8 +9,7 @@ module md_forcing
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, &
-    nlu, dummy, eps
+  use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu, dummy
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
   use md_grid, only: gridtype, domaininfo_type
@@ -21,7 +20,8 @@ module md_forcing
 
   private
   public getco2, getninput, ninput_type, gettot_ninput, getfapar, &
-    getclimate, getlanduse, landuse_type, climate_type, get_fpc_grid
+    getclimate, getlanduse, landuse_type, climate_type, get_fpc_grid, &
+    vegcover_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
@@ -29,9 +29,15 @@ module md_forcing
     real, dimension(ndayyear) :: dsnow  ! mm d-1 water equivalents
     real, dimension(ndayyear) :: dfsun  ! unitless
     real, dimension(ndayyear) :: dvpd   ! Pa
+    real, dimension(ndayyear) :: dtmin  ! deg C
+    real, dimension(ndayyear) :: dtmax  ! deg C
     real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
     real, dimension(ndayyear) :: dnetrad! W m-2
   end type climate_type
+
+  type vegcover_type
+    real, dimension(ndayyear) :: dfapar ! fraction of absorbed photosynthetically active radiation
+  end type vegcover_type
 
   type landuse_type
     real, dimension(nlu)         :: lu_area
@@ -119,7 +125,7 @@ contains
   end function gettot_ninput
   
 
-  function getfapar( domaininfo, grid, year, fapar_forcing_source ) result( fapar_field )
+  function getfapar( domaininfo, grid, year, fapar_forcing_source ) result( out_vegcover )
     !////////////////////////////////////////////////////////////////
     ! Reads fAPAR from fapar3g data file.
     ! Assumes fAPAR=0 for cells with missing data
@@ -131,7 +137,7 @@ contains
     character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
-    real, dimension(ndayyear,domaininfo%maxgrid) :: fapar_field
+    type( vegcover_type ), dimension(domaininfo%maxgrid) :: out_vegcover
 
     ! local variables
     integer :: ncid, varid
@@ -195,26 +201,22 @@ contains
 
     end if
 
-    print*,'Using fapar data from file: ', trim(filnam), ' ...'
-
     !----------------------------------------------------------------  
     ! Read arrays of all months of current year from file  
     !----------------------------------------------------------------   
-    print*,'1'
-    call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_fapar ) )
-    print*,'2'
+    call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid ) )
 
     ! get dimension ID for latitude
-    call check( nf90_inq_dimid( ncid_fapar, trim(latname), latdimid ) )
+    call check( nf90_inq_dimid( ncid, trim(latname), latdimid ) )
 
     ! Get latitude information: nlat
-    call check( nf90_inquire_dimension( ncid_fapar, latdimid, len = nlat_arr ) )
+    call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
 
     ! get dimension ID for longitude
-    call check( nf90_inq_dimid( ncid_fapar, trim(lonname), londimid ) )
+    call check( nf90_inq_dimid( ncid, trim(lonname), londimid ) )
 
     ! Get latitude information: nlon
-    call check( nf90_inquire_dimension( ncid_fapar, londimid, len = nlon_arr ) )
+    call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
 
     ! for index association, get ilon and ilat vectors
     ! Allocate array sizes now knowing nlon and nlat 
@@ -222,8 +224,8 @@ contains
     allocate( lat_arr(nlat_arr) )
 
     ! Get longitude and latitude values
-    call check( nf90_get_var( ncid_fapar, londimid, lon_arr ) )
-    call check( nf90_get_var( ncid_fapar, latdimid, lat_arr ) )
+    call check( nf90_get_var( ncid, londimid, lon_arr ) )
+    call check( nf90_get_var( ncid, latdimid, lat_arr ) )
 
     ! Check if the resolution of the climate input files is identical to the model grid resolution
     dlon = lon_arr(2) - lon_arr(1)
@@ -250,29 +252,13 @@ contains
     ! allocate size of output array
     allocate( fapar_arr(nlon_arr,nlat_arr,nmonth) )
 
-    ! xxx debug
-    ! fapar_arr(:,:,:) = 0.0
-
     ! Get the varid of the data variable, based on its name
     call check( nf90_inq_varid( ncid_fapar, trim(varname), varid ) )
 
     ! Read the array, only current year
     read_idx = ( min( max( year - firstyr_data + 1, 1 ), nyrs_data ) - 1 ) * nmonth + 1
 
-    ! Jan 2000 is not available. First index in file is Feb 2000.
-    ! if (fapar_forcing_source=="fpar_modis") then
-    !   read_idx = read_idx - 1
-    ! end if
-
-    call check( nf90_get_var( ncid_fapar, varid, fapar_arr, start=(/1, 1, 1, read_idx/), count=(/nlon_arr, nlat_arr, 1, nmonth/) ) )
-
-    ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
-    call check( nf90_get_att( ncid_fapar, varid, "_FillValue", ncfillvalue ) )
-
-    ! close NetCDF files
-    call check( nf90_close( ncid_fapar ) )
-
-    ! read from array to define grid type 
+    ! file has no data for january 2000
     if (trim(fapar_forcing_source)=="fpar_modis") then
       do jpngr=1,domaininfo%maxgrid
         doy = 0
@@ -281,10 +267,10 @@ contains
             doy = doy + 1
             tmp = fapar_arr(ilon(jpngr),ilat(jpngr),moy)
             if ( tmp/=ncfillvalue ) then
-              fapar_field(doy,jpngr) = tmp / 100.0   ! data is given in percent
+              out_vegcover(jpngr)%dfapar(doy) = tmp / 100.0   ! data is given in percent
               if (tmp>0.5 .and. moy == 1) print*,'read_idx, jpngr, ilon(jpngr), ilat(jpngr), moy, tmp', read_idx, jpngr, ilon(jpngr), ilat(jpngr), moy, tmp
             else
-              fapar_field(doy,jpngr) = 0.0
+              out_vegcover(jpngr)%dfapar(doy) = 0.0
               grid(jpngr)%dogridcell = .false.
             end if
           end do
@@ -299,18 +285,15 @@ contains
             tmp = fapar_arr(ilon(jpngr),ilat(jpngr),moy)
             ! print*,'jpngr, moy, fapar_arr: ', jpngr, moy, tmp
             if ( tmp/=ncfillvalue ) then
-              fapar_field(doy,jpngr) = tmp
+              out_vegcover(jpngr)%dfapar(doy) = tmp
             else
-              fapar_field(doy,jpngr) = 0.0
+              out_vegcover(jpngr)%dfapar(doy) = 0.0
               grid(jpngr)%dogridcell = .false.
             end if
           end do
         end do
       end do
     end if
-
-    ! xxx debug
-    print*,'fapar read from file:', fapar_arr(ilon(4452),ilat(4452),2) !fapar_field(50,100)
 
     ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
     deallocate( fapar_arr )
@@ -369,27 +352,29 @@ contains
     ! function return variable
     type( climate_type ), dimension(domaininfo%maxgrid) :: out_climate
 
-    out_climate(:) = getclimate_wfdei( &
+    ! first get ccov, tmin, and tmax
+    out_climate(:) =  getclimate_cru( &
                                       domaininfo, &
                                       grid, &
                                       init, &
-                                      climateyear, &
-                                      in_ppfd,  &
-                                      in_netrad &
+                                      climateyear &
                                       )
 
-    call getclimate_cru( &
-                        domaininfo, &
-                        grid, &
-                        init, &
-                        climateyear, &
-                        out_climate(:) &
-                        )
+    ! then complement climate derived-type with remaining variables
+    call getclimate_wfdei( &
+                          domaininfo, &
+                          grid, &
+                          init, &
+                          climateyear, &
+                          in_ppfd,  &
+                          in_netrad, &
+                          out_climate(:) &
+                          )
 
   end function getclimate
 
 
-  function getclimate_wfdei( domaininfo, grid, init, climateyear, in_ppfd, in_netrad ) result ( out_climate )
+  subroutine getclimate_wfdei( domaininfo, grid, init, climateyear, in_ppfd, in_netrad, inout_climate )
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
     ! Read year-2013 data after 2013
@@ -403,9 +388,7 @@ contains
     integer, intent(in) :: climateyear
     logical, intent(in) :: in_ppfd
     logical, intent(in) :: in_netrad
-
-    ! function return variable
-    type( climate_type ), dimension(domaininfo%maxgrid) :: out_climate
+    type( climate_type ), dimension(domaininfo%maxgrid), intent(inout) :: inout_climate
 
     ! local variables
     integer :: doy, dom, moy
@@ -434,6 +417,8 @@ contains
 
     ! create 4-digit string for year  
     write(climateyear_char,999) climateyear
+
+    if (verbose) print*,'Start getclimate_wfdei() ...'
 
     if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
 
@@ -560,10 +545,6 @@ contains
         call check( nf90_open( trim(filnam), NF90_NOWRITE, ncid_ppfd ) )
       end if
 
-      if (in_netrad) then
-        stop 'getclimate_wfdei: simulation parameter in_netrad cannot be true'
-      end if
-
       ! get dimension IDs
       call check( nf90_inq_dimid( ncid_temp, recname, recdimid ) )
       call check( nf90_inquire_dimension( ncid_temp, recdimid, len = nrec_arr ) )
@@ -610,31 +591,31 @@ contains
           if ( temp_arr(ilon(jpngr),ilat(jpngr),dom)/=ncfillvalue ) then
             
             ! required input variables
-            out_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
-            out_climate(jpngr)%dprec(doy) = prec_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
-            out_climate(jpngr)%dsnow(doy) = snow_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
-            out_climate(jpngr)%dvpd(doy)  = calc_vpd( qair_arr(ilon(jpngr),ilat(jpngr),dom), out_climate(jpngr)%dtemp(doy), grid(jpngr)%elv )
-            
+            inout_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
+            inout_climate(jpngr)%dprec(doy) = prec_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            inout_climate(jpngr)%dsnow(doy) = snow_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            inout_climate(jpngr)%dvpd(doy)  = calc_vpd( qair_arr(ilon(jpngr),ilat(jpngr),dom), inout_climate(jpngr)%dtemp(doy), inout_climate(jpngr)%dtmin(doy), inout_climate(jpngr)%dtmax(doy), grid(jpngr)%elv )
+
             ! optional input variables
             if (in_ppfd) then
-              out_climate(jpngr)%dppfd(doy) = 1.0e-6 * rswd_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0 * kfFEC ! W m-2 -> mol m-2 d-1
+              inout_climate(jpngr)%dppfd(doy) = 1.0e-6 * rswd_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0 * kfFEC ! W m-2 -> mol m-2 d-1
             else
-              out_climate(jpngr)%dppfd(doy) = dummy
+              inout_climate(jpngr)%dppfd(doy) = dummy
             end if
 
             if (in_netrad) then
               stop 'getclimate_wfdei: simulation parameter in_netrad cannot be true'
             else
-              out_climate(jpngr)%dnetrad(doy) = dummy
+              inout_climate(jpngr)%dnetrad(doy) = dummy
             end if
 
           else
             nmissing = nmissing + 1
-            out_climate(jpngr)%dtemp(doy) = dummy
-            out_climate(jpngr)%dprec(doy) = dummy
-            out_climate(jpngr)%dsnow(doy) = dummy
-            out_climate(jpngr)%dppfd(doy) = dummy
-            out_climate(jpngr)%dvpd (doy) = dummy
+            inout_climate(jpngr)%dtemp(doy) = dummy
+            inout_climate(jpngr)%dprec(doy) = dummy
+            inout_climate(jpngr)%dsnow(doy) = dummy
+            inout_climate(jpngr)%dppfd(doy) = dummy
+            inout_climate(jpngr)%dvpd (doy) = dummy
             grid(jpngr)%dogridcell = .false.
           end if
 
@@ -652,69 +633,76 @@ contains
     end do monthloop
 
     if (init) print*,'number of land cells without climate data: ', nmissing
-    if (verbose) print*,'done with getclimate_wfdei.'
+    if (verbose) print*,'done with getclimate_wfdei().'
     return
     888  format (I2.2)
     999  format (I4.4)
 
-  end function getclimate_wfdei
+  end subroutine getclimate_wfdei
 
 
-  subroutine getclimate_cru( domaininfo, grid, init, climateyear, inout_climate )
+  function getclimate_cru( domaininfo, grid, init, climateyear ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     ! SR reads this year's daily temperature and precipitation.
-    ! Read year-2013 data after 2013
     !----------------------------------------------------------------
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo
     type( gridtype ), dimension(domaininfo%maxgrid), intent(inout) :: grid
     logical, intent(in) :: init
     integer, intent(in) :: climateyear
-    type( climate_type ), dimension(domaininfo%maxgrid), intent(inout) :: inout_climate
+
+    ! function return variable
+    type( climate_type ), dimension(domaininfo%maxgrid) :: out_climate
 
     ! local variables
     integer :: doy, dom, moy, read_idx
     integer :: jpngr = 1
-    integer :: ncid
-    integer :: varid
+    integer :: ncid_ccov, ncid_tmin, ncid_tmax
+    integer :: varid_ccov, varid_tmin, varid_tmax
     integer :: latdimid, londimid
     integer, dimension(100000), save :: ilon, ilat
     integer, save :: nlon_arr, nlat_arr, ilat_arr, ilon_arr, nrec_arr
-    real, dimension(:,:,:), allocatable :: ccov_arr      ! temperature, array read from NetCDF file in K
+    real, dimension(:,:,:), allocatable :: ccov_arr, tmin_arr, tmax_arr
     real, dimension(:), allocatable :: lon_arr, lat_arr  ! longitude and latitude vectors from climate NetCDF files
     real :: dlon_clim, dlat_clim                         ! resolution in longitude and latitude in climate input files
     real :: ncfillvalue                                  ! _FillValue attribute in NetCDF file
     integer :: nmissing                                  ! number of land cells where climate data is not available
-    real :: tmp
+    real :: ccov, tmin, tmax
     character(len=5) :: recname = "tstep"
     integer, parameter :: firstyr_cru = 1901
     integer, parameter :: nyrs_cru = 116
     character(len=256), parameter :: filnam_ccov = './input/global/climate/ccov/cru_ts4.01.1901.2016.cld.dat.nc'
+    character(len=256), parameter :: filnam_tmin = './input/global/climate/ccov/cru_ts4.01.1901.2016.tmn.dat.nc'
+    character(len=256), parameter :: filnam_tmax = './input/global/climate/ccov/cru_ts4.01.1901.2016.tmx.dat.nc'
+    character(len=3),   parameter :: varnamm_ccov = 'cld'
+    character(len=3),   parameter :: varnamm_tmin = 'tmn'
+    character(len=3),   parameter :: varnamm_tmax = 'tmx'
     logical, parameter :: verbose = .false.
 
     if (domaininfo%maxgrid>100000) stop 'problem for ilon and ilat length'
+    if (verbose) print*,'start with getclimate_cru()....'
 
     !----------------------------------------------------------------    
     ! Get longitude and latitude information from CRU file
+    ! Only for one of the files because lon and lat are identical in all CRU TS files.
     !----------------------------------------------------------------    
     if (init) then
 
-      if (verbose) print*,'opening CRU climate file ', filnam_ccov, '...'
-
-      ! Open the file
-      call check( nf90_open( trim(filnam_ccov), NF90_NOWRITE, ncid ) )
+      ! Open the files
+      if (verbose) print*,'opening CRU cloud cover file ', trim(filnam_ccov), '...'
+      call check( nf90_open( trim(filnam_ccov), NF90_NOWRITE, ncid_ccov ) )
 
       ! get dimension ID for latitude
-      call check( nf90_inq_dimid( ncid, "lat", latdimid ) )
+      call check( nf90_inq_dimid( ncid_ccov, "lat", latdimid ) )
 
       ! Get latitude information: nlat
-      call check( nf90_inquire_dimension( ncid, latdimid, len = nlat_arr ) )
+      call check( nf90_inquire_dimension( ncid_ccov, latdimid, len = nlat_arr ) )
 
       ! get dimension ID for longitude
-      call check( nf90_inq_dimid( ncid, "lon", londimid ) )
+      call check( nf90_inq_dimid( ncid_ccov, "lon", londimid ) )
 
       ! Get latitude information: nlon
-      call check( nf90_inquire_dimension( ncid, londimid, len = nlon_arr ) )
+      call check( nf90_inquire_dimension( ncid_ccov, londimid, len = nlon_arr ) )
 
       ! for index association, get ilon and ilat vectors
       ! Allocate array sizes now knowing nlon and nlat 
@@ -722,10 +710,10 @@ contains
       allocate( lat_arr(nlat_arr) )
 
       ! Get longitude and latitude values
-      call check( nf90_get_var( ncid, londimid, lon_arr ) )
-      call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+      call check( nf90_get_var( ncid_ccov, londimid, lon_arr ) )
+      call check( nf90_get_var( ncid_ccov, latdimid, lat_arr ) )
 
-      call check( nf90_close( ncid ) )
+      call check( nf90_close( ncid_ccov ) )
 
       ! Check if the resolution of the climate input files is identical to the model grid resolution
       dlon_clim = lon_arr(2) - lon_arr(1)
@@ -756,40 +744,61 @@ contains
     !----------------------------------------------------------------    
     ! Read climate fields for each month (and day) this year
     !----------------------------------------------------------------
-    ! open NetCDF files to get ncid_*
-    ! temperature
-    call check( nf90_open( trim(filnam_ccov), NF90_NOWRITE, ncid ) )
+    ! open files
+    if (verbose) print*,'opening CRU cloud cover file ', trim(filnam_ccov), '...'
+    call check( nf90_open( trim(filnam_ccov), NF90_NOWRITE, ncid_ccov ) )
+
+    if (verbose) print*,'opening CRU daily minimum temperature file ', trim(filnam_tmin), '...'
+    call check( nf90_open( trim(filnam_tmin), NF90_NOWRITE, ncid_tmin ) )
+
+    if (verbose) print*,'opening CRU daily maximum temperature file ', trim(filnam_tmax), '...'
+    call check( nf90_open( trim(filnam_tmax), NF90_NOWRITE, ncid_tmax ) )
 
     ! allocate size of output array
     allocate( ccov_arr(nlon_arr,nlat_arr,nmonth) )
+    allocate( tmin_arr(nlon_arr,nlat_arr,nmonth) )
+    allocate( tmax_arr(nlon_arr,nlat_arr,nmonth) )
 
-    ! Get the varid of the data variable, based on its name
-    call check( nf90_inq_varid( ncid, "cld",  varid ) )
+    ! Get the varid_ccov of the data variable, based on its name
+    if (verbose) print*,'inquiring variable IDs ...'
+    call check( nf90_inq_varid( ncid_ccov, trim(varnamm_ccov),  varid_ccov ) )
+    call check( nf90_inq_varid( ncid_tmin, trim(varnamm_tmin),  varid_tmin ) )
+    call check( nf90_inq_varid( ncid_tmax, trim(varnamm_tmax),  varid_tmax ) )
 
     ! Read the full array data (years before 1901 are set to 1901, years after)
+    if (verbose) print*,'reading data ...'
     read_idx = ( min( max( climateyear - firstyr_cru + 1, 1 ), nyrs_cru ) - 1 ) * nmonth + 1
-    call check( nf90_get_var( ncid, varid, ccov_arr, start = (/1,1,read_idx/), count = (/nlon_arr, nlat_arr, nmonth/) ) )
+    call check( nf90_get_var( ncid_ccov, varid_ccov, ccov_arr, start = (/1,1,read_idx/), count = (/nlon_arr, nlat_arr, nmonth/) ) )
+    call check( nf90_get_var( ncid_tmin, varid_tmin, tmin_arr, start = (/1,1,read_idx/), count = (/nlon_arr, nlat_arr, nmonth/) ) )
+    call check( nf90_get_var( ncid_tmax, varid_tmax, tmax_arr, start = (/1,1,read_idx/), count = (/nlon_arr, nlat_arr, nmonth/) ) )
 
-    ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
-    call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
-
-    ! Get _FillValue from file (assuming that all are the same for WATCH-WFDEI)
-    call check( nf90_get_att( ncid, varid, "_FillValue", ncfillvalue ) )
+    ! Get _FillValue from file (assuming that all are the same for CRU)
+    call check( nf90_get_att( ncid_ccov, varid_ccov, "_FillValue", ncfillvalue ) )
 
     ! close NetCDF files
-    call check( nf90_close( ncid ) )
+    if (verbose) print*,'closing files ...'
+    call check( nf90_close( ncid_ccov ) )
+    call check( nf90_close( ncid_tmin ) )
+    call check( nf90_close( ncid_tmax ) )
 
     ! read from array to define grid type 
+    if (verbose) print*,'populating climate derived-type ...'
     gridcellloop: do jpngr=1,domaininfo%maxgrid
       doy = 0
       monthloop: do moy=1,nmonth
+        ccov = ccov_arr(ilon(jpngr),ilat(jpngr),moy)
+        tmin = tmin_arr(ilon(jpngr),ilat(jpngr),moy)
+        tmax = tmax_arr(ilon(jpngr),ilat(jpngr),moy)
         domloop: do dom=1,ndaymonth(moy)
           doy = doy + 1
-          tmp = ccov_arr(ilon(jpngr),ilat(jpngr),moy)
-          if ( tmp/=ncfillvalue ) then
-            inout_climate(jpngr)%dfsun(doy) = ( 100.0 - tmp ) / 100.0
+          if ( ccov/=ncfillvalue ) then
+            out_climate(jpngr)%dfsun(doy) = ( 100.0 - ccov ) / 100.0
+            out_climate(jpngr)%dtmin(doy) = tmin
+            out_climate(jpngr)%dtmax(doy) = tmax
           else
-            inout_climate(jpngr)%dfsun(doy) = dummy
+            out_climate(jpngr)%dfsun(doy) = dummy
+            out_climate(jpngr)%dtmin(doy) = dummy
+            out_climate(jpngr)%dtmax(doy) = dummy
           end if
         end do domloop
       end do monthloop
@@ -797,12 +806,12 @@ contains
 
     ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
     deallocate( ccov_arr )
+    deallocate( tmin_arr )
+    deallocate( tmax_arr )
 
-    return
-    888  format (I2.2)
-    999  format (I4.4)
+    if (verbose) print*,'... done with getclimate_cru().'
 
-  end subroutine getclimate_cru
+  end function getclimate_cru
 
 
   function getlanduse( runname, domaininfo, forcingyear, do_grharvest_forcing_file, const_lu_year, firstyeartrend ) result( out_landuse )
@@ -838,7 +847,7 @@ contains
   end function getlanduse
 
 
-  function calc_vpd( qair, temp, elv ) result( vpd )
+  function calc_vpd( qair, temp, tmin, tmax, elv ) result( vpd )
     !////////////////////////////////////////////////////////////////////////
     ! Calculates vapor pressure deficit, given air temperature and assuming
     ! standard atmosphere, corrected for elevation above sea level.
@@ -848,38 +857,55 @@ contains
     use md_params_core, only: kR, kMv, kMa
 
     ! arguments
-    real, intent(in) :: qair    ! specific humidity (g g-1)
-    real, intent(in) :: temp    ! temperature (degrees Celsius)
-    real, intent(in) :: elv     ! elevation above sea level (m)
+    real, intent(in)    :: qair    ! specific humidity (g g-1)
+    real, intent(in)    :: temp    ! daily mean air temperature (deg C), daily varying from WATCH-WFDEI (ACTUALLY NOT USED)
+    real, intent(inout) :: tmin    ! daily minimum temperature (deg C), constant by month from CRU
+    real, intent(inout) :: tmax    ! daily maximum temperature (deg C), constant by month from CRU
+    real, intent(in)    :: elv     ! elevation above sea level (m)
 
     ! function return variable
-    real :: vpd                 ! vapor pressure deficit (Pa)
+    real :: vpd         ! vapor pressure deficit as the mean of vpd_min and vpd_max
 
     ! local variables
-    real :: wair    ! mass mising ratio of water vapor to dry air (dimensionless)
-    real :: patm    ! atmopheric pressure (Pa)
-    real :: rv      ! specific gas constant of water vapor (J g-1 K-1)
-    real :: rd      ! specific gas constant of dry air (J g-1 K-1)
-    real :: eact    ! actual water vapor pressure (Pa)
-    real :: esat    ! saturation water vapor pressure (Pa)
+    real :: wair         ! mass mixing ratio of water vapor to dry air (dimensionless)
+    real :: patm         ! atmopheric pressure (Pa)
+    real :: rv           ! specific gas constant of water vapor (J g-1 K-1)
+    real :: rd           ! specific gas constant of dry air (J g-1 K-1)
+    real :: eact         ! actual water vapor pressure (Pa)
+    real :: esat_min     ! saturation water vapor pressure (Pa) based on daily minimum temperature
+    real :: esat_max     ! saturation water vapor pressure (Pa) based on daily maximum temperature
+    real :: vpd_min      ! vapor pressure deficit based on daily minimum temperature (Pa)
+    real :: vpd_max      ! vapor pressure deficit based on daily maximum temperature (Pa)
+    real :: halfamp_temp ! half of the daily temperature amplitude
 
+    ! ! xxx don't do this because it probably overestimates extremes a lot
+    ! ! take daily temperature half-amplitude from CRU and add it to temp to re-define tmin and tmax
+    ! print*,'BEFORE: tmin, tmax ', tmin, tmax
+    ! halfamp_temp = (tmax - tmin) / 2.0
+    ! tmin = temp - halfamp_temp
+    ! tmax = temp + halfamp_temp
+    ! print*,'AFTER : tmin, tmax ', tmin, tmax
+    ! print*,'----------------------------------'
 
     ! calculate the mass mising ratio of water vapor to dry air (dimensionless)
     wair = qair / ( 1 - qair )
 
     ! calculate atmopheric pressure (Pa) assuming standard conditions at sea level (elv=0)
     patm = calc_patm( elv )
-
+    
     ! calculate water vapor pressure 
     rv = kR / kMv
     rd = kR / kMa
     eact = patm * wair * rv / (rd + wair * rv)
 
     ! calculate saturation water vapour pressure in Pa
-    esat = 611.0 * exp( (17.27 * temp)/(temp + 237.3) )
+    esat_min = 611.0 * exp( (17.27 * tmin)/(tmin + 237.3) )
+    esat_max = 611.0 * exp( (17.27 * tmax)/(tmax + 237.3) )
 
     ! VPD is the difference between actual and saturation vapor pressure
-    vpd = esat - eact
+    vpd_min = esat_min - eact
+    vpd_max = esat_max - eact
+    vpd = (vpd_min + vpd_max) / 2.0 
 
     ! Set negative VPD to zero
     vpd = max( 0.0, vpd )

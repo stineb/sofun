@@ -2,7 +2,7 @@ module md_interface
 
   use md_params_core, only: maxgrid, nlu, npft, ndayyear, dummy
   use md_grid, only: gridtype, domaininfo_type
-  use md_forcing, only: landuse_type, climate_type, ninput_type
+  use md_forcing, only: landuse_type, climate_type, ninput_type, vegcover_type
   use md_params_domain, only: type_params_domain
   use md_params_soil, only: paramtype_soil
   use md_params_siml, only: outtype_steering, paramstype_siml
@@ -25,19 +25,19 @@ module md_interface
   end type paramstype_calib  
 
   type interfacetype_biosphere
-    integer                                             :: year
-    real                                                :: pco2
-    type( gridtype )      , dimension(:),   allocatable :: grid
-    type( paramtype_soil ), dimension(:),   allocatable :: soilparams
-    type( landuse_type )  , dimension(:),   allocatable :: landuse
-    type( climate_type )  , dimension(:),   allocatable :: climate
-    type( ninput_type)    , dimension(:),   allocatable :: ninput_field
-    real                  , dimension(:,:), allocatable :: dfapar_field
-    type( domaininfo_type )                             :: domaininfo
-    type( outtype_steering )                            :: steering
-    type( paramstype_siml )                             :: params_siml
-    real, dimension(:,:), allocatable                   :: fpc_grid
-    type( paramstype_calib )                            :: params_calib    ! calibratable parameters
+    integer                                           :: year
+    real                                              :: pco2
+    type( gridtype )      , dimension(:), allocatable :: grid
+    type( paramtype_soil ), dimension(:), allocatable :: soilparams
+    type( landuse_type )  , dimension(:), allocatable :: landuse
+    type( climate_type )  , dimension(:), allocatable :: climate
+    type( ninput_type)    , dimension(:), allocatable :: ninput_field
+    type( vegcover_type ) , dimension(:), allocatable :: vegcover
+    type( domaininfo_type )                           :: domaininfo
+    type( outtype_steering )                          :: steering
+    type( paramstype_siml )                           :: params_siml
+    real, dimension(:,:), allocatable                 :: fpc_grid
+    type( paramstype_calib )                          :: params_calib    ! calibratable parameters
   end type interfacetype_biosphere
 
   !----------------------------------------------------------------
@@ -245,8 +245,8 @@ contains
       ! so far not implemented for isotopes
       !----------------------------------------------------------------
       it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
-      if (interface%params_siml%loutdtemp)  outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(jpngr)%dtemp(doy) / real( interface%params_siml%outdt )
-      if (interface%params_siml%loutdfapar) outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%dfapar_field(doy,jpngr)   / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdtemp)  outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(jpngr)%dtemp(doy)   / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdfapar) outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%vegcover(jpngr)%dfapar(doy) / real( interface%params_siml%outdt )
 
       ! !----------------------------------------------------------------
       ! ! ANNUAL SUM OVER DAILY VALUES

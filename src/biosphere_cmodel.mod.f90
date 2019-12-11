@@ -265,13 +265,6 @@ contains
             !----------------------------------------------------------------
             if (verbose) print*,'calling vegdynamics() ... '
             call vegdynamics( plant(:,jpngr), out_temppheno(doy,:) )
-            ! call vegdynamics( tile(:,jpngr), &
-            !                   plant(:,jpngr), &
-            !                   solar, &
-            !                   out_pmodel(:,:), &
-            !                   interface%dfapar_field(doy,jpngr), &
-            !                   interface%fpc_grid(:,jpngr) &
-            !                   )
             if (verbose) print*,'... done'
 
             !----------------------------------------------------------------

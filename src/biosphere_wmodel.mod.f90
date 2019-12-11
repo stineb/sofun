@@ -155,16 +155,18 @@ contains
             call waterbal( &
                           tile(:,jpngr)%soil, &
                           tile_fluxes(:), &
+                          plant_fluxes(:), &
                           doy, &
                           jpngr, & 
-                          interface%grid(jpngr)%lat, & 
-                          interface%grid(jpngr)%elv, & 
-                          interface%climate(jpngr)%dprec(doy),  & 
-                          interface%climate(jpngr)%dsnow(doy),  & 
-                          interface%climate(jpngr)%dtemp(doy),  & 
-                          interface%climate(jpngr)%dfsun(doy),  &
-                          interface%climate(jpngr)%dnetrad(doy),&
-                          interface%dfapar_field(doy,jpngr)     &
+                          interface%grid(jpngr)%lat,             & 
+                          interface%grid(jpngr)%elv,             & 
+                          interface%climate(jpngr)%dprec(doy),   & 
+                          interface%climate(jpngr)%dsnow(doy),   & 
+                          interface%climate(jpngr)%dtemp(doy),   & 
+                          interface%climate(jpngr)%dfsun(doy),   &
+                          interface%climate(jpngr)%dnetrad(doy), &
+                          interface%climate(jpngr)%dvpd(doy),    &
+                          interface%vegcover(jpngr)%dfapar(doy)  &
                           )
             if (verbose) print*,'... done'
 

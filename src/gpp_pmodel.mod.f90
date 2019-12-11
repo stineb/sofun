@@ -536,15 +536,16 @@ contains
       gammastar = calc_gammastar( tc, patm )
 
       ! ! XXX PMODEL_TEST: ok
-      ! print*,'tc     ', tc
-      ! print*,'patm   ', patm
-      ! print*,'elv    ', elv
-      ! print*,'gstar  ', gammastar
+      ! print*,'tc        ', tc
+      ! print*,'patm      ', patm
+      ! print*,'elv       ', elv
+      ! print*,'vpd       : ', vpd
+      ! print*,'gammastar ', gammastar
 
       ! Michaelis-Menten coef. (Pa)
       kmm  = calc_kmm( tc, patm )
       
-      ! XXX PMODEL_TEST: ok
+      ! ! XXX PMODEL_TEST: ok
       ! print*, 'kmm ', kmm
 
       ! viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
@@ -563,58 +564,24 @@ contains
 
         out_optchi = calc_chi_c4()
 
-      else if (method_optci=="prentice14") then
-
-        !-----------------------------------------------------------------------
-        ! B.2 FULL FORMULATION
-        !-----------------------------------------------------------------------
-        out_optchi = calc_optimal_chi( kmm, gammastar, ns_star, ca, vpd )
-        
-        ! ! xxx test
-        ! print*,'kmm       : ', kmm
-        ! print*,'gammastar : ', gammastar 
-        ! print*,'ns_star   : ', ns_star
-        ! print*,'ca        : ', ca
-        ! print*,'vpd       : ', vpd
-        ! stop 
-
       else
 
-        stop 'PMODEL: select valid method'
+        select case (method_optci)
+
+          case ("prentice14")
+
+            !-----------------------------------------------------------------------
+            ! B.2 FULL FORMULATION
+            !-----------------------------------------------------------------------
+            out_optchi = calc_optimal_chi( kmm, gammastar, ns_star, ca, vpd )
+          
+          case default
+
+            stop 'PMODEL: select valid method'
+
+        end select
 
       end if 
-
-      ! select case (method_optci)
-
-      !   case ("approx")
-      !     !-----------------------------------------------------------------------
-      !     ! A. APPROXIMATIVE METHOD
-      !     !-----------------------------------------------------------------------
-      !     out_optchi = lue_approx( tc, vpd, elv, ca, gammastar, ns, kmm )
-                    
-      !   case ("C3_simpl")
-      !     !-----------------------------------------------------------------------
-      !     ! B.1 SIMPLIFIED FORMULATION 
-      !     !-----------------------------------------------------------------------
-      !     out_optchi = lue_vpd_c3_simpl( kmm, gammastar, ns, ca, vpd )
-
-      !   case ("C3_full")
-      !     !-----------------------------------------------------------------------
-      !     ! B.2 FULL FORMULATION
-      !     !-----------------------------------------------------------------------
-      !     out_optchi = calc_optimal_chi( kmm, gammastar, ns_star, ca, vpd )
-
-      !   case ("C4")
-      !     !-----------------------------------------------------------------------
-      !     ! B.2 FULL FORMULATION
-      !     !-----------------------------------------------------------------------
-      !     out_optchi = lue_c4()
-
-      !   case default
-
-      !     stop 'PMODEL: select valid method'
-
-      ! end select
 
       ! ratio of leaf internal to ambient CO2
       chi = out_optchi%chi
@@ -657,10 +624,6 @@ contains
 
         ! Light use efficiency (gpp per unit absorbed light)
         lue = kphio * mprime * c_molmass  ! in g CO2 m-2 s-1 / (mol light m-2 s-1)
-
-        ! XXX PMODEL_TEST: ok
-        ! print*, 'lue ', lue / c_molmass
-        ! stop
 
         ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
         vcmax_unitiabs = kphio * out_optchi%mjoc * mprime / out_optchi%mj
@@ -720,17 +683,19 @@ contains
       end if
 
       ! ! XXX PMODEL_TEST: ok
-      ! print*, 'm ', out_optchi%m
+      ! print*, 'mj ', out_optchi%mj
 
       ! ! XXX PMODEL_TEST: ok
       ! print*, 'chi ', chi
-
 
       ! ! XXX PMODEL_TEST: ok
       ! print*, 'mprime ', mprime
 
       ! ! XXX PMODEL_TEST: ok
       ! print*, 'lue ', lue
+
+      ! ! XXX PMODEL_TEST: ok
+      ! print*, 'kphio ', kphio
 
       !-----------------------------------------------------------------------
       ! Corrolary preditions (This is prelimirary!)
@@ -791,26 +756,26 @@ contains
           ! Gross primary productivity
           gpp = iabs * lue ! in g C m-2 s-1
 
-          ! XXX PMODEL_TEST: ok
+          ! ! XXX PMODEL_TEST: ok
           ! print*, 'gpp ', gpp
 
           ! Vcmax per unit ground area is the product of the intrinsic quantum 
           ! efficiency, the absorbed PAR, and 'n'
           vcmax = iabs * vcmax_unitiabs  ! = iabs * kphio * n 
 
-          ! XXX PMODEL_TEST: ok
+          ! ! XXX PMODEL_TEST: ok
           ! print*, 'vcmax ', vcmax
 
           ! (vcmax normalized to 25 deg C)
           vcmax25 = iabs * vcmax25_unitiabs  ! = factor25_vcmax * vcmax
 
-          ! XXX PMODEL_TEST: ok
+          ! ! XXX PMODEL_TEST: ok
           ! print*, 'vcmax25 ', vcmax25
 
           ! Dark respiration
           rd = iabs * rd_unitiabs ! = rd_to_vcmax * vcmax
 
-          ! XXX PMODEL_TEST: ok
+          ! ! XXX PMODEL_TEST: ok
           ! print*, 'rd ', rd
 
           ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
@@ -840,26 +805,28 @@ contains
         actnv             = dummy
 
       end if
+
     else
-      actnv_unitiabs = 0.0
-      actnv_unitfapar = 0.0
-      actnv = 0.0
-      rd_unitiabs = 0.0
-      rd_unitfapar = 0.0
-      rd = 0.0
-      ftemp_inst_rd = 0.0
+
+      actnv_unitiabs   = 0.0
+      actnv_unitfapar  = 0.0
+      actnv            = 0.0
+      rd_unitiabs      = 0.0
+      rd_unitfapar     = 0.0
+      rd               = 0.0
+      ftemp_inst_rd    = 0.0
       ftemp_inst_vcmax = 0.0
-      vcmax_unitiabs = 0.0
-      vcmax_unitfapar = 0.0
-      vcmax25 = 0.0
-      vcmax = 0.0
-      gpp = 0.0
-      lue = 0.0
-      iwue = 0.0
-      chi = 0.0
-      ci = 0.0
-      kmm = 0.0
-      gammastar = 0.0
+      vcmax_unitiabs   = 0.0
+      vcmax_unitfapar  = 0.0
+      vcmax25          = 0.0
+      vcmax            = 0.0
+      gpp              = 0.0
+      lue              = 0.0
+      iwue             = 0.0
+      chi              = 0.0
+      ci               = 0.0
+      kmm              = 0.0
+      gammastar        = 0.0
 
     end if
 

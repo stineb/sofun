@@ -195,15 +195,15 @@ contains
                           plant_fluxes(:), &
                           doy, &
                           jpngr, & 
-                          interface%grid(jpngr)%lat, & 
-                          interface%grid(jpngr)%elv, & 
-                          interface%climate(jpngr)%dprec(doy), & 
-                          interface%climate(jpngr)%dsnow(doy), & 
-                          interface%climate(jpngr)%dtemp(doy), & 
-                          interface%climate(jpngr)%dfsun(doy), &
+                          interface%grid(jpngr)%lat,             & 
+                          interface%grid(jpngr)%elv,             & 
+                          interface%climate(jpngr)%dprec(doy),   & 
+                          interface%climate(jpngr)%dsnow(doy),   & 
+                          interface%climate(jpngr)%dtemp(doy),   & 
+                          interface%climate(jpngr)%dfsun(doy),   &
                           interface%climate(jpngr)%dnetrad(doy), &
-                          interface%dfapar_field(doy,jpngr), &
-                          interface%climate(jpngr)%dvpd(doy) &
+                          interface%climate(jpngr)%dvpd(doy),    &
+                          interface%vegcover(jpngr)%dfapar(doy)  &
                           )
             if (verbose) print*,'... done'
 
@@ -231,7 +231,7 @@ contains
                               plant(:,jpngr), &
                               solar, &
                               out_pmodel(:,:), &
-                              interface%dfapar_field(doy,jpngr), &
+                              interface%vegcover(jpngr)%dfapar(doy), &
                               interface%fpc_grid(:,jpngr) &
                               )
             if (verbose) print*,'... done'
@@ -253,7 +253,7 @@ contains
                       interface%climate(jpngr)%dtemp(doy), &
                       interface%params_siml%soilmstress, &
                       interface%params_siml%tempstress, &
-                      interface%dfapar_field(doy,jpngr) &
+                      interface%vegcover(jpngr)%dfapar(doy) &
                       )
             if (verbose) print*,'... done'
 

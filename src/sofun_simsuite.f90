@@ -37,7 +37,8 @@ program main
   use md_params_domain, only: getpar_domain, type_params_domain
   use md_grid, only: get_domaininfo, getgrid
   use md_params_soil, only: getsoil
-  use md_forcing, only: get_fpc_grid, getclimate, getninput, ninput_type, gettot_ninput, getfapar, getlanduse, getco2
+  use md_forcing, only: get_fpc_grid, getclimate, getninput, ninput_type, gettot_ninput, &
+    getfapar, getlanduse, getco2
   use md_params_core, only: dummy, maxgrid, ndayyear, npft
   use md_biosphere, only: biosphere_annual
   use md_sofunutils, only: median
@@ -206,7 +207,7 @@ program main
     if (.not.allocated(interface%ninput_field)) allocate( interface%ninput_field( interface%domaininfo%maxgrid ) )
     if (.not.allocated(interface%landuse))      allocate( interface%landuse(      interface%domaininfo%maxgrid ) )
     if (.not.allocated(interface%soilparams))   allocate( interface%soilparams(   interface%domaininfo%maxgrid ) )
-    if (.not.allocated(interface%dfapar_field)) allocate( interface%dfapar_field( ndayyear, interface%domaininfo%maxgrid ) )
+    if (.not.allocated(interface%vegcover))     allocate( interface%vegcover(     interface%domaininfo%maxgrid ) )
     if (.not.allocated(interface%fpc_grid))     allocate( interface%fpc_grid( npft, interface%domaininfo%maxgrid ) )
 
     ! vectorise 2D array, keeping only land gridcells
@@ -306,12 +307,12 @@ program main
       !----------------------------------------------------------------
       ! Get prescribed fAPAR if required (otherwise set to dummy value)
       !----------------------------------------------------------------
-      interface%dfapar_field(:,:) = getfapar( &
-                                            interface%domaininfo, &
-                                            interface%grid, &
-                                            interface%steering%forcingyear, &
-                                            interface%params_siml%fapar_forcing_source &
-                                            )    
+      interface%vegcover(:) = getfapar( &
+                                        interface%domaininfo, &
+                                        interface%grid, &
+                                        interface%steering%forcingyear, &
+                                        interface%params_siml%fapar_forcing_source &
+                                        )    
 
       !----------------------------------------------------------------
       ! Call SR biosphere at an annual time step but with vectors 
@@ -356,11 +357,6 @@ program main
         idx_start = idx_end + 1
 
       end if
-
-      ! ! calculate cost of mod-obs fit (sum annual costs)
-      ! if (yr > interface%params_siml%spinupyears ) &
-      !   cost_annual = cost_annual &
-      !     + ( sum( abs( out_biosphere%fapar(:) - interface%dfapar_field(:,1) ) ) / ndayyear ) / ( sum( interface%dfapar_field(:,1) ) / ndayyear )
 
     enddo yearloop
 

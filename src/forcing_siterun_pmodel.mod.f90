@@ -18,7 +18,7 @@ module md_forcing
 
   private
   public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate, &
-    getlanduse, landuse_type, climate_type, get_fpc_grid
+    getlanduse, landuse_type, climate_type, get_fpc_grid, vegcover_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
@@ -29,6 +29,10 @@ module md_forcing
     real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
     real, dimension(ndayyear) :: dnetrad! W m-2
   end type climate_type
+
+  type vegcover_type
+    real, dimension(ndayyear) :: dfapar ! fraction of absorbed photosynthetically active radiation
+  end type vegcover_type
 
   type landuse_type
     real, dimension(nlu)         :: lu_area
@@ -125,7 +129,7 @@ contains
   end function gettot_ninput
 
 
-  function getfapar( domaininfo, grid, year, fapar_forcing_source ) result( fapar_field )
+  function getfapar( domaininfo, grid, year, fapar_forcing_source ) result( out_vegcover )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
@@ -136,25 +140,25 @@ contains
     character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
-    real, dimension(ndayyear,domaininfo%maxgrid) :: fapar_field
+    type( vegcover_type ), dimension(domaininfo%maxgrid) :: out_vegcover
 
     ! local variables 
     integer :: readyear
     character(len=4) :: faparyear_char
 
     if (trim(fapar_forcing_source)=='NA') then
-      ! If in simulation parameter file 'NA' is specified for 'fapar_forcing_source', then set fapar_field to dummy value
-      fapar_field(:,1) = dummy
+      ! If in simulation parameter file 'NA' is specified for 'fapar_forcing_source'
+      out_vegcover(1)%dfapar(:) = dummy
 
     else
       ! Prescribed. Read monthly fAPAR value from file
       ! create 4-digit string for year  
       write(faparyear_char,999) min( max( 2000, year ), 2014 )
-      fapar_field(:,1) = read1year_daily( 'sitedata/fapar/'//trim(domaininfo%domain_name)//'/'//faparyear_char//'/'//'dfapar_'//trim(domaininfo%domain_name)//'_'//faparyear_char//'.txt' )
+      out_vegcover(1)%dfapar(:) = read1year_daily( 'sitedata/fapar/'//trim(domaininfo%domain_name)//'/'//faparyear_char//'/'//'dfapar_'//trim(domaininfo%domain_name)//'_'//faparyear_char//'.txt' )
 
       ! ! "Correct" fAPAR
       ! print*,"WARNING: normalising fAPAR to within 0.12 and 1.0."
-      ! fapar_field(:,1) = max((fapar_field(:,1) - 0.12), 0.0)/(1.0 - 0.12)
+      ! out_vegcover(1)%dfapar(:) = max((out_vegcover(1)%dfapar(:) - 0.12), 0.0)/(1.0 - 0.12)
 
     end if
 

@@ -78,7 +78,7 @@ program main
   allocate( interface%ninput_field( interface%domaininfo%maxgrid ) )
   allocate( interface%landuse(      interface%domaininfo%maxgrid ) )
   allocate( interface%soilparams(   interface%domaininfo%maxgrid ) )
-  allocate( interface%dfapar_field( ndayyear, interface%domaininfo%maxgrid ) )
+  allocate( interface%vegcover(     interface%domaininfo%maxgrid ) )
   allocate( interface%fpc_grid( npft, interface%domaininfo%maxgrid ) )
 
   ! vectorise 2D array, keeping only land gridcells
@@ -122,12 +122,12 @@ program main
     ! Get prescribed fAPAR if required (otherwise set to dummy value)
     !----------------------------------------------------------------
     if (verbose) print*,'getting fAPAR ...'
-    interface%dfapar_field(:,:) = getfapar( &
-                                          interface%domaininfo, &
-                                          interface%grid, &
-                                          interface%steering%forcingyear, &
-                                          interface%params_siml%fapar_forcing_source &
-                                          )    
+    interface%vegcover(:) = getfapar( &
+                                      interface%domaininfo, &
+                                      interface%grid, &
+                                      interface%steering%forcingyear, &
+                                      interface%params_siml%fapar_forcing_source &
+                                      )    
 
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
@@ -194,17 +194,6 @@ program main
                                       interface%params_siml%const_lu_year, &
                                       interface%params_siml%firstyeartrend &
                                       )
-
-    ! !----------------------------------------------------------------
-    ! ! Get prescribed fAPAR if required (otherwise set to dummy value)
-    ! !----------------------------------------------------------------
-    ! if (verbose) print*,'getting fAPAR ...'
-    ! interface%dfapar_field(:,:) = getfapar( &
-    !                                       interface%domaininfo, &
-    !                                       interface%grid, &
-    !                                       interface%steering%forcingyear, &
-    !                                       interface%params_siml%fapar_forcing_source &
-    !                                       )    
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 

@@ -116,7 +116,7 @@ contains
   end function gettot_ninput
 
 
-  function getfapar( domaininfo, grid, year, fapar_forcing_source ) result( fapar_field )
+  function getfapar( domaininfo, grid, year, fapar_forcing_source ) result( out_vegcover )
     !////////////////////////////////////////////////////////////////
     ! Function reads this year's atmospheric CO2 from input
     !----------------------------------------------------------------
@@ -127,25 +127,25 @@ contains
     character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
-    real, dimension(ndayyear,domaininfo%maxgrid) :: fapar_field
+    type( vegcover_type ), dimension(domaininfo%maxgrid) :: out_vegcover
 
     ! local variables 
     integer :: readyear
     character(len=4) :: faparyear_char
 
     if (trim(fapar_forcing_source)=='NA') then
-      ! If in simulation parameter file 'NA' is specified for 'fapar_forcing_source', then set fapar_field to dummy value
-      fapar_field(:,1) = dummy
+      ! If in simulation parameter file 'NA' is specified for 'fapar_forcing_source'
+      out_vegcover(1)%dfapar(:) = dummy
 
     else
       ! Prescribed. Read monthly fAPAR value from file
       ! create 4-digit string for year  
       write(faparyear_char,999) min( max( 2000, year ), 2014 )
-      fapar_field(:,1) = read1year_daily( 'sitedata/fapar/'//trim(domaininfo%domain_name)//'/'//faparyear_char//'/'//'dfapar_'//trim(domaininfo%domain_name)//'_'//faparyear_char//'.txt' )
+      out_vegcover(1)%dfapar(:) = read1year_daily( 'sitedata/fapar/'//trim(domaininfo%domain_name)//'/'//faparyear_char//'/'//'dfapar_'//trim(domaininfo%domain_name)//'_'//faparyear_char//'.txt' )
 
-      ! "Correct" fAPAR
-      print*,"WARNING: normalising fAPAR to within 0.12 and 1.0."
-      fapar_field(:,1) = max((fapar_field(:,1) - 0.12), 0.0)/(1.0 - 0.12)
+      ! ! "Correct" fAPAR
+      ! print*,"WARNING: normalising fAPAR to within 0.12 and 1.0."
+      ! out_vegcover(1)%dfapar(:) = max((out_vegcover(1)%dfapar(:) - 0.12), 0.0)/(1.0 - 0.12)
 
     end if
 
@@ -157,7 +157,18 @@ contains
 
   function get_fpc_grid( domaininfo, grid, params_siml ) result( fpc_grid_field )
     !////////////////////////////////////////////////////////////////
-    ! Dummy function returning 1.0 for all "PFTs" - not used in this setup
+    ! Function returns the fractional land cover by vegetation types 
+    ! based on the 10 IGBP types in the input file (MODIS Landcover)
+    ! 1: ENF: type2 = "evergreen needleleaf forest" ;
+    ! 2: EBF: type3 = "evergreen broadleaf forest" ;
+    ! 3: DNF: type4 = "deciduous needleleaf forest" ;
+    ! 4: DBF: type5 = "deciduous broadleaf forest" ;
+    ! 5: MF:  type6 = "mixed forest" ;
+    ! 6: SHR: type7+type8 = "closed shrublands" + "open shrublands";
+    ! 7: SAV: type9+type10 = "savannas" plus "woody savannas"
+    ! 8: GRA: type11 = "grasslands" ;
+    ! 9: WET: type12 = "permanent wetlands" ;
+    ! 10:CRO: type13 + type15 = "croplands" + "cropland (natural vegetation mosaic)";
     !----------------------------------------------------------------
     use md_params_siml, only: paramstype_siml
     use md_params_core, only: npft

@@ -20,7 +20,8 @@ module md_forcing
 
   private
   public getco2, getninput, ninput_type, gettot_ninput, getfapar, &
-    getclimate, getlanduse, landuse_type, climate_type, get_fpc_grid
+    getclimate, getlanduse, landuse_type, climate_type, get_fpc_grid, &
+    vegcover_type
 
   type climate_type
     real, dimension(ndayyear) :: dtemp  ! deg C
@@ -33,6 +34,10 @@ module md_forcing
     real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
     real, dimension(ndayyear) :: dnetrad! W m-2
   end type climate_type
+
+  type vegcover_type
+    real, dimension(ndayyear) :: dfapar ! fraction of absorbed photosynthetically active radiation
+  end type vegcover_type
 
   type landuse_type
     real, dimension(nlu)         :: lu_area
@@ -130,7 +135,7 @@ contains
   end function gettot_ninput
   
 
-  function getfapar( domaininfo, grid, year, fapar_forcing_source ) result( fapar_field )
+  function getfapar( domaininfo, grid, year, fapar_forcing_source ) result( out_vegcover )
     !////////////////////////////////////////////////////////////////
     ! Reads fAPAR from fapar3g data file.
     ! Assumes fAPAR=0 for cells with missing data
@@ -142,7 +147,7 @@ contains
     character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
-    real, dimension(ndayyear,domaininfo%maxgrid) :: fapar_field
+    type( vegcover_type ), dimension(domaininfo%maxgrid) :: out_vegcover
 
     ! local variables
     integer :: ncid, varid
@@ -300,11 +305,9 @@ contains
           doy = doy + 1
           tmp = fapar_arr(ilon(jpngr),ilat(jpngr),moy)
           if ( tmp/=ncfillvalue ) then
-            fapar_field(doy,jpngr) = tmp
-            ! ! xxx debug
-            ! if (lat_arr(ilat(jpngr))>67.0 .and. tmp>0.5) print*,'jpngr, lat,  ilon(jpngr), ilat(jpngr), time_idx, moy, doy, tmp', jpngr, lat_arr(ilat(jpngr)), ilon(jpngr), ilat(jpngr), read_idx + moy - 1, moy, doy, tmp
+            out_vegcover(jpngr)%dfapar(doy) = tmp
           else
-            fapar_field(doy,jpngr) = 0.0
+            out_vegcover(jpngr)%dfapar(doy) = 0.0
           end if
         end do
       end do
