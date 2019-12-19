@@ -32,6 +32,7 @@ module md_forcing
     real, dimension(ndayyear) :: dtmin  ! deg C
     real, dimension(ndayyear) :: dtmax  ! deg C
     real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
+    real, dimension(ndayyear) :: dpatm  ! Pa
     real, dimension(ndayyear) :: dnetrad! W m-2
   end type climate_type
 

@@ -8,6 +8,31 @@ module md_sofunutils
 
 contains
 
+  function dampen_variability( var, tau, var_memory ) result( out_memory )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Calculates the updated variable accounting for a memory time scale tau.
+    ! Following Eq. 5 in Makela et al. (2004) Tree Physiology 24, 369–376
+    ! 
+    ! d(var_memory) / dt = (1 / tau) * var - var_memory
+    ! 
+    !-------------------------------------------------------------------------
+    ! arguments
+    real, intent(in)    :: var           ! fast-varying variable
+    real, intent(in)    :: tau           ! memory e-folding time scale (d)
+    real, intent(inout) :: var_memory    ! damped (low-pass filtered) variable
+
+    ! function return variable
+    real :: out_memory
+
+    ! local variable
+    real :: dvar
+
+    dvar = (1.0/tau) * (var - var_memory)
+    out_memory = var_memory + dvar 
+
+  end function dampen_variability
+
+
   function running( presval, inow, lenval, lenper, method, prevval ) result( runningval )
     !/////////////////////////////////////////////////////////////////////////
     ! Returns running sum or average. 'prevval' is optional, if not pro-

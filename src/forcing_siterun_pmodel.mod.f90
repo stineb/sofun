@@ -27,6 +27,7 @@ module md_forcing
     real, dimension(ndayyear) :: dfsun  ! unitless
     real, dimension(ndayyear) :: dvpd   ! Pa
     real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
+    real, dimension(ndayyear) :: dpatm  ! Pa
     real, dimension(ndayyear) :: dnetrad! W m-2
   end type climate_type
 

@@ -547,6 +547,7 @@ contains
     ! Eq. 1 in Zhang et al., 2017 JGR (doi:10.1002/2017JD027025)
     !-------------------------------------------------------------------------  
     use md_params_core, only: cp
+    use md_sofunutils, only: dampen_variability
 
     ! arguments
     real, intent(in) :: lai             ! leaf area index (m2 m-2)
@@ -567,6 +568,7 @@ contains
     real :: e_avl_soil                  ! available energy of soil surface (corresponds to net radiation minus ground heat flux) (MJ m-2 d-1)
     real :: e_avl_canopy                ! available energy of canopy (corresponds to net radiation minus ground heat flux (MJ m-2 d-1)
     real :: epsilon                     ! = s/gamma; s: slope of the  
+    real, save :: p_over_eet_memory = 1.0
 
     ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! ! Calculate fraction of absorbed photosynthetically active radiation
@@ -593,7 +595,7 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     pet_soil = epsilon * e_avl_soil / (epsilon + 1.0)
     p_over_eet = pr / pet_soil
-    call damp_variability( p_over_eet, 30.0, p_over_eet_memory )
+    call dampen_variability( p_over_eet, 30.0, p_over_eet_memory )
     out_et%aet_soil = min(p_over_eet_memory, 1.0) * pet_soil
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -875,25 +877,6 @@ contains
     rho = patm / (Rd * tc_air)
 
   end function calc_density_air
-
-
-  subroutine damp_variability( var, tau, var_memory )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Calculates the updated variable accounting for a memory time scale tau.
-    ! Following Eq. 5 in Makela et al. (2004) Tree Physiology 24, 369–376
-    ! 
-    ! d(var_memory) / dt = (1 / tau) * var - var_memory
-    ! 
-    !-------------------------------------------------------------------------
-    ! arguments
-    real, intent(in)            :: var           ! fast-varying variable
-    real, intent(in), parameter :: tau           ! memory e-folding time scale (d)
-    real, intent(inout)         :: var_memory    ! damped (low-pass filtered) variable
-
-    dvar = (1.0/tau) * (var - var_memory)
-    var_memory = var_memory + dvar 
-
-  end subroutine damp_variability
 
   
   function get_snow_rain( pr, sn, tc, snow ) result( out_snow_rain )
