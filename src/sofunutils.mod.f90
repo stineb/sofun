@@ -979,18 +979,6 @@ contains
 
     patm = kPo * (1.0 - kL * elv / kTo) ** (kG * kMa * 1.e-3 / (kR * kL))
 
-    ! ! xxx debug
-    ! print*,'calc_patm():'
-    ! print*,'kPo   ', kPo
-    ! print*,'kL    ', kL 
-    ! print*,'elv   ', elv
-    ! print*,'kTo   ', kTo
-    ! print*,'kG    ', kG
-    ! print*,'kMa   ', kMa
-    ! print*,'kR    ', kR
-    ! print*,'patm  ', patm
-    ! ! stop
-
   end function calc_patm
 
 

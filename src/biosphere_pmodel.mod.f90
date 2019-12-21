@@ -49,8 +49,6 @@ contains
 
     ! local variables
     integer :: dm, moy, jpngr, doy
-    real, dimension(nmonth) :: mtemp                 ! monthly mean air temperature (deg C)
-    real, dimension(nmonth) :: mvpd                  ! monthly mean vapour pressure deficit (Pa)
     logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
     logical, parameter      :: verbose = .false.     ! change by hand for debugging etc.
 
