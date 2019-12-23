@@ -126,6 +126,7 @@ DEBUGFLAGS += -I$(NETCDF_INC)
 EXE                 = runsofun
 SPLASH_EXE          = runsplash
 SWBM_EXE            = runswbm
+LM3PPA_EXE          = runlm3ppa
 PMODEL_EXE          = runpmodel
 PMODEL_DEMO_EXE     = rundemo_pmodel
 PMODEL_SWBM_EXE     = runpmodel_swbm
@@ -216,6 +217,11 @@ cmodel_simsuite:
 	 $(MAKE) cmodel_simsuite -C src
 	 $(FCOM) -o $(CMODEL_SIMSUITE_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
 
+# implementation of the ForestESS model  
+lm3ppa:
+	 $(MAKE) lm3ppa -C src
+	 $(FCOM) -o $(LM3PPA_EXE) $(COMPFLAGS) $(ARCHIVES) $(LIBS)
+
 # reduced model setup: fixed allocation, no litter, soil and inorganic C and N dynamics
 tmodel: 
 	 $(MAKE) tmodel -C src
@@ -229,7 +235,7 @@ cnmodel:
 # clean: remove exe and .o and .do files
 .PHONY: clean
 clean:
-	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(GPMODEL_EXE) $(GSWBM_EXE) $(GSPLASH_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE) $(CALIB_EXE) $(CMODEL_SIMSUITE_EXE)  $(PMODEL_SIMSUITE_EXE)
+	-rm $(EXE) $(SPLASH_EXE) $(SWBM_EXE) $(PMODEL_EXE) $(GPMODEL_EXE) $(GSWBM_EXE) $(GSPLASH_EXE) $(CMODEL_EXE) $(TMODEL_EXE) $(CNMODEL_EXE) $(CALIB_EXE) $(CMODEL_SIMSUITE_EXE) $(PMODEL_SIMSUITE_EXE) $(LM3PPA_EXE)
 	$(MAKE) clean -C src
 # include libraries when necessary
 #	$(MAKE) clean -C lpj/cdfcode
