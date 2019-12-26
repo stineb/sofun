@@ -162,7 +162,7 @@ contains
     ! forcingData(i)%soilwater = 0.8                              ! soil moisture, vol/vol
     !------------------------------------------------------------------------
     forcingyear = modulo(interface%steering%year - 1, interface%params_siml%recycle) + 1998
-    call read_forcingdata( forcingData, datalines, days_data, yr_data, timestep, forcingyear)  ! interface%steering%climateyear
+    call read_forcingdata( forcingData, datalines, days_data, yr_data, timestep, 1998)  ! forcingyear  ! interface%steering%climateyear
     steps_per_day = int( 24.0 / timestep )
 
     !----------------------------------------------------------------
@@ -175,8 +175,6 @@ contains
       !------------------------------------------------------------------------
       ! Parameter initialization: Initialize PFT parameters
       call initialize_PFT_data()
-
-      ! print*,'1'
 
       ! Initialize vegetation tile and plant cohorts
       allocate( vegn )
@@ -516,7 +514,7 @@ contains
         end do monthloop
 
         !----------------------------------------------------------------
-        ! collect annual output
+        ! Annual calls
         !----------------------------------------------------------------
 
         ! if (.not.interface%params_siml%is_calib) then
@@ -549,10 +547,10 @@ contains
           cc => vegn%cohorts(i)
           NPPtree = cc%seedC + cc%NPPleaf + cc%NPProot + cc%NPPwood
 
-          fseed = cc%seedC/NPPtree
-          fleaf = cc%NPPleaf/NPPtree
-          froot = cc%NPProot/NPPtree
-          fwood = cc%NPPwood/NPPtree
+          fseed = cc%seedC   / NPPtree
+          fleaf = cc%NPPleaf / NPPtree
+          froot = cc%NPProot / NPPtree
+          fwood = cc%NPPwood / NPPtree
 
           dDBH = (cc%DBH - cc%DBH_ys) * 1000.0
 
@@ -607,12 +605,13 @@ contains
         call vegn_annualLAImax_update(vegn)
 
         !---------------------------------------------
-        ! Reproduction and mortality: initilising a new cohort based on 
+        ! Reproduction and mortality
         !---------------------------------------------
-        ! seed C and germination probability
+        ! seed C and germination probability (~Eq. 1 in Weng et al., 2015 BG)
         call vegn_reproduction(vegn)
 
         ! Natural mortality (reducing number of individuals 'nindivs')
+        ! (~Eq. 2 in Weng et al., 2015 BG)
         call vegn_nat_mortality(vegn, real(seconds_per_year))
 
         ! Kill all individuals in a cohort if NSC falls below critical point
