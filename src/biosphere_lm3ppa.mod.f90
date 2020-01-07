@@ -12,7 +12,10 @@ module md_biosphere
   ! use md_soiltemp, only: getout_daily_soiltemp, soiltemp, initoutput_soiltemp
   ! use md_sofunutils, only: calc_patm
 
-  use esdvm_mod
+  use datatypes
+  use esdvm
+  use soil_mod
+
   use md_params_core
 
   implicit none
@@ -23,8 +26,9 @@ module md_biosphere
   !----------------------------------------------------------------
   ! ForestESS stuff
   !----------------------------------------------------------------
-  type(tile_type),   pointer :: vegn
-  type(cohort_type), pointer :: cp,cc
+   type(vegn_tile_type),  pointer :: vegn
+   type(soil_tile_type),  pointer :: soil
+   type(cohort_type),     pointer :: cp, cc
 
   ! !----------------------------------------------------------------
   ! ! Module-specific (private) variables
@@ -61,27 +65,34 @@ contains
     logical, parameter      :: verbose = .false.       ! change by hand for debugging etc.
 
     !----------------------------------------------------------------
-    ! ForestESS stuff
+    ! Biome-E stuff
     !----------------------------------------------------------------
-    integer,parameter :: rand_seed = 86456
-    integer,parameter :: totalyears = 10
-    integer,parameter :: nCohorts = 1
-    integer           :: datalines                                          ! the total lines in forcing data file
-    integer           :: yr_data                                            ! Years of the forcing data
-    integer           :: days_data                                          ! days of the forcing data
-    integer           :: steps_per_day                                      ! 24 or 48
-    real              :: timestep                                           ! hour, Time step of forcing data, usually hourly (1.0)
-    real              :: tsoil, soil_theta
-    real              :: NPPtree, fseed, fleaf, froot, fwood                 ! for output
-    real              :: dDBH                                               ! yearly growth of DBH, mm
-    character(len=50) :: plantcohorts, plantCNpools, soilCNpools, allpools  ! output file names
-    logical           :: new_annual_cycle = .False.
-    integer           :: istat1, istat2, istat3
-    integer           :: year0, year1, iyears
-    integer           :: totyears, totdays
-    integer           :: i, j, k, idays, idoy
-    integer           :: idata
-    integer, save     :: simu_steps
+    integer, parameter :: rand_seed = 86456
+    integer, parameter :: totalyears = 10
+    integer, parameter :: nCohorts = 1
+    integer :: yr_data   ! Years of the forcing data
+    integer :: days_data ! days of the forcing data
+    integer :: steps_per_day ! 24 or 48
+    real    :: timestep  ! hour, Time step of forcing data, usually hourly (1.0)
+    real    :: tsoil, soil_theta
+    real    :: NPPtree,fseed, fleaf, froot, fwood ! for output
+    real    :: dDBH ! yearly growth of DBH, mm
+    real    :: plantC,plantN, soilC, soilN
+    real    :: dSlowSOM  ! for multiple tests only
+    character(len=150) :: plantcohorts, plantCNpools, soilCNpools, allpools, faststepfluxes  ! output file names
+    logical :: new_annual_cycle = .False.
+    logical :: switch = .True.
+    integer :: istat1, istat2, istat3
+    integer :: year0,  year1, iyears
+    integer :: fno1, fno2, fno3, fno4, fno5 ! output files
+    integer :: totyears, totdays
+    integer :: i, j, k, idays, idoy
+    integer :: idata
+    integer, save :: simu_steps, datalines
+    character(len=50) :: filepath_out, filesuffix
+    character(len=50) :: parameterfile(10), chaSOM(10)
+    character(len=50) :: namelistfile = 'params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+    !  !'parameters_Konza.nml' !
 
     ! xxx debug
     integer :: idx, forcingyear
@@ -90,41 +101,20 @@ contains
     ! Create output files
     ! XXX add this to output instead
     !------------------------------------------------------------------------
-    plantcohorts = 'Annual_cohorts.txt'
-    plantCNpools = 'Plant_C_N_pools.csv'  ! daily
-    soilCNpools  = 'Soil_C_N_pools.csv'
-    allpools     = 'AnnualEcosystemDynamics.csv'
+    filepath_out = 'output/'
+    filesuffix   = 'test.csv' ! tag for simulation experiments
+    plantcohorts = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)
+    plantCNpools = trim(filepath_out)//'Cohorts_daily'//trim(filesuffix)  ! daily
+    soilCNpools  = trim(filepath_out)//'Ecosystem_daily'//trim(filesuffix)
+    allpools     = trim(filepath_out)//'Ecosystem_yearly'//trim(filesuffix)
+    faststepfluxes = trim(filepath_out)//'PhotosynthesisDynamics'//trim(filesuffix) ! hourly
 
-    open(101,file=plantcohorts, ACTION='write', IOSTAT=istat1)
-    open(102,file=plantCNpools, ACTION='write', IOSTAT=istat2)
-    open(103,file=soilCNpools,  ACTION='write', IOSTAT=istat3)
-    open(104,file=allpools,     ACTION='write', IOSTAT=istat3)
-    
-    ! write header
-    write(101,'(3(a5,","),25(a9,","))')               &
-    'cID','PFT','layer','density', 'f_layer',    &
-    'dDBH','dbh','height','Acrown','totwood',    &
-    'nsc', 'NSN',                                &
-    'NPPtr','f_seed','f_leaf','f_root','f_wood', &
-    'GPP-yr','NPP-yr','Ra_yr','N_uptk','maxLAI'
-
-
-    write(102,'(5(a5,","),25(a8,","))')               &
-    'year','doy','cID','PFT',                    &
-    'layer','density', 'f_layer', 'LAI',         &
-    'NSC','seedC','leafC','rootC','SW-C','HW-C', &
-    'NSN','seedN','leafN','rootN','SW-N','HW-N'
-
-    write(103,'(2(a5,","),25(a8,","))')  'year','doy',         &
-    'GPP', 'NPP', 'Rh',   &
-    'McrbC', 'fineL', 'struL', 'McrbN', 'fineN', 'struN', &
-    'mineralN', 'N_uptk'
-
-    write(104,'(1(a5,","),25(a8,","))')  'year',               &
-    'GPP', 'NPP', 'Rh',                                   &
-    'NSC','SeedC','leafC','rootC','SW-C', 'HW-C','LAI',   &
-    'McrbC', 'fineL', 'struL', 'McrbN', 'fineN', 'struN', &
-    'mineralN', 'N_uptk'
+    fno1=91; fno2=101; fno3=102; fno4=103; fno5=104
+    open(fno1, file=trim(faststepfluxes),ACTION='write', IOSTAT=istat1)
+    open(fno2,file=trim(plantcohorts),   ACTION='write', IOSTAT=istat1)
+    open(fno3,file=trim(plantCNpools),   ACTION='write', IOSTAT=istat2)
+    open(fno4,file=trim(soilCNpools),    ACTION='write', IOSTAT=istat3)
+    open(fno5,file=trim(allpools),       ACTION='write', IOSTAT=istat3)
 
 
     !------------------------------------------------------------------------
@@ -161,55 +151,90 @@ contains
     ! forcingData(i)%pressure  = input_data(8,i)                  ! pa
     ! forcingData(i)%soilwater = 0.8                              ! soil moisture, vol/vol
     !------------------------------------------------------------------------
-    forcingyear = modulo(interface%steering%year - 1, interface%params_siml%recycle) + 1998
-    call read_forcingdata( forcingData, datalines, days_data, yr_data, timestep, 1998)  ! forcingyear  ! interface%steering%climateyear
-    steps_per_day = int( 24.0 / timestep )
-
+    
     !----------------------------------------------------------------
     ! INITIALISATIONS
     !----------------------------------------------------------------
     if (interface%steering%init) then
 
+      ! head
+      write(fno1,'(5(a8,","),25(a12,","))')      &
+          'year','doy','hour','rad',            &
+          'Tair','Prcp', 'GPP', 'Resp',         &
+          'Transp','Evap','Runoff','Soilwater', &
+          'wcl','FLDCAP','WILTPT'
+      write(fno2,'(3(a5,","),25(a9,","))')            &
+          'cID','PFT','layer','density', 'f_layer',  &
+          'dDBH','dbh','height','Acrown',            &
+          'wood','nsc', 'NSN','NPPtr','seed',        &
+          'NPPL','NPPR','NPPW','GPP-yr','NPP-yr',    &
+          'N_uptk','N_fix','maxLAI'
+
+      write(fno3,'(5(a5,","),25(a8,","))')              &
+          'year','doy','hour','cID','PFT',             &
+          'layer','density', 'f_layer', 'LAI',         &
+          'gpp','resp','transp',                       &
+          'NSC','seedC','leafC','rootC','SW-C','HW-C', &
+          'NSN','seedN','leafN','rootN','SW-N','HW-N'
+
+      write(fno4,'(2(a5,","),55(a10,","))')  'year','doy',    &
+          'Tc','Prcp', 'totWs',  'Trsp', 'Evap','Runoff',    &
+          'ws1','ws2','ws3', 'LAI','GPP', 'Rauto', 'Rh',     &
+          'NSC','seedC','leafC','rootC','SW-C','HW-C',       &
+          'NSN','seedN','leafN','rootN','SW-N','HW-N',       &
+          'McrbC', 'fastSOM',   'slowSOM',                   &
+          'McrbN', 'fastSoilN', 'slowSoilN',                 &
+          'mineralN', 'N_uptk'
+
+      write(fno5,'(1(a5,","),80(a12,","))')  'year',              &
+          'CAI','LAI','GPP', 'Rauto',   'Rh',                    &
+          'rain','SiolWater','Transp','Evap','Runoff',           &
+          'plantC','soilC',    'plantN', 'soilN','totN',         &
+          'NSC', 'SeedC', 'leafC', 'rootC', 'SapwoodC', 'WoodC', &
+          'NSN', 'SeedN', 'leafN', 'rootN', 'SapwoodN', 'WoodN', &
+          'McrbC','fastSOM',   'SlowSOM',                        &
+          'McrbN','fastSoilN', 'slowSoilN',                      &
+          'mineralN', 'N_fxed','N_uptk','N_yrMin','N_P2S','N_loss', &
+          'seedC','seedN','Seedling-C','Seedling-N'
+
       !------------------------------------------------------------------------
       ! Initialisations
       !------------------------------------------------------------------------
       ! Parameter initialization: Initialize PFT parameters
-      call initialize_PFT_data()
+      call initialize_PFT_data(namelistfile)
 
       ! Initialize vegetation tile and plant cohorts
-      allocate( vegn )
-      call initialize_vegn_tile( vegn, nCohorts )
-
-      ! total years of model run
-      totyears = model_run_years
-      totdays  = INT( totyears / yr_data + 1) * days_data
-
+      allocate(vegn)
+      call initialize_vegn_tile(vegn,nCohorts,namelistfile)
+      
       ! Sort and relayer cohorts
       call relayer_cohorts(vegn)
+      call Zero_diagnostics(vegn)
 
-      ! ----- model run ----------
-      year0      = forcingData(1)%year
-      iyears     = 1
-      idoy       = 0
+      !------------------------------------------------------------------------
+      ! Read in forcing data
+      ! This reads it all into memory and then extracts from the huge array in
+      ! daily/hourly steps
+      !------------------------------------------------------------------------
+      !call read_FACEforcing(forcingData,datalines,days_data,yr_data,timestep)
+      call read_NACPforcing(forcingData,datalines,days_data,yr_data,timestep)
+      steps_per_day = int(24.0/timestep)
+      dt_fast_yr = 1.0/(365.0 * steps_per_day)
+      step_seconds = 24.0*3600.0/steps_per_day ! seconds_per_year * dt_fast_yr
+      write(*,*)steps_per_day,dt_fast_yr,step_seconds
+
+      ! total years of model run
+      totyears = model_run_years   ! xxx conform with sofun
+      ! totdays  = INT(totyears/yr_data+1)*days_data
+      ! equi_days = totdays - days_data
+
+      year0 = forcingData(1)%year
+      iyears = 1
+      idoy   = 0
       simu_steps = 0
-      call vegn_annual_diagnostics_zero(vegn)
 
-      ! output initial cohorts
-      write(*,*)"Initial cohorts:", vegn%n_cohorts
-      write(*,'(3(I6,","))')0, vegn%n_cohorts
-      do i=1,vegn%n_cohorts
-        cc => vegn%cohorts(i)
-        write(*,*)i,vegn%cohorts(i)%species,vegn%cohorts(i)%height,vegn%cohorts(i)%crownarea
-        dDBH = 0.0  ! mm in diameter
-        write(*,'(3(I5,","),1(F9.1,","),25(F9.3,","))')          &
-              cc%ccID,cc%species,cc%layer,                       &
-              cc%nindivs*10000, cc%layerfrac, dDBH,              &
-              cc%dbh,cc%height,cc%crownarea,                     &
-              cc%bsw+cc%bHW,cc%nsc,cc%NSN,                       &
-              NPPtree,fseed, fleaf, froot, fwood,                &
-              cc%annualGPP,cc%annualNPP, cc%annualResp,          &
-              cc%N_up_yr*1000,spdata(cc%species)%laimax
-      enddo
+      print*,'1'
+
 
       !   !----------------------------------------------------------------
       !   ! GET MODEL PARAMETERS
@@ -329,26 +354,41 @@ contains
             vegn%Tc_daily = 0.0
             tsoil         = 0.0
 
+
             do i=1,steps_per_day
 
-               idata         = MOD(simu_steps, datalines)+1
-               year0         = forcingData(idata)%year  ! Current year
-               vegn%Tc_daily = vegn%Tc_daily + forcingData(idata)%Tair
-               tsoil         = tsoil + forcingData(idata)%tsoil
-               simu_steps    = simu_steps + 1
+              idata = MOD(simu_steps, datalines)+1
+              year0 = forcingData(idata)%year  ! Current year
+              vegn%Tc_daily = vegn%Tc_daily + forcingData(idata)%Tair
+              tsoil         = forcingData(idata)%tsoil
+              simu_steps = simu_steps + 1
 
-               ! fast-step calls
-               ! ***** none ******
-               ! leaf photosynthesis
-               ! transpiration
-               ! plant respiration
-               ! soil water dynamics
+              !! fast-step calls, hourly or half-hourly
+              ! print*,'B i ', i
+              ! print*,'idata ', idata
+              ! print*,'forcingData(idata)%year', forcingData(idata)%year
+              ! print*,'forcingData(idata)%doy', forcingData(idata)%doy
+              ! print*,'forcingData(idata)%hod', forcingData(idata)%hod
+              ! print*,'forcingData(idata)%PAR', forcingData(idata)%PAR
+              ! print*,'forcingData(idata)%radiation', forcingData(idata)%radiation
+              ! print*,'forcingData(idata)%Tair', forcingData(idata)%Tair
+              ! print*,'forcingData(idata)%Tsoil', forcingData(idata)%Tsoil
+              ! print*,'forcingData(idata)%rain', forcingData(idata)%rain
+              ! print*,'forcingData(idata)%windU', forcingData(idata)%windU
+              ! print*,'forcingData(idata)%P_air', forcingData(idata)%P_air
+              ! print*,'forcingData(idata)%RH', forcingData(idata)%RH
+              ! print*,'forcingData(idata)%CO2', forcingData(idata)%CO2
+              ! print*,'forcingData(idata)%soilwater', forcingData(idata)%soilwater
 
-            enddo
+              call vegn_CNW_budget_fast(vegn,forcingData(idata))
+              ! diagnostics
+              call hourly_diagnostics(vegn,forcingData(idata),iyears,idoy,i,idays,fno1)
 
-            vegn%Tc_daily = vegn%Tc_daily / steps_per_day
-            tsoil         = tsoil / steps_per_day
-            soil_theta    = vegn%soil_theta
+            enddo ! hourly or half-hourly
+            vegn%Tc_daily = vegn%Tc_daily/steps_per_day
+            tsoil         = tsoil/steps_per_day
+            soil_theta    = vegn%thetaS
+
 
             ! if (simu_steps==17520) then
             !   print*,'vegn%n_cohorts', vegn%n_cohorts
@@ -363,38 +403,18 @@ contains
             !-------------------------------------------------
             ! Daily calls
             !-------------------------------------------------
+            call daily_diagnostics(vegn,forcingData(idata),iyears,idoy,idays,fno3,fno4)
+            !write(*,*)iyears,idoy
+
             ! Determine start and end of season and maximum leaf (root) mass
             call vegn_phenology(vegn,j)
 
-            ! Determine 'carbon_gain' available for growth from NSC
-            call vegn_C_N_budget(vegn, tsoil, soil_theta)
-
             ! Kill all individuals of a cohort if NSC falls below threshold
-            call vegn_starvation(vegn)
+            !call vegn_starvation(vegn)
 
             ! Produce new biomass from 'carbon_gain' (is zero afterwards)
             call vegn_growth_EW(vegn)
 
-            ! daily output
-            do i = 1, vegn%n_cohorts
-
-              cc => vegn%cohorts(i)
-              ! cohorts
-              write(102,'(5(I5,","),1(F8.1,","),6(F8.3,","),2(F8.2,","),25(F8.2,","))')  &
-                  iyears,idoy,cc%ccID,cc%species,cc%layer,   &
-                  cc%nindivs*10000, cc%layerfrac, cc%LAI, &
-                  cc%NSC, cc%seedC, cc%bl, cc%br, cc%bsw, cc%bHW, &
-                  cc%NSN*1000, cc%seedN*1000, cc%leafN*1000, &
-                  cc%rootN*1000,cc%sapwdN*1000,cc%woodN*1000
-
-            enddo
-
-            ! Tile level, daily
-            write(103,'(2(I5,","),15(F8.4,","))') iyears, idoy,  &
-                  vegn%GPP, vegn%NPP, vegn%Rh, &
-                  vegn%MicrobialC, vegn%metabolicL, vegn%structuralL, &
-                  vegn%MicrobialN*1000, vegn%metabolicN*1000, vegn%structuralN*1000, &
-                  vegn%mineralN*1000,   vegn%N_uptake*1000
 
             ! !----------------------------------------------------------------
             ! ! initialise daily updated variables 
@@ -532,103 +552,42 @@ contains
 
         idoy = 0
 
-        write(101,'(2(I6,","),1(F9.2,","))') iyears, vegn%n_cohorts,vegn%annualN*1000
-        write(*,  '(2(I6,","),1(F9.2,","))') iyears, vegn%n_cohorts,vegn%annualN*1000
+        print*,'sim. year  ', iyears
+        print*,'real year: ', year0
 
-        ! output yearly variables
-        write(*,'(3(a5,","),25(a9,","))') &
-            'chtID','PFT','layer','density', 'f_layer',  &
-            'dDBH','dbh','height','Acrown', &
-            'wood','nsc', 'NSN','NPPtr',     &
-            'NPPL','NPPR','NPPW','GPP-yr','NPP-yr','N_uptk','spLAI'
+        !call annual_calls(vegn)
+        if(update_annualLAImax) call vegn_annualLAImax_update(vegn)
 
-        do i = 1, vegn%n_cohorts
-
-          cc => vegn%cohorts(i)
-          NPPtree = cc%seedC + cc%NPPleaf + cc%NPProot + cc%NPPwood
-
-          fseed = cc%seedC   / NPPtree
-          fleaf = cc%NPPleaf / NPPtree
-          froot = cc%NPProot / NPPtree
-          fwood = cc%NPPwood / NPPtree
-
-          dDBH = (cc%DBH - cc%DBH_ys) * 1000.0
-
-          write(101,'(3(I5,","),1(F9.1,","),5(F9.3,","),1(F9.2,","),20(F9.3,","))')       &
-              cc%ccID,cc%species,cc%layer,                       &
-              cc%nindivs*10000, cc%layerfrac, dDBH,              &
-              cc%dbh,cc%height,cc%crownarea,                     &
-              cc%bsw+cc%bHW,cc%nsc,cc%NSN,                       &
-              NPPtree,fseed, fleaf, froot, fwood,                &
-              cc%annualGPP,cc%annualNPP, cc%annualResp,          &
-              cc%N_up_yr*1000,spdata(cc%species)%laimax
-
-          ! Screen output
-          write(*,'(3(I5,","),1(F9.1,","),5(F9.3,","),1(F9.2,","),20(F9.3,","))')       &
-              cc%ccID,cc%species,cc%layer,                        &
-              cc%nindivs*10000, cc%layerfrac,dDBH,                &
-              cc%dbh,cc%height,cc%crownarea,                      &
-              cc%bsw+cc%bHW,cc%nsc,cc%NSN,                        &
-              fseed, fleaf, froot, fwood,                         &
-              cc%annualGPP,cc%annualNPP,                          &
-              cc%N_up_yr*1000,      &
-              spdata(cc%species)%laimax
-
-          ! Vegn pools:
-          vegn%maxNSC     = vegn%maxNSC   + cc%NSC      * cc%nindivs
-          vegn%maxSeedC   = vegn%maxSeedC + cc%seedC    * cc%nindivs
-          vegn%maxleafC   = vegn%maxleafC + cc%bl       * cc%nindivs
-          vegn%maxrootC   = vegn%maxrootC + cc%br       * cc%nindivs
-          vegn%SapwoodC   = vegn%SapwoodC + cc%bsw      * cc%nindivs
-          vegn%WoodC      = vegn%WoodC    + cc%bHW      * cc%nindivs
-          vegn%maxLAI     = vegn%maxLAI   + cc%leafarea * cc%nindivs
-              
-        enddo
-
-        ! tile pools
-        write(104,'(1(I5,","),13(F8.4,","),6(F8.2,","),2(F8.3,","))') &
-              iyears,       &
-              vegn%annualGPP, vegn%annualNPP, vegn%annualRh, &
-              vegn%maxNSC, vegn%maxSeedC, vegn%maxleafC, vegn%maxrootC,  &
-              vegn%SapwoodC, vegn%WoodC, vegn%maxLAI,                    &
-              vegn%MicrobialC, vegn%metabolicL, vegn%structuralL, &
-              vegn%MicrobialN*1000, vegn%metabolicN*1000, vegn%structuralN*1000, &
-              vegn%mineralN*1000,   vegn%accu_Nup*1000
-
-        ! 'year',                 &
-        !'NSC','SeedC','leafC', 'rootC', 'SW-C',  'HW-C', 'LAI', &
-        !'McrbC', 'fineL', 'struL', 'McrbN', 'fineN', 'struN',   &
-        !'mineralN', 'N_uptake'
-
-        ! ---------- annual call -------------
-        ! update the LAImax of each PFT according to available N for next year
-        call vegn_annualLAImax_update(vegn)
+        call annual_diagnostics(vegn,iyears,fno2,fno5)
 
         !---------------------------------------------
         ! Reproduction and mortality
-        !---------------------------------------------
-        ! seed C and germination probability (~Eq. 1 in Weng et al., 2015 BG)
-        call vegn_reproduction(vegn)
+        !---------------------------------------------        
+        ! Kill all individuals in a cohort if NSC falls below critical point
+        call vegn_annual_starvation(vegn)
 
         ! Natural mortality (reducing number of individuals 'nindivs')
         ! (~Eq. 2 in Weng et al., 2015 BG)
         call vegn_nat_mortality(vegn, real(seconds_per_year))
 
-        ! Kill all individuals in a cohort if NSC falls below critical point
-        call vegn_starvation(vegn)
+        ! seed C and germination probability (~Eq. 1 in Weng et al., 2015 BG)
+        call vegn_reproduction(vegn)
 
         !---------------------------------------------
         ! Re-organize cohorts
         !---------------------------------------------
+        call kill_lowdensity_cohorts(vegn)
         call relayer_cohorts(vegn)
         call vegn_mergecohorts(vegn)
-        call kill_lowdensity_cohorts(vegn)
 
         !---------------------------------------------
-        ! set annual variables zero
+        ! Set annual variables zero
         !---------------------------------------------
-        call vegn_annual_diagnostics_zero(vegn)
+        call Zero_diagnostics(vegn)
+
+        ! update the years of model run
         iyears = iyears + 1
+        print*,'year ', iyears
 
       end if
     end do gridcellloop
@@ -658,7 +617,8 @@ contains
       ! deallocate( plant )
       ! deallocate( plant_fluxes )
 
-      ! deallocate(cc)
+      !deallocate(cc)
+      close(91)
       close(101)
       close(102)
       close(103)
@@ -672,119 +632,200 @@ contains
 
   end function biosphere_annual
 
-
-  subroutine read_forcingdata(forcingData,datalines,days_data,yr_data,timestep,readyear)
-
-    ! read in forcing data (Users need to write their own data input procedure)
+  !========================================================================
+  ! read in forcing data (Users need to write their own data input procedure)
+  subroutine read_FACEforcing(forcingData,datalines,days_data,yr_data,timestep)
     type(climate_data_type),pointer,intent(inout) :: forcingData(:)
     integer,intent(inout) :: datalines,days_data,yr_data
-    integer, intent(in)   :: readyear
     real, intent(inout)   :: timestep
-
     !------------local var -------------------
     type(climate_data_type), pointer :: climateData(:)
-    character(len=50)  filepath_in
-    character(len=50)  climfile
-    character(len=50)  parafile       ! parameter file
     character(len=80)  commts
-    character(len=4)  readyear_char
-    integer, parameter :: iiterms=9        ! MDK data for Oak Ridge input
-    integer, parameter :: ilines=12*366*24 ! the maxmum records of Oak Ridge FACE, 1999~2007
+    integer, parameter :: niterms=9       ! MDK data for Oak Ridge input
+    integer, parameter :: ilines=22*366*24 ! the maxmum records of Oak Ridge FACE, 1999~2007
     integer,dimension(ilines) :: year_data
     real,   dimension(ilines) :: doy_data,hour_data
-    real input_data(iiterms,ilines)
+    real input_data(niterms,ilines)
     real inputstep
     integer :: istat1,istat2,istat3
     integer :: doy,idays
     integer :: i,j,k
     integer :: m,n
 
-    write(readyear_char,999) readyear
+    climfile=trim(filepath_in)//trim(climfile)
 
-    filepath_in = 'input/'
-    climfile    = 'Temperate_forcing_'//trim(readyear_char)//'.txt'
-    climfile    = trim(filepath_in)//trim(climfile)
-
-    print*,'Reading forcing from ', trim(climfile)
-
-    ! open forcing data
+  ! open forcing data
     open(11,file=climfile,status='old',ACTION='read',IOSTAT=istat2)
     write(*,*)istat2
-    ! skip 2 lines of input met data file
+  ! skip 2 lines of input met data file
     read(11,'(a160)') commts
-    ! read(11,'(a160)') commts ! MDK data only has one line comments
+  ! read(11,'(a160)') commts ! MDK data only has one line comments
     m       = 0  ! to record the lines in a file
     idays   = 1  ! the total days in a data file
-    yr_data = 0  ! to record years of a dataset
-
-    ! read forcing files
-    do
-      m=m+1
-      read(11,*,IOSTAT=istat3)year_data(m),doy_data(m),hour_data(m),   &
-                              (input_data(n,m),n=1,iiterms)
-      if (istat3<0) exit
-      if (m == 1) then
-          doy = doy_data(m)
-      else
-          doy = doy_data(m-1)
-      endif
-      if (doy /= doy_data(m)) idays = idays + 1
-
+    yr_data = 0 ! to record years of a dataset
+    do    ! read forcing files
+        m=m+1
+        read(11,*,IOSTAT=istat3)year_data(m),doy_data(m),hour_data(m),   &
+                                (input_data(n,m),n=1,niterms)
+        if(istat3<0)exit
+        if(m == 1) then
+            doy = doy_data(m)
+        else
+            doy = doy_data(m-1)
+        endif
+        if(doy /= doy_data(m)) idays = idays + 1
+        !write(*,*)year_data(m),doy_data(m),hour_data(m)
     enddo ! end of reading the forcing file
 
     timestep = hour_data(2) - hour_data(1)
-    write(*,*)"forcing",datalines,yr_data,timestep
+    write(*,*)"forcing",datalines,yr_data,timestep,dt_fast_yr
     if (timestep==1.0)then
-      write(*,*)"the data freqency is hourly"
+        write(*,*)"the data freqency is hourly"
     elseif(timestep==0.5)then
-      write(*,*)"the data freqency is half hourly"
+        write(*,*)"the data freqency is half hourly"
     else
-      write(*,*)"Please check time step!"
-      stop
+        write(*,*)"Please check time step!"
+        stop
     endif
     close(11)    ! close forcing file
-
-    ! Put the data into forcing 
+  ! Put the data into forcing 
     datalines = m - 1
     days_data = idays
     yr_data  = year_data(datalines-1) - year_data(1) + 1
 
     allocate(climateData(datalines))
     do i=1,datalines
-       climateData(i)%year      = year_data(i)                     ! Year
-       climateData(i)%doy       = doy_data(i)                      ! day of the year
-       climateData(i)%hod       = hour_data(i)                     ! hour of the day
-       climateData(i)%PAR       = input_data(1,i)                  ! umol/m2/s
-       climateData(i)%radiation = input_data(2,i)                  ! W/m2
-       climateData(i)%Tair      = input_data(3,i) + 273.16         ! air temperature, K
-       climateData(i)%Tsoil     = input_data(4,i) + 273.16         ! soil temperature, K
-       climateData(i)%RH        = input_data(5,i)                  ! relative humidity
-       climateData(i)%rain      = input_data(6,i)/(timestep * 3600)! kgH2O m-2 s-1
-       climateData(i)%windU     = input_data(7,i)                  ! wind velocity (m s-1)
-       climateData(i)%pressure  = input_data(8,i)                  ! pa
-       climateData(i)%soilwater = 0.8                              ! soil moisture, vol/vol
+       climateData(i)%year      = year_data(i)          ! Year
+       climateData(i)%doy       = doy_data(i)           ! day of the year
+       climateData(i)%hod       = hour_data(i)          ! hour of the day
+       climateData(i)%PAR       = input_data(1,i)       ! umol/m2/s
+       climateData(i)%radiation = input_data(2,i)       ! W/m2
+       climateData(i)%Tair      = input_data(3,i) + 273.16  ! air temperature, K
+       climateData(i)%Tsoil     = input_data(4,i) + 273.16  ! soil temperature, K
+       climateData(i)%RH        = input_data(5,i) * 0.01    ! relative humidity (0.xx)
+       climateData(i)%rain      = input_data(6,i)/(timestep * 3600)! ! kgH2O m-2 s-1
+       climateData(i)%windU     = input_data(7,i)        ! wind velocity (m s-1)
+       climateData(i)%P_air     = input_data(8,i)        ! pa
+       climateData(i)%CO2       = input_data(9,i) * 1.0e-6       ! mol/mol
+       climateData(i)%soilwater = 0.8    ! soil moisture, vol/vol
     enddo
     forcingData => climateData
     write(*,*)"forcing", datalines,days_data,yr_data
+  end subroutine read_FACEforcing
 
-    ! xxx debug
-    ! print*,'forcingData(1)%year      ', forcingData(1)%year      
-    ! print*,'forcingData(1)%doy       ', forcingData(1)%doy       
-    ! print*,'forcingData(1)%hod       ', forcingData(1)%hod       
-    ! print*,'forcingData(1)%PAR       ', forcingData(1)%PAR       
-    ! print*,'forcingData(1)%radiation ', forcingData(1)%radiation 
-    ! print*,'forcingData(1)%Tair      ', forcingData(1)%Tair      
-    ! print*,'forcingData(:)%Tsoil     ', forcingData(:)%Tsoil     
-    ! print*,'forcingData(1)%RH        ', forcingData(1)%RH        
-    ! print*,'forcingData(1)%rain      ', forcingData(1)%rain      
-    ! print*,'forcingData(1)%windU     ', forcingData(1)%windU     
-    ! print*,'forcingData(1)%pressure  ', forcingData(1)%pressure  
-    ! print*,'forcingData(1)%soilwater ', forcingData(1)%soilwater 
-    ! stop
+  !=============================================================
+  ! for reading in NACP site synthesis forcing
+subroutine read_NACPforcing(forcingData,datalines,days_data,yr_data,timestep)
+  type(climate_data_type),pointer,intent(inout) :: forcingData(:)
+  integer,intent(inout) :: datalines,days_data,yr_data
+  real, intent(inout)   :: timestep
+  !------------local var -------------------
+  type(climate_data_type), pointer :: climateData(:)
+  character(len=80)  commts
+  integer, parameter :: niterms=15       ! NACP site forcing
+  integer, parameter :: ilines=22*366*48 ! the maxmum records
+  integer,dimension(ilines) :: year_data
+  real,   dimension(ilines) :: doy_data,hour_data
+  real input_data(niterms,ilines)
+  real inputstep
+  integer :: istat1,istat2,istat3
+  integer :: doy,idays
+  integer :: i,j,k
+  integer :: m,n
 
-    999  format (I4.4)
+  ! xxx try
+  integer :: idx_climatedata
 
-  end subroutine read_forcingdata
+  climfile=trim(filepath_in)//trim(climfile)
+  write(*,*)'inputfile: ',climfile
+! open forcing data
+  open(11,file=climfile,status='old',ACTION='read',IOSTAT=istat2)
+  write(*,*)istat2
+! skip 2 lines of input met data file
+  read(11,'(a160)') commts
+  read(11,'(a160)') commts
+  m       = 0  ! to record the lines in a file
+  idays   = 1  ! the total days in a data file
+  yr_data = 0 ! to record years of a dataset
+  do    ! read forcing files
+      m=m+1
+      read(11,*,IOSTAT=istat3)year_data(m),doy_data(m),hour_data(m),   &
+                              (input_data(n,m),n=1,niterms)
+
+      if(istat3<0)exit
+      if(m == 1) then
+          doy = doy_data(m)
+      else
+          doy = doy_data(m-1)
+      endif
+      if(doy /= doy_data(m)) idays = idays + 1
+      !write(*,*)year_data(m),doy_data(m),hour_data(m)
+      ! discard one line
+      !read(11,*,IOSTAT=istat3)year_data(m),doy_data(m),hour_data(m),   &
+      !                        (input_data(n,m),n=1,niterms)
+  enddo ! end of reading the forcing file
+
+  timestep = hour_data(2) - hour_data(1)
+  write(*,*)"forcing",datalines,yr_data,timestep,dt_fast_yr
+  if (timestep==1.0)then
+      write(*,*)"the data freqency is hourly"
+  elseif(timestep==0.5)then
+      write(*,*)"the data freqency is half hourly"
+  else
+      write(*,*)"Please check time step!"
+      stop
+  endif
+  close(11)    ! close forcing file
+! Put the data into forcing 
+  datalines = m - 1
+  days_data = idays
+  yr_data  = year_data(datalines-1) - year_data(1) + 1
+
+  allocate(climateData(datalines))
+
+  ! xxx try
+  allocate(climateData(datalines - 96))
+  days_data = days_data - 2
+
+  idx_climatedata = 0
+  do i=1,datalines
+
+     if (.not. (doy_data(i)==60 .and. (year_data(i)==2000 .or. year_data(i)==2004))) then
+  
+       idx_climatedata = idx_climatedata + 1
+
+       climateData(idx_climatedata)%year      = year_data(i)          ! Year
+       climateData(idx_climatedata)%doy       = doy_data(i)           ! day of the year
+       climateData(idx_climatedata)%hod       = hour_data(i)          ! hour of the day
+       climateData(idx_climatedata)%PAR       = input_data(11,i)*2.0  ! umol/m2/s
+       climateData(idx_climatedata)%radiation = input_data(11,i)      ! W/m2
+       climateData(idx_climatedata)%Tair      = input_data(1,i)       ! air temperature, K
+       climateData(idx_climatedata)%Tsoil     = input_data(1,i)       ! soil temperature, K
+       climateData(idx_climatedata)%rain      = input_data(7,i)       ! kgH2O m-2 s-1
+       climateData(idx_climatedata)%windU     = input_data(5,i)        ! wind velocity (m s-1)
+       climateData(idx_climatedata)%P_air     = input_data(9,i)        ! pa
+       climateData(idx_climatedata)%RH        = input_data(3,i)/mol_h2o*mol_air* & ! relative humidity (0.xx)
+                                  climateData(idx_climatedata)%P_air/esat(climateData(idx_climatedata)%Tair-273.16)
+       climateData(idx_climatedata)%CO2       = input_data(15,i) * 1.0e-6       ! mol/mol
+       climateData(idx_climatedata)%soilwater = 0.8    ! soil moisture, vol/vol
+
+       if (abs(climateData(idx_climatedata)%hod-12.0)<0.001) then
+         print*,'A year, doy, Tair ', climateData(idx_climatedata)%year, &
+          climateData(idx_climatedata)%doy, &
+          climateData(idx_climatedata)%Tair
+       end if 
+
+     end if
+
+  enddo
+  forcingData => climateData
+
+  ! xxx try
+  datalines = datalines - 96
+
+  write(*,*)"forcing", datalines,days_data,yr_data
+
+end subroutine read_NACPforcing
 
 
 end module md_biosphere
