@@ -66,7 +66,7 @@ program main
   params_domain = getpar_domain( trim(interface%params_siml%sitename) )
 
   !----------------------------------------------------------------
-  ! GET GRID INFORMATION
+  ! GET GRID INFORMATION test 
   ! longitude, latitude, elevation
   !----------------------------------------------------------------
   ! temporarily get full grid information (full lon-lat-array)
