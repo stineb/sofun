@@ -152,7 +152,7 @@ program main
     nml_unit = 999
     open(nml_unit, file=trim(namelistfile), form='formatted', action='read', status='old')
     read (nml_unit, nml=vegn_parameters_nml, iostat=io, end=10)
-    10    close (nml_unit)
+  10    close (nml_unit)
   endif
   write(*,nml=vegn_parameters_nml)
 
@@ -161,7 +161,7 @@ program main
     nml_unit = 999
     open(nml_unit, file=trim(namelistfile), form='formatted', action='read', status='old')
     read (nml_unit, nml=soil_data_nml, iostat=io, end=20)
-    20   close (nml_unit)
+  20   close (nml_unit)
     write (*, nml=soil_data_nml)
   endif
 
