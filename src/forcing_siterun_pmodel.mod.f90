@@ -135,14 +135,18 @@ contains
     integer :: idx_start, idx_end, year
     real, parameter :: timestep = 1.0
 
+    print*,'1a'
     idx_start = (forcingyear_idx - 1) * ntstepsyear + 1
     idx_end   = idx_start + ntstepsyear - 1
+    print*,'1b'
 
     ! if (int(forcing(idx_start, 1)) /= forcingyear) stop 'getco2(): forcingyear does not correspond to index read from forcing'
     if (forcing(idx_start)%year /= forcingyear) stop 'getco2(): forcingyear does not correspond to index read from forcing'
+    print*,'1c'
 
     ! pco2 = real(forcing(idx_start:idx_end, 12)) * 1.0e-6  ! mol/mol
     pco2 = forcing(idx_start:idx_end)%CO2
+    print*,'1d'
 
   end function getco2  
 
