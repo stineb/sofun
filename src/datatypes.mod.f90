@@ -687,6 +687,10 @@ subroutine initialize_PFT_data(namelistfile)
   spdata%gdd_crit  = gdd_crit
 
 ! Plant traits
+  print*,'size of lma', size(LMA)
+  print*,'LMA : ', LMA
+  STOP 'test'
+
   spdata%LMA            = LMA      ! leaf mass per unit area, kg C/m2
   spdata%LNbase         = LNbase   ! Basal leaf nitrogen per unit area, kg N/m2
   spdata%CNleafsupport  = CNleafsupport
@@ -728,6 +732,7 @@ subroutine initialize_PFT_data(namelistfile)
   spdata%NfixCost0 = NfixCost0
 
   spdata%internal_gap_frac = internal_gap_frac
+
   do i = 0, MSPECIES
      call init_derived_species_data(spdata(i))
   enddo

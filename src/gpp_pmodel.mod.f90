@@ -538,10 +538,10 @@ contains
     real, intent(in) :: kphio        ! apparent quantum yield efficiency       
     real, intent(in) :: fapar        ! fraction of absorbed photosynthetically active radiation (unitless) 
     real, intent(in) :: ppfd         ! photon flux density (mol/m2)
-    real, intent(in) :: co2          ! atmospheric CO2 concentration (ppm), relevant for fast responses
-    real, intent(in) :: tc           ! air temperature (deg C), relevant for fast responses
-    real, intent(in) :: vpd          ! vapor pressure (Pa), relevant for fast responses
-    real, intent(in) :: patm         ! atmospheric pressure (Pa), relevant for fast responses
+    real, intent(in) :: co2          ! atmospheric CO2 concentration (ppm)
+    real, intent(in) :: tc           ! air temperature (deg C)
+    real, intent(in) :: vpd          ! vapor pressure (Pa)
+    real, intent(in) :: patm         ! atmospheric pressure (Pa)
     logical, intent(in) :: c4        ! whether or not C4 photosynthesis pathway is followed. If .false., it's C3.
     character(len=*), intent(in) :: method_optci    ! Method used for deriving optimal ci:ca
     character(len=*), intent(in) :: method_jmaxlim  ! Method used for accounting for Jmax limitation

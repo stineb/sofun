@@ -216,8 +216,8 @@ contains
       ! This reads it all into memory and then extracts from the huge array in
       ! daily/hourly steps
       !------------------------------------------------------------------------
-      !call read_FACEforcing(forcingData,datalines,days_data,yr_data,timestep)
-      call read_NACPforcing(forcingData,datalines,days_data,yr_data,timestep)
+      call read_FACEforcing(forcingData,datalines,days_data,yr_data,timestep)
+      ! call read_NACPforcing(forcingData,datalines,days_data,yr_data,timestep)
       steps_per_day = int(24.0/timestep)
       dt_fast_yr = 1.0/(365.0 * steps_per_day)
       step_seconds = 24.0*3600.0/steps_per_day ! seconds_per_year * dt_fast_yr
