@@ -83,21 +83,20 @@ contains
     ! Create output files
     ! XXX add this to output instead
     !------------------------------------------------------------------------
-    filepath_out = '~/sofun/output/'
-    filesuffix   = '_test.csv' ! tag for simulation experiments
-    plantcohorts = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)
-    plantCNpools = trim(filepath_out)//'Cohorts_daily'//trim(filesuffix)  ! daily
-    soilCNpools  = trim(filepath_out)//'Ecosystem_daily'//trim(filesuffix)
-    allpools     = trim(filepath_out)//'Ecosystem_yearly'//trim(filesuffix)
+    filepath_out   = '/Users/bestocke/sofun/output/'
+    filesuffix     = '_test.csv' ! tag for simulation experiments
+    plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)
+    plantCNpools   = trim(filepath_out)//'Cohorts_daily'//trim(filesuffix)  ! daily
+    soilCNpools    = trim(filepath_out)//'Ecosystem_daily'//trim(filesuffix)
+    allpools       = trim(filepath_out)//'Ecosystem_yearly'//trim(filesuffix)
     faststepfluxes = trim(filepath_out)//'PhotosynthesisDynamics'//trim(filesuffix) ! hourly
 
     fno1=91; fno2=101; fno3=102; fno4=103; fno5=104
-    open(fno1, file=trim(faststepfluxes),ACTION='write', IOSTAT=istat1)
-    open(fno2,file=trim(plantcohorts),   ACTION='write', IOSTAT=istat1)
-    open(fno3,file=trim(plantCNpools),   ACTION='write', IOSTAT=istat2)
-    open(fno4,file=trim(soilCNpools),    ACTION='write', IOSTAT=istat3)
-    open(fno5,file=trim(allpools),       ACTION='write', IOSTAT=istat3)
-
+    open(fno1, file=trim(faststepfluxes), ACTION='write', IOSTAT=istat1)
+    open(fno2, file=trim(plantcohorts),   ACTION='write', IOSTAT=istat1)
+    open(fno3, file=trim(plantCNpools),   ACTION='write', IOSTAT=istat2)
+    open(fno4, file=trim(soilCNpools),    ACTION='write', IOSTAT=istat3)
+    open(fno5, file=trim(allpools),       ACTION='write', IOSTAT=istat3)
 
     !------------------------------------------------------------------------
     ! Read in forcing data
@@ -247,36 +246,38 @@ contains
         vegn%Tc_daily = 0.0
         tsoil         = 0.0
 
-
         do i=1,myinterface%steps_per_day
 
           ! idata = MOD(simu_steps, myinterface%datalines)+1
-          idata = simu_steps
+          idata = simu_steps + 1
           year0 =  myinterface%climate(idata)%year  ! Current year
           vegn%Tc_daily = vegn%Tc_daily +  myinterface%climate(idata)%Tair
           tsoil         =  myinterface%climate(idata)%tsoil
           simu_steps    = simu_steps + 1
 
-          !! fast-step calls, hourly or half-hourly
-          ! print*,'B i ', i
-          ! print*,'idata ', idata
-          ! print*,' myinterface%climate(idata)%year',  myinterface%climate(idata)%year
-          ! print*,' myinterface%climate(idata)%doy',  myinterface%climate(idata)%doy
-          ! print*,' myinterface%climate(idata)%hod',  myinterface%climate(idata)%hod
-          ! print*,' myinterface%climate(idata)%PAR',  myinterface%climate(idata)%PAR
-          ! print*,' myinterface%climate(idata)%radiation',  myinterface%climate(idata)%radiation
-          ! print*,' myinterface%climate(idata)%Tair',  myinterface%climate(idata)%Tair
-          ! print*,' myinterface%climate(idata)%Tsoil',  myinterface%climate(idata)%Tsoil
-          ! print*,' myinterface%climate(idata)%rain',  myinterface%climate(idata)%rain
-          ! print*,' myinterface%climate(idata)%windU',  myinterface%climate(idata)%windU
-          ! print*,' myinterface%climate(idata)%P_air',  myinterface%climate(idata)%P_air
-          ! print*,' myinterface%climate(idata)%RH',  myinterface%climate(idata)%RH
-          ! print*,' myinterface%climate(idata)%CO2',  myinterface%climate(idata)%CO2
-          ! print*,' myinterface%climate(idata)%soilwater',  myinterface%climate(idata)%soilwater
+          ! fast-step calls, hourly or half-hourly
+          ! if (idata==8000) then
+          !   print*,'B i ', i
+          !   print*,'idata ', idata
+          !   print*,' myinterface%climate(idata)%year',  myinterface%climate(idata)%year
+          !   print*,' myinterface%climate(idata)%doy',  myinterface%climate(idata)%doy
+          !   print*,' myinterface%climate(idata)%hod',  myinterface%climate(idata)%hod
+          !   print*,' myinterface%climate(idata)%PAR',  myinterface%climate(idata)%PAR
+          !   print*,' myinterface%climate(idata)%radiation',  myinterface%climate(idata)%radiation
+          !   print*,' myinterface%climate(idata)%Tair',  myinterface%climate(idata)%Tair
+          !   print*,' myinterface%climate(idata)%Tsoil',  myinterface%climate(idata)%Tsoil
+          !   print*,' myinterface%climate(idata)%rain',  myinterface%climate(idata)%rain
+          !   print*,' myinterface%climate(idata)%windU',  myinterface%climate(idata)%windU
+          !   print*,' myinterface%climate(idata)%P_air',  myinterface%climate(idata)%P_air
+          !   print*,' myinterface%climate(idata)%RH',  myinterface%climate(idata)%RH
+          !   print*,' myinterface%climate(idata)%CO2',  myinterface%climate(idata)%CO2
+          !   print*,' myinterface%climate(idata)%soilwater',  myinterface%climate(idata)%soilwater
+          !   stop
+          ! end if
 
           call vegn_CNW_budget_fast(vegn, myinterface%climate(idata))
           ! diagnostics
-          call hourly_diagnostics(vegn, myinterface%climate(idata),iyears,idoy,i,idays,fno1)
+          call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1)
 
         enddo ! hourly or half-hourly
         vegn%Tc_daily = vegn%Tc_daily/myinterface%steps_per_day
@@ -297,11 +298,11 @@ contains
         !-------------------------------------------------
         ! Daily calls
         !-------------------------------------------------
-        call daily_diagnostics(vegn, myinterface%climate(idata),iyears,idoy,idays,fno3,fno4)
+        call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4)
         !write(*,*)iyears,idoy
 
         ! Determine start and end of season and maximum leaf (root) mass
-        call vegn_phenology(vegn,j)
+        call vegn_phenology(vegn, j)
 
         ! Kill all individuals of a cohort if NSC falls below threshold
         !call vegn_starvation(vegn)
@@ -309,8 +310,6 @@ contains
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
         call vegn_growth_EW(vegn)
 
-
-   
       end do dayloop
 
     end do monthloop
@@ -325,7 +324,7 @@ contains
 
     if(update_annualLAImax) call vegn_annualLAImax_update(vegn)
 
-    call annual_diagnostics(vegn,iyears,fno2,fno5)
+    call annual_diagnostics(vegn, iyears, fno2, fno5)
 
     !---------------------------------------------
     ! Reproduction and mortality
@@ -355,7 +354,6 @@ contains
     ! update the years of model run
     iyears = iyears + 1
 
-
     if (myinterface%steering%finalize) then
       !----------------------------------------------------------------
       ! Finazlize run: deallocating memory
@@ -367,6 +365,7 @@ contains
       close(104)
       ! deallocate(vegn%cohorts)
       ! deallocate( myinterface%climate)
+      ! stop 'actually finalizing'
 
     end if
 

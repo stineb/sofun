@@ -174,8 +174,6 @@ program main
   30    close (nml_unit)
   write(*,nml=initial_state_nml)
 
-  print*,'AAA'
-
   !----------------------------------------------------------------
   ! POPULATE MYINTERFACE WITH ARGUMENTS FROM R
   !----------------------------------------------------------------
@@ -269,14 +267,11 @@ program main
   myinterface%params_soil%alphaSoil         = alphaSoil
   myinterface%params_soil%heat_capacity_dry = heat_capacity_dry
 
-  print*,'BBB'
-
   !----------------------------------------------------------------
   ! READ FORCING FILE
   !----------------------------------------------------------------
-  call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep )
-  print*,'CCC'
-  ! call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep )
+  ! call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep )
+  call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep )
   myinterface%steps_per_day = int(24.0/timestep)
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0*3600.0/myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
@@ -330,6 +325,22 @@ program main
                                         myinterface%steering%climateyear_idx, &
                                         myinterface%steering%climateyear &
                                         )
+
+    ! print*,'sofun(): myinterface%climate(:)'
+    ! print*, myinterface%climate(8000)%year
+    ! print*, myinterface%climate(8000)%doy
+    ! print*, myinterface%climate(8000)%hod
+    ! print*, myinterface%climate(8000)%PAR
+    ! print*, myinterface%climate(8000)%radiation
+    ! print*, myinterface%climate(8000)%Tair
+    ! print*, myinterface%climate(8000)%Tsoil
+    ! print*, myinterface%climate(8000)%rain
+    ! print*, myinterface%climate(8000)%windU
+    ! print*, myinterface%climate(8000)%P_air
+    ! print*, myinterface%climate(8000)%RH
+    ! print*, myinterface%climate(8000)%CO2
+    ! print*, myinterface%climate(8000)%soilwater
+
 
     ! Get annual, gobally uniform CO2
     myinterface%pco2(:) = getco2(  &

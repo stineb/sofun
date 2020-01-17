@@ -111,7 +111,37 @@ contains
     ! out_climate%soilwater = 0.8                                           ! soil moisture, vol/vol
 
     ! This is to read from ORNL file
-    out_climate = forcing(idx_start:idx_end)
+    ! print*,'getclimate(): forcing'
+    ! print*, forcing(idx_start)%year
+    ! print*, forcing(idx_start)%doy
+    ! print*, forcing(idx_start)%hod
+    ! print*, forcing(idx_start)%PAR
+    ! print*, forcing(idx_start)%radiation
+    ! print*, forcing(idx_start)%Tair
+    ! print*, forcing(idx_start)%Tsoil
+    ! print*, forcing(idx_start)%rain
+    ! print*, forcing(idx_start)%windU
+    ! print*, forcing(idx_start)%P_air
+    ! print*, forcing(idx_start)%RH
+    ! print*, forcing(idx_start)%CO2
+    ! print*, forcing(idx_start)%soilwater
+
+    out_climate(:) = forcing(idx_start:idx_end)
+
+    ! print*,'getclimate(): out_climate'
+    ! print*, out_climate(1)%year
+    ! print*, out_climate(1)%doy
+    ! print*, out_climate(1)%hod
+    ! print*, out_climate(1)%PAR
+    ! print*, out_climate(1)%radiation
+    ! print*, out_climate(1)%Tair
+    ! print*, out_climate(1)%Tsoil
+    ! print*, out_climate(1)%rain
+    ! print*, out_climate(1)%windU
+    ! print*, out_climate(1)%P_air
+    ! print*, out_climate(1)%RH
+    ! print*, out_climate(1)%CO2
+    ! print*, out_climate(1)%soilwater
 
   end function getclimate
 
@@ -135,18 +165,14 @@ contains
     integer :: idx_start, idx_end, year
     real, parameter :: timestep = 1.0
 
-    print*,'1a'
     idx_start = (forcingyear_idx - 1) * ntstepsyear + 1
     idx_end   = idx_start + ntstepsyear - 1
-    print*,'1b'
 
     ! if (int(forcing(idx_start, 1)) /= forcingyear) stop 'getco2(): forcingyear does not correspond to index read from forcing'
     if (forcing(idx_start)%year /= forcingyear) stop 'getco2(): forcingyear does not correspond to index read from forcing'
-    print*,'1c'
 
     ! pco2 = real(forcing(idx_start:idx_end, 12)) * 1.0e-6  ! mol/mol
     pco2 = forcing(idx_start:idx_end)%CO2
-    print*,'1d'
 
   end function getco2  
 
