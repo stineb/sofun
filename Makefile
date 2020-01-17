@@ -32,7 +32,7 @@ ifeq ($(PROFILE),benilaptop)
 	NETCDF_INC = /opt/local/include
 	NETCDF_LIB = /opt/local/lib
 
-	LIBS = -L $(NETCDF_LIB) -lnetcdf -lnetcdff -lgfortran # On Beni's laptop
+	LIBS = -L $(NETCDF_LIB) -lgfortran #-lnetcdf -lnetcdff  # On Beni's laptop
 
 else
 

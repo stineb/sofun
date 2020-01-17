@@ -2,9 +2,8 @@ module md_params_soil
   !////////////////////////////////////////////////////////////////
   ! Module handling soil parameters
   !----------------------------------------------------------------
-  use md_grid, only: gridtype, domaininfo_type
-  use netcdf
-  use md_io_netcdf, only: check
+  use, intrinsic :: iso_fortran_env, mydb=>real64, mysg=>real32
+  use md_params_core, only: n_dim_soil_types
 
   implicit none
 
@@ -12,88 +11,39 @@ module md_params_soil
   public paramtype_soil, getsoil
 
   type paramtype_soil
-    real :: whc
-    real :: perc_k1
-    real :: thdiff_wp
-    real :: thdiff_whc15
-    real :: thdiff_fc
-    real :: forg
-    real :: wbwp
-    real :: por
-    real :: fsand
-    real :: fclay
-    real :: fsilt
-  end type
+    real(kind=mysg), dimension(n_dim_soil_types) :: GMD
+    real(kind=mysg), dimension(n_dim_soil_types) :: GSD
+    real(kind=mysg), dimension(n_dim_soil_types) :: vwc_sat
+    real(kind=mysg), dimension(n_dim_soil_types) :: chb
+    real(kind=mysg), dimension(n_dim_soil_types) :: psi_sat_ref
+    real(kind=mysg), dimension(n_dim_soil_types) :: k_sat_ref
+    real(kind=mysg), dimension(n_dim_soil_types) :: alphaSoil
+    real(kind=mysg), dimension(n_dim_soil_types) :: heat_capacity_dry
+  end type paramtype_soil
 
 contains
 
-  function getsoil( domaininfo, grid ) result( params_soil )
+  function getsoil( params_soil_in ) result( params_soil_out )
     !////////////////////////////////////////////////////////////////
-    ! Function to "translate" the soil code into numerical soil 
-    ! parameters. The soil code is contained in 'domaininfo'.
+    ! Function to calculate soil parameters from texture info.
     !----------------------------------------------------------------
     ! arguments
-    type( domaininfo_type ), intent(in) :: domaininfo
-    type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
+    real(kind=mydb), dimension(n_dim_soil_types,8), intent(in) :: params_soil_in
 
     ! function return variable
-    type(paramtype_soil) :: params_soil
+    type(paramtype_soil) :: params_soil_out
 
-    ! local variables
-    type(paramtype_soil), dimension(9) :: soilparams_per_code
-
-    integer :: isoilcode
-
-    !----------------------------------------------------------------  
-    ! Get soil parameters per code
-    !----------------------------------------------------------------  
-    do isoilcode=1,1
-      soilparams_per_code(isoilcode) = get_soilparams_per_code( isoilcode )
-    end do
-
-    ! read from array to define grid type 
-    params_soil = soilparams_per_code(domaininfo%soilcode)
-
-    ! water holding capacity is read in separately from site parameter file
-    params_soil%whc = domaininfo%whc
-
-    return
-    999  format (I2.2)
+    params_soil_out%GMD(:)               = real(params_soil_in(:,1))               
+    params_soil_out%GSD(:)               = real(params_soil_in(:,2))               
+    params_soil_out%vwc_sat(:)           = real(params_soil_in(:,3))           
+    params_soil_out%chb(:)               = real(params_soil_in(:,4))               
+    params_soil_out%psi_sat_ref(:)       = real(params_soil_in(:,5))       
+    params_soil_out%k_sat_ref(:)         = real(params_soil_in(:,6))         
+    params_soil_out%alphaSoil(:)         = real(params_soil_in(:,7))         
+    params_soil_out%heat_capacity_dry(:) = real(params_soil_in(:,8)) 
 
   end function getsoil
 
-
-  function get_soilparams_per_code( soilcode ) result( params_soil )
-    !////////////////////////////////////////////////////////////////
-    ! Function returns soil parameter values given soil code (except WHC)
-    !----------------------------------------------------------------
-    use md_sofunutils, only: getparreal
-
-    ! arguments
-    integer, intent(in) :: soilcode
-
-    ! local variables
-    character(len=2) :: soilcode_char
-
-    ! function return variable
-    type(paramtype_soil) :: params_soil
-
-    write( soilcode_char, 999 ) soilcode
-
-    params_soil%perc_k1      = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'perc_k1' )
-    params_soil%thdiff_wp    = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'thdiff_wp' )
-    params_soil%thdiff_whc15 = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'thdiff_whc15' )
-    params_soil%thdiff_fc    = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'thdiff_fc' )
-    params_soil%forg         = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'forg' )
-    params_soil%wbwp         = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'wbwp' )
-    params_soil%por          = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'por' )
-    params_soil%fsand        = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'fsand' )
-    params_soil%fclay        = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'fclay' )
-    params_soil%fsilt        = getparreal( trim('params/params_soil_sc'//soilcode_char//'.dat'), 'fsilt' )
-
-    return
-    999  format (I2.2)
-
-  end function get_soilparams_per_code
-
 end module md_params_soil
+
+

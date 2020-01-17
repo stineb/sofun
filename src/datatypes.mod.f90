@@ -1,4 +1,7 @@
 module datatypes
+
+  use md_interface, only: myinterface
+
 ! define data types and constants
  implicit none
 ! ---- public types -------
@@ -9,11 +12,8 @@ public :: Zero_diagnostics, hourly_diagnostics, daily_diagnostics, &
           annual_diagnostics
 public :: qscomp, esat
 
-! ------ public namelists ---------
-public :: vegn_parameters_nml, soil_data_nml, initial_state_nml
-
 ! ---- public variables ---------
- public :: forcingData,spdata, soilpars
+ public :: spdata, soilpars
  ! parameters
  public :: MaxCohortID, &
     K1, K2, K_nitrogen, etaN, MLmixRatio, &
@@ -324,23 +324,6 @@ end type vegn_tile_type
 
 !---------------------------
 
-type :: climate_data_type
-   integer :: year          ! Year
-   integer :: doy           ! day of the year
-   real    :: hod           ! hour of the day
-   real    :: PAR           ! umol m-2 s-1
-   real    :: radiation     ! W/m2
-   real    :: Tair          ! air temperature,  K
-   real    :: Tsoil         ! soil temperature, K
-   real    :: RH            ! relative humidity
-   real    :: rain          ! kgH2O m-2 s-1
-   real    :: windU         ! wind velocity (m s-1)
-   real    :: P_air         ! pa
-   real    :: CO2           ! ppm
-   real    :: soilwater     ! soil moisture, vol/vol
-end type climate_data_type
-!---------------------------
-
 !----------------------------------------
 type :: soil_pars_type
   real :: GMD ! geometric mean partice diameter, mm
@@ -381,8 +364,6 @@ type :: soil_tile_type
    real, pointer :: psi(:) ! soil water potential
 end type soil_tile_type
 
-! Input forcing data
-type(climate_data_type),pointer, save :: forcingData(:)
 ! PFT-specific parameters
 type(spec_data_type), save :: spdata(0:MSPECIES) ! define PFTs
 ! Soil
@@ -423,6 +404,7 @@ real :: c_LLS  = 28.57143 ! yr/ (kg C m-2), 1/LMAs, where LMAs = 0.035
 ! reduction of bl_max and br_max for the understory vegetation, unitless
 real :: understory_lai_factor = 0.25
 !real :: rdepth(0: max_lev) = 0.0
+
 ! -------- PFT-specific parameters ----------
 ! c4grass  c3grass  temp-decid  tropical  evergreen  BE  BD  BN  NE  ND  G  D  T  A
 integer :: pt(0:MSPECIES) = 0
@@ -508,29 +490,6 @@ real :: NfixRate0(0:MSPECIES) = 0.0 !Reference N fixation rate (0.03 kgN kgC-1 r
 real :: NfixCost0(0:MSPECIES) = 12.0 ! FUN model, Fisher et al. 2010, GBC
 real :: internal_gap_frac(0:MSPECIES)= 0.1 ! The gaps between trees
 
-namelist /vegn_parameters_nml/  &
-  soiltype, FLDCAP, WILTPT, &
-  pt, phenotype, lifeform, &
-  Vmax, Vannual,wet_leaf_dreg,   &
-  gamma_L, gamma_LN, gamma_SW, gamma_FR,  &
-  rho_FR, root_r, root_zeta,Kw_root, &
-  !rho_N_up0, N_roots0, &
-  leaf_size, leafLS, LAImax, LAI_light,   &
-  LMA, LNbase, CNleafsupport, c_LLS,      &
-  K1,K2, K_nitrogen, etaN, MLmixRatio,    &
-  LMAmin, fsc_fine, fsc_wood, &
-  GR_factor, l_fract, retransN,f_N_add,   &
-  f_initialBSW,f_LFR_max,  &
-  gdd_crit,tc_crit, tc_crit_on, &
-  alphaHT, thetaHT, alphaCA, thetaCA, alphaBM, thetaBM, &
-  maturalage, v_seed, seedlingsize, prob_g,prob_e,      &
-  mortrate_d_c, mortrate_d_u, A_mort, B_mort,DBHtp,     &
-  phiRL, phiCSA, rho_wood, taperfactor, &
-  tauNSC, fNSNmax, understory_lai_factor, &
-  CNleaf0,CNsw0,CNwood0,CNroot0,CNseed0, &
-  NfixRate0, NfixCost0,  &
-  internal_gap_frac
-
 ! -------------------------------------------
 
 
@@ -553,9 +512,6 @@ namelist /vegn_parameters_nml/  &
   real :: heat_capacity_dry(n_dim_soil_types) = &
   (/ 1.2e6, 1.1e6, 1.1e6, 1.1e6, 1.1e6, 1.1e6, 1.1e6, 1.4e6,   1.0   /)
 
-namelist /soil_data_nml/ &
-     GMD, GSD, vwc_sat,k_sat_ref, psi_sat_ref, &
-     chb, alphaSoil,heat_capacity_dry
 
 !----- Initial conditions -------------
 integer, parameter :: MAX_INIT_COHORTS = 10 ! Weng, 2014-10-01
@@ -574,29 +530,19 @@ real   :: init_slow_soil_C  = 0.0  ! initial slow soil C, kg C/m2
 real   :: init_Nmineral = 0.015  ! Mineral nitrogen pool, (kg N/m2)
 real   :: N_input    = 0.0008 ! annual N input to soil N pool, kgN m-2 yr-1
 
-!Model run control
-real      :: dt_fast_yr = 1.0 / (365.0 * 24.0) ! daily
-real      :: step_seconds = 3600.0
+! !Model run control
+! real      :: myinterface%dt_fast_yr = 1.0 / (365.0 * 24.0) ! daily
+! real      :: step_seconds = 3600.0
 
 character(len=80) :: filepath_in = '/Users/eweng/Documents/BiomeESS/forcingData/'
 character(len=160) :: climfile = 'US-Ha1forcing.txt'
-integer   :: model_run_years = 100
+integer   :: model_run_years = 100  ! xxx todo: not used
 integer   :: equi_days       = 0 ! 100 * 365
 logical   :: outputhourly = .False.
 logical   :: outputdaily  = .True.
 logical   :: do_U_shaped_mortality = .False.
 logical   :: update_annualLAImax = .False.
 logical   :: do_closedN_run = .True. !.False.
-
-namelist /initial_state_nml/ &
-    init_n_cohorts, init_cohort_species, init_cohort_nindivs, &
-    init_cohort_bl, init_cohort_br, init_cohort_bsw, &
-    init_cohort_bHW, init_cohort_seedC, init_cohort_nsc, &
-    init_fast_soil_C, init_slow_soil_C,    & 
-    init_Nmineral, N_input,  &
-    filepath_in,climfile, model_run_years, &
-    outputhourly, outputdaily, equi_days, &
-    do_U_shaped_mortality,update_annualLAImax
 !---------------------------------
 
  contains
@@ -605,7 +551,7 @@ namelist /initial_state_nml/ &
 ! ================Parameter initialization ===================
 ! =========================================================================
 subroutine initialize_soilpars(namelistfile)
-   character(len=50),intent(in) :: namelistfile
+  character(len=50),intent(in) :: namelistfile
 
   ! ---- local vars
   integer :: io           ! i/o status for the namelist
@@ -613,24 +559,24 @@ subroutine initialize_soilpars(namelistfile)
   integer :: i
   integer :: nml_unit
 
-!  Read parameters from the parameter file (namelist)
-  if(read_from_parameter_file)then
-     nml_unit = 999
-     open(nml_unit, file=namelistfile, form='formatted', action='read', status='old')
-     read (nml_unit, nml=soil_data_nml, iostat=io, end=10)
-10   close (nml_unit)
-     write (*, nml=soil_data_nml)
-  endif
+! !  Read parameters from the parameter file (namelist)
+!   if(read_from_parameter_file)then
+!      nml_unit = 999
+!      open(nml_unit, file=namelistfile, form='formatted', action='read', status='old')
+!      read (nml_unit, nml=soil_data_nml, iostat=io, end=10)
+! 10   close (nml_unit)
+!      write (*, nml=soil_data_nml)
+!   endif
   
   ! initialize soil parameters
-  soilpars%GMD         = GMD ! geometric mean partice diameter, mm
-  soilpars%GSD         = GSD ! geometric standard deviation of particle size
-  soilpars%vwc_sat     = vwc_sat
-  soilpars%k_sat_ref   = k_sat_ref ! hydraulic conductivity of saturated soil, kg/(m2 s)
-  soilpars%psi_sat_ref = psi_sat_ref ! saturation soil water potential, m
-  soilpars%chb         = chb       ! Soil texture parameter
-  soilpars%alpha       = alphaSoil       ! *** REPLACE LATER BY alpha(layer)
-  soilpars%heat_capacity_dry = heat_capacity_dry
+  soilpars%GMD               = myinterface%params_soil%GMD(:) ! geometric mean partice diameter, mm
+  soilpars%GSD               = myinterface%params_soil%GSD(:) ! geometric standard deviation of particle size
+  soilpars%vwc_sat           = myinterface%params_soil%vwc_sat(:)
+  soilpars%k_sat_ref         = myinterface%params_soil%k_sat_ref(:) ! hydraulic conductivity of saturated soil, kg/(m2 s)
+  soilpars%psi_sat_ref       = myinterface%params_soil%psi_sat_ref(:) ! saturation soil water potential, m
+  soilpars%chb               = myinterface%params_soil%chb(:)       ! Soil texture parameter
+  soilpars%alpha             = myinterface%params_soil%alphaSoil(:)       ! *** REPLACE LATER BY alpha(layer)
+  soilpars%heat_capacity_dry = myinterface%params_soil%heat_capacity_dry(:)
 
   ! ---- derived constant soil parameters
   ! w_fc (field capacity) set to w at which hydraulic conductivity equals
@@ -645,35 +591,27 @@ subroutine initialize_soilpars(namelistfile)
 end subroutine initialize_soilpars
 
 ! ================================================
-subroutine initialize_PFT_data(namelistfile)
+subroutine initialize_PFT_data()
+
 ! Initialize PFT parameters
-   character(len=50),intent(in) :: namelistfile
   ! ---- local vars
   integer :: io           ! i/o status for the namelist
   integer :: ierr         ! error code, returned by i/o routines
   integer :: i
   integer :: nml_unit
 
-!  Read parameters from the parameter file (namelist)
-  if(read_from_parameter_file)then
-      nml_unit = 999
-      open(nml_unit, file=namelistfile, form='formatted', action='read', status='old')
-      read (nml_unit, nml=vegn_parameters_nml, iostat=io, end=10)
-10    close (nml_unit)
-   endif
-      write(*,nml=vegn_parameters_nml)
   ! initialize vegetation data structure
-  spdata%pt         = pt
-  spdata%phenotype  = phenotype
-  spdata%Vmax       = Vmax
-  spdata%Vannual    = Vannual
-  spdata%m_cond     = m_cond
-  spdata%alpha_phot = alpha_phot
+  spdata%pt            = myinterface%params_species%pt(:)
+  spdata%phenotype     = myinterface%params_species%phenotype(:) !phenotype  
+  spdata%Vmax          = Vmax
+  spdata%Vannual       = Vannual
+  spdata%m_cond        = m_cond
+  spdata%alpha_phot    = alpha_phot
   spdata%wet_leaf_dreg = wet_leaf_dreg
-  spdata%gamma_L  = gamma_L
-  spdata%gamma_LN = gamma_LN
-  spdata%gamma_SW = gamma_SW
-  spdata%gamma_FR = gamma_FR
+  spdata%gamma_L       = gamma_L
+  spdata%gamma_LN      = gamma_LN
+  spdata%gamma_SW      = gamma_SW
+  spdata%gamma_FR      = gamma_FR
 
   spdata%rho_FR    = rho_FR
   spdata%root_r    = root_r
@@ -687,45 +625,47 @@ subroutine initialize_PFT_data(namelistfile)
   spdata%gdd_crit  = gdd_crit
 
 ! Plant traits
-  spdata%LMA            = LMA      ! leaf mass per unit area, kg C/m2
-  spdata%LNbase         = LNbase   ! Basal leaf nitrogen per unit area, kg N/m2
-  spdata%CNleafsupport  = CNleafsupport
-  spdata%lifeform     = lifeform
-  spdata%alphaHT      = alphaHT
-  spdata%thetaHT      = thetaHT
-  spdata%alphaCA      = alphaCA
-  spdata%thetaCA      = thetaCA
-  spdata%alphaBM      = alphaBM
-  spdata%thetaBM      = thetaBM
-
-  spdata%maturalage   = maturalage
+  spdata%LMA           = myinterface%params_species%LMA(:) ! leaf mass per unit area, kg C/m2
+  spdata%LNbase        = myinterface%params_species%LNbase(:)   ! Basal leaf nitrogen per unit area, kg N/m2
+  spdata%CNleafsupport = CNleafsupport
+  spdata%lifeform      = myinterface%params_species%lifeform(:)
+  spdata%alphaHT       = alphaHT
+  spdata%thetaHT       = thetaHT
+  spdata%alphaCA       = alphaCA
+  spdata%thetaCA       = thetaCA
+  spdata%alphaBM       = alphaBM
+  spdata%thetaBM       = thetaBM
+  
+  spdata%maturalage   = myinterface%params_species%maturalage(:)
   spdata%v_seed       = v_seed
-  spdata%seedlingsize = seedlingsize
+  spdata%seedlingsize = myinterface%params_species%seedlingsize(:)
   spdata%prob_g       = prob_g
   spdata%prob_e       = prob_e
-  spdata%mortrate_d_c = mortrate_d_c
-  spdata%mortrate_d_u = mortrate_d_u
+  spdata%mortrate_d_c = myinterface%params_species%mortrate_d_c(:)
+  spdata%mortrate_d_u = myinterface%params_species%mortrate_d_u(:)
   spdata%rho_wood     = rho_wood
   spdata%taperfactor  = taperfactor
-  spdata%LAImax       = LAImax
-  spdata%underLAImax  = LAImax
-  spdata%LAI_light    = LAI_light
+  spdata%laimax       = myinterface%params_species%laimax(:)
+  spdata%underLAImax  = laimax
+  spdata%LAI_light    = myinterface%params_species%LAI_light(:)
   spdata%tauNSC       = tauNSC
-  spdata%fNSNmax      = fNSNmax
-  spdata%phiRL        = phiRL
-  spdata%phiCSA       = phiCSA
+  spdata%fNSNmax      = myinterface%params_species%fNSNmax(:)
+  ! spdata%f_N_add      = myinterface%params_species%f_N_add
+  spdata%phiRL        = myinterface%params_species%phiRL(:)
+  spdata%phiCSA       = myinterface%params_species%phiCSA(:)
+
   ! root urnover rate
-  spdata%alpha_FR = alpha_FR
+  spdata%alpha_FR     = alpha_FR
 
 
 !! Nitrogen Weng 2012-10-24
 ! spdata%CNleaf0 = CNleaf0
-  spdata%CNsw0   = CNsw0
-  spdata%CNwood0 = CNwood0
-  spdata%CNroot0 = CNroot0
-  spdata%CNseed0 = CNseed0
-  spdata%NfixRate0 = NfixRate0
-  spdata%NfixCost0 = NfixCost0
+  spdata%CNsw0     = CNsw0
+  spdata%CNwood0   = CNwood0
+  spdata%CNroot0   = CNroot0
+  spdata%CNseed0   = CNseed0
+  spdata%Nfixrate0 = myinterface%params_species%Nfixrate0(:)
+  spdata%NfixCost0 = myinterface%params_species%NfixCost0(:)
 
   spdata%internal_gap_frac = internal_gap_frac
   do i = 0, MSPECIES
@@ -915,15 +855,18 @@ end subroutine summarize_tile
 !=========================================================================
 ! Hourly fluxes sum to daily
  subroutine hourly_diagnostics(vegn,forcing,iyears,idoy,ihour,iday,fno1)
+
+  use md_forcing, only: climate_type, forcingData
+
   type(vegn_tile_type), intent(inout) :: vegn
-  type(climate_data_type),intent(in):: forcing
+  type(climate_type),intent(in):: forcing
   integer, intent(in) :: iyears,idoy,ihour,iday,fno1
 
   !-------local var ------
   type(cohort_type), pointer :: cc    ! current cohort
   integer :: i
 
-  vegn%age = vegn%age + dt_fast_yr
+  vegn%age = vegn%age + myinterface%dt_fast_yr
   ! Tile summary
   vegn%GPP    = 0.
   vegn%NPP    = 0.; vegn%Resp   = 0.
@@ -943,7 +886,9 @@ end subroutine summarize_tile
   ! NEP is equal to NNP minus soil respiration
   vegn%nep = vegn%npp - vegn%rh ! kgC m-2 hour-1; time step is hourly
   !! Output horly diagnostics
-  If(outputhourly.and. iday>equi_days) &
+
+  if (myinterface%params_siml%outputhourly .and. iday > myinterface%params_siml%equi_days) &
+  ! If(outputhourly.and. iday>equi_days) &
     write(fno1,'(3(I5,","),25(E11.4,","),25(F8.2,","))')  &
       iyears, idoy, ihour,      &
       forcingData%radiation,    &
@@ -962,14 +907,17 @@ end subroutine summarize_tile
   vegn%dailyTrsp = vegn%dailyTrsp + vegn%transp
   vegn%dailyEvap = vegn%dailyEvap + vegn%evap
   vegn%dailyRoff = vegn%dailyRoff + vegn%runoff
-  vegn%dailyPrcp = vegn%dailyPrcp + forcing%rain * step_seconds
+  vegn%dailyPrcp = vegn%dailyPrcp + forcing%rain * myinterface%step_seconds
 
 end subroutine hourly_diagnostics
 
 !============================================
 subroutine daily_diagnostics(vegn,forcing,iyears,idoy,iday,fno3,fno4)
+
+  use md_forcing, only: climate_type
+
   type(vegn_tile_type), intent(inout) :: vegn
-  type(climate_data_type),intent(in):: forcing
+  type(climate_type),intent(in):: forcing
   integer, intent(in) :: iyears,idoy,iday,fno3,fno4
 
   !-------local var ------
@@ -980,15 +928,18 @@ subroutine daily_diagnostics(vegn,forcing,iyears,idoy,iday,fno3,fno4)
       !!! daily !! cohorts output
       do i = 1, vegn%n_cohorts
           cc => vegn%cohorts(i)
-          if(outputdaily.and. iday>equi_days) &
-          write(fno3,'(6(I5,","),1(F8.1,","),25(F12.4,","))')  &
-                iyears,idoy,i, cc%ccID,cc%species,cc%layer,   &
-                cc%nindivs*10000, cc%layerfrac, cc%LAI, &
-                cc%dailygpp,cc%dailyresp,cc%dailytrsp, &
-                cc%seedC,cc%NPPleaf,cc%NPProot,cc%NPPwood, &
-                cc%NSC, cc%seedC, cc%bl, cc%br, cc%bsw, cc%bHW, &
-                cc%NSN*1000, cc%seedN*1000, cc%leafN*1000, &
-                cc%rootN*1000,cc%sapwN*1000,cc%woodN*1000
+          
+          ! if(outputdaily.and. iday>equi_days) &
+          if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
+            write(fno3,'(6(I5,","),1(F8.1,","),25(F12.4,","))')  &
+                  iyears,idoy,i, cc%ccID,cc%species,cc%layer,   &
+                  cc%nindivs*10000, cc%layerfrac, cc%LAI, &
+                  cc%dailygpp,cc%dailyresp,cc%dailytrsp, &
+                  cc%seedC,cc%NPPleaf,cc%NPProot,cc%NPPwood, &
+                  cc%NSC, cc%seedC, cc%bl, cc%br, cc%bsw, cc%bHW, &
+                  cc%NSN*1000, cc%seedN*1000, cc%leafN*1000, &
+                  cc%rootN*1000,cc%sapwN*1000,cc%woodN*1000
+          end if
 
           ! annual sum
           cc%annualGPP = cc%annualGPP + cc%dailyGPP
@@ -1001,8 +952,10 @@ subroutine daily_diagnostics(vegn,forcing,iyears,idoy,iday,fno3,fno4)
           cc%dailyNPP = 0.0
           cc%dailyResp = 0.0
       enddo
+
       !! Tile level, daily
-      if(outputdaily.and. iday>equi_days) then
+      ! if(outputdaily.and. iday>equi_days) then
+      if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
          call summarize_tile(vegn)
          write(fno4,'(2(I5,","),60(F12.6,","))') iyears, idoy,  &
             vegn%tc_daily, vegn%dailyPrcp, vegn%soilwater,      &
