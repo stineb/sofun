@@ -83,7 +83,7 @@ contains
     ! Create output files
     ! XXX add this to output instead
     !------------------------------------------------------------------------
-    filepath_out   = '/Users/bestocke/sofun/output/'
+    filepath_out   = '/Users/lmarques/sofun/output/'
     filesuffix     = '_test.csv' ! tag for simulation experiments
     plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)
     plantCNpools   = trim(filepath_out)//'Cohorts_daily'//trim(filesuffix)  ! daily
