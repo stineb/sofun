@@ -308,8 +308,8 @@ module datatypes
     real :: dailyfixedN
     ! for annual diagnostics
     real :: dailyPrcp=0.0, annualPrcp = 0.0 ! mm m-2 yr-1
-    real :: dailyTrsp=0.0,dailyEvap=0.0, dailyRoff=0.0 ! mm m-2 yr-1
-    real :: annualTrsp=0.0,annualEvap=0.0, annualRoff=0.0 ! mm m-2 yr-1
+    real :: dailyTrsp=0.0, dailyEvap=0.0, dailyRoff=0.0 ! mm m-2 yr-1
+    real :: annualTrsp=0.0, annualEvap=0.0, annualRoff=0.0 ! mm m-2 yr-1
     real :: annualGPP = 0.0 ! kgC m-2 ground yr-1
     real :: annualNPP = 0.0
     real :: annualResp = 0.0
@@ -748,6 +748,9 @@ contains
     !-------local var
     type(cohort_type),pointer :: cc
     integer :: i
+
+    print*,'Zero_diagnostics() 1: vegn%dailyEvap ', vegn%dailyEvap
+
     !daily
     vegn%dailyfixedN = 0.
     vegn%dailyPrcp = 0.0
@@ -805,6 +808,9 @@ contains
       cc%NPPwood   = 0.0
       cc%DBH_ys    = cc%DBH
     enddo
+
+    print*,'Zero_diagnostics() 2: vegn%dailyEvap ', vegn%dailyEvap
+
   end subroutine Zero_diagnostics
 
   ! ========================
@@ -834,6 +840,7 @@ contains
   vegn%CAI     = 0.0
   do i = 1, vegn%n_cohorts
     cc => vegn%cohorts(i)
+
     ! Vegn C pools:
     vegn%NSC     = vegn%NSC   + cc%NSC      * cc%nindivs
     vegn%SeedC   = vegn%SeedC + cc%seedC    * cc%nindivs
@@ -843,6 +850,7 @@ contains
     vegn%woodC   = vegn%woodC    + cc%bHW   * cc%nindivs
     vegn%CAI     = vegn%CAI + cc%crownarea * cc%nindivs
     vegn%LAI     = vegn%LAI   + cc%leafarea * cc%nindivs
+
     ! Vegn N pools
     vegn%NSN     = vegn%NSN   + cc%NSN      * cc%nindivs
     vegn%SeedN   = vegn%SeedN + cc%seedN    * cc%nindivs
@@ -912,6 +920,8 @@ contains
     vegn%dailyRoff = vegn%dailyRoff + vegn%runoff
     vegn%dailyPrcp = vegn%dailyPrcp + forcing%rain * myinterface%step_seconds
 
+    ! print*,'hourly_diagnostics() : vegn%evap, vegn%dailyEvap ', vegn%evap, vegn%dailyEvap
+
   end subroutine hourly_diagnostics
 
   !============================================
@@ -961,8 +971,13 @@ contains
 
     !! Tile level, daily
     ! if(outputdaily.and. iday>equi_days) then
+    ! print*,'outputdaily ', outputdaily
+    ! print*,'equi_days   ', myinterface%params_siml%equi_days
+    ! print*,'iday        ', iday
     if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
+      ! print*,'6a: ', vegn%LAI
       call summarize_tile(vegn)
+      ! print*,'6b: ', vegn%LAI
       write(fno4,'(2(I5,","),60(F12.6,","))') iyears, idoy,  &
         vegn%tc_daily, vegn%dailyPrcp, vegn%soilwater,      &
         vegn%dailyTrsp, vegn%dailyEvap,vegn%dailyRoff,      &
@@ -989,6 +1004,8 @@ contains
     vegn%annualTrsp = vegn%annualTrsp + vegn%dailytrsp
     vegn%annualEvap = vegn%annualEvap + vegn%dailyevap
     vegn%annualRoff = vegn%annualRoff + vegn%dailyRoff
+
+    ! print*,'vegn%dailyevap, vegn%annualEvap', vegn%dailyevap, vegn%annualEvap
 
     ! zero:
     vegn%dailyNup  = 0.0
@@ -1072,7 +1089,7 @@ contains
     
     write(fno5,'(1(I5,","),27(F9.4,","),6(F9.3,","),18(F10.4,","))') &
       iyears,       &
-      vegn%CAI,vegn%LAI, &
+      vegn%CAI, vegn%LAI, &
       vegn%annualGPP, vegn%annualResp, vegn%annualRh, &
       vegn%annualPrcp, vegn%SoilWater,vegn%annualTrsp, vegn%annualEvap, vegn%annualRoff, &
       plantC,soilC,plantN *1000, soilN * 1000, (plantN+soilN)*1000,&

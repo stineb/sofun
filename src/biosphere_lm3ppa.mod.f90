@@ -70,9 +70,10 @@ contains
     integer :: year0,  year1, iyears
     integer :: fno1, fno2, fno3, fno4, fno5 ! output files
     integer :: totyears
-    integer :: i, j, k, idays, idoy
+    integer :: i, j, k, idoy
     integer :: idata
     integer, save :: simu_steps !, datalines
+    integer, save :: idays
     character(len=50) :: filepath_out, filesuffix
     character(len=50) :: parameterfile(10), chaSOM(10)
 
@@ -185,14 +186,19 @@ contains
       ! Initialisations
       !------------------------------------------------------------------------
       ! Parameter initialization: Initialize PFT parameters
+      ! print*,'1: ', vegn%LAI
       call initialize_PFT_data()
 
       ! Initialize vegetation tile and plant cohorts
       allocate(vegn)
+      ! print*,'2: ', vegn%LAI
       call initialize_vegn_tile(vegn,nCohorts)
       
       ! Sort and relayer cohorts
+      ! print*,'3: ', vegn%LAI
       call relayer_cohorts(vegn)
+
+      ! print*,'4: ', vegn%LAI
       call Zero_diagnostics(vegn)
 
       !------------------------------------------------------------------------
@@ -210,6 +216,7 @@ contains
       year0 = myinterface%climate(1)%year  ! forcingData(1)%year
       iyears = 1
       idoy   = 0
+      idays  = 0
 
     endif 
 
@@ -225,8 +232,10 @@ contains
       !----------------------------------------------------------------
       ! LOOP THROUGH DAYS
       !----------------------------------------------------------------
+      ! print*,'5: ', vegn%LAI
       dayloop: do dm=1,ndaymonth(moy)
-        doy=doy+1
+        doy = doy+1
+        idays = idays + 1
 
         if (verbose) print*,'----------------------'
         if (verbose) print*,'YEAR, Doy ', myinterface%steering%year, doy
@@ -284,6 +293,10 @@ contains
         tsoil         = tsoil/myinterface%steps_per_day
         soil_theta    = vegn%thetaS
 
+        ! if (doy>3) then
+        !   ! print*,myinterface%climate(idata-48:idata)
+        !   stop 'here'
+        ! end if 
 
         ! if (simu_steps==17520) then
         !   print*,'vegn%n_cohorts', vegn%n_cohorts
@@ -298,17 +311,22 @@ contains
         !-------------------------------------------------
         ! Daily calls
         !-------------------------------------------------
+        ! print*,'6: ', vegn%LAI
         call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4)
         !write(*,*)iyears,idoy
 
         ! Determine start and end of season and maximum leaf (root) mass
+        ! print*,'7: ', vegn%LAI
         call vegn_phenology(vegn, j)
 
         ! Kill all individuals of a cohort if NSC falls below threshold
         !call vegn_starvation(vegn)
 
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
+        ! print*,'8: ', vegn%LAI
         call vegn_growth_EW(vegn)
+
+        if (doy>3) stop 'here'
 
       end do dayloop
 
@@ -321,6 +339,7 @@ contains
 
     print*,'sim. year  ', iyears
     print*,'real year: ', year0
+
 
     if(update_annualLAImax) call vegn_annualLAImax_update(vegn)
 

@@ -86,7 +86,7 @@ end subroutine water_supply_layer
 
 ! ============================================================================
 ! Weng, 2017-10-27
-subroutine SoilWaterDynamicsLayer(forcing,vegn)    !outputs
+subroutine SoilWaterDynamicsLayer( forcing, vegn )    !outputs
   !     All of inputs, the unit of water is 'mm',
   !     soil moisture (soil water content) is a ratio
   use md_forcing, only: climate_type
@@ -143,7 +143,10 @@ enddo ! all cohorts
 !    calculate kappa  ! light extinction coefficient of corwn layers
 kappa = 0.75
 !    thermodynamic parameters for air
-Rsoilabs = forcing%radiation * exp(-kappa*vegn%LAI)
+
+! print*, forcing%radiation, kappa, vegn%LAI    ! xxx debug
+
+Rsoilabs = forcing%radiation * exp(-kappa * vegn%LAI)
 Hgrownd = 0.0
 TairK = forcing%Tair
 Tair  = forcing%Tair - 273.16
@@ -163,6 +166,9 @@ rLAI=exp(vegn%LAI)
 !           Eleaf(ileaf)=1.0*
 !     &     (slope*Y*Rnstar(ileaf)+rhocp*Dair/(rbH_L+raero))/    !2* Weng 0215
 !     &     (slope*Y+psyc*(rswv+rbw+raero)/(rbH_L+raero))
+
+! print*,slope, rhocp, Dair, raero, psyc, Rsoilabs, rsoil ! xxx debug
+
 Esoil=(slope*Rsoilabs + rhocp*Dair/raero)/ &
 (slope + psyc*(1.0+rsoil/raero)) *   &
 max(vegn%wcl(1),0.0)/FLDCAP ! (vegn%wcl(1)-ws0)/(FLDCAP-ws0)
@@ -170,8 +176,10 @@ max(vegn%wcl(1),0.0)/FLDCAP ! (vegn%wcl(1)-ws0)/(FLDCAP-ws0)
 !      Hsoil = Rsoilabs - Esoil - Hgrownd
 
 !Calculate Esoil, kg m-2 step-1
-vegn%evap = min(Esoil/H2OLv * myinterface%step_seconds, &
-  0.2*vegn%wcl(1) * thksl(1) *1000.) ! kg m-2 step-1
+! print*, Esoil, H2OLv, myinterface%step_seconds, vegn%wcl(1), thksl(1)  ! xxx debug : Esoil changes on the fourth day
+
+vegn%evap = min( Esoil/H2OLv * myinterface%step_seconds, 0.2*vegn%wcl(1) * thksl(1) *1000.0 ) ! kg m-2 step-1
+
 !vegn%wcl(1) = vegn%wcl(1) - vegn%evap/(thksl(1) *1000.)
 WaterBudgetL(1) = WaterBudgetL(1) - vegn%evap
 

@@ -737,6 +737,9 @@ contains
         cc%crownarea = cc%crownarea + dCA
         cc%leafarea  = leaf_area_from_biomass(cc%bl,cc%species,cc%layer,cc%firstlayer)
         cc%lai       = cc%leafarea/cc%crownarea !(cc%crownarea *(1.0-sp%internal_gap_frac))
+
+        print*, 'vegn growth',  vegn%LAI, cc%leafarea, cc%nindivs, cc%crownarea   ! xxx debug
+
         vegn%LAI     = vegn%LAI + cc%leafarea  * cc%nindivs
 
         call rootarea_and_verticalprofile(cc)
@@ -2215,7 +2218,9 @@ contains
   vegn%thetaS = 1.0
 
   ! tile
+  print*, 'initialize_vegn_tile() 1: ',  vegn%LAI   ! xxx debug
   call summarize_tile(vegn)
+  print*, 'initialize_vegn_tile() 2: ',  vegn%LAI   ! xxx debug
   vegn%initialN0 = vegn%NSN + vegn%SeedN + vegn%leafN +      &
   vegn%rootN + vegn%SapwoodN + vegn%woodN + &
   vegn%MicrobialN + vegn%metabolicN +       &
@@ -2256,7 +2261,9 @@ contains
   vegn%previousN   = vegn%mineralN
 
   ! tile
+  print*, 'initialize_vegn_tile() 3: ',  vegn%LAI   ! xxx debug
   call summarize_tile(vegn)
+  print*, 'initialize_vegn_tile() 4: ',  vegn%LAI   ! xxx debug
   vegn%initialN0 = vegn%NSN + vegn%SeedN + vegn%leafN +      &
   vegn%rootN + vegn%SapwoodN + vegn%woodN + &
   vegn%MicrobialN + vegn%metabolicN +       &

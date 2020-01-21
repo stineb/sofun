@@ -85,6 +85,8 @@ program main
   ! local variables
   integer :: datalines
   integer :: yr_data   ! Years of the forcing data
+  integer :: totyears
+  integer :: totdays
   integer :: days_data ! days of the forcing data
   real    :: timestep  ! hour, Time step of forcing data, usually hourly (1.0)
   type(outtype_biosphere) :: out_biosphere  ! holds all the output used for calculating the cost or maximum likelihood function 
@@ -192,7 +194,7 @@ program main
 
   ! Simulation parameters
   ! myinterface%params_siml%model_run_years       = myinterface%params_siml%runyears    ! xxx delete model_run_years from arguments
-  myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
+  ! myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
   myinterface%params_siml%outputhourly          = outputhourly
   myinterface%params_siml%outputdaily           = outputdaily
   myinterface%params_siml%do_U_shaped_mortality = do_U_shaped_mortality
@@ -278,6 +280,15 @@ program main
   ntstepsyear = myinterface%steps_per_day * 365
   print*,'ntstepsyear ', ntstepsyear
   write(*,*) myinterface%steps_per_day, myinterface%dt_fast_yr, myinterface%step_seconds
+  
+  totyears = myinterface%params_siml%runyears
+  totdays  = int(totyears/yr_data+1)*days_data
+  myinterface%params_siml%equi_days = totdays - days_data
+
+  print*,'myinterface%params_siml%equi_days ', myinterface%params_siml%equi_days
+  print*,'days_data                         ', days_data
+  print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
+  ! stop  
 
   ! record some variables that are determined by the SR that reads the forcing
   myinterface%datalines = datalines
