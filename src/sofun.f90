@@ -93,7 +93,7 @@ program main
   integer :: yr
   logical, parameter :: verbose = .false.
 
-  character(len=100) :: namelistfile = '/Users/bestocke/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+  character(len=100) :: namelistfile = '/Users/benjaminstocker/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
 
   !----------------------------------------------------------------
   ! DECLARATIONS TO READ FROM NAMELIST FILE
@@ -406,9 +406,9 @@ program main
     integer :: i,j,k
     integer :: m,n
 
-    ! xxx temporary
-    character(len=80) :: filepath_in = '/Users/bestocke/cagibi/BiomeE-Allocation/model/input/'
-    character(len=80) :: climfile    = 'ORNL_forcing.txt'
+    ! ! xxx temporary
+    ! character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
+    ! character(len=80) :: climfile    = 'ORNL_forcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
 
@@ -506,9 +506,9 @@ program main
     ! xxx try
     integer :: idx_climatedata
 
-    ! xxx temporary
-    character(len=80) :: filepath_in = '/Users/bestocke/cagibi/BiomeE-Allocation/model/input/'
-    character(len=80) :: climfile    = 'US-WCrforcing.txt'
+    ! ! xxx temporary
+    ! character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
+    ! character(len=80) :: climfile    = 'US-WCrforcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
     write(*,*)'inputfile: ',climfile

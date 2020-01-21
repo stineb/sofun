@@ -1,16 +1,28 @@
 library(readr)
 library(ggplot2)
+library(dplyr)
 
+##--------------------------------
+## Annual outputs
+##--------------------------------
 df_orig   <- read_csv("~/cagibi/BiomeE-Allocation/model/output/Ecosystem_yearlytest.csv")
 #df_noleap <- read_csv("~/cagibi/BiomeE-Allocation/model/output/Ecosystem_yearlytest_NOLEAP.csv")
-df_sofun  <- read_csv("/Users/bestocke/sofun/output/Ecosystem_yearly_test.csv")
+df_sofun  <- read_csv("~/sofun/output/Ecosystem_yearly_test.csv")
 
 df_test <- select(df_orig, year, LAI_orig = LAI) %>% 
   left_join(select(df_sofun, year, LAI_sofun = LAI), by = "year")
 
+## slight differences for soilN
+## sudden difference for SapwoodC in some years
 ggplot() +
-  geom_line(aes(x = year, y = LAI), data = df_orig, color="black", size = 1.6) +
-  geom_line(aes(x = year, y = LAI), data = df_sofun, color = "red", size = 0.8)
+  geom_line(aes(x = year, y = NSN), data = df_orig, color = "black", size = 2) +
+  geom_line(aes(x = year, y = NSN), data = df_sofun, color = "red", size = 1) +
+  xlim(c(0,200))
+
+ggplot() +
+  geom_line(aes(x = year, y = NSN), data = df_orig, color = "black", size = 2) +
+  geom_line(aes(x = year, y = NSN), data = df_sofun, color = "red", size = 1) +
+  xlim(c(1600,1809))
 
 ggplot() +
   geom_line(aes(x = year, y = mineralN), data = df_sofun, color="red") +
@@ -21,6 +33,8 @@ ggplot() +
   geom_point(aes(x = LAI_orig, y = LAI_sofun), data = df_test) +
   geom_abline(intercept=0, slope=1, linetype="dotted")
   
+
+
 
 
 

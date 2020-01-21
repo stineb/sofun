@@ -84,7 +84,7 @@ contains
     ! Create output files
     ! XXX add this to output instead
     !------------------------------------------------------------------------
-    filepath_out   = '/Users/bestocke/sofun/output/'
+    filepath_out   = '/Users/benjaminstocker/sofun/output/'
     filesuffix     = '_test.csv' ! tag for simulation experiments
     plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)
     plantCNpools   = trim(filepath_out)//'Cohorts_daily'//trim(filesuffix)  ! daily
@@ -326,8 +326,6 @@ contains
         ! print*,'8: ', vegn%LAI
         call vegn_growth_EW(vegn)
 
-        if (doy>3) stop 'here'
-
       end do dayloop
 
     end do monthloop
@@ -337,9 +335,12 @@ contains
     !----------------------------------------------------------------
     idoy = 0
 
-    print*,'sim. year  ', iyears
-    print*,'real year: ', year0
+    ! print*,'sim. year  ', iyears
+    ! print*,'real year: ', year0
 
+    ! xxxx debug
+    print*,'year, vegn%nsc ', iyears, vegn%nsc, vegn%lai
+    if (iyears==4) stop 
 
     if(update_annualLAImax) call vegn_annualLAImax_update(vegn)
 

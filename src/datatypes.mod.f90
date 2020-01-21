@@ -281,7 +281,7 @@ module datatypes
 
     ! Soil water
     integer :: soiltype       ! lookup table for soil hydrologic parameters
-    real :: FLDCAP,WILTPT  ! soil property: field capacity and wilting point (0.xx)
+    real :: FLDCAP, WILTPT  ! soil property: field capacity and wilting point (0.xx)
     real :: evap           ! kg m-2 per unit fast time step (mm/hour)
     real :: transp         ! kg m-2 hour-1
     real :: runoff        ! Water runoff of the veg tile, unit?
@@ -749,8 +749,6 @@ contains
     type(cohort_type),pointer :: cc
     integer :: i
 
-    print*,'Zero_diagnostics() 1: vegn%dailyEvap ', vegn%dailyEvap
-
     !daily
     vegn%dailyfixedN = 0.
     vegn%dailyPrcp = 0.0
@@ -808,8 +806,6 @@ contains
       cc%NPPwood   = 0.0
       cc%DBH_ys    = cc%DBH
     enddo
-
-    print*,'Zero_diagnostics() 2: vegn%dailyEvap ', vegn%dailyEvap
 
   end subroutine Zero_diagnostics
 
@@ -919,8 +915,6 @@ contains
     vegn%dailyEvap = vegn%dailyEvap + vegn%evap
     vegn%dailyRoff = vegn%dailyRoff + vegn%runoff
     vegn%dailyPrcp = vegn%dailyPrcp + forcing%rain * myinterface%step_seconds
-
-    ! print*,'hourly_diagnostics() : vegn%evap, vegn%dailyEvap ', vegn%evap, vegn%dailyEvap
 
   end subroutine hourly_diagnostics
 
