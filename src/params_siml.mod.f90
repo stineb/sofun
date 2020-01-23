@@ -19,7 +19,7 @@ module md_params_siml
     integer :: nyeartrend      ! number of transient years
     integer :: firstyeartrend  ! year AD of first transient year
     integer :: recycle         ! length of standard recycling period
-    logical :: do_spinup            ! whether this simulation does spinup 
+    logical :: do_spinup       ! whether this simulation does spinup 
     integer :: runyears        ! number of years of entire simulation (spinup+transient)
     
     ! integer :: model_run_years

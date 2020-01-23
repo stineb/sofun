@@ -194,7 +194,7 @@ program main
 
   ! Simulation parameters
   ! myinterface%params_siml%model_run_years       = myinterface%params_siml%runyears    ! xxx delete model_run_years from arguments
-  ! myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
+  !myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
   myinterface%params_siml%outputhourly          = outputhourly
   myinterface%params_siml%outputdaily           = outputdaily
   myinterface%params_siml%do_U_shaped_mortality = do_U_shaped_mortality
@@ -278,17 +278,17 @@ program main
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0*3600.0/myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
   ntstepsyear = myinterface%steps_per_day * 365
-  print*,'ntstepsyear ', ntstepsyear
+  !print*,'ntstepsyear ', ntstepsyear
   write(*,*) myinterface%steps_per_day, myinterface%dt_fast_yr, myinterface%step_seconds
   
   totyears = myinterface%params_siml%runyears
   totdays  = int(totyears/yr_data+1)*days_data
   myinterface%params_siml%equi_days = totdays - days_data
 
-  print*,'myinterface%params_siml%equi_days ', myinterface%params_siml%equi_days
-  print*,'days_data                         ', days_data
-  print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
-  ! stop  
+  !print*,'myinterface%params_siml%equi_days ', myinterface%params_siml%equi_days
+  !print*,'days_data                         ', days_data
+  !print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
+   !stop  
 
   ! record some variables that are determined by the SR that reads the forcing
   myinterface%datalines = datalines
@@ -454,7 +454,7 @@ program main
     ! allocate(climateData(datalines))
 
     ! xxx try
-    allocate(climateData(datalines - 72))
+    allocate(climateData(datalines - 144))  !72
     days_data = days_data - 3
 
     do i=1,datalines
@@ -477,7 +477,7 @@ program main
    forcingData => climateData
 
    ! xxx try
-   datalines = datalines - 72
+   datalines = datalines - 144  !144 !72
 
    write(*,*)"forcing", datalines,days_data,yr_data
  end subroutine read_FACEforcing
@@ -558,7 +558,7 @@ program main
     ! allocate(climateData(datalines))
 
     ! xxx try
-    allocate(climateData(datalines - 96))
+    allocate(climateData(datalines- 96))
     days_data = days_data - 2
 
     idx_climatedata = 0

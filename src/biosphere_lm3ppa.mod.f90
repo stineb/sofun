@@ -173,7 +173,7 @@ contains
 
       write(fno5,'(1(a5,","),80(a12,","))')  'year',              &
           'CAI','LAI','GPP', 'Rauto',   'Rh',                    &
-          'rain','SiolWater','Transp','Evap','Runoff',           &
+          'rain','SoilWater','Transp','Evap','Runoff',           &
           'plantC','soilC',    'plantN', 'soilN','totN',         &
           'NSC', 'SeedC', 'leafC', 'rootC', 'SapwoodC', 'WoodC', &
           'NSN', 'SeedN', 'leafN', 'rootN', 'SapwoodN', 'WoodN', &
@@ -186,19 +186,22 @@ contains
       ! Initialisations
       !------------------------------------------------------------------------
       ! Parameter initialization: Initialize PFT parameters
-      ! print*,'1: ', vegn%LAI
+      
+
       call initialize_PFT_data()
 
       ! Initialize vegetation tile and plant cohorts
       allocate(vegn)
-      ! print*,'2: ', vegn%LAI
-      call initialize_vegn_tile(vegn,nCohorts)
+      
+       !print*,'2: ', vegn%SapwoodC
+      
+      call initialize_vegn_tile(vegn, nCohorts)
       
       ! Sort and relayer cohorts
-      ! print*,'3: ', vegn%LAI
+       !print*,'3: ', vegn%SapwoodC
       call relayer_cohorts(vegn)
 
-      ! print*,'4: ', vegn%LAI
+       !print*,'4: ', vegn%SapwoodC
       call Zero_diagnostics(vegn)
 
       !------------------------------------------------------------------------
@@ -232,7 +235,7 @@ contains
       !----------------------------------------------------------------
       ! LOOP THROUGH DAYS
       !----------------------------------------------------------------
-      ! print*,'5: ', vegn%LAI
+       !print*,'5: ', vegn%SapwoodC
       dayloop: do dm=1,ndaymonth(moy)
         doy = doy+1
         idays = idays + 1
@@ -261,7 +264,11 @@ contains
           idata = simu_steps + 1
           year0 =  myinterface%climate(idata)%year  ! Current year
           vegn%Tc_daily = vegn%Tc_daily +  myinterface%climate(idata)%Tair
-          tsoil         =  myinterface%climate(idata)%tsoil
+
+          ! if (iyears>2 .and. doy >60) print*,myinterface%climate(idata)
+          ! if (iyears>2 .and. doy >60) stop
+
+          tsoil         = myinterface%climate(idata)%tsoil
           simu_steps    = simu_steps + 1
 
           ! fast-step calls, hourly or half-hourly
@@ -293,10 +300,8 @@ contains
         tsoil         = tsoil/myinterface%steps_per_day
         soil_theta    = vegn%thetaS
 
-        ! if (doy>3) then
-        !   ! print*,myinterface%climate(idata-48:idata)
-        !   stop 'here'
-        ! end if 
+        ! print*,'vegn%NSC, vegn%NSN, vegn%SapwoodC, vegn%leafC, vegn%rootC', vegn%NSC, vegn%NSN, vegn%SapwoodC, vegn%leafC, vegn%rootC
+        ! if (iyears>1000) stop 'here'
 
         ! if (simu_steps==17520) then
         !   print*,'vegn%n_cohorts', vegn%n_cohorts
@@ -311,22 +316,22 @@ contains
         !-------------------------------------------------
         ! Daily calls
         !-------------------------------------------------
-        ! print*,'6: ', vegn%LAI
+        !print*,'6: ', vegn%SapwoodC
         call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4)
         !write(*,*)iyears,idoy
 
         ! Determine start and end of season and maximum leaf (root) mass
-        ! print*,'7: ', vegn%LAI
+        !print*,'7: ', vegn%SapwoodC
         call vegn_phenology(vegn, j)
 
         ! Kill all individuals of a cohort if NSC falls below threshold
         !call vegn_starvation(vegn)
 
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
-        ! print*,'8: ', vegn%LAI
+        !print*,'8: ', vegn%SapwoodC
         call vegn_growth_EW(vegn)
 
-        if (doy>3) stop 'here'
+        !if (doy>3) stop 'here'
 
       end do dayloop
 
@@ -382,8 +387,8 @@ contains
       close(102)
       close(103)
       close(104)
-      ! deallocate(vegn%cohorts)
-      ! deallocate( myinterface%climate)
+      deallocate(vegn%cohorts)
+      deallocate( myinterface%climate)
       ! stop 'actually finalizing'
 
     end if

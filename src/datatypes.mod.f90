@@ -536,7 +536,8 @@ module datatypes
 
   character(len=80) :: filepath_in = '/Users/eweng/Documents/BiomeESS/forcingData/'
   character(len=160) :: climfile = 'US-Ha1forcing.txt'
-  integer   :: model_run_years = 100  ! xxx todo: not used
+  !integer   :: model_run_years = 100  ! xxx todo: not used
+  !integer   :: runyears = 100  ! xxxxxxx todo: not used
   integer   :: equi_days       = 0 ! 100 * 365
   logical   :: outputhourly = .False.
   logical   :: outputdaily  = .True.
@@ -749,7 +750,7 @@ contains
     type(cohort_type),pointer :: cc
     integer :: i
 
-    print*,'Zero_diagnostics() 1: vegn%dailyEvap ', vegn%dailyEvap
+    !print*,'Zero_diagnostics() 1: vegn%dailyEvap ', vegn%dailyEvap
 
     !daily
     vegn%dailyfixedN = 0.
@@ -809,7 +810,7 @@ contains
       cc%DBH_ys    = cc%DBH
     enddo
 
-    print*,'Zero_diagnostics() 2: vegn%dailyEvap ', vegn%dailyEvap
+    !print*,'Zero_diagnostics() 2: vegn%dailyEvap ', vegn%dailyEvap
 
   end subroutine Zero_diagnostics
 
@@ -842,14 +843,14 @@ contains
     cc => vegn%cohorts(i)
 
     ! Vegn C pools:
-    vegn%NSC     = vegn%NSC   + cc%NSC      * cc%nindivs
-    vegn%SeedC   = vegn%SeedC + cc%seedC    * cc%nindivs
-    vegn%leafC   = vegn%leafC + cc%bl       * cc%nindivs
-    vegn%rootC   = vegn%rootC + cc%br       * cc%nindivs
-    vegn%SapwoodC= vegn%SapwoodC + cc%bsw   * cc%nindivs
-    vegn%woodC   = vegn%woodC    + cc%bHW   * cc%nindivs
-    vegn%CAI     = vegn%CAI + cc%crownarea * cc%nindivs
-    vegn%LAI     = vegn%LAI   + cc%leafarea * cc%nindivs
+    vegn%NSC      = vegn%NSC   + cc%NSC      * cc%nindivs
+    vegn%SeedC    = vegn%SeedC + cc%seedC    * cc%nindivs
+    vegn%leafC    = vegn%leafC + cc%bl       * cc%nindivs
+    vegn%rootC    = vegn%rootC + cc%br       * cc%nindivs
+    vegn%SapwoodC = vegn%SapwoodC + cc%bsw   * cc%nindivs
+    vegn%woodC    = vegn%woodC    + cc%bHW   * cc%nindivs
+    vegn%CAI      = vegn%CAI + cc%crownarea * cc%nindivs
+    vegn%LAI      = vegn%LAI   + cc%leafarea * cc%nindivs
 
     ! Vegn N pools
     vegn%NSN     = vegn%NSN   + cc%NSN      * cc%nindivs
@@ -971,13 +972,13 @@ contains
 
     !! Tile level, daily
     ! if(outputdaily.and. iday>equi_days) then
-    ! print*,'outputdaily ', outputdaily
-    ! print*,'equi_days   ', myinterface%params_siml%equi_days
-    ! print*,'iday        ', iday
+     !print*,'outputdaily ', outputdaily
+     !print*,'equi_days   ', myinterface%params_siml%equi_days
+     !print*,'iday        ', iday
     if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
-      ! print*,'6a: ', vegn%LAI
-      call summarize_tile(vegn)
-      ! print*,'6b: ', vegn%LAI
+       !print*,'6a: ', vegn%SapwoodC
+      call summarize_tile(vegn) !tilexxxx
+       !print*,'6b: ', vegn%SapwoodC
       write(fno4,'(2(I5,","),60(F12.6,","))') iyears, idoy,  &
         vegn%tc_daily, vegn%dailyPrcp, vegn%soilwater,      &
         vegn%dailyTrsp, vegn%dailyEvap,vegn%dailyRoff,      &
@@ -1005,7 +1006,11 @@ contains
     vegn%annualEvap = vegn%annualEvap + vegn%dailyevap
     vegn%annualRoff = vegn%annualRoff + vegn%dailyRoff
 
-    ! print*,'vegn%dailyevap, vegn%annualEvap', vegn%dailyevap, vegn%annualEvap
+    !print*,'vegn%dailyevap, vegn%annualEvap', vegn%dailyevap, vegn%annualEvap
+    !print*,'vegn%NSC, vegn%SapwoodC', vegn%NSC, vegn%SapwoodC
+    !print*, '  NSC bl bsw bHW br seedC nindivs', cc%NSC,  cc%bl,  cc%bsw,  cc%bHW,  cc%br,   cc%seedC, cc%nindivs  ! xxx debug
+    ! print*, 'more', vegn%NSN,  vegn%SeedN,  vegn%leafN,  vegn%rootN,  vegn%SapwoodN,  vegn%woodN  ! xxx debug
+
 
     ! zero:
     vegn%dailyNup  = 0.0

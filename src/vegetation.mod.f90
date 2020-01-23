@@ -738,7 +738,9 @@ contains
         cc%leafarea  = leaf_area_from_biomass(cc%bl,cc%species,cc%layer,cc%firstlayer)
         cc%lai       = cc%leafarea/cc%crownarea !(cc%crownarea *(1.0-sp%internal_gap_frac))
 
-        print*, 'vegn growth',  vegn%LAI, cc%leafarea, cc%nindivs, cc%crownarea   ! xxx debug
+        !print*, 'vegn growth',  vegn%LAI, cc%NSC, cc%bsw, cc%seedC   ! xxx debug
+        !print*, ' SapwoodC NSC bl bsw bHW br seedC nindivs', vegn%SapwoodC, cc%NSC,  cc%bl,  cc%bsw,  cc%bHW,  cc%br,   cc%seedC, cc%nindivs  ! xxx debug
+
 
         vegn%LAI     = vegn%LAI + cc%leafarea  * cc%nindivs
 
@@ -1060,6 +1062,7 @@ contains
     endif
     !deadtrees = cc%nindivs*(1.0-exp(0.0-deathrate*deltat/seconds_per_year)) ! individuals / m2
     deadtrees = cc%nindivs * MIN(1.0,deathrate*deltat/seconds_per_year) ! individuals / m2
+
     ! Carbon and Nitrogen from dead plants to soil pools
     call plant2soil(vegn,cc,deadtrees)
     ! Update plant density
@@ -1677,18 +1680,29 @@ contains
   slow_N_free = MAX(0.0, slow_L_loss*(1./CNslow - CUEslow/CNm))
 
   N_loss = MAX(0.,vegn%mineralN) * A * K_nitrogen * myinterface%dt_fast_yr
+
   !  N_loss = MAX(0.,vegn%mineralN) * (1. - exp(0.0 - etaN*runoff - A*K_nitrogen*myinterface%dt_fast_yr))
   N_loss = vegn%mineralN * MIN(0.25, (A * K_nitrogen * myinterface%dt_fast_yr + etaN*runoff))
+
+  ! ! xxx debug
+  ! ! print*,'N_loss ', N_loss
+  ! N_loss = 0.0
+
   vegn%Nloss_yr = vegn%Nloss_yr + N_loss + DON_loss
 
   vegn%mineralN = vegn%mineralN - N_loss       &
-  + vegn%N_input * myinterface%dt_fast_yr  &
-  + fast_N_free + slow_N_free  &
-  + micr_C_loss/CNm
-  vegn%annualN   = vegn%annualN - N_loss       &
-  + vegn%N_input * myinterface%dt_fast_yr  &
-  + fast_N_free + slow_N_free  &
-  + micr_C_loss/CNm
+    + vegn%N_input * myinterface%dt_fast_yr  &
+    + fast_N_free + slow_N_free  &
+    + micr_C_loss/CNm
+
+  vegn%annualN = vegn%annualN - N_loss       &
+    + vegn%N_input * myinterface%dt_fast_yr  &
+    + fast_N_free + slow_N_free  &
+    + micr_C_loss/CNm
+
+  ! ! xxx debug: slightly different dynamics are caused by mineralN
+  ! print*,N_loss, vegn%N_input, fast_N_free, slow_N_free, micr_C_loss
+  ! vegn%mineralN = 0.00025
 
   ! Check if soil C/N is lower than CN0
   fast_N_free = MAX(0., vegn%metabolicN  - vegn%metabolicL/CN0metabolicL)
@@ -2218,9 +2232,9 @@ contains
   vegn%thetaS = 1.0
 
   ! tile
-  print*, 'initialize_vegn_tile() 1: ',  vegn%LAI   ! xxx debug
+  !print*, 'initialize_vegn_tile() 1: ',  vegn%SapwoodC   ! xxx debug
   call summarize_tile(vegn)
-  print*, 'initialize_vegn_tile() 2: ',  vegn%LAI   ! xxx debug
+  !print*, 'initialize_vegn_tile() 2: ',  vegn%SapwoodC   ! xxx debug
   vegn%initialN0 = vegn%NSN + vegn%SeedN + vegn%leafN +      &
   vegn%rootN + vegn%SapwoodN + vegn%woodN + &
   vegn%MicrobialN + vegn%metabolicN +       &
@@ -2261,9 +2275,9 @@ contains
   vegn%previousN   = vegn%mineralN
 
   ! tile
-  print*, 'initialize_vegn_tile() 3: ',  vegn%LAI   ! xxx debug
+  !print*, 'initialize_vegn_tile() 3: ',  vegn%SapwoodC   ! xxx debug
   call summarize_tile(vegn)
-  print*, 'initialize_vegn_tile() 4: ',  vegn%LAI   ! xxx debug
+  !print*, 'initialize_vegn_tile() 4: ',  vegn%SapwoodC   ! xxx debug
   vegn%initialN0 = vegn%NSN + vegn%SeedN + vegn%leafN +      &
   vegn%rootN + vegn%SapwoodN + vegn%woodN + &
   vegn%MicrobialN + vegn%metabolicN +       &
