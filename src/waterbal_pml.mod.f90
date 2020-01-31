@@ -40,11 +40,11 @@ module md_waterbal
   ! Variables are a function of latitude, elevation, and 
   ! sunshine fraction (all variables independent of soil moisture)
   type solartype
-    real, dimension(ndayyear) :: dayl        ! day length (hours)
-    real, dimension(ndayyear) :: dra         ! daily TOA solar irradiation (J/m2)
-    real, dimension(ndayyear) :: dppfd       ! daily total PPFD (mol m-2 d-1)
-    real, dimension(nmonth)   :: mppfd       ! monthly total PPFD (mol m-2 month-1)
-    real, dimension(nmonth)   :: meanmppfd   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
+    real, dimension(ndayyear) :: dayl               ! day length (hours)
+    real, dimension(ndayyear) :: dra                ! daily TOA solar irradiation (J/m2)
+    real, dimension(ndayyear) :: dppfd_splash       ! daily total PPFD (mol m-2 d-1)
+    real, dimension(nmonth)   :: mppfd_splash       ! monthly total PPFD (mol m-2 month-1)
+    real, dimension(nmonth)   :: meanmppfd_splash   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
   end type solartype
 
   !-----------------------------------------------------------------------
@@ -60,7 +60,6 @@ module md_waterbal
   real :: kd                ! angular coefficient of transmittivity (Linacre, 1968)
   real :: ke                ! eccentricity for 2000 CE (Berger, 1978)
   real :: keps              ! obliquity for 2000 CE, degrees (Berger, 1978)
-  real :: kGsc              ! solar constant, W/m^2 (Kopp & Lean, 2011)
   real :: kw                ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
   real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
   real :: vpdstress_par_a   ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
@@ -76,7 +75,7 @@ module md_waterbal
     real :: lambda
   end type outtype_berger
 
-  type( outtype_berger ), dimension(ndayyear) :: out_berger    ! stores output of function berger_tls
+  type(outtype_berger), dimension(ndayyear) :: out_berger    ! stores output of function berger_tls
 
   ! Radiation variables. aet, sw, and cpa are affected by soil moisture.
   type evaptype
@@ -88,17 +87,13 @@ module md_waterbal
     real :: rn           ! daily net radiation (J/m2/d)
     real :: rnn          ! nighttime net radiation (J/m^2/d)
     real :: rnl          ! net longwave radiation (W/m^2)
-    real :: eet          ! daily EET (mm d-1)
-    real :: pet          ! daily PET (mm d-1)
-    real :: pet_e        ! daily PET (J m-2 d-1)
     real :: cn           ! daily condensation (mm d-1)
     real :: aet          ! daily AET (mm d-1)
     real :: aet_e        ! daily AET (J m-2 d-1)
-    real :: cpa          ! Cramer-Prentice-Alpha = AET / EET (unitless)
   end type evaptype
 
   ! SPLASH state variables
-  type( evaptype ) , dimension(nlu) :: evap
+  type(evaptype), dimension(nlu) :: evap
 
   ! holds return variables of function get_snow_rain()
   type outtype_snow_rain
@@ -112,6 +107,21 @@ module md_waterbal
     real :: aet_canop    ! canopy transpiration
   end type outtype_et
 
+  type outtype_et
+    real :: aet
+    real :: aet_e
+    real :: aet_soil
+    real :: aet_e_soil
+    real :: aet_canop
+    real :: aet_e_canop
+  end type outtype_et
+
+  type outtype_netrad
+    real :: rnl
+    real :: rn
+    real :: rnn
+    real :: cn
+  end type outtype_netrad
 
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, KNOWN PARAMETERS
@@ -181,18 +191,19 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( soil, tile_fluxes, plant_fluxes, doy, lat, elv, pr, sn, tc, sf, netrad, vpd, vw, lai, fapar, h_canopy, g_stomata )
+  subroutine waterbal( tile, tile_fluxes, doy, lat, elv, pr, sn, tc, sf, netrad, vpd, patm, vwind ) !, lai, fapar, h_canopy, g_stomata )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, ndaymonth, npft
-    use md_tile, only: soil_type, tile_fluxes_type
-    use md_plant, only: plant_fluxes_type
+    use md_tile, only: tile_type, tile_fluxes_type
+
+    ! real, intent(in) :: h_canopy        ! canopy height (m)
+    ! real, intent(in) :: g_stomata       ! stomatal conductance (mol CO2 Pa-1 m-2 s-1)
 
     ! arguments
-    type( soil_type ), dimension(nlu), intent(inout)        :: soil
-    type( tile_fluxes_type ), dimension(nlu), intent(inout) :: tile_fluxes
-    type(plant_fluxes_type), dimension(npft), intent(inout) :: plant_fluxes  ! derived type containing plant-related flux variables  (overwritten at each time step)
+    type(tile_type), dimension(nlu), intent(inout)        :: tile
+    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
     integer, intent(in) :: doy          ! day of year
     real, intent(in)    :: lat          ! latitude (degrees)
     real, intent(in)    :: elv          ! altitude (m)
@@ -200,96 +211,70 @@ contains
     real, intent(in)    :: sn           ! daily precip as snow (mm water equivalent) 
     real, intent(in)    :: tc           ! mean monthly temperature (deg C)
     real, intent(in)    :: sf           ! mean monthly sunshine fraction (unitless)
-    real, intent(in)    :: netrad       ! net radiation (W m-2), may be dummy (in which case this is not used)
+    real, intent(in)    :: netrad       ! net radiation (J m-2 d-1), may be dummy (in which case this is not used)
     real, intent(in)    :: vpd          ! vapour pressure deficit (Pa)
-    real, intent(in)    :: vw           ! wind speed (m s-1)
-    real, intent(in)    :: lai          ! leaf area index (m2 m-2)
-    real, intent(in)    :: fapar        ! fraction of absorbed photosynthetically active radiation (unitless)
-    real, intent(in)    :: h_canopy     ! canopy height (m)
-    real, intent(in)    :: g_stomata    ! stomatal conductance (m s-1)
+    real, intent(in)    :: patm         ! atmospheric pressure (Pa)
+    real, intent(in)    :: vwind        ! wind speed (m s-1)
 
     ! local variables
-    real :: wcont_prev                   ! soil moisture (water content) before being updated (mm)
-    real :: wbal                         ! daily water balance (mm), temporary variable
+    type(outtype_netrad)    :: out_netrad
+    type(outtype_et)        :: out_et
+    type(outtype_snow_rain) :: out_snow_rain
+    real                    :: g_aero
+    real                    :: g_canopy
+    integer                 :: lu             ! land unit (gridcell tile)
 
-    integer :: lu                        ! land unit (gridcell tile)
-    integer :: moy                       ! month of year
-    integer :: idx                       ! day of year corresponding to yesterday
-    integer :: dm                        ! day of month
 
-    type( outtype_snow_rain ) :: out_snow_rain
-
-    ! for the case netrad is prescribed following SWBM
-    real, parameter :: beta = 0.66
-    real, parameter :: exp_et = 0.06
-
+    tk = tc + kTkelvin
 
     ! Loop over gricell tiles
     do lu=1,nlu
 
-      ! Calculate aerodynamic conductance
-      g_aero = calc_g_aero(vw, h_canopy)
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Calculate canopy conductance (m s-1)
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      g_aero = calc_g_aero( vwind, tile(lu)%canopy%height )
 
-      ! ! Calculate evaporative supply rate, mm/h
-      ! tile_fluxes(lu)%sw = kCw * soil(lu)%phy%wcont / soil(lu)%params%whc
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Net radiation (J m-2 d-1)
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      out_netrad = calc_netrad( lat, doy, elv, sf, tc )
 
-      ! Calculate radiation and evaporation quantities
-      ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
-      evap(lu) = get_evap( lat, doy, elv, sf, tc, tile_fluxes(lu)%sw, netrad, pr )
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Canopy transpiration and soil evaporation
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      out_et = calc_et( tc, patm, tile(lu)%canopy%lai, tile(lu)%canopy%fapar, out_netrad%rn, vpd, tile(lu)%canopy%conductance, g_aero )
 
-      ! Calculate ecosystem-level evapotranspiration as a function of LAI
-      out_et = calc_et(lai, fapar, evap(lu)%rn, vpd, g_stomata, g_aero, evap(lu)%gamma, evap(lu)%sat_slope, evap(lu)%rho_air)
-
-      ! ! Overwrite AET calculated by get_evap(), instead using vdpstress * fapar * pet
-      ! evap(lu)%aet = calc_vdpstress( vpd ) * fapar * evap(lu)%pet
-      ! evap(lu)%aet_e = evap(lu)%aet / (evap(lu)%econ * 1000.0)
-
-      ! take acual evaporation
-      if (npft>1) stop 'waterbal_splash: Think of soething when npft > 1.'
-      plant_fluxes(:)%dlatenth = evap(lu)%aet_e
-
-      if (netrad/=dummy) then
-        ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        ! 21. Estimate daily AET (out_evap%aet), mm d-1
-        ! WARNING: This follows SWBM not SPLASH
-        ! Needs to be done here because wcont is not available in get_evap()
-        ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        ! calculate actual ET from potential ET and Eq. 2 in Orth et al., 2013, limited to <=1
-        evap(lu)%aet = evap(lu)%pet * beta * min( 1.0, ( soil(lu)%phy%wcont / soil(lu)%params%whc )**exp_et )
-        ! print*,'aet: ', evap(lu)%aet
-
-        evap(lu)%cpa = max( 0.0, evap(lu)%aet / evap(lu)%eet )
-      end if
-
-
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Update soil moisture and snow pack
-      out_snow_rain = get_snow_rain( pr + evap(lu)%cn, sn, tc, soil(lu)%phy%snow )
-      soil(lu)%phy%snow = out_snow_rain%snow_updated 
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      out_snow_rain = get_snow_rain( pr + evap(lu)%cn, sn, tc, tile(lu)%soil%phy%snow )
+      tile(lu)%soil%phy%snow = out_snow_rain%snow_updated 
 
       ! Update soil moisture
-      soil(lu)%phy%wcont = soil(lu)%phy%wcont + out_snow_rain%liquid_to_soil - evap(lu)%aet
+      tile(lu)%soil%phy%wcont = tile(lu)%soil%phy%wcont + out_snow_rain%liquid_to_soil - out_et%aet
 
       ! Bucket model for runoff generation
-      if (soil(lu)%phy%wcont>soil(lu)%params%whc) then
+      if (tile(lu)%soil%phy%wcont > tile(lu)%soil%params%whc) then
         ! -----------------------------------
         ! Bucket is full 
         ! -----------------------------------
-        ! * determine NO3 leaching fraction 
-        tile_fluxes(lu)%dfleach = 1.0 - soil(lu)%params%whc / soil(lu)%phy%wcont
+        ! determine NO3 leaching fraction 
+        tile_fluxes(lu)%dfleach = 1.0 - tile(lu)%soil%params%whc / tile(lu)%soil%phy%wcont
 
-        ! * add remaining water to monthly runoff total
-        tile_fluxes(lu)%dro = soil(lu)%phy%wcont - soil(lu)%params%whc
+        ! add remaining water to monthly runoff total
+        tile_fluxes(lu)%dro = tile(lu)%soil%phy%wcont - tile(lu)%soil%params%whc
 
-        ! * set soil moisture to capacity
-        soil(lu)%phy%wcont = soil(lu)%params%whc
+        ! set soil moisture to capacity
+        tile(lu)%soil%phy%wcont = tile(lu)%soil%params%whc
 
-      elseif (soil(lu)%phy%wcont<0.0) then
+      else if (tile(lu)%soil%phy%wcont < 0.0) then
         ! -----------------------------------
         ! Bucket is empty
         ! -----------------------------------
-        ! * set soil moisture to zero
-        evap(lu)%aet            = evap(lu)%aet + soil(lu)%phy%wcont
-        soil(lu)%phy%wcont      = 0.0
+        ! set soil moisture to zero
+        evap(lu)%aet = evap(lu)%aet + tile(lu)%soil%phy%wcont
+        tile(lu)%soil%phy%wcont      = 0.0
         tile_fluxes(lu)%dro     = 0.0
         tile_fluxes(lu)%dfleach = 0.0
 
@@ -300,11 +285,17 @@ contains
 
       end if
 
-      ! water-filled pore space
-      soil(lu)%phy%wscal = soil(lu)%phy%wcont / soil(lu)%params%whc
+      ! water scalar (fraction of plant-available water holding capacity; water storage at wilting point is already accounted for in tile(lu)%soil%params%whc)
+      tile(lu)%soil%phy%wscal = tile(lu)%soil%phy%wcont / tile(lu)%soil%params%whc
 
-      ! save daily water balance for output
-      tile_fluxes(lu)%dwbal = out_snow_rain%liquid_to_soil
+      ! save daily water fluxes
+      tile_fluxes(lu)%dwbal       = out_snow_rain%liquid_to_soil
+      tile_fluxes(lu)%aet         = out_et%aet
+      tile_fluxes(lu)%aet_e       = out_et%aet_e
+      tile_fluxes(lu)%aet_soil    = out_et%aet_soil
+      tile_fluxes(lu)%aet_e_soil  = out_et%aet_e_soil
+      tile_fluxes(lu)%aet_canop   = out_et%aet_canop
+      tile_fluxes(lu)%aet_e_canop = out_et%aet_e_canop
 
     end do
 
@@ -330,17 +321,17 @@ contains
     real, intent(in), dimension(ndayyear) :: ppfd          ! photon flux density (mol m-2 d-1), may be dummy (in which case this is not used)
 
     ! function return variable
-    type( solartype ) :: out_solar
+    type(solartype) :: out_solar
 
     ! local variables
-    integer            :: doy
-    real               :: dr                           ! distance factor
-    real               :: delta                        ! declination angle 
-    real               :: ru                           ! variable substitute for u
-    real               :: rv                           ! variable substitute for v
-    real               :: hs                           ! sunset hour angle
-    real               :: tau                          ! transmittivity (unitless)
-    real               :: rw                           ! variable substitute (W/m^2)
+    integer :: doy
+    real    :: dr                           ! distance factor
+    real    :: delta                        ! declination angle 
+    real    :: ru                           ! variable substitute for u
+    real    :: rv                           ! variable substitute for v
+    real    :: hs                           ! sunset hour angle
+    real    :: tau                          ! transmittivity (unitless)
+    real    :: rw                           ! variable substitute (W/m^2)
     real, dimension(2) :: out_ru_rv      ! function return variable containing 'ru' and 'rv'.
 
     real, dimension(ndayyear) :: daysecs ! daylight seconds for each DOY
@@ -355,8 +346,6 @@ contains
     out_solar%meanmppfd(:) = 0.0
 
     do doy=1,ndayyear
-
-      ! Test for comparison with Python SPLASH
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
@@ -495,93 +484,67 @@ contains
   end function get_solar
 
 
-  function calc_g_aero(v_wind, h_canopy) result( g_aero )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Calculates aerodynamic conductance as a function of wind speed and
-    ! vegetation height. 
-    ! Following Eq. 7 in Zhang et al., 2017 JGR (doi:10.1002/2017JD027025)
-    !-------------------------------------------------------------------------  
-    use md_params_core, only: k_karman
-
-    ! arguments
-    real, intent(in) :: v_wind    ! wind speed xxx units ? xxx
-    real, intent(in) :: h_canopy  ! canopy height (m) 
-
-    zom = 0.123 * h_canopy
-    zov = 0.1 * zom
-    zm = 10.0                 ! reference height for wind speed (m)
-    d_canopy = 2.0/3.0 * h_canopy
-    g_aero = k_karman**2 * v_wind / (log((zm - d_canopy)/zom) * log((zm - d_canopy)/zov))
-
-  end function calc_g_aero
-
-
-  function calc_g_canopy(g_stomata, lai) result( g_canopy )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Calculates canopy conductance, proportional to the leaf area index.
-    !-------------------------------------------------------------------------  
-    real, intent(in) :: g_stomata
-    real, intent(in) :: lai
-
-    g_canopy = g_stomata * lai
-
-  end function calc_g_canopy
-
-
-  function calc_fapar(lai, kbeer) result( fapar )
-    !/////////////////////////////////////////////////////////////////////////
-    ! Calculates the fraction of absorbed photosynthetically active radiation
-    ! following exponential light extinction.
-    !-------------------------------------------------------------------------  
-    real, intent(in) :: lai
-    real, intent(in) :: kbeer
-
-    fapar = 1.0 - exp(-kbeer * lai)
-
-  end function calc_fapar
-
-
-  function calc_et(lai, fapar, netrad, vpd, g_stomata, g_aero, gamma, sat_slope, rho_air) result( out_et )
+  function calc_et( tc, patm, lai, fapar, netrad, vpd, g_canopy, g_aero ) result( out_et )
     !/////////////////////////////////////////////////////////////////////////
     ! Returns ecosystem-level evapotranspiration as a function of LAI following
     ! Eq. 1 in Zhang et al., 2017 JGR (doi:10.1002/2017JD027025)
     !-------------------------------------------------------------------------  
-    use md_params_core, only: cp
+    use md_params_core, only: cp, kTkelvin
     use md_sofunutils, only: dampen_variability
 
     ! arguments
-    real, intent(in) :: lai             ! leaf area index (m2 m-2)
+    real, intent(in) :: tc              ! air temperature (deg C)
+    real, intent(in) :: patm            ! atmospheric pressure (Pa)
+    real, intent(in) :: lai             ! leaf area index (m2-leaf m-2-ground)
     real, intent(in) :: fapar           ! fraction of absorbed photosynthetically active radiation (unitless)
-    real, intent(in) :: netrad          ! net radiation (W m-2)
+    real, intent(in) :: netrad          ! net radiation (J m-2 d-1)   xxx in Zhang described as (MJ m-2 d-1)
     real, intent(in) :: vpd             ! vapour pressure deficit of air (Pa)
-    real, intent(in) :: g_stomata       ! stomatal conductance (xxx)
+    real, intent(in) :: g_canopy        ! canopy conductance (m s-1)
     real, intent(in) :: g_aero          ! aerodynamic conductance (m s-1)
-    real, intent(in) :: gamma           ! psychrometric constant (Pa deg C-1)
-    real, intent(in) :: sat_slope       ! slope of saturation vapour pressure vs. temperature curve, Pa/K
-    real, intent(in) :: rho_air         ! density of air (g m-3)
 
     ! function return variable
     type(outtype_et) :: out_et
 
     ! local variables
-    real :: g_canopy                    ! canopy conductance (m s-1)
-    real :: e_avl_soil                  ! available energy of soil surface (corresponds to net radiation minus ground heat flux) (MJ m-2 d-1)
-    real :: e_avl_canopy                ! available energy of canopy (corresponds to net radiation minus ground heat flux (MJ m-2 d-1)
-    real :: epsilon                     ! = s/gamma; s: slope of the  
-    real, save :: p_over_eet_memory = 1.0
+    real :: e_avl_soil                      ! available energy of soil surface (corresponds to net radiation minus ground heat flux) (MJ m-2 d-1)
+    real :: e_avl_canopy                    ! available energy of canopy (corresponds to net radiation minus ground heat flux (MJ m-2 d-1)
+    real :: epsilon                         ! = s/gamma; s: slope of the  
+    real :: gamma                           ! psychrometric constant (Pa K-1) ! xxx Zhang et al. use it in units of (kPa K-1), probably they use sat_slope in kPa/K, too.
+    real :: sat_slope                       ! slope of saturation vapour pressure vs. temperature curve, Pa K-1
+    real :: rho_air                         ! density of air (g m-3)
+    real :: lv                              ! enthalpy of vaporization, J/kg
+    real :: rho_water                       ! density of water (g m-3)
+    real :: econ                            ! water-to-energy conversion factor (econ), m^3/J
+    real :: rho_air                         ! density of air (g m-3)
+    real, save :: p_over_eet_memory = 1.0   ! precipitation over equilibrium evapotranspiration, damped variability
 
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! ! Calculate fraction of absorbed photosynthetically active radiation
-    ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! fapar = calc_fapar(lai, kbeer)
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Calculate temperature and pressure-dependent quantities
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Density of (dry?) air
+    rho_air = calc_density_air(tc, patm)
 
+    ! Psychrometric constant, Pa/K
+    gamma = psychro(tc, patm)
+
+    ! Slope of saturation vap press temp curve, Pa/K
+    sat_slope = calc_sat_slope(tc)
+
+    ! Enthalpy of vaporization, J/kg
+    lv = calc_enthalpy_vap(tc)
+    
+    ! Density of water, kg/m^3
+    rho_water = density_h2o(tc, patm)
+
+    ! Eq. 51, SPLASH 2.0 Documentation
+    ! out_evap%econ = 1.0 / ( lv * rho_water ) ! this is to convert energy into mass (water)
+    econ = sat_slope / (lv * rho_water * (sat_slope + gamma)) ! MORE PRECISELY - this is to convert energy into mass (water)
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Implementation of PML model (Zhang et al., 2017)
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! variable substitute as used in Zhang et al. 2017 JGR    
     epsilon = sat_slope / gamma
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Calculate canopy conductance
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    g_canopy = calc_g_canopy(g_stomata, lai)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Energy partitioning to soil and canopy
@@ -596,19 +559,25 @@ contains
     pet_soil = epsilon * e_avl_soil / (epsilon + 1.0)
     p_over_eet = pr / pet_soil
     call dampen_variability( p_over_eet, 30.0, p_over_eet_memory )
-    out_et%aet_soil = min(p_over_eet_memory, 1.0) * pet_soil
+    out_et%aet_e_soil = min(p_over_eet_memory, 1.0) * pet_soil
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Calculate canopy transpiration; Eq. 1 in Zhang et al., 2017
+    ! Penman-Monteith Equation for canopy transpiration; Eq. 1 in Zhang et al., 2017
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    out_et%aet_canop = (epsilon * e_avl_canopy + (rho_air * cp / gamma) * vpd * g_aero) / (1.0 + epsilon + g_aero/g_canopy)
+    out_et%aet_e_canop = (epsilon * e_avl_canopy + (rho_air * cp / gamma) * vpd * g_aero) / (1.0 + epsilon + g_aero/g_canopy)
 
+    ! Total evapotranspiration 
+    out_et%aet_e     = out_et%aet_e_canop + out_et%aet_e_soil
+
+    ! quantities in mm water (equivalent to kg m-2)
+    out_et%aet       = out_et%aet_e * econ * 1000.0
+    out_et%aet_soil  = out_et%aet_e_soil * econ * 1000.0
+    out_et%aet_canop = out_et%aet_e_canop * econ * 1000.0
 
   end function calc_et
 
 
-
-  function get_evap( lat, doy, elv, sf, tc, sw, netrad, pr ) result( out_evap )
+  function calc_netrad( lat, doy, elv, sf, tc ) result( out_netrad )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily quantities required for evapotranspiration
     ! calculations. 
@@ -623,13 +592,9 @@ contains
     real,    intent(in) :: elv           ! elevation, metres
     real,    intent(in) :: sf            ! fraction of sunshine hours
     real,    intent(in) :: tc            ! mean daily air temperature, C
-    real,    intent(in) :: sw            ! evaporative supply rate, mm/hr
-    real,    intent(in) :: netrad        ! net radiation, integrated over day (J m-2 d-1)
-    real,    intent(in) :: pr            ! daily precip as rain (liquid) (mm) 
-    ! real,    intent(in) :: fapar         ! fraction of absorbed photosynthetically active radiation (unitless)
 
     ! function return variable
-    type( evaptype )  :: out_evap
+    type(outtype_netrad)  :: out_netrad
 
     ! local variables
     real :: dr                           ! distance factor
@@ -640,227 +605,108 @@ contains
     real :: tau                          ! transmittivity (unitless)
     real :: rw                           ! variable substitute (W/m^2)
     real :: hn                           ! net radiation cross-over hour angle
-    ! real :: sat_slope                    ! slope of saturation vap press temp curve, Pa/K
-    ! real :: rho_water                    ! density of water, kg/m^3
-    ! real :: lv                           ! enthalpy of vaporization, J/kg
-    ! real :: gamma                        ! psychrometric constant, Pa/K
-    ! real :: econ                         ! Eq. 58, SPLASH 2.0 Documentation
-    real :: rx                           ! variable substitute (mm/hr)/(W/m^2)
-    real :: hi, cos_hi                   ! intersection hour angle, degrees
     real, dimension(2) :: out_ru_rv      ! function return variable containing 'ru' and 'rv'.
-    real, save :: p_over_eet_memory = 0.0  ! damped ratio of precipitation over equilibrium evapotranspiration, used to scale soil evaporation
 
-
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Calculate water-to-energy conversion (econ), m^3/J
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! Density of (dry?) air
-    out_evap%rho_air = calc_density_air(tc, calc_patm(elv))
-
-    ! Psychrometric constant, Pa/K
-    out_evap%gamma = psychro(tc, calc_patm(elv))
-
-    ! Slope of saturation vap press temp curve, Pa/K
-    out_evap%sat_slope = calc_sat_slope(tc)
-
-    ! Enthalpy of vaporization, J/kg
-    out_evap%lv = calc_enthalpy_vap(tc)
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 3. Calculate distance factor (dr), unitless
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    dr = calc_dr( out_berger(doy)%nu )
     
-    ! Density of water, kg/m^3
-    out_evap%rho_water = density_h2o(tc, calc_patm(elv))
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 4. Calculate declination angle (delta), degrees
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    delta = calc_delta( out_berger(doy)%lambda )
 
-    ! Eq. 51, SPLASH 2.0 Documentation
-    ! out_evap%econ = 1.0 / ( lv * rho_water ) ! this is to convert energy into mass (water)
-    out_evap%econ = out_evap%sat_slope / (out_evap%lv * out_evap%rho_water * (out_evap%sat_slope + out_evap%gamma)) ! MORE PRECISELY - this is to convert energy into mass (water)
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 5. Calculate variable substitutes (u and v), unitless
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    out_ru_rv = calc_ru_rv( delta, lat )
+    ru = out_ru_rv(1)
+    rv = out_ru_rv(2)
 
-
-    if (netrad/=dummy) then
-      !--------------------------------------------------
-      ! MODE 1: Net radiation is prescribed
-      ! ==> get condensation from negative net radiation
-      !--------------------------------------------------
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 13./14. Note: this corresponds to daytime plus nighttime net radiation (out_evap%rn), J/m^2
-      ! ==> coppy prescribed value to state variable net radiation, 'rn'
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      out_evap%rn = netrad      
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 17. Estimate daily EET (out_evap%eet), mm d-1
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 70, SPLASH 2.0 Documentation
-      out_evap%eet = 1000.0 * out_evap%econ * out_evap%rn
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 18. Estimate daily PET (out_evap%pet), mm d-1
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 72, SPLASH 2.0 Documentation
-      out_evap%pet = ( 1.0 + kw ) * out_evap%eet
-      ! print*,'pet: ', out_evap%pet
-
-      ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! ! 16.A. Calculate daily condensation (out_evap%cn), mm d-1
-      ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! if (out_evap%pet < 0.0) then
-      !   out_evap%cn = -1.0 * beta * out_evap%pet
-      ! else
-      !   out_evap%cn = 0.0
-      ! end if
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 16.A. Calculate daily condensation in case net radiation is negative (out_evap%cn), mm d-1
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      if (out_evap%rn < 0.0) then
-        out_evap%cn = 1000.0 * out_evap%econ * abs(out_evap%rn)
-      else
-        out_evap%cn = 0.0
-      end if
-
-    else
-      !--------------------------------------------------
-      ! MODE 2: Net radiation is calculated online
-      !--------------------------------------------------
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 3. Calculate distance factor (dr), unitless
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      dr = calc_dr( out_berger(doy)%nu )
-      
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 4. Calculate declination angle (delta), degrees
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      delta = calc_delta( out_berger(doy)%lambda )
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 5. Calculate variable substitutes (u and v), unitless
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      out_ru_rv = calc_ru_rv( delta, lat )
-      ru = out_ru_rv(1)
-      rv = out_ru_rv(2)
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 6. Calculate the sunset hour angle (hs), degrees
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      hs = calc_hs( ru, rv )
-      
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 8. Calculate transmittivity (tau), unitless
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      tau = calc_tau( sf, elv )
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 10. Estimate net longwave radiation (out_evap%rnl), W/m^2
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
-      out_evap%rnl = ( kb + (1.0 - kb ) * sf ) * ( kA - tc )
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 6. Calculate the sunset hour angle (hs), degrees
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    hs = calc_hs( ru, rv )
     
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 11. Calculate variable substitute (rw), W/m^2
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      rw = ( 1.0 - kalb_sw ) * tau * kGsc * dr
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 8. Calculate transmittivity (tau), unitless
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    tau = calc_tau( sf, elv )
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 12. Calculate net radiation cross-over hour angle (hn), degrees
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      if ((out_evap%rnl - rw*ru)/(rw*rv) >= 1.0) then
-        ! Net radiation negative all day
-        hn = 0.0
-      else if ((out_evap%rnl - rw*ru)/(rw*rv) <= -1.0) then
-        ! Net radiation positive all day
-        hn = 180.0
-      else
-        !hn = degrees( dacos((out_evap%rnl - rw*ru)/(rw*rv)) )
-        hn = degrees( acos((out_evap%rnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
-      end if
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 13. Calculate daytime net radiation (out_evap%rn), J/m^2
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 53, SPLASH 2.0 Documentation
-      out_evap%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_evap%rnl) + rw*rv*dgsin(hn))
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 14. Calculate nighttime net radiation (out_evap%rnn), J/m^2
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 56, SPLASH 2.0 Documentation
-      ! adopted bugfix from Python version (iss#13)
-      out_evap%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) - out_evap%rnl * (pi - radians(hn)))
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 16. Calculate daily condensation (out_evap%cn), mm d-1
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 68, SPLASH 2.0 Documentation
-      out_evap%cn = 1000.0 * out_evap%econ * abs(out_evap%rnn)
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 17. Estimate daily EET (out_evap%eet), mm d-1
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 70, SPLASH 2.0 Documentation
-      out_evap%eet = 1000.0 * out_evap%econ * out_evap%rn
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 18. Estimate daily PET (out_evap%pet), mm d-1
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 72, SPLASH 2.0 Documentation
-      out_evap%pet   = ( 1.0 + kw ) * out_evap%eet
-      out_evap%pet_e = out_evap%pet / (out_evap%econ * 1000)
-      
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 19. Calculate variable substitute (rx), (mm/hr)/(W/m^2)
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      rx = 1000.0 * 3600.0 * ( 1.0 + kw ) * out_evap%econ
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 20. Calculate the intersection hour angle (hi), degrees
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      cos_hi = sw/(rw*rv*rx) + out_evap%rnl/(rw*rv) - ru/rv   ! sw contains info of soil moisture (evaporative supply rate)
-      if (cos_hi >= 1.0) then
-        ! Supply exceeds demand:
-        hi = 0.0
-      elseif (cos_hi <= -1.0) then
-        ! Supply limits demand everywhere:
-        hi = 180.0
-      else
-        hi = degrees(acos(cos_hi))
-      end if
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 10. Estimate net longwave radiation (out_evap%rnl), W m-2
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 11, Prentice et al. (1993); Eq. 5 and 6, Linacre (1968)
+    out_netrad%rnl = ( kb + (1.0 - kb ) * sf ) * ( kA - tc )
   
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 21. Estimate daily AET (out_evap%aet), mm d-1
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 81, SPLASH 2.0 Documentation
-      out_evap%aet = (24.0/pi)*(radians(sw*hi) + rx*rw*rv*(dgsin(hn) - dgsin(hi)) + radians((rx*rw*ru - rx*out_evap%rnl)*(hn - hi)))
-      out_evap%aet_e = out_evap%aet / (out_evap%econ * 1000)
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 11. Calculate variable substitute (rw), W m-2 -- shortwave radiation?
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    rw = ( 1.0 - kalb_sw ) * tau * kGsc * dr
 
-      ! xxx debug
-      if (splashtest) then
-        print*,'slope of saturation, s', sat_slope
-        print*,'enthalpy of vaporization: ', lv
-        print*,'water density at 1 atm calculated: ', rho_water
-        print*,'calculating psychrometric const. with (tc, elv): ', tc, elv
-        print*,'calculating psychrometric const. with patm: ', calc_patm(elv)
-        print*,'psychrometric constant: ', gamma
-        print*,'daily condensation: ', out_evap%cn
-        print*,'daily EET: ', out_evap%eet
-        print*,'daily PET: ', out_evap%pet
-        print*,'variable substitute, rx: ', rx
-        print*,'intersection hour angle, hi: ', hi
-        print*,'daily AET set to: ', out_evap%aet
-      end if
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 12. Calculate net radiation cross-over hour angle (hn), degrees
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if ((out_netrad%rnl - rw*ru)/(rw*rv) >= 1.0) then
+      ! Net radiation negative all day
+      hn = 0.0
+    else if ((out_netrad%rnl - rw*ru)/(rw*rv) <= -1.0) then
+      ! Net radiation positive all day
+      hn = 180.0
+    else
+      !hn = degrees( dacos((out_netrad%rnl - rw*ru)/(rw*rv)) )
+      hn = degrees( acos((out_netrad%rnl - rw*ru)/(rw*rv)) )   ! use acos with single precision compilation
+    end if
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      if (out_evap%eet>0.0) then 
-        out_evap%cpa = out_evap%aet / out_evap%eet
-      else
-        out_evap%cpa = 1.0 + kw
-      end if
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 13. Calculate daytime total net radiation (out_netrad%rn), J m-2 d-1
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 53, SPLASH 2.0 Documentation
+    out_netrad%rn = (secs_per_day/pi) * (hn*(pi/180.0)*(rw*ru - out_netrad%rnl) + rw*rv*dgsin(hn))
 
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 14. Calculate nighttime total net radiation (out_netrad%rnn), J m-2 d-1
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 56, SPLASH 2.0 Documentation
+    ! adopted bugfix from Python version (iss#13)
+    out_netrad%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) - out_netrad%rnl * (pi - radians(hn)))
+
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 15. Calculate daily condensation, mm d-1
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if (out_netrad%rn < 0.0) then
+      out_netrad%cn = 1000.0 * out_netrad%econ * abs(out_netrad%rn)
+    else
+      out_netrad%cn = 0.0
     end if
 
 
-  end function get_evap
+  end function calc_netrad
+
+
+  function calc_g_aero(v_wind, h_canopy) result( g_aero )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Calculates aerodynamic conductance as a function of wind speed and
+    ! vegetation height. 
+    ! Following Eq. 7 in Zhang et al., 2017 JGR (doi:10.1002/2017JD027025)
+    !-------------------------------------------------------------------------  
+    use md_params_core, only: k_karman
+
+    ! arguments
+    real, intent(in) :: v_wind    ! wind speed (m s-1)
+    real, intent(in) :: h_canopy  ! canopy height (m) 
+
+    ! function return variable
+    real :: g_aero                ! aerodynamic conductance (m s-1)
+
+    zom = 0.123 * h_canopy
+    zov = 0.1 * zom
+    zm = 10.0                     ! measurement height for wind speed (m), must be consistent with input data information
+    d_canopy = (2.0/3.0) * h_canopy
+    g_aero = (k_karman**2 * v_wind) / (log((zm - d_canopy)/zom) * log((zm - d_canopy)/zov))
+
+  end function calc_g_aero
 
 
   function calc_density_air(tc_air, patm) result( rho )
@@ -891,7 +737,7 @@ contains
     real, intent(in) :: snow   ! snow depth, water equivalents (mm)
 
     ! function return variable
-    type( outtype_snow_rain ) :: out_snow_rain
+    type(outtype_snow_rain) :: out_snow_rain
 
     ! local variables
     real :: fsnow                             ! fraction of precipitation as snow (temperature dependent)
@@ -1045,7 +891,7 @@ contains
     tau_o = (kc + kd*sf)
 
     ! Eq. 2, Allen (1996)
-    tau = tau_o*(1.0 + (2.67e-5)*elv)
+    tau = tau_o * (1.0 + (2.67e-5) * elv)
 
   end function calc_tau
 
@@ -1087,9 +933,6 @@ contains
     ! obliquity for 2000 CE, degrees (Berger, 1978)
     keps     = getparreal( 'params/params_waterbal_splash.dat', 'keps' )
 
-    ! solar constant, W/m^2 (Kopp & Lean, 2011)
-    kGsc     = getparreal( 'params/params_waterbal_splash.dat', 'kGsc' )
-    
     ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
     kw       = getparreal( 'params/params_waterbal_splash.dat', 'kw' )
     
@@ -1694,9 +1537,9 @@ contains
     integer, intent(in)                                  :: jpngr
     integer, intent(in)                                  :: moy    
     integer, intent(in)                                  :: doy    
-    type( solartype ), intent(in)                        :: solar
-    type( psoilphystype ), dimension(nlu), intent(in)    :: phy
-    type( tile_fluxes_type ), dimension(nlu), intent(in) :: tile_fluxes
+    type(solartype), intent(in)                        :: solar
+    type(psoilphystype), dimension(nlu), intent(in)    :: phy
+    type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
 
     ! local variables
     integer :: it
@@ -1764,7 +1607,7 @@ contains
     use md_tile, only: psoilphystype
 
     ! arguments
-    type( psoilphystype ), dimension(:,:), intent(inout) :: phy
+    type(psoilphystype), dimension(:,:), intent(inout) :: phy
     logical :: init
 
     ! local variables

@@ -21,14 +21,13 @@ module md_biosphere
   ! Module-specific (private) variables
   !----------------------------------------------------------------
   ! derived types from L1 modules
-  type( tile_type ),         allocatable, dimension(:,:) :: tile
-  type( tile_fluxes_type ),  allocatable, dimension(:)   :: tile_fluxes
-  type( plant_type ),        allocatable, dimension(:,:) :: plant
-  type( plant_fluxes_type ), allocatable, dimension(:)   :: plant_fluxes
+  type(tile_type),         allocatable, dimension(:,:) :: tile             ! has gridcell-dimension because values are stored between years
+  type(tile_fluxes_type),  allocatable, dimension(:)   :: tile_fluxes      ! has no gridcell-dimension values need not be recorded
+  type(plant_type),        allocatable, dimension(:,:) :: plant            ! has gridcell-dimension because values are stored between years
+  type(plant_fluxes_type), allocatable, dimension(:)   :: plant_fluxes     ! has no gridcell-dimension values need not be recorded
 
   ! derived types from L2 modules
-  type( solartype )                              :: solar
-  type( outtype_pmodel ), dimension(npft,nmonth) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
+  type(solartype) :: solar
 
 contains
 
@@ -71,10 +70,10 @@ contains
       ! Initialise pool variables and/or read from restart file (not implemented)
       !----------------------------------------------------------------
       if (verbose) print*, 'initglobal_() ...'
-      allocate( tile(  nlu,  size(interface%grid) ) )
-      allocate( tile_fluxes(  nlu ) )
-      allocate( plant( npft, size(interface%grid) ) )
-      allocate( plant_fluxes( npft ) )
+      allocate( tile(        nlu,  size(interface%grid)) )
+      allocate( tile_fluxes( nlu                       ) )
+      allocate( plant(       npft, size(interface%grid)) )
+      allocate( plant_fluxes(npft                      ) )
 
       call initglobal_plant( plant(:,:), size(interface%grid) )
       call initglobal_tile(  tile(:,:),  size(interface%grid) )
@@ -138,25 +137,6 @@ contains
                           interface%climate(jpngr)%dfsun(:), & 
                           interface%climate(jpngr)%dppfd(:)  &
                           )
-        if (verbose) print*,'... done'
-
-        ! !----------------------------------------------------------------
-        ! ! Run P-model
-        ! ! to get monthly light use efficiency, Rd, and Vcmax per unit of 
-        ! ! light absorbed light.
-        ! ! Photosynthetic parameters acclimate at ~monthly time scale
-        ! !----------------------------------------------------------------
-        ! if (verbose) print*,'calling getlue() ... '
-        ! if (verbose) print*,'    with argument CO2  = ', interface%pco2
-        ! if (verbose) print*,'    with argument temp.= ', interface%climate(jpngr)%dtemp(1:10)
-        ! if (verbose) print*,'    with argument VPD  = ', interface%climate(jpngr)%dvpd(1:10)
-        ! if (verbose) print*,'    with argument elv. = ', interface%grid(jpngr)%elv
-        ! out_pmodel(:,:) = getlue( &
-        !                           interface%pco2, & 
-        !                           interface%climate(jpngr)%dtemp(:), & 
-        !                           interface%climate(jpngr)%dvpd(:), & 
-        !                           interface%grid(jpngr)%elv & 
-        !                           )
 
         if (verbose) print*,'... done'
 
@@ -209,6 +189,10 @@ contains
             ! calculate GPP
             !----------------------------------------------------------------
             if (verbose) print*,'calling gpp() ... '
+            call gpp( tile(:,jpngr), interface%pco2, interface%climate(jpngr, doy), solar%dayl(doy), solar%meanmppfd(moy), do_soilmstress, do_tempstress, init_daily)
+
+            xxx 
+
             call gpp( &
                       interface%pco2, & 
                       interface%climate(jpngr)%dtemp(doy), & 
@@ -228,6 +212,7 @@ contains
                       plant_fluxes(:)%dtransp, &
                       init_daily &
                       )
+
             if (verbose) print*,'... done'
 
             !----------------------------------------------------------------
@@ -336,6 +321,7 @@ contains
       deallocate( tile_fluxes )
       deallocate( plant )
       deallocate( plant_fluxes )
+      
     end if
 
     if (verbose) print*,'Done with biosphere for this year. Guete Rutsch!'

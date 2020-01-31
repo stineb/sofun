@@ -25,42 +25,51 @@ module md_tile
   ! Soil type
   !----------------------------------------------------------------
   type soil_type
-    type( psoilphystype )  :: phy
-    type( paramtype_soil ) :: params
+    type(psoilphystype)  :: phy      ! soil state variables
+    type(paramtype_soil) :: params   ! soil parameters
   end type soil_type
 
   !----------------------------------------------------------------
   ! Canopy type
+  ! Contains tile-level aggregated variables related to the canopy
   !----------------------------------------------------------------
   type canopy_type
-    ! real :: fpc_grid    ! fractional projective cover (sum of crownarea by canopy plants)
+    real :: lai            ! leaf area index 
+    real :: fapar          ! fraction of absorbed photosynthetically active radiation (unitless)
+    real :: height         ! canopy height (m)
+    real :: conductance    ! canopy conductance, upscaled from leaf-level stomatal conductance (m s-1)
+    real :: fpc_grid       ! fractional projective cover (sum of crownarea by canopy plants)
   end type canopy_type
 
   !----------------------------------------------------------------
   ! Tile type with year-to-year memory
   !----------------------------------------------------------------
   type tile_type
-
-    ! Index that goes along with this instance of 'tile'
-    integer :: luno
-
-    ! all organic, inorganic, and physical soil variables
-    type( soil_type ) :: soil
-
-    ! mean canopy
-    type( canopy_type ) :: canopy
-
+    integer           :: luno       ! Index that goes along with this instance of 'tile'
+    type(soil_type)   :: soil       ! all organic, inorganic, and physical soil variables
+    type(canopy_type) :: canopy     ! mean canopy
   end type tile_type
 
   !----------------------------------------------------------------
   ! Variables with no memory
   !----------------------------------------------------------------
   type tile_fluxes_type
-
-    real :: sw        ! evaporative supply rate (mm/h)
+    ! water fluxes
+    ! real :: sw        ! evaporative supply rate (mm/h)
     real :: dro       ! daily runoff (mm = kg/m2)
-    real :: dfleach   ! daily fraction of total mineral soil nutrients leached 
+    real :: dfleach   ! daily fraction of soil water going to runoff (used for calculating leaching)
     real :: dwbal     ! daily water balance as precipitation and snow melt minus runoff and evapotranspiration (mm d-1)
+    real :: aet
+    real :: aet_e
+    real :: aet_soil
+    real :: aet_e_soil
+    real :: aet_canop
+    real :: aet_e_canop
+
+    ! carbon fluxes
+    real :: dgpp
+    real :: drd
+    real :: dassim
 
   end type tile_fluxes_type
 
@@ -77,7 +86,7 @@ contains
 
     ! argument
     integer, intent(in) :: ngridcells
-    type( tile_type ), dimension(nlu,ngridcells), intent(inout) :: tile
+    type(tile_type), dimension(nlu,ngridcells), intent(inout) :: tile
 
     ! local variables
     integer :: lu
@@ -115,7 +124,7 @@ contains
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     ! argument
-    type( canopy_type ), intent(inout) :: canopy
+    type(canopy_type), intent(inout) :: canopy
 
     ! canopy%fpc_grid = 0.0
 
@@ -127,7 +136,7 @@ contains
     ! initialise soil variables globally
     !----------------------------------------------------------------
     ! argument
-    type( soil_type ), intent(inout) :: soil
+    type(soil_type), intent(inout) :: soil
 
     call initglobal_soil_phy( soil%phy )
 
@@ -139,7 +148,7 @@ contains
     ! initialise physical soil variables globally
     !----------------------------------------------------------------
     ! argument
-    type( psoilphystype ), intent(inout) :: phy
+    type(psoilphystype), intent(inout) :: phy
 
     ! initialise physical soil variables
     phy%wcont    = 50.0
