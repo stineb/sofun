@@ -7,7 +7,7 @@ module md_params_core
   !----------------------------------------------------------------
   implicit none
 
-  integer :: ntstepsyear              ! number of days in a year
+  integer :: ntstepsyear           ! number of days in a year
   integer, parameter :: ndayyear = 365           ! number of days in a year
   
   integer, parameter :: nmonth = 12              ! number of months in a year
@@ -24,6 +24,13 @@ module md_params_core
   integer, parameter :: n_dim_soil_types = 9     ! number of soil types
   integer, parameter :: MSPECIES = 15            ! number of species
   integer, parameter :: MAX_INIT_COHORTS = 10    ! Number of initial cohorts
+  integer, parameter :: out_max_cohorts = 20     ! Try: Number of maximum cohorts
+
+  integer, parameter :: nvars_hourly_tile = 15
+  integer, parameter :: nvars_daily_tile = 35
+  integer, parameter :: nvars_daily_cohorts = 27
+  integer, parameter :: nvars_annual_cohorts = 22
+  integer, parameter :: nvars_annual_tile = 44
 
   ! needed here
   real, parameter :: dummy = -9999.0             ! arbitrary dummy value

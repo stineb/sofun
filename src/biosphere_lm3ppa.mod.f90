@@ -42,6 +42,7 @@ contains
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     use md_interface, only: myinterface, outtype_biosphere
+    use md_params_core, only: ntstepsyear
   
     ! return variable
     type(outtype_biosphere) :: out_biosphere
@@ -49,7 +50,7 @@ contains
     ! ! local variables
     integer :: dm, moy, jpngr, doy
     ! logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
-    logical, parameter      :: verbose = .false.       ! change by hand for debugging etc.
+    logical, parameter :: verbose = .false.       ! change by hand for debugging etc.
 
     !----------------------------------------------------------------
     ! Biome-E stuff
@@ -79,6 +80,8 @@ contains
 
     ! xxx debug
     integer :: idx, forcingyear
+    !integer :: ntstepsyear          ! number of days in a year
+
 
     !------------------------------------------------------------------------
     ! Create output files
@@ -86,13 +89,17 @@ contains
     !------------------------------------------------------------------------
     filepath_out   = '/Users/benjaminstocker/sofun/output/'
     filesuffix     = '_test.csv' ! tag for simulation experiments
-    plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)
-    plantCNpools   = trim(filepath_out)//'Cohorts_daily'//trim(filesuffix)  ! daily
+    plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)  ! has 22 columns
+    plantCNpools   = trim(filepath_out)//'Cohorts_daily'//trim(filesuffix)  ! daily has 27 columns
     soilCNpools    = trim(filepath_out)//'Ecosystem_daily'//trim(filesuffix)
     allpools       = trim(filepath_out)//'Ecosystem_yearly'//trim(filesuffix)
-    faststepfluxes = trim(filepath_out)//'PhotosynthesisDynamics'//trim(filesuffix) ! hourly
+    faststepfluxes = trim(filepath_out)//'PhotosynthesisDynamics'//trim(filesuffix) ! hourly, has 15 columns and 
 
-    fno1=91; fno2=101; fno3=102; fno4=103; fno5=104
+    fno1=91
+    fno2=101
+    fno3=102
+    fno4=103
+    fno5=104
     open(fno1, file=trim(faststepfluxes), ACTION='write', IOSTAT=istat1)
     open(fno2, file=trim(plantcohorts),   ACTION='write', IOSTAT=istat1)
     open(fno3, file=trim(plantCNpools),   ACTION='write', IOSTAT=istat2)
@@ -159,6 +166,7 @@ contains
           'year','doy','hour','cID','PFT',             &
           'layer','density', 'f_layer', 'LAI',         &
           'gpp','resp','transp',                       &
+          'NPPleaf','NPProot','NPPwood',               &
           'NSC','seedC','leafC','rootC','SW-C','HW-C', &
           'NSN','seedN','leafN','rootN','SW-N','HW-N'
 
@@ -173,7 +181,7 @@ contains
 
       write(fno5,'(1(a5,","),80(a12,","))')  'year',              &
           'CAI','LAI','GPP', 'Rauto',   'Rh',                    &
-          'rain','SiolWater','Transp','Evap','Runoff',           &
+          'rain','SoilWater','Transp','Evap','Runoff',           &
           'plantC','soilC',    'plantN', 'soilN','totN',         &
           'NSC', 'SeedC', 'leafC', 'rootC', 'SapwoodC', 'WoodC', &
           'NSN', 'SeedN', 'leafN', 'rootN', 'SapwoodN', 'WoodN', &
@@ -185,20 +193,23 @@ contains
       !------------------------------------------------------------------------
       ! Initialisations
       !------------------------------------------------------------------------
+      allocate(out_biosphere%hourly_tile(ntstepsyear))
+
       ! Parameter initialization: Initialize PFT parameters
-      ! print*,'1: ', vegn%LAI
       call initialize_PFT_data()
 
       ! Initialize vegetation tile and plant cohorts
       allocate(vegn)
-      ! print*,'2: ', vegn%LAI
-      call initialize_vegn_tile(vegn,nCohorts)
+      
+       !print*,'2: ', vegn%SapwoodC
+      
+      call initialize_vegn_tile(vegn, nCohorts)
       
       ! Sort and relayer cohorts
-      ! print*,'3: ', vegn%LAI
+       !print*,'3: ', vegn%SapwoodC
       call relayer_cohorts(vegn)
 
-      ! print*,'4: ', vegn%LAI
+       !print*,'4: ', vegn%SapwoodC
       call Zero_diagnostics(vegn)
 
       !------------------------------------------------------------------------
@@ -226,13 +237,13 @@ contains
     !----------------------------------------------------------------
     ! LOOP THROUGH MONTHS
     !----------------------------------------------------------------
-    doy=0
+    doy = 0
     monthloop: do moy=1,nmonth
 
       !----------------------------------------------------------------
       ! LOOP THROUGH DAYS
       !----------------------------------------------------------------
-      ! print*,'5: ', vegn%LAI
+       !print*,'5: ', vegn%SapwoodC
       dayloop: do dm=1,ndaymonth(moy)
         doy = doy+1
         idays = idays + 1
@@ -255,13 +266,19 @@ contains
         vegn%Tc_daily = 0.0
         tsoil         = 0.0
 
+
+
         do i=1,myinterface%steps_per_day
 
           ! idata = MOD(simu_steps, myinterface%datalines)+1
           idata = simu_steps + 1
           year0 =  myinterface%climate(idata)%year  ! Current year
           vegn%Tc_daily = vegn%Tc_daily +  myinterface%climate(idata)%Tair
-          tsoil         =  myinterface%climate(idata)%tsoil
+
+          ! if (iyears>2 .and. doy >60) print*,myinterface%climate(idata)
+          ! if (iyears>2 .and. doy >60) stop
+
+          tsoil         = myinterface%climate(idata)%tsoil
           simu_steps    = simu_steps + 1
 
           ! fast-step calls, hourly or half-hourly
@@ -285,18 +302,17 @@ contains
           ! end if
 
           call vegn_CNW_budget_fast(vegn, myinterface%climate(idata))
+          
           ! diagnostics
-          call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1)
+          call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1, out_biosphere%hourly_tile(idata) )
 
         enddo ! hourly or half-hourly
         vegn%Tc_daily = vegn%Tc_daily/myinterface%steps_per_day
         tsoil         = tsoil/myinterface%steps_per_day
         soil_theta    = vegn%thetaS
 
-        ! if (doy>3) then
-        !   ! print*,myinterface%climate(idata-48:idata)
-        !   stop 'here'
-        ! end if 
+        ! print*,'vegn%NSC, vegn%NSN, vegn%SapwoodC, vegn%leafC, vegn%rootC', vegn%NSC, vegn%NSN, vegn%SapwoodC, vegn%leafC, vegn%rootC
+        ! if (iyears>1000) stop 'here'
 
         ! if (simu_steps==17520) then
         !   print*,'vegn%n_cohorts', vegn%n_cohorts
@@ -311,20 +327,23 @@ contains
         !-------------------------------------------------
         ! Daily calls
         !-------------------------------------------------
-        ! print*,'6: ', vegn%LAI
-        call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4)
-        !write(*,*)iyears,idoy
+        !print*,'6: ', vegn%SapwoodC
+        call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4, out_biosphere%daily_cohorts(doy,:), out_biosphere%daily_tile(doy) )
 
         ! Determine start and end of season and maximum leaf (root) mass
-        ! print*,'7: ', vegn%LAI
+        !print*,'7: ', vegn%SapwoodC
         call vegn_phenology(vegn, j)
 
         ! Kill all individuals of a cohort if NSC falls below threshold
         !call vegn_starvation(vegn)
 
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
-        ! print*,'8: ', vegn%LAI
+        !print*,'8: ', vegn%SapwoodC
         call vegn_growth_EW(vegn)
+
+        !----------------------------------------------------------------
+        ! populate function return variable
+        !----------------------------------------------------------------
 
       end do dayloop
 
@@ -344,7 +363,7 @@ contains
 
     if(update_annualLAImax) call vegn_annualLAImax_update(vegn)
 
-    call annual_diagnostics(vegn, iyears, fno2, fno5)
+    call annual_diagnostics(vegn, iyears, fno2, fno5, out_biosphere%annual_cohorts(:), out_biosphere%annual_tile)
 
     !---------------------------------------------
     ! Reproduction and mortality
@@ -383,8 +402,9 @@ contains
       close(102)
       close(103)
       close(104)
-      ! deallocate(vegn%cohorts)
-      ! deallocate( myinterface%climate)
+      deallocate(vegn%cohorts)
+      !deallocate(myinterface%climate)
+      !deallocate(out_biosphere%hourly_tile)
       ! stop 'actually finalizing'
 
     end if
