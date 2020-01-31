@@ -19,9 +19,10 @@ module md_params_siml
     integer :: nyeartrend      ! number of transient years
     integer :: firstyeartrend  ! year AD of first transient year
     integer :: recycle         ! length of standard recycling period
-    logical :: do_spinup            ! whether this simulation does spinup 
+    logical :: do_spinup       ! whether this simulation does spinup 
     integer :: runyears        ! number of years of entire simulation (spinup+transient)
-    
+    logical :: is_calib
+
     ! integer :: model_run_years
     integer :: equi_days
     logical :: outputhourly
@@ -29,8 +30,6 @@ module md_params_siml
     logical :: do_U_shaped_mortality
     logical :: update_annaulLAImax
     logical :: do_closedN_run
-
-    logical :: is_calib
 
   end type paramstype_siml
 
@@ -50,8 +49,6 @@ module md_params_siml
     logical :: dofree_alloc    ! true if allocation is not fixed by 'frac_leaf'
     logical :: add_ninorg      ! true in the first few years to get it started
   end type outtype_steering
-
-
 
 contains
 

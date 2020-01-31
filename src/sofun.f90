@@ -19,7 +19,9 @@ program main
   ! use md_params_soil, only: getsoil
   use md_forcing, only: getclimate, getco2, forcingData, climate_type
   use md_interface, only: interfacetype_biosphere, outtype_biosphere, myinterface
-  use md_params_core, only: n_dim_soil_types, MSPECIES, MAX_INIT_COHORTS, ntstepsyear
+  use md_params_core, only: n_dim_soil_types, MSPECIES, MAX_INIT_COHORTS, ntstepsyear, out_max_cohorts, &
+    ndayyear, nvars_daily_tile, nvars_hourly_tile, nvars_daily_cohorts, nvars_annual_cohorts, nvars_annual_tile
+
   use md_biosphere, only: biosphere_annual
 
   use datatypes
@@ -35,6 +37,8 @@ program main
   integer :: recycle
   integer :: firstyeartrend
   integer :: nyeartrend
+  integer :: runyears
+
 
   ! ! integer :: model_run_years
   ! integer :: equi_days
@@ -64,6 +68,8 @@ program main
   ! real :: f_N_add
   ! real :: f_initialBSW
 
+  integer :: idx_hourly_start, idx_hourly_end, idx_daily_start, idx_daily_end ! year index for which climate is read in.
+
   ! naked arrays
   real, dimension(0:15,17) :: params_species
   real, dimension(9,8)     :: params_soil
@@ -92,8 +98,17 @@ program main
   type(outtype_biosphere) :: out_biosphere  ! holds all the output used for calculating the cost or maximum likelihood function 
   integer :: yr
   logical, parameter :: verbose = .false.
+  integer :: iday
 
   character(len=100) :: namelistfile = '/Users/benjaminstocker/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+
+  ! output arrays (naked) to be passed back to C/R
+  real, dimension(:,:), allocatable :: out_hourly_tile 
+  real, dimension(:,:), allocatable :: out_daily_tile       !fno4
+  real, dimension(:,:,:), allocatable :: out_daily_cohorts    !fno3
+  !real, dimension(:, out_max_cohorts), allocatable :: out_daily_cohorts    !fno3
+  real, dimension(:,:), allocatable :: out_annual_tile      !fno5
+  real, dimension(:,:,:), allocatable :: out_annual_cohorts   !fno2
 
   !----------------------------------------------------------------
   ! DECLARATIONS TO READ FROM NAMELIST FILE
@@ -194,7 +209,7 @@ program main
 
   ! Simulation parameters
   ! myinterface%params_siml%model_run_years       = myinterface%params_siml%runyears    ! xxx delete model_run_years from arguments
-  ! myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
+  !myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
   myinterface%params_siml%outputhourly          = outputhourly
   myinterface%params_siml%outputdaily           = outputdaily
   myinterface%params_siml%do_U_shaped_mortality = do_U_shaped_mortality
@@ -278,17 +293,17 @@ program main
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0*3600.0/myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
   ntstepsyear = myinterface%steps_per_day * 365
-  print*,'ntstepsyear ', ntstepsyear
+  !print*,'ntstepsyear ', ntstepsyear
   write(*,*) myinterface%steps_per_day, myinterface%dt_fast_yr, myinterface%step_seconds
   
   totyears = myinterface%params_siml%runyears
   totdays  = int(totyears/yr_data+1)*days_data
   myinterface%params_siml%equi_days = totdays - days_data
 
-  print*,'myinterface%params_siml%equi_days ', myinterface%params_siml%equi_days
-  print*,'days_data                         ', days_data
-  print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
-  ! stop  
+  ! print*,'myinterface%params_siml%equi_days ', myinterface%params_siml%equi_days
+  ! print*,'days_data                         ', days_data
+  ! print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
+  !  stop  
 
   ! record some variables that are determined by the SR that reads the forcing
   myinterface%datalines = datalines
@@ -296,7 +311,14 @@ program main
   allocate(myinterface%climate(ntstepsyear))
   allocate(myinterface%pco2(ntstepsyear))
 
+  allocate(out_biosphere%hourly_tile(ntstepsyear))
 
+  allocate(out_hourly_tile(ntstepsyear * myinterface%params_siml%nyeartrend, nvars_hourly_tile))
+  allocate(out_daily_cohorts(ndayyear * myinterface%params_siml%nyeartrend, out_max_cohorts, nvars_daily_cohorts))
+  allocate(out_daily_tile(ndayyear * myinterface%params_siml%nyeartrend, nvars_daily_tile))
+  allocate(out_annual_cohorts(myinterface%params_siml%runyears, out_max_cohorts, nvars_annual_cohorts))
+  allocate(out_annual_tile(myinterface%params_siml%runyears, nvars_annual_tile))
+  
   !----------------------------------------------------------------
   ! GET CALIBRATABLE MODEL PARAMETERS (so far a small list)
   !----------------------------------------------------------------
@@ -376,7 +398,115 @@ program main
     if (verbose) print*,'... done.'
     !----------------------------------------------------------------
 
+  ! print*,'out_biosphere%annual_tile ', out_biosphere%annual_tile
+  ! print*,'out_biosphere%annual_cohorts ', out_biosphere%annual_cohorts
+  ! print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
+  !  stop   
+
+
+    ! ----------------------------------------------------------------
+    ! Populate big output arrays
+    ! ----------------------------------------------------------------
+    ! print*,'shape of out_biosphere%hourly_tile(:)', (out_biosphere%hourly_tile(:)%Tair)
+    ! ! fast-changing 
+    ! if (myinterface%params_siml%outputhourly .and. iday > myinterface%params_siml%equi_days) then
+    ! idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
+    ! idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
+    !   out_hourly_tile(idx_hourly_start:idx_hourly_end) = out_biosphere%hourly_tile(:)  ! do this only after spinup (see conditional in hourly_diagnostics)
+    ! end if
+
+    ! out_daily_cohorts(idx_daily_start:idx_daily_end,:) = out_biosphere%daily_cohorts(:,:)
+    ! out_daily_tile(idx_daily_start:idx_daily_end)      = out_biosphere%daily_tile(:)
+
+    ! ! annual
+    ! out_annual_cohorts(yr,:)                         = out_biosphere%annual_cohorts(:)
+    ! out_annual_tile(yr)                              = out_biosphere%annual_tile
+
+    
+    ! hourly
+
+    ! daily
+    idx_daily_start  = (yr - 1) * ndayyear + 1
+    idx_daily_end    = idx_daily_start + ndayyear - 1
+
+    ! ! annual
+    ! idx_annual_start  = (yr - myinterface%params_siml%spinupyears - 1) * ndayyear + 1
+    ! idx_annual_end    = idx_annual_start + ndayyear - 1
+
+    ! ----------------------------------------------------------------
+    ! Print out_hourly_tile
+    ! ----------------------------------------------------------------
+    ! print*,'a'
+    ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end,1)
+    ! print*, out_biosphere%hourly_tile(:)%hour
+
+    if (.not. myinterface%steering%spinup) then
+      idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
+      idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
+      call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
+    end if
+
+      print*,'b'
+      ! print*,out_biosphere%hourly_tile(1)%Tair
+      ! print*,out_hourly_tile(idx_hourly_start, 5)
+      print*,size(out_hourly_tile(idx_hourly_start:idx_hourly_end, 1))
+      print*,out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
+      stop 'halo'
+
+    ! ----------------------------------------------------------------
+    ! Print out_daily_tile
+    ! ----------------------------------------------------------------
+    ! print*,'a'
+    ! print*,out_daily_tile(idx_daily_start:(idx_daily_end+3), 1)
+    ! call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
+    ! print*,'b'
+    !print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 30))
+    !print*,out_daily_tile(idx_daily_start:idx_daily_end, 30)
+    ! stop 'halo'
+
+    ! ----------------------------------------------------------------
+    ! Print out_daily_cohorts
+    ! ----------------------------------------------------------------
+    ! print*,'a'
+    ! !print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3)
+    ! call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
+    ! print*,'b'
+    ! !print*,size(out_daily_cohorts(idx_daily_start:idx_daily_end,:, 9))
+    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 9)
+    ! !stop 'halo'
+
+    ! ----------------------------------------------------------------
+    ! Print out_annual_tile
+    ! ! ----------------------------------------------------------------
+    ! print*,'a'
+    ! ! print*,out_annual_tile(yr,2)
+    ! call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
+    ! print*,'b'
+    ! print*,out_annual_tile(yr,7)
+    ! !stop 'halo'
+
+    ! ----------------------------------------------------------------
+    ! Print out_annual_cohorts
+    ! ! ! ! ----------------------------------------------------------------
+    ! print*,'a'
+    ! !  print*,out_annual_cohorts(yr,:,2)
+    !  call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
+    !  print*,'b'
+    !  !print*,size(out_annual_cohorts(yr,:,2))
+    !  print*,out_annual_cohorts(yr,:,18)
+    !  !stop 'halo'
+
+
   enddo
+
+  deallocate(myinterface%climate)
+  deallocate(myinterface%pco2)
+  !deallocate(out_biosphere%hourly_tile)
+  deallocate(out_hourly_tile)
+  deallocate(out_daily_cohorts)
+  deallocate(out_daily_tile)
+  deallocate(out_annual_cohorts)
+  deallocate(out_annual_tile)
 
   print*, '--------------END OF SIMULATION---------------'
 
@@ -384,7 +514,212 @@ program main
   777  format (F20.8,F20.8)
   999  format (I4.4)
 
-  contains
+contains
+
+  subroutine populate_outarray_hourly_tile( hourly_tile, out_hourly_tile ) !, idx_daily_start, idx_daily_end
+
+    use md_interface, only: outtype_hourly_tile
+
+    ! arguments
+    type(outtype_hourly_tile), dimension(ntstepsyear), intent(in) :: hourly_tile    ! dimension(ntstepsyear)
+    real, dimension(ntstepsyear, nvars_hourly_tile), intent(inout) :: out_hourly_tile
+
+    out_hourly_tile(:, 1)  = hourly_tile(:)%year
+    out_hourly_tile(:, 2)  = hourly_tile(:)%doy
+    out_hourly_tile(:, 3)  = hourly_tile(:)%hour
+    out_hourly_tile(:, 4)  = hourly_tile(:)%rad
+    out_hourly_tile(:, 5)  = hourly_tile(:)%Tair
+    out_hourly_tile(:, 6)  = hourly_tile(:)%Prcp
+    out_hourly_tile(:, 7)  = hourly_tile(:)%GPP
+    out_hourly_tile(:, 8)  = hourly_tile(:)%Resp
+    out_hourly_tile(:, 9)  = hourly_tile(:)%Transp
+    out_hourly_tile(:, 10) = hourly_tile(:)%Evap
+    out_hourly_tile(:, 11) = hourly_tile(:)%Runoff
+    out_hourly_tile(:, 12) = hourly_tile(:)%Soilwater
+    out_hourly_tile(:, 13) = hourly_tile(:)%wcl
+    out_hourly_tile(:, 14) = hourly_tile(:)%FLDCAP
+    out_hourly_tile(:, 15) = hourly_tile(:)%WILTPT
+
+  end subroutine populate_outarray_hourly_tile
+
+
+  subroutine populate_outarray_daily_tile( daily_tile, out_daily_tile ) !, idx_daily_start, idx_daily_end
+
+    use md_interface, only: outtype_daily_tile
+
+    ! arguments
+    type(outtype_daily_tile), dimension(ndayyear), intent(in) :: daily_tile
+    ! integer, intent(in) :: idx_daily_start, idx_daily_end
+    real, dimension(ndayyear, nvars_daily_tile), intent(inout) :: out_daily_tile
+
+    out_daily_tile(:, 1)  = daily_tile(:)%year 
+    out_daily_tile(:, 2)  = daily_tile(:)%doy
+    out_daily_tile(:, 3)  = daily_tile(:)%Tc
+    out_daily_tile(:, 4)  = daily_tile(:)%Prcp
+    out_daily_tile(:, 5)  = daily_tile(:)%totWs
+    out_daily_tile(:, 6)  = daily_tile(:)%Trsp
+    out_daily_tile(:, 7)  = daily_tile(:)%Evap
+    out_daily_tile(:, 8)  = daily_tile(:)%Runoff
+    out_daily_tile(:, 9)  = daily_tile(:)%ws1
+    out_daily_tile(:, 10) = daily_tile(:)%ws2
+    out_daily_tile(:, 11) = daily_tile(:)%ws3
+    out_daily_tile(:, 12) = daily_tile(:)%LAI
+    out_daily_tile(:, 13) = daily_tile(:)%GPP
+    out_daily_tile(:, 14) = daily_tile(:)%Rauto
+    out_daily_tile(:, 15) = daily_tile(:)%Rh
+    out_daily_tile(:, 16) = daily_tile(:)%NSC
+    out_daily_tile(:, 17) = daily_tile(:)%seedC
+    out_daily_tile(:, 18) = daily_tile(:)%leafC
+    out_daily_tile(:, 19) = daily_tile(:)%rootC
+    out_daily_tile(:, 20) = daily_tile(:)%SW_C
+    out_daily_tile(:, 21) = daily_tile(:)%HW_C
+    out_daily_tile(:, 22) = daily_tile(:)%NSN
+    out_daily_tile(:, 23) = daily_tile(:)%seedN
+    out_daily_tile(:, 24) = daily_tile(:)%leafN
+    out_daily_tile(:, 25) = daily_tile(:)%rootN
+    out_daily_tile(:, 26) = daily_tile(:)%SW_N
+    out_daily_tile(:, 27) = daily_tile(:)%HW_N
+    out_daily_tile(:, 28) = daily_tile(:)%McrbC
+    out_daily_tile(:, 29) = daily_tile(:)%fastSOM
+    out_daily_tile(:, 30) = daily_tile(:)%slowSOM
+    out_daily_tile(:, 31) = daily_tile(:)%McrbN
+    out_daily_tile(:, 32) = daily_tile(:)%fastSoilN
+    out_daily_tile(:, 33) = daily_tile(:)%slowSoilN
+    out_daily_tile(:, 34) = daily_tile(:)%mineralN
+    out_daily_tile(:, 35) = daily_tile(:)%N_uptk
+
+  end subroutine populate_outarray_daily_tile
+
+
+  subroutine populate_outarray_daily_cohorts( daily_cohorts, out_daily_cohorts ) 
+
+    use md_interface, only: outtype_daily_cohorts
+
+    ! arguments
+    type(outtype_daily_cohorts), dimension(ndayyear, out_max_cohorts), intent(in) :: daily_cohorts
+    real, dimension(ndayyear, out_max_cohorts,nvars_daily_cohorts), intent(inout) :: out_daily_cohorts
+    !real, dimension(:,:,:), allocatable, intent(inout) :: out_daily_cohorts
+
+    out_daily_cohorts(:,:, 1)  = daily_cohorts(:,:)%year
+    out_daily_cohorts(:,:, 2)  = daily_cohorts(:,:)%doy
+    out_daily_cohorts(:,:, 3)  = daily_cohorts(:,:)%hour
+    out_daily_cohorts(:,:, 4)  = daily_cohorts(:,:)%cID
+    out_daily_cohorts(:,:, 5)  = daily_cohorts(:,:)%PFT
+    out_daily_cohorts(:,:, 6)  = daily_cohorts(:,:)%layer
+    out_daily_cohorts(:,:, 7)  = daily_cohorts(:,:)%density
+    out_daily_cohorts(:,:, 8)  = daily_cohorts(:,:)%f_layer
+    out_daily_cohorts(:,:, 9)  = daily_cohorts(:,:)%LAI
+    out_daily_cohorts(:,:, 10) = daily_cohorts(:,:)%gpp
+    out_daily_cohorts(:,:, 11) = daily_cohorts(:,:)%resp
+    out_daily_cohorts(:,:, 12) = daily_cohorts(:,:)%transp
+    out_daily_cohorts(:,:, 13) = daily_cohorts(:,:)%NPPleaf
+    out_daily_cohorts(:,:, 14) = daily_cohorts(:,:)%NPProot
+    out_daily_cohorts(:,:, 15) = daily_cohorts(:,:)%NPPwood    
+    out_daily_cohorts(:,:, 16) = daily_cohorts(:,:)%NSC
+    out_daily_cohorts(:,:, 17) = daily_cohorts(:,:)%seedC
+    out_daily_cohorts(:,:, 18) = daily_cohorts(:,:)%leafC
+    out_daily_cohorts(:,:, 19) = daily_cohorts(:,:)%rootC
+    out_daily_cohorts(:,:, 20) = daily_cohorts(:,:)%SW_C
+    out_daily_cohorts(:,:, 21) = daily_cohorts(:,:)%HW_C
+    out_daily_cohorts(:,:, 22) = daily_cohorts(:,:)%NSN
+    out_daily_cohorts(:,:, 23) = daily_cohorts(:,:)%seedN
+    out_daily_cohorts(:,:, 24) = daily_cohorts(:,:)%leafN
+    out_daily_cohorts(:,:, 25) = daily_cohorts(:,:)%rootN
+    out_daily_cohorts(:,:, 26) = daily_cohorts(:,:)%SW_N
+    out_daily_cohorts(:,:, 27) = daily_cohorts(:,:)%HW_N
+
+  end subroutine populate_outarray_daily_cohorts
+
+
+  subroutine populate_outarray_annual_tile( annual_tile, out_annual_tile )
+
+    use md_interface, only: outtype_annual_tile
+
+    ! arguments
+    type(outtype_annual_tile), intent(in) :: annual_tile
+    real, dimension(nvars_annual_tile), intent(inout) :: out_annual_tile
+
+    out_annual_tile(1)  = annual_tile%year
+    out_annual_tile(2)  = annual_tile%CAI
+    out_annual_tile(3)  = annual_tile%LAI
+    out_annual_tile(4)  = annual_tile%GPP
+    out_annual_tile(5)  = annual_tile%Rauto
+    out_annual_tile(6)  = annual_tile%Rh
+    out_annual_tile(7)  = annual_tile%rain
+    out_annual_tile(8)  = annual_tile%SoilWater
+    out_annual_tile(9)  = annual_tile%Transp
+    out_annual_tile(10) = annual_tile%Evap
+    out_annual_tile(11) = annual_tile%Runoff
+    out_annual_tile(12) = annual_tile%plantC
+    out_annual_tile(13) = annual_tile%soilC
+    out_annual_tile(14) = annual_tile%plantN
+    out_annual_tile(15) = annual_tile%soilN
+    out_annual_tile(16) = annual_tile%totN
+    out_annual_tile(17) = annual_tile%NSC
+    out_annual_tile(18) = annual_tile%SeedC
+    out_annual_tile(19) = annual_tile%leafC
+    out_annual_tile(20) = annual_tile%rootC
+    out_annual_tile(21) = annual_tile%SapwoodC
+    out_annual_tile(22) = annual_tile%WoodC
+    out_annual_tile(23) = annual_tile%NSN
+    out_annual_tile(24) = annual_tile%SeedN
+    out_annual_tile(25) = annual_tile%leafN
+    out_annual_tile(26) = annual_tile%rootN
+    out_annual_tile(27) = annual_tile%SapwoodN
+    out_annual_tile(28) = annual_tile%WoodN
+    out_annual_tile(29) = annual_tile%McrbC
+    out_annual_tile(30) = annual_tile%fastSOM
+    out_annual_tile(31) = annual_tile%SlowSOM
+    out_annual_tile(32) = annual_tile%McrbN
+    out_annual_tile(33) = annual_tile%fastSoilN
+    out_annual_tile(34) = annual_tile%slowSoilN
+    out_annual_tile(35) = annual_tile%mineralN
+    out_annual_tile(36) = annual_tile%N_fxed
+    out_annual_tile(37) = annual_tile%N_uptk
+    out_annual_tile(38) = annual_tile%N_yrMin
+    out_annual_tile(39) = annual_tile%N_P2S
+    out_annual_tile(40) = annual_tile%N_loss
+    out_annual_tile(41) = annual_tile%totseedC
+    out_annual_tile(42) = annual_tile%totseedN
+    out_annual_tile(43) = annual_tile%Seedling_C
+    out_annual_tile(44) = annual_tile%Seedling_N
+
+  end subroutine populate_outarray_annual_tile
+
+
+subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts ) 
+
+    use md_interface, only: outtype_annual_cohorts
+
+    ! arguments
+    type(outtype_annual_cohorts), dimension(out_max_cohorts), intent(in) :: annual_cohorts
+    real, dimension(out_max_cohorts,nvars_annual_cohorts), intent(inout) :: out_annual_cohorts    
+
+    out_annual_cohorts(:, 1)  = annual_cohorts(:)%cID
+    out_annual_cohorts(:, 2)  = annual_cohorts(:)%PFT
+    out_annual_cohorts(:, 3)  = annual_cohorts(:)%layer
+    out_annual_cohorts(:, 4)  = annual_cohorts(:)%density
+    out_annual_cohorts(:, 5)  = annual_cohorts(:)%f_layer
+    out_annual_cohorts(:, 6)  = annual_cohorts(:)%dDBH
+    out_annual_cohorts(:, 7)  = annual_cohorts(:)%dbh
+    out_annual_cohorts(:, 8)  = annual_cohorts(:)%height
+    out_annual_cohorts(:, 9)  = annual_cohorts(:)%Acrown
+    out_annual_cohorts(:, 10) = annual_cohorts(:)%wood
+    out_annual_cohorts(:, 11) = annual_cohorts(:)%nsc
+    out_annual_cohorts(:, 12) = annual_cohorts(:)%NSN
+    out_annual_cohorts(:, 13) = annual_cohorts(:)%NPPtr
+    out_annual_cohorts(:, 14) = annual_cohorts(:)%seed
+    out_annual_cohorts(:, 15) = annual_cohorts(:)%NPPL
+    out_annual_cohorts(:, 16) = annual_cohorts(:)%NPPR
+    out_annual_cohorts(:, 17) = annual_cohorts(:)%NPPW
+    out_annual_cohorts(:, 18) = annual_cohorts(:)%GPP
+    out_annual_cohorts(:, 19) = annual_cohorts(:)%NPP
+    out_annual_cohorts(:, 20) = annual_cohorts(:)%N_uptk
+    out_annual_cohorts(:, 21) = annual_cohorts(:)%N_fix
+    out_annual_cohorts(:, 22) = annual_cohorts(:)%maxLAI
+
+  end subroutine populate_outarray_annual_cohorts
+
 
   !========================================================================
   ! read in forcing data (Users need to write their own data input procedure)
@@ -407,7 +742,7 @@ program main
     integer :: m,n
 
     ! ! xxx temporary
-    ! character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
+    ! character(len=80) :: filepath_in = '/Users/lmarques/BiomeE-Allocation/model/input/'
     ! character(len=80) :: climfile    = 'ORNL_forcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
@@ -454,7 +789,7 @@ program main
     ! allocate(climateData(datalines))
 
     ! xxx try
-    allocate(climateData(datalines - 72))
+    allocate(climateData(datalines - 144))  !72
     days_data = days_data - 3
 
     do i=1,datalines
@@ -477,10 +812,10 @@ program main
    forcingData => climateData
 
    ! xxx try
-   datalines = datalines - 72
+   datalines = datalines - 144  !144 !72
 
    write(*,*)"forcing", datalines,days_data,yr_data
- end subroutine read_FACEforcing
+  end subroutine read_FACEforcing
 
 
   !=============================================================
@@ -558,7 +893,7 @@ program main
     ! allocate(climateData(datalines))
 
     ! xxx try
-    allocate(climateData(datalines - 96))
+    allocate(climateData(datalines- 96))
     days_data = days_data - 2
 
     idx_climatedata = 0

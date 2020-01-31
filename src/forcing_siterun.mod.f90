@@ -9,12 +9,13 @@ module md_forcing_siterun
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
+  
   use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu, dummy
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
     getvalreal, monthly2daily_weather, monthly2daily
 
   implicit none
-
+  
   private
   public getco2, getninput, ninput_type, gettot_ninput, getfapar, getclimate_site, &
     getlanduse, landuse_type, climate_type
