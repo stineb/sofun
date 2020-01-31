@@ -17,6 +17,8 @@ module md_vegetation
 
 contains
 
+!=============== ESS subroutines ========================================
+!========================================================================
   subroutine vegn_CNW_budget_fast(vegn, forcing)
     !////////////////////////////////////////////////////////////////
     ! hourly carbon, nitrogen, and water dynamics, Weng 2016-11-25
@@ -82,15 +84,12 @@ contains
   !========================================================================
   !============= Plant physiology =========================================
   !========================================================================
+    ! Weng 2017-10-18
+  ! compute stomatal conductance, photosynthesis and respiration
+  ! updates cc%An_op and cc%An_cl, from LM3
 
   subroutine vegn_photosynthesis (forcing, vegn)
-    !////////////////////////////////////////////////////////////////
-    ! Weng 2017-10-18
-    ! compute stomatal conductance, photosynthesis and respiration
-    ! updates cc%An_op and cc%An_cl, from LM3
-    !---------------------------------------------------------------
     use md_forcing, only: climate_type
-
     type(climate_type), intent(in):: forcing
     type(vegn_tile_type), intent(inout) :: vegn
 
@@ -201,11 +200,11 @@ contains
     enddo ! vegn, go through all cohorts
   end subroutine vegn_photosynthesis
 
+! ============================================================================
   subroutine gs_Leuning(rad_top, rad_net, tl, ea, lai, &
     p_surf, ws, pft, pt, ca, kappa, leaf_wet, layer, &
     apot, acl,w_scale2, transp)
-    !////////////////////////////////////////////////////////////////
-    !---------------------------------------------------------------
+
     real,    intent(in)    :: rad_top ! PAR dn on top of the canopy, w/m2
     real,    intent(in)    :: rad_net ! PAR net on top of the canopy, w/m2
     real,    intent(in)    :: tl   ! leaf temperature, degK
@@ -451,11 +450,12 @@ contains
 
   end subroutine gs_Leuning
 
+  !============================================================================
+ ! Weng, 05/24/2018
   subroutine calc_solarzen(td, latdegrees, cosz, solarelev, solarzen)
-    !////////////////////////////////////////////////////////////////
     ! Calculate solar zenith angle **in radians**
     ! From Spitters, C. J. T. (1986), AgForMet 38: 231-242.
-    !---------------------------------------------------------------
+    implicit none
     real, intent(in) :: td             ! day(to minute fraction)
     real, intent(in) :: latdegrees     ! latitude in degrees
     real :: hour,latrad
@@ -480,10 +480,8 @@ contains
 
   end subroutine calc_solarzen
 
-
+!============================================================================
   subroutine plant_respiration(cc, tairK)
-    !////////////////////////////////////////////////////////////////
-    !---------------------------------------------------------------
     type(cohort_type), intent(inout) :: cc
     real, intent(in) :: tairK ! degK
 
@@ -540,6 +538,7 @@ contains
     ! DAILY call.
     ! added by Weng, 12-06-2016
     !---------------------------------------------------------------
+    implicit none
     type(cohort_type), intent(inout) :: cc
     
     ! local variables
