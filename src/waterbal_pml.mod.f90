@@ -541,14 +541,14 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Penman-Monteith Equation for canopy transpiration; Eq. 1 in Zhang et al., 2017
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    out_et%aet_e_canop = (epsilon * e_avl_canopy + (rho_air * cp / gamma) * vpd * g_aero) / (1.0 + epsilon + g_aero/g_canopy)
+    out_et%aet_e_canop = (epsilon * e_avl_canopy + (rho_air * cp / gamma) * vpd * g_aero) / (1.0 + epsilon + g_aero / g_canopy)
 
     ! Total evapotranspiration 
     out_et%aet_e     = out_et%aet_e_canop + out_et%aet_e_soil
 
     ! quantities in mm water (equivalent to kg m-2)
-    out_et%aet       = out_et%aet_e * econ * 1000.0
-    out_et%aet_soil  = out_et%aet_e_soil * econ * 1000.0
+    out_et%aet       = out_et%aet_e       * econ * 1000.0
+    out_et%aet_soil  = out_et%aet_e_soil  * econ * 1000.0
     out_et%aet_canop = out_et%aet_e_canop * econ * 1000.0
 
   end function calc_et
