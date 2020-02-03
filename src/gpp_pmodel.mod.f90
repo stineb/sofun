@@ -158,7 +158,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( tile, co2, dtemp, dvpd, dpatm, dppfd, dayl, meanmppfd, do_soilmstress, do_tempstress, init)
+  subroutine gpp( tile, co2, dtemp, dvpd, dpatm, dppfd, dayl, do_soilmstress, do_tempstress, init)
     !//////////////////////////////////////////////////////////////////
     ! Wrapper function to call to P-model. 
     ! Calculates meteorological conditions with memory based on daily
@@ -177,7 +177,6 @@ contains
     real, intent(in)    :: dpatm                             ! daily varying atmospheric pressure (Pa)
     real, intent(in)    :: dppfd                             ! daily total photon flux density, mol m-2
     real, intent(in)    :: dayl                              ! day length (h)
-    real, intent(in)    :: meanmppfd                         ! monthly mean PPFD (mol m-2 s-1)
     logical, intent(in) :: do_soilmstress                    ! whether empirical soil miosture stress function is applied to GPP
     logical, intent(in) :: do_tempstress                     ! whether empirical temperature stress function is applied to GPP
     logical, intent(in) :: init                              ! is true on the very first simulation day (first subroutine call of each gridcell)
@@ -291,7 +290,7 @@ contains
         !----------------------------------------------------------------
         ! Dark respiration
         !----------------------------------------------------------------
-        drd = calc_drd( dfapar, fpc_grid(pft), meanmppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
+        drd = calc_drd( dfapar, fpc_grid(pft), dppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
 
         !----------------------------------------------------------------
         ! Leaf-level assimilation rate
@@ -301,7 +300,9 @@ contains
         !----------------------------------------------------------------
         ! stomatal conductance
         !----------------------------------------------------------------
-        dgs(pft) = calc_dgs( dassim, out_pmodel%dgs_unitiabs, dayl )
+        dgs(pft) = calc_dgs( dassim(pft), dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
+
+        print*,'set-point gs:' dassim * dgs_unitiabs
 
         !----------------------------------------------------------------
         ! canopy conductance
@@ -444,25 +445,33 @@ contains
   end function calc_dassim
 
 
-  function calc_dgs( dassim, dgs_unitiabs ) result( dgs )
+  function calc_dgs( dassim, vpd, ca, gammastar, xi ) result( dgs )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level stomatal conductance to H2O, mean over daylight hours
+    ! Calculates leaf-level stomatal conductance to CO2.
+    ! This uses instantaneous VPD and is therefore not calculated inside
+    ! the P-model function. The slope parameter 'xi' is representative
+    ! for the acclimated response.
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: dassim          ! daily mean assimilation rate (mol CO2 m-2 s-1)
-    real, intent(in) :: dgs_unitiabs    ! stomatal conductance per unit absorbed light (mol CO2 Pa-1 m-2 s-1 / mol light)
+    real, intent(in) :: vpd             ! vapour pressure deficit (Pa)
+    real, intent(in) :: ca              ! ambient CO2 partial pressure (Pa)
+    real, intent(in) :: gammastar       ! CO2 compensation point (Pa)
+    real, intent(in) :: xi              ! slope parameter of stomatal response derived from P-model optimality, corresponding to sqrt(beta*(K+gammastar)/(1.6*etastar)) (Pa)
+    ! real, intent(in) :: dgs_unitiabs    ! stomatal conductance per unit absorbed light (mol CO2 Pa-1 m-2 s-1 / mol light)
 
     ! function return variable
     real :: dgs                         ! leaf-level stomatal conductance to H2O, mean over daylight hours ( mol CO2 Pa-1 m-2 s-1 )
 
     ! Leaf-level assimilation rate, average over daylight hours
-    dgs = dassim * dgs_unitiabs
-    print*,'calc_dgs() per unit seconds: ', dgs 
+    ! dgs = dassim * dgs_unitiabs
+    dgs = (1.0 + xi / sqrt(vpd)) * assim / (ca - gammastar)
+    print*,'instantaneous gs: ', dgs 
     
   end function calc_dgs
 
 
-  function calc_drd( fapar, fpc_grid, meanmppfd, rd_unitiabs, ftemp_kphio, soilmstress ) result( my_drd )
+  function calc_drd( fapar, fpc_grid, dppfd, rd_unitiabs, ftemp_kphio, soilmstress ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily total dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
@@ -471,7 +480,7 @@ contains
     ! arguments
     real, intent(in) :: fapar           ! fraction of absorbed photosynthetically active radiation
     real, intent(in) :: fpc_grid        ! foliar projective cover
-    real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
+    real, intent(in) :: dppfd           ! daily total photon flux density (mol m-2)
     real, intent(in) :: rd_unitiabs
     real, intent(in) :: ftemp_kphio      ! this day's air temperature, deg C
     real, intent(in) :: soilmstress     ! soil moisture stress factor
@@ -480,7 +489,7 @@ contains
     real :: my_drd
 
     ! Dark respiration takes place during night and day (24 hours)
-    my_drd = fapar * fpc_grid * meanmppfd * soilmstress * rd_unitiabs * ftemp_kphio * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * fpc_grid * dppfd * soilmstress * rd_unitiabs * ftemp_kphio * c_molmass
 
   end function calc_drd
 
@@ -1960,74 +1969,6 @@ contains
     end if
 
   end subroutine getout_annual_gpp
-
-
-  ! subroutine writeout_ascii_gpp()
-  !   !/////////////////////////////////////////////////////////////////////////
-  !   ! Write module-specific ASCII output.
-  !   !
-  !   ! This is designed for use within SOFUN and requires arguments as
-  !   ! derived-types, defined elsewhere. For other applications, implement 
-  !   ! the function calls (e.g., calc_dgpp()) differently and 
-  !   ! comment/delete this subroutine.
-  !   !-------------------------------------------------------------------------
-  !   use md_interface
-
-  !   ! local variables
-  !   real :: itime
-  !   integer :: it, jpngr
-
-  !   ! xxx implement this: sum over gridcells? single output per gridcell?
-  !   if (maxgrid>1) stop 'writeout_ascii_gpp: think of something ...'
-  !   jpngr = 1
-
-  !   !-------------------------------------------------------------------------
-  !   ! DAILY OUTPUT
-  !   !-------------------------------------------------------------------------
-  !   if ( .not. interface%steering%spinup &
-  !        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-  !        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
-
-  !     ! Write daily output only during transient simulation
-  !     do it=1,interface%params_siml%outnt
-
-  !       ! Define 'itime' as a decimal number corresponding to day in the year + year
-  !       itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
-        
-  !       if (interface%params_siml%loutdgpp  )  write(101,999) itime, outdgpp(it,jpngr)
-  !       if (interface%params_siml%loutdrd    ) write(135,999) itime, outdrd(it,jpngr)
-  !       if (interface%params_siml%loutdtransp) write(114,999) itime, outdtransp(it,jpngr)
-
-  !     end do
-
-  !   end if
-
-  !   !-------------------------------------------------------------------------
-  !   ! ANNUAL OUTPUT
-  !   ! Write annual value, summed over all PFTs / LUs
-  !   ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-  !   !-------------------------------------------------------------------------
-  !   if (interface%params_siml%loutgpp) then
-  
-  !     itime = real(interface%steering%outyear)
-
-  !     write(310,999) itime, sum(outagpp(:,jpngr))
-  !     write(323,999) itime, sum(outavcmax(:,jpngr))
-  !     write(654,999) itime, sum(outavcmax_25(:,jpngr))
-  !     write(653,999) itime, sum(outalue(:,jpngr))
-  !     write(652,999) itime, sum(outachi(:,jpngr))
-  !     write(658,999) itime, sum(outaiwue(:,jpngr)) * 1e6 / 1.6 ! converting from unitless to micro-mol CO2 / mol H2O
-  !     write(655,999) itime, sum(outaci(:,jpngr))
-  !     write(656,999) itime, sum(outags(:,jpngr))
-  !     write(657,999) itime, sum(outavcmax_leaf(:,jpngr))
-
-  !   end if
-
-  !   return
-    
-  !   999 format (F20.8,F20.8)
-
-  ! end subroutine writeout_ascii_gpp
 
 
   subroutine writeout_nc_gpp()

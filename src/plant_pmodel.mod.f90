@@ -13,8 +13,8 @@ module md_plant
 
   private
   public plant_type, plant_fluxes_type, getpar_modl_plant, params_pft_plant, &
-    initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant,     &
-    writeout_ascii_plant, maxdoy, initglobal_plant, get_leaftraits,          &
+    initdaily_plant, initoutput_plant, getout_daily_plant,     &
+    maxdoy, initglobal_plant, get_leaftraits,          &
     getout_annual_plant
 
   !----------------------------------------------------------------
@@ -341,7 +341,7 @@ contains
   end function getpftparams
 
 
-  subroutine initglobal_plant( plant, ngridcells )
+  subroutine initglobal_plant( plant )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of all _pools on all gridcells at the beginning
     !  of the simulation.
@@ -361,11 +361,9 @@ contains
     !-----------------------------------------------------------------------------
     ! derive which PFTs are present from fpc_grid (which is prescribed)
     !-----------------------------------------------------------------------------
-    do jpngr=1,ngridcells
-      do pft=1,npft
-        call initpft( plant(pft,jpngr) )
-        plant(pft,jpngr)%pftno = pft
-      end do
+    do pft=1,npft
+      call initpft( plant(pft,jpngr) )
+      plant(pft,jpngr)%pftno = pft
     end do
 
   end subroutine initglobal_plant
@@ -406,9 +404,10 @@ contains
     ! arguments
     type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
 
-    plant_fluxes(:)%dgpp    = 0.0
-    plant_fluxes(:)%drd     = 0.0
-    plant_fluxes(:)%dtransp = 0.0
+    plant_fluxes(:)%dgpp     = 0.0
+    plant_fluxes(:)%drd      = 0.0
+    plant_fluxes(:)%dtransp  = 0.0
+    plant_fluxes(:)%dlatenth = 0.0
 
   end subroutine initdaily_plant
 
@@ -443,53 +442,6 @@ contains
     end if
 
   end subroutine initoutput_plant
-
-
-  subroutine initio_plant()
-    !////////////////////////////////////////////////////////////////
-    ! Opens input/output files.
-    !----------------------------------------------------------------
-    use md_interface, only: interface
-
-    ! local variables
-    character(len=256) :: prefix
-    character(len=256) :: filnam
-
-    prefix = "./output/"//trim(interface%params_siml%runname)
-
-    !////////////////////////////////////////////////////////////////
-    ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
-    !----------------------------------------------------------------
-
-
-    !////////////////////////////////////////////////////////////////
-    ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
-    !----------------------------------------------------------------
-    if (interface%params_siml%loutplant) then
-
-      ! METABOLIC NAREA (AT ANNUAL LAI MAXIMUM)
-      filnam=trim(prefix)//'.a.narea_mb.out'
-      open(319,file=filnam,err=999,status='unknown')
-
-      ! CELL WALL NAREA (AT ANNUAL LAI MAXIMUM)
-      filnam=trim(prefix)//'.a.narea_cw.out'
-      open(320,file=filnam,err=999,status='unknown')
-
-      ! LEAF C:N RATIO (AT ANNUAL LAI MAXIMUM)
-      filnam=trim(prefix)//'.a.cton_lm.out'
-      open(321,file=filnam,err=999,status='unknown')
-
-      ! LMA (AT ANNUAL LAI MAXIMUM)
-      filnam=trim(prefix)//'.a.lma.out'
-      open(322,file=filnam,err=999,status='unknown')
-
-    end if
-
-    return
-
-    999  stop 'INITIO: error opening output files'
-
-  end subroutine initio_plant
 
 
   subroutine getout_daily_plant( plant, plant_fluxes, jpngr, moy, doy )
@@ -558,62 +510,5 @@ contains
 
   end subroutine getout_annual_plant
 
-
-  subroutine writeout_ascii_plant()
-    !/////////////////////////////////////////////////////////////////////////
-    ! Write daily ASCII output
-    ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
-    ! contact: b.stocker@imperial.ac.uk
-    !-------------------------------------------------------------------------
-    use md_params_core, only: ndayyear
-    use md_interface, only: interface
-
-    ! local variables
-    real :: itime
-    integer :: it, moy, jpngr
-
-    ! xxx implement this: sum over gridcells? single output per gridcell?
-    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
-    jpngr = 1
-
-    !-------------------------------------------------------------------------
-    ! DAILY OUTPUT
-    ! Write daily value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    ! if ( .not. interface%steering%spinup &
-    !      .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-    !      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
-
-    !   ! Write daily output only during transient simulation
-    !   do it=1,interface%params_siml%outnt
-
-    !     ! Define 'itime' as a decimal number corresponding to day in the year + year
-    !     itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
-        
-    !   end do
-    ! end if
-
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    if (interface%params_siml%loutplant) then
-
-      itime = real(interface%steering%outyear)
-
-      write(319,999) itime, sum(outanarea_mb(:,jpngr))
-      write(320,999) itime, sum(outanarea_cw(:,jpngr))
-      write(321,999) itime, sum(outacton_lm(:,jpngr))
-      write(322,999) itime, sum(outalma(:,jpngr))
-
-    end if
-
-    return
-
-    999 format (F20.8,F20.8)
-
-  end subroutine writeout_ascii_plant
 
 end module md_plant

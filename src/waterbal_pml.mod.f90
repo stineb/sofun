@@ -36,16 +36,17 @@ module md_waterbal
   !----------------------------------------------------------------
   ! Public, module-specific state variables
   !----------------------------------------------------------------
-  ! Collection of solar radiation-related variables used across modules
-  ! Variables are a function of latitude, elevation, and 
-  ! sunshine fraction (all variables independent of soil moisture)
-  type solartype
-    real, dimension(ndayyear) :: dayl               ! day length (hours)
-    real, dimension(ndayyear) :: dra                ! daily TOA solar irradiation (J/m2)
-    real, dimension(ndayyear) :: dppfd_splash       ! daily total PPFD (mol m-2 d-1)
-    real, dimension(nmonth)   :: mppfd_splash       ! monthly total PPFD (mol m-2 month-1)
-    real, dimension(nmonth)   :: meanmppfd_splash   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
-  end type solartype
+
+  ! ! Collection of solar radiation-related variables used across modules
+  ! ! Variables are a function of latitude, elevation, and 
+  ! ! sunshine fraction (all variables independent of soil moisture)
+  ! type solartype
+  !   real, dimension(ndayyear) :: dayl               ! day length (hours)
+  !   real, dimension(ndayyear) :: dra                ! daily TOA solar irradiation (J/m2)
+  !   real, dimension(ndayyear) :: dppfd_splash       ! daily total PPFD (mol m-2 d-1)
+  !   real, dimension(nmonth)   :: mppfd_splash       ! monthly total PPFD (mol m-2 month-1)
+  !   real, dimension(nmonth)   :: meanmppfd_splash   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
+  ! end type solartype
 
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
@@ -75,25 +76,23 @@ module md_waterbal
     real :: lambda
   end type outtype_berger
 
-  type(outtype_berger), dimension(ndayyear) :: out_berger    ! stores output of function berger_tls
+  ! ! Radiation variables. aet, sw, and cpa are affected by soil moisture.
+  ! type evaptype
+  !   real :: rho_air      ! density of air (g m-3)
+  !   real :: sat_slope    ! slope of saturation vap press temp curve, Pa/K 
+  !   real :: lv           ! enthalpy of vaporization, J/kg
+  !   real :: rho_water    ! density of water (g m-3)
+  !   real :: econ         ! water-to-energy conversion factor (econ), m^3/J
+  !   real :: rn           ! daily net radiation (J/m2/d)
+  !   real :: rnn          ! nighttime net radiation (J/m^2/d)
+  !   real :: rnl          ! net longwave radiation (W/m^2)
+  !   real :: cn           ! daily condensation (mm d-1)
+  !   real :: aet          ! daily AET (mm d-1)
+  !   real :: aet_e        ! daily AET (J m-2 d-1)
+  ! end type evaptype
 
-  ! Radiation variables. aet, sw, and cpa are affected by soil moisture.
-  type evaptype
-    real :: rho_air      ! density of air (g m-3)
-    real :: sat_slope    ! slope of saturation vap press temp curve, Pa/K 
-    real :: lv           ! enthalpy of vaporization, J/kg
-    real :: rho_water    ! density of water (g m-3)
-    real :: econ         ! water-to-energy conversion factor (econ), m^3/J
-    real :: rn           ! daily net radiation (J/m2/d)
-    real :: rnn          ! nighttime net radiation (J/m^2/d)
-    real :: rnl          ! net longwave radiation (W/m^2)
-    real :: cn           ! daily condensation (mm d-1)
-    real :: aet          ! daily AET (mm d-1)
-    real :: aet_e        ! daily AET (J m-2 d-1)
-  end type evaptype
-
-  ! SPLASH state variables
-  type(evaptype), dimension(nlu) :: evap
+  ! ! SPLASH state variables
+  ! type(evaptype), dimension(nlu) :: evap
 
   ! holds return variables of function get_snow_rain()
   type outtype_snow_rain
@@ -177,12 +176,12 @@ module md_waterbal
   character(len=256) :: ncoutfilnam_daet
   character(len=256) :: ncoutfilnam_drn
 
-  character(len =*), parameter :: WCONT_NAME="wcont"
-  character(len =*), parameter :: PET_NAME="pet"
-  character(len =*), parameter :: AET_NAME="aet"
-  character(len =*), parameter :: RN_NAME="netrad"
-  character(len =*), parameter :: ALPHA_NAME="alpha"
-  character(len =*), parameter :: WBAL_NAME="wbal"
+  character(len =*), parameter :: WCONT_NAME = "wcont"
+  character(len =*), parameter :: PET_NAME = "pet"
+  character(len =*), parameter :: AET_NAME = "aet"
+  character(len =*), parameter :: RN_NAME = "netrad"
+  character(len =*), parameter :: ALPHA_NAME = "alpha"
+  character(len =*), parameter :: WBAL_NAME = "wbal"
 
   character(len=7) :: in_ppfd       ! information whether PPFD is prescribed from meteo file for global attribute in NetCDF file
 
@@ -196,7 +195,7 @@ contains
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
     use md_params_core, only: ndayyear, ndaymonth, npft
-    use md_tile, only: tile_type, tile_fluxes_type
+    use md_tile, only: tile_type, tile_fluxes_type, canopy_type
 
     ! real, intent(in) :: h_canopy        ! canopy height (m)
     ! real, intent(in) :: g_stomata       ! stomatal conductance (mol CO2 Pa-1 m-2 s-1)
@@ -217,6 +216,7 @@ contains
     real, intent(in)    :: vwind        ! wind speed (m s-1)
 
     ! local variables
+    type(canopy_type), pointer :: canopy
     type(outtype_netrad)    :: out_netrad
     type(outtype_et)        :: out_et
     type(outtype_snow_rain) :: out_snow_rain
@@ -229,6 +229,8 @@ contains
 
     ! Loop over gricell tiles
     do lu=1,nlu
+
+      ! canopy => tile(lu)%canopy
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Calculate canopy conductance (m s-1)
@@ -248,7 +250,7 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Update soil moisture and snow pack
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      out_snow_rain = get_snow_rain( pr + evap(lu)%cn, sn, tc, tile(lu)%soil%phy%snow )
+      out_snow_rain = get_snow_rain( pr + tile_fluxes(lu)%canopy%cn, sn, tc, tile(lu)%soil%phy%snow )
       tile(lu)%soil%phy%snow = out_snow_rain%snow_updated 
 
       ! Update soil moisture
@@ -260,10 +262,10 @@ contains
         ! Bucket is full 
         ! -----------------------------------
         ! determine NO3 leaching fraction 
-        tile_fluxes(lu)%dfleach = 1.0 - tile(lu)%soil%params%whc / tile(lu)%soil%phy%wcont
+        tile_fluxes(lu)%canopy%dfleach = 1.0 - tile(lu)%soil%params%whc / tile(lu)%soil%phy%wcont
 
         ! add remaining water to monthly runoff total
-        tile_fluxes(lu)%dro = tile(lu)%soil%phy%wcont - tile(lu)%soil%params%whc
+        tile_fluxes(lu)%canopy%dro = tile(lu)%soil%phy%wcont - tile(lu)%soil%params%whc
 
         ! set soil moisture to capacity
         tile(lu)%soil%phy%wcont = tile(lu)%soil%params%whc
@@ -273,15 +275,15 @@ contains
         ! Bucket is empty
         ! -----------------------------------
         ! set soil moisture to zero
-        evap(lu)%aet = evap(lu)%aet + tile(lu)%soil%phy%wcont
+        tile_fluxes(lu)%canopy%aet = tile_fluxes(lu)%canopy%aet + tile(lu)%soil%phy%wcont
         tile(lu)%soil%phy%wcont      = 0.0
-        tile_fluxes(lu)%dro     = 0.0
-        tile_fluxes(lu)%dfleach = 0.0
+        tile_fluxes(lu)%canopy%dro     = 0.0
+        tile_fluxes(lu)%canopy%dfleach = 0.0
 
       else
         ! No runoff occurrs
-        tile_fluxes(lu)%dro     = 0.0
-        tile_fluxes(lu)%dfleach = 0.0
+        tile_fluxes(lu)%canopy%dro     = 0.0
+        tile_fluxes(lu)%canopy%dfleach = 0.0
 
       end if
 
@@ -289,20 +291,20 @@ contains
       tile(lu)%soil%phy%wscal = tile(lu)%soil%phy%wcont / tile(lu)%soil%params%whc
 
       ! save daily water fluxes
-      tile_fluxes(lu)%dwbal       = out_snow_rain%liquid_to_soil
-      tile_fluxes(lu)%aet         = out_et%aet
-      tile_fluxes(lu)%aet_e       = out_et%aet_e
-      tile_fluxes(lu)%aet_soil    = out_et%aet_soil
-      tile_fluxes(lu)%aet_e_soil  = out_et%aet_e_soil
-      tile_fluxes(lu)%aet_canop   = out_et%aet_canop
-      tile_fluxes(lu)%aet_e_canop = out_et%aet_e_canop
+      tile_fluxes(lu)%canopy%dwbal       = out_snow_rain%liquid_to_soil
+      tile_fluxes(lu)%canopy%aet         = out_et%aet
+      tile_fluxes(lu)%canopy%aet_e       = out_et%aet_e
+      tile_fluxes(lu)%canopy%aet_soil    = out_et%aet_soil
+      tile_fluxes(lu)%canopy%aet_e_soil  = out_et%aet_e_soil
+      tile_fluxes(lu)%canopy%aet_canop   = out_et%aet_canop
+      tile_fluxes(lu)%canopy%aet_e_canop = out_et%aet_e_canop
 
     end do
 
   end subroutine waterbal
 
 
-  function get_solar( lat, elv, sf, ppfd ) result( out_solar )
+  subroutine solar( tile_fluxes, doy, lat, elv, sf ) result( out_solar )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily PPFD. Code is an extract of the subroutine
     ! 'evap', adopted from the evap() function in GePiSaT (Python version). 
@@ -313,127 +315,102 @@ contains
     !-------------------------------------------------------------------------  
     use md_params_core, only: ndayyear, pi, dummy
     use md_sofunutils, only: daily2monthly
+    use md_tile, only: tile_fluxes
 
     ! arguments
-    real, intent(in)                      :: lat           ! latitude, degrees
-    real, intent(in)                      :: elv           ! elevation, metres
-    real, intent(in), dimension(ndayyear) :: sf            ! fraction of sunshine hours 
-    real, intent(in), dimension(ndayyear) :: ppfd          ! photon flux density (mol m-2 d-1), may be dummy (in which case this is not used)
+    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
+    real, intent(in) :: doy           ! day of year
+    real, intent(in) :: lat           ! latitude, degrees
+    real, intent(in) :: elv           ! elevation, metres
+    real, intent(in) :: sf            ! fraction of sunshine hours 
 
     ! function return variable
     type(solartype) :: out_solar
 
     ! local variables
-    integer :: doy
-    real    :: dr                           ! distance factor
-    real    :: delta                        ! declination angle 
-    real    :: ru                           ! variable substitute for u
-    real    :: rv                           ! variable substitute for v
-    real    :: hs                           ! sunset hour angle
-    real    :: tau                          ! transmittivity (unitless)
-    real    :: rw                           ! variable substitute (W/m^2)
-    real, dimension(2) :: out_ru_rv      ! function return variable containing 'ru' and 'rv'.
+    real    :: dr                    ! distance factor
+    real    :: delta                 ! declination angle 
+    real    :: ru                    ! variable substitute for u
+    real    :: rv                    ! variable substitute for v
+    real    :: hs                    ! sunset hour angle
+    real    :: tau                   ! transmittivity (unitless)
+    real    :: rw                    ! variable substitute (W/m^2)
+    real, dimension(2) :: out_ru_rv  ! function return variable containing 'ru' and 'rv'.
 
-    real, dimension(ndayyear) :: daysecs ! daylight seconds for each DOY
-    real, dimension(nmonth)   :: monsecs ! daylight seconds for each MOY
+    ! real :: daysecs ! daylight seconds for each DOY
+    ! real, dimension(nmonth)   :: monsecs ! daylight seconds for each MOY
 
+    type(outtype_berger) :: out_berger    ! stores output of function berger_tls
 
-    ! initialise members of solartype
-    out_solar%dayl(:)      = 0.0
-    out_solar%dra(:)       = 0.0
-    out_solar%dppfd(:)     = 0.0
-    out_solar%mppfd(:)     = 0.0
-    out_solar%meanmppfd(:) = 0.0
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
+    ! Store daily return values for later use in subroutine 'evap'.
+    ! Other variables defined and over-written below may be stored
+    ! for later use in 'evap' the same way. However function 
+    ! 'out_berger' is by far the most expensive one. This is there-
+    ! fore a compromise.
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Berger (1978)
+    out_berger = get_berger_tls( doy )
+    tile_fluxes(:)%canopy%nu     = out_berger%nu
+    tile_fluxes(:)%canopy%lambda = out_berger%lambda
 
-    do doy=1,ndayyear
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 3. Calculate distance factor (dr), unitless
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    dr = calc_dr( tile_fluxes(:)%canopy%nu )
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
-      ! Store daily return values for later use in subroutine 'evap'.
-      ! Other variables defined and over-written below may be stored
-      ! for later use in 'evap' the same way. However function 
-      ! 'out_berger' is by far the most expensive one. This is there-
-      ! fore a compromise.
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Berger (1978)
-      out_berger(doy) = get_berger_tls( doy )
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 4. Calculate declination angle (delta), degrees
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    delta = calc_delta( tile_fluxes(:)%canopy%lambda )
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 3. Calculate distance factor (dr), unitless
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      dr = calc_dr( out_berger(doy)%nu )
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 5. Calculate variable substitutes (u and v), unitless
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    out_ru_rv = calc_ru_rv( delta, lat )
+    ru = out_ru_rv(1)
+    rv = out_ru_rv(2)
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 4. Calculate declination angle (delta), degrees
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      delta = calc_delta( out_berger(doy)%lambda )
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 6. Calculate the sunset hour angle (hs), degrees
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    hs = calc_hs( ru, rv )
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 5. Calculate variable substitutes (u and v), unitless
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      out_ru_rv = calc_ru_rv( delta, lat )
-      ru = out_ru_rv(1)
-      rv = out_ru_rv(2)
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 6.a Calculate day length from sunset hour angle, h
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    tile_fluxes(:)%canopy%dayl = 24.0 * hs / 180.0  ! hs is in degrees (pi = 180 deg)
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 6. Calculate the sunset hour angle (hs), degrees
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      hs = calc_hs( ru, rv )
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 7. Calculate daily extraterrestrial solar radiation (dra), J/m^2/d
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 1.10.3, Duffy & Beckman (1993)
+    tile_fluxes(:)%canopy%dra = ( secs_per_day / pi ) * kGsc * dr * ( radians(ru) * hs + rv * dgsin(hs) )
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 6.a Calculate day length from sunset hour angle, h
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      out_solar%dayl(doy) = 24.0 * hs / 180.0  ! hs is in degrees (pi = 180 deg)
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 8. Calculate transmittivity (tau), unitless
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    tau = calc_tau( sf, elv )
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 7. Calculate daily extraterrestrial solar radiation (dra), J/m^2/d
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Eq. 1.10.3, Duffy & Beckman (1993)
-      out_solar%dra(doy) = ( secs_per_day / pi ) * kGsc * dr * ( radians(ru) * hs + rv * dgsin(hs) )
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! 9. Calculate daily PPFD (dppfd), mol/m^2
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Eq. 57, SPLASH 2.0 Documentation
+    tile_fluxes(:)%canopy%ppfd_splash = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * tile_fluxes(:)%canopy%dra
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 8. Calculate transmittivity (tau), unitless
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      tau = calc_tau( sf(doy), elv )
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! 9. Calculate daily PPFD (dppfd), mol/m^2
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      if (ppfd(1)/=dummy) then
-        out_solar%dppfd(doy) = ppfd(doy)
-        in_ppfd = ".true. "
-      else
-        ! Eq. 57, SPLASH 2.0 Documentation
-        out_solar%dppfd(doy) = (1.0e-6) * kfFEC * ( 1.0 - kalb_vis ) * tau * out_solar%dra(doy)
-        in_ppfd = ".false."
-      end if
-
-      if (splashtest) then
-        print*,'transmittivity, tau: ', tau
-        print*,'daily TOA radiation: ', (1.0e-6)*out_solar%dra(doy)
-        print*,'sunset angle, hs: ', hs
-        print*,'true anomaly, nu: ', out_berger(doy)%nu
-        print*,'true longitude, lambda: ', out_berger(doy)%lambda
-        print*,'distance factor, dr: ', dr
-        print*,'declination, delta: ', delta
-        print*,'variable substitute, ru: ', ru
-        print*,'variable substitute, rv: ', rv
-        print*,'daily PPFD: ', out_solar%dppfd(doy)
-      end if
-
-    end do
-
-    ! Calculate monthly average daylight PPFD 
-    daysecs(:)         = out_solar%dayl(:) * 60.0 * 60.0              ! conversion of daylight hours to seconds
-    monsecs(:)         = daily2monthly( daysecs(:), "sum" )
-    out_solar%mppfd(:) = daily2monthly( out_solar%dppfd(:), "sum" )   ! mol m-2 month-1
-
-    ! In polar regions, 'monsecs' an be zero in winter months. PPFD is zero then too.
-    where ( monsecs(:) > 0.0 )
-      out_solar%meanmppfd(:) = out_solar%mppfd(:) / monsecs(:) ! mol m-2 s-1
-    else where
-      out_solar%meanmppfd(:) = 0.0
-    end where
+    if (splashtest) then
+      print*,'transmittivity, tau: ', tau
+      print*,'daily TOA radiation: ', (1.0e-6)*tile_fluxes(:)%canopy%dra
+      print*,'sunset angle, hs: ', hs
+      print*,'true anomaly, nu: ', tile_fluxes(:)%canopy%nu
+      print*,'true longitude, lambda: ', tile_fluxes(:)%canopy%lambda
+      print*,'distance factor, dr: ', dr
+      print*,'declination, delta: ', delta
+      print*,'variable substitute, ru: ', ru
+      print*,'variable substitute, rv: ', rv
+      print*,'daily PPFD: ', tile_fluxes(:)%canopy%ppfd_splash
+    end if
 
     !-------------------------------------------------------------   
     ! Refs: Allen, R.G. (1996), Assessing integrity of weather data for 
@@ -481,7 +458,7 @@ contains
     !         Tech. rep. NASA-TM-X-164. National Aeronautics and Space 
     !         Administration (NASA).
     !-------------------------------------------------------------   
-  end function get_solar
+  end subroutine solar
 
 
   function calc_et( tc, patm, lai, fapar, netrad, vpd, g_canopy, g_aero ) result( out_et )
@@ -610,12 +587,12 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 3. Calculate distance factor (dr), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    dr = calc_dr( out_berger(doy)%nu )
+    dr = calc_dr( tile_fluxes%canopy%nu )
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 4. Calculate declination angle (delta), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    delta = calc_delta( out_berger(doy)%lambda )
+    delta = calc_delta( tile_fluxes%canopy%lambda )
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 5. Calculate variable substitutes (u and v), unitless
@@ -1093,15 +1070,15 @@ contains
     ! True longitude:
     out_berger%lambda = anv + komega
     if (out_berger%lambda < 0.0) then
-        out_berger%lambda = out_berger%lambda + 360.0
+      out_berger%lambda = out_berger%lambda + 360.0
     else if (out_berger%lambda > 360.0) then
-        out_berger%lambda = out_berger%lambda - 360.0
+      out_berger%lambda = out_berger%lambda - 360.0
     endif
 
     ! True anomaly:
     out_berger%nu = (out_berger%lambda - komega)
     if (out_berger%nu < 0.0) then
-        out_berger%nu = out_berger%nu + 360.0
+      out_berger%nu = out_berger%nu + 360.0
     endif
 
   end function get_berger_tls
