@@ -462,15 +462,15 @@ program main
     ! print*,out_daily_tile(idx_daily_start:(idx_daily_end+3), 1)
     call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
     print*,'b'
-<<<<<<< HEAD
+! <<<<<<< HEAD
     print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 14))
     print*, 'idx_daily', idx_daily_start, idx_daily_end
     print*,out_daily_tile(idx_daily_start:idx_daily_end, 14)
-=======
-    print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 12))
-    print*, 'idx_daily', idx_daily_start, idx_daily_end
-    print*,out_daily_tile(idx_daily_start:idx_daily_end, 12)
->>>>>>> 7b63d7b82f2a665102705154ea5e4d9a95c2495f
+! =======
+!     print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 12))
+!     print*, 'idx_daily', idx_daily_start, idx_daily_end
+!     print*,out_daily_tile(idx_daily_start:idx_daily_end, 12)
+! >>>>>>> 7b63d7b82f2a665102705154ea5e4d9a95c2495f
     ! stop 'halo'
 
     ! ----------------------------------------------------------------
