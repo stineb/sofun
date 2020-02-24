@@ -557,7 +557,7 @@ module datatypes
   ! real      :: step_seconds = 3600.0
 
   character(len=80) :: filepath_in = '/Users/eweng/Documents/BiomeESS/forcingData/'
-  character(len=160) :: climfile = 'US-Ha1forcing.txt'
+  character(len=160) :: climfile =  'US-Ha1forcing.txt'
   !integer   :: model_run_years = 100  ! xxx todo: not used
   !integer   :: runyears = 100  ! xxxxxxx todo: not used
   integer   :: equi_days       = 0 ! 100 * 365

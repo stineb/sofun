@@ -89,12 +89,12 @@ contains
     ! end if
 
     ! if (int(forcing(idx_start, 1)) /= climateyear) stop 'getclimate(): climateyear does not correspond to index read from forcing'
-    if (forcing(idx_start)%year /= climateyear) then
-      print*,'forcing(idx_start)%year ', forcing(idx_start)%year
-      print*,'climateyear ', climateyear
-      print*,'climateyear_idx ', climateyear_idx
-      stop 'getclimate(): climateyear does not correspond to index read from forcing'
-    end if
+    ! if (forcing(idx_start)%year /= climateyear) then
+    !   print*,'forcing(idx_start)%year ', forcing(idx_start)%year
+    !   print*,'climateyear ', climateyear
+    !   print*,'climateyear_idx ', climateyear_idx
+    !   stop 'getclimate(): climateyear does not correspond to index read from forcing'
+    ! end if
 
     ! ! This is to read from ORNL file
     ! out_climate%year      = int(forcing(idx_start:idx_end, 1))           ! Year
