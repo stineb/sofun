@@ -57,7 +57,8 @@ contains
     integer :: totyears
     integer :: i, j, k, idoy
     integer :: idata
-    integer, save :: simu_steps !, datalines
+    integer, save :: simu_steps !, 
+    
     integer, save :: idays
     character(len=50) :: filepath_out, filesuffix
     character(len=50) :: parameterfile(10), chaSOM(10)
@@ -125,8 +126,8 @@ contains
     ! forcingData(i)%soilwater = 0.8                              ! soil moisture, vol/vol
     !------------------------------------------------------------------------
     
-    print*,'year0: ', myinterface%climate(1)%year
-    print*,'climateyear: ', myinterface%steering%climateyear_idx, myinterface%steering%climateyear
+    ! print*,'year0: ', myinterface%climate(1)%year
+    ! print*,'climateyear: ', myinterface%steering%climateyear_idx, myinterface%steering%climateyear
     !----------------------------------------------------------------
     ! INITIALISATIONS
     !----------------------------------------------------------------
@@ -187,15 +188,15 @@ contains
       ! Initialize vegetation tile and plant cohorts
       allocate(vegn)
       
-       print*,'2: ', vegn%n_cohorts
+       ! print*,'2: ', vegn%n_cohorts
       
       call initialize_vegn_tile(vegn, nCohorts)
       
       ! Sort and relayer cohorts
-       print*,'3: ', vegn%n_cohorts
+       ! print*,'3: ', vegn%n_cohorts
       call relayer_cohorts(vegn)
 
-       print*,'4: ', vegn%n_cohorts
+       ! print*,'4: ', vegn%n_cohorts
       call Zero_diagnostics(vegn)
 
       !------------------------------------------------------------------------
@@ -352,32 +353,32 @@ contains
     !---------------------------------------------        
     ! Kill all individuals in a cohort if NSC falls below critical point
     call vegn_annual_starvation(vegn)
-     print*,'5: ', vegn%n_cohorts
+     ! print*,'5: ', vegn%n_cohorts
 
     ! Natural mortality (reducing number of individuals 'nindivs')
     ! (~Eq. 2 in Weng et al., 2015 BG)
     call vegn_nat_mortality(vegn, real(seconds_per_year))
-     print*,'6: ', vegn%n_cohorts
+     ! print*,'6: ', vegn%n_cohorts
 
     ! seed C and germination probability (~Eq. 1 in Weng et al., 2015 BG)
     call vegn_reproduction(vegn)
-     print*,'7: ', vegn%n_cohorts
+     ! print*,'7: ', vegn%n_cohorts
 
      !---------------------------------------------
     ! Re-organize cohorts
     !---------------------------------------------
     call kill_lowdensity_cohorts(vegn)
-    print*,'8: ', vegn%n_cohorts
+    ! print*,'8: ', vegn%n_cohorts
     call relayer_cohorts(vegn)
-    print*,'9: ', vegn%n_cohorts
+    ! print*,'9: ', vegn%n_cohorts
     call vegn_mergecohorts(vegn)
-    print*,'10: ', vegn%n_cohorts
+    ! print*,'10: ', vegn%n_cohorts
 
     ! !---------------------------------------------
     ! ! Set annual variables zero
     ! !---------------------------------------------
     call Zero_diagnostics(vegn)
-    print*,'11: ', vegn%n_cohorts
+    ! print*,'11: ', vegn%n_cohorts
 
     ! update the years of model run
     iyears = iyears + 1
