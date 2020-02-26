@@ -423,16 +423,6 @@ program main
     ! out_annual_cohorts(yr,:)                         = out_biosphere%annual_cohorts(:)
     ! out_annual_tile(yr)                              = out_biosphere%annual_tile
 
-    
-    ! hourly
-
-    ! daily
-    idx_daily_start  = (yr - 1) * ndayyear + 1
-    idx_daily_end    = idx_daily_start + ndayyear - 1
-
-    ! ! annual
-    ! idx_annual_start  = (yr - myinterface%params_siml%spinupyears - 1) * ndayyear + 1
-    ! idx_annual_end    = idx_annual_start + ndayyear - 1
 
     ! ----------------------------------------------------------------
     ! Print out_hourly_tile
@@ -441,41 +431,45 @@ program main
     ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end,1)
     ! print*, out_biosphere%hourly_tile(:)%hour
 
-    ! if (.not. myinterface%steering%spinup) then
-    !   idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
-    !   idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
-    !   call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
-    ! end if
+    if (.not. myinterface%steering%spinup) then
+      idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
+      idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
+      call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
+    end if
 
       ! print*,'b'
-      ! ! ! print*,out_biosphere%hourly_tile(1)%Tair
-      ! ! print*,out_hourly_tile(idx_hourly_start, 5)
-      ! ! print*,size(out_hourly_tile(idx_hourly_start:idx_hourly_end, 1))
+      ! print*,out_biosphere%hourly_tile(1)%Tair
+      ! print*,out_hourly_tile(idx_hourly_start, 5)
+      ! print*,size(out_hourly_tile(idx_hourly_start:idx_hourly_end, 2))
       ! print*, 'idex_hourly', idx_hourly_start, idx_hourly_end
-      ! print*, 'aaa', out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
-      ! ! stop 'halo'
+      ! print*, out_hourly_tile(idx_hourly_start:idx_hourly_end, 2)
+      ! stop 'halo'
+
+    ! daily
+    idx_daily_start  = (yr - 1) * ndayyear + 1
+    idx_daily_end    = idx_daily_start + ndayyear - 1
 
     ! ----------------------------------------------------------------
     ! Print out_daily_tile
     ! ----------------------------------------------------------------
-    print*,'a'
+    ! print*,'a'
     ! print*,out_daily_tile(idx_daily_start:(idx_daily_end), 1)
     call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
-    print*,'b'
-    print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 1))
-    print*, 'idx_daily', idx_daily_start, idx_daily_end
-    print*,out_daily_tile(idx_daily_start:idx_daily_end, 20)
+    ! print*,'b'
+    ! print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 1))
+    ! print*, 'idx_daily', idx_daily_start, idx_daily_end
+    ! print*,out_daily_tile(idx_daily_start:idx_daily_end, 35)
     ! stop 'halo'
 
     ! ----------------------------------------------------------------
     ! Print out_daily_cohorts
     ! ----------------------------------------------------------------
     ! print*,'a'
-    ! !print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3)
-    ! call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
+    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3)
+    call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
     ! print*,'b'
     ! print*,size(out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3))
-    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3)
+    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,1, 27)
     ! !stop 'halo'
 
     ! ----------------------------------------------------------------
@@ -483,9 +477,9 @@ program main
     ! ! ----------------------------------------------------------------
     ! print*,'a'
     ! print*,out_annual_tile(yr,2)
-    ! call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
+    call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
     ! print*,'b'
-    ! print*,out_annual_tile(yr,8)
+    ! print*,out_annual_tile(yr,44)
     !stop 'halo'
 
     ! ----------------------------------------------------------------
@@ -493,10 +487,10 @@ program main
     ! ! ! ! ----------------------------------------------------------------
     ! print*,'a'
     ! !  print*,out_annual_cohorts(yr,:,2)
-    ! call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
+    call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
      ! print*,'c'
      ! print*,size(out_annual_cohorts(yr,:,18))
-     ! print*,out_annual_cohorts(yr,:,18)
+     ! print*,out_annual_cohorts(yr,:,22)
      ! stop 'halo'
 
 
