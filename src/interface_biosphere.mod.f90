@@ -29,10 +29,10 @@ module md_interface
     real                                              :: pco2
     type( gridtype )      , dimension(:), allocatable :: grid
     type( paramtype_soil ), dimension(:), allocatable :: soilparams
-    type( landuse_type )  , dimension(:), allocatable :: landuse
-    type( climate_type )  , dimension(:), allocatable :: climate
-    type( ninput_type)    , dimension(:), allocatable :: ninput_field
-    type( vegcover_type ) , dimension(:), allocatable :: vegcover
+    ! type( landuse_type )  , dimension(:), allocatable :: landuse
+    ! type( ninput_type)    , dimension(:), allocatable :: ninput_field
+    type( vegcover_type ) , dimension(:,:), allocatable :: vegcover
+    type( climate_type )  , dimension(:,:), allocatable :: climate
     type( domaininfo_type )                           :: domaininfo
     type( outtype_steering )                          :: steering
     type( paramstype_siml )                           :: params_siml
@@ -245,8 +245,8 @@ contains
       ! so far not implemented for isotopes
       !----------------------------------------------------------------
       it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
-      if (interface%params_siml%loutdtemp)  outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(jpngr)%dtemp(doy)   / real( interface%params_siml%outdt )
-      if (interface%params_siml%loutdfapar) outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%vegcover(jpngr)%dfapar(doy) / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdtemp)  outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(doy,jpngr)%dtemp   / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdfapar) outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%vegcover(doy,jpngr)%dfapar / real( interface%params_siml%outdt )
 
       ! !----------------------------------------------------------------
       ! ! ANNUAL SUM OVER DAILY VALUES

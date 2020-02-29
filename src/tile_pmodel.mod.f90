@@ -9,26 +9,7 @@ module md_tile
   implicit none
 
   private
-  public tile_type, tile_fluxes_type, initglobal_tile, psoilphystype, soil_type, initdaily_tile
-
-
-  !----------------------------------------------------------------
-  ! Tile type with year-to-year memory
-  !----------------------------------------------------------------
-  type tile_type
-    integer                           :: luno       ! Index that goes along with this instance of 'tile'
-    type(soil_type)                   :: soil       ! all organic, inorganic, and physical soil variables
-    type(canopy_type)                 :: canopy     ! mean canopy
-    type(plant_type), dimension(npft) :: plant
-  end type tile_type
-
-  !----------------------------------------------------------------
-  ! Soil type
-  !----------------------------------------------------------------
-  type soil_type
-    type(psoilphystype)  :: phy      ! soil state variables
-    type(paramtype_soil) :: params   ! soil parameters
-  end type soil_type
+  public tile_type, tile_fluxes_type, initglobal_tile, psoilphystype, soil_type, initdaily_tile_fluxes
 
   !----------------------------------------------------------------
   ! physical soil state variables with memory from year to year (~pools)
@@ -42,6 +23,14 @@ module md_tile
   end type psoilphystype
 
   !----------------------------------------------------------------
+  ! Soil type
+  !----------------------------------------------------------------
+  type soil_type
+    type(psoilphystype)  :: phy      ! soil state variables
+    type(paramtype_soil) :: params   ! soil parameters
+  end type soil_type
+
+  !----------------------------------------------------------------
   ! Canopy type
   ! Contains tile-level aggregated variables related to the canopy
   !----------------------------------------------------------------
@@ -53,28 +42,34 @@ module md_tile
     real :: fpc_grid       ! fractional projective cover (sum of crownarea by canopy plants)
   end type canopy_type
 
+  !----------------------------------------------------------------
+  ! Tile type with year-to-year memory
+  !----------------------------------------------------------------
+  type tile_type
+    integer                           :: luno       ! Index that goes along with this instance of 'tile'
+    type(soil_type)                   :: soil       ! all organic, inorganic, and physical soil variables
+    type(canopy_type)                 :: canopy     ! mean canopy
+    type(plant_type), dimension(npft) :: plant
+    real                              :: rlmalpha
+  end type tile_type
 
   !----------------------------------------------------------------
   ! Variables without memory (not necessarily just fluxes)
   !----------------------------------------------------------------
-  type tile_fluxes_type
-    type(canopy_fluxes_type) :: canopy
-    type(plant_fluxes_type), dimension(npft) :: plant
-  end type tile_fluxes_type
-
-
   type canopy_fluxes_type
     ! water
     real :: dro             ! daily runoff (mm d-1)
     real :: dfleach         ! daily fraction of soil water going to runoff (used for calculating leaching)
     real :: dwbal           ! daily water balance as precipitation and snow melt minus runoff and evapotranspiration (mm d-1)
     real :: econ            ! water-to-energy conversion factor (econ), m^3/J
-    real :: rn              ! daily net radiation (J/m2/d)
-    real :: rnn             ! nighttime net radiation (J m-1 d-1)
+    real :: drn             ! daily total net radiation (J/m2/d)
+    real :: drnn            ! nighttime total net radiation (J m-1 d-1)
     real :: rnl             ! net longwave radiation (W m-2)
-    real :: cn              ! daily condensation (mm d-1)
-    real :: daet            ! daily total evapotranspiration (mm d-1)
-    real :: daet_e          ! daily total evapotranspiration (J m-2 d-1)
+    real :: dcn             ! daily total condensation (mm d-1)
+    real :: dpet            ! daily total potential evapotranspiration (mm d-1)
+    real :: dpet_e          ! daily total potential evapotranspiration (J m-2 d-1)
+    real :: daet            ! daily total (actual) evapotranspiration (mm d-1)
+    real :: daet_e          ! daily total (actual) evapotranspiration (J m-2 d-1)
     real :: daet_soil       ! daily soil evaporation (mm d-1)
     real :: daet_e_soil     ! daily soil evaporation (J m-2 d-1)
     real :: daet_canop      ! daily canopy transpiration (mm d-1)
@@ -104,6 +99,11 @@ module md_tile
 
   end type canopy_fluxes_type
 
+  type tile_fluxes_type
+    type(canopy_fluxes_type) :: canopy
+    type(plant_fluxes_type), dimension(npft) :: plant
+  end type tile_fluxes_type
+
 contains
 
   subroutine initglobal_tile( tile, ngridcells )
@@ -113,6 +113,8 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
+    use md_interface, only: interface
+
     ! argument
     integer, intent(in) :: ngridcells
     type(tile_type), dimension(nlu,ngridcells), intent(inout) :: tile
@@ -134,11 +136,14 @@ contains
         ! initialise soil variables
         call initglobal_soil( tile(lu,jpngr)%soil )
 
+        ! Copy soil parameters
+         tile(lu,jpngr)%soil%params = interface%soilparams(jpngr)
+
         ! initialise canopy variables
         call initglobal_canopy( tile(lu,jpngr)%canopy )
 
         ! initialise plant variables
-        call initglobal_plant( tile(lu,jpngr)%plant(:) )
+        call initglobal_plant( tile(lu,jpngr)%plant(:), ngridcells )
 
       end do
     end do
@@ -155,11 +160,11 @@ contains
     ! argument
     type(canopy_type), intent(inout) :: canopy
 
-    lai         = 0.0
-    fapar       = 0.0
-    height      = 0.0
-    conductance = 0.0
-    fpc_grid    = 0.0
+    canopy%lai         = 0.0
+    canopy%fapar       = 0.0
+    canopy%height      = 0.0
+    canopy%conductance = 0.0
+    canopy%fpc_grid    = 0.0
 
   end subroutine initglobal_canopy
 
@@ -168,15 +173,10 @@ contains
     !////////////////////////////////////////////////////////////////
     ! initialise soil variables globally
     !----------------------------------------------------------------
-    use md_interface, only: interface
-
     ! argument
     type(soil_type), intent(inout) :: soil
 
     call initglobal_soil_phy( soil%phy )
-
-    ! Copy soil parameters
-    soil%params = interface%soilparams(jpngr)
 
   end subroutine initglobal_soil
 
@@ -197,21 +197,26 @@ contains
   end subroutine initglobal_soil_phy
 
 
-  subroutine initdaily_tile( tile_fluxes )
+  subroutine initdaily_tile_fluxes( tile_fluxes )
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables within derived type 'soilphys'.
     !----------------------------------------------------------------
+    use md_params_core, only: npft
+
     ! arguments
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
+
+    ! local
+    integer :: pft
 
     tile_fluxes(:)%canopy%dro = 0.0             
     tile_fluxes(:)%canopy%dfleach = 0.0         
     tile_fluxes(:)%canopy%dwbal = 0.0           
     tile_fluxes(:)%canopy%econ = 0.0            
-    tile_fluxes(:)%canopy%rn = 0.0              
-    tile_fluxes(:)%canopy%rnn = 0.0             
+    tile_fluxes(:)%canopy%drn = 0.0              
+    tile_fluxes(:)%canopy%drnn = 0.0             
     tile_fluxes(:)%canopy%rnl = 0.0             
-    tile_fluxes(:)%canopy%cn = 0.0              
+    tile_fluxes(:)%canopy%dcn = 0.0              
     tile_fluxes(:)%canopy%daet = 0.0            
     tile_fluxes(:)%canopy%daet_e = 0.0          
     tile_fluxes(:)%canopy%daet_soil = 0.0       
@@ -226,8 +231,15 @@ contains
     tile_fluxes(:)%canopy%nu = 0.0
     tile_fluxes(:)%canopy%lambda = 0.0
 
-    call initdaily_plant( tile_fluxes(:)%plant(:) )
+    do pft = 1,npft
+      tile_fluxes(:)%plant(npft)%dgpp     = 0.0
+      tile_fluxes(:)%plant(npft)%drd      = 0.0
+      tile_fluxes(:)%plant(npft)%dtransp  = 0.0
+      tile_fluxes(:)%plant(npft)%dlatenth = 0.0
+    end do
 
-  end subroutine initdaily_tile
+    ! call initdaily_plant( tile_fluxes(:)%plant(:) )
+
+  end subroutine initdaily_tile_fluxes
 
 end module md_tile

@@ -73,12 +73,12 @@ program main
   interface%domaininfo = get_domaininfo( params_domain )
 
   ! allocate variable size arrays
-  allocate( interface%grid(         interface%domaininfo%maxgrid ) )
-  allocate( interface%climate(      interface%domaininfo%maxgrid ) )
-  allocate( interface%ninput_field( interface%domaininfo%maxgrid ) )
-  allocate( interface%landuse(      interface%domaininfo%maxgrid ) )
-  allocate( interface%soilparams(   interface%domaininfo%maxgrid ) )
-  allocate( interface%vegcover(     interface%domaininfo%maxgrid ) )
+  allocate( interface%grid( interface%domaininfo%maxgrid ) )
+  allocate( interface%climate( ndayyear, interface%domaininfo%maxgrid ) )
+  ! allocate( interface%ninput_field(   interface%domaininfo%maxgrid ) )
+  ! allocate( interface%landuse(        interface%domaininfo%maxgrid ) )
+  allocate( interface%soilparams(     interface%domaininfo%maxgrid ) )
+  allocate( interface%vegcover( ndayyear, interface%domaininfo%maxgrid ) )
   allocate( interface%fpc_grid( npft, interface%domaininfo%maxgrid ) )
 
   ! vectorise 2D array, keeping only land gridcells
@@ -122,26 +122,26 @@ program main
     ! Get prescribed fAPAR if required (otherwise set to dummy value)
     !----------------------------------------------------------------
     if (verbose) print*,'getting fAPAR ...'
-    interface%vegcover(:) = getfapar( &
-                                      interface%domaininfo, &
-                                      interface%grid, &
-                                      interface%steering%forcingyear, &
-                                      interface%params_siml%fapar_forcing_source &
-                                      )    
+    interface%vegcover(:,:) = getfapar( &
+                                        interface%domaininfo, &
+                                        interface%grid, &
+                                        interface%steering%forcingyear, &
+                                        interface%params_siml%fapar_forcing_source &
+                                        )    
 
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
     ! Get climate variables for this year (full fields and 365 daily values for each variable)
     if (verbose) print*,'getting climate ...'
-    interface%climate(:) = getclimate( &
-                                      interface%domaininfo, &
-                                      interface%grid, &
-                                      interface%steering%init, &
-                                      interface%steering%climateyear, &
-                                      interface%params_siml%in_ppfd,  &
-                                      interface%params_siml%in_netrad &
-                                      )
+    interface%climate(:,:) = getclimate( &
+                                          interface%domaininfo, &
+                                          interface%grid, &
+                                          interface%steering%init, &
+                                          interface%steering%climateyear, &
+                                          interface%params_siml%in_ppfd,  &
+                                          interface%params_siml%in_netrad &
+                                          )
     if (verbose) print*,'... done.'
 
     ! Get annual, gobally uniform CO2
@@ -156,44 +156,44 @@ program main
                             )
     if (verbose) print*,'... done.'
 
-    ! Atmospheric N deposition (note that actual data is not read in all SOFUN setups)
-    ndep_field(:) = getninput( &
-                              "ndep", &
-                              trim(runname), &
-                              interface%domaininfo, &
-                              interface%steering%forcingyear, &
-                              interface%params_siml%firstyeartrend, &
-                              interface%params_siml%const_ndep_year, &
-                              interface%params_siml%ndep_noy_forcing_file, &
-                              interface%params_siml%ndep_nhx_forcing_file, &
-                              interface%climate(:)&
-                              )
+    ! ! Atmospheric N deposition (note that actual data is not read in all SOFUN setups)
+    ! ndep_field(:) = getninput( &
+    !                           "ndep", &
+    !                           trim(runname), &
+    !                           interface%domaininfo, &
+    !                           interface%steering%forcingyear, &
+    !                           interface%params_siml%firstyeartrend, &
+    !                           interface%params_siml%const_ndep_year, &
+    !                           interface%params_siml%ndep_noy_forcing_file, &
+    !                           interface%params_siml%ndep_nhx_forcing_file, &
+    !                           interface%climate(:)&
+    !                           )
     
-    ! N fertiliser input (note that actual data is not read in all SOFUN setups)
-    nfert_field(:) = getninput( &
-                              "nfert", &
-                              trim(runname), &
-                              interface%domaininfo, &
-                              interface%steering%forcingyear, &
-                              interface%params_siml%firstyeartrend, &
-                              interface%params_siml%const_nfert_year, &
-                              interface%params_siml%nfert_noy_forcing_file, &
-                              interface%params_siml%nfert_nhx_forcing_file, &
-                              interface%climate(:)&
-                              )
+    ! ! N fertiliser input (note that actual data is not read in all SOFUN setups)
+    ! nfert_field(:) = getninput( &
+    !                           "nfert", &
+    !                           trim(runname), &
+    !                           interface%domaininfo, &
+    !                           interface%steering%forcingyear, &
+    !                           interface%params_siml%firstyeartrend, &
+    !                           interface%params_siml%const_nfert_year, &
+    !                           interface%params_siml%nfert_noy_forcing_file, &
+    !                           interface%params_siml%nfert_nhx_forcing_file, &
+    !                           interface%climate(:)&
+    !                           )
 
-    ! Interface holds only total reactive N input (N deposition + N fertiliser)                             
-    interface%ninput_field(:) = gettot_ninput( nfert_field(:), ndep_field(:) )
+    ! ! Interface holds only total reactive N input (N deposition + N fertiliser)                             
+    ! interface%ninput_field(:) = gettot_ninput( nfert_field(:), ndep_field(:) )
                                  
-    ! Get land use information (note that actual data is not read in all SOFUN setups)
-    interface%landuse(:) = getlanduse( &
-                                      trim(runname), &
-                                      interface%domaininfo, &
-                                      interface%steering%forcingyear, &
-                                      interface%params_siml%do_grharvest_forcing_file, &
-                                      interface%params_siml%const_lu_year, &
-                                      interface%params_siml%firstyeartrend &
-                                      )
+    ! ! Get land use information (note that actual data is not read in all SOFUN setups)
+    ! interface%landuse(:) = getlanduse( &
+    !                                   trim(runname), &
+    !                                   interface%domaininfo, &
+    !                                   interface%steering%forcingyear, &
+    !                                   interface%params_siml%do_grharvest_forcing_file, &
+    !                                   interface%params_siml%const_lu_year, &
+    !                                   interface%params_siml%firstyeartrend &
+    !                                   )
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 

@@ -27,26 +27,11 @@ module md_waterbal
   implicit none
 
   private
-  public solartype, evap, waterbal, get_solar,                         &
-    getout_daily_waterbal, initoutput_waterbal,                        &
-    getpar_modl_waterbal, initio_nc_waterbal,                          &
-    writeout_nc_waterbal, get_rlm_waterbal, init_rlm_waterbal,         &
+  public waterbal, solar,                           &
+    getout_daily_waterbal, initoutput_waterbal,     &
+    getpar_modl_waterbal, initio_nc_waterbal,       &
+    writeout_nc_waterbal, get_rlm_waterbal,         & !, init_rlm_waterbal
     getrlm_daily_waterbal
-
-  !----------------------------------------------------------------
-  ! Public, module-specific state variables
-  !----------------------------------------------------------------
-
-  ! ! Collection of solar radiation-related variables used across modules
-  ! ! Variables are a function of latitude, elevation, and 
-  ! ! sunshine fraction (all variables independent of soil moisture)
-  ! type solartype
-  !   real, dimension(ndayyear) :: dayl               ! day length (hours)
-  !   real, dimension(ndayyear) :: dra                ! daily TOA solar irradiation (J/m2)
-  !   real, dimension(ndayyear) :: dppfd_splash       ! daily total PPFD (mol m-2 d-1)
-  !   real, dimension(nmonth)   :: mppfd_splash       ! monthly total PPFD (mol m-2 month-1)
-  !   real, dimension(nmonth)   :: meanmppfd_splash   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
-  ! end type solartype
 
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
@@ -86,13 +71,10 @@ module md_waterbal
   !   real :: rn           ! daily net radiation (J/m2/d)
   !   real :: rnn          ! nighttime net radiation (J/m^2/d)
   !   real :: rnl          ! net longwave radiation (W/m^2)
-  !   real :: cn           ! daily condensation (mm d-1)
-  !   real :: aet          ! daily AET (mm d-1)
-  !   real :: aet_e        ! daily AET (J m-2 d-1)
+  !   real :: cn           
+  !   real :: aet          
+  !   real :: aet_e        
   ! end type evaptype
-
-  ! ! SPLASH state variables
-  ! type(evaptype), dimension(nlu) :: evap
 
   ! holds return variables of function get_snow_rain()
   type outtype_snow_rain
@@ -102,24 +84,21 @@ module md_waterbal
 
   ! Holds output of function calc_et 
   type outtype_et
-    real :: aet_soil     ! soil evaporation
-    real :: aet_canop    ! canopy transpiration
-  end type outtype_et
-
-  type outtype_et
-    real :: aet
-    real :: aet_e
-    real :: aet_soil
-    real :: aet_e_soil
-    real :: aet_canop
-    real :: aet_e_canop
+    real :: cn             ! daily condensation (mm d-1)
+    real :: pet            ! daily potential evapotranspiration (mm d-1)
+    real :: pet_e          ! daily potential evapotranspiration (J m-2 d-1)
+    real :: aet            ! daily actual evapotranspiration (mm d-1)
+    real :: aet_e          ! daily actual evapotranspiration (J m-2 d-1)
+    real :: aet_soil       ! daily soil evaporation (mm d-1)
+    real :: aet_e_soil     ! daily soil evaporation (J m-2 d-1)
+    real :: aet_canop      ! daily canopy evaporation (mm d-1)
+    real :: aet_e_canop    ! daily canopy evaporation (J m-2 d-1)
   end type outtype_et
 
   type outtype_netrad
     real :: rnl
     real :: rn
     real :: rnn
-    real :: cn
   end type outtype_netrad
 
   !----------------------------------------------------------------
@@ -130,7 +109,7 @@ module md_waterbal
   !----------------------------------------------------------------
   ! Module-specific rolling mean variables
   !----------------------------------------------------------------
-  ! real, allocatable, dimension(:,:), save :: rlmalpha       ! rolling mean of annual mean alpha (AET/PET)
+  real, dimension(nlu), save :: aalpha                      ! annual mean alpha (AET/PET)
   integer, parameter :: nyrs_rlmalpha = 5                   ! number of years for rolling mean (=width of sliding window)
 
   !----------------------------------------------------------------
@@ -155,11 +134,6 @@ module md_waterbal
   real, allocatable, dimension(:)     :: outapet            ! annual total potential ET, mm r J/m2/yr depending on 'outenergy'
   real, allocatable, dimension(:,:)   :: outaaet            ! annual total actual ET, mm or J/m2/yr depending on 'outenergy'
   real, allocatable, dimension(:,:)   :: outaalpha          ! annual mean AET/PET (of daily values!), unitless
-
-  !----------------------------------------------------------------
-  ! Module-specific variables for rolling annual mean calculations
-  !----------------------------------------------------------------
-  real, allocatable, dimension(:,:)   :: rlmalpha
 
   !----------------------------------------------------------------
   ! Module-specific NetCDF output file and variable names
@@ -190,42 +164,44 @@ module md_waterbal
 
 contains
 
-  subroutine waterbal( tile, tile_fluxes, doy, lat, elv, pr, sn, tc, sf, netrad, vpd, patm, vwind ) !, lai, fapar, h_canopy, g_stomata )
+  subroutine waterbal( tile, tile_fluxes, grid, climate, doy ) !, lai, fapar, h_canopy, g_stomata )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates daily and monthly quantities for one year
     !-------------------------------------------------------------------------
-    use md_params_core, only: ndayyear, ndaymonth, npft
-    use md_tile, only: tile_type, tile_fluxes_type, canopy_type
-
-    ! real, intent(in) :: h_canopy        ! canopy height (m)
-    ! real, intent(in) :: g_stomata       ! stomatal conductance (mol CO2 Pa-1 m-2 s-1)
+    use md_params_core, only: ndayyear, ndaymonth, npft, kTkelvin
+    use md_tile, only: tile_type, tile_fluxes_type
+    use md_forcing, only: climate_type
+    use md_grid, only: gridtype
+    use md_forcing, only: climate_type
 
     ! arguments
     type(tile_type), dimension(nlu), intent(inout)        :: tile
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
+    type(gridtype), intent(in)                            :: grid
+    type(climate_type), intent(in)                        :: climate
     integer, intent(in) :: doy          ! day of year
-    real, intent(in)    :: lat          ! latitude (degrees)
-    real, intent(in)    :: elv          ! altitude (m)
-    real, intent(in)    :: pr           ! daily precip as rain (liquid) (mm) 
-    real, intent(in)    :: sn           ! daily precip as snow (mm water equivalent) 
-    real, intent(in)    :: tc           ! mean monthly temperature (deg C)
-    real, intent(in)    :: sf           ! mean monthly sunshine fraction (unitless)
-    real, intent(in)    :: netrad       ! net radiation (J m-2 d-1), may be dummy (in which case this is not used)
-    real, intent(in)    :: vpd          ! vapour pressure deficit (Pa)
-    real, intent(in)    :: patm         ! atmospheric pressure (Pa)
-    real, intent(in)    :: vwind        ! wind speed (m s-1)
+
+    ! real, intent(in)    :: pr           ! daily precip as rain (liquid) (mm) 
+    ! real, intent(in)    :: sn           ! daily precip as snow (mm water equivalent) 
+    ! real, intent(in)    :: tc           ! mean monthly temperature (deg C)
+    ! real, intent(in)    :: sf           ! mean monthly sunshine fraction (unitless)
+    ! real, intent(in)    :: netrad       ! net radiation (J m-2 d-1), may be dummy (in which case this is not used)
+    ! real, intent(in)    :: vpd          ! vapour pressure deficit (Pa)
+    ! real, intent(in)    :: patm         ! atmospheric pressure (Pa)
+    ! real, intent(in)    :: vwind        ! wind speed (m s-1)
 
     ! local variables
-    type(canopy_type), pointer :: canopy
+    ! type(canopy_type), pointer :: canopy
     type(outtype_netrad)    :: out_netrad
     type(outtype_et)        :: out_et
     type(outtype_snow_rain) :: out_snow_rain
     real                    :: g_aero
     real                    :: g_canopy
     integer                 :: lu             ! land unit (gridcell tile)
+    real                    :: tk
 
 
-    tk = tc + kTkelvin
+    tk = climate%dtemp + kTkelvin
 
     ! Loop over gricell tiles
     do lu=1,nlu
@@ -235,22 +211,22 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Calculate canopy conductance (m s-1)
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      g_aero = calc_g_aero( vwind, tile(lu)%canopy%height )
+      g_aero = calc_g_aero( climate%dvwind, tile(lu)%canopy%height )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Net radiation (J m-2 d-1)
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      out_netrad = calc_netrad( lat, doy, elv, sf, tc )
+      out_netrad = calc_netrad( tile_fluxes(lu)%canopy%nu, tile_fluxes(lu)%canopy%lambda, grid%lat, doy, grid%elv, climate%dfsun, climate%dtemp )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Canopy transpiration and soil evaporation
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      out_et = calc_et( tc, patm, tile(lu)%canopy%lai, tile(lu)%canopy%fapar, out_netrad%rn, vpd, tile(lu)%canopy%conductance, g_aero )
+      out_et = calc_et( climate%dtemp, climate%dprec, climate%dpatm, tile(lu)%canopy%lai, tile(lu)%canopy%fapar, out_netrad%rn, climate%dvpd, tile(lu)%canopy%conductance, g_aero )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Update soil moisture and snow pack
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      out_snow_rain = get_snow_rain( pr + tile_fluxes(lu)%canopy%cn, sn, tc, tile(lu)%soil%phy%snow )
+      out_snow_rain = get_snow_rain( climate%dprec + out_et%cn, climate%dsnow, climate%dtemp, tile(lu)%soil%phy%snow )
       tile(lu)%soil%phy%snow = out_snow_rain%snow_updated 
 
       ! Update soil moisture
@@ -275,8 +251,8 @@ contains
         ! Bucket is empty
         ! -----------------------------------
         ! set soil moisture to zero
-        tile_fluxes(lu)%canopy%aet = tile_fluxes(lu)%canopy%aet + tile(lu)%soil%phy%wcont
-        tile(lu)%soil%phy%wcont      = 0.0
+        out_et%aet = out_et%aet + tile(lu)%soil%phy%wcont
+        tile(lu)%soil%phy%wcont        = 0.0
         tile_fluxes(lu)%canopy%dro     = 0.0
         tile_fluxes(lu)%canopy%dfleach = 0.0
 
@@ -291,20 +267,22 @@ contains
       tile(lu)%soil%phy%wscal = tile(lu)%soil%phy%wcont / tile(lu)%soil%params%whc
 
       ! save daily water fluxes
-      tile_fluxes(lu)%canopy%dwbal       = out_snow_rain%liquid_to_soil
-      tile_fluxes(lu)%canopy%aet         = out_et%aet
-      tile_fluxes(lu)%canopy%aet_e       = out_et%aet_e
-      tile_fluxes(lu)%canopy%aet_soil    = out_et%aet_soil
-      tile_fluxes(lu)%canopy%aet_e_soil  = out_et%aet_e_soil
-      tile_fluxes(lu)%canopy%aet_canop   = out_et%aet_canop
-      tile_fluxes(lu)%canopy%aet_e_canop = out_et%aet_e_canop
+      tile_fluxes(lu)%canopy%dwbal        = out_snow_rain%liquid_to_soil
+      tile_fluxes(lu)%canopy%dpet         = out_et%pet
+      tile_fluxes(lu)%canopy%dpet         = out_et%pet
+      tile_fluxes(lu)%canopy%daet         = out_et%aet
+      tile_fluxes(lu)%canopy%daet_e       = out_et%aet_e
+      tile_fluxes(lu)%canopy%daet_soil    = out_et%aet_soil
+      tile_fluxes(lu)%canopy%daet_e_soil  = out_et%aet_e_soil
+      tile_fluxes(lu)%canopy%daet_canop   = out_et%aet_canop
+      tile_fluxes(lu)%canopy%daet_e_canop = out_et%aet_e_canop
 
     end do
 
   end subroutine waterbal
 
 
-  subroutine solar( tile_fluxes, doy, lat, elv, sf ) result( out_solar )
+  subroutine solar( tile_fluxes, grid, sf, doy)
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily PPFD. Code is an extract of the subroutine
     ! 'evap', adopted from the evap() function in GePiSaT (Python version). 
@@ -313,19 +291,18 @@ contains
     ! - daily extraterrestrial solar radiation (dra), J/m^2
     ! - daily PPFD (dppfd), mol/m^2
     !-------------------------------------------------------------------------  
-    use md_params_core, only: ndayyear, pi, dummy
+    use md_params_core, only: ndayyear, pi, dummy, kGsc
     use md_sofunutils, only: daily2monthly
-    use md_tile, only: tile_fluxes
+    use md_tile, only: tile_fluxes_type
+    use md_grid, only: gridtype
 
     ! arguments
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
-    real, intent(in) :: doy           ! day of year
+    type(gridtype), intent(inout) :: grid
+    integer, intent(in) :: doy        ! day of year
     real, intent(in) :: lat           ! latitude, degrees
     real, intent(in) :: elv           ! elevation, metres
     real, intent(in) :: sf            ! fraction of sunshine hours 
-
-    ! function return variable
-    type(solartype) :: out_solar
 
     ! local variables
     real    :: dr                    ! distance factor
@@ -352,18 +329,18 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Berger (1978)
     out_berger = get_berger_tls( doy )
-    tile_fluxes(:)%canopy%nu     = out_berger%nu
-    tile_fluxes(:)%canopy%lambda = out_berger%lambda
+    grid%nu     = out_berger%nu
+    grid%lambda = out_berger%lambda
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 3. Calculate distance factor (dr), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    dr = calc_dr( tile_fluxes(:)%canopy%nu )
+    dr = calc_dr( grid%nu )
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 4. Calculate declination angle (delta), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    delta = calc_delta( tile_fluxes(:)%canopy%lambda )
+    delta = calc_delta( grid%lambda )
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 5. Calculate variable substitutes (u and v), unitless
@@ -461,7 +438,7 @@ contains
   end subroutine solar
 
 
-  function calc_et( tc, patm, lai, fapar, netrad, vpd, g_canopy, g_aero ) result( out_et )
+  function calc_et( tc, pr, patm, lai, fapar, netrad, vpd, g_canopy, g_aero ) result( out_et )
     !/////////////////////////////////////////////////////////////////////////
     ! Returns ecosystem-level evapotranspiration as a function of LAI following
     ! Eq. 1 in Zhang et al., 2017 JGR (doi:10.1002/2017JD027025)
@@ -471,6 +448,7 @@ contains
 
     ! arguments
     real, intent(in) :: tc              ! air temperature (deg C)
+    real, intent(in) :: pr              ! precipitation (mm d-1)
     real, intent(in) :: patm            ! atmospheric pressure (Pa)
     real, intent(in) :: lai             ! leaf area index (m2-leaf m-2-ground)
     real, intent(in) :: fapar           ! fraction of absorbed photosynthetically active radiation (unitless)
@@ -492,8 +470,8 @@ contains
     real :: lv                              ! enthalpy of vaporization, J/kg
     real :: rho_water                       ! density of water (g m-3)
     real :: econ                            ! water-to-energy conversion factor (econ), m^3/J
-    real :: rho_air                         ! density of air (g m-3)
-    real, save :: p_over_eet_memory = 1.0   ! precipitation over equilibrium evapotranspiration, damped variability
+    real :: p_over_pet                      ! precipitation divided by potential evapotranspiration
+    real, save :: p_over_pet_memory = 1.0   ! precipitation over equilibrium evapotranspiration, damped variability
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Calculate temperature and pressure-dependent quantities
@@ -517,6 +495,15 @@ contains
     ! out_evap%econ = 1.0 / ( lv * rho_water ) ! this is to convert energy into mass (water)
     econ = sat_slope / (lv * rho_water * (sat_slope + gamma)) ! MORE PRECISELY - this is to convert energy into mass (water)
 
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ! Daily condensation, mm d-1
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if (netrad < 0.0) then
+      out_et%cn = 1000.0 * econ * abs(netrad)
+    else
+      out_et%cn = 0.0
+    end if
+
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Implementation of PML model (Zhang et al., 2017)
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -533,10 +520,14 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Calculate soil evaporation
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    pet_soil = epsilon * e_avl_soil / (epsilon + 1.0)
-    p_over_eet = pr / pet_soil
-    call dampen_variability( p_over_eet, 30.0, p_over_eet_memory )
-    out_et%aet_e_soil = min(p_over_eet_memory, 1.0) * pet_soil
+    out_et%pet_e = epsilon * e_avl_soil / (epsilon + 1.0) 
+    out_et%pet = out_et%pet_e * econ * 1000.0
+    p_over_pet = pr / out_et%pet
+
+    p_over_pet_memory = dampen_variability( p_over_pet, 30.0, p_over_pet_memory )
+    
+    out_et%aet_soil = min(p_over_pet_memory, 1.0) * out_et%pet
+    out_et%aet_e_soil = out_et%aet_soil / (econ * 1000.0)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Penman-Monteith Equation for canopy transpiration; Eq. 1 in Zhang et al., 2017
@@ -554,16 +545,18 @@ contains
   end function calc_et
 
 
-  function calc_netrad( lat, doy, elv, sf, tc ) result( out_netrad )
+  function calc_netrad( nu, lambda, lat, doy, elv, sf, tc ) result( out_netrad )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily quantities required for evapotranspiration
     ! calculations. 
     ! Implements the SPLASH model (Davis et al., 2017 GMD; doi:10.5194/gmd-10-689-2017)
     !-------------------------------------------------------------------------  
-    use md_params_core, only: ndayyear, pi, dummy
+    use md_params_core, only: ndayyear, pi, dummy, kGsc
     use md_sofunutils, only: calc_patm
 
     ! arguments
+    real,    intent(in) :: nu
+    real,    intent(in) :: lambda
     real,    intent(in) :: lat           ! latitude, degrees
     integer, intent(in) :: doy           ! day of the year (formerly 'n')
     real,    intent(in) :: elv           ! elevation, metres
@@ -587,12 +580,12 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 3. Calculate distance factor (dr), unitless
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    dr = calc_dr( tile_fluxes%canopy%nu )
+    dr = calc_dr( nu )
     
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 4. Calculate declination angle (delta), degrees
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    delta = calc_delta( tile_fluxes%canopy%lambda )
+    delta = calc_delta( lambda )
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! 5. Calculate variable substitutes (u and v), unitless
@@ -649,16 +642,6 @@ contains
     ! adopted bugfix from Python version (iss#13)
     out_netrad%rnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) - out_netrad%rnl * (pi - radians(hn)))
 
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ! 15. Calculate daily condensation, mm d-1
-    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if (out_netrad%rn < 0.0) then
-      out_netrad%cn = 1000.0 * out_netrad%econ * abs(out_netrad%rn)
-    else
-      out_netrad%cn = 0.0
-    end if
-
-
   end function calc_netrad
 
 
@@ -676,6 +659,9 @@ contains
 
     ! function return variable
     real :: g_aero                ! aerodynamic conductance (m s-1)
+
+    ! local variables
+    real :: zom, zov, zm, d_canopy
 
     zom = 0.123 * h_canopy
     zov = 0.1 * zom
@@ -696,8 +682,14 @@ contains
     real, intent(in) :: tc_air  ! air temperature (degrees Celsius)
     real, intent(in) :: patm    ! atmospheric pressure (Pa)
 
-    tc_air = tc_air + kTkelvin
-    rho = patm / (Rd * tc_air)
+    ! local 
+    real :: tk
+
+    !function return variable
+    real :: rho
+
+    tk = tc_air + kTkelvin
+    rho = patm / (Rd * tk)
 
   end function calc_density_air
 
@@ -1483,40 +1475,38 @@ contains
   end subroutine initoutput_waterbal
 
 
-  subroutine init_rlm_waterbal( ngridcells )
-    !////////////////////////////////////////////////////////////////
-    ! Initialises waterbalance-specific output variables
-    ! The same subroutine is used here for initialising rolling mean variables
-    !----------------------------------------------------------------
-    use md_interface, only: interface
+  ! subroutine init_rlm_waterbal( ngridcells )
+  !   !////////////////////////////////////////////////////////////////
+  !   ! Initialises waterbalance-specific output variables
+  !   ! The same subroutine is used here for initialising rolling mean variables
+  !   !----------------------------------------------------------------
+  !   use md_interface, only: interface
 
-    ! arguments
-    integer, intent(in) :: ngridcells
+  !   ! arguments
+  !   integer, intent(in) :: ngridcells
 
-    ! Rolling mean variables
-    if (interface%steering%init) then
-      if (.not.allocated(rlmalpha)) allocate( rlmalpha(nlu,ngridcells) )
-    end if
-    rlmalpha(:,:) = 0.0
+  !   ! Rolling mean variables
+  !   if (interface%steering%init) then
+  !     if (.not.allocated(rlmalpha)) allocate( rlmalpha(nlu,ngridcells) )
+  !   end if
+  !   rlmalpha(:,:) = 0.0
 
-  end subroutine init_rlm_waterbal
+  ! end subroutine init_rlm_waterbal
 
 
-  subroutine getout_daily_waterbal( jpngr, moy, doy, solar, phy, tile_fluxes )
+  subroutine getout_daily_waterbal( tile, tile_fluxes, jpngr, doy )
     !////////////////////////////////////////////////////////////////
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
     use md_interface, only: interface
-    use md_tile, only: psoilphystype, tile_fluxes_type
+    use md_tile, only: tile_type, tile_fluxes_type
 
     ! argument
-    integer, intent(in)                                  :: jpngr
-    integer, intent(in)                                  :: moy    
-    integer, intent(in)                                  :: doy    
-    type(solartype), intent(in)                        :: solar
-    type(psoilphystype), dimension(nlu), intent(in)    :: phy
+    type(tile_type), dimension(nlu), intent(in)        :: tile
     type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
+    integer, intent(in)                                :: jpngr
+    integer, intent(in)                                :: doy    
 
     ! local variables
     integer :: it
@@ -1526,65 +1516,69 @@ contains
     ! Annual output variables
     if (interface%params_siml%loutwaterbal) then
       if (outenergy) then
-        outapet(jpngr)    = outapet(jpngr)   + evap(1)%pet_e
-        outaaet(:,jpngr)  = outaaet(:,jpngr) + evap(1)%aet_e
+        outapet(jpngr)    = outapet(jpngr)   + tile_fluxes(1)%canopy%dpet_e
+        outaaet(:,jpngr)  = outaaet(:,jpngr) + tile_fluxes(:)%canopy%daet_e
       else 
-        outapet(jpngr)    = outapet(jpngr)   + evap(1)%pet
-        outaaet(:,jpngr)  = outaaet(:,jpngr) + evap(1)%aet
+        outapet(jpngr)    = outapet(jpngr)   + tile_fluxes(1)%canopy%dpet
+        outaaet(:,jpngr)  = outaaet(:,jpngr) + tile_fluxes(:)%canopy%daet
       end if
-      if (evap(1)%pet > 0.0) then
-        outaalpha(:,jpngr)  = outaalpha(:,jpngr) + (evap(1)%aet / evap(1)%pet) / ndayyear
+      if (tile_fluxes(1)%canopy%dpet > 0.0) then
+        outaalpha(:,jpngr)  = outaalpha(:,jpngr) + (tile_fluxes(:)%canopy%daet / tile_fluxes(:)%canopy%dpet) / ndayyear
       else
         outaalpha(:,jpngr)  = outaalpha(:,jpngr) + 1.0 / ndayyear
       end if
     end if
 
     ! Daily output variables
-    if (interface%params_siml%loutdwcont)  outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr) + phy(:)%wcont / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdwbal)   outdwbal(:,it,jpngr)   = outdwbal(:,it,jpngr)  + tile_fluxes(:)%dwbal / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdnetrad) outdrn(:,it,jpngr)     = outdrn(:,it,jpngr)    + (evap(:)%rn + evap(1)%rnn) / real( interface%params_siml%outdt ) ! daytime plus nighttime
+    if (interface%params_siml%loutdwcont)  outdwcont(:,it,jpngr)  = outdwcont(:,it,jpngr) + tile(:)%soil%phy%wcont / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdwbal)   outdwbal(:,it,jpngr)   = outdwbal(:,it,jpngr)  + tile_fluxes(:)%canopy%dwbal / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdnetrad) outdrn(:,it,jpngr)     = outdrn(:,it,jpngr)    + (tile_fluxes(:)%canopy%drn + tile_fluxes(:)%canopy%drnn) / real( interface%params_siml%outdt ) ! daytime plus nighttime
+
     if (outenergy) then
-      if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + evap(1)%pet_e / real( interface%params_siml%outdt )
-      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + evap(:)%aet_e / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + tile_fluxes(1)%canopy%dpet_e / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + tile_fluxes(:)%canopy%daet_e / real( interface%params_siml%outdt )
     else 
-      if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + evap(1)%pet / real( interface%params_siml%outdt )
-      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + evap(:)%aet / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdpet) outdpet(it,jpngr)    = outdpet(it,jpngr)   + tile_fluxes(1)%canopy%dpet / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdaet) outdaet(:,it,jpngr)  = outdaet(:,it,jpngr) + tile_fluxes(:)%canopy%daet / real( interface%params_siml%outdt )
     end if
-    ! outdecon(it,jpngr)     = outdecon(it,jpngr)    + evap(1)%econ * 1.0e12 / real( interface%params_siml%outdt ) ! converting from m J-1 to mm GJ-1 = m TJ-1
+    
+    ! outdecon(it,jpngr)     = outdecon(it,jpngr)    + tile_fluxes(lu)%canopy%econ * 1.0e12 / real( interface%params_siml%outdt ) ! converting from m J-1 to mm GJ-1 = m TJ-1
 
   end subroutine getout_daily_waterbal
 
 
-  subroutine getrlm_daily_waterbal( jpngr, doy )
+  subroutine getrlm_daily_waterbal( tile_fluxes, jpngr, doy )
     !////////////////////////////////////////////////////////////////
     ! Collect daily output variables
     ! so far not implemented for isotopes
     !----------------------------------------------------------------
     use md_interface, only: interface
+    use md_tile, only: tile_fluxes_type
 
     ! argument
+    type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
     integer, intent(in) :: jpngr
     integer, intent(in) :: doy    
 
-    if (evap(1)%pet > 0.0) then
-      rlmalpha(:,jpngr)  = rlmalpha(:,jpngr) + (evap(:)%aet / evap(1)%pet) / ndayyear
+    if (tile_fluxes(1)%canopy%dpet > 0.0) then
+      aalpha(:) = aalpha(:) + (tile_fluxes(:)%canopy%daet / tile_fluxes(:)%canopy%dpet) / ndayyear
     else
-      rlmalpha(:,jpngr)  = rlmalpha(:,jpngr) + 1.0 / ndayyear
+      aalpha(:) = aalpha(:) + 1.0 / ndayyear
     end if
 
   end subroutine getrlm_daily_waterbal
 
 
-  subroutine get_rlm_waterbal( phy, init )
+  subroutine get_rlm_waterbal( tile, init )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates the rolling mean of relevant variables
     ! This requires the full arrays (all gridcells) to be stored.
     !-------------------------------------------------------------------------
     use md_params_core, only: nlu
-    use md_tile, only: psoilphystype
+    use md_tile, only: tile_type
 
     ! arguments
-    type(psoilphystype), dimension(:,:), intent(inout) :: phy
+    type(tile_type), dimension(nlu), intent(inout) :: tile
     logical :: init
 
     ! local variables
@@ -1596,9 +1590,7 @@ contains
     ncalls = ncalls + 1
     nyrs_uptonow = min( ncalls, nyrs_rlmalpha )
 
-    do lu=1,nlu
-      phy(lu,:)%rlmalpha = ( phy(lu,:)%rlmalpha * (nyrs_uptonow - 1) + rlmalpha(lu,:) ) / nyrs_uptonow
-    end do
+    tile(:)%rlmalpha = ( tile(:)%rlmalpha * (nyrs_uptonow - 1) + aalpha(:) ) / nyrs_uptonow
 
   end subroutine get_rlm_waterbal
 

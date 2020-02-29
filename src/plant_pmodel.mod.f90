@@ -13,7 +13,7 @@ module md_plant
 
   private
   public plant_type, plant_fluxes_type, getpar_modl_plant, params_pft_plant, &
-    initdaily_plant, initoutput_plant, getout_daily_plant,     &
+    initoutput_plant, getout_daily_plant,     &
     maxdoy, initglobal_plant, get_leaftraits,          &
     getout_annual_plant
 
@@ -53,6 +53,7 @@ module md_plant
 
     real :: dgpp     ! daily gross primary production [gC/m2/d]           
     real :: drd      ! daily dark respiration [gC/m2/d]
+    real :: assim    ! daily assimilation (mol CO2 m-2 s-1)
     real :: dtransp  ! daily transpiration [mm]
     real :: dlatenth ! daily latent heat flux [J m-2 d-1]
 
@@ -341,7 +342,7 @@ contains
   end function getpftparams
 
 
-  subroutine initglobal_plant( plant )
+  subroutine initglobal_plant( plant, ngridcells )
     !////////////////////////////////////////////////////////////////
     !  Initialisation of all _pools on all gridcells at the beginning
     !  of the simulation.
@@ -361,9 +362,11 @@ contains
     !-----------------------------------------------------------------------------
     ! derive which PFTs are present from fpc_grid (which is prescribed)
     !-----------------------------------------------------------------------------
-    do pft=1,npft
-      call initpft( plant(pft,jpngr) )
-      plant(pft,jpngr)%pftno = pft
+    do jpngr=1,ngridcells
+      do pft=1,npft
+        call initpft( plant(pft,jpngr) )
+        plant(pft,jpngr)%pftno = pft
+      end do
     end do
 
   end subroutine initglobal_plant
@@ -396,20 +399,20 @@ contains
   end subroutine initpft
 
 
-  subroutine initdaily_plant( plant_fluxes )
+  ! subroutine initdaily_plant( plant_fluxes )
 
-    !////////////////////////////////////////////////////////////////
-    ! Initialises all daily variables with zero.
-    !----------------------------------------------------------------
-    ! arguments
-    type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
+  !   !////////////////////////////////////////////////////////////////
+  !   ! Initialises all daily variables with zero.
+  !   !----------------------------------------------------------------
+  !   ! arguments
+  !   type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
 
-    plant_fluxes(:)%dgpp     = 0.0
-    plant_fluxes(:)%drd      = 0.0
-    plant_fluxes(:)%dtransp  = 0.0
-    plant_fluxes(:)%dlatenth = 0.0
+  !   plant_fluxes(:)%dgpp     = 0.0
+  !   plant_fluxes(:)%drd      = 0.0
+  !   plant_fluxes(:)%dtransp  = 0.0
+  !   plant_fluxes(:)%dlatenth = 0.0
 
-  end subroutine initdaily_plant
+  ! end subroutine initdaily_plant
 
 
   subroutine initoutput_plant( ngridcells )

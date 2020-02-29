@@ -158,7 +158,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( tile, co2, dtemp, dvpd, dpatm, dppfd, dayl, do_soilmstress, do_tempstress, init)
+  subroutine gpp( tile, tile_fluxes, co2, climate, do_soilmstress, do_tempstress, init)
     !//////////////////////////////////////////////////////////////////
     ! Wrapper function to call to P-model. 
     ! Calculates meteorological conditions with memory based on daily
@@ -171,20 +171,17 @@ contains
 
     ! input-only arguments
     type(tile_type), dimension(nlu), intent(inout) :: tile
+    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
     real, intent(in)    :: co2                               ! atmospheric CO2 (ppm)
-    real, intent(in)    :: dtemp                             ! daily varying air temperature (deg C)
-    real, intent(in)    :: dvpd                              ! daily varying vapour pressure deficit (Pa)
-    real, intent(in)    :: dpatm                             ! daily varying atmospheric pressure (Pa)
-    real, intent(in)    :: dppfd                             ! daily total photon flux density, mol m-2
-    real, intent(in)    :: dayl                              ! day length (h)
+    type(climate_type)  :: climate
     logical, intent(in) :: do_soilmstress                    ! whether empirical soil miosture stress function is applied to GPP
     logical, intent(in) :: do_tempstress                     ! whether empirical temperature stress function is applied to GPP
     logical, intent(in) :: init                              ! is true on the very first simulation day (first subroutine call of each gridcell)
 
-    ! input-output arguments
-    real, dimension(npft), intent(inout)  :: dgpp            ! daily total gross primary productivity (gC m-2 d-1)
-    real, dimension(npft), intent(inout)  :: drd             ! daily total dark respiraiton (gC m-2 d-1)
-    real, dimension(npft), intent(inout)  :: dtransp         ! daily total transpiration (XXX)
+    ! ! input-output arguments
+    ! real, dimension(npft), intent(inout)  :: dgpp            ! daily total gross primary productivity (gC m-2 d-1)
+    ! real, dimension(npft), intent(inout)  :: drd             ! daily total dark respiraiton (gC m-2 d-1)
+    ! real, dimension(npft), intent(inout)  :: dtransp         ! daily total transpiration (XXX)
 
     ! local variables
     type( outtype_pmodel ) :: out_pmodel                     ! list of P-model output variables
@@ -192,6 +189,7 @@ contains
     integer    :: lu
     real       :: soilmstress
     real       :: ftemp_kphio
+    real       :: tk
 
     real, save :: co2_memory
     real, save :: vpd_memory
@@ -207,17 +205,17 @@ contains
     !----------------------------------------------------------------
     if (init) then
       co2_memory  = co2
-      temp_memory = dtemp
-      vpd_memory  = dvpd
-      patm_memory = dpatm
+      temp_memory = climate%dtemp
+      vpd_memory  = climate%dvpd
+      patm_memory = climate%dpatm
     end if 
 
-    co2_memory  = dampen_variability( co2,    params_gpp%tau_acclim, co2_memory )
-    temp_memory = dampen_variability( dtemp,  params_gpp%tau_acclim, temp_memory )
-    vpd_memory  = dampen_variability( dvpd,   params_gpp%tau_acclim, vpd_memory )
-    patm_memory = dampen_variability( dpatm,  params_gpp%tau_acclim, patm_memory )
+    co2_memory  = dampen_variability( co2,            params_gpp%tau_acclim, co2_memory )
+    temp_memory = dampen_variability( climate%dtemp,  params_gpp%tau_acclim, temp_memory )
+    vpd_memory  = dampen_variability( climate%dvpd,   params_gpp%tau_acclim, vpd_memory )
+    patm_memory = dampen_variability( climate%dpatm,  params_gpp%tau_acclim, patm_memory )
 
-    tk = dtemp + kTkelvin
+    tk = climate%dtemp + kTkelvin
 
     !----------------------------------------------------------------
     ! CALCULATE PREDICTED GPP FROM P-model
@@ -228,7 +226,7 @@ contains
       ! land use category (gridcell tile)
       lu = params_pft_plant(pft)%lu_category
 
-      if ( tile%canopy%fpc_grid > 0.0 .and. dayl > 0.0 .and. dtemp > -5.0 ) then
+      if ( tile(lu)%canopy%fpc_grid > 0.0 .and. tile_fluxes(lu)%canopy%dayl > 0.0 .and. climate%dtemp > -5.0 ) then
         !----------------------------------------------------------------
         ! P-model call to get a list of variables that are acclimated to
         ! slowly varying conditions
@@ -236,7 +234,7 @@ contains
         out_pmodel = pmodel(  &
                               kphio          = params_pft_gpp(pft)%kphio, &
                               fapar          = tile(lu)%canopy%fapar, &
-                              ppfd           = dppfd, &
+                              ppfd           = climate%dppfd, &
                               co2            = co2_memory, &
                               tc             = temp_memory, &
                               vpd            = vpd_memory, &
@@ -259,13 +257,13 @@ contains
         ! Include instantaneous temperature effect on quantum yield efficiency
         !----------------------------------------------------------------
         if (do_tempstress) then
-          ftemp_kphio = calc_ftemp_kphio( dtemp )
+          ftemp_kphio = calc_ftemp_kphio( climate%dtemp )
         else
           ftemp_kphio = 1.0
         end if
 
         ! GPP
-        dgpp = calc_dgpp( tile(lu)%canopy%fapar, tile%canopy%fpc_grid, dppfd, out_pmodel%lue, ftemp_kphio, soilmstress )
+        tile_fluxes(lu)%plant(pft)%dgpp = calc_dgpp( tile(lu)%canopy%fapar, tile(lu)%canopy%fpc_grid, climate%dppfd, out_pmodel%lue, ftemp_kphio, soilmstress )
 
         ! !----------------------------------------------------------------
         ! ! xxx test
@@ -285,29 +283,29 @@ contains
 
         ! ! transpiration
         ! ! dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, ftemp_kphio, soilmstress )
-        ! dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, dtemp )
+        ! dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, climate%dtemp )
 
         !----------------------------------------------------------------
         ! Dark respiration
         !----------------------------------------------------------------
-        drd = calc_drd( dfapar, fpc_grid(pft), dppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
+        tile_fluxes(lu)%plant(pft)%drd = calc_drd( climate%dfapar, fpc_grid(pft), climate%dppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
 
         !----------------------------------------------------------------
         ! Leaf-level assimilation rate
         !----------------------------------------------------------------
-        dassim(pft) = calc_dassim( dgpp, dayl )
+        tile_fluxes(lu)%plant(pft)%assim = calc_dassim( tile_fluxes(lu)%plant(pft)%dgpp, tile_fluxes(lu)%canopy%dayl )
 
         !----------------------------------------------------------------
         ! stomatal conductance
         !----------------------------------------------------------------
-        dgs(pft) = calc_dgs( dassim(pft), dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
+        tile_fluxes(lu)%plant(pft)%dgs = calc_dgs( dassim(pft), climate%dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
 
         print*,'set-point gs:' dassim * dgs_unitiabs
 
         !----------------------------------------------------------------
         ! canopy conductance
         !----------------------------------------------------------------
-        tile(lu)%canopy%conductance = calc_g_canopy( dgs(pft), tile(lu)%canopy%lai, tk )
+        tile(lu)%canopy%conductance = calc_g_canopy( tile_fluxes(lu)%plant(pft)%dgs, tile(lu)%canopy%lai, tk )
 
         print*,'dgs per unit day (not second) - should be equal to what gpp/(ca-ci) in pmodel(): ', dgs_unitiabs * gpp / c_molmass
         stop
@@ -320,9 +318,9 @@ contains
 
       else  
 
-        dgpp    = 0.0
-        drd     = 0.0
-        dtransp = 0.0
+        tile_fluxes(lu)%plant(pft)%dgpp = 0.0
+        tile_fluxes(lu)%plant(pft)%drd  = 0.0
+        ! dtransp = 0.0
         ! dvcmax_canop(pft)         = 0.0
         ! dvcmax_leaf(pft)          = 0.0
 
