@@ -464,7 +464,7 @@ program main
     print*,'b'
     print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 1))
     print*, 'idx_daily', idx_daily_start, idx_daily_end
-    print*,out_daily_tile(idx_daily_start:idx_daily_end, 3)
+    print*,out_daily_tile(idx_daily_start:idx_daily_end, 4)
     ! stop 'halo'
 
     ! ----------------------------------------------------------------
