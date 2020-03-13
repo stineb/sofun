@@ -1004,9 +1004,9 @@ contains
         out_daily_cohorts(i)%gpp     = cc%dailygpp
         out_daily_cohorts(i)%resp    = cc%dailyresp
         out_daily_cohorts(i)%transp  = cc%dailytrsp
-        out_daily_cohorts(i)%NPPleaf  = cc%NPPleaf
-        out_daily_cohorts(i)%NPProot  = cc%NPProot
-        out_daily_cohorts(i)%NPPwood  = cc%NPPwood
+        out_daily_cohorts(i)%NPPleaf = cc%NPPleaf
+        out_daily_cohorts(i)%NPProot = cc%NPProot
+        out_daily_cohorts(i)%NPPwood = cc%NPPwood
         out_daily_cohorts(i)%NSC     = cc%NSC
         out_daily_cohorts(i)%seedC   = cc%seedC
         out_daily_cohorts(i)%leafC   = cc%bl

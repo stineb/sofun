@@ -288,8 +288,14 @@ program main
   !----------------------------------------------------------------
   ! READ FORCING FILE
   !----------------------------------------------------------------
-  !call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
+  
+
+  ! call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
+  ! print*, timestep
   call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep )
+  myinterface%steps_per_day = int(24.0/timestep)
+
+
   myinterface%steps_per_day = int(24.0/timestep)
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0*3600.0/myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
@@ -466,10 +472,10 @@ program main
     ! ----------------------------------------------------------------
     ! print*,'a'
     ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3)
-    call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
-    ! print*,'b'
+    ! call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
+    print*,'b'
     ! print*,size(out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3))
-    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,1, 27)
+    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,1:2, 25)
     ! !stop 'halo'
 
     ! ----------------------------------------------------------------
@@ -487,7 +493,7 @@ program main
     ! ! ! ! ----------------------------------------------------------------
     ! print*,'a'
     ! !  print*,out_annual_cohorts(yr,:,2)
-    call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
+    ! call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
      ! print*,'c'
      ! print*,size(out_annual_cohorts(yr,:,18))
      ! print*,out_annual_cohorts(yr,:,22)
@@ -779,19 +785,29 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
       stop
     endif
     close(11)    ! close forcing file
+
+    ! print*,'1'
+
     ! Put the data into forcing 
     datalines = m - 1
     days_data = idays
     yr_data  = year_data(datalines-1) - year_data(1) + 1
 
     ! allocate(climateData(datalines))
+    ! print*,'2'
 
     ! xxx try
     allocate(climateData(datalines - 144))  !72
     days_data = days_data - 3
 
+    ! print*,'3'
+    ! print*,'datalines', datalines
+    ! print*,'size(input_data)', shape(input_data)
+    ! print*,'length(climateData)', size(climateData)
     do i=1,datalines
+      ! print*,'i, doy_data(i), year_data(i)', i, doy_data(i), year_data(i)
      if (.not. (doy_data(i)==60 .and. (year_data(i)==2000 .or. year_data(i)==2004 .or. year_data(i)==2008))) then
+       ! print*,'reading data'
        climateData(i)%year      = year_data(i)          ! Year
        climateData(i)%doy       = doy_data(i)           ! day of the year
        climateData(i)%hod       = hour_data(i)          ! hour of the day
@@ -805,9 +821,13 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
        climateData(i)%P_air     = input_data(8,i)        ! pa
        climateData(i)%CO2       = input_data(9,i) * 1.0e-6       ! mol/mol
        climateData(i)%soilwater = 0.8    ! soil moisture, vol/vol
+      else
+        ! print*,'leap year'
      end if
    enddo
    forcingData => climateData
+
+   ! print*,'4'
 
    ! xxx try
    datalines = datalines - 144  !144 !72
