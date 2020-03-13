@@ -290,12 +290,9 @@ program main
   !----------------------------------------------------------------
   
 
-  ! call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
+  call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
   ! print*, timestep
-  call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep )
-  myinterface%steps_per_day = int(24.0/timestep)
-
-
+  ! call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
   myinterface%steps_per_day = int(24.0/timestep)
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0*3600.0/myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
@@ -344,7 +341,7 @@ program main
   ! print*, '-------------------START OF SIMULATION--------------------'
 
 
-  do yr=1,myinterface%params_siml%runyears
+  do yr=1,15 !myinterface%params_siml%runyears
 
     !----------------------------------------------------------------
     ! Define simulations "steering" variables (forcingyear, etc.)
@@ -451,20 +448,23 @@ program main
       ! print*, out_hourly_tile(idx_hourly_start:idx_hourly_end, 2)
       ! stop 'halo'
 
+  
+    ! ----------------------------------------------------------------
+    ! Print out_daily_tile
+    ! ----------------------------------------------------------------
+
     ! daily
     idx_daily_start  = (yr - 1) * ndayyear + 1
     idx_daily_end    = idx_daily_start + ndayyear - 1
 
-    ! ----------------------------------------------------------------
-    ! Print out_daily_tile
-    ! ----------------------------------------------------------------
     ! print*,'a'
     ! print*,out_daily_tile(idx_daily_start:(idx_daily_end), 1)
+
     call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
-    ! print*,'b'
-    ! print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 1))
-    ! print*, 'idx_daily', idx_daily_start, idx_daily_end
-    ! print*,out_daily_tile(idx_daily_start:idx_daily_end, 35)
+    print*,'b'
+    print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 1))
+    print*, 'idx_daily', idx_daily_start, idx_daily_end
+    print*,out_daily_tile(idx_daily_start:idx_daily_end, 3)
     ! stop 'halo'
 
     ! ----------------------------------------------------------------
@@ -473,7 +473,7 @@ program main
     ! print*,'a'
     ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3)
     ! call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
-    print*,'b'
+    ! print*,'b'
     ! print*,size(out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3))
     ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,1:2, 25)
     ! !stop 'halo'
@@ -483,7 +483,7 @@ program main
     ! ! ----------------------------------------------------------------
     ! print*,'a'
     ! print*,out_annual_tile(yr,2)
-    call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
+    ! call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
     ! print*,'b'
     ! print*,out_annual_tile(yr,44)
     !stop 'halo'
@@ -744,6 +744,8 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: i,j,k
     integer :: m,n
 
+    integer :: idx_climatedata
+
     ! xxx temporary
     character(len=80) :: filepath_in = '/Users/lmarques/BiomeE-Allocation/model/input/'
     character(len=80) :: climfile    = 'ORNL_forcing.txt'
@@ -777,9 +779,9 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     timestep = hour_data(2) - hour_data(1)
     write(*,*)"forcing", datalines, yr_data, timestep, myinterface%dt_fast_yr
     if (timestep==1.0)then
-      write(*,*)"the data freqency is hourly"
+      write(*,*)"the data frequency is hourly"
     elseif(timestep==0.5)then
-      write(*,*)"the data freqency is half hourly"
+      write(*,*)"the data frequency is half hourly"
     else
       write(*,*)"Please check time step!"
       stop
@@ -797,30 +799,34 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     ! print*,'2'
 
     ! xxx try
-    allocate(climateData(datalines - 144))  !72
+    allocate(climateData(datalines - 72))  !3*24
     days_data = days_data - 3
 
     ! print*,'3'
     ! print*,'datalines', datalines
     ! print*,'size(input_data)', shape(input_data)
     ! print*,'length(climateData)', size(climateData)
+    idx_climatedata = 0!xxx debug
     do i=1,datalines
       ! print*,'i, doy_data(i), year_data(i)', i, doy_data(i), year_data(i)
      if (.not. (doy_data(i)==60 .and. (year_data(i)==2000 .or. year_data(i)==2004 .or. year_data(i)==2008))) then
+       
+       idx_climatedata = idx_climatedata + 1 !xxx debug 
+
        ! print*,'reading data'
-       climateData(i)%year      = year_data(i)          ! Year
-       climateData(i)%doy       = doy_data(i)           ! day of the year
-       climateData(i)%hod       = hour_data(i)          ! hour of the day
-       climateData(i)%PAR       = input_data(1,i)       ! umol/m2/s
-       climateData(i)%radiation = input_data(2,i)       ! W/m2
-       climateData(i)%Tair      = input_data(3,i) + 273.16  ! air temperature, K
-       climateData(i)%Tsoil     = input_data(4,i) + 273.16  ! soil temperature, K
-       climateData(i)%RH        = input_data(5,i) * 0.01    ! relative humidity (0.xx)
-       climateData(i)%rain      = input_data(6,i)/(timestep * 3600)! ! kgH2O m-2 s-1
-       climateData(i)%windU     = input_data(7,i)        ! wind velocity (m s-1)
-       climateData(i)%P_air     = input_data(8,i)        ! pa
-       climateData(i)%CO2       = input_data(9,i) * 1.0e-6       ! mol/mol
-       climateData(i)%soilwater = 0.8    ! soil moisture, vol/vol
+       climateData(idx_climatedata)%year      = year_data(i)          ! Year
+       climateData(idx_climatedata)%doy       = doy_data(i)           ! day of the year
+       climateData(idx_climatedata)%hod       = hour_data(i)          ! hour of the day
+       climateData(idx_climatedata)%PAR       = input_data(1,i)       ! umol/m2/s
+       climateData(idx_climatedata)%radiation = input_data(2,i)       ! W/m2
+       climateData(idx_climatedata)%Tair      = input_data(3,i) + 273.16  ! air temperature, K
+       climateData(idx_climatedata)%Tsoil     = input_data(4,i) + 273.16  ! soil temperature, K
+       climateData(idx_climatedata)%RH        = input_data(5,i) * 0.01    ! relative humidity (0.xx)
+       climateData(idx_climatedata)%rain      = input_data(6,i)/(timestep * 3600)! ! kgH2O m-2 s-1
+       climateData(idx_climatedata)%windU     = input_data(7,i)        ! wind velocity (m s-1)
+       climateData(idx_climatedata)%P_air     = input_data(8,i)        ! pa
+       climateData(idx_climatedata)%CO2       = input_data(9,i) * 1.0e-6       ! mol/mol
+       climateData(idx_climatedata)%soilwater = 0.8    ! soil moisture, vol/vol
       else
         ! print*,'leap year'
      end if
@@ -830,7 +836,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
    ! print*,'4'
 
    ! xxx try
-   datalines = datalines - 144  !144 !72
+   datalines = datalines - 72  !3*24
 
    write(*,*)"forcing", datalines,days_data,yr_data
   end subroutine read_FACEforcing

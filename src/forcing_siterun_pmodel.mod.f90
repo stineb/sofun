@@ -33,7 +33,6 @@ module md_forcing
   !   real(kind=sp), dimension(ntstepsyear)    :: soilwater     ! soil moisture, vol/vol
   ! end type climate_type
 
-  ! xxx temporary: for test remove again afterwards
   type :: climate_type
      integer :: year          ! Year
      integer :: doy           ! day of the year
@@ -110,7 +109,7 @@ contains
     ! out_climate%P_air     = real(forcing(idx_start:idx_end, 11))           ! pa
     ! out_climate%soilwater = 0.8                                           ! soil moisture, vol/vol
 
-    ! This is to read from ORNL file
+    ! ! This is to read from ORNL file
     ! print*,'getclimate(): forcing'
     ! print*, forcing(idx_start)%year
     ! print*, forcing(idx_start)%doy
