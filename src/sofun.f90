@@ -119,6 +119,9 @@ program main
   integer :: i
   integer :: nml_unit
 
+  integer :: j
+
+
   namelist /vegn_parameters_nml/  &
   soiltype, FLDCAP, WILTPT, &
   pt, phenotype, lifeform, &
@@ -461,42 +464,54 @@ program main
     ! print*,out_daily_tile(idx_daily_start:(idx_daily_end), 1)
 
     call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
-    print*,'b'
-    print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 1))
-    print*, 'idx_daily', idx_daily_start, idx_daily_end
-    print*,out_daily_tile(idx_daily_start:idx_daily_end, 4)
+    ! print*,'b'
+    ! print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 29))
+    ! print*, 'idx_daily', idx_daily_start, idx_daily_end
+    ! print*,out_daily_tile(idx_daily_start:idx_daily_end, 29)
     ! stop 'halo'
+
+    ! open(unit=1, file='testingData.csv')
+    ! ! ! do j = 1, 4
+    !   ! write(10, '(*(I0 : ", "))') out_daily_tile(1:4, j)        
+    !   write(1, *) out_daily_tile(:, 6)
+    ! !   ! write(10, '(*(I1 : ","))') out_daily_tile(:,6)
+    ! ! ! end do
+    ! close(1)
+
+    ! open(unit=10, file='testRRRRRR.csv')
+    !   write(10, '(*(I5 : ", "))') out_daily_tile(idx_daily_start:idx_daily_end, 7)
+    ! close(10)
 
     ! ----------------------------------------------------------------
     ! Print out_daily_cohorts
     ! ----------------------------------------------------------------
     ! print*,'a'
     ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3)
-    ! call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
+    call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
     ! print*,'b'
-    ! print*,size(out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3))
-    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,1:2, 25)
-    ! !stop 'halo'
+    ! print*,size(out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8))
+    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8)
+    ! ! !stop 'halo'
 
     ! ----------------------------------------------------------------
     ! Print out_annual_tile
     ! ! ----------------------------------------------------------------
     ! print*,'a'
     ! print*,out_annual_tile(yr,2)
-    ! call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
+    call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
     ! print*,'b'
-    ! print*,out_annual_tile(yr,44)
+    ! print*,out_annual_tile(yr,1:2)
     !stop 'halo'
 
     ! ----------------------------------------------------------------
     ! Print out_annual_cohorts
     ! ! ! ! ----------------------------------------------------------------
     ! print*,'a'
-    ! !  print*,out_annual_cohorts(yr,:,2)
-    ! call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
-     ! print*,'c'
-     ! print*,size(out_annual_cohorts(yr,:,18))
-     ! print*,out_annual_cohorts(yr,:,22)
+    ! ! !  print*,out_annual_cohorts(yr,:,2)
+    call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
+     print*,'c'
+     print*,size(out_annual_cohorts(yr,:,6))
+     print*,out_annual_cohorts(yr,:,4)
      ! stop 'halo'
 
 
@@ -959,6 +974,5 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     write(*,*)"forcing", datalines,days_data,yr_data
 
   end subroutine read_NACPforcing
-
 
 end program main
