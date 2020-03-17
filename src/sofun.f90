@@ -100,7 +100,7 @@ program main
   logical, parameter :: verbose = .false.
   integer :: iday
 
-  character(len=100) :: namelistfile = '/Users/benjaminstocker/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+  character(len=100) :: namelistfile = '/Users/bestocke/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
 
   ! output arrays (naked) to be passed back to C/R
   real, dimension(:,:), allocatable :: out_hourly_tile 
@@ -398,10 +398,10 @@ program main
     if (verbose) print*,'... done.'
     !----------------------------------------------------------------
 
-  ! print*,'out_biosphere%annual_tile ', out_biosphere%annual_tile
-  ! print*,'out_biosphere%annual_cohorts ', out_biosphere%annual_cohorts
-  ! print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
-  !  stop   
+    ! print*,'out_biosphere%annual_tile ', out_biosphere%annual_tile
+    ! print*,'out_biosphere%annual_cohorts ', out_biosphere%annual_cohorts
+    ! print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
+    !  stop   
 
 
     ! ----------------------------------------------------------------
@@ -426,8 +426,8 @@ program main
     ! hourly
 
     ! daily
-    idx_daily_start  = (yr - 1) * ndayyear + 1
-    idx_daily_end    = idx_daily_start + ndayyear - 1
+    ! idx_daily_start  = (yr - 1) * ndayyear + 1
+    ! idx_daily_end    = idx_daily_start + ndayyear - 1
 
     ! ! annual
     ! idx_annual_start  = (yr - myinterface%params_siml%spinupyears - 1) * ndayyear + 1
@@ -446,12 +446,12 @@ program main
       call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
     end if
 
-      print*,'b'
-      ! print*,out_biosphere%hourly_tile(1)%Tair
-      ! print*,out_hourly_tile(idx_hourly_start, 5)
-      print*,size(out_hourly_tile(idx_hourly_start:idx_hourly_end, 1))
-      print*,out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
-      stop 'halo'
+    ! print*,'b'
+    ! print*,out_biosphere%hourly_tile(1)%Tair
+    ! print*,out_hourly_tile(idx_hourly_start, 5)
+    ! print*,size(out_hourly_tile(idx_hourly_start:idx_hourly_end, 1))
+    ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
+    ! stop 'halo'
 
     ! ----------------------------------------------------------------
     ! Print out_daily_tile
