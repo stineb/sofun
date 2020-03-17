@@ -233,9 +233,6 @@ contains
       idoy   = 0
       simu_steps = 0
 
-      print*,'1'
-
-
       !   !----------------------------------------------------------------
       !   ! GET MODEL PARAMETERS
       !   ! read model parameters that may be varied for optimisation
@@ -684,6 +681,7 @@ contains
     elseif(timestep==0.5)then
         write(*,*)"the data freqency is half hourly"
     else
+        print*,'timestep: ', timestep
         write(*,*)"Please check time step!"
         stop
     endif
