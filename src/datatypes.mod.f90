@@ -1,4 +1,5 @@
 module datatypes
+
   use md_interface, only: myinterface
   use md_params_core, only: out_max_cohorts
 
@@ -11,9 +12,6 @@ module datatypes
   public :: Zero_diagnostics, hourly_diagnostics, daily_diagnostics, &
   annual_diagnostics
   public :: qscomp, esat
-
-  
-
 
   ! ---- public variables ---------
   public :: spdata, soilpars

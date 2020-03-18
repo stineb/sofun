@@ -17,7 +17,7 @@ ifeq ($(PROFILE),benilaptop)
 	# Compiler and options
 	FCOM=gfortran
 	CPPFLAGS=-cpp -E
-	COMPFLAGS=-g -O2 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -pedantic-errors # for normal setup
+	COMPFLAGS=-g -O1 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -pedantic-errors # For lm3ppa compilation, use -O0 or -O1 (not -O2 or above)
     # COMPFLAGS=-g -O2 -fdefault-real-8 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -pedantic-errors # double precision by default
 	# COMPFLAGS=-g -O0 -ffree-line-length-0 -fbacktrace -ffpe-trap=invalid,zero,overflow -Wall -Wextra -fcheck=all -fbacktrace # for debug setup
 

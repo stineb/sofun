@@ -10,9 +10,9 @@ module md_biosphere
   private
   public biosphere_annual
 
-     type(vegn_tile_type),  pointer :: vegn
-   type(soil_tile_type),  pointer :: soil
-   type(cohort_type),     pointer :: cx, cc
+  type(vegn_tile_type),  pointer :: vegn
+  type(soil_tile_type),  pointer :: soil
+  type(cohort_type),     pointer :: cx, cc
 
 contains
 
@@ -34,7 +34,7 @@ contains
     ! ! local variables
     integer :: dm, moy, jpngr, doy
     ! logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
-    logical, parameter :: verbose = .false.       ! change by hand for debugging etc.
+    logical, parameter :: verbose = .true.       ! change by hand for debugging etc.
 
     !----------------------------------------------------------------
     ! Biome-E stuff
@@ -183,20 +183,21 @@ contains
       allocate(out_biosphere%hourly_tile(ntstepsyear))
 
       ! Parameter initialization: Initialize PFT parameters
+      print*,'1'
       call initialize_PFT_data()
 
       ! Initialize vegetation tile and plant cohorts
       allocate(vegn)
       
-       ! print*,'2: ', vegn%n_cohorts
+      print*,'2'
       
       call initialize_vegn_tile(vegn, nCohorts)
       
       ! Sort and relayer cohorts
-       ! print*,'3: ', vegn%n_cohorts
+      print*,'3'
       call relayer_cohorts(vegn)
 
-       ! print*,'4: ', vegn%n_cohorts
+      print*,'4'
       call Zero_diagnostics(vegn)
 
       !------------------------------------------------------------------------
@@ -230,7 +231,7 @@ contains
       !----------------------------------------------------------------
       ! LOOP THROUGH DAYS
       !----------------------------------------------------------------
-       !print*,'5: ', vegn%SapwoodC
+      print*,'5.0'
       dayloop: do dm=1,ndaymonth(moy)
         doy = doy+1
         idays = idays + 1
@@ -286,10 +287,13 @@ contains
           !   stop
           ! end if
 
+          ! print*,'5.0.1'
           call vegn_CNW_budget_fast(vegn, myinterface%climate(idata))
           
           ! diagnostics
+          ! print*,'5.0.2'
           call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1, out_biosphere%hourly_tile(idata) )
+          ! print*,'5.0.3'
 
         enddo ! hourly or half-hourly
         vegn%Tc_daily = vegn%Tc_daily/myinterface%steps_per_day
@@ -312,19 +316,19 @@ contains
         !-------------------------------------------------
         ! Daily calls
         !-------------------------------------------------
-        !print*,'6: ', vegn%SapwoodC
+        print*,'5.1', doy
 
         call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4, out_biosphere%daily_cohorts(doy,:), out_biosphere%daily_tile(doy) )
         !print*,'5: ', vegn%n_cohorts 
         ! Determine start and end of season and maximum leaf (root) mass
-        !print*,'7: ', vegn%SapwoodC
+        print*,'5.2', doy
         call vegn_phenology(vegn, j)
 
         ! Kill all individuals of a cohort if NSC falls below threshold
         !call vegn_starvation(vegn)
 
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
-        !print*,'8: ', vegn%SapwoodC
+        print*,'5.3', doy
         call vegn_growth_EW(vegn)
 
         !----------------------------------------------------------------
@@ -340,8 +344,8 @@ contains
     !----------------------------------------------------------------
     idoy = 0
 
-    ! print*,'sim. year  ', iyears
-    ! print*,'real year: ', year0
+    print*,'sim. year  ', iyears
+    print*,'real year: ', year0
 
     ! xxxx debug
     print*,'year, vegn%nsc ', iyears, vegn%nsc, vegn%lai
@@ -356,32 +360,31 @@ contains
     !---------------------------------------------        
     ! Kill all individuals in a cohort if NSC falls below critical point
     call vegn_annual_starvation(vegn)
-     ! print*,'5: ', vegn%n_cohorts
 
     ! Natural mortality (reducing number of individuals 'nindivs')
     ! (~Eq. 2 in Weng et al., 2015 BG)
     call vegn_nat_mortality(vegn, real(seconds_per_year))
-     ! print*,'6: ', vegn%n_cohorts
+     print*,'6: ', vegn%n_cohorts
 
     ! seed C and germination probability (~Eq. 1 in Weng et al., 2015 BG)
     call vegn_reproduction(vegn)
-     ! print*,'7: ', vegn%n_cohorts
+     print*,'7: ', vegn%n_cohorts
 
      !---------------------------------------------
     ! Re-organize cohorts
     !---------------------------------------------
     call kill_lowdensity_cohorts(vegn)
-    ! print*,'8: ', vegn%n_cohorts
+    print*,'8: ', vegn%n_cohorts
     call relayer_cohorts(vegn)
-    ! print*,'9: ', vegn%n_cohorts
+    print*,'9: ', vegn%n_cohorts
     call vegn_mergecohorts(vegn)
-    ! print*,'10: ', vegn%n_cohorts
+    print*,'10: ', vegn%n_cohorts
 
     ! !---------------------------------------------
     ! ! Set annual variables zero
     ! !---------------------------------------------
     call Zero_diagnostics(vegn)
-    ! print*,'11: ', vegn%n_cohorts
+    print*,'11: ', vegn%n_cohorts
 
     ! update the years of model run
     iyears = iyears + 1

@@ -47,9 +47,11 @@ contains
     thetaS = (vegn%wcl(2)-WILTPT)/(FLDCAP-WILTPT)
 
     ! Photosynsthesis
+    ! print*,'vegn_CNW_budget_fast, 1'
     call vegn_photosynthesis(forcing, vegn)
 
     ! Update soil water
+    ! print*,'vegn_CNW_budget_fast, 2'
     call SoilWaterDynamicsLayer(forcing,vegn)
 
     ! Respiration and allocation for growth
@@ -74,10 +76,13 @@ contains
     enddo ! all cohorts
 
     ! update soil carbon
+    ! print*,'vegn_CNW_budget_fast, 3'
     call SOMdecomposition(vegn, forcing%tsoil, thetaS)
 
     ! Nitrogen uptake
+    ! print*,'vegn_CNW_budget_fast, 4'
     call vegn_N_uptake(vegn, forcing%tsoil)
+    ! print*,'vegn_CNW_budget_fast, 5'
 
   end subroutine vegn_CNW_budget_fast
 
