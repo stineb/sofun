@@ -100,7 +100,7 @@ program main
   logical, parameter :: verbose = .false.
   integer :: iday
 
-  character(len=100) :: namelistfile = '/Users/bestocke/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+  character(len=100) :: namelistfile = '/Users/benjaminstocker/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
 
   ! output arrays (naked) to be passed back to C/R
   real, dimension(:,:), allocatable :: out_hourly_tile 
@@ -751,7 +751,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: idx_climatedata
 
     ! xxx temporary
-    character(len=80) :: filepath_in = '/Users/bestocke/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
     character(len=80) :: climfile    = 'ORNL_forcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)

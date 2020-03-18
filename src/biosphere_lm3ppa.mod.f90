@@ -183,21 +183,21 @@ contains
       allocate(out_biosphere%hourly_tile(ntstepsyear))
 
       ! Parameter initialization: Initialize PFT parameters
-      print*,'1'
+      ! print*,'1'
       call initialize_PFT_data()
 
       ! Initialize vegetation tile and plant cohorts
       allocate(vegn)
       
-      print*,'2'
+      ! print*,'2'
       
       call initialize_vegn_tile(vegn, nCohorts)
       
       ! Sort and relayer cohorts
-      print*,'3'
+      ! print*,'3'
       call relayer_cohorts(vegn)
 
-      print*,'4'
+      ! print*,'4'
       call Zero_diagnostics(vegn)
 
       !------------------------------------------------------------------------
@@ -231,8 +231,9 @@ contains
       !----------------------------------------------------------------
       ! LOOP THROUGH DAYS
       !----------------------------------------------------------------
-      print*,'5.0'
+      ! print*,'5.0'
       dayloop: do dm=1,ndaymonth(moy)
+
         doy = doy+1
         idays = idays + 1
 
@@ -254,7 +255,10 @@ contains
         vegn%Tc_daily = 0.0
         tsoil         = 0.0
 
-        do i=1,myinterface%steps_per_day
+        !----------------------------------------------------------------
+        ! FAST LOOP
+        !----------------------------------------------------------------
+        fastloop: do i=1,myinterface%steps_per_day
 
           ! idata = MOD(simu_steps, myinterface%datalines)+1
           idata = simu_steps + 1
@@ -295,7 +299,8 @@ contains
           call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1, out_biosphere%hourly_tile(idata) )
           ! print*,'5.0.3'
 
-        enddo ! hourly or half-hourly
+        enddo fastloop
+
         vegn%Tc_daily = vegn%Tc_daily/myinterface%steps_per_day
         tsoil         = tsoil/myinterface%steps_per_day
         soil_theta    = vegn%thetaS
@@ -316,19 +321,20 @@ contains
         !-------------------------------------------------
         ! Daily calls
         !-------------------------------------------------
-        print*,'5.1', doy
+        ! print*,'5.1', doy
 
         call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4, out_biosphere%daily_cohorts(doy,:), out_biosphere%daily_tile(doy) )
-        !print*,'5: ', vegn%n_cohorts 
+
+        ! print*,'5: ', vegn%n_cohorts 
         ! Determine start and end of season and maximum leaf (root) mass
-        print*,'5.2', doy
+        ! print*,'5.2', doy
         call vegn_phenology(vegn, j)
 
         ! Kill all individuals of a cohort if NSC falls below threshold
         !call vegn_starvation(vegn)
 
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
-        print*,'5.3', doy
+        ! print*,'5.3', doy
         call vegn_growth_EW(vegn)
 
         !----------------------------------------------------------------
@@ -347,12 +353,7 @@ contains
     print*,'sim. year  ', iyears
     print*,'real year: ', year0
 
-    ! xxxx debug
-    print*,'year, vegn%nsc ', iyears, vegn%nsc, vegn%lai
-    if (iyears==4) stop 
-
-    if(update_annualLAImax) call vegn_annualLAImax_update(vegn)
-
+    if (update_annualLAImax) call vegn_annualLAImax_update(vegn)
     call annual_diagnostics(vegn, iyears, fno2, fno5, out_biosphere%annual_cohorts(:), out_biosphere%annual_tile)
 
     !---------------------------------------------
@@ -364,27 +365,27 @@ contains
     ! Natural mortality (reducing number of individuals 'nindivs')
     ! (~Eq. 2 in Weng et al., 2015 BG)
     call vegn_nat_mortality(vegn, real(seconds_per_year))
-     print*,'6: ', vegn%n_cohorts
+    ! print*,'6: ', vegn%n_cohorts
 
     ! seed C and germination probability (~Eq. 1 in Weng et al., 2015 BG)
     call vegn_reproduction(vegn)
-     print*,'7: ', vegn%n_cohorts
+    ! print*,'7: ', vegn%n_cohorts
 
      !---------------------------------------------
     ! Re-organize cohorts
     !---------------------------------------------
     call kill_lowdensity_cohorts(vegn)
-    print*,'8: ', vegn%n_cohorts
+    ! print*,'8: ', vegn%n_cohorts
     call relayer_cohorts(vegn)
-    print*,'9: ', vegn%n_cohorts
+    ! print*,'9: ', vegn%n_cohorts
     call vegn_mergecohorts(vegn)
-    print*,'10: ', vegn%n_cohorts
+    ! print*,'10: ', vegn%n_cohorts
 
     ! !---------------------------------------------
     ! ! Set annual variables zero
     ! !---------------------------------------------
     call Zero_diagnostics(vegn)
-    print*,'11: ', vegn%n_cohorts
+    ! print*,'11: ', vegn%n_cohorts
 
     ! update the years of model run
     iyears = iyears + 1
