@@ -33,7 +33,6 @@ module md_forcing
   !   real(kind=sp), dimension(ntstepsyear)    :: soilwater     ! soil moisture, vol/vol
   ! end type climate_type
 
-  ! xxx temporary: for test remove again afterwards
   type :: climate_type
      integer :: year          ! Year
      integer :: doy           ! day of the year
@@ -89,12 +88,12 @@ contains
     ! end if
 
     ! if (int(forcing(idx_start, 1)) /= climateyear) stop 'getclimate(): climateyear does not correspond to index read from forcing'
-    if (forcing(idx_start)%year /= climateyear) then
-      print*,'forcing(idx_start)%year ', forcing(idx_start)%year
-      print*,'climateyear ', climateyear
-      print*,'climateyear_idx ', climateyear_idx
-      stop 'getclimate(): climateyear does not correspond to index read from forcing'
-    end if
+    ! if (forcing(idx_start)%year /= climateyear) then
+    !   print*,'forcing(idx_start)%year ', forcing(idx_start)%year
+    !   print*,'climateyear ', climateyear
+    !   print*,'climateyear_idx ', climateyear_idx
+    !   stop 'getclimate(): climateyear does not correspond to index read from forcing'
+    ! end if
 
     ! ! This is to read from ORNL file
     ! out_climate%year      = int(forcing(idx_start:idx_end, 1))           ! Year
@@ -110,7 +109,7 @@ contains
     ! out_climate%P_air     = real(forcing(idx_start:idx_end, 11))           ! pa
     ! out_climate%soilwater = 0.8                                           ! soil moisture, vol/vol
 
-    ! This is to read from ORNL file
+    ! ! This is to read from ORNL file
     ! print*,'getclimate(): forcing'
     ! print*, forcing(idx_start)%year
     ! print*, forcing(idx_start)%doy

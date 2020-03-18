@@ -557,7 +557,7 @@ module datatypes
   ! real      :: step_seconds = 3600.0
 
   character(len=80) :: filepath_in = '/Users/eweng/Documents/BiomeESS/forcingData/'
-  character(len=160) :: climfile = 'US-Ha1forcing.txt'
+  character(len=160) :: climfile =  'ORNL_forcing.txt' !'US-Ha1forcing.txt'
   !integer   :: model_run_years = 100  ! xxx todo: not used
   !integer   :: runyears = 100  ! xxxxxxx todo: not used
   integer   :: equi_days       = 0 ! 100 * 365
@@ -1004,9 +1004,9 @@ contains
         out_daily_cohorts(i)%gpp     = cc%dailygpp
         out_daily_cohorts(i)%resp    = cc%dailyresp
         out_daily_cohorts(i)%transp  = cc%dailytrsp
-        out_daily_cohorts(i)%NPPleaf  = cc%NPPleaf
-        out_daily_cohorts(i)%NPProot  = cc%NPProot
-        out_daily_cohorts(i)%NPPwood  = cc%NPPwood
+        out_daily_cohorts(i)%NPPleaf = cc%NPPleaf
+        out_daily_cohorts(i)%NPProot = cc%NPProot
+        out_daily_cohorts(i)%NPPwood = cc%NPPwood
         out_daily_cohorts(i)%NSC     = cc%NSC
         out_daily_cohorts(i)%seedC   = cc%seedC
         out_daily_cohorts(i)%leafC   = cc%bl

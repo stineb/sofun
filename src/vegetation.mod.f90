@@ -2200,7 +2200,9 @@ contains
   enddo
   MaxCohortID = cx%ccID
   ! Sorting these cohorts
+
   call relayer_cohorts(vegn)
+
   ! Initial Soil pools and environmental conditions
   vegn%metabolicL   = myinterface%init_soil%init_fast_soil_C ! kgC m-2
   vegn%structuralL  = myinterface%init_soil%init_slow_soil_C ! slow soil carbon pool, (kg C/m2)
@@ -2227,7 +2229,9 @@ contains
   vegn%thetaS = 1.0
 
   ! tile
+  !print*, 'initialize_vegn_tile() 1: ',  vegn%n_cohorts   ! xxx debug
   call summarize_tile(vegn)
+  !print*, 'initialize_vegn_tile() 2: ',  vegn%n_cohorts   ! xxx debug
   vegn%initialN0 = vegn%NSN + vegn%SeedN + vegn%leafN +      &
   vegn%rootN + vegn%SapwoodN + vegn%woodN + &
   vegn%MicrobialN + vegn%metabolicN +       &
@@ -2251,7 +2255,9 @@ contains
    call initialize_cohort_from_biomass(cx,btotal)
   enddo
   ! Sorting these cohorts
+
   call relayer_cohorts(vegn)
+
   ! ID each cohort
   do i=1,nCohorts
    cx => vegn%cohorts(i)
@@ -2268,7 +2274,9 @@ contains
   vegn%previousN   = vegn%mineralN
 
   ! tile
+  !print*, 'initialize_vegn_tile() 3: ',  vegn%n_cohorts   ! xxx debug
   call summarize_tile(vegn)
+  !print*, 'initialize_vegn_tile() 4: ',  vegn%n_cohorts   ! xxx debug
   vegn%initialN0 = vegn%NSN + vegn%SeedN + vegn%leafN +      &
   vegn%rootN + vegn%SapwoodN + vegn%woodN + &
   vegn%MicrobialN + vegn%metabolicN +       &
