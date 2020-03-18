@@ -751,7 +751,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: idx_climatedata
 
     ! xxx temporary
-    character(len=80) :: filepath_in = '/Users/benjaminstocker/lmarques/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/bestocke/sofun/input/'
     character(len=80) :: climfile    = 'ORNL_forcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
