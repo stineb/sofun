@@ -344,7 +344,7 @@ program main
   ! print*, '-------------------START OF SIMULATION--------------------'
 
 
-  do yr=1,15 !myinterface%params_siml%runyears
+  do yr=1,myinterface%params_siml%runyears
 
     !----------------------------------------------------------------
     ! Define simulations "steering" variables (forcingyear, etc.)
