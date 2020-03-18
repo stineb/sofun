@@ -109,7 +109,6 @@ program main
   !real, dimension(:, out_max_cohorts), allocatable :: out_daily_cohorts    !fno3
   real, dimension(:,:), allocatable :: out_annual_tile      !fno5
   real, dimension(:,:,:), allocatable :: out_annual_cohorts   !fno2
-  !real, dimension(:, out_max_cohorts), allocatable :: out_annual_cohorts   !fno2
 
   !----------------------------------------------------------------
   ! DECLARATIONS TO READ FROM NAMELIST FILE
@@ -758,7 +757,6 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: doy,idays
     integer :: i,j,k
     integer :: m,n
-
     integer :: idx_climatedata
 
     ! xxx temporary
@@ -880,9 +878,9 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     ! xxx try
     integer :: idx_climatedata
 
-    ! xxx temporary
-    character(len=80) :: filepath_in = '/Users/lmarques/BiomeE-Allocation/model/input/'
-    character(len=80) :: climfile    = 'US-WCrforcing.txt'
+    ! ! xxx temporary
+    ! character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
+    ! character(len=80) :: climfile    = 'US-WCrforcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
     write(*,*)'inputfile: ',climfile

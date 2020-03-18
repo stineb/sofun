@@ -737,10 +737,6 @@ contains
         cc%leafarea  = leaf_area_from_biomass(cc%bl,cc%species,cc%layer,cc%firstlayer)
         cc%lai       = cc%leafarea/cc%crownarea !(cc%crownarea *(1.0-sp%internal_gap_frac))
 
-        !print*, 'vegn growth',  vegn%LAI, cc%NSC, cc%bsw, cc%seedC   ! xxx debug
-        !print*, ' SapwoodC NSC bl bsw bHW br seedC nindivs', vegn%SapwoodC, cc%NSC,  cc%bl,  cc%bsw,  cc%bHW,  cc%br,   cc%seedC, cc%nindivs  ! xxx debug
-
-
         vegn%LAI     = vegn%LAI + cc%leafarea  * cc%nindivs
 
         call rootarea_and_verticalprofile(cc)

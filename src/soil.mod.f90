@@ -51,14 +51,19 @@ module md_soil
 
   !! Plant hydraulics
   psi_leaf = -2.31 *1.0e6 ! pa, Katul et al. 2003, for clay soil
+  
   !! Water supply from each layer
   do i=1, max_lev ! Calculate water uptake potential layer by layer
+   
    freewater(i) = max(0.0,((vegn%wcl(i)-WILTPT) * thksl(i) * 1000.0))
    thetaS(i)    = max(0.0, (vegn%wcl(i)-WILTPT)/(FLDCAP-WILTPT))
+   
    !Soil water pressure
    psi_soil = soilpars(vegn%soiltype)%psi_sat_ref * &  ! Pa
    ((FLDCAP/vegn%wcl(i))**soilpars(vegn%soiltype)%chb)! water retention curve
+
    dpsiSR(i) = 1.5 *1.0e6 * thetaS(i)**2 ! Pa
+
    ! Layer allocation, water uptake capacity
    totWsup(i) = 0.0 ! Potential water uptake per layer by all cohorts
    do j = 1, vegn%n_cohorts
@@ -284,59 +289,65 @@ soil_uptake_T(k) = soil%uptake_T
 
 enddo
 end subroutine soil_data_beta
+
 ! ============================================================================
 subroutine darcy2d_uptake_lin ( soil, psi_x0, R, VRL, K_r, r_r,uptake_oneway, &
   uptake_from_sat, u, du )
-type(soil_tile_type), intent(in) :: soil
-real, intent(in) :: &
-psi_x0,    & ! water potential inside roots (in xylem) at zero depth, m
-R(:),      & ! characteristic half-distance between roots, m
-VRL(:),    & ! Volumetric Root Length (root length per unit volume), m/m3
-K_r,       & ! permeability of the root membrane per unit area, kg/(m3 s)
-r_r          ! radius of fine roots, m
-logical, intent(in) :: &
-uptake_oneway, & ! if true, then the roots can only take up water, but 
-! never loose it to the soil
-uptake_from_sat   ! if false, uptake from saturated soil is prohibited
-real, intent(out) :: &
-u(:), &      ! layer-by-layer distribution of uptake, kg/(m2 s)
-du(:)        ! derivative of u w.r.t. root water potential, kg/(m3 s)
-! ---- local vars
-integer :: k
-real :: psi_x     ! water potential inside roots (psi_x0+z), m
-real :: psi_soil  ! water potential of soil, m
-real :: psi_sat   ! saturation soil water potential, m
-real :: K_sat     ! hydraulic conductivity of saturated soil, kg/(m2 s)
 
-real :: psi_root  ! water potential at the root/soil interface, m
-real :: psi_root0 ! initial guess of psi_root, m
+  type(soil_tile_type), intent(in) :: soil
+  
+  real, intent(in) :: &
+    psi_x0,    & ! water potential inside roots (in xylem) at zero depth, m
+    R(:),      & ! characteristic half-distance between roots, m
+    VRL(:),    & ! Volumetric Root Length (root length per unit volume), m/m3
+    K_r,       & ! permeability of the root membrane per unit area, kg/(m3 s)
+    r_r          ! radius of fine roots, m
+  
+  logical, intent(in) :: &
+    uptake_oneway, & ! if true, then the roots can only take up water, but 
+    ! never loose it to the soil
+    uptake_from_sat   ! if false, uptake from saturated soil is prohibited
+  
+  real, intent(out) :: &
+    u(:), &      ! layer-by-layer distribution of uptake, kg/(m2 s)
+    du(:)        ! derivative of u w.r.t. root water potential, kg/(m3 s)
+  
+  ! ---- local vars
+  integer :: k
+  real :: psi_x     ! water potential inside roots (psi_x0+z), m
+  real :: psi_soil  ! water potential of soil, m
+  real :: psi_sat   ! saturation soil water potential, m
+  real :: K_sat     ! hydraulic conductivity of saturated soil, kg/(m2 s)
 
+  real :: psi_root  ! water potential at the root/soil interface, m
+  real :: psi_root0 ! initial guess of psi_root, m
 
-! calculate some hydraulic properties common for all soil layers
-psi_sat = soil%pars%psi_sat_ref/soil%pars%alpha
-K_sat   = soil%pars%k_sat_ref*soil%pars%alpha**2
+  ! calculate some hydraulic properties common for all soil layers
+  psi_sat = soil%pars%psi_sat_ref/soil%pars%alpha
+  K_sat   = soil%pars%k_sat_ref*soil%pars%alpha**2
 
-u = 0; du = 0
-do k = 1, num_l
- psi_x    = psi_x0 + zfull(k)
- psi_soil = soil%psi(k)
- psi_root0= soil%psi(k) ! change it later to prev. time step value
- if ( soil%prog(k)%ws > 0 ) &
- cycle ! skip layers with ice
- if ( uptake_oneway.and.psi_x > soil%psi(k) ) &
- cycle ! skip layers where roots would loose water
- if ( .not.(uptake_from_sat).and.psi_soil >= psi_sat ) &
- cycle ! skip layers where the soil is saturated
+  u = 0; du = 0
+  do k = 1, num_l
+   psi_x    = psi_x0 + zfull(k)
+   psi_soil = soil%psi(k)
+   psi_root0= soil%psi(k) ! change it later to prev. time step value
+   if ( soil%prog(k)%ws > 0 ) &
+   cycle ! skip layers with ice
+   if ( uptake_oneway.and.psi_x > soil%psi(k) ) &
+   cycle ! skip layers where roots would loose water
+   if ( .not.(uptake_from_sat).and.psi_soil >= psi_sat ) &
+   cycle ! skip layers where the soil is saturated
 
- ! calculates soil term of uptake expression
- call darcy2d_flow_lin (psi_x, psi_soil, psi_root0, K_sat, psi_sat, soil%pars%chb, &
-  K_r, r_r, R(k), u(k), du(k), psi_root)
+   ! calculates soil term of uptake expression
+   call darcy2d_flow_lin(psi_x, psi_soil, psi_root0, K_sat, psi_sat, soil%pars%chb, &
+    K_r, r_r, R(k), u(k), du(k), psi_root)
 
- ! scale by volumetric root length and thickness of layer to get total 
- ! uptake from the current soil layer
- u(k)  = VRL(k)*dz(k)*u(k)
- du(k) = VRL(k)*dz(k)*du(k)
-enddo
+   ! scale by volumetric root length and thickness of layer to get total 
+   ! uptake from the current soil layer
+   u(k)  = VRL(k)*dz(k)*u(k)
+   du(k) = VRL(k)*dz(k)*du(k)
+
+  enddo
 
 end subroutine darcy2d_uptake_lin
 
