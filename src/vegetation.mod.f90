@@ -804,273 +804,300 @@ contains
   end subroutine vegn_growth_EW
 
 
-  !=================================================
-  ! Weng, 2017-10-26
   subroutine update_layer_LAI(vegn)
-  type(vegn_tile_type), intent(inout) :: vegn
+    !////////////////////////////////////////////////////////////////
+    ! Updates LAI per canopy layer
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
 
-  ! local variables
-  type(cohort_type), pointer :: cc
-  integer :: i, layer
+    ! local variables
+    type(cohort_type), pointer :: cc
+    integer :: i, layer
 
-  ! update accumulative LAI for each corwn layer
-  vegn%LAI      = 0.0
-  vegn%LAIlayer = 0.0
-  do i = 1, vegn%n_cohorts
-   cc => vegn%cohorts(i)
-   layer = Max (1, Min(cc%layer,9)) ! between 1~9
-   vegn%LAIlayer(layer) = vegn%LAIlayer(layer) + cc%leafarea * cc%nindivs !/(1.0-sp%internal_gap_frac)
-  enddo
+    ! update accumulative LAI for each corwn layer
+    vegn%LAI      = 0.0
+    vegn%LAIlayer = 0.0
+    do i = 1, vegn%n_cohorts
+     cc => vegn%cohorts(i)
+     layer = Max (1, Min(cc%layer,9)) ! between 1~9
+     vegn%LAIlayer(layer) = vegn%LAIlayer(layer) + cc%leafarea * cc%nindivs !/(1.0-sp%internal_gap_frac)
+    enddo
   end subroutine update_layer_LAI
 
-  !=================================================
-  ! Weng: partioning root area into layers, 10-24-2017
-  subroutine rootarea_and_verticalprofile(cc)
-  type(cohort_type), intent(inout) :: cc
-  ! ---local var ----------
-  integer :: j
 
-  associate (sp => spdata(cc%species) )
-    cc%rootarea  = cc%br * sp%SRA
-    do j=1,max_lev
-     cc%rootareaL(j) = cc%rootarea * sp%root_frac(j)
-   enddo
-  end associate
+  subroutine rootarea_and_verticalprofile(cc)
+    !////////////////////////////////////////////////////////////////
+    ! Weng: partioning root area into layers, 10-24-2017
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(cohort_type), intent(inout) :: cc
+    ! ---local var ----------
+    integer :: j
+
+    associate (sp => spdata(cc%species) )
+      cc%rootarea  = cc%br * sp%SRA
+      do j=1,max_lev
+       cc%rootareaL(j) = cc%rootarea * sp%root_frac(j)
+     enddo
+    end associate
   end subroutine rootarea_and_verticalprofile
 
-  !============================================================================
+
   subroutine vegn_phenology(vegn,doy) ! daily step
-  type(vegn_tile_type), intent(inout) :: vegn
-  integer, intent(in) :: doy
+    !////////////////////////////////////////////////////////////////
+    ! Determines phenology state (leaf on/off)
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
+    integer, intent(in) :: doy
 
-  ! local variables
-  type(cohort_type), pointer :: cc
-  integer :: i,j
-  real    :: grassdensity   ! for grasses only
-  real    :: BL_u,BL_c
-  real    :: ccFR, ccNSC, ccRootN, ccNSN
-  logical :: cc_firstday = .false.
-  logical :: growingseason
-  logical :: TURN_ON_life, TURN_OFF_life
+    ! local variables
+    type(cohort_type), pointer :: cc
+    integer :: i,j
+    real    :: grassdensity   ! for grasses only
+    real    :: BL_u,BL_c
+    real    :: ccFR, ccNSC, ccRootN, ccNSN
+    logical :: cc_firstday = .false.
+    logical :: growingseason
+    logical :: TURN_ON_life, TURN_OFF_life
 
-  vegn%litter = 0   ! daily litter
+    vegn%litter = 0   ! daily litter
 
-  ! update vegn GDD and tc_pheno
-  vegn%gdd      = vegn%gdd + max(0.0, vegn%tc_daily - 278.15)
-  vegn%tc_pheno = vegn%tc_pheno * 0.8 + vegn%Tc_daily * 0.2
+    ! update vegn GDD and tc_pheno
+    vegn%gdd      = vegn%gdd + max(0.0, vegn%tc_daily - 278.15)
+    vegn%tc_pheno = vegn%tc_pheno * 0.8 + vegn%Tc_daily * 0.2
 
-  ! ON and OFF of phenology: change the indicator of growing season for deciduous
-  do i = 1,vegn%n_cohorts
-   cc => vegn%cohorts(i)
-   ! update GDD for each cohort
-   cc%gdd = cc%gdd + max(0.0, vegn%tc_daily - 278.15) ! GDD5
-   
-   associate (sp => spdata(cc%species) )
-    !    for evergreen
-    if (sp%phenotype==1 .and. cc%status==LEAF_OFF) cc%status=LEAF_ON
-    !    for deciduous and grasses
-    TURN_ON_life = (sp%phenotype == 0             .and. &
+    ! ON and OFF of phenology: change the indicator of growing season for deciduous
+    cohortsloop: do i = 1,vegn%n_cohorts
+      cc => vegn%cohorts(i)
+      ! update GDD for each cohort
+      cc%gdd = cc%gdd + max(0.0, vegn%tc_daily - 278.15) ! GDD5
+
+      associate (sp => spdata(cc%species) )
+
+      !    for evergreen
+      if (sp%phenotype==1 .and. cc%status==LEAF_OFF) cc%status=LEAF_ON
+
+      !    for deciduous and grasses
+      TURN_ON_life = (sp%phenotype == 0             .and. &
       cc%status    == LEAF_OFF       .and. &
       cc%gdd        > sp%gdd_crit    .and. &
       vegn%tc_pheno > sp%tc_crit_on) .and. &
-    (sp%lifeform .ne. 0 .OR.(sp%lifeform .eq. 0 .and.cc%layer==1))
+      (sp%lifeform .ne. 0 .OR.(sp%lifeform .eq. 0 .and.cc%layer==1))
 
-    cc_firstday = .false.
-    if (TURN_ON_life) then
-     cc%status = LEAF_ON ! Turn on a growing season
-     cc_firstday = .True.
-   endif
+      cc_firstday = .false.
+      if (TURN_ON_life) then
+        cc%status = LEAF_ON ! Turn on a growing season
+        cc_firstday = .True.
+      endif
 
-   !    Reset grass density at the first day of a growing season
-   if (cc_firstday .and. sp%lifeform ==0 .and. cc%age>2.) then
-    !        reset grass density and size for perenials
-    ccNSC   = (cc%NSC +cc%bl +  cc%bsw  +cc%bHW  +cc%br   +cc%seedC) * cc%nindivs
-    ccNSN   = (cc%NSN +cc%leafN+cc%sapwN+cc%woodN+cc%rootN+cc%seedN) * cc%nindivs
-    ! reset
-    cc%nindivs = MIN(ccNSC /sp%seedlingsize, ccNSN/(sp%seedlingsize/sp%CNroot0))
-    cc%bsw = f_initialBSW *sp%seedlingsize  ! for setting up a initial size
-    cc%br    = 0.25 * cc%bsw
-    cc%bl    = 0.0
-    cc%bHW   = 0.0
-    cc%seedC = 0.0
-    cc%nsc   = ccNSC/cc%nindivs - (cc%bl+ cc%bsw+cc%bHW+cc%br+cc%seedC)
-    ! nitrogen pools
-    cc%sapwN = cc%bsw  /sp%CNsw0
-    cc%rootN = cc%br   /sp%CNroot0
-    cc%leafN = 0.0
-    cc%woodN = 0.0
-    cc%seedN = 0.0
-    cc%NSN   = ccNSN/cc%nindivs - (cc%leafN+cc%sapwN+cc%woodN+cc%rootN+cc%seedN)
+      !    Reset grass density at the first day of a growing season
+      if (cc_firstday .and. sp%lifeform ==0 .and. cc%age>2.) then
+        !        reset grass density and size for perenials
+        ccNSC   = (cc%NSC +cc%bl +  cc%bsw  +cc%bHW  +cc%br   +cc%seedC) * cc%nindivs
+        ccNSN   = (cc%NSN +cc%leafN+cc%sapwN+cc%woodN+cc%rootN+cc%seedN) * cc%nindivs
+        ! reset
+        cc%nindivs = MIN(ccNSC /sp%seedlingsize, ccNSN/(sp%seedlingsize/sp%CNroot0))
+        cc%bsw = f_initialBSW *sp%seedlingsize  ! for setting up a initial size
+        cc%br    = 0.25 * cc%bsw
+        cc%bl    = 0.0
+        cc%bHW   = 0.0
+        cc%seedC = 0.0
+        cc%nsc   = ccNSC/cc%nindivs - (cc%bl+ cc%bsw+cc%bHW+cc%br+cc%seedC)
+        ! nitrogen pools
+        cc%sapwN = cc%bsw  /sp%CNsw0
+        cc%rootN = cc%br   /sp%CNroot0
+        cc%leafN = 0.0
+        cc%woodN = 0.0
+        cc%seedN = 0.0
+        cc%NSN   = ccNSN/cc%nindivs - (cc%leafN+cc%sapwN+cc%woodN+cc%rootN+cc%seedN)
 
-    call rootarea_and_verticalprofile(cc)
-    call init_cohort_allometry(cc)
-  endif
-  end associate
-  enddo
+        call rootarea_and_verticalprofile(cc)
+        call init_cohort_allometry(cc)
+      endif
+      end associate
 
-  if (TURN_ON_life) call relayer_cohorts(vegn)
+    enddo cohortsloop
 
-  ! OFF of a growing season
-  do i = 1,vegn%n_cohorts
-  cc => vegn%cohorts(i)
-  associate (sp => spdata(cc%species) )
-   TURN_OFF_life = (sp%phenotype  == 0 .and.     &
-    cc%status == LEAF_ON .and.     &
-    cc%gdd > sp%gdd_crit+600. .and. &
-    vegn%tc_pheno < sp%tc_crit)
-  end associate
+    if (TURN_ON_life) call relayer_cohorts(vegn)
 
-  if (TURN_OFF_life ) then
-  cc%status = LEAF_OFF  ! Turn off a growing season
-  cc%gdd   = 0.0        ! Start to counting a new cycle of GDD
-  vegn%gdd = 0.0
-  endif
-  ! leaf fall
-  call Seasonal_fall(cc,vegn)
-  enddo
+    ! OFF of a growing season
+    cohortsloop: do i = 1,vegn%n_cohorts
+
+      cc => vegn%cohorts(i)
+      associate (sp => spdata(cc%species) )
+      TURN_OFF_life = (sp%phenotype  == 0 .and.     &
+      cc%status == LEAF_ON .and.     &
+      cc%gdd > sp%gdd_crit+600. .and. &
+      vegn%tc_pheno < sp%tc_crit)
+      end associate
+
+      if (TURN_OFF_life ) then
+        cc%status = LEAF_OFF  ! Turn off a growing season
+        cc%gdd   = 0.0        ! Start to counting a new cycle of GDD
+        vegn%gdd = 0.0
+      endif
+
+      ! leaf fall
+      call Seasonal_fall(cc,vegn)
+    
+    enddo cohortsloop
+
   end subroutine vegn_phenology
 
-  !========= Leaf and stem fall ==========================
+
   subroutine Seasonal_fall(cc,vegn)
-  !@sum leaf and stem fall for deciduous plants, including deciduous trees and grasses
-  !@+   DAILY call.
-  !@+   added by Weng, 12-03-2017
-  implicit none
-  type(cohort_type), intent(inout) :: cc
-  type(vegn_tile_type), intent(inout) :: vegn
-  ! local variables
-  real    :: loss_coarse, loss_fine, lossN_coarse, lossN_fine
-  real    :: dAleaf, dBL, dBR, dNL, dNR, dBStem, dNStem      ! per day
-  real    :: leaf_fall_rate, root_mort_rate      ! per day
+    !////////////////////////////////////////////////////////////////
+    ! Leaf and stem fall
+    ! sum leaf and stem fall for deciduous plants, including deciduous trees and grasses
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    implicit none
+    type(cohort_type), intent(inout) :: cc
+    type(vegn_tile_type), intent(inout) :: vegn
+    ! local variables
+    real    :: loss_coarse, loss_fine, lossN_coarse, lossN_fine
+    real    :: dAleaf, dBL, dBR, dNL, dNR, dBStem, dNStem      ! per day
+    real    :: leaf_fall_rate, root_mort_rate      ! per day
 
-  leaf_fall_rate = 0.05; root_mort_rate = 0.025
-  !    End a growing season: leaves fall for deciduous
-  associate (sp => spdata(cc%species) )
-   if (cc%status == LEAF_OFF .AND. cc%bl > 0.0) then
-    dBL = min(leaf_fall_rate * cc%bl_max, cc%bl)
-    dBR = min( root_mort_rate * cc%br_max, cc%br)  ! Just for test: keep roots
-    dBStem = 0.0 ! trees
-    dNStem = 0.0 ! trees
-    if (sp%lifeform==0) then  ! grasses
-      dBStem = MIN(1.0,dBL/cc%bl) * cc%bsw
-      dNStem = MIN(1.0,dBL/cc%bl) * cc%sapwN
+    leaf_fall_rate = 0.05; root_mort_rate = 0.025
+
+    !    End a growing season: leaves fall for deciduous
+    associate (sp => spdata(cc%species) )
+    
+    if (cc%status == LEAF_OFF .AND. cc%bl > 0.0) then
+      dBL = min(leaf_fall_rate * cc%bl_max, cc%bl)
+      dBR = min( root_mort_rate * cc%br_max, cc%br)  ! Just for test: keep roots
+      dBStem = 0.0 ! trees
+      dNStem = 0.0 ! trees
+      if (sp%lifeform==0) then  ! grasses
+        dBStem = MIN(1.0,dBL/cc%bl) * cc%bsw
+        dNStem = MIN(1.0,dBL/cc%bl) * cc%sapwN
+      endif
+      ! Nitrogen out
+      if (cc%bl>0) then
+        dNL = dBL/cc%bl * cc%leafN !dBL/sp%CNleaf0
+      else
+        dNL = 0.0
+      endif
+
+      if (cc%br>0) then
+        dNR = dBR/cc%br * cc%rootN !dBR/sp%CNroot0
+      else
+        dNR = 0.0
+      endif
+
+      dAleaf = leaf_area_from_biomass(dBL,cc%species,cc%layer,cc%firstlayer)
+
+      !       Retranslocation to NSC and NSN
+      cc%nsc = cc%nsc + l_fract  * (dBL + dBR + dBStem)
+      cc%NSN = cc%NSN + retransN * (dNL + dNR + dNStem)
+      !       update plant pools
+      cc%bl    = cc%bl  - dBL
+      cc%br    = cc%br  - dBR
+      cc%bsw   = cc%bsw - dBStem ! for grass
+
+      cc%leafN = cc%leafN - dNL
+      cc%rootN = cc%rootN - dNR
+      cc%sapwN = cc%sapwN - dNStem
+      !       update NPP for leaves, fine roots, and wood
+
+      cc%NPPleaf = cc%NPPleaf - l_fract * dBL
+      cc%NPProot = cc%NPProot - l_fract * dBR
+      cc%NPPwood = cc%NPPwood - l_fract * dBStem
+      cc%leafarea= leaf_area_from_biomass(cc%bl,cc%species,cc%layer,cc%firstlayer)
+      cc%lai     = cc%leafarea/(cc%crownarea *(1.0-sp%internal_gap_frac))
+
+      ! Update plant size (for grasses)
+      !call init_cohort_allometry(cc)
+
+      !       put C and N into soil pools:  Substraction of C and N from leaf and root pools
+      loss_coarse  = (1.-l_fract) * cc%nindivs * (dBStem+dBL - dAleaf * LMAmin)
+      loss_fine    = (1.-l_fract) * cc%nindivs * (dBR        + dAleaf * LMAmin)
+      lossN_coarse = (1.-retransN)* cc%nindivs * (dNStem+dNL - dAleaf * sp%LNbase)
+      lossN_fine   = (1.-retransN)* cc%nindivs * (dNR        + dAleaf * sp%LNbase)
+
+      vegn%metabolicL = vegn%metabolicL +  &
+      fsc_fine * loss_fine + fsc_wood * loss_coarse
+      vegn%structuralL = vegn%structuralL +   &
+      (1.-fsc_fine)*loss_fine + (1.-fsc_wood)*loss_coarse
+
+      !       Nitrogen to soil SOMs
+      vegn%metabolicN  = vegn%metabolicN +    &
+      fsc_fine * lossN_fine + fsc_wood * lossN_coarse
+      vegn%structuralN = vegn%structuralN +   &
+      (1.-fsc_fine) * lossN_fine + (1.-fsc_wood) * lossN_coarse
+
+      !       annual N from plants to soil
+      vegn%N_P2S_yr = vegn%N_P2S_yr + lossN_fine + lossN_coarse
     endif
-    ! Nitrogen out
-    if (cc%bl>0) then
-     dNL = dBL/cc%bl * cc%leafN !dBL/sp%CNleaf0
-   else
-     dNL = 0.0
-   endif
-   if (cc%br>0) then
-     dNR = dBR/cc%br * cc%rootN !dBR/sp%CNroot0
-   else
-     dNR = 0.0
-   endif
-
-   dAleaf = leaf_area_from_biomass(dBL,cc%species,cc%layer,cc%firstlayer)
-
-   !       Retranslocation to NSC and NSN
-   cc%nsc = cc%nsc + l_fract  * (dBL + dBR + dBStem)
-   cc%NSN = cc%NSN + retransN * (dNL + dNR + dNStem)
-   !       update plant pools
-   cc%bl    = cc%bl  - dBL
-   cc%br    = cc%br  - dBR
-   cc%bsw   = cc%bsw - dBStem ! for grass
-
-   cc%leafN = cc%leafN - dNL
-   cc%rootN = cc%rootN - dNR
-   cc%sapwN = cc%sapwN - dNStem
-   !       update NPP for leaves, fine roots, and wood
-
-   cc%NPPleaf = cc%NPPleaf - l_fract * dBL
-   cc%NPProot = cc%NPProot - l_fract * dBR
-   cc%NPPwood = cc%NPPwood - l_fract * dBStem
-   cc%leafarea= leaf_area_from_biomass(cc%bl,cc%species,cc%layer,cc%firstlayer)
-   cc%lai     = cc%leafarea/(cc%crownarea *(1.0-sp%internal_gap_frac))
-
-   ! Update plant size (for grasses)
-   !call init_cohort_allometry(cc)
-
-   !       put C and N into soil pools:  Substraction of C and N from leaf and root pools
-   loss_coarse  = (1.-l_fract) * cc%nindivs * (dBStem+dBL - dAleaf * LMAmin)
-   loss_fine    = (1.-l_fract) * cc%nindivs * (dBR        + dAleaf * LMAmin)
-   lossN_coarse = (1.-retransN)* cc%nindivs * (dNStem+dNL - dAleaf * sp%LNbase)
-   lossN_fine   = (1.-retransN)* cc%nindivs * (dNR        + dAleaf * sp%LNbase)
-
-   vegn%metabolicL = vegn%metabolicL +  &
-   fsc_fine * loss_fine + fsc_wood * loss_coarse
-   vegn%structuralL = vegn%structuralL +   &
-   (1.-fsc_fine)*loss_fine + (1.-fsc_wood)*loss_coarse
-
-   !       Nitrogen to soil SOMs
-   vegn%metabolicN  = vegn%metabolicN +    &
-   fsc_fine * lossN_fine + fsc_wood * lossN_coarse
-   vegn%structuralN = vegn%structuralN +   &
-   (1.-fsc_fine) * lossN_fine + (1.-fsc_wood) * lossN_coarse
-
-   !       annual N from plants to soil
-   vegn%N_P2S_yr = vegn%N_P2S_yr + lossN_fine + lossN_coarse
-  endif
-  end associate
+    end associate
   end subroutine Seasonal_fall
 
-  !============================================================================
-  ! -----------------Mortality------------------------------------
+
   subroutine vegn_nat_mortality (vegn, deltat)
-  ! TODO: update background mortality rate as a function of wood density (Weng, Jan. 07 2017)
-  type(vegn_tile_type), intent(inout) :: vegn
-  real, intent(in) :: deltat ! seconds since last mortality calculations, s
+    !////////////////////////////////////////////////////////////////
+    ! Mortality
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    ! TODO: update background mortality rate as a function of wood density (Weng, Jan. 07 2017)
+    type(vegn_tile_type), intent(inout) :: vegn
+    real, intent(in) :: deltat ! seconds since last mortality calculations, s
 
-  ! local variables
-  type(cohort_type), pointer :: cc => null()
-  type(spec_data_type),   pointer :: sp
-  real :: deathrate ! mortality rate, 1/year
-  real :: deadtrees ! number of trees that died over the time step
-  integer :: i, k
+    ! local variables
+    type(cohort_type), pointer :: cc => null()
+    type(spec_data_type),   pointer :: sp
+    real :: deathrate ! mortality rate, 1/year
+    real :: deadtrees ! number of trees that died over the time step
+    integer :: i, k
 
-  real, parameter :: min_nindivs = 1e-5 ! 2e-15 ! 1/m. If nindivs is less than this number, 
-  ! then the entire cohort is killed; 2e-15 is approximately 1 individual per Earth 
+    real, parameter :: min_nindivs = 1e-5 ! 2e-15 ! 1/m. If nindivs is less than this number, 
+    ! then the entire cohort is killed; 2e-15 is approximately 1 individual per Earth 
 
-  do i = 1, vegn%n_cohorts
-   cc => vegn%cohorts(i)
-   associate ( sp => spdata(cc%species))
-     ! mortality rate can be a function of growth rate, age, and environmental
-     ! conditions. Here, we only used two constants for canopy layer and under-
-     ! story layer (mortrate_d_c and mortrate_d_u)
-     if (sp%lifeform==0) then  ! for grasses
-       if (cc%layer > 1) then
-         deathrate = sp%mortrate_d_u
-       else
-         deathrate = sp%mortrate_d_c
-       endif
-     else                    ! for trees
-       if (cc%layer > 1) then ! Understory layer mortality
-        !            deathrate = sp%mortrate_d_u
-        deathrate = sp%mortrate_d_u * &
-        (1.0 + A_mort*exp(B_mort*cc%dbh))/ &
-        (1.0 +        exp(B_mort*cc%dbh))
+    do i = 1, vegn%n_cohorts
+      cc => vegn%cohorts(i)
+      associate ( sp => spdata(cc%species))
 
-      else  ! First layer mortality
-        if (myinterface%params_siml%do_U_shaped_mortality) then
-          deathrate = sp%mortrate_d_c *                 &
-          (1. + 5.*exp(4.*(cc%dbh-DBHtp))/  &
-           (1. + exp(4.*(cc%dbh-DBHtp))))
+      ! mortality rate can be a function of growth rate, age, and environmental
+      ! conditions. Here, we only used two constants for canopy layer and under-
+      ! story layer (mortrate_d_c and mortrate_d_u)
+      if (sp%lifeform==0) then  ! for grasses
+        if (cc%layer > 1) then
+          deathrate = sp%mortrate_d_u
         else
           deathrate = sp%mortrate_d_c
         endif
+      else                    ! for trees
+        if (cc%layer > 1) then ! Understory layer mortality
+          !            deathrate = sp%mortrate_d_u
+          deathrate = sp%mortrate_d_u * &
+          (1.0 + A_mort*exp(B_mort*cc%dbh))/ &
+          (1.0 +        exp(B_mort*cc%dbh))
+        else  ! First layer mortality
+          if (myinterface%params_siml%do_U_shaped_mortality) then
+            deathrate = sp%mortrate_d_c *                 &
+            (1. + 5.*exp(4.*(cc%dbh-DBHtp))/  &
+            (1. + exp(4.*(cc%dbh-DBHtp))))
+          else
+            deathrate = sp%mortrate_d_c
+          endif
+        endif
       endif
-    endif
-    !deadtrees = cc%nindivs*(1.0-exp(0.0-deathrate*deltat/seconds_per_year)) ! individuals / m2
-    deadtrees = cc%nindivs * MIN(1.0,deathrate*deltat/seconds_per_year) ! individuals / m2
 
-    ! Carbon and Nitrogen from dead plants to soil pools
-    call plant2soil(vegn,cc,deadtrees)
-    ! Update plant density
-    cc%nindivs = cc%nindivs - deadtrees
-  end associate
-  enddo
-  ! Remove the cohorts with 0 individuals
-  !call kill_lowdensity_cohorts(vegn)
+      !deadtrees = cc%nindivs*(1.0-exp(0.0-deathrate*deltat/seconds_per_year)) ! individuals / m2
+      deadtrees = cc%nindivs * MIN(1.0,deathrate*deltat/seconds_per_year) ! individuals / m2
+
+      ! Carbon and Nitrogen from dead plants to soil pools
+      call plant2soil(vegn,cc,deadtrees)
+      
+      ! Update plant density
+      cc%nindivs = cc%nindivs - deadtrees
+      end associate
+    enddo
+
+    ! Remove the cohorts with 0 individuals
+    !call kill_lowdensity_cohorts(vegn)
 
   end subroutine vegn_nat_mortality
 
