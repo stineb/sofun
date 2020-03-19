@@ -1101,87 +1101,105 @@ contains
 
   end subroutine vegn_nat_mortality
 
-  !========================================================================
-  ! Starvation due to low NSC or NSN, daily
+
   subroutine vegn_starvation (vegn)
-  type(vegn_tile_type), intent(inout) :: vegn
+    !////////////////////////////////////////////////////////////////
+    ! Mortality due to C starvation (NSC below threshold)
+    ! Starvation due to low NSC or NSN, daily
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
 
-  ! local variables --------
-  real :: deathrate ! mortality rate, 1/year
-  real :: deadtrees ! number of trees that died over the time step
-  integer :: i, k
-  type(cohort_type), pointer :: cc
-  type(cohort_type), dimension(:), pointer :: ccold, ccnew
+    ! local variables --------
+    real :: deathrate ! mortality rate, 1/year
+    real :: deadtrees ! number of trees that died over the time step
+    integer :: i, k
+    type(cohort_type), pointer :: cc
+    type(cohort_type), dimension(:), pointer :: ccold, ccnew
 
-  do i = 1, vegn%n_cohorts
-   cc => vegn%cohorts(i)
-   associate ( sp => spdata(cc%species))
-    !   Mortality due to starvation
-    deathrate = 0.0
-    !   if (cc%bsw<0 .or. cc%nsc < 0.00001*cc%bl_max .OR.(cc%layer >1 .and. sp%lifeform ==0)) then
-    if (cc%nsc < 0.01*cc%bl_max ) then ! .OR. cc%NSN < 0.01*cc%bl_max/sp%CNleaf0
-     deathrate = 1.0
-     deadtrees = cc%nindivs * deathrate !individuals / m2
-     ! Carbon and Nitrogen from plants to soil pools
-     call plant2soil(vegn,cc,deadtrees)
-     !        update cohort individuals
-     cc%nindivs = 0.0 ! cc%nindivs*(1.0 - deathrate)
-   else
-     deathrate = 0.0
-   endif
-  end associate
-  enddo
-  ! Remove the cohorts with 0 individuals
-  !call kill_lowdensity_cohorts(vegn)
+    do i = 1, vegn%n_cohorts
+      cc => vegn%cohorts(i)
+      associate ( sp => spdata(cc%species))
+      !   Mortality due to starvation
+      deathrate = 0.0
+      !   if (cc%bsw<0 .or. cc%nsc < 0.00001*cc%bl_max .OR.(cc%layer >1 .and. sp%lifeform ==0)) then
+      if (cc%nsc < 0.01*cc%bl_max ) then ! .OR. cc%NSN < 0.01*cc%bl_max/sp%CNleaf0
+        deathrate = 1.0
+        deadtrees = cc%nindivs * deathrate !individuals / m2
+        ! Carbon and Nitrogen from plants to soil pools
+        call plant2soil(vegn,cc,deadtrees)
+        !        update cohort individuals
+        cc%nindivs = 0.0 ! cc%nindivs*(1.0 - deathrate)
+      else
+        deathrate = 0.0
+      endif
+      end associate
+    enddo
+
+    ! Remove the cohorts with 0 individuals
+    !call kill_lowdensity_cohorts(vegn)
+  
   end subroutine vegn_starvation
 
-  !========================================================================
-  ! Starvation due to low NSC and annual NPP
+
   subroutine vegn_annual_starvation (vegn)
-  type(vegn_tile_type), intent(inout) :: vegn
+    !////////////////////////////////////////////////////////////////
+    ! Mortality due to C starvation (NSC below threshold)
+    ! Starvation due to low NSC and annual NPP
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
 
-  ! local variables --------
-  real :: deathrate ! mortality rate, 1/year
-  real :: deadtrees ! number of trees that died over the time step
-  integer :: i, k
-  type(cohort_type), pointer :: cc
-  type(cohort_type), dimension(:), pointer :: ccold, ccnew
+    ! local variables --------
+    real :: deathrate ! mortality rate, 1/year
+    real :: deadtrees ! number of trees that died over the time step
+    integer :: i, k
+    type(cohort_type), pointer :: cc
+    type(cohort_type), dimension(:), pointer :: ccold, ccnew
 
-  do i = 1, vegn%n_cohorts
-   cc => vegn%cohorts(i)
-   associate ( sp => spdata(cc%species)  )
-    !   Mortality due to starvation
-    deathrate = 0.0
-    !if (cc%bsw<0 .or. cc%nsc < 0.00001*cc%bl_max .OR.(cc%layer >1 .and. sp%lifeform ==0)) then
-    !if (cc%nsc < 0.01*cc%bl_max .OR. cc%annualNPP < 0.0) then ! .OR. cc%NSN < 0.01*cc%bl_max/sp%CNleaf0
-    if (cc%nsc < 0.01*cc%bl_max) then
-     deathrate = 1.0
-     deadtrees = cc%nindivs * deathrate !individuals / m2
-     ! Carbon and Nitrogen from plants to soil pools
-     call plant2soil(vegn,cc,deadtrees)
-     !        update cohort individuals
-     cc%nindivs = 0.0 ! cc%nindivs*(1.0 - deathrate)
-   else
-     deathrate = 0.0
-   endif
-  end associate
-  enddo
-  ! Remove the cohorts with 0 individuals
-  ! call kill_lowdensity_cohorts(vegn)
+    do i = 1, vegn%n_cohorts
+      
+      cc => vegn%cohorts(i)
+      associate ( sp => spdata(cc%species)  )
+
+      !   Mortality due to starvation
+      deathrate = 0.0
+      !if (cc%bsw<0 .or. cc%nsc < 0.00001*cc%bl_max .OR.(cc%layer >1 .and. sp%lifeform ==0)) then
+      !if (cc%nsc < 0.01*cc%bl_max .OR. cc%annualNPP < 0.0) then ! .OR. cc%NSN < 0.01*cc%bl_max/sp%CNleaf0
+      if (cc%nsc < 0.01*cc%bl_max) then
+        deathrate = 1.0
+        deadtrees = cc%nindivs * deathrate !individuals / m2
+        ! Carbon and Nitrogen from plants to soil pools
+        call plant2soil(vegn,cc,deadtrees)
+        !        update cohort individuals
+        cc%nindivs = 0.0 ! cc%nindivs*(1.0 - deathrate)
+      else
+        deathrate = 0.0
+      endif
+      end associate
+    enddo
+
+    ! Remove the cohorts with 0 individuals
+    ! call kill_lowdensity_cohorts(vegn)
 
   end subroutine vegn_annual_starvation
 
-  ! ===============================
+
   subroutine plant2soil(vegn,cc,deadtrees)
-  type(vegn_tile_type), intent(inout) :: vegn
-  type(cohort_type),    intent(inout) :: cc
-  real,                 intent(in)    :: deadtrees ! dead trees/m2
+    !////////////////////////////////////////////////////////////////
+    ! Transfer of deat biomass to litter pools
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
+    type(cohort_type),    intent(inout) :: cc
+    real,                 intent(in)    :: deadtrees ! dead trees/m2
 
-  ! local variables --------
-  real :: loss_fine,loss_coarse
-  real :: lossN_fine,lossN_coarse
+    ! local variables --------
+    real :: loss_fine,loss_coarse
+    real :: lossN_fine,lossN_coarse
 
-  associate (sp => spdata(cc%species))
+    associate (sp => spdata(cc%species))
+
     ! Carbon and Nitrogen from plants to soil pools
     loss_coarse  = deadtrees * (cc%bHW + cc%bsw   + cc%bl    - cc%leafarea*LMAmin)
     loss_fine    = deadtrees * (cc%nsc + cc%seedC + cc%br    + cc%leafarea*LMAmin)
@@ -1199,143 +1217,160 @@ contains
     ! annual N from plants to soil
     vegn%N_P2S_yr = vegn%N_P2S_yr + lossN_fine + lossN_coarse
 
-  end associate
+    end associate
+
   end subroutine plant2soil
 
-  !=======================================================================
-  ! the reproduction of each canopy cohort, yearly time step
-  ! calculate the new cohorts added in this step and states:
-  ! tree density, DBH, woddy and fine biomass
+
   subroutine vegn_reproduction (vegn)
-  type(vegn_tile_type), intent(inout) :: vegn
+    !////////////////////////////////////////////////////////////////
+    ! Reproduction of each canopy cohort, yearly time step
+    ! calculate the new cohorts added in this step and states:
+    ! tree density, DBH, woddy and fine biomass
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
 
-  ! local variables
-  type(cohort_type), pointer :: cc ! parent and child cohort pointers
-  type(cohort_type), dimension(:), pointer :: ccold, ccnew   ! pointer to old cohort array
-  integer, dimension(16) :: reproPFTs
-  real,    dimension(16) :: seedC, seedN ! seed pool of productible PFTs
-  real :: failed_seeds, N_failedseed !, prob_g, prob_e
-  integer :: newcohorts, matchflag, nPFTs ! number of new cohorts to be created
-  integer :: nCohorts, istat
-  integer :: i, j, k ! cohort indices
+    ! local variables
+    type(cohort_type), pointer :: cc ! parent and child cohort pointers
+    type(cohort_type), dimension(:), pointer :: ccold, ccnew   ! pointer to old cohort array
+    integer, dimension(16) :: reproPFTs
+    real,    dimension(16) :: seedC, seedN ! seed pool of productible PFTs
+    real :: failed_seeds, N_failedseed !, prob_g, prob_e
+    integer :: newcohorts, matchflag, nPFTs ! number of new cohorts to be created
+    integer :: nCohorts, istat
+    integer :: i, j, k ! cohort indices
 
-  ! Looping through all reproductable cohorts and Check if reproduction happens
-  reproPFTs = -999 ! the code of reproductive PFT
-  vegn%totseedC = 0.0
-  vegn%totseedN = 0.0
-  vegn%totNewCC = 0.0
-  vegn%totNewCN = 0.0
-  seedC = 0.0
-  seedN = 0.0
-  nPFTs = 0
-  do k=1, vegn%n_cohorts
-   cc => vegn%cohorts(k)
-   if (cohort_can_reproduce(cc)) then
-    matchflag = 0
-    do i=1,nPFTs
-     if (cc%species == reproPFTs(i)) then
-       seedC(i) = seedC(i) + cc%seedC  * cc%nindivs
-       seedN(i) = seedN(i) + cc%seedN  * cc%nindivs
-       ! reset parent's seed C and N
-       vegn%totSeedC = vegn%totSeedC + cc%seedC  * cc%nindivs
-       vegn%totSeedN = vegn%totSeedN + cc%seedN  * cc%nindivs
-       cc%seedC = 0.0
-       cc%seedN = 0.0
+    ! Looping through all reproductable cohorts and Check if reproduction happens
+    reproPFTs = -999 ! the code of reproductive PFT
+    vegn%totseedC = 0.0
+    vegn%totseedN = 0.0
+    vegn%totNewCC = 0.0
+    vegn%totNewCN = 0.0
+    seedC = 0.0
+    seedN = 0.0
+    nPFTs = 0
 
-       matchflag = 1
-       exit
-     endif
-   enddo
-   if (matchflag==0) then ! when it is a new PFT, put it to the next place
-    nPFTs            = nPFTs + 1 ! update the number of reproducible PFTs
-    reproPFTs(nPFTs) = cc%species ! PFT number
-    seedC(nPFTs)     = cc%seedC * cc%nindivs ! seed carbon
-    seedN(nPFTs)     = cc%seedN * cc%nindivs ! seed nitrogen
-    vegn%totSeedC = vegn%totSeedC + cc%seedC  * cc%nindivs
-    vegn%totSeedN = vegn%totSeedN + cc%seedN  * cc%nindivs
-    ! reset parent's seed C and N
-    cc%seedC = 0.0
-    cc%seedN = 0.0
-  endif
-  endif ! cohort_can_reproduce
-  enddo ! k, vegn%n_cohorts
+    cohortloop: do k=1, vegn%n_cohorts
+      cc => vegn%cohorts(k)
+      if (cohort_can_reproduce(cc)) then
+        matchflag = 0
+        do i=1,nPFTs
+          if (cc%species == reproPFTs(i)) then
+            seedC(i) = seedC(i) + cc%seedC  * cc%nindivs
+            seedN(i) = seedN(i) + cc%seedN  * cc%nindivs
+            ! reset parent's seed C and N
+            vegn%totSeedC = vegn%totSeedC + cc%seedC  * cc%nindivs
+            vegn%totSeedN = vegn%totSeedN + cc%seedN  * cc%nindivs
+            cc%seedC = 0.0
+            cc%seedN = 0.0
 
-  ! Generate new cohorts
-  newcohorts = nPFTs
-  if (newcohorts >= 1) then   ! build new cohorts for seedlings
-  ccold => vegn%cohorts ! keep old cohort information
-  nCohorts = vegn%n_cohorts + newcohorts
-  allocate(ccnew(1:nCohorts), STAT = istat)
-  ccnew(1:vegn%n_cohorts) = ccold(1:vegn%n_cohorts) ! copy old cohort information
-  vegn%cohorts => ccnew
+            matchflag = 1
+            exit
+          endif
+        enddo
+        if (matchflag==0) then ! when it is a new PFT, put it to the next place
+          nPFTs            = nPFTs + 1 ! update the number of reproducible PFTs
+          reproPFTs(nPFTs) = cc%species ! PFT number
+          seedC(nPFTs)     = cc%seedC * cc%nindivs ! seed carbon
+          seedN(nPFTs)     = cc%seedN * cc%nindivs ! seed nitrogen
+          vegn%totSeedC = vegn%totSeedC + cc%seedC  * cc%nindivs
+          vegn%totSeedN = vegn%totSeedN + cc%seedN  * cc%nindivs
+          ! reset parent's seed C and N
+          cc%seedC = 0.0
+          cc%seedN = 0.0
+        endif
+      endif ! cohort_can_reproduce
+    enddo cohortloop
 
-  deallocate (ccold)
+    ! Generate new cohorts
+    newcohorts = nPFTs
 
-  ! set up new cohorts
-  k = vegn%n_cohorts
-  do i = 1, newcohorts
-  k = k+1 ! increment new cohort index
-  cc => vegn%cohorts(k)
-  ! Give the new cohort an ID
-  cc%ccID = MaxCohortID + i
-  ! update child cohort parameters
-  associate (sp => spdata(reproPFTs(i))) ! F2003
-    ! density
-    cc%nindivs = seedC(i)/sp%seedlingsize
+    if (newcohorts >= 1) then   ! build new cohorts for seedlings
+      
+      ccold => vegn%cohorts ! keep old cohort information
+      nCohorts = vegn%n_cohorts + newcohorts
+      allocate(ccnew(1:nCohorts), STAT = istat)
+      ccnew(1:vegn%n_cohorts) = ccold(1:vegn%n_cohorts) ! copy old cohort information
+      vegn%cohorts => ccnew
 
-    cc%species = reproPFTs(i)
-    cc%status  = LEAF_OFF
-    cc%firstlayer = 0
-    cc%topyear = 0.0
-    cc%age     = 0.0
+      deallocate (ccold)
 
-    ! Carbon pools
-    cc%bl      = 0.0 * sp%seedlingsize
-    cc%br      = 0.1 * sp%seedlingsize
-    cc%bsw     = f_initialBSW * sp%seedlingsize
-    cc%bHW     = 0.0 * sp%seedlingsize
-    cc%seedC   = 0.0
-    cc%nsc     = sp%seedlingsize - cc%bsw -cc%br !
-    call rootarea_and_verticalprofile(cc)
+      ! set up new cohorts
+      k = vegn%n_cohorts
+      do i = 1, newcohorts
+        
+        k = k+1 ! increment new cohort index
+        cc => vegn%cohorts(k)
+        
+        ! Give the new cohort an ID
+        cc%ccID = MaxCohortID + i
+        
+        ! update child cohort parameters
+        associate (sp => spdata(reproPFTs(i))) ! F2003
+        
+        ! density
+        cc%nindivs = seedC(i)/sp%seedlingsize
 
-    !      Nitrogen pools
-    cc%leafN  = cc%bl/sp%CNleaf0
-    cc%rootN  = cc%br/sp%CNroot0
-    cc%sapwN  = cc%bsw/sp%CNsw0
-    cc%woodN  = cc%bHW/sp%CNwood0
-    cc%seedN  = 0.0
-    if (cc%nindivs>0.0) &
-    cc%NSN    = sp%seedlingsize * seedN(i) / seedC(i) -  &
-    (cc%leafN + cc%rootN + cc%sapwN + cc%woodN)
+        cc%species = reproPFTs(i)
+        cc%status  = LEAF_OFF
+        cc%firstlayer = 0
+        cc%topyear = 0.0
+        cc%age     = 0.0
 
-    vegn%totNewCC = vegn%totNewCC + cc%nindivs*(cc%bl + cc%br + cc%bsw + cc%bHW + cc%nsc)
-    vegn%totNewCN = vegn%totNewCN + cc%nindivs*(cc%leafN + cc%rootN + cc%sapwN + cc%woodN + cc%NSN)
+        ! Carbon pools
+        cc%bl      = 0.0 * sp%seedlingsize
+        cc%br      = 0.1 * sp%seedlingsize
+        cc%bsw     = f_initialBSW * sp%seedlingsize
+        cc%bHW     = 0.0 * sp%seedlingsize
+        cc%seedC   = 0.0
+        cc%nsc     = sp%seedlingsize - cc%bsw -cc%br !
+        
+        call rootarea_and_verticalprofile(cc)
 
-    call init_cohort_allometry(cc)
-    !        ! seeds fail
-    !cc%nindivs = cc%nindivs * sp%prob_g * sp%prob_e
-    !       put failed seeds to soil carbon pools
-    !        failed_seeds = 0.0 ! (1. - sp%prob_g*sp%prob_e) * seedC(i)!!
+        ! Nitrogen pools
+        cc%leafN  = cc%bl/sp%CNleaf0
+        cc%rootN  = cc%br/sp%CNroot0
+        cc%sapwN  = cc%bsw/sp%CNsw0
+        cc%woodN  = cc%bHW/sp%CNwood0
+        cc%seedN  = 0.0
 
-    !        vegn%litter = vegn%litter + failed_seeds
-    !        vegn%metabolicL = vegn%metabolicL +        fsc_fine *failed_seeds
-    !        vegn%structuralL = vegn%structuralL + (1.0 - fsc_fine)*failed_seeds
+        if (cc%nindivs>0.0) then
+          cc%NSN    = sp%seedlingsize * seedN(i) / seedC(i) -  &
+          (cc%leafN + cc%rootN + cc%sapwN + cc%woodN)
+        end if 
 
-    !      Nitrogen of seeds to soil SOMs
-    !        N_failedseed= 0.0 ! (1.-sp%prob_g*sp%prob_e)   * seedN(i)
-    !        vegn%metabolicN  = vegn%metabolicN   +        fsc_fine * N_failedseed
-    !        vegn%structuralN = vegn%structuralN  + (1.0 - fsc_fine)* N_failedseed
+        vegn%totNewCC = vegn%totNewCC + cc%nindivs*(cc%bl + cc%br + cc%bsw + cc%bHW + cc%nsc)
+        vegn%totNewCN = vegn%totNewCN + cc%nindivs*(cc%leafN + cc%rootN + cc%sapwN + cc%woodN + cc%NSN)
 
-    !       annual N from plants to soil
-    !   vegn%N_P2S_yr = vegn%N_P2S_yr + N_failedseed
+        call init_cohort_allometry(cc)
+        !        ! seeds fail
+        !cc%nindivs = cc%nindivs * sp%prob_g * sp%prob_e
+        !       put failed seeds to soil carbon pools
+        !        failed_seeds = 0.0 ! (1. - sp%prob_g*sp%prob_e) * seedC(i)!!
 
-  end associate   ! F2003
-  enddo
-  MaxCohortID = MaxCohortID + newcohorts
-  vegn%n_cohorts = k
-  ccnew => null()
-  call zero_diagnostics(vegn)
-  endif ! set up new born cohorts
+        !        vegn%litter = vegn%litter + failed_seeds
+        !        vegn%metabolicL = vegn%metabolicL +        fsc_fine *failed_seeds
+        !        vegn%structuralL = vegn%structuralL + (1.0 - fsc_fine)*failed_seeds
+
+        !      Nitrogen of seeds to soil SOMs
+        !        N_failedseed= 0.0 ! (1.-sp%prob_g*sp%prob_e)   * seedN(i)
+        !        vegn%metabolicN  = vegn%metabolicN   +        fsc_fine * N_failedseed
+        !        vegn%structuralN = vegn%structuralN  + (1.0 - fsc_fine)* N_failedseed
+
+        !       annual N from plants to soil
+        !   vegn%N_P2S_yr = vegn%N_P2S_yr + N_failedseed
+
+        end associate   ! F2003
+      enddo
+
+      MaxCohortID = MaxCohortID + newcohorts
+      vegn%n_cohorts = k
+      ccnew => null()
+      
+      call zero_diagnostics(vegn)
+    
+    endif ! set up new born cohorts
 
   end subroutine vegn_reproduction
 
