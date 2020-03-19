@@ -34,7 +34,7 @@ contains
     ! ! local variables
     integer :: dm, moy, jpngr, doy
     ! logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
-    logical, parameter :: verbose = .true.       ! change by hand for debugging etc.
+    logical, parameter :: verbose = .false.       ! change by hand for debugging etc.
 
     !----------------------------------------------------------------
     ! Biome-E stuff
@@ -52,13 +52,13 @@ contains
     logical :: new_annual_cycle = .False.
     logical :: switch = .True.
     integer :: istat1, istat2, istat3
-    integer :: year0,  year1, iyears
+    integer :: year0,  year1
     integer :: fno1, fno2, fno3, fno4, fno5 ! output files
     integer :: totyears
     integer :: i, j, k, idoy
     integer :: idata
     integer, save :: simu_steps !, 
-    
+    integer, save :: iyears
     integer, save :: idays
     character(len=50) :: filepath_out, filesuffix
     character(len=50) :: parameterfile(10), chaSOM(10)
@@ -72,13 +72,13 @@ contains
     ! Create output files
     ! XXX add this to output instead
     !------------------------------------------------------------------------
-    filepath_out   = '/Users/benjaminstocker/lmarques/sofun/output/'
+    filepath_out   = '/Users/lmarques/sofun/output/'
     filesuffix     = '_test.csv' ! tag for simulation experiments
     plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)  ! has 22 columns
-    plantCNpools   = trim(filepath_out)//'Cohorts_daily'//trim(filesuffix)  ! daily has 27 columns
-    soilCNpools    = trim(filepath_out)//'Ecosystem_daily'//trim(filesuffix)
-    allpools       = trim(filepath_out)//'Ecosystem_yearly'//trim(filesuffix)
-    faststepfluxes = trim(filepath_out)//'PhotosynthesisDynamics'//trim(filesuffix) ! hourly, has 15 columns and 
+    plantCNpools   = trim(filepath_out)//'Daily_cohorts'//trim(filesuffix)  ! daily has 27 columns
+    soilCNpools    = trim(filepath_out)//'Daily_tile'//trim(filesuffix)
+    allpools       = trim(filepath_out)//'Annual_tile'//trim(filesuffix)
+    faststepfluxes = trim(filepath_out)//'Hourly_tile'//trim(filesuffix) ! hourly, has 15 columns and 
 
     fno1=91
     fno2=101
@@ -190,7 +190,6 @@ contains
       allocate(vegn)
       
       ! print*,'2'
-      
       call initialize_vegn_tile(vegn, nCohorts)
       
       ! Sort and relayer cohorts
@@ -354,6 +353,7 @@ contains
     print*,'real year: ', year0
 
     if (update_annualLAImax) call vegn_annualLAImax_update(vegn)
+
     call annual_diagnostics(vegn, iyears, fno2, fno5, out_biosphere%annual_cohorts(:), out_biosphere%annual_tile)
 
     !---------------------------------------------

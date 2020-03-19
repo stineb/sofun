@@ -100,7 +100,7 @@ program main
   logical, parameter :: verbose = .false.
   integer :: iday
 
-  character(len=100) :: namelistfile = '/Users/benjaminstocker/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+  character(len=100) :: namelistfile = '/Users/lmarques/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
 
   ! output arrays (naked) to be passed back to C/R
   real, dimension(:,:), allocatable :: out_hourly_tile 
@@ -291,7 +291,6 @@ program main
   ! READ FORCING FILE
   !----------------------------------------------------------------
   
-
   call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
   ! print*, timestep
   ! call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
@@ -499,9 +498,9 @@ program main
     ! print*,'a'
     ! ! !  print*,out_annual_cohorts(yr,:,2)
     call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
-     print*,'c'
-     print*,size(out_annual_cohorts(yr,:,6))
-     print*,out_annual_cohorts(yr,:,4)
+     ! print*,'c'
+     ! print*,size(out_annual_cohorts(yr,:,6))
+     ! print*,out_annual_cohorts(yr,:,4)
      ! stop 'halo'
 
 
@@ -750,8 +749,8 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: m,n
     integer :: idx_climatedata
 
-    ! xxx temporary
-    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
+   ! xxx temporary 
+    character(len=80) :: filepath_in = '/Users/lmarques/sofun/input/'
     character(len=80) :: climfile    = 'ORNL_forcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
@@ -870,8 +869,8 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: idx_climatedata
 
     ! ! xxx temporary
-    ! character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
-    ! character(len=80) :: climfile    = 'US-WCrforcing.txt'
+    character(len=80) :: filepath_in = '/Users/lmarques/sofun/input/'
+    character(len=80) :: climfile    = 'US-WCrforcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
     write(*,*)'inputfile: ',climfile

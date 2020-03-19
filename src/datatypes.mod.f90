@@ -1152,7 +1152,7 @@ contains
     integer :: i
     integer, parameter :: out_max_cohorts = 20     ! Try: Number of maximum cohorts
 
-    write(fno2,'(2(I6,","),1(F9.2,","))') iyears, vegn%n_cohorts,vegn%annualN*1000
+    ! write(fno2,'(2(I6,","),1(F9.2,","))') iyears, vegn%n_cohorts,vegn%annualN*1000
     ! write(*,  '(2(I6,","),1(F9.2,","))')iyears !, vegn%n_cohorts,vegn%annualN*1000
     ! ! output yearly variables
     ! write(*,'(3(a5,","),25(a9,","))') &
