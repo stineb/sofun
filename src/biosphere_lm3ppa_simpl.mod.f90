@@ -255,31 +255,31 @@ contains
         vegn%Tc_daily = 0.0
         tsoil         = 0.0
 
-        !----------------------------------------------------------------
-        ! FAST LOOP
-        !----------------------------------------------------------------
-        fastloop: do i=1,myinterface%steps_per_day
+        ! !----------------------------------------------------------------
+        ! ! FAST LOOP
+        ! !----------------------------------------------------------------
+        ! fastloop: do i=1,myinterface%steps_per_day
 
-          idata = simu_steps + 1
-          year0 =  myinterface%climate(idata)%year  ! Current year
-          vegn%Tc_daily = vegn%Tc_daily +  myinterface%climate(idata)%Tair
+        !   idata = simu_steps + 1
+        !   year0 =  myinterface%climate(idata)%year  ! Current year
+        !   vegn%Tc_daily = vegn%Tc_daily +  myinterface%climate(idata)%Tair
 
-          tsoil         = myinterface%climate(idata)%tsoil
-          simu_steps    = simu_steps + 1
+        !   tsoil         = myinterface%climate(idata)%tsoil
+        !   simu_steps    = simu_steps + 1
 
-          ! print*,'5.0.1'
-          call vegn_CNW_budget_fast(vegn, myinterface%climate(idata))
+        !   ! print*,'5.0.1'
+        !   call vegn_CNW_budget_fast(vegn, myinterface%climate(idata))
           
-          ! diagnostics
-          ! print*,'5.0.2'
-          call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1, out_biosphere%hourly_tile(idata) )
-          ! print*,'5.0.3'
+        !   ! diagnostics
+        !   ! print*,'5.0.2'
+        !   call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1, out_biosphere%hourly_tile(idata) )
+        !   ! print*,'5.0.3'
 
-        enddo fastloop
+        ! enddo fastloop
 
-        vegn%Tc_daily = vegn%Tc_daily/myinterface%steps_per_day
-        tsoil         = tsoil/myinterface%steps_per_day
-        soil_theta    = vegn%thetaS
+        ! vegn%Tc_daily = vegn%Tc_daily/myinterface%steps_per_day
+        ! tsoil         = tsoil/myinterface%steps_per_day
+        ! soil_theta    = vegn%thetaS
 
         !-------------------------------------------------
         ! Daily calls
@@ -293,7 +293,11 @@ contains
         ! print*,'5.2', doy
         call vegn_phenology(vegn, j)
 
-        ! Kill all individuals of a cohort if NSC falls below threshold
+        ! C assimilation, respiration, and SOM turnover
+        ! Added here, consistent with ForestESS
+        call vegn_C_N_budget(vegn, tsoil, soil_theta)
+
+        ! Kill all individuals of a cohort if NSC falls below threshold -- this is done in ForestESS here -> should it be done here? xxx question
         !call vegn_starvation(vegn)
 
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
