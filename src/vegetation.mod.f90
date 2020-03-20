@@ -869,7 +869,7 @@ contains
     vegn%tc_pheno = vegn%tc_pheno * 0.8 + vegn%Tc_daily * 0.2
 
     ! ON and OFF of phenology: change the indicator of growing season for deciduous
-    cohortsloop: do i = 1,vegn%n_cohorts
+    cohortloop2: do i = 1,vegn%n_cohorts
       cc => vegn%cohorts(i)
       ! update GDD for each cohort
       cc%gdd = cc%gdd + max(0.0, vegn%tc_daily - 278.15) ! GDD5
@@ -918,12 +918,12 @@ contains
       endif
       end associate
 
-    enddo cohortsloop
+    enddo cohortloop2
 
     if (TURN_ON_life) call relayer_cohorts(vegn)
 
     ! OFF of a growing season
-    cohortsloop: do i = 1,vegn%n_cohorts
+    cohortloop3: do i = 1,vegn%n_cohorts
 
       cc => vegn%cohorts(i)
       associate (sp => spdata(cc%species) )
@@ -942,7 +942,7 @@ contains
       ! leaf fall
       call Seasonal_fall(cc,vegn)
     
-    enddo cohortsloop
+    enddo cohortloop3
 
   end subroutine vegn_phenology
 
@@ -1251,7 +1251,7 @@ contains
     seedN = 0.0
     nPFTs = 0
 
-    cohortloop: do k=1, vegn%n_cohorts
+    cohortloop1: do k=1, vegn%n_cohorts
       cc => vegn%cohorts(k)
       if (cohort_can_reproduce(cc)) then
         matchflag = 0
@@ -1281,7 +1281,7 @@ contains
           cc%seedN = 0.0
         endif
       endif ! cohort_can_reproduce
-    enddo cohortloop
+    enddo cohortloop1
 
     ! Generate new cohorts
     newcohorts = nPFTs
