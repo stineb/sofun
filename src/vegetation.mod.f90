@@ -1222,7 +1222,7 @@ contains
   end subroutine plant2soil
 
 
-  subroutine vegn_reproduction (vegn)
+  subroutine vegn_reproduction(vegn)
     !////////////////////////////////////////////////////////////////
     ! Reproduction of each canopy cohort, yearly time step
     ! calculate the new cohorts added in this step and states:
@@ -1374,220 +1374,254 @@ contains
 
   end subroutine vegn_reproduction
 
-  ! ============================================================================
-  function cohort_can_reproduce(cc); logical cohort_can_reproduce
-  type(cohort_type), intent(in) :: cc
 
-  associate (sp => spdata(cc%species) )! F2003
-    cohort_can_reproduce = (cc%layer == 1 .and. &
-      cc%nindivs > 0.0 .and. &
-      cc%age   > sp%maturalage.and. &
-      cc%seedC > sp%seedlingsize .and. &
-      cc%seedN > sp%seedlingsize/sp%CNseed0)
-  end associate
+  function cohort_can_reproduce(cc); logical cohort_can_reproduce
+    !////////////////////////////////////////////////////////////////
+    ! Function determines whether cohort can reproduce if:
+    ! - is in top canopy layer
+    ! - has reached maturity age
+    ! - has large enough seed pool for producing seedlings
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(cohort_type), intent(in) :: cc
+
+    associate (sp => spdata(cc%species) )! F2003
+      cohort_can_reproduce = (cc%layer == 1 .and. &
+        cc%nindivs > 0.0 .and. &
+        cc%age   > sp%maturalage.and. &
+        cc%seedC > sp%seedlingsize .and. &
+        cc%seedN > sp%seedlingsize/sp%CNseed0)
+    end associate
 
   end function
 
 
-  !=======================================================================
-  ! switch the species of the first cohort to another species
-  ! bugs !!!!!!
-  subroutine vegn_species_switch(vegn,N_SP,iyears,FREQ)
-  type(vegn_tile_type), intent(inout) :: vegn
-  integer, intent(in):: N_SP  ! total species in model run settings
-  integer, intent(in):: iyears
-  integer, intent(in):: FREQ  ! frequency of species switching
+  subroutine vegn_species_switch(vegn, N_SP, iyears, FREQ)
+    !////////////////////////////////////////////////////////////////
+    ! switch the species of the first cohort to another species
+    ! bugs !!!!!!
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
+    integer, intent(in):: N_SP  ! total species in model run settings
+    integer, intent(in):: iyears
+    integer, intent(in):: FREQ  ! frequency of species switching
 
-  ! local variables --------
-  real :: loss_fine,loss_coarse
-  real :: lossN_fine,lossN_coarse
-  integer :: i, k
-  type(cohort_type), pointer :: cc
+    ! local variables --------
+    real :: loss_fine,loss_coarse
+    real :: lossN_fine,lossN_coarse
+    integer :: i, k
+    type(cohort_type), pointer :: cc
 
-  cc => vegn%cohorts(1)
-  associate (sp => spdata(cc%species)) ! F2003
-   if (cc%bl > 0.0) then ! remove all leaves to keep mass balance
-    loss_coarse  = cc%nindivs * (cc%bl - cc%leafarea*LMAmin)
-    loss_fine    = cc%nindivs *  cc%leafarea*LMAmin
-    lossN_coarse = cc%nindivs * (cc%leafN - cc%leafarea*sp%LNbase)
-    lossN_fine   = cc%nindivs *  cc%leafarea*sp%LNbase
-    ! Carbon to soil pools
-    vegn%metabolicL  = vegn%metabolicL  + fsc_fine *loss_fine + &
-    fsc_wood *loss_coarse
-    vegn%structuralL = vegn%structuralL + (1.0-fsc_fine)*loss_fine + &
-    (1.0-fsc_wood)*loss_coarse
-    ! Nitrogen to soil pools
-    vegn%metabolicN = vegn%metabolicN + fsc_fine  *lossN_fine +   &
-    fsc_wood *lossN_coarse
-    vegn%structuralN = vegn%structuralN +(1.-fsc_fine) *lossN_fine +   &
-    (1.-fsc_wood)*lossN_coarse
-    ! annual N from plants to soil
-    vegn%N_P2S_yr = vegn%N_P2S_yr + lossN_fine + lossN_coarse
-    ! remove leaves
-    cc%bl = 0.0
-  endif
-  end associate
-  ! Change species
-  cc%species = mod(iyears/FREQ,N_SP)+2
+    cc => vegn%cohorts(1)
+    associate (sp => spdata(cc%species)) ! F2003
+    if (cc%bl > 0.0) then ! remove all leaves to keep mass balance
+      loss_coarse  = cc%nindivs * (cc%bl - cc%leafarea*LMAmin)
+      loss_fine    = cc%nindivs *  cc%leafarea*LMAmin
+      lossN_coarse = cc%nindivs * (cc%leafN - cc%leafarea*sp%LNbase)
+      lossN_fine   = cc%nindivs *  cc%leafarea*sp%LNbase
+
+      ! Carbon to soil pools
+      vegn%metabolicL  = vegn%metabolicL  + fsc_fine *loss_fine + &
+        fsc_wood *loss_coarse
+      vegn%structuralL = vegn%structuralL + (1.0-fsc_fine)*loss_fine + &
+        (1.0-fsc_wood)*loss_coarse
+
+      ! Nitrogen to soil pools
+      vegn%metabolicN = vegn%metabolicN + fsc_fine  *lossN_fine +   &
+        fsc_wood *lossN_coarse
+      vegn%structuralN = vegn%structuralN +(1.-fsc_fine) *lossN_fine +   &
+        (1.-fsc_wood)*lossN_coarse
+
+      ! annual N from plants to soil
+      vegn%N_P2S_yr = vegn%N_P2S_yr + lossN_fine + lossN_coarse
+      
+      ! remove leaves
+      cc%bl = 0.0
+    endif
+    end associate
+
+    ! Change species
+    cc%species = mod(iyears/FREQ,N_SP)+2
 
   end subroutine vegn_species_switch
 
-  ! ============================================================================
-  ! Arrange crowns into canopy layers according to their height and crown areas.
-  subroutine relayer_cohorts (vegn)
-  type(vegn_tile_type), intent(inout) :: vegn ! input cohorts
 
-  ! ---- local constants
-  real, parameter :: tolerance = 1e-4
-  real, parameter :: layer_vegn_cover = 1.0   
-  ! local variables
-  integer :: idx(vegn%n_cohorts) ! indices of cohorts in decreasing height order
-  integer :: i ! new cohort index
-  integer :: k ! old cohort index
-  integer :: L ! layer index (top-down)
-  integer :: N0,N1 ! initial and final number of cohorts 
-  real    :: frac ! fraction of the layer covered so far by the canopies
-  type(cohort_type), pointer :: cc(:),new(:)
-  real    :: nindivs
+  subroutine relayer_cohorts(vegn)
+    !////////////////////////////////////////////////////////////////
+    ! Arrange crowns into canopy layers according to their height and 
+    ! crown areas.
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn ! input cohorts
 
-  !  rand_sorting = .TRUE. ! .False.
+    ! ---- local constants
+    real, parameter :: tolerance = 1e-4
+    real, parameter :: layer_vegn_cover = 1.0   
+    ! local variables
+    integer :: idx(vegn%n_cohorts) ! indices of cohorts in decreasing height order
+    integer :: i ! new cohort index
+    integer :: k ! old cohort index
+    integer :: L ! layer index (top-down)
+    integer :: N0,N1 ! initial and final number of cohorts 
+    real    :: frac ! fraction of the layer covered so far by the canopies
+    type(cohort_type), pointer :: cc(:),new(:)
+    real    :: nindivs
 
-  ! rank cohorts in descending order by height. For now, assume that they are 
-  ! in order
-  N0 = vegn%n_cohorts; cc=>vegn%cohorts
-  call rank_descending(cc(1:N0)%height,idx)
+    !  rand_sorting = .TRUE. ! .False.
 
-  ! calculate max possible number of new cohorts : it is equal to the number of
-  ! old cohorts, plus the number of layers -- since the number of full layers is 
-  ! equal to the maximum number of times an input cohort can be split by a layer 
-  ! boundary.
-  N1 = vegn%n_cohorts + int(sum(cc(1:N0)%nindivs*cc(1:N0)%crownarea))
-  allocate(new(N1))
+    ! rank cohorts in descending order by height. For now, assume that they are 
+    ! in order
+    N0 = vegn%n_cohorts; cc=>vegn%cohorts
+    call rank_descending(cc(1:N0)%height,idx)
 
-  ! copy cohort information to the new cohorts, splitting the old cohorts that 
-  ! stride the layer boundaries
-  i = 1 ; k = 1 ; L = 1 ; frac = 0.0 ; nindivs = cc(idx(k))%nindivs
-  do 
-   new(i)         = cc(idx(k))
-   new(i)%nindivs = min(nindivs,(layer_vegn_cover-frac)/cc(idx(k))%crownarea)
-   new(i)%layer   = L
-   if (L==1) new(i)%firstlayer = 1
-   !    if (L>1)  new(i)%firstlayer = 0  ! switch off "push-down effects"
-   frac = frac+new(i)%nindivs*new(i)%crownarea
-   nindivs = nindivs - new(i)%nindivs
-   
-   if (abs(nindivs*cc(idx(k))%crownarea)<tolerance) then
-     new(i)%nindivs = new(i)%nindivs + nindivs ! allocate the remainder of individuals to the last cohort
-     if (k==N0) exit ! end of loop
-     k = k+1 ; nindivs = cc(idx(k))%nindivs  ! go to the next input cohort
-   endif
-   
-   if (abs(layer_vegn_cover - frac)<tolerance) then
-     L = L+1 ; frac = 0.0              ! start new layer
-   endif
-   !     write(*,*)i, new(i)%layer
-   i = i+1
-  enddo
+    ! calculate max possible number of new cohorts : it is equal to the number of
+    ! old cohorts, plus the number of layers -- since the number of full layers is 
+    ! equal to the maximum number of times an input cohort can be split by a layer 
+    ! boundary.
+    N1 = vegn%n_cohorts + int(sum(cc(1:N0)%nindivs*cc(1:N0)%crownarea))
+    allocate(new(N1))
 
-  ! replace the array of cohorts
-  deallocate(vegn%cohorts)
-  vegn%cohorts => new ; vegn%n_cohorts = i
-  ! update layer fraction for each cohort
-  do i=1, vegn%n_cohorts
-   vegn%cohorts(i)%layerfrac = vegn%cohorts(i)%nindivs * vegn%cohorts(i)%crownarea
-  enddo
+    ! copy cohort information to the new cohorts, splitting the old cohorts that 
+    ! stride the layer boundaries
+    i = 1 
+    k = 1 
+    L = 1 
+    frac = 0.0 
+    nindivs = cc(idx(k))%nindivs
+
+    do 
+      new(i)         = cc(idx(k))
+      new(i)%nindivs = min(nindivs,(layer_vegn_cover-frac)/cc(idx(k))%crownarea)
+      new(i)%layer   = L
+      if (L==1) new(i)%firstlayer = 1
+
+      !    if (L>1)  new(i)%firstlayer = 0  ! switch off "push-down effects"
+      frac = frac+new(i)%nindivs*new(i)%crownarea
+      nindivs = nindivs - new(i)%nindivs
+
+      if (abs(nindivs*cc(idx(k))%crownarea)<tolerance) then
+        new(i)%nindivs = new(i)%nindivs + nindivs ! allocate the remainder of individuals to the last cohort
+        if (k==N0) exit ! end of loop
+        k = k+1 ; nindivs = cc(idx(k))%nindivs  ! go to the next input cohort
+      endif
+
+      if (abs(layer_vegn_cover - frac)<tolerance) then
+        L = L+1 ; frac = 0.0              ! start new layer
+      endif
+
+      !     write(*,*)i, new(i)%layer
+      i = i+1
+    
+    enddo
+
+    ! replace the array of cohorts
+    deallocate(vegn%cohorts)
+    vegn%cohorts => new 
+    vegn%n_cohorts = i
+
+    ! update layer fraction for each cohort
+    do i=1, vegn%n_cohorts
+      vegn%cohorts(i)%layerfrac = vegn%cohorts(i)%nindivs * vegn%cohorts(i)%crownarea
+    enddo
 
   end subroutine relayer_cohorts
 
-  ! ============================================================================
 
   subroutine vegn_tissue_turnover(vegn)
-  type(vegn_tile_type), intent(inout) :: vegn
+    !////////////////////////////////////////////////////////////////
+    ! Tissue turnover and transfer to litter pools
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
 
-  ! local variables
-  type(cohort_type), pointer :: cc    ! current cohort
-  real :: loss_coarse, loss_fine, lossN_coarse, lossN_fine
-  real :: alpha_L   ! turnover rate of leaves
-  real :: alpha_S   ! turnover rate of stems
-  real :: dBL, dBR, dBStem  ! leaf and fine root carbon tendencies
-  real :: dNL, dNR, dNStem  ! leaf and fine root nitrogen tendencies
-  real :: dAleaf ! leaf area decrease due to dBL
-  integer :: i
+    ! local variables
+    type(cohort_type), pointer :: cc    ! current cohort
+    real :: loss_coarse, loss_fine, lossN_coarse, lossN_fine
+    real :: alpha_L   ! turnover rate of leaves
+    real :: alpha_S   ! turnover rate of stems
+    real :: dBL, dBR, dBStem  ! leaf and fine root carbon tendencies
+    real :: dNL, dNR, dNStem  ! leaf and fine root nitrogen tendencies
+    real :: dAleaf ! leaf area decrease due to dBL
+    integer :: i
 
-  ! update plant carbon and nitrogen for all cohorts
-  do i = 1, vegn%n_cohorts
-   cc => vegn%cohorts(i)
-   associate ( sp => spdata(cc%species) )
-    !    Turnover of leaves and roots regardless of the STATUS of leaf
-    !    longevity. Deciduous: 0; Evergreen 0.035/LMa
-    !    root turnover
-    if (cc%status==LEAF_OFF) then
-      alpha_L = sp%alpha_L ! 60.0 ! yr-1, for decuduous leaf fall
-    else
-      alpha_L = sp%alpha_L
-    endif
-    ! Stem turnover
-    if (sp%lifeform == 0) then
-      alpha_S = alpha_L
-    else
-      alpha_S = 0.0
-    endif
-    dBL    = cc%bl    *    alpha_L  /days_per_year
-    dNL    = cc%leafN *    alpha_L  /days_per_year
+    ! update plant carbon and nitrogen for all cohorts
+    do i = 1, vegn%n_cohorts
+      cc => vegn%cohorts(i)
+      associate ( sp => spdata(cc%species) )
 
-    dBStem = cc%bsw   *    alpha_S  /days_per_year
-    dNStem = cc%sapwN *    alpha_S  /days_per_year
+      !    Turnover of leaves and roots regardless of the STATUS of leaf
+      !    longevity. Deciduous: 0; Evergreen 0.035/LMa
+      !    root turnover
+      if (cc%status==LEAF_OFF) then
+        alpha_L = sp%alpha_L ! 60.0 ! yr-1, for decuduous leaf fall
+      else
+        alpha_L = sp%alpha_L
+      endif
 
-    dBR    = cc%br    * sp%alpha_FR /days_per_year
-    dNR    = cc%rootN * sp%alpha_FR /days_per_year
+      ! Stem turnover
+      if (sp%lifeform == 0) then
+        alpha_S = alpha_L
+      else
+        alpha_S = 0.0
+      endif
+      dBL    = cc%bl    *    alpha_L  /days_per_year
+      dNL    = cc%leafN *    alpha_L  /days_per_year
 
-    dAleaf = leaf_area_from_biomass(dBL,cc%species,cc%layer,cc%firstlayer)
+      dBStem = cc%bsw   *    alpha_S  /days_per_year
+      dNStem = cc%sapwN *    alpha_S  /days_per_year
 
-    !    Retranslocation to NSC and NSN
-    cc%nsc = cc%nsc + l_fract  * (dBL + dBR + dBStem)
-    cc%NSN = cc%NSN + retransN * (dNL + dNR + dNStem)
-    !    update plant pools
-    cc%bl    = cc%bl    - dBL
-    cc%bsw   = cc%bsw   - dBStem
-    cc%br    = cc%br    - dBR
+      dBR    = cc%br    * sp%alpha_FR /days_per_year
+      dNR    = cc%rootN * sp%alpha_FR /days_per_year
 
-    cc%leafN = cc%leafN - dNL
-    cc%sapwN = cc%sapwN - dNStem
-    cc%rootN = cc%rootN - dNR
+      dAleaf = leaf_area_from_biomass(dBL,cc%species,cc%layer,cc%firstlayer)
 
-    !    update leaf area and LAI
-    cc%leafarea= leaf_area_from_biomass(cc%bl,cc%species,cc%layer,cc%firstlayer)
-    cc%lai     = cc%leafarea/(cc%crownarea *(1.0-sp%internal_gap_frac))
+      !    Retranslocation to NSC and NSN
+      cc%nsc = cc%nsc + l_fract  * (dBL + dBR + dBStem)
+      cc%NSN = cc%NSN + retransN * (dNL + dNR + dNStem)
+      !    update plant pools
+      cc%bl    = cc%bl    - dBL
+      cc%bsw   = cc%bsw   - dBStem
+      cc%br    = cc%br    - dBR
 
-    !    update NPP for leaves, fine roots, and wood
-    cc%NPPleaf = cc%NPPleaf - l_fract * dBL
-    cc%NPProot = cc%NPProot - l_fract * dBR
-    cc%NPPwood = cc%NPPwood - l_fract * dBStem
+      cc%leafN = cc%leafN - dNL
+      cc%sapwN = cc%sapwN - dNStem
+      cc%rootN = cc%rootN - dNR
 
-    !    put C and N into soil pools
-    loss_coarse  = (1.-l_fract) * cc%nindivs * (dBL - dAleaf * LMAmin    + dBStem)
-    loss_fine    = (1.-l_fract) * cc%nindivs * (dBR + dAleaf * LMAmin)
-    lossN_coarse = (1.-retransN)* cc%nindivs * (dNL - dAleaf * sp%LNbase + dNStem)
-    lossN_fine   = (1.-retransN)* cc%nindivs * (dNR + dAleaf * sp%LNbase)
+      !    update leaf area and LAI
+      cc%leafarea= leaf_area_from_biomass(cc%bl,cc%species,cc%layer,cc%firstlayer)
+      cc%lai     = cc%leafarea/(cc%crownarea *(1.0-sp%internal_gap_frac))
 
-    vegn%metabolicL = vegn%metabolicL   +  &
-    fsc_fine * loss_fine + fsc_wood * loss_coarse
-    vegn%structuralL = vegn%structuralL +  &
-    ((1.-fsc_fine)*loss_fine + (1.-fsc_wood)*loss_coarse)
+      !    update NPP for leaves, fine roots, and wood
+      cc%NPPleaf = cc%NPPleaf - l_fract * dBL
+      cc%NPProot = cc%NPProot - l_fract * dBR
+      cc%NPPwood = cc%NPPwood - l_fract * dBStem
 
-    !    Nitrogen to soil SOMs
-    vegn%metabolicN  = vegn%metabolicN +    &
-    fsc_fine * lossN_fine + fsc_wood * lossN_coarse
-    vegn%structuralN = vegn%structuralN + &
-    (1.-fsc_fine) * lossN_fine + (1.-fsc_wood) * lossN_coarse
+      !    put C and N into soil pools
+      loss_coarse  = (1.-l_fract) * cc%nindivs * (dBL - dAleaf * LMAmin    + dBStem)
+      loss_fine    = (1.-l_fract) * cc%nindivs * (dBR + dAleaf * LMAmin)
+      lossN_coarse = (1.-retransN)* cc%nindivs * (dNL - dAleaf * sp%LNbase + dNStem)
+      lossN_fine   = (1.-retransN)* cc%nindivs * (dNR + dAleaf * sp%LNbase)
 
-    !    annual N from plants to soil
-    vegn%N_P2S_yr = vegn%N_P2S_yr + lossN_fine + lossN_coarse
+      vegn%metabolicL = vegn%metabolicL   +  &
+        fsc_fine * loss_fine + fsc_wood * loss_coarse
+      vegn%structuralL = vegn%structuralL +  &
+        ((1.-fsc_fine)*loss_fine + (1.-fsc_wood)*loss_coarse)
 
-  end associate
-  enddo
+      !    Nitrogen to soil SOMs
+      vegn%metabolicN  = vegn%metabolicN +    &
+        fsc_fine * lossN_fine + fsc_wood * lossN_coarse
+      vegn%structuralN = vegn%structuralN + &
+        (1.-fsc_fine) * lossN_fine + (1.-fsc_wood) * lossN_coarse
+
+      !    annual N from plants to soil
+      vegn%N_P2S_yr = vegn%N_P2S_yr + lossN_fine + lossN_coarse
+
+      end associate
+    enddo
 
   end subroutine vegn_tissue_turnover
+  
   !=====================================================
   ! Weng, 2016-11-28
   subroutine vegn_N_uptake(vegn, tsoil)
