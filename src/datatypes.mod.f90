@@ -323,25 +323,6 @@ module datatypes
     real :: totSeedC,totSeedN,totNewCC, totNewCN
   end type vegn_tile_type
 
-  !---------------------------
-
-  ! Rsofun comparison
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   !----------------------------------------
   type :: soil_pars_type
     real :: GMD ! geometric mean partice diameter, mm
@@ -554,7 +535,7 @@ module datatypes
   ! real      :: myinterface%dt_fast_yr = 1.0 / (365.0 * 24.0) ! daily
   ! real      :: step_seconds = 3600.0
 
-  character(len=80) :: filepath_in = '/Users/eweng/Documents/BiomeESS/forcingData/'
+  character(len=80) :: filepath_in = '/Users/eweng/Documents/BiomeESS/forcingData/' !'/Users/eweng/Documents/BiomeESS/forcingData/'
   character(len=160) :: climfile =  'ORNL_forcing.txt' !'US-Ha1forcing.txt'
   !integer   :: model_run_years = 100  ! xxx todo: not used
   !integer   :: runyears = 100  ! xxxxxxx todo: not used
@@ -979,7 +960,7 @@ contains
     !-------local var ------
     type(cohort_type), pointer :: cc    ! current cohort
     integer :: i
-    integer, parameter :: ndayyear = 365  
+    ! integer, parameter :: ndayyear = 365  
     integer, parameter :: out_max_cohorts = 20     ! Try: Number of maximum cohorts
 
     ! Output and zero daily variables
@@ -1152,7 +1133,7 @@ contains
     integer :: i
     integer, parameter :: out_max_cohorts = 20     ! Try: Number of maximum cohorts
 
-    ! write(fno2,'(2(I6,","),1(F9.2,","))') iyears, vegn%n_cohorts,vegn%annualN*1000
+    write(fno2,'(2(I6,","),1(F9.2,","))') iyears, vegn%n_cohorts,vegn%annualN*1000
     ! write(*,  '(2(I6,","),1(F9.2,","))')iyears !, vegn%n_cohorts,vegn%annualN*1000
     ! ! output yearly variables
     ! write(*,'(3(a5,","),25(a9,","))') &
