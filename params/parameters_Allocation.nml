@@ -64,12 +64,12 @@ maturalage    = 0.5,     5,        5,        5,        5,      5,        5,     
                                ! low  N input --> Evergreen
 
 ! Model run
- filepath_in = '/Users/lmarques/BiomeE-Allocation/model/input/'
- climfile    =  'ORNL_forcing.txt' !'US-WCrforcing.txt' !   'CA-Manforcing.txt' !
+ filepath_in = '/Users/lmarques/sofun/input/'
+ climfile    =  'US-WCrforcing.txt' !   'CA-Manforcing.txt' !
                ! 'CA-Manforcing.txt'   !  'US-WBWforcing.txt'
                !   'US-Dk1forcing.txt' ! CA-Obsforcing.txt
                !   'ORNL_forcing.txt'  ! 'KNZ_amb.csv' !  'KNZ_irr.csv' !
-!model_run_years       =  1800, ! 1200,
+! model_run_years       =  1800, ! 1200,
 equi_days             =  0,
 outputhourly          =  .True., ! .True. !
 outputdaily           =  .True.,  ! .False. ! .True.
@@ -78,9 +78,9 @@ update_annualLAImax   =  .False., ! .True. !
 do_closedN_run        =  .True.,
 spinup                = .True.,
 spinupyears           = 1800,
-recycle               = 11, ! 9 (US-WCrforcing) or 11 (ORNL_forcing)
+recycle               = 9, ! 9 (US-WCrforcing) or 11 (ORNL_forcing)
 firstyeartrend        = 1998,
-nyeartrend            = 11, !before 11
+nyeartrend            = 9, !before 11
 longitude             = 0.0,
 latitude              = 0.0,
 altitude              = 0.0,

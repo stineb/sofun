@@ -291,9 +291,9 @@ program main
   ! READ FORCING FILE
   !----------------------------------------------------------------
   
-  call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
+  ! call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
   ! print*, timestep
-  ! call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
+  call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
   myinterface%steps_per_day = int(24.0/timestep)
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0*3600.0/myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
