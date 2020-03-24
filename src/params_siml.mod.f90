@@ -161,10 +161,6 @@ contains
       out_steering%finalize = .false.
     end if
 
-    ! print*, 'out_steering%climateyear'
-    ! print*, out_steering%climateyear
-    ! if (year>30) stop
-
   end function getsteering
 
 

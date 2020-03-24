@@ -1,4 +1,4 @@
- &vegn_parameters_nml
+&vegn_parameters_nml
 soiltype = 3,
 FLDCAP   = 0.4,
 WILTPT   = 0.05,
@@ -64,14 +64,14 @@ maturalage    = 0.5,     5,        5,        5,        5,      5,        5,     
                                ! low  N input --> Evergreen
 
 ! Model run
- filepath_in = '/Users/lmarques/sofun/input/'
- climfile    =  'US-WCrforcing.txt' !   'CA-Manforcing.txt' !
+ ! filepath_in = '/Users/lmarques/sofun/input/'
+ ! climfile    =  'US-WCrforcing.txt' !   'CA-Manforcing.txt' !
                ! 'CA-Manforcing.txt'   !  'US-WBWforcing.txt'
                !   'US-Dk1forcing.txt' ! CA-Obsforcing.txt
                !   'ORNL_forcing.txt'  ! 'KNZ_amb.csv' !  'KNZ_irr.csv' !
 ! model_run_years       =  1800, ! 1200,
 equi_days             =  0,
-outputhourly          =  .True., ! .True. !
+outputhourly          =  .False., ! .True. !
 outputdaily           =  .True.,  ! .False. ! .True.
 do_U_shaped_mortality =  .False., ! .True. !
 update_annualLAImax   =  .False., ! .True. !

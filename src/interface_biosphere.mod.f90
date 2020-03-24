@@ -231,6 +231,7 @@ module md_interface
   end type outtype_annual_tile  
 
   type outtype_annual_cohorts ! fno2
+    real :: year
     real :: cID
     real :: PFT
     real :: layer

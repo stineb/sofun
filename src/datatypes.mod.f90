@@ -323,7 +323,6 @@ module datatypes
     real :: totSeedC,totSeedN,totNewCC, totNewCN
   end type vegn_tile_type
 
-  !----------------------------------------
   type :: soil_pars_type
     real :: GMD ! geometric mean partice diameter, mm
     real :: GSD ! geometric standard deviation of particle size
@@ -339,13 +338,11 @@ module datatypes
     real::  tfreeze
   end type soil_pars_type
 
-
   type :: soil_prog_type
     real wl
     real ws
     real T
   end type soil_prog_type
-
 
   type :: soil_tile_type
     integer :: tag ! kind of the soil
@@ -362,8 +359,6 @@ module datatypes
     real          :: uptake_T ! update temperature from previous time step
     real, pointer :: psi(:) ! soil water potential
   end type soil_tile_type
-
-  
 
   ! PFT-specific parameters
   type(spec_data_type), save :: spdata(0:MSPECIES) ! define PFTs
@@ -491,9 +486,6 @@ module datatypes
   real :: NfixCost0(0:MSPECIES) = 12.0 ! FUN model, Fisher et al. 2010, GBC
   real :: internal_gap_frac(0:MSPECIES)= 0.1 ! The gaps between trees
 
-  ! -------------------------------------------
-
-
   ! soil parameters
   ! Coarse  Medium   Fine    CM     CF     MF    CMF    Peat    MCM
   real :: GMD(n_dim_soil_types) = & ! geometric mean partice diameter, mm
@@ -535,10 +527,10 @@ module datatypes
   ! real      :: myinterface%dt_fast_yr = 1.0 / (365.0 * 24.0) ! daily
   ! real      :: step_seconds = 3600.0
 
-  character(len=80) :: filepath_in = '/Users/eweng/Documents/BiomeESS/forcingData/' !'/Users/eweng/Documents/BiomeESS/forcingData/'
-  character(len=160) :: climfile =  'ORNL_forcing.txt' !'US-Ha1forcing.txt'
-  !integer   :: model_run_years = 100  ! xxx todo: not used
-  !integer   :: runyears = 100  ! xxxxxxx todo: not used
+  character(len=80) :: filepath_in != '/Users/eweng/Documents/BiomeESS/forcingData/' !'/Users/eweng/Documents/BiomeESS/forcingData/'
+  character(len=160) :: climfile !=  'ORNL_forcing.txt' !'US-Ha1forcing.txt'
+  !integer   :: model_run_years = 100 
+  !integer   :: runyears = 100  
   integer   :: equi_days       = 0 ! 100 * 365
   logical   :: outputhourly = .False.
   logical   :: outputdaily  = .True.
@@ -659,8 +651,7 @@ contains
     ! root urnover rate
     spdata%alpha_FR     = alpha_FR
 
-
-    !! Nitrogen Weng 2012-10-24
+    ! Nitrogen Weng 2012-10-24
     ! spdata%CNleaf0 = CNleaf0
     spdata%CNsw0     = CNsw0
     spdata%CNwood0   = CNwood0
@@ -865,18 +856,17 @@ contains
   subroutine hourly_diagnostics(vegn, forcing, iyears, idoy, ihour, iday, fno1, out_hourly_tile)
 
     use md_forcing, only: climate_type, forcingData
-    use md_interface, only: outtype_hourly_tile, myinterface
+    use md_interface, only: outtype_hourly_tile, myinterface !differ
 
     type(vegn_tile_type), intent(inout) :: vegn
     type(climate_type),intent(in):: forcing
-    !type(climate_type),intent(inout):: forcing
     integer, intent(in) :: iyears, idoy, ihour, iday, fno1
     type(outtype_hourly_tile) :: out_hourly_tile
 
     !-------local var ------
     type(cohort_type), pointer :: cc    ! current cohort
     integer :: i
-    integer :: ntstepsyear
+    integer :: ntstepsyear !differ
 
     vegn%age = vegn%age + myinterface%dt_fast_yr
     ! Tile summary
@@ -885,7 +875,8 @@ contains
 
     do i = 1, vegn%n_cohorts
       cc => vegn%cohorts(i)
-      ! cohort daily
+      
+      ! Cohort daily
       cc%dailyTrsp = cc%dailyTrsp + cc%transp ! kg day-1
       cc%dailyGPP  = cc%dailygpp  + cc%gpp ! kg day-1
       cc%dailyNPP  = cc%dailyNpp  + cc%Npp ! kg day-1
@@ -896,11 +887,12 @@ contains
       vegn%NPP    = vegn%NPP    + cc%Npp    * cc%nindivs
       vegn%Resp   = vegn%Resp   + cc%Resp   * cc%nindivs
     enddo
+
     ! NEP is equal to NNP minus soil respiration
     vegn%nep = vegn%npp - vegn%rh ! kgC m-2 hour-1; time step is hourly
-    !! Output horly diagnostics
+    
+    !! Output hourly diagnostics
 
-    ! xxx test: removing condition
     ! if (myinterface%params_siml%outputhourly .and. iday > myinterface%params_siml%equi_days) then
     if (.not. myinterface%steering%spinup) then
 
@@ -920,7 +912,6 @@ contains
         out_hourly_tile%FLDCAP    =  vegn%FLDCAP
         out_hourly_tile%WILTPT    =  vegn%WILTPT
 
-      ! If(outputhourly.and. iday>equi_days) &
       write(fno1,'(3(I5,","),25(E11.4,","),25(F8.2,","))')  &
         iyears, idoy, ihour,      &
         forcing%radiation,    &  !forcingData 
@@ -961,7 +952,7 @@ contains
     type(cohort_type), pointer :: cc    ! current cohort
     integer :: i
     ! integer, parameter :: ndayyear = 365  
-    integer, parameter :: out_max_cohorts = 20     ! Try: Number of maximum cohorts
+    integer, parameter :: out_max_cohorts = 50     ! Try: Number of maximum cohorts
 
     ! Output and zero daily variables
     !!! daily !! cohorts output
@@ -1029,10 +1020,9 @@ contains
      !print*,'outputdaily ', outputdaily
      !print*,'equi_days   ', myinterface%params_siml%equi_days
      !print*,'iday        ', iday
+    
     ! if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
-       !print*,'6a: ', vegn%SapwoodC
-      call summarize_tile(vegn) !tilexxxx
-       !print*,'6b: ', vegn%SapwoodC
+      call summarize_tile(vegn) 
 
         out_daily_tile%year      = iyears
         out_daily_tile%doy       = idoy
@@ -1086,8 +1076,7 @@ contains
 
     ! endif
 
-    !annual tile
-    ! Annual summary:
+    ! Annual summaries 
     vegn%annualNup  = vegn%annualNup  + vegn%dailyNup
     vegn%annualGPP  = vegn%annualGPP  + vegn%dailygpp
     vegn%annualNPP  = vegn%annualNPP  + vegn%dailynpp
@@ -1097,11 +1086,6 @@ contains
     vegn%annualTrsp = vegn%annualTrsp + vegn%dailytrsp
     vegn%annualEvap = vegn%annualEvap + vegn%dailyevap
     vegn%annualRoff = vegn%annualRoff + vegn%dailyRoff
-
-    !print*,'vegn%dailyevap, vegn%annualEvap', vegn%dailyevap, vegn%annualEvap
-    !print*,'vegn%NSC, vegn%SapwoodC', vegn%NSC, vegn%SapwoodC
-    !print*, '  NSC bl bsw bHW br seedC nindivs', cc%NSC,  cc%bl,  cc%bsw,  cc%bHW,  cc%br,   cc%seedC, cc%nindivs  ! xxx debug
-    ! print*, 'more', vegn%NSN,  vegn%SeedN,  vegn%leafN,  vegn%rootN,  vegn%SapwoodN,  vegn%woodN  ! xxx debug
 
     ! zero:
     vegn%dailyNup  = 0.0
@@ -1131,19 +1115,9 @@ contains
     real :: treeG, fseed, fleaf, froot, fwood, dDBH
     real :: plantC, plantN, soilC, soilN
     integer :: i
-    integer, parameter :: out_max_cohorts = 20     ! Try: Number of maximum cohorts
+    integer, parameter :: out_max_cohorts = 50     ! Number of maximum cohorts
 
-    write(fno2,'(2(I6,","),1(F9.2,","))') iyears, vegn%n_cohorts,vegn%annualN*1000
-    ! write(*,  '(2(I6,","),1(F9.2,","))')iyears !, vegn%n_cohorts,vegn%annualN*1000
-    ! ! output yearly variables
-    ! write(*,'(3(a5,","),25(a9,","))') &
-    ! 'chtID','PFT','layer','density', 'f_layer',  &
-    !    'dDBH','dbh','height','Acrown', &
-    !    'wood','nsc', 'NSN','fNPPseed',     &
-    !    'fNPPL','fNPPR','fNPPW','GPP-yr','NPP-yr', &
-    !    'N_uptk','N_fix','spLAI'
-
-    ! Cohotrs ouput
+    ! Output annual cohorts
     do i = 1, vegn%n_cohorts
 
       cc => vegn%cohorts(i)
@@ -1152,8 +1126,9 @@ contains
       fleaf = cc%NPPleaf/treeG
       froot = cc%NPProot/treeG
       fwood = cc%NPPwood/treeG
-      dDBH = (cc%DBH   - cc%DBH_ys)*1000.
+      dDBH = (cc%DBH - cc%DBH_ys)*1000.
 
+      out_annual_cohorts(i)%year    = iyears
       out_annual_cohorts(i)%cID     = cc%ccID
       out_annual_cohorts(i)%PFT     = cc%species
       out_annual_cohorts(i)%layer   = cc%layer
@@ -1178,8 +1153,8 @@ contains
       out_annual_cohorts(i)%maxLAI  = spdata(cc%species)%laimax
 
 
-      write(fno2,'(1(I7,","),2(I4,","),1(F9.1,","),45(F12.4,","))')        &
-        cc%ccID,cc%species,cc%layer,                        &
+      write(fno2,'(2(I7,","),2(I4,","),1(F9.1,","),45(F12.4,","))')        &
+        iyears, cc%ccID,cc%species,cc%layer,                &
         cc%nindivs*10000, cc%layerfrac,dDBH,                &
         cc%dbh,cc%height,cc%crownarea,                      &
         cc%bsw+cc%bHW,cc%nsc,cc%NSN*1000,                   &
@@ -1188,20 +1163,9 @@ contains
         cc%annualNup*1000,cc%annualfixedN*1000,             &
         spdata(cc%species)%laimax
 
-      !! Screen output
-      !write(*,'(1(I7,","),2(I4,","),1(F9.1,","),25(F9.2,","))')    &
-      !            cc%ccID,cc%species,cc%layer,                     &
-      !            cc%nindivs*10000, cc%layerfrac,dDBH,             &
-      !            cc%dbh,cc%height,cc%crownarea,                   &
-      !            cc%bsw+cc%bHW,cc%nsc,cc%NSN*1000,                &
-      !            fseed, fleaf, froot, fwood,                      &
-      !            cc%annualGPP/cc%crownarea,                       &
-      !            cc%annualNPP/cc%crownarea,                       &
-      !            cc%annualNup*1000,cc%annualfixedN*1000,          &
-      !            spdata(cc%species)%laimax
     enddo
 
-    ! tile pools output
+    ! Output annual tile
     call summarize_tile(vegn)
     do i = 1, vegn%n_cohorts
       cc => vegn%cohorts(i)
@@ -1259,8 +1223,6 @@ contains
     out_annual_tile%Seedling_C = vegn%totNewCC*1000
     out_annual_tile%Seedling_N = vegn%totNewCN*1000
 
-    !print*,'writing annual tile?'
-
     write(fno5,'(1(I5,","),27(F9.4,","),6(F9.3,","),18(F10.4,","))') &
       iyears,       &
       vegn%CAI, vegn%LAI, &
@@ -1293,7 +1255,7 @@ contains
     endif
 
   end subroutine
-  !================================================
+  
 end module datatypes
 
 
