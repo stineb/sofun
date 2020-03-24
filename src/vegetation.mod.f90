@@ -1,5 +1,9 @@
 module md_vegetation
-  
+  !////////////////////////////////////////////////////////////////
+  ! Contains subroutines simulating C assimilation, N uptake, 
+  ! growth, light competition (PPA canopy layers), reproduction, 
+  ! mortality, turnover, SOM dynamics, and N mineralisation.
+  !---------------------------------------------------------------
   use datatypes
   use md_soil
   use md_interface, only: myinterface
@@ -17,8 +21,6 @@ module md_vegetation
 
 contains
 
-!=============== ESS subroutines ========================================
-!========================================================================
   subroutine vegn_CNW_budget_fast(vegn, forcing)
     !////////////////////////////////////////////////////////////////
     ! hourly carbon, nitrogen, and water dynamics, Weng 2016-11-25
@@ -1251,8 +1253,10 @@ contains
     seedN = 0.0
     nPFTs = 0
 
+    ! sum up seed mass across cohorts
     cohortloop: do k=1, vegn%n_cohorts
       cc => vegn%cohorts(k)
+
       if (cohort_can_reproduce(cc)) then
         matchflag = 0
         do i=1,nPFTs
@@ -1269,6 +1273,7 @@ contains
             exit
           endif
         enddo
+
         if (matchflag==0) then ! when it is a new PFT, put it to the next place
           nPFTs            = nPFTs + 1 ! update the number of reproducible PFTs
           reproPFTs(nPFTs) = cc%species ! PFT number
@@ -1374,61 +1379,79 @@ contains
 
   end subroutine vegn_reproduction
 
-  ! ============================================================================
-  function cohort_can_reproduce(cc); logical cohort_can_reproduce
-  type(cohort_type), intent(in) :: cc
 
-  associate (sp => spdata(cc%species) )! F2003
-    cohort_can_reproduce = (cc%layer == 1 .and. &
-      cc%nindivs > 0.0 .and. &
-      cc%age   > sp%maturalage.and. &
-      cc%seedC > sp%seedlingsize .and. &
-      cc%seedN > sp%seedlingsize/sp%CNseed0)
-  end associate
+  function cohort_can_reproduce(cc); logical cohort_can_reproduce
+    !////////////////////////////////////////////////////////////////
+    ! Determine whether a cohort can reproduce, based on criteria:
+    ! - is in top canopy layer
+    ! - is actually present
+    ! - has reached reproductive maturity (age)
+    ! - C and N in seed pool is sufficiently large to satisfy mass of a new seedling
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(cohort_type), intent(in) :: cc
+
+    associate (sp => spdata(cc%species) )! F2003
+      cohort_can_reproduce = (cc%layer == 1 .and. &
+        cc%nindivs > 0.0 .and. &
+        cc%age   > sp%maturalage.and. &
+        cc%seedC > sp%seedlingsize .and. &
+        cc%seedN > sp%seedlingsize/sp%CNseed0)
+    end associate
 
   end function
 
 
-  !=======================================================================
-  ! switch the species of the first cohort to another species
-  ! bugs !!!!!!
   subroutine vegn_species_switch(vegn,N_SP,iyears,FREQ)
-  type(vegn_tile_type), intent(inout) :: vegn
-  integer, intent(in):: N_SP  ! total species in model run settings
-  integer, intent(in):: iyears
-  integer, intent(in):: FREQ  ! frequency of species switching
+    !////////////////////////////////////////////////////////////////
+    ! switch the species of the first cohort to another species
+    ! bugs !!!!!!
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
+    integer, intent(in):: N_SP  ! total species in model run settings
+    integer, intent(in):: iyears
+    integer, intent(in):: FREQ  ! frequency of species switching
 
-  ! local variables --------
-  real :: loss_fine,loss_coarse
-  real :: lossN_fine,lossN_coarse
-  integer :: i, k
-  type(cohort_type), pointer :: cc
+    ! local variables --------
+    real :: loss_fine,loss_coarse
+    real :: lossN_fine,lossN_coarse
+    integer :: i, k
+    type(cohort_type), pointer :: cc
 
-  cc => vegn%cohorts(1)
-  associate (sp => spdata(cc%species)) ! F2003
-   if (cc%bl > 0.0) then ! remove all leaves to keep mass balance
-    loss_coarse  = cc%nindivs * (cc%bl - cc%leafarea*LMAmin)
-    loss_fine    = cc%nindivs *  cc%leafarea*LMAmin
-    lossN_coarse = cc%nindivs * (cc%leafN - cc%leafarea*sp%LNbase)
-    lossN_fine   = cc%nindivs *  cc%leafarea*sp%LNbase
-    ! Carbon to soil pools
-    vegn%metabolicL  = vegn%metabolicL  + fsc_fine *loss_fine + &
-    fsc_wood *loss_coarse
-    vegn%structuralL = vegn%structuralL + (1.0-fsc_fine)*loss_fine + &
-    (1.0-fsc_wood)*loss_coarse
-    ! Nitrogen to soil pools
-    vegn%metabolicN = vegn%metabolicN + fsc_fine  *lossN_fine +   &
-    fsc_wood *lossN_coarse
-    vegn%structuralN = vegn%structuralN +(1.-fsc_fine) *lossN_fine +   &
-    (1.-fsc_wood)*lossN_coarse
-    ! annual N from plants to soil
-    vegn%N_P2S_yr = vegn%N_P2S_yr + lossN_fine + lossN_coarse
-    ! remove leaves
-    cc%bl = 0.0
-  endif
-  end associate
-  ! Change species
-  cc%species = mod(iyears/FREQ,N_SP)+2
+    cc => vegn%cohorts(1)
+    associate (sp => spdata(cc%species)) ! F2003
+
+    if (cc%bl > 0.0) then 
+      ! remove all leaves to keep mass balance
+      loss_coarse  = cc%nindivs * (cc%bl - cc%leafarea*LMAmin)
+      loss_fine    = cc%nindivs *  cc%leafarea*LMAmin
+      lossN_coarse = cc%nindivs * (cc%leafN - cc%leafarea*sp%LNbase)
+      lossN_fine   = cc%nindivs *  cc%leafarea*sp%LNbase
+
+      ! Carbon to soil pools
+      vegn%metabolicL  = vegn%metabolicL  + fsc_fine *loss_fine + &
+        fsc_wood *loss_coarse
+      vegn%structuralL = vegn%structuralL + (1.0-fsc_fine)*loss_fine + &
+        (1.0-fsc_wood)*loss_coarse
+
+      ! Nitrogen to soil pools
+      vegn%metabolicN = vegn%metabolicN + fsc_fine  *lossN_fine +   &
+        fsc_wood *lossN_coarse
+      vegn%structuralN = vegn%structuralN +(1.-fsc_fine) *lossN_fine +   &
+        (1.-fsc_wood)*lossN_coarse
+
+      ! annual N from plants to soil
+      vegn%N_P2S_yr = vegn%N_P2S_yr + lossN_fine + lossN_coarse
+
+      ! remove leaves
+      cc%bl = 0.0
+
+    endif
+    end associate
+    
+    ! Change species
+    cc%species = mod(iyears/FREQ,N_SP)+2
 
   end subroutine vegn_species_switch
 
