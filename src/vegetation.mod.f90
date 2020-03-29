@@ -1630,353 +1630,389 @@ contains
 
   end subroutine vegn_tissue_turnover
   
-  !=====================================================
-  ! Weng, 2016-11-28
+
   subroutine vegn_N_uptake(vegn, tsoil)
-  type(vegn_tile_type), intent(inout) :: vegn
-  real, intent(in) :: tsoil ! average temperature of soil, degK
+    !////////////////////////////////////////////////////////////////
+    ! Vegetation nitrogen uptake
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
+    real, intent(in) :: tsoil ! average temperature of soil, degK
 
-  ! local variables
-  type(cohort_type), pointer :: cc
-  real    :: rho_N_up0 = 0.1 ! 0.05 ! hourly N uptake rate, fraction of the total mineral N
-  real    :: N_roots0  = 0.4  ! root biomass at half max N-uptake rate,kg C m-2
-  real    :: totNup    ! kgN m-2
-  real    :: avgNup
-  real    :: rho_N_up,N_roots   ! actual N uptake rate
-  logical :: NSN_not_full
-  integer :: i
+    ! local variables
+    type(cohort_type), pointer :: cc
+    real    :: rho_N_up0 = 0.1 ! 0.05 ! hourly N uptake rate, fraction of the total mineral N
+    real    :: N_roots0  = 0.4  ! root biomass at half max N-uptake rate,kg C m-2
+    real    :: totNup    ! kgN m-2
+    real    :: avgNup
+    real    :: rho_N_up,N_roots   ! actual N uptake rate
+    logical :: NSN_not_full
+    integer :: i
 
-  !! Nitrogen uptake parameter
-  ! It considers competition here. How much N one can absorp depends on 
-  ! how many roots it has and how many roots other individuals have.
-  N_Roots  = 0.0
-  vegn%N_uptake = 0.0
-  if (vegn%mineralN > 0.0) then
-   do i = 1, vegn%n_cohorts
-    cc => vegn%cohorts(i)
-    associate (sp => spdata(cc%species))
-      !       A scheme for deciduous to get enough N:
-      cc%NSNmax = sp%fNSNmax*(cc%bl_max/(sp%CNleaf0*sp%leafLS)+cc%br_max/sp%CNroot0) !5.0 * (cc%bl_max/sp%CNleaf0 + cc%br_max/sp%CNroot0)) !
-      if (cc%NSN < cc%NSNmax) &
-      N_Roots = N_Roots + cc%br * cc%nindivs
-
-    end associate
-  enddo
-  ! M-M equation for Nitrogen absoption, McMurtrie et al. 2012, Ecology & Evolution
-  ! rate at given root biomass and period of time
-  if (N_roots>0.0) then
-    ! Add a temperature response equation herefor rho_N_up0 (Zhu Qing 2016)
-    ! rho_N_up = 1.-exp(-rho_N_up0 * N_roots/(N_roots0+N_roots) * hours_per_year * myinterface%dt_fast_yr) ! rate at given root density and time period
-    rho_N_up = rho_N_up0 * N_roots/(N_roots0+N_roots) * hours_per_year * myinterface%dt_fast_yr
-    totNup = rho_N_up * vegn%mineralN * exp(9000.0 * (1./298.16 - 1./tsoil)) ! kgN m-2 time step-1
-    avgNup = totNup / N_roots ! kgN time step-1 kg roots-1
-    ! Nitrogen uptaken by each cohort, N_uptake
+    !! Nitrogen uptake parameter
+    ! It considers competition here. How much N one can absorp depends on 
+    ! how many roots it has and how many roots other individuals have.
+    N_Roots  = 0.0
     vegn%N_uptake = 0.0
-    do i = 1, vegn%n_cohorts
-     cc => vegn%cohorts(i)
-     cc%N_uptake  = 0.0
-     if (cc%NSN < cc%NSNmax) then
-       cc%N_uptake  = cc%br*avgNup ! min(cc%br*avgNup, cc%NSNmax-cc%NSN)
-       cc%nsn       = cc%nsn + cc%N_uptake
-       cc%annualNup = cc%annualNup + cc%N_uptake !/cc%crownarea
-       ! subtract N from mineral N
-       vegn%mineralN = vegn%mineralN - cc%N_uptake * cc%nindivs
-       vegn%N_uptake = vegn%N_uptake + cc%N_uptake * cc%nindivs
-     endif
-   enddo
-   cc =>null()
-  endif ! N_roots>0
-  endif
+
+    if (vegn%mineralN > 0.0) then
+    
+      do i = 1, vegn%n_cohorts
+        cc => vegn%cohorts(i)
+        associate (sp => spdata(cc%species))
+
+        ! A scheme for deciduous to get enough N:
+        cc%NSNmax = sp%fNSNmax*(cc%bl_max/(sp%CNleaf0*sp%leafLS)+cc%br_max/sp%CNroot0) !5.0 * (cc%bl_max/sp%CNleaf0 + cc%br_max/sp%CNroot0)) !
+        if (cc%NSN < cc%NSNmax) N_Roots = N_Roots + cc%br * cc%nindivs
+
+        end associate
+      enddo
+      
+      ! M-M equation for Nitrogen absoption, McMurtrie et al. 2012, Ecology & Evolution
+      ! rate at given root biomass and period of time
+      if (N_roots>0.0) then
+        ! Add a temperature response equation herefor rho_N_up0 (Zhu Qing 2016)
+        ! rho_N_up = 1.-exp(-rho_N_up0 * N_roots/(N_roots0+N_roots) * hours_per_year * myinterface%dt_fast_yr) ! rate at given root density and time period
+        rho_N_up = rho_N_up0 * N_roots/(N_roots0+N_roots) * hours_per_year * myinterface%dt_fast_yr
+        totNup = rho_N_up * vegn%mineralN * exp(9000.0 * (1./298.16 - 1./tsoil)) ! kgN m-2 time step-1
+        avgNup = totNup / N_roots ! kgN time step-1 kg roots-1
+        
+        ! Nitrogen uptaken by each cohort, N_uptake
+        vegn%N_uptake = 0.0
+        do i = 1, vegn%n_cohorts
+          cc => vegn%cohorts(i)
+          cc%N_uptake  = 0.0
+          if (cc%NSN < cc%NSNmax) then
+            cc%N_uptake  = cc%br*avgNup ! min(cc%br*avgNup, cc%NSNmax-cc%NSN)
+            cc%nsn       = cc%nsn + cc%N_uptake
+            cc%annualNup = cc%annualNup + cc%N_uptake !/cc%crownarea
+            ! subtract N from mineral N
+            vegn%mineralN = vegn%mineralN - cc%N_uptake * cc%nindivs
+            vegn%N_uptake = vegn%N_uptake + cc%N_uptake * cc%nindivs
+          endif
+        enddo
+        cc =>null()
+
+      endif ! N_roots>0
+    endif
   end subroutine vegn_N_uptake
-  ! ============================================================================
-  ! Nitrogen mineralization and immoblization with microbial C & N pools
-  ! it's a new decomposition model with coupled C & N pools and variable 
-  ! carbon use efficiency
+
+
   subroutine SOMdecomposition(vegn, tsoil, thetaS)
-  type(vegn_tile_type), intent(inout) :: vegn
-  real                , intent(in)    :: tsoil ! soil temperature, deg K 
-  real                , intent(in)    :: thetaS
+    !////////////////////////////////////////////////////////////////
+    ! Nitrogen mineralization and immoblization with microbial C & N pools
+    ! it's a new decomposition model with coupled C & N pools and variable 
+    ! carbon use efficiency
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
+    real                , intent(in)    :: tsoil ! soil temperature, deg K 
+    real                , intent(in)    :: thetaS
 
-  real :: CUE0=0.4  ! default microbial CUE
-  real :: phoMicrobial = 2.5 ! turnover rate of microbes (yr-1)
-  real :: CUEfast,CUEslow
-  real :: CNm = 10.0  ! Microbial C/N ratio
-  real :: NforM, fNM=0.0  ! mineral N available for microbes
-  real :: micr_C_loss, fast_L_loss, slow_L_loss
-  real :: runoff ! kg m-2 /step
-  real :: N_loss
-  real :: DON_fast,DON_slow,DON_loss ! Dissolved organic N loss, kg N m-2 step-1
-  real :: fDON=0.0   ! 0.02     ! fractio of DON production in decomposition
-  real :: fast_N_free 
-  real :: slow_N_free 
-  real :: CNfast, CNslow
-  real :: A  ! decomp rate reduction due to moisture and temperature
+    real :: CUE0=0.4  ! default microbial CUE
+    real :: phoMicrobial = 2.5 ! turnover rate of microbes (yr-1)
+    real :: CUEfast,CUEslow
+    real :: CNm = 10.0  ! Microbial C/N ratio
+    real :: NforM, fNM=0.0  ! mineral N available for microbes
+    real :: micr_C_loss, fast_L_loss, slow_L_loss
+    real :: runoff ! kg m-2 /step
+    real :: N_loss
+    real :: DON_fast,DON_slow,DON_loss ! Dissolved organic N loss, kg N m-2 step-1
+    real :: fDON=0.0   ! 0.02     ! fractio of DON production in decomposition
+    real :: fast_N_free 
+    real :: slow_N_free 
+    real :: CNfast, CNslow
+    real :: A  ! decomp rate reduction due to moisture and temperature
 
-  !  runoff = vegn%Wrunoff * 365*24*3600 *myinterface%dt_fast_yr !kgH2O m-2 s-1 ->kg m-2/time step
-  runoff = vegn%runoff  !* myinterface%dt_fast_yr !kgH2O m-2 yr-1 ->kgH2O m-2/time step, weng 2017-10-15
-  ! CN ratios of soil C pools
+    !  runoff = vegn%Wrunoff * 365*24*3600 *myinterface%dt_fast_yr !kgH2O m-2 s-1 ->kg m-2/time step
+    runoff = vegn%runoff  !* myinterface%dt_fast_yr !kgH2O m-2 yr-1 ->kgH2O m-2/time step, weng 2017-10-15
+    ! CN ratios of soil C pools
 
-  CNfast = vegn%metabolicL/vegn%metabolicN
-  CNslow = vegn%structuralL/vegn%structuralN
+    CNfast = vegn%metabolicL/vegn%metabolicN
+    CNslow = vegn%structuralL/vegn%structuralN
 
-  !! C decomposition
-  !  A=A_function(tsoil,thetaS)
-  !  micr_C_loss = vegn%microbialC *A*phoMicrobial* myinterface%dt_fast_yr
-  !  fast_L_loss = vegn%metabolicL*A*K1           * myinterface%dt_fast_yr
-  !  slow_L_loss = vegn%structuralL*A*K2          * myinterface%dt_fast_yr
+    !! C decomposition
+    !  A=A_function(tsoil,thetaS)
+    !  micr_C_loss = vegn%microbialC *A*phoMicrobial* myinterface%dt_fast_yr
+    !  fast_L_loss = vegn%metabolicL*A*K1           * myinterface%dt_fast_yr
+    !  slow_L_loss = vegn%structuralL*A*K2          * myinterface%dt_fast_yr
 
-  ! C decomposition
-  A=A_function(tsoil,thetaS)
-  micr_C_loss = vegn%microbialC * (1.0 - exp(-A*phoMicrobial* myinterface%dt_fast_yr))
-  fast_L_loss = vegn%metabolicL * (1.0 - exp(-A*K1          * myinterface%dt_fast_yr))
-  slow_L_loss = vegn%structuralL* (1.0 - exp(-A*K2          * myinterface%dt_fast_yr))
+    ! C decomposition
+    A=A_function(tsoil,thetaS)
+    micr_C_loss = vegn%microbialC * (1.0 - exp(-A*phoMicrobial* myinterface%dt_fast_yr))
+    fast_L_loss = vegn%metabolicL * (1.0 - exp(-A*K1          * myinterface%dt_fast_yr))
+    slow_L_loss = vegn%structuralL* (1.0 - exp(-A*K2          * myinterface%dt_fast_yr))
 
-  ! Carbon use efficiencies of microbes
-  NforM = fNM * vegn%mineralN
+    ! Carbon use efficiencies of microbes
+    NforM = fNM * vegn%mineralN
 
-  if (slow_L_loss > 0.0) then  
-    CUEfast = MIN(CUE0,CNm*(fast_L_loss/CNfast + NforM)/fast_L_loss)
-  else
-    CUEfast = CUE0
-  end if
+    if (slow_L_loss > 0.0) then  
+      CUEfast = MIN(CUE0,CNm*(fast_L_loss/CNfast + NforM)/fast_L_loss)
+    else
+      CUEfast = CUE0
+    end if
 
-  if (slow_L_loss > 0.0) then
-    CUEslow = MIN(CUE0,CNm*(slow_L_loss/CNslow + NforM)/slow_L_loss)
-  else
-    CUEslow = CUE0
-  end if
+    if (slow_L_loss > 0.0) then
+      CUEslow = MIN(CUE0,CNm*(slow_L_loss/CNslow + NforM)/slow_L_loss)
+    else
+      CUEslow = CUE0
+    end if
 
-  ! update C and N pools
-  ! Carbon pools
-  vegn%microbialC  = vegn%microbialC - micr_C_loss &
-  + fast_L_loss * CUEfast &
-  + slow_L_loss * CUEslow
-  vegn%metabolicL = vegn%metabolicL - fast_L_loss
-  vegn%structuralL = vegn%structuralL - slow_L_loss
+    ! update C and N pools
+    ! Carbon pools
+    vegn%microbialC  = vegn%microbialC - micr_C_loss &
+      + fast_L_loss * CUEfast &
+      + slow_L_loss * CUEslow
+    vegn%metabolicL = vegn%metabolicL - fast_L_loss
+    vegn%structuralL = vegn%structuralL - slow_L_loss
 
-  ! Find papers about soil DON losses
-  ! DON loss, revised by Weng. 2016-03-03  ??
-  fDON        = 0.25 ! 0.25 ! * myinterface%dt_fast_yr ! 0.05 !* myinterface%dt_fast_yr
-  runoff      = 0.2 ! 0.2 ! mm day-1
-  ! Assume it is proportional to decomposition rates
-  ! Find some papers!!
-  DON_fast    = fDON * fast_L_loss/CNfast * (etaN*runoff)
-  DON_slow    = fDON * slow_L_loss/CNslow * (etaN*runoff)
-  DON_loss    = DON_fast + DON_slow
+    ! Find papers about soil DON losses
+    ! DON loss, revised by Weng. 2016-03-03  ??
+    fDON        = 0.25 ! 0.25 ! * myinterface%dt_fast_yr ! 0.05 !* myinterface%dt_fast_yr
+    runoff      = 0.2 ! 0.2 ! mm day-1
+    ! Assume it is proportional to decomposition rates
+    ! Find some papers!!
+    DON_fast    = fDON * fast_L_loss/CNfast * (etaN*runoff)
+    DON_slow    = fDON * slow_L_loss/CNslow * (etaN*runoff)
+    DON_loss    = DON_fast + DON_slow
 
-  ! Update Nitrogen pools
-  vegn%microbialN= vegn%microbialC/CNm
-  vegn%metabolicN  = vegn%metabolicN  - fast_L_loss/CNfast - DON_fast
-  vegn%structuralN = vegn%structuralN - slow_L_loss/CNslow - DON_slow
+    ! Update Nitrogen pools
+    vegn%microbialN= vegn%microbialC/CNm
+    vegn%metabolicN  = vegn%metabolicN  - fast_L_loss/CNfast - DON_fast
+    vegn%structuralN = vegn%structuralN - slow_L_loss/CNslow - DON_slow
 
-  ! Mixing of microbes to litters
-  vegn%metabolicL   = vegn%metabolicL + MLmixRatio*fast_L_loss * CUEfast
-  vegn%metabolicN   = vegn%metabolicN + MLmixRatio*fast_L_loss * CUEfast/CNm
+    ! Mixing of microbes to litters
+    vegn%metabolicL   = vegn%metabolicL + MLmixRatio*fast_L_loss * CUEfast
+    vegn%metabolicN   = vegn%metabolicN + MLmixRatio*fast_L_loss * CUEfast/CNm
 
-  vegn%structuralL = vegn%structuralL + MLmixRatio*slow_L_loss * CUEslow
-  vegn%structuralN = vegn%structuralN + MLmixRatio*slow_L_loss * CUEslow/CNm
+    vegn%structuralL = vegn%structuralL + MLmixRatio*slow_L_loss * CUEslow
+    vegn%structuralN = vegn%structuralN + MLmixRatio*slow_L_loss * CUEslow/CNm
 
-  vegn%microbialC  = vegn%microbialC  - MLmixRatio*(fast_L_loss*CUEfast+slow_L_loss*CUEslow)
-  vegn%microbialN  = vegn%microbialC/CNm
+    vegn%microbialC  = vegn%microbialC  - MLmixRatio*(fast_L_loss*CUEfast+slow_L_loss*CUEslow)
+    vegn%microbialN  = vegn%microbialC/CNm
 
-  ! update mineral N pool (mineralN)
-  fast_N_free = MAX(0.0, fast_L_loss*(1./CNfast - CUEfast/CNm))
-  slow_N_free = MAX(0.0, slow_L_loss*(1./CNslow - CUEslow/CNm))
+    ! update mineral N pool (mineralN)
+    fast_N_free = MAX(0.0, fast_L_loss*(1./CNfast - CUEfast/CNm))
+    slow_N_free = MAX(0.0, slow_L_loss*(1./CNslow - CUEslow/CNm))
 
-  N_loss = MAX(0.,vegn%mineralN) * A * K_nitrogen * myinterface%dt_fast_yr
+    N_loss = MAX(0.,vegn%mineralN) * A * K_nitrogen * myinterface%dt_fast_yr
 
-  !  N_loss = MAX(0.,vegn%mineralN) * (1. - exp(0.0 - etaN*runoff - A*K_nitrogen*myinterface%dt_fast_yr))
-  N_loss = vegn%mineralN * MIN(0.25, (A * K_nitrogen * myinterface%dt_fast_yr + etaN*runoff))
+    !  N_loss = MAX(0.,vegn%mineralN) * (1. - exp(0.0 - etaN*runoff - A*K_nitrogen*myinterface%dt_fast_yr))
+    N_loss = vegn%mineralN * MIN(0.25, (A * K_nitrogen * myinterface%dt_fast_yr + etaN*runoff))
 
-  ! ! xxx debug
-  ! ! print*,'N_loss ', N_loss
-  ! N_loss = 0.0
+    ! ! xxx debug
+    ! ! print*,'N_loss ', N_loss
+    ! N_loss = 0.0
 
-  vegn%Nloss_yr = vegn%Nloss_yr + N_loss + DON_loss
+    vegn%Nloss_yr = vegn%Nloss_yr + N_loss + DON_loss
 
-  vegn%mineralN = vegn%mineralN - N_loss       &
-    + vegn%N_input * myinterface%dt_fast_yr  &
-    + fast_N_free + slow_N_free  &
-    + micr_C_loss/CNm
+    vegn%mineralN = vegn%mineralN - N_loss       &
+      + vegn%N_input * myinterface%dt_fast_yr  &
+      + fast_N_free + slow_N_free  &
+      + micr_C_loss/CNm
 
-  vegn%annualN = vegn%annualN - N_loss       &
-    + vegn%N_input * myinterface%dt_fast_yr  &
-    + fast_N_free + slow_N_free  &
-    + micr_C_loss/CNm
+    vegn%annualN = vegn%annualN - N_loss       &
+      + vegn%N_input * myinterface%dt_fast_yr  &
+      + fast_N_free + slow_N_free  &
+      + micr_C_loss/CNm
 
-  ! ! xxx debug: slightly different dynamics are caused by mineralN
-  ! print*,N_loss, vegn%N_input, fast_N_free, slow_N_free, micr_C_loss
-  ! vegn%mineralN = 0.00025
+    ! ! xxx debug: slightly different dynamics are caused by mineralN
+    ! print*,N_loss, vegn%N_input, fast_N_free, slow_N_free, micr_C_loss
+    ! vegn%mineralN = 0.00025
 
-  ! Check if soil C/N is lower than CN0
-  fast_N_free = MAX(0., vegn%metabolicN  - vegn%metabolicL/CN0metabolicL)
-  slow_N_free = MAX(0., vegn%structuralN - vegn%structuralL/CN0structuralL)
-  vegn%metabolicN  = vegn%metabolicN  - fast_N_free
-  vegn%structuralN = vegn%structuralN - slow_N_free
-  vegn%mineralN    = vegn%mineralN + fast_N_free + slow_N_free
-  vegn%annualN     = vegn%annualN  + fast_N_free + slow_N_free
+    ! Check if soil C/N is lower than CN0
+    fast_N_free = MAX(0., vegn%metabolicN  - vegn%metabolicL/CN0metabolicL)
+    slow_N_free = MAX(0., vegn%structuralN - vegn%structuralL/CN0structuralL)
+    vegn%metabolicN  = vegn%metabolicN  - fast_N_free
+    vegn%structuralN = vegn%structuralN - slow_N_free
+    vegn%mineralN    = vegn%mineralN + fast_N_free + slow_N_free
+    vegn%annualN     = vegn%annualN  + fast_N_free + slow_N_free
 
-  ! Heterotrophic respiration: decomposition of litters and SOM, kgC m-2 step-1
-  vegn%rh =  (micr_C_loss + fast_L_loss*(1.-CUEfast)+ slow_L_loss*(1.-CUEslow))
+    ! Heterotrophic respiration: decomposition of litters and SOM, kgC m-2 step-1
+    vegn%rh =  (micr_C_loss + fast_L_loss*(1.-CUEfast)+ slow_L_loss*(1.-CUEslow))
 
   end subroutine SOMdecomposition
 
-  ! ============================================================================
-  ! The combined reduction in decomposition rate as a funciton of TEMP and MOIST
-  ! Based on CENTURY Parton et al 1993 GBC 7(4):785-809 and Bolker's copy of
-  ! CENTURY code
+
   function A_function(tsoil, thetaS) result(A)
-  real :: A                 ! return value, resulting reduction in decomposition rate
-  real, intent(in) :: tsoil ! effective temperature for soil carbon decomposition
-  real, intent(in) :: thetaS
+    !////////////////////////////////////////////////////////////////
+    ! The combined reduction in decomposition rate as a funciton of TEMP and MOIST
+    ! Based on CENTURY Parton et al 1993 GBC 7(4):785-809 and Bolker's copy of
+    ! CENTURY code
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    real :: A                 ! return value, resulting reduction in decomposition rate
+    real, intent(in) :: tsoil ! effective temperature for soil carbon decomposition
+    real, intent(in) :: thetaS
 
-  real :: soil_temp ! temperature of the soil, deg C
-  real :: Td        ! rate multiplier due to temp
-  real :: Wd        ! rate reduction due to mositure
+    real :: soil_temp ! temperature of the soil, deg C
+    real :: Td        ! rate multiplier due to temp
+    real :: Wd        ! rate reduction due to mositure
 
-  ! coefficeints and terms used in temperaturex term
-  real :: Topt,Tmax,t1,t2,tshl,tshr
+    ! coefficeints and terms used in temperaturex term
+    real :: Topt,Tmax,t1,t2,tshl,tshr
 
-  soil_temp = tsoil-273.16
+    soil_temp = tsoil-273.16
 
-  ! EFFECT OF TEMPERATURE , ! from Bolker's century code
-  Tmax=45.0 
-  if (soil_temp > Tmax) soil_temp = Tmax 
-  Topt=35.0 
-  tshr=0.2 
-  tshl=2.63 
-  t1=(Tmax-soil_temp)/(Tmax-Topt) 
-  t2=exp((tshr/tshl)*(1.-t1**tshl)) 
-  Td=t1**tshr*t2 
+    ! EFFECT OF TEMPERATURE , ! from Bolker's century code
+    Tmax = 45.0 
+    if (soil_temp > Tmax) soil_temp = Tmax 
+    Topt = 35.0 
+    tshr = 0.2 
+    tshl = 2.63 
+    t1 = (Tmax-soil_temp)/(Tmax-Topt) 
+    t2 = exp((tshr/tshl)*(1.-t1**tshl)) 
+    Td = t1**tshr*t2 
 
-  if (soil_temp > -10) Td=Td+0.05 
-  if (Td > 1.) Td=1. 
+    if (soil_temp > -10) Td = Td+0.05 
+    if (Td > 1.) Td = 1. 
 
-  ! EFFECT OF MOISTURE
-  ! Linn and Doran, 1984, Soil Sci. Amer. J. 48:1267-1272
-  ! This differs from the Century Wd
-  ! was modified by slm/ens based on the figures from the above paper 
-  !     (not the reported function)
+    ! EFFECT OF MOISTURE
+    ! Linn and Doran, 1984, Soil Sci. Amer. J. 48:1267-1272
+    ! This differs from the Century Wd
+    ! was modified by slm/ens based on the figures from the above paper 
+    !     (not the reported function)
 
-  if (thetaS <= 0.3) then
-   Wd = 0.2 
-  else if (thetaS <= 0.6) then
-   Wd = 0.2+0.8*(thetaS-0.3)/0.3
-  else 
-   Wd = 1.0 ! exp(2.3*(0.6-thetaS)); ! Weng, 2016-11-26
-  endif
+    if (thetaS <= 0.3) then
+      Wd = 0.2 
+    else if (thetaS <= 0.6) then
+      Wd = 0.2+0.8*(thetaS-0.3)/0.3
+    else 
+      Wd = 1.0 ! exp(2.3*(0.6-thetaS)); ! Weng, 2016-11-26
+    endif
 
-  A = (Td*Wd)  ! the combined (multiplicative) effect of temp and water
-  ! on decomposition rates
+    A = (Td*Wd)  ! the combined (multiplicative) effect of temp and water
+    ! on decomposition rates
+
   end function A_function
 
   !=======================================================================
   ! =================== Cohort management ================================
   ! ======================================================================
 
-  subroutine rank_descending(x,idx)
-  ! ranks array x in descending order: on return, idx() contains indices
-  ! of elements of array x in descending order of x values. These codes
-  ! are from Sergey Malyshev (LM3PPA, Weng et al. 2015 Biogeosciences)
-  real,    intent(in)  :: x(:)
-  integer, intent(out) :: idx(:)
-  integer :: i,n
-  integer, allocatable :: t(:)
+  subroutine rank_descending(x, idx)
+    !////////////////////////////////////////////////////////////////
+    ! Ranks array x in descending order: on return, idx() contains indices
+    ! of elements of array x in descending order of x values. These codes
+    ! are from Sergey Malyshev (LM3PPA, Weng et al. 2015 Biogeosciences)
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    real,    intent(in)  :: x(:)
+    integer, intent(out) :: idx(:)
+    integer :: i,n
+    integer, allocatable :: t(:)
 
-  n = size(x)
-  do i = 1,n
-    idx(i) = i
-  enddo
+    n = size(x)
+    do i = 1,n
+      idx(i) = i
+    enddo
 
-  allocate(t((n+1)/2))
-  call mergerank(x,idx,n,t)
-  deallocate(t)
-  end subroutine 
+    allocate(t((n+1)/2))
+    call mergerank(x, idx, n, t)
+    deallocate(t)
 
-  ! =====================================================================
-  ! based on:
-  ! http://rosettacode.org/wiki/Sorting_algorithms/Merge_sort#Fortran
-  subroutine merge(x,a,na,b,nb,c,nc)
-  integer, intent(in) :: na,nb,nc ! Normal usage: NA+NB = NC
-  real, intent(in)       :: x(*)
-  integer, intent(in)    :: a(na)    ! B overlays C(NA+1:NC)
-  integer, intent(in)    :: b(nb)
-  integer, intent(inout) :: c(nc)
+  end subroutine rank_descending
 
-  integer :: i,j,k
 
-  i = 1; j = 1; k = 1;
-  do while(i <= na .and. j <= nb)
-  if (x(a(i)) >= x(b(j))) then
-   c(k) = a(i) ; i = i+1
-  else
-   c(k) = b(j) ; j = j+1
-  endif
-  k = k + 1
-  enddo
-  do while (i <= na)
-  c(k) = a(i) ; i = i + 1 ; k = k + 1
-  enddo
+  subroutine merge(x, a, na, b, nb, c, nc)
+    !////////////////////////////////////////////////////////////////
+    ! based on:
+    ! http://rosettacode.org/wiki/Sorting_algorithms/Merge_sort#Fortran
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    integer, intent(in) :: na,nb,nc ! Normal usage: NA+NB = NC
+    real, intent(in)       :: x(*)
+    integer, intent(in)    :: a(na)    ! B overlays C(NA+1:NC)
+    integer, intent(in)    :: b(nb)
+    integer, intent(inout) :: c(nc)
+
+    integer :: i, j, k
+
+    i = 1; j = 1; k = 1;
+    do while(i <= na .and. j <= nb)
+      if (x(a(i)) >= x(b(j))) then
+        c(k) = a(i) ; i = i+1
+      else
+        c(k) = b(j) ; j = j+1
+      endif
+      k = k + 1
+    enddo
+    do while (i <= na)
+      c(k) = a(i) ; i = i + 1 ; k = k + 1
+    enddo
   end subroutine merge
 
-  recursive subroutine mergerank(x,a,n,t)
-  integer, intent(in) :: n
-  real,    intent(in) :: x(*)
-  integer, dimension(n), intent(inout) :: a
-  integer, dimension((n+1)/2), intent (out) :: t
 
-  integer :: na,nb
-  integer :: v
+  recursive subroutine mergerank(x, a, n, t)
+    !////////////////////////////////////////////////////////////////
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    integer, intent(in) :: n
+    real,    intent(in) :: x(*)
+    integer, dimension(n), intent(inout) :: a
+    integer, dimension((n+1)/2), intent (out) :: t
 
-  if (n < 2) return
-  if (n == 2) then
-  if ( x(a(1)) < x(a(2)) ) then
-  v = a(1) ; a(1) = a(2) ; a(2) = v
-  endif
-  return
-  endif      
-  na=(n+1)/2
-  nb=n-na
+    integer :: na,nb
+    integer :: v
 
-  call mergerank(x,a,na,t)
-  call mergerank(x,a(na+1),nb,t)
+    if (n < 2) return
 
-  if (x(a(na)) < x(a(na+1))) then
-  t(1:na)=a(1:na)
-  call merge(x,t,na,a(na+1),nb,a,n)
-  endif
+    if (n == 2) then
+      if ( x(a(1)) < x(a(2)) ) then
+        v = a(1) ; a(1) = a(2) ; a(2) = v
+      endif
+      return
+    endif  
+
+    na=(n+1)/2
+    nb=n-na
+
+    call mergerank(x,a,na,t)
+    call mergerank(x,a(na+1),nb,t)
+
+    if (x(a(na)) < x(a(na+1))) then
+      t(1:na) = a(1:na)
+      call merge(x,t,na,a(na+1),nb,a,n)
+    endif
+
   end subroutine mergerank
 
-  !============================================================================
-  ! Merge similar cohorts in a tile
+
   subroutine vegn_mergecohorts(vegn)
-  type(vegn_tile_type), intent(inout) :: vegn
+    !////////////////////////////////////////////////////////////////
+    ! Merge similar cohorts in a tile
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
 
-  ! local variables
-  type(cohort_type), pointer :: cc(:) ! array to hold new cohorts
-  logical :: merged(vegn%n_cohorts)        ! mask to skip cohorts that were already merged
-  real, parameter :: mindensity = 1.0E-6
-  integer :: i,j,k
+    ! local variables
+    type(cohort_type), pointer :: cc(:) ! array to hold new cohorts
+    logical :: merged(vegn%n_cohorts)        ! mask to skip cohorts that were already merged
+    real, parameter :: mindensity = 1.0E-6
+    integer :: i,j,k
 
-  allocate(cc(vegn%n_cohorts))
-  merged(:)=.FALSE. ; k = 0
-  do i = 1, vegn%n_cohorts 
-   if (merged(i)) cycle ! skip cohorts that were already merged
-   k = k+1
-   cc(k) = vegn%cohorts(i)
-   ! try merging the rest of the cohorts into current one
-   do j = i+1, vegn%n_cohorts
-    if (merged(j)) cycle ! skip cohorts that are already merged
-    if (cohorts_can_be_merged(vegn%cohorts(j),cc(k))) then
-     call merge_cohorts(vegn%cohorts(j),cc(k))
-     merged(j) = .TRUE.
-   endif
-  enddo
-  enddo
-  ! at this point, k is the number of new cohorts
-  vegn%n_cohorts = k
-  deallocate(vegn%cohorts)
-  vegn%cohorts=>cc
+    allocate(cc(vegn%n_cohorts))
+    merged(:)=.FALSE. ; k = 0
+
+    do i = 1, vegn%n_cohorts 
+      if (merged(i)) cycle ! skip cohorts that were already merged
+      k = k+1
+      cc(k) = vegn%cohorts(i)
+
+      ! try merging the rest of the cohorts into current one
+      do j = i+1, vegn%n_cohorts
+        if (merged(j)) cycle ! skip cohorts that are already merged
+        if (cohorts_can_be_merged(vegn%cohorts(j),cc(k))) then
+          call merge_cohorts(vegn%cohorts(j),cc(k))
+          merged(j) = .TRUE.
+        endif
+      enddo
+    enddo
+    
+    ! at this point, k is the number of new cohorts
+    vegn%n_cohorts = k
+    deallocate(vegn%cohorts)
+    vegn%cohorts=>cc
 
   end subroutine vegn_mergecohorts
 
