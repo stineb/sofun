@@ -26,7 +26,7 @@ contains
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     use md_interface, only: myinterface, outtype_biosphere
-    use md_params_core, only: ntstepsyear
+    use md_params_core, only: ntstepsyear !diff
   
     ! return variable
     type(outtype_biosphere) :: out_biosphere
@@ -34,7 +34,7 @@ contains
     ! ! local variables
     integer :: dm, moy, jpngr, doy
     ! logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
-    logical, parameter :: verbose = .true.       ! change by hand for debugging etc.
+    logical, parameter :: verbose = .false.       ! change by hand for debugging etc.
 
     !----------------------------------------------------------------
     ! Biome-E stuff
@@ -52,14 +52,15 @@ contains
     logical :: new_annual_cycle = .False.
     logical :: switch = .True.
     integer :: istat1, istat2, istat3
-    integer :: year0,  year1, iyears
+    integer :: year0,  year1
     integer :: fno1, fno2, fno3, fno4, fno5 ! output files
     integer :: totyears
-    integer :: i, j, k, idoy
+    integer :: i, j, k
     integer :: idata
-    integer, save :: simu_steps !, 
-    
+    integer, save :: simu_steps 
+    integer, save :: iyears
     integer, save :: idays
+    integer, save :: idoy
     character(len=50) :: filepath_out, filesuffix
     character(len=50) :: parameterfile(10), chaSOM(10)
 
@@ -72,62 +73,21 @@ contains
     ! Create output files
     ! XXX add this to output instead
     !------------------------------------------------------------------------
-    filepath_out   = '/Users/benjaminstocker/lmarques/sofun/output/'
+    filepath_out   = '/Users/lmarques/sofun/output/'
     filesuffix     = '_test.csv' ! tag for simulation experiments
     plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)  ! has 22 columns
-    plantCNpools   = trim(filepath_out)//'Cohorts_daily'//trim(filesuffix)  ! daily has 27 columns
-    soilCNpools    = trim(filepath_out)//'Ecosystem_daily'//trim(filesuffix)
-    allpools       = trim(filepath_out)//'Ecosystem_yearly'//trim(filesuffix)
-    faststepfluxes = trim(filepath_out)//'PhotosynthesisDynamics'//trim(filesuffix) ! hourly, has 15 columns and 
+    plantCNpools   = trim(filepath_out)//'Daily_cohorts'//trim(filesuffix)  ! daily has 27 columns
+    soilCNpools    = trim(filepath_out)//'Daily_tile'//trim(filesuffix)
+    allpools       = trim(filepath_out)//'Annual_tile'//trim(filesuffix)
+    faststepfluxes = trim(filepath_out)//'Hourly_tile'//trim(filesuffix) ! hourly, has 15 columns and 
 
-    fno1=91
-    fno2=101
-    fno3=102
-    fno4=103
-    fno5=104
+    fno1=91; fno2=101; fno3=102; fno4=103; fno5=104
     open(fno1, file=trim(faststepfluxes), ACTION='write', IOSTAT=istat1)
     open(fno2, file=trim(plantcohorts),   ACTION='write', IOSTAT=istat1)
     open(fno3, file=trim(plantCNpools),   ACTION='write', IOSTAT=istat2)
     open(fno4, file=trim(soilCNpools),    ACTION='write', IOSTAT=istat3)
     open(fno5, file=trim(allpools),       ACTION='write', IOSTAT=istat3)
 
-    !------------------------------------------------------------------------
-    ! Read in forcing data
-    ! Requires data frame with one row for each time step (hourly) and columns:
-    !
-    !   YEAR     : year
-    !   DOY      : day of the year  
-    !   HOUR     : hour of the day
-    !   PAR      : umol/m2/s
-    !   Swdown   : W/m2         
-    !   TEMP     : air temperature, deg C       
-    !   STEMP    : soil temperature, deg C  
-    !   RH       : relative humidity, %     
-    !   RAIN     : kgH2O m-2 s-1
-    !   WIND     : wind velocity (m s-1)       
-    !   PRESSURE : Pa         
-    !   aCO2_AW  : ???
-    !   amb_co2  : ???       
-    !
-    ! To define array 'forcingData'
-    ! This is how it's read from file input/Temperate_forcing.txt:
-    !
-    ! forcingData(i)%year      = year_data(i)                     ! Year
-    ! forcingData(i)%doy       = doy_data(i)                      ! day of the year
-    ! forcingData(i)%hod       = hour_data(i)                     ! hour of the day
-    ! forcingData(i)%PAR       = input_data(1,i)                  ! umol/m2/s
-    ! forcingData(i)%radiation = input_data(2,i)                  ! W/m2
-    ! forcingData(i)%Tair      = input_data(3,i) + 273.16         ! air temperature, K
-    ! forcingData(i)%Tsoil     = input_data(4,i) + 273.16         ! soil temperature, K
-    ! forcingData(i)%RH        = input_data(5,i)                  ! relative humidity
-    ! forcingData(i)%rain      = input_data(6,i)/(timestep * 3600)! kgH2O m-2 s-1
-    ! forcingData(i)%windU     = input_data(7,i)                  ! wind velocity (m s-1)
-    ! forcingData(i)%pressure  = input_data(8,i)                  ! pa
-    ! forcingData(i)%soilwater = 0.8                              ! soil moisture, vol/vol
-    !------------------------------------------------------------------------
-    
-    ! print*,'year0: ', myinterface%climate(1)%year
-    ! print*,'climateyear: ', myinterface%steering%climateyear_idx, myinterface%steering%climateyear
     !----------------------------------------------------------------
     ! INITIALISATIONS
     !----------------------------------------------------------------
@@ -136,46 +96,47 @@ contains
       !------------------------------------------------------------------------
       ! Translation to LM3-PPA variables
       !------------------------------------------------------------------------
-      ! head
-      write(fno1,'(5(a8,","),25(a12,","))')      &
-          'year','doy','hour','rad',            &
-          'Tair','Prcp', 'GPP', 'Resp',         &
-          'Transp','Evap','Runoff','Soilwater', &
+
+          write(fno1,'(5(a8,","),25(a12,","))')                    &
+          'year','doy','hour','rad',                               &
+          'Tair','Prcp', 'GPP', 'Resp',                            &
+          'Transp','Evap','Runoff','Soilwater',                    &
           'wcl','FLDCAP','WILTPT'
-      write(fno2,'(3(a5,","),25(a9,","))')            &
-          'cID','PFT','layer','density', 'f_layer',  &
-          'dDBH','dbh','height','Acrown',            &
-          'wood','nsc', 'NSN','NPPtr','seed',        &
-          'NPPL','NPPR','NPPW','GPP-yr','NPP-yr',    &
+
+          write(fno2,'(3(a5,","),25(a9,","))') 'year',             &
+          'cID','PFT','layer','density', 'f_layer',                &
+          'dDBH','dbh','height','Acrown',                          &
+          'wood','nsc', 'NSN','NPPtr','seed',                      &
+          'NPPL','NPPR','NPPW','GPP_yr','NPP_yr',                  &
           'N_uptk','N_fix','maxLAI'
-
-      write(fno3,'(5(a5,","),25(a8,","))')              &
-          'year','doy','hour','cID','PFT',             &
-          'layer','density', 'f_layer', 'LAI',         &
-          'gpp','resp','transp',                       &
-          'NPPleaf','NPProot','NPPwood',               &
-          'NSC','seedC','leafC','rootC','SW-C','HW-C', &
-          'NSN','seedN','leafN','rootN','SW-N','HW-N'
-
-      write(fno4,'(2(a5,","),55(a10,","))')  'year','doy',    &
-          'Tc','Prcp', 'totWs',  'Trsp', 'Evap','Runoff',    &
-          'ws1','ws2','ws3', 'LAI','GPP', 'Rauto', 'Rh',     &
-          'NSC','seedC','leafC','rootC','SW-C','HW-C',       &
-          'NSN','seedN','leafN','rootN','SW-N','HW-N',       &
-          'McrbC', 'fastSOM',   'slowSOM',                   &
-          'McrbN', 'fastSoilN', 'slowSoilN',                 &
+          
+          write(fno3,'(5(a5,","),25(a8,","))')                     &
+          'year','doy','hour','cID','PFT',                         &
+          'layer','density', 'f_layer', 'LAI',                     &
+          'gpp','resp','transp',                                   &
+          'NPPleaf','NPProot','NPPwood',                           &
+          'NSC','seedC','leafC','rootC','SW_C','HW_C',             &
+          'NSN','seedN','leafN','rootN','SW_N','HW_N'
+          
+          write(fno4,'(2(a5,","),55(a10,","))')  'year','doy',     &
+          'Tc','Prcp', 'totWs',  'Trsp', 'Evap','Runoff',          &
+          'ws1','ws2','ws3', 'LAI','GPP', 'Rauto', 'Rh',           &
+          'NSC','seedC','leafC','rootC','SW_C','HW_C',             &
+          'NSN','seedN','leafN','rootN','SW_N','HW_N',             &
+          'McrbC', 'fastSOM',   'slowSOM',                         &
+          'McrbN', 'fastSoilN', 'slowSoilN',                       &
           'mineralN', 'N_uptk'
-
-      write(fno5,'(1(a5,","),80(a12,","))')  'year',              &
-          'CAI','LAI','GPP', 'Rauto',   'Rh',                    &
-          'rain','SoilWater','Transp','Evap','Runoff',           &
-          'plantC','soilC',    'plantN', 'soilN','totN',         &
-          'NSC', 'SeedC', 'leafC', 'rootC', 'SapwoodC', 'WoodC', &
-          'NSN', 'SeedN', 'leafN', 'rootN', 'SapwoodN', 'WoodN', &
-          'McrbC','fastSOM',   'SlowSOM',                        &
-          'McrbN','fastSoilN', 'slowSoilN',                      &
-          'mineralN', 'N_fxed','N_uptk','N_yrMin','N_P2S','N_loss', &
-          'seedC','seedN','Seedling-C','Seedling-N'
+          
+          write(fno5,'(1(a5,","),80(a12,","))')  'year',           &
+          'CAI','LAI','GPP', 'Rauto',   'Rh',                      &
+          'rain','SoilWater','Transp','Evap','Runoff',             &
+          'plantC','soilC',    'plantN', 'soilN','totN',           &
+          'NSC', 'SeedC', 'leafC', 'rootC', 'SapwoodC', 'WoodC',   &
+          'NSN', 'SeedN', 'leafN', 'rootN', 'SapwoodN', 'WoodN',   &
+          'McrbC','fastSOM',   'SlowSOM',                          &
+          'McrbN','fastSoilN', 'slowSoilN',                        &
+          'mineralN', 'N_fxed','N_uptk','N_yrMin','N_P2S','N_loss',&
+          'totseedC','totseedN','Seedling_C','Seedling_N'
 
       !------------------------------------------------------------------------
       ! Initialisations
@@ -190,7 +151,6 @@ contains
       allocate(vegn)
       
       ! print*,'2'
-      
       call initialize_vegn_tile(vegn, nCohorts)
       
       ! Sort and relayer cohorts
@@ -261,9 +221,8 @@ contains
         fastloop: do i=1,myinterface%steps_per_day
 
           idata = simu_steps + 1
-          year0 =  myinterface%climate(idata)%year  ! Current year
+          year0 =  myinterface%climate(idata)%radiation  ! Current year
           vegn%Tc_daily = vegn%Tc_daily +  myinterface%climate(idata)%Tair
-
           tsoil         = myinterface%climate(idata)%tsoil
           simu_steps    = simu_steps + 1
 
@@ -285,10 +244,8 @@ contains
         ! Daily calls
         !-------------------------------------------------
         ! print*,'5.1', doy
-
         call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4, out_biosphere%daily_cohorts(doy,:), out_biosphere%daily_tile(doy) )
 
-        ! print*,'5: ', vegn%n_cohorts 
         ! Determine start and end of season and maximum leaf (root) mass
         ! print*,'5.2', doy
         call vegn_phenology(vegn, j)
@@ -299,10 +256,6 @@ contains
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
         ! print*,'5.3', doy
         call vegn_growth_EW(vegn)
-
-        !----------------------------------------------------------------
-        ! populate function return variable
-        !----------------------------------------------------------------
 
       end do dayloop
 
@@ -317,6 +270,7 @@ contains
     print*,'real year: ', year0
 
     if (update_annualLAImax) call vegn_annualLAImax_update(vegn)
+
     call annual_diagnostics(vegn, iyears, fno2, fno5, out_biosphere%annual_cohorts(:), out_biosphere%annual_tile)
 
     !---------------------------------------------
@@ -363,7 +317,7 @@ contains
       close(103)
       close(104)
       deallocate(vegn%cohorts)
-      !deallocate(myinterface%climate)
+      deallocate(myinterface%climate) !differ
       !deallocate(out_biosphere%hourly_tile)
       ! stop 'actually finalizing'
 

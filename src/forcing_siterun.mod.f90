@@ -115,16 +115,13 @@ contains
     aninput_nhx = getvalreal( 'sitedata/'//trim(ntype)//'/'//trim(sitename)//'/'//trim(ninput_nhx_forcing_file), readyear )
 
     do jpngr=1,maxgrid
-      dprec_rel(:)               = climate(jpngr)%dprec(:)/sum(climate(jpngr)%dprec(:))
-      out_getninput(jpngr)%dnoy(:) = aninput_noy * dprec_rel(:)
-      out_getninput(jpngr)%dnhx(:) = aninput_nhx * dprec_rel(:)
+      dprec_rel(:)                   = climate(jpngr)%dprec(:)/sum(climate(jpngr)%dprec(:))
+      out_getninput(jpngr)%dnoy(:)   = aninput_noy * dprec_rel(:)
+      out_getninput(jpngr)%dnhx(:)   = aninput_nhx * dprec_rel(:)
       ! out_getninput(jpngr)%dnoy(:) = aninput_noy / 365.0
       ! out_getninput(jpngr)%dnhx(:) = aninput_nhx / 365.0
-      out_getninput(jpngr)%dtot(:) = out_getninput(jpngr)%dnoy(:) + out_getninput(jpngr)%dnhx(:)
+      out_getninput(jpngr)%dtot(:)   = out_getninput(jpngr)%dnoy(:) + out_getninput(jpngr)%dnhx(:)
     end do
-
-    ! print*,'out_getninput(jpngr) ', sum(out_getninput(1)%dnoy(:)), sum(out_getninput(1)%dnhx(:)), sum(out_getninput(1)%dtot(:))
-    ! write(0,*) 'GETNINPUT: done'
 
   end function getninput
 

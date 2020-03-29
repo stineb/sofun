@@ -29,7 +29,7 @@ module md_forcing
   !   real(kind=sp), dimension(ntstepsyear)    :: rain          ! kgH2O m-2 s-1
   !   real(kind=sp), dimension(ntstepsyear)    :: windU         ! wind velocity (m s-1)
   !   real(kind=sp), dimension(ntstepsyear)    :: P_air         ! pa
-  !   ! real(kind=sp), dimension(ntstepsyear)    :: CO2           ! ppm
+  !   real(kind=sp), dimension(ntstepsyear)  :: CO2           ! ppm
   !   real(kind=sp), dimension(ntstepsyear)    :: soilwater     ! soil moisture, vol/vol
   ! end type climate_type
 

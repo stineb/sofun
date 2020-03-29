@@ -21,9 +21,7 @@ program main
   use md_interface, only: interfacetype_biosphere, outtype_biosphere, myinterface
   use md_params_core, only: n_dim_soil_types, MSPECIES, MAX_INIT_COHORTS, ntstepsyear, out_max_cohorts, &
     ndayyear, nvars_daily_tile, nvars_hourly_tile, nvars_daily_cohorts, nvars_annual_cohorts, nvars_annual_tile
-
   use md_biosphere, only: biosphere_annual
-
   use datatypes
 
   implicit none
@@ -38,7 +36,6 @@ program main
   integer :: firstyeartrend
   integer :: nyeartrend
   integer :: runyears
-
 
   ! ! integer :: model_run_years
   ! integer :: equi_days
@@ -100,15 +97,14 @@ program main
   logical, parameter :: verbose = .false.
   integer :: iday
 
-  character(len=100) :: namelistfile = '/Users/benjaminstocker/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+  character(len=100) :: namelistfile = '/Users/lmarques/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
 
   ! output arrays (naked) to be passed back to C/R
-  real, dimension(:,:), allocatable :: out_hourly_tile 
-  real, dimension(:,:), allocatable :: out_daily_tile       !fno4
-  real, dimension(:,:,:), allocatable :: out_daily_cohorts    !fno3
-  !real, dimension(:, out_max_cohorts), allocatable :: out_daily_cohorts    !fno3
-  real, dimension(:,:), allocatable :: out_annual_tile      !fno5
-  real, dimension(:,:,:), allocatable :: out_annual_cohorts   !fno2
+  real, dimension(:,:), allocatable  :: out_hourly_tile 
+  real, dimension(:,:), allocatable  :: out_daily_tile       !fno4
+  real, dimension(:,:,:), allocatable:: out_daily_cohorts    !fno3
+  real, dimension(:,:), allocatable  :: out_annual_tile      !fno5
+  real, dimension(:,:,:), allocatable:: out_annual_cohorts   !fno2
 
   !----------------------------------------------------------------
   ! DECLARATIONS TO READ FROM NAMELIST FILE
@@ -119,7 +115,6 @@ program main
   integer :: nml_unit
 
   integer :: j
-
 
   namelist /vegn_parameters_nml/  &
   soiltype, FLDCAP, WILTPT, &
@@ -212,7 +207,7 @@ program main
 
   ! Simulation parameters
   ! myinterface%params_siml%model_run_years       = myinterface%params_siml%runyears    ! xxx delete model_run_years from arguments
-  !myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
+  ! myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
   myinterface%params_siml%outputhourly          = outputhourly
   myinterface%params_siml%outputdaily           = outputdaily
   myinterface%params_siml%do_U_shaped_mortality = do_U_shaped_mortality
@@ -291,15 +286,13 @@ program main
   ! READ FORCING FILE
   !----------------------------------------------------------------
   
-
   call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
-  ! print*, timestep
   ! call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
   myinterface%steps_per_day = int(24.0/timestep)
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0*3600.0/myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
   ntstepsyear = myinterface%steps_per_day * 365
-  !print*,'ntstepsyear ', ntstepsyear
+  ! print*,'ntstepsyear ', ntstepsyear
   write(*,*) myinterface%steps_per_day, myinterface%dt_fast_yr, myinterface%step_seconds
   
   totyears = myinterface%params_siml%runyears
@@ -309,6 +302,7 @@ program main
   ! print*,'myinterface%params_siml%equi_days ', myinterface%params_siml%equi_days
   ! print*,'days_data                         ', days_data
   ! print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
+  ! print*,'datalines', datalines
   !  stop  
 
   ! record some variables that are determined by the SR that reads the forcing
@@ -338,12 +332,10 @@ program main
   ! !----------------------------------------------------------------
   ! myinterface%fpc_grid(:) = get_fpc_grid( myinterface%domaininfo, myinterface%params_siml )
 
-
   ! LOOP THROUGH YEARS
   ! print*, '-------------------START OF SIMULATION--------------------'
 
-
-  do yr=1,myinterface%params_siml%runyears
+  do yr=1, myinterface%params_siml%runyears
 
     !----------------------------------------------------------------
     ! Define simulations "steering" variables (forcingyear, etc.)
@@ -409,24 +401,9 @@ program main
     ! print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
     !  stop   
 
-
     ! ----------------------------------------------------------------
     ! Populate big output arrays
     ! ----------------------------------------------------------------
-    ! print*,'shape of out_biosphere%hourly_tile(:)', (out_biosphere%hourly_tile(:)%Tair)
-    ! ! fast-changing 
-    ! if (myinterface%params_siml%outputhourly .and. iday > myinterface%params_siml%equi_days) then
-    ! idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
-    ! idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
-    !   out_hourly_tile(idx_hourly_start:idx_hourly_end) = out_biosphere%hourly_tile(:)  ! do this only after spinup (see conditional in hourly_diagnostics)
-    ! end if
-
-    ! out_daily_cohorts(idx_daily_start:idx_daily_end,:) = out_biosphere%daily_cohorts(:,:)
-    ! out_daily_tile(idx_daily_start:idx_daily_end)      = out_biosphere%daily_tile(:)
-
-    ! ! annual
-    ! out_annual_cohorts(yr,:)                         = out_biosphere%annual_cohorts(:)
-    ! out_annual_tile(yr)                              = out_biosphere%annual_tile
 
     ! ----------------------------------------------------------------
     ! Print out_hourly_tile
@@ -434,43 +411,38 @@ program main
     ! print*,'a'
     ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end,1)
     ! print*, out_biosphere%hourly_tile(:)%hour
-
+    ! print*, 'myinterface%params_siml%spinupyears', myinterface%params_siml%spinupyears
+    ! print*, 'ntstepsyear ', ntstepsyear
+    ! if (myinterface%params_siml%outputhourly .and. iday > myinterface%params_siml%equi_days) then
     if (.not. myinterface%steering%spinup) then
-      idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
+      idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1 ! To exclude the spinup years and include only the transient years
       idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
       call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
     end if
 
-  
+      ! print*,'b'
+      ! print*,out_biosphere%hourly_tile(1)%Tair
+      ! print*,out_hourly_tile(idx_hourly_start, 5)
+      ! print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
+      ! print*,size(out_hourly_tile(idx_hourly_start:idx_hourly_end, 1))
+      ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
+      !stop 'halo'
+
+
     ! ----------------------------------------------------------------
     ! Print out_daily_tile
     ! ----------------------------------------------------------------
 
-    ! daily
     idx_daily_start  = (yr - 1) * ndayyear + 1
     idx_daily_end    = idx_daily_start + ndayyear - 1
 
     ! print*,'a'
     ! print*,out_daily_tile(idx_daily_start:(idx_daily_end), 1)
-
     call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
     ! print*,'b'
     ! print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 29))
     ! print*, 'idx_daily', idx_daily_start, idx_daily_end
     ! print*,out_daily_tile(idx_daily_start:idx_daily_end, 29)
-    ! stop 'halo'
-
-    ! open(unit=1, file='testingData.csv')
-    ! ! ! do j = 1, 4
-    !   ! write(10, '(*(I0 : ", "))') out_daily_tile(1:4, j)        
-    !   write(1, *) out_daily_tile(:, 6)
-    ! !   ! write(10, '(*(I1 : ","))') out_daily_tile(:,6)
-    ! ! ! end do
-    ! close(1)
-
-    ! open(unit=10, file='testRRRRRR.csv')
-    !   write(10, '(*(I5 : ", "))') out_daily_tile(idx_daily_start:idx_daily_end, 7)
-    ! close(10)
 
     ! ----------------------------------------------------------------
     ! Print out_daily_cohorts
@@ -481,7 +453,6 @@ program main
     ! print*,'b'
     ! print*,size(out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8))
     ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8)
-    ! ! !stop 'halo'
 
     ! ----------------------------------------------------------------
     ! Print out_annual_tile
@@ -491,7 +462,6 @@ program main
     call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
     ! print*,'b'
     ! print*,out_annual_tile(yr,1:2)
-    !stop 'halo'
 
     ! ----------------------------------------------------------------
     ! Print out_annual_cohorts
@@ -499,18 +469,16 @@ program main
     ! print*,'a'
     ! ! !  print*,out_annual_cohorts(yr,:,2)
     call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
-     print*,'c'
-     print*,size(out_annual_cohorts(yr,:,6))
-     print*,out_annual_cohorts(yr,:,4)
-     ! stop 'halo'
-
+     ! print*,'c'
+     ! print*,size(out_annual_cohorts(yr,:,6))
+     ! print*,out_annual_cohorts(yr,:,4)
 
   enddo
 
   deallocate(myinterface%climate)
   deallocate(myinterface%pco2)
-  !deallocate(out_biosphere%hourly_tile)
-  deallocate(out_hourly_tile)
+  ! deallocate(out_biosphere%hourly_tile)
+  ! deallocate(out_hourly_tile)
   deallocate(out_daily_cohorts)
   deallocate(out_daily_tile)
   deallocate(out_annual_cohorts)
@@ -557,7 +525,6 @@ contains
 
     ! arguments
     type(outtype_daily_tile), dimension(ndayyear), intent(in) :: daily_tile
-    ! integer, intent(in) :: idx_daily_start, idx_daily_end
     real, dimension(ndayyear, nvars_daily_tile), intent(inout) :: out_daily_tile
 
     out_daily_tile(:, 1)  = daily_tile(:)%year 
@@ -606,7 +573,6 @@ contains
     ! arguments
     type(outtype_daily_cohorts), dimension(ndayyear, out_max_cohorts), intent(in) :: daily_cohorts
     real, dimension(ndayyear, out_max_cohorts,nvars_daily_cohorts), intent(inout) :: out_daily_cohorts
-    !real, dimension(:,:,:), allocatable, intent(inout) :: out_daily_cohorts
 
     out_daily_cohorts(:,:, 1)  = daily_cohorts(:,:)%year
     out_daily_cohorts(:,:, 2)  = daily_cohorts(:,:)%doy
@@ -728,7 +694,6 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
 
   end subroutine populate_outarray_annual_cohorts
 
-
   !========================================================================
   ! read in forcing data (Users need to write their own data input procedure)
   subroutine read_FACEforcing(forcingData,datalines,days_data,yr_data,timestep)
@@ -750,8 +715,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: m,n
     integer :: idx_climatedata
 
-    ! xxx temporary
-    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/lmarques/sofun/input/'
     character(len=80) :: climfile    = 'ORNL_forcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
@@ -792,17 +756,22 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     endif
     close(11)    ! close forcing file
 
-    ! print*,'1'
+    ! print*,'input par', input_data(1,10)
+    ! print*,'input par', input_data(2,10)
+    ! print*,'input par', input_data(3,10)
+    ! print*,'input par', input_data(4,10)
+    ! print*,'input par', input_data(5,10)
+    ! print*,'input par', input_data(6,10)
+    ! print*,'input par', input_data(7,10)
+    ! print*,'input par', input_data(8,10)
+    ! print*,'input par', input_data(9,10)
 
     ! Put the data into forcing 
     datalines = m - 1
     days_data = idays
     yr_data  = year_data(datalines-1) - year_data(1) + 1
 
-    ! allocate(climateData(datalines))
-    ! print*,'2'
-
-    ! xxx try
+    ! print*,'2'  
     allocate(climateData(datalines - 72))  !3*24
     days_data = days_data - 3
 
@@ -810,14 +779,13 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     ! print*,'datalines', datalines
     ! print*,'size(input_data)', shape(input_data)
     ! print*,'length(climateData)', size(climateData)
-    idx_climatedata = 0!xxx debug
+    idx_climatedata = 0
     do i=1,datalines
       ! print*,'i, doy_data(i), year_data(i)', i, doy_data(i), year_data(i)
      if (.not. (doy_data(i)==60 .and. (year_data(i)==2000 .or. year_data(i)==2004 .or. year_data(i)==2008))) then
        
        idx_climatedata = idx_climatedata + 1 !xxx debug 
 
-       ! print*,'reading data'
        climateData(idx_climatedata)%year      = year_data(i)          ! Year
        climateData(idx_climatedata)%doy       = doy_data(i)           ! day of the year
        climateData(idx_climatedata)%hod       = hour_data(i)          ! hour of the day
@@ -831,20 +799,17 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
        climateData(idx_climatedata)%P_air     = input_data(8,i)        ! pa
        climateData(idx_climatedata)%CO2       = input_data(9,i) * 1.0e-6       ! mol/mol
        climateData(idx_climatedata)%soilwater = 0.8    ! soil moisture, vol/vol
+
       else
-        ! print*,'leap year'
      end if
    enddo
    forcingData => climateData
 
    ! print*,'4'
-
-   ! xxx try
    datalines = datalines - 72  !3*24
 
    write(*,*)"forcing", datalines,days_data,yr_data
   end subroutine read_FACEforcing
-
 
   !=============================================================
   ! for reading in NACP site synthesis forcing
@@ -865,13 +830,10 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: doy,idays
     integer :: i,j,k
     integer :: m,n
-
-    ! xxx try
     integer :: idx_climatedata
 
-    ! ! xxx temporary
-    ! character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
-    ! character(len=80) :: climfile    = 'US-WCrforcing.txt'
+    character(len=80) :: filepath_in = '/Users/lmarques/sofun/input/'
+    character(len=80) :: climfile    = 'US-WCrforcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
     write(*,*)'inputfile: ',climfile
@@ -918,15 +880,11 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     days_data = idays
     yr_data  = year_data(datalines-1) - year_data(1) + 1
 
-    ! allocate(climateData(datalines))
-
-    ! xxx try
     allocate(climateData(datalines- 96))
     days_data = days_data - 2
 
     idx_climatedata = 0
     do i=1,datalines
-
       if (.not. (doy_data(i)==60 .and. (year_data(i)==2000 .or. year_data(i)==2004))) then
 
         idx_climatedata = idx_climatedata + 1
@@ -946,18 +904,11 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
         climateData(idx_climatedata)%CO2       = input_data(15,i) * 1.0e-6       ! mol/mol
         climateData(idx_climatedata)%soilwater = 0.8    ! soil moisture, vol/vol
 
-        ! if (abs(climateData(idx_climatedata)%hod-12.0)<0.001) then
-        !   print*,'A year, doy, Tair ', climateData(idx_climatedata)%year, &
-        !    climateData(idx_climatedata)%doy, &
-        !    climateData(idx_climatedata)%Tair
-        ! end if 
-
       end if
 
     enddo
     forcingData => climateData
 
-    ! xxx try
     datalines = datalines - 96
 
     write(*,*)"forcing", datalines,days_data,yr_data

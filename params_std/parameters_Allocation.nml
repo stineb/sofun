@@ -60,8 +60,8 @@ N_input             = 0.0E-3, ! 2.4E-3, ! kg N m-2 yr-1, N deposit: 0.8 g N m-2 
                            ! low  N input --> Evergreen
 
 ! Model run
-filepath_in = '/Users/bestocke/cagibi/BiomeE-Allocation/model/input/'    !'/Users/eweng/Documents/BiomeESS/forcingData/'
-climfile    = 'US-WCrforcing.txt' ! 'US-Ha1forcing.txt' !    'CA-Manforcing.txt' !
+! filepath_in = '/Users/lmarques/sofun/input/'
+! climfile    = 'US-WCrforcing.txt' ! 'US-Ha1forcing.txt'
            ! 'CA-Manforcing.txt'   !  'US-WBWforcing.txt'
            !   'US-Dk1forcing.txt' ! CA-Obsforcing.txt
            !   'ORNL_forcing.txt'  ! 'KNZ_amb.csv' !  'KNZ_irr.csv' !
@@ -72,14 +72,12 @@ outputdaily           =  .True.,
 do_U_shaped_mortality =  .False.,
 update_annualLAImax   =  .False.,
 do_closedN_run        =  .True.,
-
-spinup = .true.,
-spinupyears = 1800,
-recycle = 9,
-firstyeartrend = 1998,
-nyeartrend = 9,
-longitude = 0.0,
-latitude = 0.0,
-altitude = 0.0
-
+spinup                = .True.,
+spinupyears           = 1800,
+recycle               = 9,
+firstyeartrend        = 1998,
+nyeartrend            = 9,
+longitude             = 0.0,
+latitude              = 0.0,
+altitude              = 0.0
 /
