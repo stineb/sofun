@@ -2008,7 +2008,7 @@ contains
         endif
       enddo
     enddo
-    
+
     ! at this point, k is the number of new cohorts
     vegn%n_cohorts = k
     deallocate(vegn%cohorts)
@@ -2016,422 +2016,465 @@ contains
 
   end subroutine vegn_mergecohorts
 
-  ! ============================================================================
-  ! kill low density cohorts, a new function seperated from vegn_mergecohorts
-  ! Weng, 2014-07-22
+
   subroutine kill_lowdensity_cohorts(vegn)
-  type(vegn_tile_type), intent(inout) :: vegn
+    !////////////////////////////////////////////////////////////////
+    ! kill low density cohorts, a new function seperated from vegn_mergecohorts
+    ! Weng, 2014-07-22
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
 
-  ! local variables
-  type(cohort_type), pointer :: cx, cc(:) ! array to hold new cohorts
-  logical :: merged(vegn%n_cohorts)        ! mask to skip cohorts that were already merged
-  real, parameter :: mindensity = 0.25E-4
-  integer :: i,j,k
+    ! local variables
+    type(cohort_type), pointer :: cx, cc(:) ! array to hold new cohorts
+    logical :: merged(vegn%n_cohorts)        ! mask to skip cohorts that were already merged
+    real, parameter :: mindensity = 0.25E-4
+    integer :: i,j,k
 
-  ! calculate the number of cohorts with indivs>mindensity
-  k = 0
-  do i = 1, vegn%n_cohorts
-   if (vegn%cohorts(i)%nindivs > mindensity) k=k+1
-  enddo
-  if (k==0) write(*,*)'kill_lowdensity_cohorts: ','All cohorts have died'
+    ! calculate the number of cohorts with indivs>mindensity
+    k = 0
+    do i = 1, vegn%n_cohorts
+      if (vegn%cohorts(i)%nindivs > mindensity) k=k+1
+    enddo
+    if (k==0) write(*,*)'kill_lowdensity_cohorts: ','All cohorts have died'
 
-  ! exclude cohorts that have low individuals
-  if (k < vegn%n_cohorts) then
-   allocate(cc(k))
-   k=0
-   do i = 1,vegn%n_cohorts
-    cx =>vegn%cohorts(i)
-    associate(sp=>spdata(cx%species))
-      if (cx%nindivs > mindensity) then
-       k=k+1
-       cc(k) = cx
-     else
-       ! Carbon and Nitrogen from plants to soil pools
-       call plant2soil(vegn,cx,cx%nindivs)
-     endif
-   end associate
-  enddo
-  vegn%n_cohorts = k
-  deallocate (vegn%cohorts)
-  vegn%cohorts=>cc
-  endif
+    ! exclude cohorts that have low individuals
+    if (k < vegn%n_cohorts) then
+      allocate(cc(k))
+      k=0
+      do i = 1,vegn%n_cohorts
+        cx =>vegn%cohorts(i)
+        associate(sp=>spdata(cx%species))
+        if (cx%nindivs > mindensity) then
+          k=k+1
+          cc(k) = cx
+        else
+          ! Carbon and Nitrogen from plants to soil pools
+          call plant2soil(vegn,cx,cx%nindivs)
+        endif
+        end associate
+      enddo
+      vegn%n_cohorts = k
+      deallocate (vegn%cohorts)
+      vegn%cohorts=>cc
+    endif
+
   end subroutine kill_lowdensity_cohorts
 
 
-  ! ============================================================================
-  subroutine merge_cohorts(c1,c2)
-  type(cohort_type), intent(in) :: c1
-  type(cohort_type), intent(inout) :: c2
+  subroutine merge_cohorts(c1, c2)
+    !////////////////////////////////////////////////////////////////
+    ! kill low density cohorts, a new function seperated from vegn_mergecohorts
+    ! Weng, 2014-07-22
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(cohort_type), intent(in) :: c1
+    type(cohort_type), intent(inout) :: c2
 
-  real :: x1, x2 ! normalized relative weights
+    real :: x1, x2 ! normalized relative weights
 
-  if (c1%nindivs > 0.0 .or. c2%nindivs > 0.0) then
-   x1 = c1%nindivs/(c1%nindivs+c2%nindivs)
-   x2 = c2%nindivs/(c1%nindivs+c2%nindivs)
-   !else
-   !   x1 = 0.5
-   !   x2 = 0.5
-   !endif
-   ! update number of individuals in merged cohort
-   c2%nindivs = c1%nindivs + c2%nindivs
-   !  Carbon
-   c2%bl  = x1*c1%bl  + x2*c2%bl
-   c2%br  = x1*c1%br  + x2*c2%br
-   c2%bsw = x1*c1%bsw + x2*c2%bsw
-   c2%bHW = x1*c1%bHW + x2*c2%bHW
-   c2%seedC = x1*c1%seedC + x2*c2%seedC
-   c2%nsc = x1*c1%nsc + x2*c2%nsc
-   !   Allometry
-   c2%dbh = x1*c1%dbh + x2*c2%dbh
-   c2%height = x1*c1%height + x2*c2%height
-   c2%crownarea = x1*c1%crownarea + x2*c2%crownarea
-   c2%age = x1*c1%age + x2*c2%age
-   c2%C_growth = x1*c1%C_growth + x2*c2%C_growth
-   c2%topyear = x1*c1%topyear + x2*c2%topyear
+    if (c1%nindivs > 0.0 .or. c2%nindivs > 0.0) then
+      
+      x1 = c1%nindivs/(c1%nindivs+c2%nindivs)
+      x2 = c2%nindivs/(c1%nindivs+c2%nindivs)
+      !else
+      !   x1 = 0.5
+      !   x2 = 0.5
+      !endif
 
-   !  Nitrogen
-   c2%leafN = x1*c1%leafN + x2*c2%leafN
-   c2%rootN = x1*c1%rootN + x2*c2%rootN
-   c2%sapwN = x1*c1%sapwN + x2*c2%sapwN
-   c2%woodN = x1*c1%woodN + x2*c2%woodN
-   c2%seedN = x1*c1%seedN + x2*c2%seedN
-   c2%NSN   = x1*c1%NSN   + x2*c2%NSN
+      ! update number of individuals in merged cohort
+      c2%nindivs = c1%nindivs + c2%nindivs
 
-   !  calculate the resulting dry heat capacity
-   c2%leafarea = leaf_area_from_biomass(c2%bl, c2%species, c2%layer, c2%firstlayer)
-  endif
+      !  Carbon
+      c2%bl  = x1*c1%bl  + x2*c2%bl
+      c2%br  = x1*c1%br  + x2*c2%br
+      c2%bsw = x1*c1%bsw + x2*c2%bsw
+      c2%bHW = x1*c1%bHW + x2*c2%bHW
+      c2%seedC = x1*c1%seedC + x2*c2%seedC
+      c2%nsc = x1*c1%nsc + x2*c2%nsc
+
+      !   Allometry
+      c2%dbh = x1*c1%dbh + x2*c2%dbh
+      c2%height = x1*c1%height + x2*c2%height
+      c2%crownarea = x1*c1%crownarea + x2*c2%crownarea
+      c2%age = x1*c1%age + x2*c2%age
+      c2%C_growth = x1*c1%C_growth + x2*c2%C_growth
+      c2%topyear = x1*c1%topyear + x2*c2%topyear
+
+      !  Nitrogen
+      c2%leafN = x1*c1%leafN + x2*c2%leafN
+      c2%rootN = x1*c1%rootN + x2*c2%rootN
+      c2%sapwN = x1*c1%sapwN + x2*c2%sapwN
+      c2%woodN = x1*c1%woodN + x2*c2%woodN
+      c2%seedN = x1*c1%seedN + x2*c2%seedN
+      c2%NSN   = x1*c1%NSN   + x2*c2%NSN
+
+      !  calculate the resulting dry heat capacity
+      c2%leafarea = leaf_area_from_biomass(c2%bl, c2%species, c2%layer, c2%firstlayer)
+    endif
+
   end subroutine merge_cohorts
 
-  ! ============================================================================
-  function cohorts_can_be_merged(c1,c2); logical cohorts_can_be_merged
-  type(cohort_type), intent(in) :: c1,c2
 
-  real, parameter :: mindensity = 1.0E-4
-  logical :: sameSpecies, sameLayer, sameSize, sameSizeTree, sameSizeGrass, lowDensity
+  function cohorts_can_be_merged(c1, c2); logical cohorts_can_be_merged
+    !////////////////////////////////////////////////////////////////
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(cohort_type), intent(in) :: c1,c2
 
-  sameSpecies  = c1%species == c2%species
-  sameLayer    = (c1%layer == c2%layer) .or. & ! .and. (c1%firstlayer == c2%firstlayer)
-  ((spdata(c1%species)%lifeform ==0) .and. &
-   (spdata(c2%species)%lifeform ==0) .and. &
-   (c1%layer>1 .and.c2%layer>1))
-  sameSizeTree = (spdata(c1%species)%lifeform > 0).and.  &
-  (spdata(c2%species)%lifeform > 0).and.  &
-  ((abs(c1%DBH - c2%DBH)/c2%DBH < 0.2 ) .or.  &
-  (abs(c1%DBH - c2%DBH)        < 0.001))  ! it'll be always true for grasses
-  sameSizeGrass= (spdata(c1%species)%lifeform ==0) .and. &
-  (spdata(c2%species)%lifeform ==0) .and. &
-  ((c1%DBH == c2%DBH).and.c1%age> 2. .and. c2%age>2.)  ! it'll be always true for grasses
-  sameSize = sameSizeTree .OR. sameSizeGrass
-  lowDensity  = .FALSE. ! c1%nindivs < mindensity 
-  ! Weng, 2014-01-27, turned off
-  cohorts_can_be_merged = sameSpecies .and. sameLayer .and. sameSize
+    real, parameter :: mindensity = 1.0E-4
+    logical :: sameSpecies, sameLayer, sameSize, sameSizeTree, sameSizeGrass, lowDensity
+
+    sameSpecies  = c1%species == c2%species
+    
+    sameLayer    = (c1%layer == c2%layer) .or. & ! .and. (c1%firstlayer == c2%firstlayer)
+      ((spdata(c1%species)%lifeform ==0) .and. &
+       (spdata(c2%species)%lifeform ==0) .and. &
+       (c1%layer>1 .and.c2%layer>1))
+    
+    sameSizeTree = (spdata(c1%species)%lifeform > 0).and.  &
+      (spdata(c2%species)%lifeform > 0).and.  &
+      ((abs(c1%DBH - c2%DBH)/c2%DBH < 0.2 ) .or.  &
+      (abs(c1%DBH - c2%DBH)        < 0.001))  ! it'll be always true for grasses
+    
+    sameSizeGrass= (spdata(c1%species)%lifeform ==0) .and. &
+      (spdata(c2%species)%lifeform ==0) .and. &
+      ((c1%DBH == c2%DBH).and.c1%age> 2. .and. c2%age>2.)  ! it'll be always true for grasses
+    
+    sameSize = sameSizeTree .OR. sameSizeGrass
+    lowDensity  = .FALSE. ! c1%nindivs < mindensity 
+    
+    ! Weng, 2014-01-27, turned off
+    cohorts_can_be_merged = sameSpecies .and. sameLayer .and. sameSize
+
   end function
 
-  ! ============================================================================
-  ! calculate tree height, DBH, height, and crown area by initial biomass
-  ! The allometry equations are from Ray Dybzinski et al. 2011 and Forrior et al. in review
-  !         HT = alphaHT * DBH ** (gamma-1)   ! DBH --> Height
-  !         CA = alphaCA * DBH ** gamma       ! DBH --> Crown Area
-  !         BM = alphaBM * DBH ** (gamma + 1) ! DBH --> tree biomass
-  subroutine initialize_cohort_from_biomass(cc,btot)
-  type(cohort_type), intent(inout) :: cc
-  real, intent(in)    :: btot ! total biomass per individual, kg C
 
-  associate(sp=>spdata(cc%species))
-   cc%DBH        = (btot / sp%alphaBM) ** ( 1.0/sp%thetaBM )
-   cc%height     = sp%alphaHT * cc%dbh ** sp%thetaHT
-   cc%crownarea  = sp%alphaCA * cc%dbh ** sp%thetaCA
+  subroutine initialize_cohort_from_biomass(cc, btot)
+    !////////////////////////////////////////////////////////////////
+    ! calculate tree height, DBH, height, and crown area by initial biomass
+    ! The allometry equations are from Ray Dybzinski et al. 2011 and Forrior et al. in review
+    !         HT = alphaHT * DBH ** (gamma-1)   ! DBH --> Height
+    !         CA = alphaCA * DBH ** gamma       ! DBH --> Crown Area
+    !         BM = alphaBM * DBH ** (gamma + 1) ! DBH --> tree biomass
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(cohort_type), intent(inout) :: cc
+    real, intent(in) :: btot ! total biomass per individual, kg C
 
-   cc%bl_max = sp%LMA   * sp%LAImax        * cc%crownarea/max(1,cc%layer)
-   cc%br_max = sp%phiRL * sp%LAImax/sp%SRA * cc%crownarea/max(1,cc%layer)
-   cc%NSNmax = sp%fNSNmax*(cc%bl_max/(sp%CNleaf0*sp%leafLS)+cc%br_max/sp%CNroot0)
-   cc%nsc    = 2.0 * (cc%bl_max + cc%br_max)
-   call rootarea_and_verticalprofile(cc)
-   !    N pools
-   cc%NSN    = 5.0*(cc%bl_max/sp%CNleaf0 + cc%br_max/sp%CNroot0)
-   cc%leafN  = cc%bl/sp%CNleaf0
-   cc%rootN  = cc%br/sp%CNroot0
-   cc%sapwN  = cc%bsw/sp%CNsw0
-   cc%woodN  = cc%bHW/sp%CNwood0
-  end associate
-  end subroutine initialize_cohort_from_biomass
-
-  ! ============================================================================
-  subroutine annual_calls(vegn)
-  type(vegn_tile_type), intent(inout) :: vegn
-
-  !---- annual call -------------
-  ! update the LAImax of each PFT according to available N for next year
-
-  if (update_annualLAImax) call vegn_annualLAImax_update(vegn)
-
-  ! Reproduction and mortality
-  !call vegn_starvation(vegn)  ! called daily
-  !call vegn_annual_starvation(vegn)
-  call vegn_reproduction(vegn)
-  call vegn_nat_mortality(vegn, real(seconds_per_year))
-
-
-  ! Re-organize cohorts
-  call relayer_cohorts(vegn)
-  call kill_lowdensity_cohorts(vegn)
-  call vegn_mergecohorts(vegn)
-
-  ! set annual variables zero
-  call Zero_diagnostics(vegn)
-  end subroutine annual_calls
-
-  !============================================
-  subroutine init_cohort_allometry(cc)
-  type(cohort_type), intent(inout) :: cc
-  ! ----- local var -----------
-  integer :: layer
-  real    :: btot ! total biomass per individual, kg C
-
-  associate(sp=>spdata(cc%species))
-    !if (sp%lifeform>0) then
-    btot = max(0.0001,cc%bHW+cc%bsw)
-    layer = max(1, cc%layer)
+    associate(sp=>spdata(cc%species))
+    
     cc%DBH        = (btot / sp%alphaBM) ** ( 1.0/sp%thetaBM )
     cc%height     = sp%alphaHT * cc%dbh ** sp%thetaHT
     cc%crownarea  = sp%alphaCA * cc%dbh ** sp%thetaCA
 
-    ! calculations of bl_max and br_max are here only for the sake of the
-    ! diagnostics, because otherwise those fields are inherited from the 
-    ! parent cohort and produce spike in the output, even though these spurious
-    ! values are not used by the model
-    cc%bl_max = sp%LMA   * sp%LAImax        * cc%crownarea/layer
-    cc%br_max = sp%phiRL * sp%LAImax/sp%SRA * cc%crownarea/layer
+    cc%bl_max = sp%LMA   * sp%LAImax        * cc%crownarea/max(1,cc%layer)
+    cc%br_max = sp%phiRL * sp%LAImax/sp%SRA * cc%crownarea/max(1,cc%layer)
     cc%NSNmax = sp%fNSNmax*(cc%bl_max/(sp%CNleaf0*sp%leafLS)+cc%br_max/sp%CNroot0)
-  end associate
+    cc%nsc    = 2.0 * (cc%bl_max + cc%br_max)
+    
+    call rootarea_and_verticalprofile(cc)
+    
+    !    N pools
+    cc%NSN    = 5.0*(cc%bl_max/sp%CNleaf0 + cc%br_max/sp%CNroot0)
+    cc%leafN  = cc%bl/sp%CNleaf0
+    cc%rootN  = cc%br/sp%CNroot0
+    cc%sapwN  = cc%bsw/sp%CNsw0
+    cc%woodN  = cc%bHW/sp%CNwood0
+    end associate
+  end subroutine initialize_cohort_from_biomass
+
+  subroutine annual_calls(vegn)
+    !////////////////////////////////////////////////////////////////
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
+
+    !---- annual call -------------
+    ! update the LAImax of each PFT according to available N for next year
+
+    if (update_annualLAImax) call vegn_annualLAImax_update(vegn)
+
+    ! Reproduction and mortality
+    !call vegn_starvation(vegn)  ! called daily
+    !call vegn_annual_starvation(vegn)
+    call vegn_reproduction(vegn)
+    call vegn_nat_mortality(vegn, real(seconds_per_year))
+
+
+    ! Re-organize cohorts
+    call relayer_cohorts(vegn)
+    call kill_lowdensity_cohorts(vegn)
+    call vegn_mergecohorts(vegn)
+
+    ! set annual variables zero
+    call Zero_diagnostics(vegn)
+
+  end subroutine annual_calls
+
+
+  subroutine init_cohort_allometry(cc)
+    !////////////////////////////////////////////////////////////////
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(cohort_type), intent(inout) :: cc
+    ! ----- local var -----------
+    integer :: layer
+    real    :: btot ! total biomass per individual, kg C
+
+    associate(sp=>spdata(cc%species))
+      !if (sp%lifeform>0) then
+      btot = max(0.0001,cc%bHW+cc%bsw)
+      layer = max(1, cc%layer)
+      cc%DBH        = (btot / sp%alphaBM) ** ( 1.0/sp%thetaBM )
+      cc%height     = sp%alphaHT * cc%dbh ** sp%thetaHT
+      cc%crownarea  = sp%alphaCA * cc%dbh ** sp%thetaCA
+
+      ! calculations of bl_max and br_max are here only for the sake of the
+      ! diagnostics, because otherwise those fields are inherited from the 
+      ! parent cohort and produce spike in the output, even though these spurious
+      ! values are not used by the model
+      cc%bl_max = sp%LMA   * sp%LAImax        * cc%crownarea/layer
+      cc%br_max = sp%phiRL * sp%LAImax/sp%SRA * cc%crownarea/layer
+      cc%NSNmax = sp%fNSNmax*(cc%bl_max/(sp%CNleaf0*sp%leafLS)+cc%br_max/sp%CNroot0)
+    end associate
   end subroutine init_cohort_allometry
 
-  ! =============================================================================
-  ! Added by Weng 2015-02-29
+
   subroutine vegn_annualLAImax_update(vegn)
-  ! used for updating LAImax according to mineral N in soil
-  ! Potential problems:
-  !   1. All species LAImax are updated
-  !   2. For evergreen, LAImax can be less than current LAI.
-  !  Weng, 2017-08-02
-  type(vegn_tile_type), intent(inout) :: vegn
+    !////////////////////////////////////////////////////////////////
+    ! used for updating LAImax according to mineral N in soil
+    ! Potential problems:
+    !   1. All species LAImax are updated
+    !   2. For evergreen, LAImax can be less than current LAI.
+    !  Weng, 2017-08-02
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout) :: vegn
 
-  ! local variables
-  type(cohort_type), pointer :: cc
-  real   :: LAImin, LAIfixedN, LAImineralN
-  real   :: LAI_Nitrogen
-  real   :: fixedN, rootN
-  logical:: fixedN_based
-  integer :: i
-  ! Calculating LAI max based on mineral N or mineralN + fixed N
-  fixedN_based =  .False. ! .True. !
-  LAImin       = 0.5
+    ! local variables
+    type(cohort_type), pointer :: cc
+    real   :: LAImin, LAIfixedN, LAImineralN
+    real   :: LAI_Nitrogen
+    real   :: fixedN, rootN
+    logical:: fixedN_based
+    integer :: i
+    ! Calculating LAI max based on mineral N or mineralN + fixed N
+    fixedN_based =  .False. ! .True. !
+    LAImin       = 0.5
 
-  !fixedN = 0.0
-  !do i = 1,vegn%n_cohorts
-  !      cc => vegn%cohorts(i)
-  !      fixedN = fixedN + cc%annualfixedN * cc%crownarea * cc%nindivs
-  !enddo
+    !fixedN = 0.0
+    !do i = 1,vegn%n_cohorts
+    !      cc => vegn%cohorts(i)
+    !      fixedN = fixedN + cc%annualfixedN * cc%crownarea * cc%nindivs
+    !enddo
 
-  ! Mineral+fixed N-based LAImax
-  ! LAI_fixedN = sp%Nfixrate0 * sp%LMA * sp%CNleaf0 * sp%leafLS / sp%LMA
-  ! cc%br_max = sp%phiRL*cc%bl_max/(sp%LMA*sp%SRA)
-  vegn%previousN = 0.8 * vegn%previousN + 0.2 * vegn%annualN
-  do i=0,MSPECIES
-    associate (sp => spdata(i) )
+    ! Mineral+fixed N-based LAImax
+    ! LAI_fixedN = sp%Nfixrate0 * sp%LMA * sp%CNleaf0 * sp%leafLS / sp%LMA
+    ! cc%br_max = sp%phiRL*cc%bl_max/(sp%LMA*sp%SRA)
+    vegn%previousN = 0.8 * vegn%previousN + 0.2 * vegn%annualN
+    do i=0,MSPECIES
+      associate (sp => spdata(i) )
 
-      LAIfixedN  = 0.5 * sp%Nfixrate0 * sp%CNleaf0 * sp%leafLS
-      LAImineralN = 0.5*vegn%previousN*sp%CNleaf0*sp%leafLS/sp%LMA
-      !LAImineralN = vegn%previousN/(sp%LMA/(sp%CNleaf0*sp%leafLS)+sp%phiRL*sp%alpha_FR/sp%SRA /sp%CNroot0)
-      LAI_nitrogen = LAIfixedN + LAImineralN
+        LAIfixedN  = 0.5 * sp%Nfixrate0 * sp%CNleaf0 * sp%leafLS
+        LAImineralN = 0.5*vegn%previousN*sp%CNleaf0*sp%leafLS/sp%LMA
+        !LAImineralN = vegn%previousN/(sp%LMA/(sp%CNleaf0*sp%leafLS)+sp%phiRL*sp%alpha_FR/sp%SRA /sp%CNroot0)
+        LAI_nitrogen = LAIfixedN + LAImineralN
 
-      spdata(i)%LAImax = MAX(LAImin, MIN(LAI_nitrogen,sp%LAI_light))
-      spdata(i)%underLAImax = MIN(sp%LAImax,1.2)
-    end associate
-  enddo
+        spdata(i)%LAImax = MAX(LAImin, MIN(LAI_nitrogen,sp%LAI_light))
+        spdata(i)%underLAImax = MIN(sp%LAImax,1.2)
+      end associate
+    enddo
 
-  !  ! update the PFTs in the first layer based on fixed N
-  !  if (fixedN_based) then ! based on "cc%annualfixedN + vegn%previousN"
-  !!    Reset sp%LAImax
-  !     do i = 1,vegn%n_cohorts
-  !        cc => vegn%cohorts(i)
-  !        associate (sp => spdata(cc%species) )
-  !        sp%LAImax    = 0.0  ! max(sp%LAImax,ccLAImax)
-  !        sp%layerfrac = 0.0
-  !        sp%n_cc      = 0
-  !        end associate
-  !     enddo
-  !!   Sum ccLAImax in the first layer
-  !     do i = 1,vegn%n_cohorts
-  !        cc => vegn%cohorts(i)
-  !        associate ( sp => spdata(cc%species) )
-  !        if (sp%LAImax < LAImin) then
-  !           LAI_nitrogen = 0.5*(vegn%previousN+cc%annualfixedN)*sp%CNleaf0*sp%leafLS/sp%LMA
-  !           if (sp%Nfixrate0 > 0.0)
-  !           sp%LAImax    = MAX(LAImin, MIN(LAI_nitrogen,sp%LAI_light))
-  !        endif
-  !        end associate
-  !     enddo
-  !  endif
+    !  ! update the PFTs in the first layer based on fixed N
+    !  if (fixedN_based) then ! based on "cc%annualfixedN + vegn%previousN"
+    !!    Reset sp%LAImax
+    !     do i = 1,vegn%n_cohorts
+    !        cc => vegn%cohorts(i)
+    !        associate (sp => spdata(cc%species) )
+    !        sp%LAImax    = 0.0  ! max(sp%LAImax,ccLAImax)
+    !        sp%layerfrac = 0.0
+    !        sp%n_cc      = 0
+    !        end associate
+    !     enddo
+    !!   Sum ccLAImax in the first layer
+    !     do i = 1,vegn%n_cohorts
+    !        cc => vegn%cohorts(i)
+    !        associate ( sp => spdata(cc%species) )
+    !        if (sp%LAImax < LAImin) then
+    !           LAI_nitrogen = 0.5*(vegn%previousN+cc%annualfixedN)*sp%CNleaf0*sp%leafLS/sp%LMA
+    !           if (sp%Nfixrate0 > 0.0)
+    !           sp%LAImax    = MAX(LAImin, MIN(LAI_nitrogen,sp%LAI_light))
+    !        endif
+    !        end associate
+    !     enddo
+    !  endif
   end subroutine vegn_annualLAImax_update
 
-  ! ============================================================================
+
   function leaf_area_from_biomass(bl,species,layer,firstlayer) result (area)
-  real :: area ! returned value
-  real,    intent(in) :: bl      ! biomass of leaves, kg C/individual
-  integer, intent(in) :: species ! species
-  integer, intent(in) :: layer, firstlayer
+    !////////////////////////////////////////////////////////////////
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    real :: area ! returned value
+    real,    intent(in) :: bl      ! biomass of leaves, kg C/individual
+    integer, intent(in) :: species ! species
+    integer, intent(in) :: layer, firstlayer
 
-  ! modified by Weng (2014-01-09), 07-18-2017
-  area = bl/spdata(species)%LMA
-  !if (layer > 1.AND. firstlayer == 0) then
-  !   area = bl/(0.5*spdata(species)%LMA) ! half thickness for leaves in understory
-  !else
-  !   area = bl/spdata(species)%LMA
-  !endif
+    ! modified by Weng (2014-01-09), 07-18-2017
+    area = bl/spdata(species)%LMA
+    !if (layer > 1.AND. firstlayer == 0) then
+    !   area = bl/(0.5*spdata(species)%LMA) ! half thickness for leaves in understory
+    !else
+    !   area = bl/spdata(species)%LMA
+    !endif
   end function
-  ! ============================================================================
-
+  
   !============= Vegetation initializations =====================
+
   subroutine initialize_vegn_tile(vegn,nCohorts)
-  type(vegn_tile_type), intent(inout), pointer :: vegn
-  integer, intent(in) :: nCohorts
-  ! -local vars -------
+    !////////////////////////////////////////////////////////////////
+    ! Code from BiomeE-Allocation
+    !---------------------------------------------------------------
+    type(vegn_tile_type), intent(inout), pointer :: vegn
+    integer, intent(in) :: nCohorts
+    ! -local vars -------
 
-  type(cohort_type), dimension(:), pointer :: cc
-  type(cohort_type), pointer :: cx
-  integer,parameter :: rand_seed = 86456
-  real    :: r
-  real    :: btotal
-  integer :: i, istat
-  integer :: io           ! i/o status for the namelist
-  integer :: ierr         ! error code, returned by i/o routines
-  integer :: nml_unit
+    type(cohort_type), dimension(:), pointer :: cc
+    type(cohort_type), pointer :: cx
+    integer,parameter :: rand_seed = 86456
+    real    :: r
+    real    :: btotal
+    integer :: i, istat
+    integer :: io           ! i/o status for the namelist
+    integer :: ierr         ! error code, returned by i/o routines
+    integer :: nml_unit
 
-  ! Take tile parameters from myinterface (they are read from the namelist file in initialize_PFT() otherwise)
-  K1          = myinterface%params_tile%K1  
-  K2          = myinterface%params_tile%K2
-  K_nitrogen  = myinterface%params_tile%K_nitrogen   
-  etaN        = myinterface%params_tile%etaN         
-  MLmixRatio  = myinterface%params_tile%MLmixRatio   
-  l_fract     = myinterface%params_tile%l_fract      
-  retransN    = myinterface%params_tile%retransN     
-  ! fNSNmax     = myinterface%params_tile%fNSNmax      
-  ! f_N_add     = myinterface%params_tile%f_N_add      
-  f_initialBSW= myinterface%params_tile%f_initialBSW 
+    ! Take tile parameters from myinterface (they are read from the namelist file in initialize_PFT() otherwise)
+    K1          = myinterface%params_tile%K1  
+    K2          = myinterface%params_tile%K2
+    K_nitrogen  = myinterface%params_tile%K_nitrogen   
+    etaN        = myinterface%params_tile%etaN         
+    MLmixRatio  = myinterface%params_tile%MLmixRatio   
+    l_fract     = myinterface%params_tile%l_fract      
+    retransN    = myinterface%params_tile%retransN     
+    ! fNSNmax     = myinterface%params_tile%fNSNmax      
+    ! f_N_add     = myinterface%params_tile%f_N_add      
+    f_initialBSW= myinterface%params_tile%f_initialBSW 
 
-  !  Read parameters from the parameter file (namelist)
-  if (read_from_parameter_file) then
+    !  Read parameters from the parameter file (namelist)
+    if (read_from_parameter_file) then
 
-  ! Initialize plant cohorts
-  init_n_cohorts = nCohorts ! Weng,2018-11-21
-  allocate(cc(1:init_n_cohorts), STAT = istat)
-  vegn%cohorts => cc
-  vegn%n_cohorts = init_n_cohorts
-  cc => null()
+      ! Initialize plant cohorts
+      init_n_cohorts = nCohorts ! Weng,2018-11-21
+      allocate(cc(1:init_n_cohorts), STAT = istat)
+      vegn%cohorts => cc
+      vegn%n_cohorts = init_n_cohorts
+      cc => null()
 
-  do i=1,init_n_cohorts
-   cx => vegn%cohorts(i)
-   cx%status  = LEAF_OFF ! ON=1, OFF=0 ! ON
-   cx%layer   = 1
-   cx%species = myinterface%init_cohort%init_cohort_species(i) 
-   cx%ccID =  i
-   cx%nsc     = myinterface%init_cohort%init_cohort_nsc(i)
-   cx%nindivs = myinterface%init_cohort%init_cohort_nindivs(i) ! trees/m2
-   cx%bsw     = myinterface%init_cohort%init_cohort_bsw(i)
-   cx%bHW   = myinterface%init_cohort%init_cohort_bHW(i)
-   btotal     = cx%bsw + cx%bHW  ! kgC /tree
-   call initialize_cohort_from_biomass(cx,btotal)
-  enddo
-  MaxCohortID = cx%ccID
-  ! Sorting these cohorts
+      do i=1,init_n_cohorts
+        cx => vegn%cohorts(i)
+        cx%status  = LEAF_OFF ! ON=1, OFF=0 ! ON
+        cx%layer   = 1
+        cx%species = myinterface%init_cohort%init_cohort_species(i) 
+        cx%ccID =  i
+        cx%nsc     = myinterface%init_cohort%init_cohort_nsc(i)
+        cx%nindivs = myinterface%init_cohort%init_cohort_nindivs(i) ! trees/m2
+        cx%bsw     = myinterface%init_cohort%init_cohort_bsw(i)
+        cx%bHW   = myinterface%init_cohort%init_cohort_bHW(i)
+        btotal     = cx%bsw + cx%bHW  ! kgC /tree
+        call initialize_cohort_from_biomass(cx,btotal)
+      enddo
+      MaxCohortID = cx%ccID
+      ! Sorting these cohorts
 
-  call relayer_cohorts(vegn)
+      call relayer_cohorts(vegn)
 
-  ! Initial Soil pools and environmental conditions
-  vegn%metabolicL   = myinterface%init_soil%init_fast_soil_C ! kgC m-2
-  vegn%structuralL  = myinterface%init_soil%init_slow_soil_C ! slow soil carbon pool, (kg C/m2)
-  vegn%metabolicN   = vegn%metabolicL/CN0metabolicL  ! fast soil nitrogen pool, (kg N/m2)
-  vegn%structuralN  = vegn%structuralL/CN0structuralL  ! slow soil nitrogen pool, (kg N/m2)
-  vegn%N_input      = myinterface%init_soil%N_input   ! kgN m-2 yr-1, N input to soil
-  vegn%mineralN     = myinterface%init_soil%init_Nmineral  ! Mineral nitrogen pool, (kg N/m2)
-  vegn%previousN    = vegn%mineralN
+      ! Initial Soil pools and environmental conditions
+      vegn%metabolicL   = myinterface%init_soil%init_fast_soil_C ! kgC m-2
+      vegn%structuralL  = myinterface%init_soil%init_slow_soil_C ! slow soil carbon pool, (kg C/m2)
+      vegn%metabolicN   = vegn%metabolicL/CN0metabolicL  ! fast soil nitrogen pool, (kg N/m2)
+      vegn%structuralN  = vegn%structuralL/CN0structuralL  ! slow soil nitrogen pool, (kg N/m2)
+      vegn%N_input      = myinterface%init_soil%N_input   ! kgN m-2 yr-1, N input to soil
+      vegn%mineralN     = myinterface%init_soil%init_Nmineral  ! Mineral nitrogen pool, (kg N/m2)
+      vegn%previousN    = vegn%mineralN
 
-  !Soil water
-  ! Parameters
-  vegn%soiltype = myinterface%params_tile%soiltype    ! soiltype
-  vegn%FLDCAP = myinterface%params_tile%FLDCAP  !FLDCAP
-  vegn%WILTPT = myinterface%params_tile%WILTPT  ! WILTPT
+      !Soil water
+      ! Parameters
+      vegn%soiltype = myinterface%params_tile%soiltype    ! soiltype
+      vegn%FLDCAP = myinterface%params_tile%FLDCAP  !FLDCAP
+      vegn%WILTPT = myinterface%params_tile%WILTPT  ! WILTPT
 
-  ! Initialize soil volumetric water conent with field capacity (maximum soil moisture to start with)
-  vegn%wcl = myinterface%params_tile%FLDCAP  !FLDCAP
+      ! Initialize soil volumetric water conent with field capacity (maximum soil moisture to start with)
+      vegn%wcl = myinterface%params_tile%FLDCAP  !FLDCAP
 
-  ! Update soil water
-  vegn%SoilWater = 0.0
-  do i=1, max_lev
-   vegn%SoilWater = vegn%SoilWater + vegn%wcl(i)*thksl(i)*1000.0
-  enddo
-  vegn%thetaS = 1.0
+      ! Update soil water
+      vegn%SoilWater = 0.0
+      do i=1, max_lev
+        vegn%SoilWater = vegn%SoilWater + vegn%wcl(i)*thksl(i)*1000.0
+      enddo
+      vegn%thetaS = 1.0
 
-  ! tile
-  !print*, 'initialize_vegn_tile() 1: ',  vegn%n_cohorts   ! xxx debug
-  call summarize_tile(vegn)
-  !print*, 'initialize_vegn_tile() 2: ',  vegn%n_cohorts   ! xxx debug
-  vegn%initialN0 = vegn%NSN + vegn%SeedN + vegn%leafN +      &
-  vegn%rootN + vegn%SapwoodN + vegn%woodN + &
-  vegn%MicrobialN + vegn%metabolicN +       &
-  vegn%structuralN + vegn%mineralN
-  vegn%totN =  vegn%initialN0
-  else
-  !- Generate cohorts randomly --------
-  ! Initialize plant cohorts
-  allocate(cc(1:nCohorts), STAT = istat)
-  vegn%cohorts => cc
-  vegn%n_cohorts = nCohorts
-  cc => null()
-  r = rand(rand_seed)
-  do i=1,nCohorts
-   cx => vegn%cohorts(i)
-   cx%status  = LEAF_OFF ! ON=1, OFF=0 ! ON
-   cx%layer   = 1
-   cx%species = INT(rand()*5)+1
-   cx%nindivs = rand()/10. ! trees/m2
-   btotal     = rand()*100.0  ! kgC /tree
-   call initialize_cohort_from_biomass(cx,btotal)
-  enddo
-  ! Sorting these cohorts
+      ! tile
+      !print*, 'initialize_vegn_tile() 1: ',  vegn%n_cohorts   ! xxx debug
+      call summarize_tile(vegn)
+      !print*, 'initialize_vegn_tile() 2: ',  vegn%n_cohorts   ! xxx debug
+      vegn%initialN0 = vegn%NSN + vegn%SeedN + vegn%leafN +      &
+      vegn%rootN + vegn%SapwoodN + vegn%woodN + &
+      vegn%MicrobialN + vegn%metabolicN +       &
+      vegn%structuralN + vegn%mineralN
+      vegn%totN =  vegn%initialN0
+    
+    else
+      !- Generate cohorts randomly --------
+      ! Initialize plant cohorts
+      allocate(cc(1:nCohorts), STAT = istat)
+      vegn%cohorts => cc
+      vegn%n_cohorts = nCohorts
+      cc => null()
+      r = rand(rand_seed)
+      do i=1,nCohorts
+        cx => vegn%cohorts(i)
+        cx%status  = LEAF_OFF ! ON=1, OFF=0 ! ON
+        cx%layer   = 1
+        cx%species = INT(rand()*5)+1
+        cx%nindivs = rand()/10. ! trees/m2
+        btotal     = rand()*100.0  ! kgC /tree
+        call initialize_cohort_from_biomass(cx,btotal)
+      enddo
 
-  call relayer_cohorts(vegn)
+      ! Sorting these cohorts
+      call relayer_cohorts(vegn)
 
-  ! ID each cohort
-  do i=1,nCohorts
-   cx => vegn%cohorts(i)
-   cx%ccID = MaxCohortID + i
-  enddo
-  MaxCohortID = cx%ccID
-  ! Initial Soil pools and environmental conditions
-  vegn%metabolicL  = 0.2 ! kgC m-2
-  vegn%structuralL = 7.0 ! slow soil carbon pool, (kg C/m2)
-  vegn%metabolicN  = vegn%metabolicL/CN0metabolicL  ! fast soil nitrogen pool, (kg N/m2)
-  vegn%structuralN = vegn%structuralL/CN0structuralL  ! slow soil nitrogen pool, (kg N/m2)
-  vegn%N_input     = N_input  ! kgN m-2 yr-1, N input to soil
-  vegn%mineralN    = 0.005  ! Mineral nitrogen pool, (kg N/m2)
-  vegn%previousN   = vegn%mineralN
+      ! ID each cohort
+      do i=1,nCohorts
+        cx => vegn%cohorts(i)
+        cx%ccID = MaxCohortID + i
+      enddo
+      MaxCohortID = cx%ccID
 
-  ! tile
-  !print*, 'initialize_vegn_tile() 3: ',  vegn%n_cohorts   ! xxx debug
-  call summarize_tile(vegn)
-  !print*, 'initialize_vegn_tile() 4: ',  vegn%n_cohorts   ! xxx debug
-  vegn%initialN0 = vegn%NSN + vegn%SeedN + vegn%leafN +      &
-  vegn%rootN + vegn%SapwoodN + vegn%woodN + &
-  vegn%MicrobialN + vegn%metabolicN +       &
-  vegn%structuralN + vegn%mineralN
-  vegn%totN =  vegn%initialN0
+      ! Initial Soil pools and environmental conditions
+      vegn%metabolicL  = 0.2 ! kgC m-2
+      vegn%structuralL = 7.0 ! slow soil carbon pool, (kg C/m2)
+      vegn%metabolicN  = vegn%metabolicL/CN0metabolicL  ! fast soil nitrogen pool, (kg N/m2)
+      vegn%structuralN = vegn%structuralL/CN0structuralL  ! slow soil nitrogen pool, (kg N/m2)
+      vegn%N_input     = N_input  ! kgN m-2 yr-1, N input to soil
+      vegn%mineralN    = 0.005  ! Mineral nitrogen pool, (kg N/m2)
+      vegn%previousN   = vegn%mineralN
 
-  endif  ! initialization: random or pre-described
+      ! tile
+      !print*, 'initialize_vegn_tile() 3: ',  vegn%n_cohorts   ! xxx debug
+      call summarize_tile(vegn)
+      !print*, 'initialize_vegn_tile() 4: ',  vegn%n_cohorts   ! xxx debug
+      vegn%initialN0 = vegn%NSN + vegn%SeedN + vegn%leafN +      &
+      vegn%rootN + vegn%SapwoodN + vegn%woodN + &
+      vegn%MicrobialN + vegn%metabolicN +       &
+      vegn%structuralN + vegn%mineralN
+      vegn%totN =  vegn%initialN0
+
+    endif  ! initialization: random or pre-described
   end subroutine initialize_vegn_tile
 
-  ! ====================================
 
 end module md_vegetation
 
