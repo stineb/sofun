@@ -107,7 +107,7 @@ contains
           'cID','PFT','layer','density', 'f_layer',                &
           'dDBH','dbh','height','Acrown',                          &
           'wood','nsc', 'NSN','NPPtr','seed',                      &
-          'NPPL','NPPR','NPPW','GPP-yr','NPP-yr',                  &
+          'NPPL','NPPR','NPPW','GPP_yr','NPP_yr',                  &
           'N_uptk','N_fix','maxLAI'
           
           write(fno3,'(5(a5,","),25(a8,","))')                     &
@@ -115,14 +115,14 @@ contains
           'layer','density', 'f_layer', 'LAI',                     &
           'gpp','resp','transp',                                   &
           'NPPleaf','NPProot','NPPwood',                           &
-          'NSC','seedC','leafC','rootC','SW-C','HW-C',             &
-          'NSN','seedN','leafN','rootN','SW-N','HW-N'
+          'NSC','seedC','leafC','rootC','SW_C','HW_C',             &
+          'NSN','seedN','leafN','rootN','SW_N','HW_N'
           
           write(fno4,'(2(a5,","),55(a10,","))')  'year','doy',     &
           'Tc','Prcp', 'totWs',  'Trsp', 'Evap','Runoff',          &
           'ws1','ws2','ws3', 'LAI','GPP', 'Rauto', 'Rh',           &
-          'NSC','seedC','leafC','rootC','SW-C','HW-C',             &
-          'NSN','seedN','leafN','rootN','SW-N','HW-N',             &
+          'NSC','seedC','leafC','rootC','SW_C','HW_C',             &
+          'NSN','seedN','leafN','rootN','SW_N','HW_N',             &
           'McrbC', 'fastSOM',   'slowSOM',                         &
           'McrbN', 'fastSoilN', 'slowSoilN',                       &
           'mineralN', 'N_uptk'
@@ -136,7 +136,7 @@ contains
           'McrbC','fastSOM',   'SlowSOM',                          &
           'McrbN','fastSoilN', 'slowSoilN',                        &
           'mineralN', 'N_fxed','N_uptk','N_yrMin','N_P2S','N_loss',&
-          'seedC','seedN','Seedling-C','Seedling-N'
+          'totseedC','totseedN','Seedling_C','Seedling_N'
 
       !------------------------------------------------------------------------
       ! Initialisations

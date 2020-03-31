@@ -286,8 +286,8 @@ program main
   ! READ FORCING FILE
   !----------------------------------------------------------------
   
-  ! call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
-  call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
+  call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
+  ! call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
   myinterface%steps_per_day = int(24.0/timestep)
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0*3600.0/myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
@@ -416,11 +416,16 @@ program main
       idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
       idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
       call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
+      print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
+
     end if
 
     ! print*,'b'
-    ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end,1)
-    ! print*, out_biosphere%hourly_tile(:)%hour
+    ! print*,out_biosphere%hourly_tile(1)%Tair
+    ! print*,out_hourly_tile(idx_hourly_start, 5)
+    ! print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
+    ! print*,size(out_hourly_tile(idx_hourly_start:idx_hourly_end, 1))
+    ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
 
     ! ----------------------------------------------------------------
     ! Print out_daily_tile
@@ -750,6 +755,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     close(11)    ! close forcing file
 
     ! print*,'1'
+    ! print*,'input par', input_data(1,10)
 
     ! Put the data into forcing 
     datalines = m - 1
