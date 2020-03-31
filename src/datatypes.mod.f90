@@ -113,6 +113,7 @@ module datatypes
     !  real    :: N_roots0    ! root biomass at half of max. N-uptake rate
     real    :: NfixRate0    ! Reference N fixation rate (kgN kgC-1 root)
     real    :: NfixCost0    ! Carbon cost of N fixation (kgC kgN-1)
+
     ! wood traits
     real    :: rho_wood     ! woody density, kg C m-3 wood
     real    :: gamma_SW     ! sapwood respiration rate, kgC m-2 Acambium yr-1
@@ -127,16 +128,19 @@ module datatypes
     real    :: tauNSC           ! residence time of C in NSC (to define storage capacity)
     real    :: fNSNmax          ! multilier for NSNmax
     real    :: f_N_add
+
     ! Default C/N ratios
     real    :: CNleaf0
     real    :: CNroot0
     real    :: CNsw0
     real    :: CNwood0
     real    :: CNseed0
+
     ! phenology
     real    :: tc_crit         ! K, for turning OFF a growth season
     real    :: tc_crit_on      ! K, for turning ON a growth season
     real    :: gdd_crit        ! K, critical value of GDD5 for turning ON growth season
+
     !  vital rates
     real    :: maturalage       ! the age that can reproduce
     real    :: v_seed           ! fracton of G_SF to G_F
@@ -144,6 +148,7 @@ module datatypes
     real    :: prob_g,prob_e    ! germination and establishment probabilities
     real    :: mortrate_d_c     ! yearly mortality rate in canopy
     real    :: mortrate_d_u     ! yearly mortality rate in understory
+
     ! Population level variables
     real    :: LAImax,underLAImax ! max. LAI
     real    :: LAI_light        ! light controlled maximum LAI
@@ -231,6 +236,7 @@ module datatypes
     real    :: uptake_frac(max_lev) ! for LM3 soil water uptake, Weng, 2017-10-28
     real    :: K_r,r_r
     real    :: root_zeta
+
     ! for photosynthesis
     real :: An_op = 0.0 ! mol C/(m2 of leaf per year)
     real :: An_cl = 0.0 ! mol C/(m2 of leaf per year)
@@ -243,18 +249,22 @@ module datatypes
 
   !---------------------------
   type :: vegn_tile_type
+
     integer :: n_cohorts = 0
     integer :: n_years   = 0
     integer :: n_canopycc = 0
     type(cohort_type), pointer :: cohorts(:)=>NULL()
     real :: area  ! m2
     real :: age=0 ! tile age
+
     ! leaf area index
     real :: LAI  ! leaf area index
     real :: CAI  ! crown area index
     real :: LAIlayer(0:10) = 0.0 ! LAI of each crown layer, max. 9
+
     ! uptake-related variables
     real :: root_distance(max_lev) ! characteristic half-distance between fine roots, m
+
     ! averaged quantities for PPA phenology
     real :: tc_daily = 0.0
     real :: gdd      = 0.0 ! growing degree-days
@@ -289,10 +299,11 @@ module datatypes
     real :: thetaS     ! moisture index (ws - wiltpt)/(fldcap - wiltpt)
     real :: wcl(max_lev)   ! volumetric soil water content for each layer
     real :: soilWater      ! kg m-2 in root zone
+
     ! ---- water uptake-related variables
-    real    :: RAI ! root area index
-    real    :: RAIL(max_lev) = 0.0 ! Root length per layer, m of root/m
-    real    :: W_uptake  ! water uptake rate per unit time per m2
+    real :: RAI ! root area index
+    real :: RAIL(max_lev) = 0.0 ! Root length per layer, m of root/m
+    real :: W_uptake  ! water uptake rate per unit time per m2
 
     !  Carbon fluxes
     real :: gpp =0 ! gross primary production, kgC m-2 yr-1
@@ -300,6 +311,7 @@ module datatypes
     real :: resp = 0 ! auto-respiration of plants
     real :: nep =0 ! net ecosystem productivity
     real :: rh  =0 ! soil carbon lost to the atmosphere
+
     ! daily diagnostics
     real :: dailyGPP
     real :: dailyNPP
@@ -307,6 +319,7 @@ module datatypes
     real :: dailyRh
     real :: dailyNup
     real :: dailyfixedN
+
     ! for annual diagnostics
     real :: dailyPrcp=0.0, annualPrcp = 0.0 ! mm m-2 yr-1
     real :: dailyTrsp=0.0, dailyEvap=0.0, dailyRoff=0.0 ! mm m-2 yr-1
@@ -317,10 +330,12 @@ module datatypes
     real :: annualRh   = 0.0
     real :: annualNup       ! accumulated N uptake kgN m-2 yr-1
     real :: annualfixedN = 0.  ! fixe N in a tile
+
     ! for annual reporting at tile level
     real :: NSC, SeedC, leafC, rootC, SapwoodC, WoodC
     real :: NSN, SeedN, leafN, rootN, SapwoodN, WoodN
     real :: totSeedC,totSeedN,totNewCC, totNewCN
+
   end type vegn_tile_type
 
   type :: soil_pars_type
@@ -827,6 +842,7 @@ contains
 
   vegn%LAI     = 0.0
   vegn%CAI     = 0.0
+
   do i = 1, vegn%n_cohorts
     cc => vegn%cohorts(i)
 
@@ -863,19 +879,20 @@ contains
     integer, intent(in) :: iyears, idoy, ihour, iday, fno1
     type(outtype_hourly_tile) :: out_hourly_tile
 
-    !-------local var ------
+    ! local variables
     type(cohort_type), pointer :: cc    ! current cohort
     integer :: i
     integer :: ntstepsyear !differ
 
     vegn%age = vegn%age + myinterface%dt_fast_yr
+
     ! Tile summary
     vegn%GPP    = 0.
     vegn%NPP    = 0.; vegn%Resp   = 0.
 
     do i = 1, vegn%n_cohorts
       cc => vegn%cohorts(i)
-      
+
       ! Cohort daily
       cc%dailyTrsp = cc%dailyTrsp + cc%transp ! kg day-1
       cc%dailyGPP  = cc%dailygpp  + cc%gpp ! kg day-1
@@ -890,36 +907,36 @@ contains
 
     ! NEP is equal to NNP minus soil respiration
     vegn%nep = vegn%npp - vegn%rh ! kgC m-2 hour-1; time step is hourly
-    
+
     !! Output hourly diagnostics
 
     ! if (myinterface%params_siml%outputhourly .and. iday > myinterface%params_siml%equi_days) then
     if (.not. myinterface%steering%spinup) then
 
-        out_hourly_tile%year      =  iyears    
-        out_hourly_tile%doy       =  idoy   
-        out_hourly_tile%hour      =  ihour    
-        out_hourly_tile%rad       =  forcing%radiation    !forcingData 
-        out_hourly_tile%Tair      =  forcing%Tair         !forcingData  
-        out_hourly_tile%Prcp      =  forcing%rain         !forcingData 
-        out_hourly_tile%GPP       =  vegn%GPP  
-        out_hourly_tile%Resp      =  vegn%resp   
-        out_hourly_tile%Transp    =  vegn%transp
-        out_hourly_tile%Evap      =  vegn%evap   
-        out_hourly_tile%Runoff    =  vegn%runoff   
-        out_hourly_tile%Soilwater =  vegn%soilwater
-        out_hourly_tile%wcl       =  vegn%wcl(1)    
-        out_hourly_tile%FLDCAP    =  vegn%FLDCAP
-        out_hourly_tile%WILTPT    =  vegn%WILTPT
+      out_hourly_tile%year      =  iyears    
+      out_hourly_tile%doy       =  idoy   
+      out_hourly_tile%hour      =  ihour    
+      out_hourly_tile%rad       =  forcing%radiation    !forcingData 
+      out_hourly_tile%Tair      =  forcing%Tair         !forcingData  
+      out_hourly_tile%Prcp      =  forcing%rain         !forcingData 
+      out_hourly_tile%GPP       =  vegn%GPP  
+      out_hourly_tile%Resp      =  vegn%resp   
+      out_hourly_tile%Transp    =  vegn%transp
+      out_hourly_tile%Evap      =  vegn%evap   
+      out_hourly_tile%Runoff    =  vegn%runoff   
+      out_hourly_tile%Soilwater =  vegn%soilwater
+      out_hourly_tile%wcl       =  vegn%wcl(1)    
+      out_hourly_tile%FLDCAP    =  vegn%FLDCAP
+      out_hourly_tile%WILTPT    =  vegn%WILTPT
 
       write(fno1,'(3(I5,","),25(E11.4,","),25(F8.2,","))')  &
-        iyears, idoy, ihour,      &
-        forcing%radiation,    &  !forcingData 
-        forcing%Tair,         &  !forcingData 
-        forcing%rain,         &  !forcingData 
-        vegn%GPP,vegn%resp,vegn%transp,  &
-        vegn%evap,vegn%runoff,vegn%soilwater, &
-        vegn%wcl(1),vegn%FLDCAP,vegn%WILTPT
+      iyears, idoy, ihour,      &
+      forcing%radiation,    &  !forcingData 
+      forcing%Tair,         &  !forcingData 
+      forcing%rain,         &  !forcingData 
+      vegn%GPP,vegn%resp,vegn%transp,  &
+      vegn%evap,vegn%runoff,vegn%soilwater, &
+      vegn%wcl(1),vegn%FLDCAP,vegn%WILTPT
 
     end if
 
@@ -937,69 +954,106 @@ contains
   end subroutine hourly_diagnostics
 
   !============================================
-  subroutine daily_diagnostics(vegn, forcing, iyears, idoy, iday, fno3, fno4, out_daily_cohorts, out_daily_tile)
+  subroutine daily_diagnostics(vegn, forcing, iyears, idoy, iday, fno3, fno4, out_daily_cohorts, out_daily_tile, dofast)
 
     use md_forcing, only: climate_type
     use md_interface, only: outtype_daily_cohorts, outtype_daily_tile
 
+    ! arguments
     type(vegn_tile_type), intent(inout) :: vegn
     type(climate_type),intent(in):: forcing
     integer, intent(in) :: iyears, idoy, iday, fno3, fno4
     type(outtype_daily_cohorts), dimension(out_max_cohorts) :: out_daily_cohorts
     type(outtype_daily_tile) :: out_daily_tile
+    logical, intent(in) :: dofast
 
-    !-------local var ------
+    ! local variables
     type(cohort_type), pointer :: cc    ! current cohort
     integer :: i
     ! integer, parameter :: ndayyear = 365  
     integer, parameter :: out_max_cohorts = 50     ! Try: Number of maximum cohorts
+
+    if (.not. dofast) then
+      ! values calculated by vegn_CNW_budget are daily totals
+      ! this code is adopted from the hourly_diagnostics subroutine (without populating output objects)
+
+      ! Tile summary
+      vegn%GPP    = 0.
+      vegn%NPP    = 0.; vegn%Resp   = 0.
+
+      do i = 1, vegn%n_cohorts
+        cc => vegn%cohorts(i)
+
+        ! Cohort daily
+        cc%dailyTrsp = cc%dailyTrsp + cc%transp ! kg day-1
+        cc%dailyGPP  = cc%dailygpp  + cc%gpp ! kg day-1
+        cc%dailyNPP  = cc%dailyNpp  + cc%Npp ! kg day-1
+        cc%dailyResp = cc%dailyResp + cc%Resp ! kg day-1
+
+        ! Tile hourly
+        vegn%GPP    = vegn%GPP    + cc%gpp    * cc%nindivs
+        vegn%NPP    = vegn%NPP    + cc%Npp    * cc%nindivs
+        vegn%Resp   = vegn%Resp   + cc%Resp   * cc%nindivs
+      enddo
+
+      ! NEP is equal to NNP minus soil respiration
+      vegn%nep = vegn%npp - vegn%rh ! kgC m-2 hour-1; time step is hourly
+
+      ! Daily summary:
+      vegn%dailyNup  = vegn%dailyNup  + vegn%N_uptake
+      vegn%dailyGPP  = vegn%dailyGPP  + vegn%gpp
+      vegn%dailyNPP  = vegn%dailyNPP  + vegn%npp
+      vegn%dailyResp = vegn%dailyResp + vegn%resp
+      vegn%dailyRh   = vegn%dailyRh   + vegn%rh
+      vegn%dailyTrsp = vegn%dailyTrsp + vegn%transp
+      vegn%dailyEvap = vegn%dailyEvap + vegn%evap
+      vegn%dailyRoff = vegn%dailyRoff + vegn%runoff
+      vegn%dailyPrcp = vegn%dailyPrcp + forcing%rain * myinterface%step_seconds
+
+    end if
+
 
     ! Output and zero daily variables
     !!! daily !! cohorts output
     do i = 1, vegn%n_cohorts
       cc => vegn%cohorts(i)
       
-      ! if(outputdaily.and. iday>equi_days) &
-      ! if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
+      out_daily_cohorts(i)%year    = iyears
+      out_daily_cohorts(i)%doy     = idoy
+      out_daily_cohorts(i)%hour    = i
+      out_daily_cohorts(i)%cID     = cc%ccID
+      out_daily_cohorts(i)%PFT     = cc%species
+      out_daily_cohorts(i)%layer   = cc%layer
+      out_daily_cohorts(i)%density = cc%nindivs*10000
+      out_daily_cohorts(i)%f_layer = cc%layerfrac
+      out_daily_cohorts(i)%LAI     = cc%LAI
+      out_daily_cohorts(i)%gpp     = cc%dailygpp
+      out_daily_cohorts(i)%resp    = cc%dailyresp
+      out_daily_cohorts(i)%transp  = cc%dailytrsp
+      out_daily_cohorts(i)%NPPleaf = cc%NPPleaf
+      out_daily_cohorts(i)%NPProot = cc%NPProot
+      out_daily_cohorts(i)%NPPwood = cc%NPPwood
+      out_daily_cohorts(i)%NSC     = cc%NSC
+      out_daily_cohorts(i)%seedC   = cc%seedC
+      out_daily_cohorts(i)%leafC   = cc%bl
+      out_daily_cohorts(i)%rootC   = cc%br
+      out_daily_cohorts(i)%SW_C    = cc%bsw
+      out_daily_cohorts(i)%HW_C    = cc%bHW
+      out_daily_cohorts(i)%NSN     = cc%NSN*1000
+      out_daily_cohorts(i)%seedN   = cc%seedN*1000
+      out_daily_cohorts(i)%leafN   = cc%leafN*1000
+      out_daily_cohorts(i)%rootN   = cc%rootN*1000
+      out_daily_cohorts(i)%SW_N    = cc%sapwN*1000
+      out_daily_cohorts(i)%HW_N    = cc%woodN*1000
 
-        out_daily_cohorts(i)%year    = iyears
-        out_daily_cohorts(i)%doy     = idoy
-        out_daily_cohorts(i)%hour    = i
-        out_daily_cohorts(i)%cID     = cc%ccID
-        out_daily_cohorts(i)%PFT     = cc%species
-        out_daily_cohorts(i)%layer   = cc%layer
-        out_daily_cohorts(i)%density = cc%nindivs*10000
-        out_daily_cohorts(i)%f_layer = cc%layerfrac
-        out_daily_cohorts(i)%LAI     = cc%LAI
-        out_daily_cohorts(i)%gpp     = cc%dailygpp
-        out_daily_cohorts(i)%resp    = cc%dailyresp
-        out_daily_cohorts(i)%transp  = cc%dailytrsp
-        out_daily_cohorts(i)%NPPleaf = cc%NPPleaf
-        out_daily_cohorts(i)%NPProot = cc%NPProot
-        out_daily_cohorts(i)%NPPwood = cc%NPPwood
-        out_daily_cohorts(i)%NSC     = cc%NSC
-        out_daily_cohorts(i)%seedC   = cc%seedC
-        out_daily_cohorts(i)%leafC   = cc%bl
-        out_daily_cohorts(i)%rootC   = cc%br
-        out_daily_cohorts(i)%SW_C    = cc%bsw
-        out_daily_cohorts(i)%HW_C    = cc%bHW
-        out_daily_cohorts(i)%NSN     = cc%NSN*1000
-        out_daily_cohorts(i)%seedN   = cc%seedN*1000
-        out_daily_cohorts(i)%leafN   = cc%leafN*1000
-        out_daily_cohorts(i)%rootN   = cc%rootN*1000
-        out_daily_cohorts(i)%SW_N    = cc%sapwN*1000
-        out_daily_cohorts(i)%HW_N    = cc%woodN*1000
-
-        write(fno3,'(6(I5,","),1(F8.1,","),25(F12.4,","))')  &
-          iyears,idoy,i, cc%ccID,cc%species,cc%layer,   &
-          cc%nindivs*10000, cc%layerfrac, cc%LAI, &
-          cc%dailygpp,cc%dailyresp,cc%dailytrsp, &
-          cc%NPPleaf,cc%NPProot,cc%NPPwood, &
-          cc%NSC, cc%seedC, cc%bl, cc%br, cc%bsw, cc%bHW, &
-          cc%NSN*1000, cc%seedN*1000, cc%leafN*1000, &
-          cc%rootN*1000,cc%sapwN*1000,cc%woodN*1000
-
-      ! end if
+      write(fno3,'(6(I5,","),1(F8.1,","),25(F12.4,","))')  &
+        iyears,idoy,i, cc%ccID,cc%species,cc%layer,   &
+        cc%nindivs*10000, cc%layerfrac, cc%LAI, &
+        cc%dailygpp,cc%dailyresp,cc%dailytrsp, &
+        cc%NPPleaf,cc%NPProot,cc%NPPwood, &
+        cc%NSC, cc%seedC, cc%bl, cc%br, cc%bsw, cc%bHW, &
+        cc%NSN*1000, cc%seedN*1000, cc%leafN*1000, &
+        cc%rootN*1000,cc%sapwN*1000,cc%woodN*1000
 
       ! annual sum
       cc%annualGPP = cc%annualGPP + cc%dailyGPP
@@ -1014,67 +1068,58 @@ contains
       cc%dailyResp = 0.0
 
     enddo
-
-    !! Tile level, daily
-    ! if(outputdaily.and. iday>equi_days) then
-     !print*,'outputdaily ', outputdaily
-     !print*,'equi_days   ', myinterface%params_siml%equi_days
-     !print*,'iday        ', iday
     
-    ! if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
-      call summarize_tile(vegn) 
+    call summarize_tile(vegn) 
 
-        out_daily_tile%year      = iyears
-        out_daily_tile%doy       = idoy
-        out_daily_tile%Tc        = vegn%tc_daily
-        out_daily_tile%Prcp      = vegn%dailyPrcp
-        out_daily_tile%totWs     = vegn%soilwater
-        out_daily_tile%Trsp      = vegn%dailyTrsp
-        out_daily_tile%Evap      = vegn%dailyEvap
-        out_daily_tile%Runoff    = vegn%dailyRoff
-        out_daily_tile%ws1       = vegn%wcl(1)*thksl(1)*1000.
-        out_daily_tile%ws2       = vegn%wcl(2)*thksl(2)*1000.
-        out_daily_tile%ws3       = vegn%wcl(3)*thksl(3)*1000.
-        out_daily_tile%LAI       = vegn%LAI
-        out_daily_tile%GPP       = vegn%dailyGPP
-        out_daily_tile%Rauto     = vegn%dailyResp
-        out_daily_tile%Rh        = vegn%dailyRh
-        out_daily_tile%NSC       = vegn%NSC
-        out_daily_tile%seedC     = vegn%SeedC
-        out_daily_tile%leafC     = vegn%leafC
-        out_daily_tile%rootC     = vegn%rootC
-        out_daily_tile%SW_C      = vegn%SapwoodC
-        out_daily_tile%HW_C      = vegn%woodC
-        out_daily_tile%NSN       = vegn%NSN*1000
-        out_daily_tile%seedN     = vegn%SeedN*1000
-        out_daily_tile%leafN     = vegn%leafN*1000
-        out_daily_tile%rootN     = vegn%rootN*1000
-        out_daily_tile%SW_N      = vegn%SapwoodN *1000
-        out_daily_tile%HW_N      = vegn%WoodN *1000
-        out_daily_tile%McrbC     = vegn%MicrobialC
-        out_daily_tile%fastSOM   = vegn%metabolicL
-        out_daily_tile%slowSOM   = vegn%structuralL
-        out_daily_tile%McrbN     = vegn%MicrobialN*1000
-        out_daily_tile%fastSoilN = vegn%metabolicN*1000
-        out_daily_tile%slowSoilN = vegn%structuralN*1000
-        out_daily_tile%mineralN  = vegn%mineralN*1000
-        out_daily_tile%N_uptk    = vegn%dailyNup*1000
+    out_daily_tile%year      = iyears
+    out_daily_tile%doy       = idoy
+    out_daily_tile%Tc        = vegn%tc_daily
+    out_daily_tile%Prcp      = vegn%dailyPrcp
+    out_daily_tile%totWs     = vegn%soilwater
+    out_daily_tile%Trsp      = vegn%dailyTrsp
+    out_daily_tile%Evap      = vegn%dailyEvap
+    out_daily_tile%Runoff    = vegn%dailyRoff
+    out_daily_tile%ws1       = vegn%wcl(1)*thksl(1)*1000.
+    out_daily_tile%ws2       = vegn%wcl(2)*thksl(2)*1000.
+    out_daily_tile%ws3       = vegn%wcl(3)*thksl(3)*1000.
+    out_daily_tile%LAI       = vegn%LAI
+    out_daily_tile%GPP       = vegn%dailyGPP
+    out_daily_tile%Rauto     = vegn%dailyResp
+    out_daily_tile%Rh        = vegn%dailyRh
+    out_daily_tile%NSC       = vegn%NSC
+    out_daily_tile%seedC     = vegn%SeedC
+    out_daily_tile%leafC     = vegn%leafC
+    out_daily_tile%rootC     = vegn%rootC
+    out_daily_tile%SW_C      = vegn%SapwoodC
+    out_daily_tile%HW_C      = vegn%woodC
+    out_daily_tile%NSN       = vegn%NSN*1000
+    out_daily_tile%seedN     = vegn%SeedN*1000
+    out_daily_tile%leafN     = vegn%leafN*1000
+    out_daily_tile%rootN     = vegn%rootN*1000
+    out_daily_tile%SW_N      = vegn%SapwoodN *1000
+    out_daily_tile%HW_N      = vegn%WoodN *1000
+    out_daily_tile%McrbC     = vegn%MicrobialC
+    out_daily_tile%fastSOM   = vegn%metabolicL
+    out_daily_tile%slowSOM   = vegn%structuralL
+    out_daily_tile%McrbN     = vegn%MicrobialN*1000
+    out_daily_tile%fastSoilN = vegn%metabolicN*1000
+    out_daily_tile%slowSoilN = vegn%structuralN*1000
+    out_daily_tile%mineralN  = vegn%mineralN*1000
+    out_daily_tile%N_uptk    = vegn%dailyNup*1000
 
-      write(fno4,'(2(I5,","),60(F12.6,","))') iyears, idoy,  &
-        vegn%tc_daily, vegn%dailyPrcp, vegn%soilwater,      &
-        vegn%dailyTrsp, vegn%dailyEvap,vegn%dailyRoff,      &
-        vegn%wcl(1)*thksl(1)*1000.,vegn%wcl(2)*thksl(2)*1000., &
-        vegn%wcl(3)*thksl(3)*1000., &
-        vegn%LAI,vegn%dailyGPP, vegn%dailyResp, vegn%dailyRh, &
-        vegn%NSC, vegn%SeedC, vegn%leafC, vegn%rootC,  &
-        vegn%SapwoodC, vegn%woodC,                     &
-        vegn%NSN*1000, vegn%SeedN*1000, vegn%leafN*1000,  &
-        vegn%rootN*1000, vegn%SapwoodN *1000,  vegn%WoodN *1000,  &
-        vegn%MicrobialC, vegn%metabolicL, vegn%structuralL, &
-        vegn%MicrobialN*1000, vegn%metabolicN*1000, vegn%structuralN*1000, &
-        vegn%mineralN*1000, vegn%dailyNup*1000
-
-    ! endif
+    write(fno4,'(2(I5,","),60(F12.6,","))') iyears, idoy,  &
+      vegn%tc_daily, vegn%dailyPrcp, vegn%soilwater,      &
+      vegn%dailyTrsp, vegn%dailyEvap,vegn%dailyRoff,      &
+      vegn%wcl(1)*thksl(1)*1000.,vegn%wcl(2)*thksl(2)*1000., &
+      vegn%wcl(3)*thksl(3)*1000., &
+      vegn%LAI,vegn%dailyGPP, vegn%dailyResp, vegn%dailyRh, &
+      vegn%NSC, vegn%SeedC, vegn%leafC, vegn%rootC,  &
+      vegn%SapwoodC, vegn%woodC,                     &
+      vegn%NSN*1000, vegn%SeedN*1000, vegn%leafN*1000,  &
+      vegn%rootN*1000, vegn%SapwoodN *1000,  vegn%WoodN *1000,  &
+      vegn%MicrobialC, vegn%metabolicL, vegn%structuralL, &
+      vegn%MicrobialN*1000, vegn%metabolicN*1000, vegn%structuralN*1000, &
+      vegn%mineralN*1000, vegn%dailyNup*1000
 
     ! Annual summaries 
     vegn%annualNup  = vegn%annualNup  + vegn%dailyNup

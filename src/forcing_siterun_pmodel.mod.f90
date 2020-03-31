@@ -15,7 +15,7 @@ module md_forcing
   implicit none
 
   private
-  public climate_type, getclimate, getco2, forcingData
+  public climate_type, getclimate, getco2, forcingData, aggregate_climate
 
   ! type climate_type
   !   integer(kind=in), dimension(ntstepsyear) :: year          ! Year
@@ -29,7 +29,7 @@ module md_forcing
   !   real(kind=sp), dimension(ntstepsyear)    :: rain          ! kgH2O m-2 s-1
   !   real(kind=sp), dimension(ntstepsyear)    :: windU         ! wind velocity (m s-1)
   !   real(kind=sp), dimension(ntstepsyear)    :: P_air         ! pa
-  !   real(kind=sp), dimension(ntstepsyear)  :: CO2           ! ppm
+  !   real(kind=sp), dimension(ntstepsyear)    :: CO2           ! ppm
   !   real(kind=sp), dimension(ntstepsyear)    :: soilwater     ! soil moisture, vol/vol
   ! end type climate_type
 
@@ -54,6 +54,35 @@ module md_forcing
 
 
 contains
+
+  function aggregate_climate(forcing) result(forcing_agg)
+    !////////////////////////////////////////////////////////////////
+    ! Takes mean over fast time steps provided in input, and 
+    ! returns aggregated values.
+    !----------------------------------------------------------------
+    type(climate_type), dimension(:), intent(in) :: forcing
+
+    type(climate_type) :: forcing_agg
+    integer :: nt
+
+    nt = size(forcing)
+
+    forcing_agg%year      = forcing(1)%year
+    forcing_agg%doy       = forcing(1)%doy
+    forcing_agg%hod       = 12.0
+    forcing_agg%PAR       = sum( forcing(:)%PAR ) / nt         ! umol m-2 s-1
+    forcing_agg%radiation = sum( forcing(:)%radiation ) / nt   ! W/m2
+    forcing_agg%Tair      = sum( forcing(:)%Tair ) / nt        ! air temperature,  K
+    forcing_agg%Tsoil     = sum( forcing(:)%Tsoil ) / nt       ! soil temperature, K
+    forcing_agg%RH        = sum( forcing(:)%RH ) / nt          ! relative humidity
+    forcing_agg%rain      = sum( forcing(:)%rain ) / nt        ! kgH2O m-2 s-1
+    forcing_agg%windU     = sum( forcing(:)%windU ) / nt       ! wind velocity (m s-1)
+    forcing_agg%P_air     = sum( forcing(:)%P_air ) / nt       ! pa
+    forcing_agg%CO2       = sum( forcing(:)%CO2 ) / nt         ! ppm
+    forcing_agg%soilwater = sum( forcing(:)%soilwater ) / nt   ! soil moisture, vol/vol
+
+  end function aggregate_climate
+
 
   function getclimate( nt, forcing, climateyear_idx, climateyear ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
