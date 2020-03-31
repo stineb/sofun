@@ -236,6 +236,8 @@ contains
 
         enddo fastloop
 
+        ! if (doy == 365) stop 'consistency?'
+
         vegn%Tc_daily = vegn%Tc_daily/myinterface%steps_per_day
         tsoil         = tsoil/myinterface%steps_per_day
         soil_theta    = vegn%thetaS
