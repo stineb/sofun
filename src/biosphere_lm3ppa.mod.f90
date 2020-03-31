@@ -127,6 +127,7 @@ contains
           'McrbN', 'fastSoilN', 'slowSoilN',                       &
           'mineralN', 'N_uptk'
           
+          ! annual tile
           write(fno5,'(1(a5,","),80(a12,","))')  'year',           &
           'CAI','LAI','GPP', 'Rauto',   'Rh',                      &
           'rain','SoilWater','Transp','Evap','Runoff',             &
@@ -251,6 +252,7 @@ contains
         ! Determine start and end of season and maximum leaf (root) mass
         ! print*,'5.2', doy
         call vegn_phenology(vegn, j)
+
 
         ! Kill all individuals of a cohort if NSC falls below threshold
         !call vegn_starvation(vegn)

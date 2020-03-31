@@ -1023,57 +1023,57 @@ contains
      !print*,'iday        ', iday
     
     ! if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
-      call summarize_tile(vegn) 
+    call summarize_tile(vegn) 
 
-        out_daily_tile%year      = iyears
-        out_daily_tile%doy       = idoy
-        out_daily_tile%Tc        = vegn%tc_daily
-        out_daily_tile%Prcp      = vegn%dailyPrcp
-        out_daily_tile%totWs     = vegn%soilwater
-        out_daily_tile%Trsp      = vegn%dailyTrsp
-        out_daily_tile%Evap      = vegn%dailyEvap
-        out_daily_tile%Runoff    = vegn%dailyRoff
-        out_daily_tile%ws1       = vegn%wcl(1)*thksl(1)*1000.
-        out_daily_tile%ws2       = vegn%wcl(2)*thksl(2)*1000.
-        out_daily_tile%ws3       = vegn%wcl(3)*thksl(3)*1000.
-        out_daily_tile%LAI       = vegn%LAI
-        out_daily_tile%GPP       = vegn%dailyGPP
-        out_daily_tile%Rauto     = vegn%dailyResp
-        out_daily_tile%Rh        = vegn%dailyRh
-        out_daily_tile%NSC       = vegn%NSC
-        out_daily_tile%seedC     = vegn%SeedC
-        out_daily_tile%leafC     = vegn%leafC
-        out_daily_tile%rootC     = vegn%rootC
-        out_daily_tile%SW_C      = vegn%SapwoodC
-        out_daily_tile%HW_C      = vegn%woodC
-        out_daily_tile%NSN       = vegn%NSN*1000
-        out_daily_tile%seedN     = vegn%SeedN*1000
-        out_daily_tile%leafN     = vegn%leafN*1000
-        out_daily_tile%rootN     = vegn%rootN*1000
-        out_daily_tile%SW_N      = vegn%SapwoodN *1000
-        out_daily_tile%HW_N      = vegn%WoodN *1000
-        out_daily_tile%McrbC     = vegn%MicrobialC
-        out_daily_tile%fastSOM   = vegn%metabolicL
-        out_daily_tile%slowSOM   = vegn%structuralL
-        out_daily_tile%McrbN     = vegn%MicrobialN*1000
-        out_daily_tile%fastSoilN = vegn%metabolicN*1000
-        out_daily_tile%slowSoilN = vegn%structuralN*1000
-        out_daily_tile%mineralN  = vegn%mineralN*1000
-        out_daily_tile%N_uptk    = vegn%dailyNup*1000
+    out_daily_tile%year      = iyears
+    out_daily_tile%doy       = idoy
+    out_daily_tile%Tc        = vegn%tc_daily
+    out_daily_tile%Prcp      = vegn%dailyPrcp
+    out_daily_tile%totWs     = vegn%soilwater
+    out_daily_tile%Trsp      = vegn%dailyTrsp
+    out_daily_tile%Evap      = vegn%dailyEvap
+    out_daily_tile%Runoff    = vegn%dailyRoff
+    out_daily_tile%ws1       = vegn%wcl(1)*thksl(1)*1000.
+    out_daily_tile%ws2       = vegn%wcl(2)*thksl(2)*1000.
+    out_daily_tile%ws3       = vegn%wcl(3)*thksl(3)*1000.
+    out_daily_tile%LAI       = vegn%LAI
+    out_daily_tile%GPP       = vegn%dailyGPP
+    out_daily_tile%Rauto     = vegn%dailyResp
+    out_daily_tile%Rh        = vegn%dailyRh
+    out_daily_tile%NSC       = vegn%NSC
+    out_daily_tile%seedC     = vegn%SeedC
+    out_daily_tile%leafC     = vegn%leafC
+    out_daily_tile%rootC     = vegn%rootC
+    out_daily_tile%SW_C      = vegn%SapwoodC
+    out_daily_tile%HW_C      = vegn%woodC
+    out_daily_tile%NSN       = vegn%NSN*1000
+    out_daily_tile%seedN     = vegn%SeedN*1000
+    out_daily_tile%leafN     = vegn%leafN*1000
+    out_daily_tile%rootN     = vegn%rootN*1000
+    out_daily_tile%SW_N      = vegn%SapwoodN *1000
+    out_daily_tile%HW_N      = vegn%WoodN *1000
+    out_daily_tile%McrbC     = vegn%MicrobialC
+    out_daily_tile%fastSOM   = vegn%metabolicL
+    out_daily_tile%slowSOM   = vegn%structuralL
+    out_daily_tile%McrbN     = vegn%MicrobialN*1000
+    out_daily_tile%fastSoilN = vegn%metabolicN*1000
+    out_daily_tile%slowSoilN = vegn%structuralN*1000
+    out_daily_tile%mineralN  = vegn%mineralN*1000
+    out_daily_tile%N_uptk    = vegn%dailyNup*1000
 
-      write(fno4,'(2(I5,","),60(F12.6,","))') iyears, idoy,  &
-        vegn%tc_daily, vegn%dailyPrcp, vegn%soilwater,      &
-        vegn%dailyTrsp, vegn%dailyEvap,vegn%dailyRoff,      &
-        vegn%wcl(1)*thksl(1)*1000.,vegn%wcl(2)*thksl(2)*1000., &
-        vegn%wcl(3)*thksl(3)*1000., &
-        vegn%LAI,vegn%dailyGPP, vegn%dailyResp, vegn%dailyRh, &
-        vegn%NSC, vegn%SeedC, vegn%leafC, vegn%rootC,  &
-        vegn%SapwoodC, vegn%woodC,                     &
-        vegn%NSN*1000, vegn%SeedN*1000, vegn%leafN*1000,  &
-        vegn%rootN*1000, vegn%SapwoodN *1000,  vegn%WoodN *1000,  &
-        vegn%MicrobialC, vegn%metabolicL, vegn%structuralL, &
-        vegn%MicrobialN*1000, vegn%metabolicN*1000, vegn%structuralN*1000, &
-        vegn%mineralN*1000, vegn%dailyNup*1000
+    write(fno4,'(2(I5,","),60(F12.6,","))') iyears, idoy,  &
+      vegn%tc_daily, vegn%dailyPrcp, vegn%soilwater,      &
+      vegn%dailyTrsp, vegn%dailyEvap,vegn%dailyRoff,      &
+      vegn%wcl(1)*thksl(1)*1000.,vegn%wcl(2)*thksl(2)*1000., &
+      vegn%wcl(3)*thksl(3)*1000., &
+      vegn%LAI,vegn%dailyGPP, vegn%dailyResp, vegn%dailyRh, &
+      vegn%NSC, vegn%SeedC, vegn%leafC, vegn%rootC,  &
+      vegn%SapwoodC, vegn%woodC,                     &
+      vegn%NSN*1000, vegn%SeedN*1000, vegn%leafN*1000,  &
+      vegn%rootN*1000, vegn%SapwoodN *1000,  vegn%WoodN *1000,  &
+      vegn%MicrobialC, vegn%metabolicL, vegn%structuralL, &
+      vegn%MicrobialN*1000, vegn%metabolicN*1000, vegn%structuralN*1000, &
+      vegn%mineralN*1000, vegn%dailyNup*1000
 
     ! endif
 

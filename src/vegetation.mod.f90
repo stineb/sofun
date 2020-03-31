@@ -586,6 +586,7 @@ contains
     logical :: do_editor_scheme = .False.
     integer :: i,j
     do_editor_scheme = .False. ! .True.
+
     ! Turnover of leaves and fine roots
     call vegn_tissue_turnover(vegn)
     !Allocate C_gain to tissues
@@ -595,8 +596,9 @@ contains
       associate (sp => spdata(cc%species)) ! F2003
       if (cc%status == LEAF_ON) then
         
-        ! Get carbon from NSC pool
+        ! Get carbon from NSC pool. This sets cc%C_growth
         call fetch_CN_for_growth(cc) ! Weng, 2017-10-19
+
         ! Allocate carbon to the plant pools
         ! calculate the carbon spent on growth of leaves and roots
         LF_deficit = max(0.0, cc%bl_max - cc%bl)
@@ -689,6 +691,9 @@ contains
         cc%leafarea  = leaf_area_from_biomass(cc%bl,cc%species,cc%layer,cc%firstlayer)
         cc%lai       = cc%leafarea/cc%crownarea !(cc%crownarea *(1.0-sp%internal_gap_frac))
         vegn%LAI     = vegn%LAI + cc%leafarea  * cc%nindivs
+
+        ! print*,'i, cc%leafarea, cc%lai, cc%nindivs, vegn%LAI ', i, cc%leafarea, cc%lai, cc%nindivs, vegn%LAI
+
         call rootarea_and_verticalprofile(cc)
         ! convert sapwood to heartwood for woody plants ! Nitrogen from sapwood to heart wood
         if (sp%lifeform>0) then
@@ -2296,7 +2301,9 @@ contains
       vegn%MicrobialN + vegn%metabolicN +       &
       vegn%structuralN + vegn%mineralN
       vegn%totN =  vegn%initialN0
+
     endif  ! initialization: random or pre-described
+
   end subroutine initialize_vegn_tile
 end module md_vegetation
 
