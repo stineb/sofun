@@ -285,8 +285,8 @@ program main
   !----------------------------------------------------------------
   ! READ FORCING FILE
   !----------------------------------------------------------------
-  
   call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
+
   ! call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
   myinterface%steps_per_day = int(24.0/timestep)
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
@@ -352,6 +352,9 @@ program main
     myinterface%climate(:) = getclimate( &
                                         datalines, & ! nt, &
                                         forcingData, & ! forcing, &
+                                        ! ! xxx consistency check
+                                        ! 1, &
+                                        ! 1998 &
                                         myinterface%steering%climateyear_idx, &
                                         myinterface%steering%climateyear &
                                         )

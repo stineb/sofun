@@ -85,13 +85,22 @@ contains
       end if
 
       if (year<=params_siml%spinupyears) then
+
         ! during spinup
         out_steering%spinup = .true.
         out_steering%forcingyear = params_siml%firstyeartrend
         out_steering%forcingyear_idx = 1
+
         cycleyear = get_cycleyear( year, params_siml%spinupyears, params_siml%recycle )
         out_steering%climateyear = cycleyear + params_siml%firstyeartrend - 1
         out_steering%climateyear_idx = cycleyear
+
+        ! xxx consistency check
+        out_steering%forcingyear_idx = MOD(year - 1, params_siml%recycle) + 1
+        out_steering%forcingyear = out_steering%forcingyear_idx + params_siml%firstyeartrend - 1
+
+        out_steering%climateyear_idx = MOD(year - 1, params_siml%recycle) + 1
+        out_steering%climateyear = out_steering%climateyear_idx + params_siml%firstyeartrend - 1
 
       else  
         ! during transient simulation
