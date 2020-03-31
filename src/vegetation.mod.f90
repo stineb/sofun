@@ -2190,7 +2190,7 @@ contains
     NSC_supply = NSC_supply /(1.+ GR_factor)
 
     ! carbon_gain is used to drive plant growth and reproduction
-    cc%carbon_gain = cc%carbon_gain + (LR_demand + NSC_supply) !
+    cc%C_growth = cc%C_growth + (LR_demand + NSC_supply)
     end associate
     
   end subroutine carbon_for_growth_ForestESS
