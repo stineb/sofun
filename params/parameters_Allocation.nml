@@ -2,7 +2,6 @@
 soiltype     = 3,
 FLDCAP       = 0.4,
 WILTPT       = 0.05,
-<<<<<<< HEAD
 K1           =  2.0,  ! turnover rate of fast SOM per year
 K2           =  0.1   ! 0.12 ! 0.2, ! 0.075 ! turnover rate of slow SOM per year
 K_nitrogen   = 0.0, ! 1.2 ! 2.5 ! rate of a year, 2.5
@@ -12,17 +11,6 @@ l_fract      =0.0,
 retransN     = 0.0,
 fNSNmax      = 5.0, ! 5.0
 !f_N_add      = 0.02, ! 0.005, ! 0.02
-=======
-K1           = 2.0,  ! turnover rate of fast SOM per year
-K2           = 0.1   ! 0.12 ! 0.2, ! 0.075 ! turnover rate of slow SOM per year
-K_nitrogen   = 0.0, ! 1.2 ! 2.5 ! rate of a year, 2.5
-etaN         = 0.0, ! 0.025 ! loss rate with runoff
-MLmixRatio   = 0.6, ! 0.8 ! fraction of microbes to litter
-l_fract      = 0.0,
-retransN     = 0.0,
-! fNSNmax      = 5.0, !xxx
-f_N_add      = 0.02, ! 0.005, ! 0.02
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
 f_initialBSW = 0.005,
 ! alpha_FR =  1.2; gamma_FR = 12.0; dSlowSOM = 2.5 * iSOM + 1.5; rho_N_up0 = 0.1
 
@@ -31,11 +19,7 @@ lifeform      = 0,       1,        1,        1,        1,      1,        1,     
 phenotype     = 0,       1,        1,        1,        1,      1,        1,        1,      1,        1,        0,    ! 0: Deciduous; 1 Evergreen
 pt            = 1,       0,        0,        0,        0,      0,        0,        0,      0,        0,        0,    ! 0: C3; 1: C4
 seedlingsize  = 0.02,    0.05,     0.05,     0.05,     0.05,   0.05,     0.05,     0.05,   0.05,     0.05,     0.05,  ! initial size of seedlings
-<<<<<<< HEAD
 LMA           = 0.035,   0.14,     0.14,     0.14,     0.14,   0.14,     0.14,     0.14,   0.14,     0.14,     0.035,! Leaf mass per unit area
-=======
-LMA           = 0.035,   0.14,     0.14,     0.14,     0.14,   0.14,     0.14,    0.14,    0.14,     0.14,     0.035,! Leaf mass per unit area
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
 phiRL         = 4.0,     1.0,      2.0,      3.0,      4.0,     5.0,     6.0,      7.0,    8.0,      9.0,      3.0,
 LNbase        = 0.8E-3,  0.8E-3,   0.8E-3,   0.8E-3,   0.8E-3, 0.8E-3,   0.8E-3,   0.8E-3, 0.8E-3,   0.8E-3,   0.8E-3,   ! kgN m-2 leaf, Vmax = 0.03125*LNbase
 
@@ -53,19 +37,11 @@ fNSNmax       = 5,       5,        5,        5,        5,      5,        5,     
 /
  
  &soil_data_nml
-<<<<<<< HEAD
  GMD = 0.7, 0.4, 0.3, 0.1, 0.1, 0.07, 0.007,0.3, 0.3, !0.3, 0.3,
  GSD = 5.0, 5.3, 7.4, 6.1, 6.1, 14.0, 15.0, 7.4, 7.4, !xxx
  vwc_sat = 0.380, 0.445, 0.448, 0.412, 0.414, 0.446, 0.424, 0.445, 0.445, !xxx
  chb = 2.2, 2.64, 3.31, 4.38, 5.12, 6.58, 14.95, 6.4, 6.4, !6.4, 6.4,
  psi_sat_ref = -600., -790., -910., -1580., -1680., -1880., -5980., -790., -790., !-790., -790., ! Pa
-=======
- GMD = 0.7, 0.4, 0.3, 0.1, 0.1, 0.07, 0.007,0.3, 0.3, !,0.3, 0.3,
- GSD = 5.0, 5.3, 7.4, 6.1, 6.1, 14.0, 15.0, 7.4, 7.4, !xxx
- vwc_sat = 0.380, 0.445, 0.448, 0.412, 0.414, 0.446, 0.424, 0.445, 0.445, !xxx
- chb = 2.2, 2.64, 3.31, 4.38, 5.12, 6.58, 14.95, 6.4, 6.4, !6.4, 6.4,
- psi_sat_ref = -600., -790., -910., -1580., -1680., -1880., -5980.,-790., -790., ! Pa !-790., -790.,
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
  k_sat_ref = 130.8, 75.1, 53.2, 12.1, 11.1, 12.7, 1.69, 53.2, 53.2, ! mol/(s MPa m)
  alphaSoil = 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,  !xxx
  heat_capacity_dry = 1.2e6, 1.1e6, 1.1e6, 1.1e6, 1.1e6, 1.1e6, 1.1e6, 1.4e6, 1.0, !xxx
@@ -90,11 +66,7 @@ fNSNmax       = 5,       5,        5,        5,        5,      5,        5,     
 
 ! Model run
  filepath_in = '/Users/lmarques/sofun/input/'
-<<<<<<< HEAD
  climfile    =  'ORNL_forcing.txt' !'US-WCrforcing.txt' !   'CA-Manforcing.txt' !
-=======
- climfile    =  'ORNL_forcing.txt'  !'US-WCrforcing.txt' !   'CA-Manforcing.txt' !
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
                ! 'CA-Manforcing.txt'   !  'US-WBWforcing.txt'
                !   'US-Dk1forcing.txt' ! CA-Obsforcing.txt
                !   'ORNL_forcing.txt'  ! 'KNZ_amb.csv' !  'KNZ_irr.csv' !
@@ -106,17 +78,10 @@ do_U_shaped_mortality =  .False., ! .True. !
 update_annualLAImax   =  .False., ! .True. !
 do_closedN_run        =  .True.,
 spinup                = .True.,
-<<<<<<< HEAD
-spinupyears           = 10,
+spinupyears           = 1800,
 recycle               = 11, ! 9 (US-WCrforcing) or 11 (ORNL_forcing)
 firstyeartrend        = 1998,
 nyeartrend            = 11, !before 11
-=======
-spinupyears           = 15, !1800,
-recycle               = 11, ! 9 (US-WCrforcing) or 11 (ORNL_forcing)
-firstyeartrend        = 1998,
-nyeartrend            = 11, ! 9 (US-WCrforcing) or 11 (ORNL_forcing)
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
 longitude             = 0.0,
 latitude              = 0.0,
 altitude              = 0.0,

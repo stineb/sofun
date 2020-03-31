@@ -1631,146 +1631,8 @@ contains
       endif ! N_roots>0
     endif
   end subroutine vegn_N_uptake
-<<<<<<< HEAD
-=======
 
 
-  subroutine SOMdecomposition(vegn, tsoil, thetaS)
-    !////////////////////////////////////////////////////////////////
-    ! Nitrogen mineralization and immoblization with microbial C & N pools
-    ! it's a new decomposition model with coupled C & N pools and variable 
-    ! carbon use efficiency
-    ! Code from BiomeE-Allocation
-    !---------------------------------------------------------------
-    type(vegn_tile_type), intent(inout) :: vegn
-    real                , intent(in)    :: tsoil ! soil temperature, deg K 
-    real                , intent(in)    :: thetaS
-
-    real :: CUE0=0.4  ! default microbial CUE
-    real :: phoMicrobial = 2.5 ! turnover rate of microbes (yr-1)
-    real :: CUEfast,CUEslow
-    real :: CNm = 10.0  ! Microbial C/N ratio
-    real :: NforM, fNM=0.0  ! mineral N available for microbes
-    real :: micr_C_loss, fast_L_loss, slow_L_loss
-    real :: runoff ! kg m-2 /step
-    real :: N_loss
-    real :: DON_fast,DON_slow,DON_loss ! Dissolved organic N loss, kg N m-2 step-1
-    real :: fDON=0.0   ! 0.02     ! fractio of DON production in decomposition
-    real :: fast_N_free 
-    real :: slow_N_free 
-    real :: CNfast, CNslow
-    real :: A  ! decomp rate reduction due to moisture and temperature
-
-    !  runoff = vegn%Wrunoff * 365*24*3600 *myinterface%dt_fast_yr !kgH2O m-2 s-1 ->kg m-2/time step
-    runoff = vegn%runoff  !* myinterface%dt_fast_yr !kgH2O m-2 yr-1 ->kgH2O m-2/time step, weng 2017-10-15
-    ! CN ratios of soil C pools
-
-    CNfast = vegn%metabolicL/vegn%metabolicN
-    CNslow = vegn%structuralL/vegn%structuralN
-
-    !! C decomposition
-    !  A=A_function(tsoil,thetaS)
-    !  micr_C_loss = vegn%microbialC *A*phoMicrobial* myinterface%dt_fast_yr
-    !  fast_L_loss = vegn%metabolicL*A*K1           * myinterface%dt_fast_yr
-    !  slow_L_loss = vegn%structuralL*A*K2          * myinterface%dt_fast_yr
-
-    ! C decomposition
-    A=A_function(tsoil,thetaS)
-    micr_C_loss = vegn%microbialC * (1.0 - exp(-A*phoMicrobial* myinterface%dt_fast_yr))
-    fast_L_loss = vegn%metabolicL * (1.0 - exp(-A*K1          * myinterface%dt_fast_yr))
-    slow_L_loss = vegn%structuralL* (1.0 - exp(-A*K2          * myinterface%dt_fast_yr))
-
-    ! Carbon use efficiencies of microbes
-    NforM = fNM * vegn%mineralN
-
-    if (slow_L_loss > 0.0) then  
-      CUEfast = MIN(CUE0,CNm*(fast_L_loss/CNfast + NforM)/fast_L_loss)
-    else
-      CUEfast = CUE0
-    end if
-
-    if (slow_L_loss > 0.0) then
-      CUEslow = MIN(CUE0,CNm*(slow_L_loss/CNslow + NforM)/slow_L_loss)
-    else
-      CUEslow = CUE0
-    end if
-
-    ! update C and N pools
-    ! Carbon pools
-    vegn%microbialC  = vegn%microbialC - micr_C_loss &
-      + fast_L_loss * CUEfast &
-      + slow_L_loss * CUEslow
-    vegn%metabolicL = vegn%metabolicL - fast_L_loss
-    vegn%structuralL = vegn%structuralL - slow_L_loss
-
-    ! Find papers about soil DON losses
-    ! DON loss, revised by Weng. 2016-03-03  ??
-    fDON        = 0.25 ! 0.25 ! * myinterface%dt_fast_yr ! 0.05 !* myinterface%dt_fast_yr
-    runoff      = 0.2 ! 0.2 ! mm day-1
-    ! Assume it is proportional to decomposition rates
-    ! Find some papers!!
-    DON_fast    = fDON * fast_L_loss/CNfast * (etaN*runoff)
-    DON_slow    = fDON * slow_L_loss/CNslow * (etaN*runoff)
-    DON_loss    = DON_fast + DON_slow
-
-    ! Update Nitrogen pools
-    vegn%microbialN= vegn%microbialC/CNm
-    vegn%metabolicN  = vegn%metabolicN  - fast_L_loss/CNfast - DON_fast
-    vegn%structuralN = vegn%structuralN - slow_L_loss/CNslow - DON_slow
-
-    ! Mixing of microbes to litters
-    vegn%metabolicL   = vegn%metabolicL + MLmixRatio*fast_L_loss * CUEfast
-    vegn%metabolicN   = vegn%metabolicN + MLmixRatio*fast_L_loss * CUEfast/CNm
-
-    vegn%structuralL = vegn%structuralL + MLmixRatio*slow_L_loss * CUEslow
-    vegn%structuralN = vegn%structuralN + MLmixRatio*slow_L_loss * CUEslow/CNm
-
-    vegn%microbialC  = vegn%microbialC  - MLmixRatio*(fast_L_loss*CUEfast+slow_L_loss*CUEslow)
-    vegn%microbialN  = vegn%microbialC/CNm
-
-    ! update mineral N pool (mineralN)
-    fast_N_free = MAX(0.0, fast_L_loss*(1./CNfast - CUEfast/CNm))
-    slow_N_free = MAX(0.0, slow_L_loss*(1./CNslow - CUEslow/CNm))
-
-    N_loss = MAX(0.,vegn%mineralN) * A * K_nitrogen * myinterface%dt_fast_yr
-
-    !  N_loss = MAX(0.,vegn%mineralN) * (1. - exp(0.0 - etaN*runoff - A*K_nitrogen*myinterface%dt_fast_yr))
-    N_loss = vegn%mineralN * MIN(0.25, (A * K_nitrogen * myinterface%dt_fast_yr + etaN*runoff))
-
-    ! ! xxx debug
-    ! ! print*,'N_loss ', N_loss
-    ! N_loss = 0.0
-
-    vegn%Nloss_yr = vegn%Nloss_yr + N_loss + DON_loss
-
-    vegn%mineralN = vegn%mineralN - N_loss       &
-      + vegn%N_input * myinterface%dt_fast_yr  &
-      + fast_N_free + slow_N_free  &
-      + micr_C_loss/CNm
-
-    vegn%annualN = vegn%annualN - N_loss       &
-      + vegn%N_input * myinterface%dt_fast_yr  &
-      + fast_N_free + slow_N_free  &
-      + micr_C_loss/CNm
-
-    ! ! xxx debug: slightly different dynamics are caused by mineralN
-    ! print*,N_loss, vegn%N_input, fast_N_free, slow_N_free, micr_C_loss
-    ! vegn%mineralN = 0.00025
-
-    ! Check if soil C/N is lower than CN0
-    fast_N_free = MAX(0., vegn%metabolicN  - vegn%metabolicL/CN0metabolicL)
-    slow_N_free = MAX(0., vegn%structuralN - vegn%structuralL/CN0structuralL)
-    vegn%metabolicN  = vegn%metabolicN  - fast_N_free
-    vegn%structuralN = vegn%structuralN - slow_N_free
-    vegn%mineralN    = vegn%mineralN + fast_N_free + slow_N_free
-    vegn%annualN     = vegn%annualN  + fast_N_free + slow_N_free
-
-    ! Heterotrophic respiration: decomposition of litters and SOM, kgC m-2 step-1
-    vegn%rh =  (micr_C_loss + fast_L_loss*(1.-CUEfast)+ slow_L_loss*(1.-CUEslow))
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
-
-
-<<<<<<< HEAD
   subroutine SOMdecomposition(vegn, tsoil, thetaS)
     !////////////////////////////////////////////////////////////////
     ! Nitrogen mineralization and immoblization with microbial C & N pools
@@ -1890,9 +1752,6 @@ contains
     ! Heterotrophic respiration: decomposition of litters and SOM, kgC m-2 step-1
     vegn%rh =  (micr_C_loss + fast_L_loss*(1.-CUEfast)+ slow_L_loss*(1.-CUEslow))
   end subroutine SOMdecomposition
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   function A_function(tsoil, thetaS) result(A)
     !////////////////////////////////////////////////////////////////
     ! The combined reduction in decomposition rate as a funciton of TEMP and MOIST
@@ -1922,24 +1781,13 @@ contains
     t1 = (Tmax-soil_temp)/(Tmax-Topt) 
     t2 = exp((tshr/tshl)*(1.-t1**tshl)) 
     Td = t1**tshr*t2 
-<<<<<<< HEAD
     if (soil_temp > -10) Td = Td+0.05 
     if (Td > 1.) Td = 1. 
-=======
-
-    if (soil_temp > -10) Td = Td+0.05 
-    if (Td > 1.) Td = 1. 
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! EFFECT OF MOISTURE
     ! Linn and Doran, 1984, Soil Sci. Amer. J. 48:1267-1272
     ! This differs from the Century Wd
     ! was modified by slm/ens based on the figures from the above paper 
     !     (not the reported function)
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     if (thetaS <= 0.3) then
       Wd = 0.2 
     else if (thetaS <= 0.6) then
@@ -1947,23 +1795,12 @@ contains
     else 
       Wd = 1.0 ! exp(2.3*(0.6-thetaS)); ! Weng, 2016-11-26
     endif
-<<<<<<< HEAD
     A = (Td*Wd)  ! the combined (multiplicative) effect of temp and water
     ! on decomposition rates
-=======
-
-    A = (Td*Wd)  ! the combined (multiplicative) effect of temp and water
-    ! on decomposition rates
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   end function A_function
   !=======================================================================
   ! =================== Cohort management ================================
   ! ======================================================================
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   subroutine rank_descending(x, idx)
     !////////////////////////////////////////////////////////////////
     ! Ranks array x in descending order: on return, idx() contains indices
@@ -1975,29 +1812,14 @@ contains
     integer, intent(out) :: idx(:)
     integer :: i,n
     integer, allocatable :: t(:)
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     n = size(x)
     do i = 1,n
       idx(i) = i
     enddo
-<<<<<<< HEAD
     allocate(t((n+1)/2))
     call mergerank(x, idx, n, t)
     deallocate(t)
   end subroutine rank_descending
-=======
-
-    allocate(t((n+1)/2))
-    call mergerank(x, idx, n, t)
-    deallocate(t)
-
-  end subroutine rank_descending
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   subroutine merge(x, a, na, b, nb, c, nc)
     !////////////////////////////////////////////////////////////////
     ! based on:
@@ -2009,13 +1831,7 @@ contains
     integer, intent(in)    :: a(na)    ! B overlays C(NA+1:NC)
     integer, intent(in)    :: b(nb)
     integer, intent(inout) :: c(nc)
-<<<<<<< HEAD
     integer :: i, j, k
-=======
-
-    integer :: i, j, k
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     i = 1; j = 1; k = 1;
     do while(i <= na .and. j <= nb)
       if (x(a(i)) >= x(b(j))) then
@@ -2029,11 +1845,6 @@ contains
       c(k) = a(i) ; i = i + 1 ; k = k + 1
     enddo
   end subroutine merge
-<<<<<<< HEAD
-=======
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   recursive subroutine mergerank(x, a, n, t)
     !////////////////////////////////////////////////////////////////
     ! Code from BiomeE-Allocation
@@ -2042,82 +1853,41 @@ contains
     real,    intent(in) :: x(*)
     integer, dimension(n), intent(inout) :: a
     integer, dimension((n+1)/2), intent (out) :: t
-<<<<<<< HEAD
     integer :: na,nb
     integer :: v
     if (n < 2) return
-=======
-
-    integer :: na,nb
-    integer :: v
-
-    if (n < 2) return
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     if (n == 2) then
       if ( x(a(1)) < x(a(2)) ) then
         v = a(1) ; a(1) = a(2) ; a(2) = v
       endif
       return
     endif  
-<<<<<<< HEAD
     na=(n+1)/2
     nb=n-na
     call mergerank(x,a,na,t)
     call mergerank(x,a(na+1),nb,t)
-=======
-
-    na=(n+1)/2
-    nb=n-na
-
-    call mergerank(x,a,na,t)
-    call mergerank(x,a(na+1),nb,t)
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     if (x(a(na)) < x(a(na+1))) then
       t(1:na) = a(1:na)
       call merge(x,t,na,a(na+1),nb,a,n)
     endif
-<<<<<<< HEAD
   end subroutine mergerank
-=======
-
-  end subroutine mergerank
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   subroutine vegn_mergecohorts(vegn)
     !////////////////////////////////////////////////////////////////
     ! Merge similar cohorts in a tile
     ! Code from BiomeE-Allocation
     !---------------------------------------------------------------
     type(vegn_tile_type), intent(inout) :: vegn
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! local variables
     type(cohort_type), pointer :: cc(:) ! array to hold new cohorts
     logical :: merged(vegn%n_cohorts)        ! mask to skip cohorts that were already merged
     real, parameter :: mindensity = 1.0E-6
     integer :: i,j,k
-<<<<<<< HEAD
     allocate(cc(vegn%n_cohorts))
     merged(:)=.FALSE. ; k = 0
-=======
-
-    allocate(cc(vegn%n_cohorts))
-    merged(:)=.FALSE. ; k = 0
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     do i = 1, vegn%n_cohorts 
       if (merged(i)) cycle ! skip cohorts that were already merged
       k = k+1
       cc(k) = vegn%cohorts(i)
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       ! try merging the rest of the cohorts into current one
       do j = i+1, vegn%n_cohorts
         if (merged(j)) cycle ! skip cohorts that are already merged
@@ -2127,22 +1897,11 @@ contains
         endif
       enddo
     enddo
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! at this point, k is the number of new cohorts
     vegn%n_cohorts = k
     deallocate(vegn%cohorts)
     vegn%cohorts=>cc
-<<<<<<< HEAD
   end subroutine vegn_mergecohorts
-=======
-
-  end subroutine vegn_mergecohorts
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   subroutine kill_lowdensity_cohorts(vegn)
     !////////////////////////////////////////////////////////////////
     ! kill low density cohorts, a new function seperated from vegn_mergecohorts
@@ -2150,29 +1909,17 @@ contains
     ! Code from BiomeE-Allocation
     !---------------------------------------------------------------
     type(vegn_tile_type), intent(inout) :: vegn
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! local variables
     type(cohort_type), pointer :: cx, cc(:) ! array to hold new cohorts
     logical :: merged(vegn%n_cohorts)        ! mask to skip cohorts that were already merged
     real, parameter :: mindensity = 0.25E-4
     integer :: i,j,k
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! calculate the number of cohorts with indivs>mindensity
     k = 0
     do i = 1, vegn%n_cohorts
       if (vegn%cohorts(i)%nindivs > mindensity) k=k+1
     enddo
     if (k==0) write(*,*)'kill_lowdensity_cohorts: ','All cohorts have died'
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! exclude cohorts that have low individuals
     if (k < vegn%n_cohorts) then
       allocate(cc(k))
@@ -2193,14 +1940,7 @@ contains
       deallocate (vegn%cohorts)
       vegn%cohorts=>cc
     endif
-<<<<<<< HEAD
   end subroutine kill_lowdensity_cohorts
-=======
-
-  end subroutine kill_lowdensity_cohorts
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   subroutine merge_cohorts(c1, c2)
     !////////////////////////////////////////////////////////////////
     ! kill low density cohorts, a new function seperated from vegn_mergecohorts
@@ -2209,13 +1949,7 @@ contains
     !---------------------------------------------------------------
     type(cohort_type), intent(in) :: c1
     type(cohort_type), intent(inout) :: c2
-<<<<<<< HEAD
     real :: x1, x2 ! normalized relative weights
-=======
-
-    real :: x1, x2 ! normalized relative weights
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     if (c1%nindivs > 0.0 .or. c2%nindivs > 0.0) then
       
       x1 = c1%nindivs/(c1%nindivs+c2%nindivs)
@@ -2224,15 +1958,8 @@ contains
       !   x1 = 0.5
       !   x2 = 0.5
       !endif
-<<<<<<< HEAD
       ! update number of individuals in merged cohort
       c2%nindivs = c1%nindivs + c2%nindivs
-=======
-
-      ! update number of individuals in merged cohort
-      c2%nindivs = c1%nindivs + c2%nindivs
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       !  Carbon
       c2%bl  = x1*c1%bl  + x2*c2%bl
       c2%br  = x1*c1%br  + x2*c2%br
@@ -2240,10 +1967,6 @@ contains
       c2%bHW = x1*c1%bHW + x2*c2%bHW
       c2%seedC = x1*c1%seedC + x2*c2%seedC
       c2%nsc = x1*c1%nsc + x2*c2%nsc
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       !   Allometry
       c2%dbh = x1*c1%dbh + x2*c2%dbh
       c2%height = x1*c1%height + x2*c2%height
@@ -2251,10 +1974,6 @@ contains
       c2%age = x1*c1%age + x2*c2%age
       c2%C_growth = x1*c1%C_growth + x2*c2%C_growth
       c2%topyear = x1*c1%topyear + x2*c2%topyear
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       !  Nitrogen
       c2%leafN = x1*c1%leafN + x2*c2%leafN
       c2%rootN = x1*c1%rootN + x2*c2%rootN
@@ -2262,35 +1981,17 @@ contains
       c2%woodN = x1*c1%woodN + x2*c2%woodN
       c2%seedN = x1*c1%seedN + x2*c2%seedN
       c2%NSN   = x1*c1%NSN   + x2*c2%NSN
-<<<<<<< HEAD
       !  calculate the resulting dry heat capacity
       c2%leafarea = leaf_area_from_biomass(c2%bl, c2%species, c2%layer, c2%firstlayer)
     endif
   end subroutine merge_cohorts
-=======
-
-      !  calculate the resulting dry heat capacity
-      c2%leafarea = leaf_area_from_biomass(c2%bl, c2%species, c2%layer, c2%firstlayer)
-    endif
-
-  end subroutine merge_cohorts
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   function cohorts_can_be_merged(c1, c2); logical cohorts_can_be_merged
     !////////////////////////////////////////////////////////////////
     ! Code from BiomeE-Allocation
     !---------------------------------------------------------------
     type(cohort_type), intent(in) :: c1,c2
-<<<<<<< HEAD
     real, parameter :: mindensity = 1.0E-4
     logical :: sameSpecies, sameLayer, sameSize, sameSizeTree, sameSizeGrass, lowDensity
-=======
-
-    real, parameter :: mindensity = 1.0E-4
-    logical :: sameSpecies, sameLayer, sameSize, sameSizeTree, sameSizeGrass, lowDensity
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     sameSpecies  = c1%species == c2%species
     
     sameLayer    = (c1%layer == c2%layer) .or. & ! .and. (c1%firstlayer == c2%firstlayer)
@@ -2312,14 +2013,7 @@ contains
     
     ! Weng, 2014-01-27, turned off
     cohorts_can_be_merged = sameSpecies .and. sameLayer .and. sameSize
-<<<<<<< HEAD
   end function
-=======
-
-  end function
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   subroutine initialize_cohort_from_biomass(cc, btot)
     !////////////////////////////////////////////////////////////////
     ! calculate tree height, DBH, height, and crown area by initial biomass
@@ -2331,19 +2025,11 @@ contains
     !---------------------------------------------------------------
     type(cohort_type), intent(inout) :: cc
     real, intent(in) :: btot ! total biomass per individual, kg C
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     associate(sp=>spdata(cc%species))
     
     cc%DBH        = (btot / sp%alphaBM) ** ( 1.0/sp%thetaBM )
     cc%height     = sp%alphaHT * cc%dbh ** sp%thetaHT
     cc%crownarea  = sp%alphaCA * cc%dbh ** sp%thetaCA
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     cc%bl_max = sp%LMA   * sp%LAImax        * cc%crownarea/max(1,cc%layer)
     cc%br_max = sp%phiRL * sp%LAImax/sp%SRA * cc%crownarea/max(1,cc%layer)
     cc%NSNmax = sp%fNSNmax*(cc%bl_max/(sp%CNleaf0*sp%leafLS)+cc%br_max/sp%CNroot0)
@@ -2359,54 +2045,26 @@ contains
     cc%woodN  = cc%bHW/sp%CNwood0
     end associate
   end subroutine initialize_cohort_from_biomass
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   subroutine annual_calls(vegn)
     !////////////////////////////////////////////////////////////////
     ! Code from BiomeE-Allocation
     !---------------------------------------------------------------
     type(vegn_tile_type), intent(inout) :: vegn
-<<<<<<< HEAD
     !---- annual call -------------
     ! update the LAImax of each PFT according to available N for next year
     if (update_annualLAImax) call vegn_annualLAImax_update(vegn)
-=======
-
-    !---- annual call -------------
-    ! update the LAImax of each PFT according to available N for next year
-
-    if (update_annualLAImax) call vegn_annualLAImax_update(vegn)
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! Reproduction and mortality
     !call vegn_starvation(vegn)  ! called daily
     !call vegn_annual_starvation(vegn)
     call vegn_reproduction(vegn)
     call vegn_nat_mortality(vegn, real(seconds_per_year))
-<<<<<<< HEAD
-=======
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! Re-organize cohorts
     call relayer_cohorts(vegn)
     call kill_lowdensity_cohorts(vegn)
     call vegn_mergecohorts(vegn)
-<<<<<<< HEAD
     ! set annual variables zero
     call Zero_diagnostics(vegn)
   end subroutine annual_calls
-=======
-
-    ! set annual variables zero
-    call Zero_diagnostics(vegn)
-
-  end subroutine annual_calls
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   subroutine init_cohort_allometry(cc)
     !////////////////////////////////////////////////////////////////
     ! Code from BiomeE-Allocation
@@ -2415,10 +2073,6 @@ contains
     ! ----- local var -----------
     integer :: layer
     real    :: btot ! total biomass per individual, kg C
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     associate(sp=>spdata(cc%species))
       !if (sp%lifeform>0) then
       btot = max(0.0001,cc%bHW+cc%bsw)
@@ -2426,10 +2080,6 @@ contains
       cc%DBH        = (btot / sp%alphaBM) ** ( 1.0/sp%thetaBM )
       cc%height     = sp%alphaHT * cc%dbh ** sp%thetaHT
       cc%crownarea  = sp%alphaCA * cc%dbh ** sp%thetaCA
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       ! calculations of bl_max and br_max are here only for the sake of the
       ! diagnostics, because otherwise those fields are inherited from the 
       ! parent cohort and produce spike in the output, even though these spurious
@@ -2439,11 +2089,6 @@ contains
       cc%NSNmax = sp%fNSNmax*(cc%bl_max/(sp%CNleaf0*sp%leafLS)+cc%br_max/sp%CNroot0)
     end associate
   end subroutine init_cohort_allometry
-<<<<<<< HEAD
-=======
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   subroutine vegn_annualLAImax_update(vegn)
     !////////////////////////////////////////////////////////////////
     ! used for updating LAImax according to mineral N in soil
@@ -2454,10 +2099,6 @@ contains
     ! Code from BiomeE-Allocation
     !---------------------------------------------------------------
     type(vegn_tile_type), intent(inout) :: vegn
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! local variables
     type(cohort_type), pointer :: cc
     real   :: LAImin, LAIfixedN, LAImineralN
@@ -2468,45 +2109,25 @@ contains
     ! Calculating LAI max based on mineral N or mineralN + fixed N
     fixedN_based =  .False. ! .True. !
     LAImin       = 0.5
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     !fixedN = 0.0
     !do i = 1,vegn%n_cohorts
     !      cc => vegn%cohorts(i)
     !      fixedN = fixedN + cc%annualfixedN * cc%crownarea * cc%nindivs
     !enddo
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! Mineral+fixed N-based LAImax
     ! LAI_fixedN = sp%Nfixrate0 * sp%LMA * sp%CNleaf0 * sp%leafLS / sp%LMA
     ! cc%br_max = sp%phiRL*cc%bl_max/(sp%LMA*sp%SRA)
     vegn%previousN = 0.8 * vegn%previousN + 0.2 * vegn%annualN
     do i=0,MSPECIES
       associate (sp => spdata(i) )
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
         LAIfixedN  = 0.5 * sp%Nfixrate0 * sp%CNleaf0 * sp%leafLS
         LAImineralN = 0.5*vegn%previousN*sp%CNleaf0*sp%leafLS/sp%LMA
         !LAImineralN = vegn%previousN/(sp%LMA/(sp%CNleaf0*sp%leafLS)+sp%phiRL*sp%alpha_FR/sp%SRA /sp%CNroot0)
         LAI_nitrogen = LAIfixedN + LAImineralN
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
         spdata(i)%LAImax = MAX(LAImin, MIN(LAI_nitrogen,sp%LAI_light))
         spdata(i)%underLAImax = MIN(sp%LAImax,1.2)
       end associate
     enddo
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     !  ! update the PFTs in the first layer based on fixed N
     !  if (fixedN_based) then ! based on "cc%annualfixedN + vegn%previousN"
     !!    Reset sp%LAImax
@@ -2531,11 +2152,6 @@ contains
     !     enddo
     !  endif
   end subroutine vegn_annualLAImax_update
-<<<<<<< HEAD
-=======
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   function leaf_area_from_biomass(bl,species,layer,firstlayer) result (area)
     !////////////////////////////////////////////////////////////////
     ! Code from BiomeE-Allocation
@@ -2544,10 +2160,6 @@ contains
     real,    intent(in) :: bl      ! biomass of leaves, kg C/individual
     integer, intent(in) :: species ! species
     integer, intent(in) :: layer, firstlayer
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! modified by Weng (2014-01-09), 07-18-2017
     area = bl/spdata(species)%LMA
     !if (layer > 1.AND. firstlayer == 0) then
@@ -2558,7 +2170,6 @@ contains
   end function
   
   !============= Vegetation initializations =====================
-
   subroutine initialize_vegn_tile(vegn,nCohorts)
     !////////////////////////////////////////////////////////////////
     ! Code from BiomeE-Allocation
@@ -2566,10 +2177,6 @@ contains
     type(vegn_tile_type), intent(inout), pointer :: vegn
     integer, intent(in) :: nCohorts
     ! -local vars -------
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     type(cohort_type), dimension(:), pointer :: cc
     type(cohort_type), pointer :: cx
     integer,parameter :: rand_seed = 86456
@@ -2579,10 +2186,6 @@ contains
     integer :: io           ! i/o status for the namelist
     integer :: ierr         ! error code, returned by i/o routines
     integer :: nml_unit
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
     ! Take tile parameters from myinterface (they are read from the namelist file in initialize_PFT() otherwise)
     K1          = myinterface%params_tile%K1  
     K2          = myinterface%params_tile%K2
@@ -2594,25 +2197,14 @@ contains
     ! fNSNmax     = myinterface%params_tile%fNSNmax      
     ! f_N_add     = myinterface%params_tile%f_N_add      
     f_initialBSW= myinterface%params_tile%f_initialBSW 
-<<<<<<< HEAD
     !  Read parameters from the parameter file (namelist)
     if (read_from_parameter_file) then
-=======
-
-    !  Read parameters from the parameter file (namelist)
-    if (read_from_parameter_file) then
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       ! Initialize plant cohorts
       init_n_cohorts = nCohorts ! Weng,2018-11-21
       allocate(cc(1:init_n_cohorts), STAT = istat)
       vegn%cohorts => cc
       vegn%n_cohorts = init_n_cohorts
       cc => null()
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       do i=1,init_n_cohorts
         cx => vegn%cohorts(i)
         cx%status  = LEAF_OFF ! ON=1, OFF=0 ! ON
@@ -2628,13 +2220,7 @@ contains
       enddo
       MaxCohortID = cx%ccID
       ! Sorting these cohorts
-<<<<<<< HEAD
       call relayer_cohorts(vegn)
-=======
-
-      call relayer_cohorts(vegn)
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       ! Initial Soil pools and environmental conditions
       vegn%metabolicL   = myinterface%init_soil%init_fast_soil_C ! kgC m-2
       vegn%structuralL  = myinterface%init_soil%init_slow_soil_C ! slow soil carbon pool, (kg C/m2)
@@ -2643,34 +2229,19 @@ contains
       vegn%N_input      = myinterface%init_soil%N_input   ! kgN m-2 yr-1, N input to soil
       vegn%mineralN     = myinterface%init_soil%init_Nmineral  ! Mineral nitrogen pool, (kg N/m2)
       vegn%previousN    = vegn%mineralN
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       !Soil water
       ! Parameters
       vegn%soiltype = myinterface%params_tile%soiltype    ! soiltype
       vegn%FLDCAP = myinterface%params_tile%FLDCAP  !FLDCAP
       vegn%WILTPT = myinterface%params_tile%WILTPT  ! WILTPT
-<<<<<<< HEAD
       ! Initialize soil volumetric water conent with field capacity (maximum soil moisture to start with)
       vegn%wcl = myinterface%params_tile%FLDCAP  !FLDCAP
-=======
-
-      ! Initialize soil volumetric water conent with field capacity (maximum soil moisture to start with)
-      vegn%wcl = myinterface%params_tile%FLDCAP  !FLDCAP
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       ! Update soil water
       vegn%SoilWater = 0.0
       do i=1, max_lev
         vegn%SoilWater = vegn%SoilWater + vegn%wcl(i)*thksl(i)*1000.0
       enddo
       vegn%thetaS = 1.0
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       ! tile
       !print*, 'initialize_vegn_tile() 1: ',  vegn%n_cohorts   ! xxx debug
       call summarize_tile(vegn)
@@ -2698,25 +2269,14 @@ contains
         btotal     = rand()*100.0  ! kgC /tree
         call initialize_cohort_from_biomass(cx,btotal)
       enddo
-<<<<<<< HEAD
       ! Sorting these cohorts
       call relayer_cohorts(vegn)
-=======
-
-      ! Sorting these cohorts
-      call relayer_cohorts(vegn)
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       ! ID each cohort
       do i=1,nCohorts
         cx => vegn%cohorts(i)
         cx%ccID = MaxCohortID + i
       enddo
       MaxCohortID = cx%ccID
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       ! Initial Soil pools and environmental conditions
       vegn%metabolicL  = 0.2 ! kgC m-2
       vegn%structuralL = 7.0 ! slow soil carbon pool, (kg C/m2)
@@ -2725,10 +2285,6 @@ contains
       vegn%N_input     = N_input  ! kgN m-2 yr-1, N input to soil
       vegn%mineralN    = 0.005  ! Mineral nitrogen pool, (kg N/m2)
       vegn%previousN   = vegn%mineralN
-<<<<<<< HEAD
-=======
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
       ! tile
       !print*, 'initialize_vegn_tile() 3: ',  vegn%n_cohorts   ! xxx debug
       call summarize_tile(vegn)
@@ -2738,15 +2294,7 @@ contains
       vegn%MicrobialN + vegn%metabolicN +       &
       vegn%structuralN + vegn%mineralN
       vegn%totN =  vegn%initialN0
-<<<<<<< HEAD
     endif  ! initialization: random or pre-described
   end subroutine initialize_vegn_tile
-=======
-
-    endif  ! initialization: random or pre-described
-  end subroutine initialize_vegn_tile
-
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
 end module md_vegetation
 

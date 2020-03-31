@@ -207,7 +207,7 @@ program main
 
   ! Simulation parameters
   ! myinterface%params_siml%model_run_years       = myinterface%params_siml%runyears    ! xxx delete model_run_years from arguments
-  ! myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
+  !myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
   myinterface%params_siml%outputhourly          = outputhourly
   myinterface%params_siml%outputdaily           = outputdaily
   myinterface%params_siml%do_U_shaped_mortality = do_U_shaped_mortality
@@ -302,7 +302,6 @@ program main
   ! print*,'myinterface%params_siml%equi_days ', myinterface%params_siml%equi_days
   ! print*,'days_data                         ', days_data
   ! print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
-  ! print*,'datalines', datalines
   !  stop  
 
   ! record some variables that are determined by the SR that reads the forcing
@@ -411,34 +410,22 @@ program main
     ! print*,'a'
     ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end,1)
     ! print*, out_biosphere%hourly_tile(:)%hour
-    ! print*, 'myinterface%params_siml%spinupyears', myinterface%params_siml%spinupyears
-    ! print*, 'ntstepsyear ', ntstepsyear
+    
     ! if (myinterface%params_siml%outputhourly .and. iday > myinterface%params_siml%equi_days) then
     if (.not. myinterface%steering%spinup) then
-      idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1 ! To exclude the spinup years and include only the transient years
+      idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
       idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
       call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
       print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
 
     end if
 
-<<<<<<< HEAD
     ! print*,'b'
     ! print*,out_biosphere%hourly_tile(1)%Tair
     ! print*,out_hourly_tile(idx_hourly_start, 5)
     ! print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
     ! print*,size(out_hourly_tile(idx_hourly_start:idx_hourly_end, 1))
     ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
-=======
-      ! print*,'b'
-      ! print*,out_biosphere%hourly_tile(1)%Tair
-      ! print*,out_hourly_tile(idx_hourly_start, 5)
-      ! print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
-      ! print*,size(out_hourly_tile(idx_hourly_start:idx_hourly_end, 1))
-      ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
-      !stop 'halo'
-
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
 
     ! ----------------------------------------------------------------
     ! Print out_daily_tile
@@ -488,8 +475,8 @@ program main
 
   deallocate(myinterface%climate)
   deallocate(myinterface%pco2)
-  ! deallocate(out_biosphere%hourly_tile)
-  ! deallocate(out_hourly_tile)
+  deallocate(out_biosphere%hourly_tile)
+  deallocate(out_hourly_tile)
   deallocate(out_daily_cohorts)
   deallocate(out_daily_tile)
   deallocate(out_annual_cohorts)
@@ -767,20 +754,8 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     endif
     close(11)    ! close forcing file
 
-<<<<<<< HEAD
     ! print*,'1'
     ! print*,'input par', input_data(1,10)
-=======
-    ! print*,'input par', input_data(1,10)
-    ! print*,'input par', input_data(2,10)
-    ! print*,'input par', input_data(3,10)
-    ! print*,'input par', input_data(4,10)
-    ! print*,'input par', input_data(5,10)
-    ! print*,'input par', input_data(6,10)
-    ! print*,'input par', input_data(7,10)
-    ! print*,'input par', input_data(8,10)
-    ! print*,'input par', input_data(9,10)
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
 
     ! Put the data into forcing 
     datalines = m - 1
@@ -815,7 +790,6 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
        climateData(idx_climatedata)%P_air     = input_data(8,i)        ! pa
        climateData(idx_climatedata)%CO2       = input_data(9,i) * 1.0e-6       ! mol/mol
        climateData(idx_climatedata)%soilwater = 0.8    ! soil moisture, vol/vol
-
       else
      end if
    enddo

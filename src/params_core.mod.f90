@@ -7,11 +7,7 @@ module md_params_core
   !----------------------------------------------------------------
   implicit none
 
-<<<<<<< HEAD
   integer :: ntstepsyear                         ! 365*48 = 17520
-=======
-  integer :: ntstepsyear           ! 365*48 = 17520
->>>>>>> ef10d580348f3ac6163c8d57781953fb868de74a
   integer, parameter :: ndayyear = 365           ! number of days in a year
   
   integer, parameter :: nmonth = 12              ! number of months in a year

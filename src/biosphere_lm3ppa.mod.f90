@@ -222,7 +222,7 @@ contains
 
           ! idata = MOD(simu_steps, myinterface%datalines)+1
           idata = simu_steps + 1
-          year0 =  myinterface%climate(idata)%radiation  ! Current year
+          year0 =  myinterface%climate(idata)%year  ! Current year
           vegn%Tc_daily = vegn%Tc_daily +  myinterface%climate(idata)%Tair
           tsoil         = myinterface%climate(idata)%tsoil
           simu_steps    = simu_steps + 1
@@ -338,7 +338,7 @@ contains
       close(103)
       close(104)
       deallocate(vegn%cohorts)
-      deallocate(myinterface%climate) !differ
+      !deallocate(myinterface%climate) !differ
       !deallocate(out_biosphere%hourly_tile)
       ! stop 'actually finalizing'
 
