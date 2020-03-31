@@ -97,7 +97,7 @@ program main
   logical, parameter :: verbose = .false.
   integer :: iday
 
-  character(len=100) :: namelistfile = '/Users/lmarques/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+  character(len=100) :: namelistfile = '/Users/benjaminstocker/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
 
   ! output arrays (naked) to be passed back to C/R
   real, dimension(:,:), allocatable  :: out_hourly_tile 
@@ -312,11 +312,11 @@ program main
 
   allocate(out_biosphere%hourly_tile(ntstepsyear))
 
-  allocate(out_hourly_tile(ntstepsyear * myinterface%params_siml%nyeartrend, nvars_hourly_tile))
-  allocate(out_daily_cohorts(ndayyear * myinterface%params_siml%nyeartrend, out_max_cohorts, nvars_daily_cohorts))
-  allocate(out_daily_tile(ndayyear * myinterface%params_siml%nyeartrend, nvars_daily_tile))
-  allocate(out_annual_cohorts(myinterface%params_siml%runyears, out_max_cohorts, nvars_annual_cohorts))
-  allocate(out_annual_tile(myinterface%params_siml%runyears, nvars_annual_tile))
+  allocate(out_hourly_tile(     ntstepsyear * myinterface%params_siml%nyeartrend,  nvars_hourly_tile                        ))
+  allocate(out_daily_cohorts(   ndayyear * myinterface%params_siml%nyeartrend,     out_max_cohorts,    nvars_daily_cohorts  ))
+  allocate(out_daily_tile(      ndayyear * myinterface%params_siml%nyeartrend,     nvars_daily_tile                         ))
+  allocate(out_annual_cohorts(  myinterface%params_siml%runyears,                  out_max_cohorts,    nvars_annual_cohorts ))
+  allocate(out_annual_tile(     myinterface%params_siml%runyears,                  nvars_annual_tile                        ))
   
   !----------------------------------------------------------------
   ! GET CALIBRATABLE MODEL PARAMETERS (so far a small list)
@@ -391,7 +391,7 @@ program main
     ! Call biosphere (wrapper for all modules, contains gridcell loop)
     !----------------------------------------------------------------
     if (verbose) print*,'calling biosphere ...'
-    out_biosphere = biosphere_annual() 
+    call biosphere_annual(out_biosphere) 
     if (verbose) print*,'... done.'
     !----------------------------------------------------------------
 
@@ -416,7 +416,7 @@ program main
       idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
       idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
       call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
-      print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
+      ! print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
 
     end if
 
@@ -713,7 +713,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: m,n
     integer :: idx_climatedata
 
-    character(len=80) :: filepath_in = '/Users/lmarques/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
     character(len=80) :: climfile    = 'ORNL_forcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
@@ -822,7 +822,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: m,n
     integer :: idx_climatedata
 
-    character(len=80) :: filepath_in = '/Users/lmarques/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
     character(len=80) :: climfile    = 'US-WCrforcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)

@@ -16,7 +16,7 @@ module md_biosphere
 
 contains
 
-  function biosphere_annual() result( out_biosphere )
+  subroutine biosphere_annual(out_biosphere)
     !////////////////////////////////////////////////////////////////
     ! function BIOSPHERE_annual calculates net ecosystem exchange (nee)
     ! in response to environmental boundary conditions (atmospheric 
@@ -29,7 +29,7 @@ contains
     use md_params_core, only: ntstepsyear !diff
   
     ! return variable
-    type(outtype_biosphere) :: out_biosphere
+    type(outtype_biosphere), intent(inout) :: out_biosphere
 
     ! ! local variables
     integer :: dm, moy, jpngr, doy
@@ -73,7 +73,7 @@ contains
     ! Create output files
     ! XXX add this to output instead
     !------------------------------------------------------------------------
-    filepath_out   = '/Users/lmarques/sofun/output/'
+    filepath_out   = '/Users/benjaminstocker/sofun/output/'
     filesuffix     = '_test.csv' ! tag for simulation experiments
     plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)  ! has 22 columns
     plantCNpools   = trim(filepath_out)//'Daily_cohorts'//trim(filesuffix)  ! daily has 27 columns
@@ -141,8 +141,6 @@ contains
       !------------------------------------------------------------------------
       ! Initialisations
       !------------------------------------------------------------------------
-      allocate(out_biosphere%hourly_tile(ntstepsyear))
-
       ! Parameter initialization: Initialize PFT parameters
       ! print*,'1'
       call initialize_PFT_data()
@@ -198,7 +196,7 @@ contains
         idays = idays + 1
 
         if (verbose) print*,'----------------------'
-        if (verbose) print*,'YEAR, Doy ', myinterface%steering%year, doy
+        if (verbose) print*,'YEAR, DOY ', myinterface%steering%year, doy
         if (verbose) print*,'----------------------'
 
         idoy = idoy + 1
@@ -227,32 +225,13 @@ contains
           tsoil         = myinterface%climate(idata)%tsoil
           simu_steps    = simu_steps + 1
 
-          ! fast-step calls, hourly or half-hourly
-          ! if (idata==8000) then
-          !   print*,'B i ', i
-          !   print*,'idata ', idata
-          !   print*,' myinterface%climate(idata)%year',  myinterface%climate(idata)%year
-          !   print*,' myinterface%climate(idata)%doy',  myinterface%climate(idata)%doy
-          !   print*,' myinterface%climate(idata)%hod',  myinterface%climate(idata)%hod
-          !   print*,' myinterface%climate(idata)%PAR',  myinterface%climate(idata)%PAR
-          !   print*,' myinterface%climate(idata)%radiation',  myinterface%climate(idata)%radiation
-          !   print*,' myinterface%climate(idata)%Tair',  myinterface%climate(idata)%Tair
-          !   print*,' myinterface%climate(idata)%Tsoil',  myinterface%climate(idata)%Tsoil
-          !   print*,' myinterface%climate(idata)%rain',  myinterface%climate(idata)%rain
-          !   print*,' myinterface%climate(idata)%windU',  myinterface%climate(idata)%windU
-          !   print*,' myinterface%climate(idata)%P_air',  myinterface%climate(idata)%P_air
-          !   print*,' myinterface%climate(idata)%RH',  myinterface%climate(idata)%RH
-          !   print*,' myinterface%climate(idata)%CO2',  myinterface%climate(idata)%CO2
-          !   print*,' myinterface%climate(idata)%soilwater',  myinterface%climate(idata)%soilwater
-          !   stop
-          ! end if
-
           ! print*,'5.0.1'
           call vegn_CNW_budget_fast(vegn, myinterface%climate(idata))
           
           ! diagnostics
           ! print*,'5.0.2'
           call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1, out_biosphere%hourly_tile(idata) )
+
           ! print*,'5.0.3'
 
         enddo fastloop
@@ -346,6 +325,6 @@ contains
 
     if (verbose) print*,'Done with biosphere for this year. Guete Rutsch!'
 
-  end function biosphere_annual
+  end subroutine biosphere_annual
 
 end module md_biosphere

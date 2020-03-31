@@ -869,6 +869,7 @@ contains
     integer :: ntstepsyear !differ
 
     vegn%age = vegn%age + myinterface%dt_fast_yr
+
     ! Tile summary
     vegn%GPP    = 0.
     vegn%NPP    = 0.; vegn%Resp   = 0.
@@ -896,21 +897,21 @@ contains
     ! if (myinterface%params_siml%outputhourly .and. iday > myinterface%params_siml%equi_days) then
     if (.not. myinterface%steering%spinup) then
 
-        out_hourly_tile%year      =  iyears    
-        out_hourly_tile%doy       =  idoy   
-        out_hourly_tile%hour      =  ihour    
-        out_hourly_tile%rad       =  forcing%radiation    !forcingData 
-        out_hourly_tile%Tair      =  forcing%Tair         !forcingData  
-        out_hourly_tile%Prcp      =  forcing%rain         !forcingData 
-        out_hourly_tile%GPP       =  vegn%GPP  
-        out_hourly_tile%Resp      =  vegn%resp   
-        out_hourly_tile%Transp    =  vegn%transp
-        out_hourly_tile%Evap      =  vegn%evap   
-        out_hourly_tile%Runoff    =  vegn%runoff   
-        out_hourly_tile%Soilwater =  vegn%soilwater
-        out_hourly_tile%wcl       =  vegn%wcl(1)    
-        out_hourly_tile%FLDCAP    =  vegn%FLDCAP
-        out_hourly_tile%WILTPT    =  vegn%WILTPT
+      out_hourly_tile%year      =  iyears    
+      out_hourly_tile%doy       =  idoy   
+      out_hourly_tile%hour      =  ihour    
+      out_hourly_tile%rad       =  forcing%radiation    !forcingData 
+      out_hourly_tile%Tair      =  forcing%Tair         !forcingData  
+      out_hourly_tile%Prcp      =  forcing%rain         !forcingData 
+      out_hourly_tile%GPP       =  vegn%GPP  
+      out_hourly_tile%Resp      =  vegn%resp   
+      out_hourly_tile%Transp    =  vegn%transp
+      out_hourly_tile%Evap      =  vegn%evap   
+      out_hourly_tile%Runoff    =  vegn%runoff   
+      out_hourly_tile%Soilwater =  vegn%soilwater
+      out_hourly_tile%wcl       =  vegn%wcl(1)
+      out_hourly_tile%FLDCAP    =  vegn%FLDCAP
+      out_hourly_tile%WILTPT    =  vegn%WILTPT
 
       write(fno1,'(3(I5,","),25(E11.4,","),25(F8.2,","))')  &
         iyears, idoy, ihour,      &
