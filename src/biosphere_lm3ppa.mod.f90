@@ -137,7 +137,7 @@ contains
           'McrbC','fastSOM',   'SlowSOM',                          &
           'McrbN','fastSoilN', 'slowSoilN',                        &
           'mineralN', 'N_fxed','N_uptk','N_yrMin','N_P2S','N_loss',&
-          'totseedC','totseedN','Seedling_C','Seedling_N'
+          'seedC','seedN','Seedling_C','Seedling_N'
 
       !------------------------------------------------------------------------
       ! Initialisations
@@ -228,6 +228,9 @@ contains
 
           ! print*,'5.0.1'
           call vegn_CNW_budget_fast(vegn, myinterface%climate(idata))
+
+          ! ! xxx consistency check
+          ! myinterface%climate(idata)%tsoil = myinterface%climate(idata)%Tair
           
           ! diagnostics
           ! print*,'5.0.2'
@@ -237,7 +240,7 @@ contains
 
         enddo fastloop
 
-        ! if (doy == 365) stop 'consistency?'
+        if (doy == 100 .and. iyears == 3) stop 'consistency?'
 
         vegn%Tc_daily = vegn%Tc_daily/myinterface%steps_per_day
         tsoil         = tsoil/myinterface%steps_per_day
