@@ -73,7 +73,7 @@ contains
     ! Create output files
     ! XXX add this to output instead
     !------------------------------------------------------------------------
-    filepath_out   = '/Users/benjaminstocker/sofun/output/'
+    filepath_out   = '/Users/lmarques/sofun/output/'
     filesuffix     = '_test.csv' ! tag for simulation experiments
     plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)  ! has 22 columns
     plantCNpools   = trim(filepath_out)//'Daily_cohorts'//trim(filesuffix)  ! daily has 27 columns
@@ -97,12 +97,14 @@ contains
       ! Translation to LM3-PPA variables
       !------------------------------------------------------------------------
 
+          ! hourly tile
           write(fno1,'(5(a8,","),25(a12,","))')                    &
           'year','doy','hour','rad',                               &
           'Tair','Prcp', 'GPP', 'Resp',                            &
           'Transp','Evap','Runoff','Soilwater',                    &
           'wcl','FLDCAP','WILTPT'
 
+          ! annual cohorts
           write(fno2,'(3(a5,","),25(a9,","))') 'year',             &
           'cID','PFT','layer','density', 'f_layer',                &
           'dDBH','dbh','height','Acrown',                          &
@@ -110,6 +112,7 @@ contains
           'NPPL','NPPR','NPPW','GPP_yr','NPP_yr',                  &
           'N_uptk','N_fix','maxLAI'
           
+          ! daily cohorts
           write(fno3,'(5(a5,","),25(a8,","))')                     &
           'year','doy','hour','cID','PFT',                         &
           'layer','density', 'f_layer', 'LAI',                     &
@@ -118,6 +121,7 @@ contains
           'NSC','seedC','leafC','rootC','SW_C','HW_C',             &
           'NSN','seedN','leafN','rootN','SW_N','HW_N'
           
+          ! daily tile
           write(fno4,'(2(a5,","),55(a10,","))')  'year','doy',     &
           'Tc','Prcp', 'totWs',  'Trsp', 'Evap','Runoff',          &
           'ws1','ws2','ws3', 'LAI','GPP', 'Rauto', 'Rh',           &
@@ -193,7 +197,7 @@ contains
       ! print*,'5.0'
       dayloop: do dm=1,ndaymonth(moy)
 
-        doy = doy+1
+        doy = doy + 1
         idays = idays + 1
 
         if (verbose) print*,'----------------------'
@@ -240,7 +244,7 @@ contains
 
         enddo fastloop
 
-        if (doy == 100 .and. iyears == 3) stop 'consistency?'
+        !if (doy == 100 .and. iyears == 3) stop 'consistency?'
 
         vegn%Tc_daily = vegn%Tc_daily/myinterface%steps_per_day
         tsoil         = tsoil/myinterface%steps_per_day

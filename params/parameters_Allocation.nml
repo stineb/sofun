@@ -65,7 +65,7 @@ fNSNmax       = 5,       5,        5,        5,        5,      5,        5,     
                                ! low  N input --> Evergreen
 
 ! Model run
- filepath_in = '/Users/benjaminstocker/sofun/input/'
+ filepath_in = '/Users/lmarques/sofun/input/'
  climfile    =  'ORNL_forcing.txt' !'US-WCrforcing.txt' !   'CA-Manforcing.txt' !
                ! 'CA-Manforcing.txt'   !  'US-WBWforcing.txt'
                !   'US-Dk1forcing.txt' ! CA-Obsforcing.txt
@@ -78,7 +78,7 @@ do_U_shaped_mortality =  .False., ! .True. !
 update_annualLAImax   =  .False., ! .True. !
 do_closedN_run        =  .True.,
 spinup                = .True.,
-spinupyears           = 199,
+spinupyears           = 1800,
 recycle               = 11, ! 9 (US-WCrforcing) or 11 (ORNL_forcing)
 firstyeartrend        = 1998,
 nyeartrend            = 11, !before 11

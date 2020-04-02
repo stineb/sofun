@@ -1620,7 +1620,7 @@ contains
         ! rho_N_up = 1.-exp(-rho_N_up0 * N_roots/(N_roots0+N_roots) * hours_per_year * myinterface%dt_fast_yr) ! rate at given root density and time period
         rho_N_up = rho_N_up0 * N_roots/(N_roots0 + N_roots) * hours_per_year * myinterface%dt_fast_yr
 
-        print*,'rho_N_up, mineralN, tsoil, Tfactor', rho_N_up, vegn%mineralN, tsoil, exp(9000.0 * (1./298.16 - 1./tsoil))
+       ! print*,'rho_N_up, mineralN, tsoil, Tfactor', rho_N_up, vegn%mineralN, tsoil, exp(9000.0 * (1./298.16 - 1./tsoil))
 
         totNup = rho_N_up * vegn%mineralN * exp(9000.0 * (1./298.16 - 1./tsoil)) ! kgN m-2 time step-1
         avgNup = totNup / N_roots ! kgN time step-1 kg roots-1

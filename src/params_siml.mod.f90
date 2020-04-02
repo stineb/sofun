@@ -28,7 +28,7 @@ module md_params_siml
     logical :: outputhourly
     logical :: outputdaily
     logical :: do_U_shaped_mortality
-    logical :: update_annaulLAImax
+    logical :: update_annualLAImax
     logical :: do_closedN_run
 
   end type paramstype_siml
