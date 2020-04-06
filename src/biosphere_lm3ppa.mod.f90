@@ -141,26 +141,26 @@ contains
           'McrbC','fastSOM',   'SlowSOM',                          &
           'McrbN','fastSoilN', 'slowSoilN',                        &
           'mineralN', 'N_fxed','N_uptk','N_yrMin','N_P2S','N_loss',&
-          'seedC','seedN','Seedling_C','Seedling_N'
+          'totseedC','totseedN','Seedling_C','Seedling_N'
 
       !------------------------------------------------------------------------
       ! Initialisations
       !------------------------------------------------------------------------
       ! Parameter initialization: Initialize PFT parameters
-      ! print*,'1'
+      ! print*,'1: vegn%cohorts ', vegn%n_cohorts
       call initialize_PFT_data()
 
       ! Initialize vegetation tile and plant cohorts
       allocate(vegn)
       
-      ! print*,'2'
+      ! print*,'2: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       call initialize_vegn_tile(vegn, nCohorts)
       
       ! Sort and relayer cohorts
-      ! print*,'3'
+      ! print*,'3: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       call relayer_cohorts(vegn)
 
-      ! print*,'4'
+      ! print*,'4: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       call Zero_diagnostics(vegn)
 
       !------------------------------------------------------------------------
@@ -182,6 +182,19 @@ contains
 
     endif 
 
+    ! print*, 'year', myinterface%climate(1)%year
+    ! print*, 'doy',myinterface%climate(1)%doy
+    ! print*, 'hour',myinterface%climate(1)%hod
+    ! print*, 'PAR',myinterface%climate(1)%PAR
+    ! print*, 'radiation',myinterface%climate(1)%radiation
+    ! print*, 'Tair', myinterface%climate(1)%Tair
+    ! print*, 'Tsoil', myinterface%climate(1)%Tsoil
+    ! print*, 'windU', myinterface%climate(1)%windU
+    ! print*, 'P_air', myinterface%climate(1)%P_air
+    ! print*, 'CO2', myinterface%climate(1)%CO2
+    ! print*, 'soilwater', myinterface%climate(1)%soilwater
+
+
     ! every year, start reading from beginning of myinterface%climate (annual chunks are passed!)
     simu_steps = 0
 
@@ -194,7 +207,7 @@ contains
       !----------------------------------------------------------------
       ! LOOP THROUGH DAYS
       !----------------------------------------------------------------
-      ! print*,'5.0'
+        ! print*,'5: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       dayloop: do dm=1,ndaymonth(moy)
 
         doy = doy + 1
@@ -253,11 +266,11 @@ contains
         !-------------------------------------------------
         ! Daily calls
         !-------------------------------------------------
-        ! print*,'5.1', doy
+        ! print*,'5: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
         call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4, out_biosphere%daily_cohorts(doy,:), out_biosphere%daily_tile(doy) )
 
         ! Determine start and end of season and maximum leaf (root) mass
-        ! print*,'5.2', doy
+        ! print*,'6: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
         call vegn_phenology(vegn, j)
 
 
@@ -265,7 +278,7 @@ contains
         !call vegn_starvation(vegn)
 
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
-        ! print*,'5.3', doy
+        ! print*,'7: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
         call vegn_growth_EW(vegn)
 
       end do dayloop
@@ -281,7 +294,8 @@ contains
     print*,'real year: ', year0
 
     if (update_annualLAImax) call vegn_annualLAImax_update(vegn)
-
+      
+    ! print*,'8: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
     call annual_diagnostics(vegn, iyears, fno2, fno5, out_biosphere%annual_cohorts(:), out_biosphere%annual_tile)
 
     !---------------------------------------------
@@ -292,7 +306,7 @@ contains
 
     ! Natural mortality (reducing number of individuals 'nindivs')
     ! (~Eq. 2 in Weng et al., 2015 BG)
-    call vegn_nat_mortality(vegn, real(seconds_per_year))
+    call vegn_nat_mortality(vegn, real( seconds_per_year ))
     ! print*,'6: ', vegn%n_cohorts
 
     ! seed C and germination probability (~Eq. 1 in Weng et al., 2015 BG)

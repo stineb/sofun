@@ -318,6 +318,23 @@ program main
   allocate(out_annual_cohorts(  myinterface%params_siml%runyears,                  out_max_cohorts,    nvars_annual_cohorts ))
   allocate(out_annual_tile(     myinterface%params_siml%runyears,                  nvars_annual_tile                        ))
   
+  ! print*, 'forcingData(2)', forcingData(2)
+
+
+  ! climateData(idx_climatedata)%year      = year_data(i)          ! Year
+  !      climateData(idx_climatedata)%doy       = doy_data(i)           ! day of the year
+  !      climateData(idx_climatedata)%hod       = hour_data(i)          ! hour of the day
+  !      climateData(idx_climatedata)%PAR       = input_data(1,i)       ! umol/m2/s
+  !      climateData(idx_climatedata)%radiation = input_data(2,i)       ! W/m2
+  !      climateData(idx_climatedata)%Tair      = input_data(3,i) + 273.16  ! air temperature, K
+  !      climateData(idx_climatedata)%Tsoil     = input_data(4,i) + 273.16  ! soil temperature, K
+  !      climateData(idx_climatedata)%RH        = input_data(5,i) * 0.01    ! relative humidity (0.xx)
+  !      climateData(idx_climatedata)%rain      = input_data(6,i)/(timestep * 3600)! ! kgH2O m-2 s-1
+  !      climateData(idx_climatedata)%windU     = input_data(7,i)        ! wind velocity (m s-1)
+  !      climateData(idx_climatedata)%P_air     = input_data(8,i)        ! pa
+  !      climateData(idx_climatedata)%CO2       = input_data(9,i) * 1.0e-6       ! mol/mol
+  !      climateData(idx_climatedata)%soilwater = 0.8    ! soil moisture, vol/vol
+
   !----------------------------------------------------------------
   ! GET CALIBRATABLE MODEL PARAMETERS (so far a small list)
   !----------------------------------------------------------------
@@ -358,22 +375,6 @@ program main
                                         myinterface%steering%climateyear_idx, &
                                         myinterface%steering%climateyear &
                                         )
-
-    ! print*,'sofun(): myinterface%climate(:)'
-    ! print*, myinterface%climate(8000)%year
-    ! print*, myinterface%climate(8000)%doy
-    ! print*, myinterface%climate(8000)%hod
-    ! print*, myinterface%climate(8000)%PAR
-    ! print*, myinterface%climate(8000)%radiation
-    ! print*, myinterface%climate(8000)%Tair
-    ! print*, myinterface%climate(8000)%Tsoil
-    ! print*, myinterface%climate(8000)%rain
-    ! print*, myinterface%climate(8000)%windU
-    ! print*, myinterface%climate(8000)%P_air
-    ! print*, myinterface%climate(8000)%RH
-    ! print*, myinterface%climate(8000)%CO2
-    ! print*, myinterface%climate(8000)%soilwater
-
 
     ! Get annual, gobally uniform CO2
     myinterface%pco2(:) = getco2(  &
@@ -460,6 +461,9 @@ program main
     ! print*,'a'
     ! print*,out_annual_tile(yr,2)
     call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
+
+    ! print*, "CAI, LAI, GPP",out_annual_tile(yr,2),out_annual_tile(yr,3),out_annual_tile(yr,4)
+
     ! print*,'b'
     ! print*,out_annual_tile(yr,1:2)
 
@@ -471,7 +475,11 @@ program main
     call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
      ! print*,'c'
      ! print*,size(out_annual_cohorts(yr,:,6))
-     ! print*,out_annual_cohorts(yr,:,4)
+
+    ! print*,'out_annual_cohorts',out_annual_cohorts(yr,:,1)
+
+    ! print*,'out_biosphere%annual_cohorts ', out_biosphere%annual_cohorts%year
+
 
   enddo
 
@@ -669,28 +677,29 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     type(outtype_annual_cohorts), dimension(out_max_cohorts), intent(in) :: annual_cohorts
     real, dimension(out_max_cohorts,nvars_annual_cohorts), intent(inout) :: out_annual_cohorts    
 
-    out_annual_cohorts(:, 1)  = annual_cohorts(:)%cID
-    out_annual_cohorts(:, 2)  = annual_cohorts(:)%PFT
-    out_annual_cohorts(:, 3)  = annual_cohorts(:)%layer
-    out_annual_cohorts(:, 4)  = annual_cohorts(:)%density
-    out_annual_cohorts(:, 5)  = annual_cohorts(:)%f_layer
-    out_annual_cohorts(:, 6)  = annual_cohorts(:)%dDBH
-    out_annual_cohorts(:, 7)  = annual_cohorts(:)%dbh
-    out_annual_cohorts(:, 8)  = annual_cohorts(:)%height
-    out_annual_cohorts(:, 9)  = annual_cohorts(:)%Acrown
-    out_annual_cohorts(:, 10) = annual_cohorts(:)%wood
-    out_annual_cohorts(:, 11) = annual_cohorts(:)%nsc
-    out_annual_cohorts(:, 12) = annual_cohorts(:)%NSN
-    out_annual_cohorts(:, 13) = annual_cohorts(:)%NPPtr
-    out_annual_cohorts(:, 14) = annual_cohorts(:)%seed
-    out_annual_cohorts(:, 15) = annual_cohorts(:)%NPPL
-    out_annual_cohorts(:, 16) = annual_cohorts(:)%NPPR
-    out_annual_cohorts(:, 17) = annual_cohorts(:)%NPPW
-    out_annual_cohorts(:, 18) = annual_cohorts(:)%GPP
-    out_annual_cohorts(:, 19) = annual_cohorts(:)%NPP
-    out_annual_cohorts(:, 20) = annual_cohorts(:)%N_uptk
-    out_annual_cohorts(:, 21) = annual_cohorts(:)%N_fix
-    out_annual_cohorts(:, 22) = annual_cohorts(:)%maxLAI
+    out_annual_cohorts(:, 1)  = annual_cohorts(:)%year
+    out_annual_cohorts(:, 2)  = annual_cohorts(:)%cID
+    out_annual_cohorts(:, 3)  = annual_cohorts(:)%PFT
+    out_annual_cohorts(:, 4)  = annual_cohorts(:)%layer
+    out_annual_cohorts(:, 5)  = annual_cohorts(:)%density
+    out_annual_cohorts(:, 6)  = annual_cohorts(:)%f_layer
+    out_annual_cohorts(:, 7)  = annual_cohorts(:)%dDBH
+    out_annual_cohorts(:, 8)  = annual_cohorts(:)%dbh
+    out_annual_cohorts(:, 9)  = annual_cohorts(:)%height
+    out_annual_cohorts(:, 10)  = annual_cohorts(:)%Acrown
+    out_annual_cohorts(:, 11) = annual_cohorts(:)%wood
+    out_annual_cohorts(:, 12) = annual_cohorts(:)%nsc
+    out_annual_cohorts(:, 13) = annual_cohorts(:)%NSN
+    out_annual_cohorts(:, 14) = annual_cohorts(:)%NPPtr
+    out_annual_cohorts(:, 15) = annual_cohorts(:)%seed
+    out_annual_cohorts(:, 16) = annual_cohorts(:)%NPPL
+    out_annual_cohorts(:, 17) = annual_cohorts(:)%NPPR
+    out_annual_cohorts(:, 18) = annual_cohorts(:)%NPPW
+    out_annual_cohorts(:, 19) = annual_cohorts(:)%GPP
+    out_annual_cohorts(:, 20) = annual_cohorts(:)%NPP
+    out_annual_cohorts(:, 21) = annual_cohorts(:)%N_uptk
+    out_annual_cohorts(:, 22) = annual_cohorts(:)%N_fix
+    out_annual_cohorts(:, 23) = annual_cohorts(:)%maxLAI
 
   end subroutine populate_outarray_annual_cohorts
 

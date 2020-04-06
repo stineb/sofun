@@ -744,60 +744,60 @@ contains
 
     !daily
     vegn%dailyfixedN = 0.
-    vegn%dailyPrcp = 0.0
-    vegn%dailyTrsp = 0.0
-    vegn%dailyEvap = 0.0
-    vegn%dailyRoff = 0.0
-    vegn%dailyNup  = 0.0
-    vegn%dailyGPP = 0.0
-    vegn%dailyNPP = 0.0
-    vegn%dailyResp = 0.0
-    vegn%dailyRh   = 0.0
+    vegn%dailyPrcp   = 0.0
+    vegn%dailyTrsp   = 0.0
+    vegn%dailyEvap   = 0.0
+    vegn%dailyRoff   = 0.0
+    vegn%dailyNup    = 0.0
+    vegn%dailyGPP    = 0.0
+    vegn%dailyNPP    = 0.0
+    vegn%dailyResp   = 0.0
+    vegn%dailyRh     = 0.0
 
     !annual
     vegn%annualfixedN = 0.
-    vegn%annualPrcp = 0.0
-    vegn%annualTrsp = 0.0
-    vegn%annualEvap = 0.0
-    vegn%annualRoff = 0.0
-    vegn%annualGPP = 0.0
-    vegn%annualNPP = 0.0
-    vegn%annualResp = 0.0
-    vegn%annualRh   = 0.0
-    vegn%N_P2S_yr  = 0.
-    vegn%annualN   = 0.
-    vegn%Nloss_yr  = 0.
-    vegn%annualNup  = 0.0
+    vegn%annualPrcp   = 0.0
+    vegn%annualTrsp   = 0.0
+    vegn%annualEvap   = 0.0
+    vegn%annualRoff   = 0.0
+    vegn%annualGPP    = 0.0
+    vegn%annualNPP    = 0.0
+    vegn%annualResp   = 0.0
+    vegn%annualRh     = 0.0
+    vegn%N_P2S_yr     = 0.
+    vegn%annualN      = 0.
+    vegn%Nloss_yr     = 0.
+    vegn%annualNup    = 0.0
 
     do i = 1, vegn%n_cohorts
       cc => vegn%cohorts(i)
-      cc%C_growth = 0.0
-      cc%N_growth = 0.0
-      cc%gpp      = 0.0
-      cc%npp      = 0.0
-      cc%resp     = 0.0
-      cc%resl     = 0.0
-      cc%resr     = 0.0
-      cc%resg     = 0.0
-      cc%transp   = 0.0
+      cc%C_growth     = 0.0
+      cc%N_growth     = 0.0
+      cc%gpp          = 0.0
+      cc%npp          = 0.0
+      cc%resp         = 0.0
+      cc%resl         = 0.0
+      cc%resr         = 0.0
+      cc%resg         = 0.0
+      cc%transp       = 0.0
       !daily
-      cc%dailyTrsp = 0.0
-      cc%dailyGPP = 0.0
-      cc%dailyNPP = 0.0
-      cc%dailyResp= 0.0
-      cc%dailyNup   = 0.0
-      cc%dailyfixedN = 0.0
+      cc%dailyTrsp    = 0.0
+      cc%dailyGPP     = 0.0
+      cc%dailyNPP     = 0.0
+      cc%dailyResp    = 0.0
+      cc%dailyNup     = 0.0
+      cc%dailyfixedN  = 0.0
       ! annual
-      cc%annualTrsp = 0.0
-      cc%annualGPP = 0.0
-      cc%annualNPP = 0.0
-      cc%annualResp= 0.0
-      cc%annualNup   = 0.0
+      cc%annualTrsp   = 0.0
+      cc%annualGPP    = 0.0
+      cc%annualNPP    = 0.0
+      cc%annualResp   = 0.0
+      cc%annualNup    = 0.0
       cc%annualfixedN = 0.0
-      cc%NPPleaf   = 0.0
-      cc%NPProot   = 0.0
-      cc%NPPwood   = 0.0
-      cc%DBH_ys    = cc%DBH
+      cc%NPPleaf      = 0.0
+      cc%NPProot      = 0.0
+      cc%NPPwood      = 0.0
+      cc%DBH_ys       = cc%DBH
     enddo
 
   end subroutine Zero_diagnostics
@@ -855,7 +855,7 @@ contains
   ! Hourly fluxes sum to daily
   subroutine hourly_diagnostics(vegn, forcing, iyears, idoy, ihour, iday, fno1, out_hourly_tile)
 
-    use md_forcing, only: climate_type, forcingData
+    use md_forcing, only: climate_type !, forcingData
     use md_interface, only: outtype_hourly_tile, myinterface !differ
 
     type(vegn_tile_type), intent(inout) :: vegn
@@ -1129,6 +1129,8 @@ contains
       fwood = cc%NPPwood/treeG
       dDBH = (cc%DBH - cc%DBH_ys)*1000.
 
+    ! print*,'out_annual_cohorts(i)%year ', out_annual_cohorts%year
+
       out_annual_cohorts(i)%year    = iyears
       out_annual_cohorts(i)%cID     = cc%ccID
       out_annual_cohorts(i)%PFT     = cc%species
@@ -1153,6 +1155,10 @@ contains
       out_annual_cohorts(i)%N_fix   = cc%annualfixedN*1000
       out_annual_cohorts(i)%maxLAI  = spdata(cc%species)%laimax
 
+    ! print*,'iyears, cc%ccID', iyears, cc%ccID
+
+    ! print*,'out_annual_cohorts(i)%year ', out_annual_cohorts%year
+
 
       write(fno2,'(2(I7,","),2(I4,","),1(F9.1,","),45(F12.4,","))')        &
         iyears, cc%ccID,cc%species,cc%layer,                &
@@ -1165,6 +1171,10 @@ contains
         spdata(cc%species)%laimax
 
     enddo
+
+    ! print*,'out_annual_cohorts(i)%year ', out_annual_cohorts%year
+    ! print*,'out_annual_cohorts(i)%cID ', out_annual_cohorts%cID
+
 
     ! Output annual tile
     call summarize_tile(vegn)
