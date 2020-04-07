@@ -64,7 +64,7 @@ contains
     character(len=50) :: filepath_out, filesuffix
     character(len=50) :: parameterfile(10), chaSOM(10)
 
-    ! xxx debug
+    ! benjaminstocker debug
     integer :: idx, forcingyear
     !integer :: ntstepsyear          ! number of days in a year
 
@@ -73,7 +73,7 @@ contains
     ! Create output files
     ! XXX add this to output instead
     !------------------------------------------------------------------------
-    filepath_out   = '/Users/lmarques/sofun/output/'
+    filepath_out   = '/Users/benjaminstocker/sofun/output/'
     filesuffix     = '_test.csv' ! tag for simulation experiments
     plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)  ! has 22 columns
     plantCNpools   = trim(filepath_out)//'Daily_cohorts'//trim(filesuffix)  ! daily has 27 columns
@@ -246,7 +246,7 @@ contains
           ! print*,'5.0.1'
           call vegn_CNW_budget_fast(vegn, myinterface%climate(idata))
 
-          ! ! xxx consistency check
+          ! ! benjaminstocker consistency check
           ! myinterface%climate(idata)%tsoil = myinterface%climate(idata)%Tair
           
           ! diagnostics

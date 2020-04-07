@@ -97,7 +97,7 @@ program main
   logical, parameter :: verbose = .false.
   integer :: iday
 
-  character(len=100) :: namelistfile = '/Users/lmarques/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+  character(len=100) :: namelistfile = '/Users/benjaminstocker/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
 
   ! output arrays (naked) to be passed back to C/R
   real, dimension(:,:), allocatable  :: out_hourly_tile 
@@ -358,9 +358,9 @@ program main
     !----------------------------------------------------------------
     myinterface%steering = getsteering( yr, myinterface%params_siml )
 
-    ! if (yr == myinterface%params_siml%spinupyears+1 ) then
-    !   print*, '------------------TRANSIENT SIMULATION--------------------'
-    ! endif
+    if (yr == myinterface%params_siml%spinupyears+1 ) then
+      print*, '------------------TRANSIENT SIMULATION--------------------'
+    endif
 
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
@@ -724,7 +724,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: m,n
     integer :: idx_climatedata
 
-    character(len=80) :: filepath_in = '/Users/lmarques/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
     character(len=80) :: climfile    = 'ORNL_forcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
@@ -833,7 +833,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: m,n
     integer :: idx_climatedata
 
-    character(len=80) :: filepath_in = '/Users/lmarques/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
     character(len=80) :: climfile    = 'US-WCrforcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
