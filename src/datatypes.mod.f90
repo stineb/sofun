@@ -937,11 +937,12 @@ contains
 
   end subroutine hourly_diagnostics
 
-  !============================================
+!============================================
   subroutine daily_diagnostics(vegn, forcing, iyears, idoy, iday, fno3, fno4, out_daily_cohorts, out_daily_tile)
 
     use md_forcing, only: climate_type
     use md_interface, only: outtype_daily_cohorts, outtype_daily_tile
+    use md_params_core, only: dummy
 
     type(vegn_tile_type), intent(inout) :: vegn
     type(climate_type),intent(in):: forcing
@@ -959,6 +960,36 @@ contains
     !!! daily !! cohorts output
     do i = 1, vegn%n_cohorts
       cc => vegn%cohorts(i)
+
+    ! re-initialise to avoid elements not updated when number 
+    ! of cohorts declines from one year to the next
+    out_daily_cohorts(:)%year    = dummy
+    out_daily_cohorts(:)%doy     = dummy
+    out_daily_cohorts(:)%hour    = dummy
+    out_daily_cohorts(:)%cID     = dummy
+    out_daily_cohorts(:)%PFT     = dummy
+    out_daily_cohorts(:)%layer   = dummy
+    out_daily_cohorts(:)%density = dummy
+    out_daily_cohorts(:)%f_layer = dummy
+    out_daily_cohorts(:)%LAI     = dummy
+    out_daily_cohorts(:)%gpp     = dummy
+    out_daily_cohorts(:)%resp    = dummy
+    out_daily_cohorts(:)%transp  = dummy
+    out_daily_cohorts(:)%NPPleaf = dummy
+    out_daily_cohorts(:)%NPProot = dummy
+    out_daily_cohorts(:)%NPPwood = dummy
+    out_daily_cohorts(:)%NSC     = dummy
+    out_daily_cohorts(:)%seedC   = dummy
+    out_daily_cohorts(:)%leafC   = dummy
+    out_daily_cohorts(:)%rootC   = dummy
+    out_daily_cohorts(:)%SW_C    = dummy
+    out_daily_cohorts(:)%HW_C    = dummy
+    out_daily_cohorts(:)%NSN     = dummy
+    out_daily_cohorts(:)%seedN   = dummy
+    out_daily_cohorts(:)%leafN   = dummy
+    out_daily_cohorts(:)%rootN   = dummy
+    out_daily_cohorts(:)%SW_N    = dummy
+    out_daily_cohorts(:)%HW_N    = dummy
       
       ! if(outputdaily.and. iday>equi_days) &
       ! if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
@@ -1105,6 +1136,7 @@ contains
   subroutine annual_diagnostics(vegn, iyears, fno2, fno5, out_annual_cohorts, out_annual_tile)
 
     use md_interface, only: outtype_annual_cohorts, outtype_annual_tile
+    use md_params_core, only: dummy
 
     type(vegn_tile_type), intent(inout) :: vegn
     integer, intent(in) :: fno2, fno5, iyears
@@ -1117,6 +1149,32 @@ contains
     real :: plantC, plantN, soilC, soilN
     integer :: i
     integer, parameter :: out_max_cohorts = 50     ! Number of maximum cohorts
+
+    ! re-initialise to avoid elements not updated when number 
+    ! of cohorts declines from one year to the next
+    out_annual_cohorts(:)%year    = dummy
+    out_annual_cohorts(:)%cID     = dummy
+    out_annual_cohorts(:)%PFT     = dummy
+    out_annual_cohorts(:)%layer   = dummy
+    out_annual_cohorts(:)%density = dummy
+    out_annual_cohorts(:)%f_layer = dummy
+    out_annual_cohorts(:)%dDBH    = dummy
+    out_annual_cohorts(:)%dbh     = dummy
+    out_annual_cohorts(:)%height  = dummy
+    out_annual_cohorts(:)%Acrown  = dummy
+    out_annual_cohorts(:)%wood    = dummy
+    out_annual_cohorts(:)%nsc     = dummy
+    out_annual_cohorts(:)%NSN     = dummy
+    out_annual_cohorts(:)%NPPtr   = dummy
+    out_annual_cohorts(:)%seed    = dummy
+    out_annual_cohorts(:)%NPPL    = dummy
+    out_annual_cohorts(:)%NPPR    = dummy
+    out_annual_cohorts(:)%NPPW    = dummy
+    out_annual_cohorts(:)%GPP     = dummy
+    out_annual_cohorts(:)%NPP     = dummy
+    out_annual_cohorts(:)%N_uptk  = dummy
+    out_annual_cohorts(:)%N_fix   = dummy
+    out_annual_cohorts(:)%maxLAI  = dummy
 
     ! Output annual cohorts
     do i = 1, vegn%n_cohorts
@@ -1158,7 +1216,6 @@ contains
     ! print*,'iyears, cc%ccID', iyears, cc%ccID
 
     ! print*,'out_annual_cohorts(i)%year ', out_annual_cohorts%year
-
 
       write(fno2,'(2(I7,","),2(I4,","),1(F9.1,","),45(F12.4,","))')        &
         iyears, cc%ccID,cc%species,cc%layer,                &

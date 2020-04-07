@@ -64,7 +64,7 @@ heat_capacity_dry = 1.2e6, 1.1e6, 1.1e6, 1.1e6, 1.1e6, 1.1e6, 1.1e6, 1.4e6, 1.0,
                                ! low  N input --> Evergreen
 
 ! Model run
- filepath_in = '/Users/benjaminstocker/sofun/input/'
+ filepath_in = '/Users/lmarques/sofun/input/'
  climfile    =  'ORNL_forcing.txt' !'US-WCrforcing.txt' !   'CA-Manforcing.txt' !
                ! 'CA-Manforcing.txt'   !  'US-WBWforcing.txt'
                !   'US-Dk1forcing.txt' ! CA-Obsforcing.txt
