@@ -9,8 +9,7 @@ etaN         = 0.0, ! 0.025 ! loss rate with runoff
 MLmixRatio   = 0.6, ! 0.8 ! fraction of microbes to litter
 l_fract      =0.0,
 retransN     = 0.0,
-! fNSNmax      = 5.0, ! 5.0
-f_N_add      = 0.02, ! 0.005, ! 0.02
+f_N_add      = 0.02, 
 f_initialBSW = 0.005,
 ! alpha_FR =  1.2; gamma_FR = 12.0; dSlowSOM = 2.5 * iSOM + 1.5; rho_N_up0 = 0.1
 

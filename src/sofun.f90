@@ -349,7 +349,7 @@ program main
   ! myinterface%fpc_grid(:) = get_fpc_grid( myinterface%domaininfo, myinterface%params_siml )
 
   ! LOOP THROUGH YEARS
-  ! print*, '-------------------START OF SIMULATION--------------------'
+  print*, '--------------START OF SIMULATION---------------'
 
   do yr=1, myinterface%params_siml%runyears
 
@@ -811,14 +811,17 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
    datalines = datalines - 72  !3*24
 
    write(*,*)"forcing", datalines,days_data,yr_data
+
   end subroutine read_FACEforcing
 
   !=============================================================
   ! for reading in NACP site synthesis forcing
   subroutine read_NACPforcing(forcingData,datalines,days_data,yr_data,timestep)
+
     type(climate_type),pointer,intent(inout) :: forcingData(:)
     integer,intent(inout) :: datalines,days_data,yr_data
     real, intent(inout)   :: timestep
+
     !------------local var -------------------
     type(climate_type), pointer :: climateData(:)
     character(len=80)  commts

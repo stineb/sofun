@@ -153,13 +153,16 @@ contains
       ! Initialize vegetation tile and plant cohorts
       allocate(vegn)
       
+      ! print*, '0.0 vegn%totNewCC, vegn%totNewCN', vegn%totNewCC, vegn%totNewCN
       ! print*,'2: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       call initialize_vegn_tile(vegn, nCohorts)
       
       ! Sort and relayer cohorts
+      ! print*, '0.2 vegn%totNewCC, vegn%totNewCN', vegn%totNewCC, vegn%totNewCN
       ! print*,'3: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       call relayer_cohorts(vegn)
 
+      ! print*, '0.2 vegn%totNewCC, vegn%totNewCN', vegn%totNewCC, vegn%totNewCN
       ! print*,'4: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       call Zero_diagnostics(vegn)
 

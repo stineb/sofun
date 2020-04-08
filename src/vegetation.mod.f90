@@ -1289,6 +1289,9 @@ contains
         vegn%totNewCC = vegn%totNewCC + cc%nindivs*(cc%bl + cc%br + cc%bsw + cc%bHW + cc%nsc)
         vegn%totNewCN = vegn%totNewCN + cc%nindivs*(cc%leafN + cc%rootN + cc%sapwN + cc%woodN + cc%NSN)
 
+  ! print*, 'totNewCC', vegn%totNewCC
+  ! print*, 'cc%nindivs*', cc%nindivs*(cc%bl + cc%br + cc%bsw + cc%bHW + cc%nsc)
+
         call init_cohort_allometry(cc)
         !        ! seeds fail
         !cc%nindivs = cc%nindivs * sp%prob_g * sp%prob_e
@@ -1319,7 +1322,6 @@ contains
     endif ! set up new born cohorts
 
   end subroutine vegn_reproduction
-
 
   function cohort_can_reproduce(cc); logical cohort_can_reproduce
     !////////////////////////////////////////////////////////////////
@@ -2219,15 +2221,15 @@ contains
       vegn%n_cohorts = init_n_cohorts
       cc => null()
       do i=1,init_n_cohorts
-        cx => vegn%cohorts(i)
+        cx         => vegn%cohorts(i)
         cx%status  = LEAF_OFF ! ON=1, OFF=0 ! ON
         cx%layer   = 1
         cx%species = myinterface%init_cohort%init_cohort_species(i) 
-        cx%ccID =  i
+        cx%ccID    =  i
         cx%nsc     = myinterface%init_cohort%init_cohort_nsc(i)
         cx%nindivs = myinterface%init_cohort%init_cohort_nindivs(i) ! trees/m2
         cx%bsw     = myinterface%init_cohort%init_cohort_bsw(i)
-        cx%bHW   = myinterface%init_cohort%init_cohort_bHW(i)
+        cx%bHW     = myinterface%init_cohort%init_cohort_bHW(i)
         btotal     = cx%bsw + cx%bHW  ! kgC /tree
         call initialize_cohort_from_biomass(cx,btotal)
       enddo

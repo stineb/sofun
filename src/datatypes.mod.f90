@@ -644,7 +644,6 @@ contains
     spdata%LAI_light    = myinterface%params_species%LAI_light(:)
     spdata%tauNSC       = tauNSC
     spdata%fNSNmax      = myinterface%params_species%fNSNmax(:)
-    ! spdata%f_N_add      = myinterface%params_species%f_N_add
     spdata%phiRL        = myinterface%params_species%phiRL(:)
     spdata%phiCSA       = myinterface%params_species%phiCSA(:)
 
@@ -803,7 +802,7 @@ contains
   end subroutine Zero_diagnostics
 
   ! ========================
-  subroutine summarize_tile(vegn)
+ subroutine summarize_tile(vegn)
   ! for annual update
   type(vegn_tile_type), intent(inout) :: vegn
   !-------local var
@@ -827,18 +826,19 @@ contains
 
   vegn%LAI     = 0.0
   vegn%CAI     = 0.0
+
   do i = 1, vegn%n_cohorts
     cc => vegn%cohorts(i)
 
     ! Vegn C pools:
-    vegn%NSC      = vegn%NSC   + cc%NSC      * cc%nindivs
-    vegn%SeedC    = vegn%SeedC + cc%seedC    * cc%nindivs
-    vegn%leafC    = vegn%leafC + cc%bl       * cc%nindivs
-    vegn%rootC    = vegn%rootC + cc%br       * cc%nindivs
-    vegn%SapwoodC = vegn%SapwoodC + cc%bsw   * cc%nindivs
-    vegn%woodC    = vegn%woodC    + cc%bHW   * cc%nindivs
-    vegn%CAI      = vegn%CAI + cc%crownarea * cc%nindivs
-    vegn%LAI      = vegn%LAI   + cc%leafarea * cc%nindivs
+    vegn%NSC      = vegn%NSC      + cc%NSC       * cc%nindivs
+    vegn%SeedC    = vegn%SeedC    + cc%seedC     * cc%nindivs
+    vegn%leafC    = vegn%leafC    + cc%bl        * cc%nindivs
+    vegn%rootC    = vegn%rootC    + cc%br        * cc%nindivs
+    vegn%SapwoodC = vegn%SapwoodC + cc%bsw       * cc%nindivs
+    vegn%woodC    = vegn%woodC    + cc%bHW       * cc%nindivs
+    vegn%CAI      = vegn%CAI      + cc%crownarea * cc%nindivs
+    vegn%LAI      = vegn%LAI      + cc%leafarea  * cc%nindivs
 
     ! Vegn N pools
     vegn%NSN     = vegn%NSN   + cc%NSN      * cc%nindivs
@@ -956,13 +956,6 @@ contains
     ! integer, parameter :: ndayyear = 365  
     integer, parameter :: out_max_cohorts = 50     ! Try: Number of maximum cohorts
 
-    ! Output and zero daily variables
-    !!! daily !! cohorts output
-    do i = 1, vegn%n_cohorts
-      cc => vegn%cohorts(i)
-
-    ! re-initialise to avoid elements not updated when number 
-    ! of cohorts declines from one year to the next
     out_daily_cohorts(:)%year    = dummy
     out_daily_cohorts(:)%doy     = dummy
     out_daily_cohorts(:)%hour    = dummy
@@ -990,6 +983,16 @@ contains
     out_daily_cohorts(:)%rootN   = dummy
     out_daily_cohorts(:)%SW_N    = dummy
     out_daily_cohorts(:)%HW_N    = dummy
+    
+
+    ! Output and zero daily variables
+    !!! daily !! cohorts output
+    do i = 1, vegn%n_cohorts
+      cc => vegn%cohorts(i)
+
+    ! re-initialise to avoid elements not updated when number 
+    ! of cohorts declines from one year to the next
+   
       
       ! if(outputdaily.and. iday>equi_days) &
       ! if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
@@ -1229,10 +1232,6 @@ contains
 
     enddo
 
-    ! print*,'out_annual_cohorts(i)%year ', out_annual_cohorts%year
-    ! print*,'out_annual_cohorts(i)%cID ', out_annual_cohorts%cID
-
-
     ! Output annual tile
     call summarize_tile(vegn)
     do i = 1, vegn%n_cohorts
@@ -1307,6 +1306,12 @@ contains
       vegn%annualN*1000,vegn%N_P2S_yr*1000, vegn%Nloss_yr*1000, &
       vegn%totseedC*1000,vegn%totseedN*1000,vegn%totNewCC*1000,vegn%totNewCN*1000
       
+
+      ! print*, '2 out_annual_tile%Seedling_C', out_annual_tile%Seedling_C
+      ! print*, '2 out_annual_tile%Seedling_N', out_annual_tile%Seedling_N
+      ! print*, 'vegn%totNewCC', vegn%totNewCC
+      ! print*, 'vegn%totNewCN', vegn%totNewCN
+
     ! I cannot figure out why N losing. Hack!
     if (do_closedN_run) call Recover_N_balance(vegn)
 
