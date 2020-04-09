@@ -418,32 +418,44 @@ program main
     
     ! if (myinterface%params_siml%outputhourly .and. iday > myinterface%params_siml%equi_days) then
     if (.not. myinterface%steering%spinup) then
+
       idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
       idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
-      call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
       ! print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
+      call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
+    
     end if
 
     ! print*,'b'
     ! print*,out_biosphere%hourly_tile(1)%Tair
-    ! print*,out_hourly_tile(idx_hourly_start, 5)
-    ! print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
-    ! print*,size(out_hourly_tile(idx_hourly_start:idx_hourly_end, 1))
     ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
 
     ! ----------------------------------------------------------------
     ! Print out_daily_tile
     ! ----------------------------------------------------------------
 
-    idx_daily_start  = (yr - 1) * ndayyear + 1
-    idx_daily_end    = idx_daily_start + ndayyear - 1
+    ! Output during spinup and transient years
 
-    ! print*,'a'
-    ! print*,out_daily_tile(idx_daily_start:(idx_daily_end), 1)
-    call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
+    ! idx_daily_start  = (yr - 1) * ndayyear + 1
+    ! idx_daily_end    = idx_daily_start + ndayyear - 1
+    ! call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
+
     ! print*,'b'
     ! print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 29))
     ! print*, 'idx_daily', idx_daily_start, idx_daily_end
+    ! print*,out_daily_tile(idx_daily_start:idx_daily_end, 29)
+
+    ! Output only for transient years
+
+    if (.not. myinterface%steering%spinup) then  
+
+      idx_daily_start = (yr - myinterface%params_siml%spinupyears - 1) * ndayyear + 1 
+      idx_daily_end   = idx_daily_start + ndayyear - 1
+      ! print*, 'idx_daily', idx_daily_start, idx_daily_end
+      call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
+    
+    end if
+
     ! print*,out_daily_tile(idx_daily_start:idx_daily_end, 29)
 
     ! ----------------------------------------------------------------
@@ -451,9 +463,22 @@ program main
     ! ----------------------------------------------------------------
     ! print*,'a'
     ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3)
-    call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
+    
+    ! Output during spinup and transient years
+    
+    ! call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
     ! print*,'b'
     ! print*,size(out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8))
+    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8)
+
+    ! Output only for transient years
+
+    if (.not. myinterface%steering%spinup) then  
+
+    call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
+    
+    end if
+
     ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8)
 
     ! ----------------------------------------------------------------

@@ -983,7 +983,6 @@ contains
     out_daily_cohorts(:)%rootN   = dummy
     out_daily_cohorts(:)%SW_N    = dummy
     out_daily_cohorts(:)%HW_N    = dummy
-    
 
     ! Output and zero daily variables
     !!! daily !! cohorts output
@@ -996,6 +995,7 @@ contains
       
       ! if(outputdaily.and. iday>equi_days) &
       ! if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
+      if (.not. myinterface%steering%spinup) then 
 
         out_daily_cohorts(i)%year    = iyears
         out_daily_cohorts(i)%doy     = idoy
@@ -1034,7 +1034,7 @@ contains
           cc%NSN*1000, cc%seedN*1000, cc%leafN*1000, &
           cc%rootN*1000,cc%sapwN*1000,cc%woodN*1000
 
-      ! end if
+      endif
 
       ! annual sum
       cc%annualGPP = cc%annualGPP + cc%dailyGPP
@@ -1057,6 +1057,8 @@ contains
      !print*,'iday        ', iday
     
     ! if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
+    if (.not. myinterface%steering%spinup) then 
+
     call summarize_tile(vegn) 
 
     out_daily_tile%year      = iyears
@@ -1109,7 +1111,7 @@ contains
       vegn%MicrobialN*1000, vegn%metabolicN*1000, vegn%structuralN*1000, &
       vegn%mineralN*1000, vegn%dailyNup*1000
 
-    ! endif
+    endif
 
     ! Annual summaries 
     vegn%annualNup  = vegn%annualNup  + vegn%dailyNup

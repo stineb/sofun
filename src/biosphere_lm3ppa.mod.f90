@@ -27,6 +27,7 @@ contains
     !----------------------------------------------------------------
     use md_interface, only: myinterface, outtype_biosphere
     use md_params_core, only: ntstepsyear !diff
+    ! use md_params_core, only: ndayyear !365
   
     ! return variable
     type(outtype_biosphere), intent(inout) :: out_biosphere
@@ -35,6 +36,7 @@ contains
     integer :: dm, moy, jpngr, doy
     ! logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
     logical, parameter :: verbose = .false.       ! change by hand for debugging etc.
+    ! integer, parameter :: ndayyear = 365           ! number of days in a year
 
     !----------------------------------------------------------------
     ! Biome-E stuff
