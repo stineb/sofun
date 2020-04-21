@@ -28,7 +28,7 @@ module md_params_siml
     logical :: outputhourly
     logical :: outputdaily
     logical :: do_U_shaped_mortality
-    logical :: update_annaulLAImax
+    logical :: update_annualLAImax
     logical :: do_closedN_run
 
   end type paramstype_siml
@@ -85,13 +85,21 @@ contains
       end if
 
       if (year<=params_siml%spinupyears) then
+
         ! during spinup
         out_steering%spinup = .true.
         out_steering%forcingyear = params_siml%firstyeartrend
         out_steering%forcingyear_idx = 1
+
         cycleyear = get_cycleyear( year, params_siml%spinupyears, params_siml%recycle )
         out_steering%climateyear = cycleyear + params_siml%firstyeartrend - 1
         out_steering%climateyear_idx = cycleyear
+
+        ! xxx consistency check
+        out_steering%forcingyear_idx = MOD(year - 1, params_siml%recycle) + 1
+        out_steering%forcingyear = out_steering%forcingyear_idx + params_siml%firstyeartrend - 1
+        out_steering%climateyear_idx = MOD(year - 1, params_siml%recycle) + 1
+        out_steering%climateyear = out_steering%climateyear_idx + params_siml%firstyeartrend - 1
 
       else  
         ! during transient simulation
@@ -99,11 +107,15 @@ contains
         out_steering%forcingyear =  year - params_siml%spinupyears + params_siml%firstyeartrend - 1
         out_steering%forcingyear_idx =  year - params_siml%spinupyears
 
-
         ! constant climate year not specified
         out_steering%climateyear = out_steering%forcingyear
         out_steering%climateyear_idx = out_steering%forcingyear_idx
       
+        ! xxx consistency check
+        out_steering%forcingyear_idx = MOD(year - 1, params_siml%recycle) + 1
+        out_steering%forcingyear = out_steering%forcingyear_idx + params_siml%firstyeartrend - 1
+        out_steering%climateyear_idx = MOD(year - 1, params_siml%recycle) + 1
+        out_steering%climateyear = out_steering%climateyear_idx + params_siml%firstyeartrend - 1      
 
       endif
       out_steering%outyear = year + params_siml%firstyeartrend - params_siml%spinupyears - 1
