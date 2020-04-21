@@ -97,7 +97,7 @@ program main
   logical, parameter :: verbose = .false.
   integer :: iday
 
-  character(len=100) :: namelistfile = '/Users/lmarques/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+  character(len=100) :: namelistfile = '/Users/benjaminstocker/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
 
   ! output arrays (naked) to be passed back to C/R
   real, dimension(:,:), allocatable  :: out_hourly_tile 
@@ -488,7 +488,7 @@ program main
     ! print*,out_annual_tile(yr,2)
     call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
 
-    ! print*, "CAI, LAI, GPP",out_annual_tile(yr,2),out_annual_tile(yr,3),out_annual_tile(yr,4)
+    print*, "CAI, LAI, GPP", out_annual_tile(yr,2), out_annual_tile(yr,3), out_annual_tile(yr,4)
 
     ! print*,'b'
     ! print*,out_annual_tile(yr,1:2)
@@ -750,7 +750,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: m,n
     integer :: idx_climatedata
 
-    character(len=80) :: filepath_in = '/Users/lmarques/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
     character(len=80) :: climfile    = 'ORNL_forcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
@@ -862,7 +862,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: m,n
     integer :: idx_climatedata
 
-    character(len=80) :: filepath_in = '/Users/lmarques/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
     character(len=80) :: climfile    = 'US-WCrforcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)

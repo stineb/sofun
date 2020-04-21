@@ -75,7 +75,7 @@ contains
     ! Create output files
     ! XXX add this to output instead
     !------------------------------------------------------------------------
-    filepath_out   = '/Users/lmarques/sofun/output/'
+    filepath_out   = '/Users/benjaminstocker/sofun/output/'
     filesuffix     = '_test.csv' ! tag for simulation experiments
     plantcohorts   = trim(filepath_out)//'Annual_cohorts'//trim(filesuffix)  ! has 22 columns
     plantCNpools   = trim(filepath_out)//'Daily_cohorts'//trim(filesuffix)  ! daily has 27 columns
