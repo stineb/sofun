@@ -1,0 +1,33 @@
+---
+title: "Testing daily implementation"
+author: "Beni Stocker"
+date: "4/22/2020"
+output: html_document
+---
+
+## Approach
+
+1. In branch `lm3ppa_BiomeE_test_rsofun`  hard hack a fixed LUE at fast time scale, instead of doing the gs_leuning subroutine. Read daily tile outputs from half-hourly simulation with fixed LUE (`psyn/rad_top = 1.0E-8` and `-1.0E-9 = resp/rad_top`)
+```{r}
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(tidyr)
+df_hh <- read_csv("~/sofun/output/Daily_tile_test.csv")
+df_dd <- read_csv("~/sofun/output_daily/Daily_tile_test.csv")
+df_hh %>% 
+  mutate(date = lubridate::ymd(paste0(year, "-01-01")) + lubridate::days(doy-1)) %>% 
+  select(date, GPP_hh = GPP) %>% 
+  left_join(
+    df_dd %>% 
+      mutate(date = lubridate::ymd(paste0(year, "-01-01")) + lubridate::days(doy-1)) %>% 
+      select(date, GPP_dd = GPP),
+    by = "date"
+  ) %>% 
+  pivot_longer(cols = c(GPP_hh, GPP_dd), names_to = "timescale", values_to = "GPP") %>% 
+  ggplot(aes(x = date, y = GPP, color = timescale)) +
+  geom_line()
+```
+
+2. In branch `lm3ppa_BiomeE_test_rsofun_simpl` implement daily time step with the same LUE as hacked in branch `lm3ppa_BiomeE_test_rsofun` and compare daily outputs (should be identical)
+3. Replace constant hard-coded fixed LUE in daily setup with P-model-LUE.
