@@ -37,33 +37,10 @@ program main
   integer :: nyeartrend
   integer :: runyears
 
-  ! ! integer :: model_run_years
-  ! integer :: equi_days
-  ! logical :: outputhourly
-  ! logical :: outputdaily
-  ! logical :: do_U_shaped_mortality
-  ! logical :: update_annaulLAImax
-  ! logical :: do_closedN_run
-
   ! site information
   real :: longitude
   real :: latitude
   real :: altitude
-
-  ! ! Tile parameters (are public in datatypes)
-  ! integer :: soiltype
-  ! real :: FLDCAP
-  ! real :: WILTPT
-  ! real :: K1
-  ! real :: K2
-  ! real :: K_nitrogen
-  ! real :: etaN
-  ! real :: MLmixRatio
-  ! real :: l_fract
-  ! real :: retransN
-  ! real :: fNSNmax
-  ! real :: f_N_add
-  ! real :: f_initialBSW
 
   integer :: idx_hourly_start, idx_hourly_end, idx_daily_start, idx_daily_end ! year index for which climate is read in.
 
@@ -72,19 +49,9 @@ program main
   real, dimension(9,8)     :: params_soil
   real, dimension(10,5)    :: init_cohort
 
-  ! ! initial soil pool size
-  ! real :: init_fast_soil_C
-  ! real :: init_slow_soil_C
-  ! real :: init_Nmineral
-  ! real :: N_input
-
   !----------------------------------------------------------------
   ! LOCAL VARIABLES READ FROM/TO FILE/OUTPUT
   !----------------------------------------------------------------
-  ! integer, parameter :: nt = 11 * ntstepsyear
-  ! real, dimension(nt,13) :: forcing
-  ! real :: output
-
   ! local variables
   integer :: datalines
   integer :: yr_data   ! Years of the forcing data
@@ -92,6 +59,7 @@ program main
   integer :: totdays
   integer :: days_data ! days of the forcing data
   real    :: timestep  ! hour, Time step of forcing data, usually hourly (1.0)
+  integer :: ntstepsyear_forcing                 ! 365*48 when half-hourly inputs, 365*24 when hourly inputs
   type(outtype_biosphere) :: out_biosphere  ! holds all the output used for calculating the cost or maximum likelihood function 
   integer :: yr
   logical, parameter :: verbose = .false.
@@ -105,6 +73,9 @@ program main
   real, dimension(:,:,:), allocatable:: out_daily_cohorts    !fno3
   real, dimension(:,:), allocatable  :: out_annual_tile      !fno5
   real, dimension(:,:,:), allocatable:: out_annual_cohorts   !fno2
+
+  ! whether fast time step processes are simulated. If .false., then C, N, and W balance is simulated daily.
+  logical, parameter :: daily = .true.
 
   !----------------------------------------------------------------
   ! DECLARATIONS TO READ FROM NAMELIST FILE
@@ -286,17 +257,26 @@ program main
   ! READ FORCING FILE
   !----------------------------------------------------------------
   call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
-
   ! call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
+  
+  if (daily) then
+    ! timestep_forcing = timestep    ! would be 0.5 for half-hourly forcing and 1.0 for hourly forcing
+    timestep = 24.0
+  end if
+
   myinterface%steps_per_day = int(24.0/timestep)
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
-  myinterface%step_seconds = 24.0*3600.0/myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
+  myinterface%step_seconds = 24.0 * 3600.0 / myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
   ntstepsyear = myinterface%steps_per_day * 365
-  ! print*,'ntstepsyear ', ntstepsyear
+
+  if (daily) then
+    ntstepsyear_forcing = ntstepsyear * timestep
+  end if
+
   write(*,*) myinterface%steps_per_day, myinterface%dt_fast_yr, myinterface%step_seconds
   
   totyears = myinterface%params_siml%runyears
-  totdays  = int(totyears/yr_data+1)*days_data
+  totdays  = int(totyears/yr_data+1) * days_data
   myinterface%params_siml%equi_days = totdays - days_data
 
   ! print*,'myinterface%params_siml%equi_days ', myinterface%params_siml%equi_days
@@ -368,24 +348,25 @@ program main
     !----------------------------------------------------------------
     ! Get climate variables for this year (full fields and 365 daily values for each variable)
     myinterface%climate(:) = getclimate( &
-                                        datalines, & ! nt, &
-                                        forcingData, & ! forcing, &
-                                        ! ! xxx consistency check
-                                        ! 1, &
-                                        ! 1998 &
+                                        datalines, &
+                                        ntstepsyear, &
+                                        ntstepsyear_forcing, &
+                                        daily, &
+                                        forcingData, &
                                         myinterface%steering%climateyear_idx, &
                                         myinterface%steering%climateyear &
                                         )
 
     ! Get annual, gobally uniform CO2
-    myinterface%pco2(:) = getco2(  &
-                                    datalines, & ! nt, &
-                                    forcingData, & ! forcing, &
-                                    myinterface%steering%climateyear_idx, &  ! to make it equivalent to BiomeE
-                                    myinterface%steering%climateyear &
-                                    ! myinterface%steering%forcingyear_idx, &
-                                    ! myinterface%steering%forcingyear &
-                                    )
+    myinterface%pco2(:) = getco2( &
+                                  datalines, &
+                                  ntstepsyear, &
+                                  ntstepsyear_forcing, &
+                                  daily, &
+                                  forcingData, &
+                                  myinterface%steering%climateyear_idx, &  ! to make it equivalent to BiomeE
+                                  myinterface%steering%climateyear &
+                                  )
 
     !----------------------------------------------------------------
     ! Call SR biosphere at an annual time step but with vectors 
@@ -396,14 +377,9 @@ program main
     ! Call biosphere (wrapper for all modules, contains gridcell loop)
     !----------------------------------------------------------------
     if (verbose) print*,'calling biosphere ...'
-    call biosphere_annual(out_biosphere) 
+    call biosphere_annual( out_biosphere ) 
     if (verbose) print*,'... done.'
     !----------------------------------------------------------------
-
-    ! print*,'out_biosphere%annual_tile ', out_biosphere%annual_tile
-    ! print*,'out_biosphere%annual_cohorts ', out_biosphere%annual_cohorts
-    ! print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
-    !  stop   
 
     ! ----------------------------------------------------------------
     ! Populate big output arrays
@@ -412,38 +388,18 @@ program main
     ! ----------------------------------------------------------------
     ! Print out_hourly_tile
     ! ----------------------------------------------------------------
-    ! print*,'a'
-    ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end,1)
-    ! print*, out_biosphere%hourly_tile(:)%hour
-    
-    ! if (myinterface%params_siml%outputhourly .and. iday > myinterface%params_siml%equi_days) then
     if (.not. myinterface%steering%spinup) then
 
       idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
       idx_hourly_end   = idx_hourly_start + ntstepsyear - 1
-      ! print*, 'idx_hourly', idx_hourly_start, idx_hourly_end
       call populate_outarray_hourly_tile( out_biosphere%hourly_tile(:), out_hourly_tile(idx_hourly_start:idx_hourly_end, :) )
     
     end if
 
-    ! print*,'b'
-    ! print*,out_biosphere%hourly_tile(1)%Tair
-    ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
-
     ! ----------------------------------------------------------------
     ! Print out_daily_tile
     ! ----------------------------------------------------------------
-
     ! Output during spinup and transient years
-
-    ! idx_daily_start  = (yr - 1) * ndayyear + 1
-    ! idx_daily_end    = idx_daily_start + ndayyear - 1
-    ! call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
-
-    ! print*,'b'
-    ! print*, size(out_daily_tile(idx_daily_start:idx_daily_end, 29))
-    ! print*, 'idx_daily', idx_daily_start, idx_daily_end
-    ! print*,out_daily_tile(idx_daily_start:idx_daily_end, 29)
 
     ! Output only for transient years
 
@@ -451,26 +407,13 @@ program main
 
       idx_daily_start = (yr - myinterface%params_siml%spinupyears - 1) * ndayyear + 1 
       idx_daily_end   = idx_daily_start + ndayyear - 1
-      ! print*, 'idx_daily', idx_daily_start, idx_daily_end
       call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
     
     end if
 
-    ! print*,out_daily_tile(idx_daily_start:idx_daily_end, 29)
-
     ! ----------------------------------------------------------------
     ! Print out_daily_cohorts
     ! ----------------------------------------------------------------
-    ! print*,'a'
-    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3)
-    
-    ! Output during spinup and transient years
-    
-    ! call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
-    ! print*,'b'
-    ! print*,size(out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8))
-    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8)
-
     ! Output only for transient years
 
     if (.not. myinterface%steering%spinup) then  
@@ -479,33 +422,15 @@ program main
     
     end if
 
-    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8)
-
     ! ----------------------------------------------------------------
     ! Print out_annual_tile
-    ! ! ----------------------------------------------------------------
-    ! print*,'a'
-    ! print*,out_annual_tile(yr,2)
+    ! ----------------------------------------------------------------
     call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
-
-    print*, "CAI, LAI, GPP", out_annual_tile(yr,2), out_annual_tile(yr,3), out_annual_tile(yr,4)
-
-    ! print*,'b'
-    ! print*,out_annual_tile(yr,1:2)
 
     ! ----------------------------------------------------------------
     ! Print out_annual_cohorts
-    ! ! ! ! ----------------------------------------------------------------
-    ! print*,'a'
-    ! ! !  print*,out_annual_cohorts(yr,:,2)
+    ! ----------------------------------------------------------------
     call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
-     ! print*,'c'
-     ! print*,size(out_annual_cohorts(yr,:,6))
-
-    ! print*,'out_annual_cohorts',out_annual_cohorts(yr,:,1)
-
-    ! print*,'out_biosphere%annual_cohorts ', out_biosphere%annual_cohorts%year
-
 
   enddo
 

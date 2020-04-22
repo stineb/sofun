@@ -4,7 +4,6 @@ module md_biosphere
   use md_vegetation
   use md_soil
   use md_params_core
-  use md_forcing, only: climate_type, aggregate_climate
 
   implicit none
 
@@ -35,7 +34,7 @@ contains
     ! ! local variables
     integer :: dm, moy, jpngr, doy
     ! logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
-    logical, parameter :: verbose = .true.       ! change by hand for debugging etc.
+    logical, parameter :: verbose = .false.       ! change by hand for debugging etc.
 
     !----------------------------------------------------------------
     ! Biome-E stuff
@@ -65,11 +64,7 @@ contains
     character(len=50) :: filepath_out, filesuffix
     character(len=50) :: parameterfile(10), chaSOM(10)
 
-    type(climate_type) :: climate_agg
     integer :: idx_start, idx_end
-
-    ! whether fast time step processes are simulated. If .false., then C, N, and W balance is simulated daily.
-    logical, parameter :: dofast = .false.
 
     integer :: idx, forcingyear
     !integer :: ntstepsyear          ! number of days in a year
@@ -240,7 +235,7 @@ contains
         ! ForestESS:
         ! get daily mean temperature from hourly/half-hourly data
 
-        if (dofast) then
+        ! if (dofast) then
           !----------------------------------------------------------------
           ! FAST TIME STEP
           !----------------------------------------------------------------
@@ -256,7 +251,7 @@ contains
             !----------------------------------------------------------------
             ! Fast time step processes with (half-)hourly forcing
             !----------------------------------------------------------------
-            call vegn_CNW_budget_fast(vegn, myinterface%climate(idata))
+            call vegn_CNW_budget(vegn, myinterface%climate(idata))
             call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1, out_biosphere%hourly_tile(idata) )
 
           enddo fastloop
@@ -265,9 +260,10 @@ contains
           ! Daily calls after fast loop
           !-------------------------------------------------
           vegn%Tc_daily = vegn%Tc_daily / myinterface%steps_per_day
+          ! print*,'vegn%Tc_daily, myinterface%climate(idata)', vegn%Tc_daily, myinterface%climate(idata)%Tair
 
           ! sum over fast time steps and cohorts
-          call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4, out_biosphere%daily_cohorts(doy,:), out_biosphere%daily_tile(doy), dofast )
+          call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4, out_biosphere%daily_cohorts(doy,:), out_biosphere%daily_tile(doy) )
           
           ! Determine start and end of season and maximum leaf (root) mass
           call vegn_phenology(vegn)
@@ -275,35 +271,36 @@ contains
           ! Produce new biomass from 'carbon_gain' (is zero afterwards)
           call vegn_growth_EW(vegn)
 
-        else
-          !----------------------------------------------------------------
-          ! DAILY TIME STEP 
-          !----------------------------------------------------------------
-          ! Aggregate to daily forcing
-          !----------------------------------------------------------------
-          idx_start   = simu_steps + 1
-          idx_end     = idx_start + myinterface%steps_per_day
-          climate_agg = aggregate_climate( myinterface%climate(idx_start:idx_end) )
-          simu_steps  = simu_steps + 1
+        ! else
+        !   !----------------------------------------------------------------
+        !   ! DAILY TIME STEP 
+        !   !----------------------------------------------------------------
+        !   ! Aggregate to daily forcing
+        !   !----------------------------------------------------------------
+        !   idx_start   = simu_steps + 1
+        !   idx_end     = idx_start + myinterface%steps_per_day
+        !   climate_agg = aggregate_climate( myinterface%climate(idx_start:idx_end) )
+        !   simu_steps  = simu_steps + 1
+        !   vegn%Tc_daily = climate_agg%Tair
 
-          !-------------------------------------------------
-          ! Daily calls
-          !-------------------------------------------------
-          ! Determine start and end of season and maximum leaf (root) mass
-          call vegn_phenology(vegn)
+        !   !-------------------------------------------------
+        !   ! Daily calls
+        !   !-------------------------------------------------
+        !   ! Determine start and end of season and maximum leaf (root) mass
+        !   call vegn_phenology(vegn)
 
-          ! C assimilation, respiration, and SOM turnover
-          ! Added here, consistent with ForestESS
-          call vegn_CNW_budget_daily(vegn, myinterface%climate(idata))
+        !   ! C assimilation, respiration, and SOM turnover
+        !   ! Added here, consistent with ForestESS
+        !   call vegn_CNW_budget(vegn, climate_agg)
 
-          ! sum over fast time steps and cohorts
-          call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4, out_biosphere%daily_cohorts(doy,:), out_biosphere%daily_tile(doy), dofast )
+        !   ! sum over fast time steps and cohorts
+        !   call daily_diagnostics(vegn, climate_agg, iyears, idoy, idays, fno3, fno4, out_biosphere%daily_cohorts(doy,:), out_biosphere%daily_tile(doy), dofast )
 
-          ! Produce new biomass from 'carbon_gain' (is zero afterwards)
-          ! print*,'5.3', doy
-          call vegn_growth_EW(vegn)
+        !   ! Produce new biomass from 'carbon_gain' (is zero afterwards)
+        !   ! print*,'5.3', doy
+        !   call vegn_growth_EW(vegn)
 
-        end if
+        ! end if
 
       end do dayloop
 

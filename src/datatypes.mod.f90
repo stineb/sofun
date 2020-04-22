@@ -887,7 +887,8 @@ contains
 
     ! Tile summary
     vegn%GPP    = 0.
-    vegn%NPP    = 0.; vegn%Resp   = 0.
+    vegn%NPP    = 0.
+    vegn%Resp   = 0.
 
     do i = 1, vegn%n_cohorts
       cc => vegn%cohorts(i)
@@ -953,7 +954,7 @@ contains
   end subroutine hourly_diagnostics
 
   !============================================
-  subroutine daily_diagnostics(vegn, forcing, iyears, idoy, iday, fno3, fno4, out_daily_cohorts, out_daily_tile, dofast)
+  subroutine daily_diagnostics(vegn, forcing, iyears, idoy, iday, fno3, fno4, out_daily_cohorts, out_daily_tile)
 
     use md_forcing, only: climate_type
     use md_interface, only: outtype_daily_cohorts, outtype_daily_tile
@@ -965,7 +966,6 @@ contains
     integer, intent(in) :: iyears, idoy, iday, fno3, fno4
     type(outtype_daily_cohorts), dimension(out_max_cohorts) :: out_daily_cohorts
     type(outtype_daily_tile) :: out_daily_tile
-    logical, intent(in) :: dofast
 
     ! local variables
     type(cohort_type), pointer :: cc    ! current cohort
@@ -1000,47 +1000,6 @@ contains
     out_daily_cohorts(:)%rootN   = dummy
     out_daily_cohorts(:)%SW_N    = dummy
     out_daily_cohorts(:)%HW_N    = dummy
-
-
-    if (.not. dofast) then
-      ! values calculated by vegn_CNW_budget are daily totals
-      ! this code is adopted from the hourly_diagnostics subroutine (without populating output objects)
-
-      ! Tile summary
-      vegn%GPP    = 0.
-      vegn%NPP    = 0.; vegn%Resp   = 0.
-
-      do i = 1, vegn%n_cohorts
-        cc => vegn%cohorts(i)
-
-        ! Cohort daily
-        cc%dailyTrsp = cc%dailyTrsp + cc%transp ! kg day-1
-        cc%dailyGPP  = cc%dailygpp  + cc%gpp ! kg day-1
-        cc%dailyNPP  = cc%dailyNpp  + cc%Npp ! kg day-1
-        cc%dailyResp = cc%dailyResp + cc%Resp ! kg day-1
-
-        ! Tile hourly
-        vegn%GPP    = vegn%GPP    + cc%gpp    * cc%nindivs
-        vegn%NPP    = vegn%NPP    + cc%Npp    * cc%nindivs
-        vegn%Resp   = vegn%Resp   + cc%Resp   * cc%nindivs
-      enddo
-
-      ! NEP is equal to NNP minus soil respiration
-      vegn%nep = vegn%npp - vegn%rh ! kgC m-2 hour-1; time step is hourly
-
-      ! Daily summary:
-      vegn%dailyNup  = vegn%dailyNup  + vegn%N_uptake
-      vegn%dailyGPP  = vegn%dailyGPP  + vegn%gpp
-      vegn%dailyNPP  = vegn%dailyNPP  + vegn%npp
-      vegn%dailyResp = vegn%dailyResp + vegn%resp
-      vegn%dailyRh   = vegn%dailyRh   + vegn%rh
-      vegn%dailyTrsp = vegn%dailyTrsp + vegn%transp
-      vegn%dailyEvap = vegn%dailyEvap + vegn%evap
-      vegn%dailyRoff = vegn%dailyRoff + vegn%runoff
-      vegn%dailyPrcp = vegn%dailyPrcp + forcing%rain * myinterface%step_seconds
-
-    end if
-
 
     ! Output and zero daily variables
     !!! daily !! cohorts output
