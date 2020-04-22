@@ -405,13 +405,13 @@ program main
     ! print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
     !  stop   
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Populate big output arrays
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Print out_hourly_tile
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! print*,'a'
     ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end,1)
     ! print*, out_biosphere%hourly_tile(:)%hour
@@ -430,9 +430,9 @@ program main
     ! print*,out_biosphere%hourly_tile(1)%Tair
     ! print*,out_hourly_tile(idx_hourly_start:idx_hourly_end, 1)
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Print out_daily_tile
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
 
     ! Output during spinup and transient years
 
@@ -451,60 +451,31 @@ program main
 
       idx_daily_start = (yr - myinterface%params_siml%spinupyears - 1) * ndayyear + 1 
       idx_daily_end   = idx_daily_start + ndayyear - 1
-      ! print*, 'idx_daily', idx_daily_start, idx_daily_end
+
       call populate_outarray_daily_tile( out_biosphere%daily_tile(:), out_daily_tile(idx_daily_start:idx_daily_end, :) )
     
     end if
 
-    ! print*,out_daily_tile(idx_daily_start:idx_daily_end, 29)
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Print out_daily_cohorts
-    ! ----------------------------------------------------------------
-    ! print*,'a'
-    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 3)
-    
-    ! Output during spinup and transient years
-    
-    ! call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
-    ! print*,'b'
-    ! print*,size(out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8))
-    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8)
-
+    !----------------------------------------------------------------
     ! Output only for transient years
 
     if (.not. myinterface%steering%spinup) then  
-
-    call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
-    
+      call populate_outarray_daily_cohorts( out_biosphere%daily_cohorts(:,:), out_daily_cohorts(idx_daily_start:idx_daily_end,:,:) )
     end if
 
-    ! print*,out_daily_cohorts(idx_daily_start:idx_daily_end,:, 8)
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Print out_annual_tile
-    ! ! ----------------------------------------------------------------
-    ! print*,'a'
-    ! print*,out_annual_tile(yr,2)
+    !----------------------------------------------------------------
     call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
 
-    print*, "CAI, LAI, GPP", out_annual_tile(yr,2), out_annual_tile(yr,3), out_annual_tile(yr,4)
-
-    ! print*,'b'
-    ! print*,out_annual_tile(yr,1:2)
-
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Print out_annual_cohorts
-    ! ! ! ! ----------------------------------------------------------------
-    ! print*,'a'
-    ! ! !  print*,out_annual_cohorts(yr,:,2)
+    !----------------------------------------------------------------
     call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
-     ! print*,'c'
-     ! print*,size(out_annual_cohorts(yr,:,6))
-
-    ! print*,'out_annual_cohorts',out_annual_cohorts(yr,:,1)
-
-    ! print*,'out_biosphere%annual_cohorts ', out_biosphere%annual_cohorts%year
 
 
   enddo

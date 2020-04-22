@@ -276,7 +276,7 @@ contains
 
         ! Determine start and end of season and maximum leaf (root) mass
         ! print*,'6: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
-        call vegn_phenology(vegn, j)
+        call vegn_phenology(vegn)
 
 
         ! Kill all individuals of a cohort if NSC falls below threshold
