@@ -55,9 +55,9 @@ contains
     ! Photosynsthesis
     call vegn_photosynthesis(forcing, vegn)
 
-    ! xxx try
-    ! Update soil water
-    call SoilWaterDynamicsLayer(forcing, vegn)
+    ! ! xxx try
+    ! ! Update soil water
+    ! call SoilWaterDynamicsLayer(forcing, vegn)
 
     ! Respiration and allocation for growth
     do i = 1, vegn%n_cohorts
@@ -192,100 +192,13 @@ contains
     real   :: LAIlayer(10),accuCAI,f_gap ! additional GPP for lower layer cohorts due to gaps
     integer:: i, layer
 
-    ! xxx try
-    !===========================================================
-    ! Original BiomeE-Allocation
-    !-----------------------------------------------------------
-    ! Water supply for photosynthesis, Layers
-    call water_supply_layer(forcing, vegn)
-
-    ! Sum leaf area over cohorts in each crown layer -> LAIlayer(layer)
-    f_gap = 0.1 ! 0.1
-    accuCAI = 0.0
-    LAIlayer = 0.0
-    do i = 1, vegn%n_cohorts
-      cc => vegn%cohorts(i)
-      layer = Max(1, Min(cc%layer,9))
-      LAIlayer(layer) = LAIlayer(layer) + cc%leafarea * cc%nindivs /(1.-f_gap)
-    enddo
-
-    ! ! Calculate kappa according to sun zenith angle 
-    ! kappa = cc%extinct/max(cosz,0.01)
-    
-    ! Use constant light extinction coefficient
-    kappa = cc%extinct
-
-    ! Get light received at each crown layer as a fraction of top-of-canopy -> f_light(layer) 
-    f_light(:) = 0.0
-    f_light(1) = 1.0
-    do i=2,layer
-      f_light(i) = f_light(i-1) * (exp(0.0 - kappa * LAIlayer(i-1)) + f_gap)
-    enddo
-
-    ! Photosynthesis
-    accuCAI = 0.0
-
-    do i = 1, vegn%n_cohorts
-
-      cc => vegn%cohorts(i)
-      associate ( sp => spdata(cc%species) )
-
-      if (cc%status == LEAF_ON .and. cc%lai > 0.1) then
-
-        ! Convert forcing data
-        layer    = Max (1, Min(cc%layer,9))
-        rad_top  = f_light(layer) * forcing%radiation ! downward radiation at the top of the canopy, W/m2
-        rad_net  = f_light(layer) * forcing%radiation * 0.9 ! net radiation absorbed by the canopy, W/m2
-        p_surf   = forcing%P_air  ! Pa
-        TairK    = forcing%Tair ! K
-        Tair     = forcing%Tair - 273.16 ! degC
-        cana_q   = (esat(Tair) * forcing%RH * mol_h2o) / (p_surf * mol_air)  ! air specific humidity, kg/kg
-        cana_co2 = forcing%CO2 ! co2 concentration in canopy air space, mol CO2/mol dry air
-
-        ! recalculate the water supply to mol H20 per m2 of leaf per second
-        water_supply = cc%W_supply / (cc%leafarea * myinterface%step_seconds * mol_h2o) ! mol m-2 leafarea s-1
-
-        !call get_vegn_wet_frac (cohort, fw=fw, fs=fs)
-        fw = 0.0
-        fs = 0.0
-
-        call gs_Leuning(rad_top, rad_net, TairK, cana_q, cc%lai, &
-          p_surf, water_supply, cc%species, sp%pt, &
-          cana_co2, cc%extinct, fs+fw, cc%layer, &
-          ! output:
-          psyn, resp, w_scale2, transp )
-
-        ! store the calculated photosynthesis, photorespiration, and transpiration for future use in growth
-        cc%An_op   = psyn  ! molC s-1 m-2 of leaves
-        cc%An_cl   = -resp  ! molC s-1 m-2 of leaves
-        cc%w_scale = w_scale2
-        cc%transp  = transp * mol_h2o * cc%leafarea * myinterface%step_seconds ! Transpiration (kgH2O/(tree step), Weng, 2017-10-16
-        cc%gpp     = (psyn - resp) * mol_C * cc%leafarea * myinterface%step_seconds ! kgC step-1 tree-1
-
-        ! if (rad_top > 0.0) print*,'psyn/rad_top, resp/rad_top ', psyn/rad_top, resp/rad_top
-
-        ! ! psyn/rad_top is on the order of 1e-8; psyn/rad_top is on the order of -1e-9
-        ! if (rad_top > 0.0) print*,'psyn/rad_top, resp/rad_top', psyn/rad_top, resp/rad_top
-
-        if (isnan(cc%gpp)) stop '"gpp" is a NaN'
-
-      else
-
-        ! no leaves means no photosynthesis and no stomatal conductance either
-        cc%An_op   = 0.0
-        cc%An_cl   = 0.0
-        cc%gpp     = 0.0
-        cc%transp  = 0.0
-        cc%w_scale = -9999
-
-      endif
-
-      end associate
-    enddo
-
+    ! ! xxx try
     ! !===========================================================
-    ! ! Constant LUE hack
+    ! ! Original BiomeE-Allocation
     ! !-----------------------------------------------------------
+    ! ! Water supply for photosynthesis, Layers
+    ! call water_supply_layer(forcing, vegn)
+
     ! ! Sum leaf area over cohorts in each crown layer -> LAIlayer(layer)
     ! f_gap = 0.1 ! 0.1
     ! accuCAI = 0.0
@@ -322,17 +235,39 @@ contains
     !     ! Convert forcing data
     !     layer    = Max (1, Min(cc%layer,9))
     !     rad_top  = f_light(layer) * forcing%radiation ! downward radiation at the top of the canopy, W/m2
+    !     rad_net  = f_light(layer) * forcing%radiation * 0.9 ! net radiation absorbed by the canopy, W/m2
+    !     p_surf   = forcing%P_air  ! Pa
+    !     TairK    = forcing%Tair ! K
+    !     Tair     = forcing%Tair - 273.16 ! degC
+    !     cana_q   = (esat(Tair) * forcing%RH * mol_h2o) / (p_surf * mol_air)  ! air specific humidity, kg/kg
+    !     cana_co2 = forcing%CO2 ! co2 concentration in canopy air space, mol CO2/mol dry air
 
-    !     ! hack:
-    !     psyn = 1.0E-8  * rad_top
-    !     resp = -1.0E-9 * rad_top
-    !     transp = 0.0
+    !     ! recalculate the water supply to mol H20 per m2 of leaf per second
+    !     water_supply = cc%W_supply / (cc%leafarea * myinterface%step_seconds * mol_h2o) ! mol m-2 leafarea s-1
 
+    !     !call get_vegn_wet_frac (cohort, fw=fw, fs=fs)
+    !     fw = 0.0
+    !     fs = 0.0
+
+    !     call gs_Leuning(rad_top, rad_net, TairK, cana_q, cc%lai, &
+    !       p_surf, water_supply, cc%species, sp%pt, &
+    !       cana_co2, cc%extinct, fs+fw, cc%layer, &
+    !       ! output:
+    !       psyn, resp, w_scale2, transp )
+
+    !     ! store the calculated photosynthesis, photorespiration, and transpiration for future use in growth
     !     cc%An_op   = psyn  ! molC s-1 m-2 of leaves
     !     cc%An_cl   = -resp  ! molC s-1 m-2 of leaves
     !     cc%w_scale = w_scale2
     !     cc%transp  = transp * mol_h2o * cc%leafarea * myinterface%step_seconds ! Transpiration (kgH2O/(tree step), Weng, 2017-10-16
     !     cc%gpp     = (psyn - resp) * mol_C * cc%leafarea * myinterface%step_seconds ! kgC step-1 tree-1
+
+    !     ! if (rad_top > 0.0) print*,'psyn/rad_top, resp/rad_top ', psyn/rad_top, resp/rad_top
+
+    !     ! ! psyn/rad_top is on the order of 1e-8; psyn/rad_top is on the order of -1e-9
+    !     ! if (rad_top > 0.0) print*,'psyn/rad_top, resp/rad_top', psyn/rad_top, resp/rad_top
+
+    !     if (isnan(cc%gpp)) stop '"gpp" is a NaN'
 
     !   else
 
@@ -347,9 +282,72 @@ contains
 
     !   end associate
     ! enddo
-    ! !===========================================================
 
+    !===========================================================
+    ! Constant LUE hack
+    !-----------------------------------------------------------
+    ! Sum leaf area over cohorts in each crown layer -> LAIlayer(layer)
+    f_gap = 0.1 ! 0.1
+    accuCAI = 0.0
+    LAIlayer = 0.0
+    do i = 1, vegn%n_cohorts
+      cc => vegn%cohorts(i)
+      layer = Max(1, Min(cc%layer,9))
+      LAIlayer(layer) = LAIlayer(layer) + cc%leafarea * cc%nindivs /(1.-f_gap)
+    enddo
 
+    ! ! Calculate kappa according to sun zenith angle 
+    ! kappa = cc%extinct/max(cosz,0.01)
+    
+    ! Use constant light extinction coefficient
+    kappa = cc%extinct
+
+    ! Get light received at each crown layer as a fraction of top-of-canopy -> f_light(layer) 
+    f_light(:) = 0.0
+    f_light(1) = 1.0
+    do i=2,layer
+      f_light(i) = f_light(i-1) * (exp(0.0 - kappa * LAIlayer(i-1)) + f_gap)
+    enddo
+
+    ! Photosynthesis
+    accuCAI = 0.0
+
+    do i = 1, vegn%n_cohorts
+
+      cc => vegn%cohorts(i)
+      associate ( sp => spdata(cc%species) )
+
+      if (cc%status == LEAF_ON .and. cc%lai > 0.1) then
+
+        ! Convert forcing data
+        layer    = Max (1, Min(cc%layer,9))
+        rad_top  = f_light(layer) * forcing%radiation ! downward radiation at the top of the canopy, W/m2
+
+        ! hack:
+        psyn = 1.0E-8  * rad_top
+        resp = -1.0E-9 * rad_top
+        transp = 0.0
+
+        cc%An_op   = psyn  ! molC s-1 m-2 of leaves
+        cc%An_cl   = -resp  ! molC s-1 m-2 of leaves
+        cc%w_scale = w_scale2
+        cc%transp  = transp * mol_h2o * cc%leafarea * myinterface%step_seconds ! Transpiration (kgH2O/(tree step), Weng, 2017-10-16
+        cc%gpp     = (psyn - resp) * mol_C * cc%leafarea * myinterface%step_seconds ! kgC step-1 tree-1
+
+      else
+
+        ! no leaves means no photosynthesis and no stomatal conductance either
+        cc%An_op   = 0.0
+        cc%An_cl   = 0.0
+        cc%gpp     = 0.0
+        cc%transp  = 0.0
+        cc%w_scale = -9999
+
+      endif
+
+      end associate
+    enddo
+    !===========================================================
 
   end subroutine vegn_photosynthesis
 
@@ -1871,7 +1869,6 @@ contains
   end subroutine vegn_tissue_turnover
   
 
-  
   subroutine vegn_N_uptake(vegn, tsoil)
     !//////////////////////////////////////////////////////////////////////
     ! Mineral N uptake from the soil

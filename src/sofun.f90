@@ -15,8 +15,6 @@ program main
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   !----------------------------------------------------------------
   use md_params_siml, only: getsteering
-  ! use md_grid, only: get_domaininfo, getgrid, type_params_domain
-  ! use md_params_soil, only: getsoil
   use md_forcing, only: getclimate, getco2, forcingData, climate_type
   use md_interface, only: interfacetype_biosphere, outtype_biosphere, myinterface
   use md_params_core, only: n_dim_soil_types, MSPECIES, MAX_INIT_COHORTS, ntstepsyear, out_max_cohorts, &
@@ -65,7 +63,7 @@ program main
   logical, parameter :: verbose = .false.
   integer :: iday
 
-  character(len=100) :: namelistfile = '/Users/benjaminstocker/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
+  character(len=100) :: namelistfile = '/Users/bestocke/sofun/params/parameters_Allocation.nml' !'parameters_WC_biodiversity.nml' ! 'parameters_CN.nml'
 
   ! output arrays (naked) to be passed back to C/R
   real, dimension(:,:), allocatable  :: out_hourly_tile 
@@ -177,8 +175,6 @@ program main
   endif
 
   ! Simulation parameters
-  ! myinterface%params_siml%model_run_years       = myinterface%params_siml%runyears    ! xxx delete model_run_years from arguments
-  !myinterface%params_siml%equi_days             = 0   ! to always write output; xxx todo: remove once output is passed back to R
   myinterface%params_siml%outputhourly          = outputhourly
   myinterface%params_siml%outputdaily           = outputdaily
   myinterface%params_siml%do_U_shaped_mortality = do_U_shaped_mortality
@@ -259,30 +255,20 @@ program main
   call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
   ! call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
   
-  if (daily) then
-    ! timestep_forcing = timestep    ! would be 0.5 for half-hourly forcing and 1.0 for hourly forcing
-    timestep = 24.0
-  end if
+  if (daily) timestep = 24.0
 
   myinterface%steps_per_day = int(24.0/timestep)
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0 * 3600.0 / myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
   ntstepsyear = myinterface%steps_per_day * 365
 
-  if (daily) then
-    ntstepsyear_forcing = ntstepsyear * timestep
-  end if
+  if (daily) ntstepsyear_forcing = ntstepsyear * timestep
 
   write(*,*) myinterface%steps_per_day, myinterface%dt_fast_yr, myinterface%step_seconds
   
   totyears = myinterface%params_siml%runyears
   totdays  = int(totyears/yr_data+1) * days_data
   myinterface%params_siml%equi_days = totdays - days_data
-
-  ! print*,'myinterface%params_siml%equi_days ', myinterface%params_siml%equi_days
-  ! print*,'days_data                         ', days_data
-  ! print*,'myinterface%params_siml%runyears  ', myinterface%params_siml%runyears
-  !  stop  
 
   ! record some variables that are determined by the SR that reads the forcing
   myinterface%datalines = datalines
@@ -298,36 +284,6 @@ program main
   allocate(out_annual_cohorts(  myinterface%params_siml%runyears,                  out_max_cohorts,    nvars_annual_cohorts ))
   allocate(out_annual_tile(     myinterface%params_siml%runyears,                  nvars_annual_tile                        ))
   
-  ! print*, 'forcingData(2)', forcingData(2)
-
-
-  ! climateData(idx_climatedata)%year      = year_data(i)          ! Year
-  !      climateData(idx_climatedata)%doy       = doy_data(i)           ! day of the year
-  !      climateData(idx_climatedata)%hod       = hour_data(i)          ! hour of the day
-  !      climateData(idx_climatedata)%PAR       = input_data(1,i)       ! umol/m2/s
-  !      climateData(idx_climatedata)%radiation = input_data(2,i)       ! W/m2
-  !      climateData(idx_climatedata)%Tair      = input_data(3,i) + 273.16  ! air temperature, K
-  !      climateData(idx_climatedata)%Tsoil     = input_data(4,i) + 273.16  ! soil temperature, K
-  !      climateData(idx_climatedata)%RH        = input_data(5,i) * 0.01    ! relative humidity (0.xx)
-  !      climateData(idx_climatedata)%rain      = input_data(6,i)/(timestep * 3600)! ! kgH2O m-2 s-1
-  !      climateData(idx_climatedata)%windU     = input_data(7,i)        ! wind velocity (m s-1)
-  !      climateData(idx_climatedata)%P_air     = input_data(8,i)        ! pa
-  !      climateData(idx_climatedata)%CO2       = input_data(9,i) * 1.0e-6       ! mol/mol
-  !      climateData(idx_climatedata)%soilwater = 0.8    ! soil moisture, vol/vol
-
-  !----------------------------------------------------------------
-  ! GET CALIBRATABLE MODEL PARAMETERS (so far a small list)
-  !----------------------------------------------------------------
-  ! XXX warning: converting from double to single may cause a problem
-  ! when calibrating and parameters are varied in their Nth digit after
-  ! the comma!  
-  ! myinterface%params_calib%kphio = real(par(1))
-
-  ! !----------------------------------------------------------------
-  ! ! GET VEGETATION COVER (fractional projective cover by PFT)
-  ! !----------------------------------------------------------------
-  ! myinterface%fpc_grid(:) = get_fpc_grid( myinterface%domaininfo, myinterface%params_siml )
-
   ! LOOP THROUGH YEARS
   print*, '--------------START OF SIMULATION---------------'
 
@@ -381,13 +337,13 @@ program main
     if (verbose) print*,'... done.'
     !----------------------------------------------------------------
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Populate big output arrays
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Print out_hourly_tile
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     if (.not. myinterface%steering%spinup) then
 
       idx_hourly_start = (yr - myinterface%params_siml%spinupyears - 1) * ntstepsyear + 1          ! To exclude the spinup years and include only the transient years
@@ -396,9 +352,9 @@ program main
     
     end if
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Print out_daily_tile
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Output during spinup and transient years
 
     ! Output only for transient years
@@ -411,9 +367,9 @@ program main
     
     end if
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Print out_daily_cohorts
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Output only for transient years
 
     if (.not. myinterface%steering%spinup) then  
@@ -422,14 +378,14 @@ program main
     
     end if
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Print out_annual_tile
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     call populate_outarray_annual_tile( out_biosphere%annual_tile, out_annual_tile(yr,:) )
 
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     ! Print out_annual_cohorts
-    ! ----------------------------------------------------------------
+    !----------------------------------------------------------------
     call populate_outarray_annual_cohorts( out_biosphere%annual_cohorts(:), out_annual_cohorts(yr,:,:) )
 
   enddo
@@ -675,7 +631,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: m,n
     integer :: idx_climatedata
 
-    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/bestocke/sofun/input/'
     character(len=80) :: climfile    = 'ORNL_forcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
@@ -787,7 +743,7 @@ subroutine populate_outarray_annual_cohorts( annual_cohorts, out_annual_cohorts 
     integer :: m,n
     integer :: idx_climatedata
 
-    character(len=80) :: filepath_in = '/Users/benjaminstocker/sofun/input/'
+    character(len=80) :: filepath_in = '/Users/bestocke/sofun/input/'
     character(len=80) :: climfile    = 'US-WCrforcing.txt'
 
     climfile=trim(filepath_in)//trim(climfile)
