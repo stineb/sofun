@@ -26,8 +26,7 @@ contains
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
     use md_interface, only: myinterface, outtype_biosphere
-    use md_params_core, only: ntstepsyear !diff
-    ! use md_params_core, only: ndayyear !365
+    use md_params_core, only: ntstepsyear
   
     ! return variable
     type(outtype_biosphere), intent(inout) :: out_biosphere
@@ -36,7 +35,6 @@ contains
     integer :: dm, moy, jpngr, doy
     ! logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
     logical, parameter :: verbose = .false.       ! change by hand for debugging etc.
-    ! integer, parameter :: ndayyear = 365           ! number of days in a year
 
     !----------------------------------------------------------------
     ! Biome-E stuff
@@ -45,7 +43,7 @@ contains
     integer, parameter :: totalyears = 10
     integer, parameter :: nCohorts = 1
     ! integer :: steps_per_day ! 24 or 48
-    real    :: tsoil, soil_theta
+    real    :: tsoil
     real    :: NPPtree,fseed, fleaf, froot, fwood ! for output
     real    :: dDBH ! yearly growth of DBH, mm
     real    :: plantC,plantN, soilC, soilN
@@ -66,10 +64,9 @@ contains
     character(len=50) :: filepath_out, filesuffix
     character(len=50) :: parameterfile(10), chaSOM(10)
 
-    ! benjaminstocker debug
-    integer :: idx, forcingyear
-    !integer :: ntstepsyear          ! number of days in a year
+    integer :: idx_start, idx_end
 
+    integer :: idx, forcingyear
 
     !------------------------------------------------------------------------
     ! Create output files
@@ -83,7 +80,11 @@ contains
     allpools       = trim(filepath_out)//'Annual_tile'//trim(filesuffix)
     faststepfluxes = trim(filepath_out)//'Hourly_tile'//trim(filesuffix) ! hourly, has 15 columns and 
 
-    fno1=91; fno2=101; fno3=102; fno4=103; fno5=104
+    fno1=91
+    fno2=101
+    fno3=102
+    fno4=103
+    fno5=104
     open(fno1, file=trim(faststepfluxes), ACTION='write', IOSTAT=istat1)
     open(fno2, file=trim(plantcohorts),   ACTION='write', IOSTAT=istat1)
     open(fno3, file=trim(plantCNpools),   ACTION='write', IOSTAT=istat2)
@@ -99,73 +100,66 @@ contains
       ! Translation to LM3-PPA variables
       !------------------------------------------------------------------------
 
-          ! hourly tile
-          write(fno1,'(5(a8,","),25(a12,","))')                    &
-          'year','doy','hour','rad',                               &
-          'Tair','Prcp', 'GPP', 'Resp',                            &
-          'Transp','Evap','Runoff','Soilwater',                    &
-          'wcl','FLDCAP','WILTPT'
+      ! hourly tile
+      write(fno1,'(5(a8,","),25(a12,","))')                    &
+      'year','doy','hour','rad',                               &
+      'Tair','Prcp', 'GPP', 'Resp',                            &
+      'Transp','Evap','Runoff','Soilwater',                    &
+      'wcl','FLDCAP','WILTPT'
 
-          ! annual cohorts
-          write(fno2,'(3(a5,","),25(a9,","))') 'year',             &
-          'cID','PFT','layer','density', 'f_layer',                &
-          'dDBH','dbh','height','Acrown',                          &
-          'wood','nsc', 'NSN','NPPtr','seed',                      &
-          'NPPL','NPPR','NPPW','GPP_yr','NPP_yr',                  &
-          'N_uptk','N_fix','maxLAI'
-          
-          ! daily cohorts
-          write(fno3,'(5(a5,","),25(a8,","))')                     &
-          'year','doy','hour','cID','PFT',                         &
-          'layer','density', 'f_layer', 'LAI',                     &
-          'gpp','resp','transp',                                   &
-          'NPPleaf','NPProot','NPPwood',                           &
-          'NSC','seedC','leafC','rootC','SW_C','HW_C',             &
-          'NSN','seedN','leafN','rootN','SW_N','HW_N'
-          
-          ! daily tile
-          write(fno4,'(2(a5,","),55(a10,","))')  'year','doy',     &
-          'Tc','Prcp', 'totWs',  'Trsp', 'Evap','Runoff',          &
-          'ws1','ws2','ws3', 'LAI','GPP', 'Rauto', 'Rh',           &
-          'NSC','seedC','leafC','rootC','SW_C','HW_C',             &
-          'NSN','seedN','leafN','rootN','SW_N','HW_N',             &
-          'McrbC', 'fastSOM',   'slowSOM',                         &
-          'McrbN', 'fastSoilN', 'slowSoilN',                       &
-          'mineralN', 'N_uptk'
-          
-          ! annual tile
-          write(fno5,'(1(a5,","),80(a12,","))')  'year',           &
-          'CAI','LAI','GPP', 'Rauto',   'Rh',                      &
-          'rain','SoilWater','Transp','Evap','Runoff',             &
-          'plantC','soilC',    'plantN', 'soilN','totN',           &
-          'NSC', 'SeedC', 'leafC', 'rootC', 'SapwoodC', 'WoodC',   &
-          'NSN', 'SeedN', 'leafN', 'rootN', 'SapwoodN', 'WoodN',   &
-          'McrbC','fastSOM',   'SlowSOM',                          &
-          'McrbN','fastSoilN', 'slowSoilN',                        &
-          'mineralN', 'N_fxed','N_uptk','N_yrMin','N_P2S','N_loss',&
-          'totseedC','totseedN','Seedling_C','Seedling_N'
+      ! annual cohorts
+      write(fno2,'(3(a5,","),25(a9,","))') 'year',             &
+      'cID','PFT','layer','density', 'f_layer',                &
+      'dDBH','dbh','height','Acrown',                          &
+      'wood','nsc', 'NSN','NPPtr','seed',                      &
+      'NPPL','NPPR','NPPW','GPP_yr','NPP_yr',                  &
+      'N_uptk','N_fix','maxLAI'
+      
+      ! daily cohorts
+      write(fno3,'(5(a5,","),25(a8,","))')                     &
+      'year','doy','hour','cID','PFT',                         &
+      'layer','density', 'f_layer', 'LAI',                     &
+      'gpp','resp','transp',                                   &
+      'NPPleaf','NPProot','NPPwood',                           &
+      'NSC','seedC','leafC','rootC','SW_C','HW_C',             &
+      'NSN','seedN','leafN','rootN','SW_N','HW_N'
+      
+      ! daily tile
+      write(fno4,'(2(a5,","),55(a10,","))')  'year','doy',     &
+      'Tc','Prcp', 'totWs',  'Trsp', 'Evap','Runoff',          &
+      'ws1','ws2','ws3', 'LAI','GPP', 'Rauto', 'Rh',           &
+      'NSC','seedC','leafC','rootC','SW_C','HW_C',             &
+      'NSN','seedN','leafN','rootN','SW_N','HW_N',             &
+      'McrbC', 'fastSOM',   'slowSOM',                         &
+      'McrbN', 'fastSoilN', 'slowSoilN',                       &
+      'mineralN', 'N_uptk'
+      
+      ! annual tile
+      write(fno5,'(1(a5,","),80(a12,","))')  'year',           &
+      'CAI','LAI','GPP', 'Rauto',   'Rh',                      &
+      'rain','SoilWater','Transp','Evap','Runoff',             &
+      'plantC','soilC',    'plantN', 'soilN','totN',           &
+      'NSC', 'SeedC', 'leafC', 'rootC', 'SapwoodC', 'WoodC',   &
+      'NSN', 'SeedN', 'leafN', 'rootN', 'SapwoodN', 'WoodN',   &
+      'McrbC','fastSOM',   'SlowSOM',                          &
+      'McrbN','fastSoilN', 'slowSoilN',                        &
+      'mineralN', 'N_fxed','N_uptk','N_yrMin','N_P2S','N_loss',&
+      'totseedC','totseedN','Seedling_C','Seedling_N'
 
       !------------------------------------------------------------------------
       ! Initialisations
       !------------------------------------------------------------------------
       ! Parameter initialization: Initialize PFT parameters
-      ! print*,'1: vegn%cohorts ', vegn%n_cohorts
       call initialize_PFT_data()
 
       ! Initialize vegetation tile and plant cohorts
       allocate(vegn)
       
-      ! print*, '0.0 vegn%totNewCC, vegn%totNewCN', vegn%totNewCC, vegn%totNewCN
-      ! print*,'2: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       call initialize_vegn_tile(vegn, nCohorts)
       
       ! Sort and relayer cohorts
-      ! print*, '0.2 vegn%totNewCC, vegn%totNewCN', vegn%totNewCC, vegn%totNewCN
-      ! print*,'3: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       call relayer_cohorts(vegn)
 
-      ! print*, '0.2 vegn%totNewCC, vegn%totNewCN', vegn%totNewCC, vegn%totNewCN
-      ! print*,'4: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       call Zero_diagnostics(vegn)
 
       !------------------------------------------------------------------------
@@ -173,32 +167,12 @@ contains
       ! This reads it all into memory and then extracts from the huge array in
       ! daily/hourly steps
       !------------------------------------------------------------------------
-      ! !call read_FACEforcing(forcingData,datalines,days_data,yr_data,timestep)
-      ! call read_NACPforcing(forcingData,datalines,days_data,yr_data,timestep)
-      ! steps_per_day = int(24.0/timestep)
-      ! dt_fast_yr = 1.0/(365.0 * steps_per_day)
-      ! step_seconds = 24.0*3600.0/steps_per_day ! seconds_per_year * dt_fast_yr
-      ! write(*,*)steps_per_day,dt_fast_yr,step_seconds
-
       year0 = myinterface%climate(1)%year  ! forcingData(1)%year
       iyears = 1
       idoy   = 0
       idays  = 0
 
     endif 
-
-    ! print*, 'year', myinterface%climate(1)%year
-    ! print*, 'doy',myinterface%climate(1)%doy
-    ! print*, 'hour',myinterface%climate(1)%hod
-    ! print*, 'PAR',myinterface%climate(1)%PAR
-    ! print*, 'radiation',myinterface%climate(1)%radiation
-    ! print*, 'Tair', myinterface%climate(1)%Tair
-    ! print*, 'Tsoil', myinterface%climate(1)%Tsoil
-    ! print*, 'windU', myinterface%climate(1)%windU
-    ! print*, 'P_air', myinterface%climate(1)%P_air
-    ! print*, 'CO2', myinterface%climate(1)%CO2
-    ! print*, 'soilwater', myinterface%climate(1)%soilwater
-
 
     ! every year, start reading from beginning of myinterface%climate (annual chunks are passed!)
     simu_steps = 0
@@ -212,7 +186,6 @@ contains
       !----------------------------------------------------------------
       ! LOOP THROUGH DAYS
       !----------------------------------------------------------------
-        ! print*,'5: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
       dayloop: do dm=1,ndaymonth(moy)
 
         doy = doy + 1
@@ -225,65 +198,38 @@ contains
         idoy = idoy + 1
 
         !----------------------------------------------------------------
-        ! Get daily mean air and soil temperature
+        ! FAST TIME STEP
         !----------------------------------------------------------------
-        ! vegn%Tc_daily = myinterface%climate(jpngr)%dtemp(doy)
-        ! tsoil         =                                       ! soil temp. is prescribed
-        ! soil_theta    = 
-
-        ! ForestESS:
-        ! get daily mean temperature from hourly/half-hourly data
         vegn%Tc_daily = 0.0
-        tsoil         = 0.0
-
-        !----------------------------------------------------------------
-        ! FAST LOOP
-        !----------------------------------------------------------------
         fastloop: do i=1,myinterface%steps_per_day
 
-          ! idata = MOD(simu_steps, myinterface%datalines)+1
           idata = simu_steps + 1
           year0 =  myinterface%climate(idata)%year  ! Current year
           vegn%Tc_daily = vegn%Tc_daily +  myinterface%climate(idata)%Tair
-          tsoil         = myinterface%climate(idata)%tsoil
+
           simu_steps    = simu_steps + 1
 
-          ! print*,'5.0.1'
-          call vegn_CNW_budget_fast(vegn, myinterface%climate(idata))
-
-          ! ! benjaminstocker consistency check
-          ! myinterface%climate(idata)%tsoil = myinterface%climate(idata)%Tair
-          
-          ! diagnostics
-          ! print*,'5.0.2'
+          !----------------------------------------------------------------
+          ! Fast time step processes with (half-)hourly forcing
+          !----------------------------------------------------------------
+          call vegn_CNW_budget(vegn, myinterface%climate(idata))
           call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1, out_biosphere%hourly_tile(idata) )
-
-          ! print*,'5.0.3'
 
         enddo fastloop
 
-        !if (doy == 100 .and. iyears == 3) stop 'consistency?'
-
-        vegn%Tc_daily = vegn%Tc_daily/myinterface%steps_per_day
-        tsoil         = tsoil/myinterface%steps_per_day
-        soil_theta    = vegn%thetaS
-
         !-------------------------------------------------
-        ! Daily calls
+        ! Daily calls after fast loop
         !-------------------------------------------------
-        ! print*,'5: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
+        vegn%Tc_daily = vegn%Tc_daily / myinterface%steps_per_day
+        ! print*,'vegn%Tc_daily, myinterface%climate(idata)', vegn%Tc_daily, myinterface%climate(idata)%Tair
+
+        ! sum over fast time steps and cohorts
         call daily_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, idays, fno3, fno4, out_biosphere%daily_cohorts(doy,:), out_biosphere%daily_tile(doy) )
-
+        
         ! Determine start and end of season and maximum leaf (root) mass
-        ! print*,'6: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
         call vegn_phenology(vegn)
 
-
-        ! Kill all individuals of a cohort if NSC falls below threshold
-        !call vegn_starvation(vegn)
-
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
-        ! print*,'7: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
         call vegn_growth_EW(vegn)
 
       end do dayloop
@@ -300,7 +246,6 @@ contains
 
     if (update_annualLAImax) call vegn_annualLAImax_update(vegn)
       
-    ! print*,'8: vegn%cohorts , vegn%CAI, vegn%LAI', vegn%n_cohorts, vegn%CAI, vegn%LAI
     call annual_diagnostics(vegn, iyears, fno2, fno5, out_biosphere%annual_cohorts(:), out_biosphere%annual_tile)
 
     !---------------------------------------------
@@ -312,27 +257,21 @@ contains
     ! Natural mortality (reducing number of individuals 'nindivs')
     ! (~Eq. 2 in Weng et al., 2015 BG)
     call vegn_nat_mortality(vegn, real( seconds_per_year ))
-    ! print*,'6: ', vegn%n_cohorts
 
     ! seed C and germination probability (~Eq. 1 in Weng et al., 2015 BG)
     call vegn_reproduction(vegn)
-    ! print*,'7: ', vegn%n_cohorts
 
      !---------------------------------------------
     ! Re-organize cohorts
     !---------------------------------------------
     call kill_lowdensity_cohorts(vegn)
-    ! print*,'8: ', vegn%n_cohorts
     call relayer_cohorts(vegn)
-    ! print*,'9: ', vegn%n_cohorts
     call vegn_mergecohorts(vegn)
-    ! print*,'10: ', vegn%n_cohorts
 
     ! !---------------------------------------------
     ! ! Set annual variables zero
     ! !---------------------------------------------
     call Zero_diagnostics(vegn)
-    ! print*,'11: ', vegn%n_cohorts
 
     ! update the years of model run
     iyears = iyears + 1
