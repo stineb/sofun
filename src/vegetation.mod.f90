@@ -88,82 +88,6 @@ contains
 
   end subroutine vegn_CNW_budget
 
-  !------------------------------------------------------------------------
-  ! Subroutines from ForestESS
-  !------------------------------------------------------------------------
-  ! subroutine vegn_CNW_budget_daily(vegn, forcing)
-  !   !//////////////////////////////////////////////////////////////////////
-  !   ! Net carbon gain.
-  !   ! Carbon and nitrogen assimilation, respiration, and soil decomposition
-  !   !
-  !   ! Implemented as in BiomeE-Allocation but calling daily photosynthesis 
-  !   ! and respiration routine as in ForestESS.
-  !   ! 
-  !   ! Changed to daily, Weng 2016-11-25
-  !   ! include Nitrogen uptake and carbon budget
-  !   ! carbon_gain is calculated here to drive plant growth and reproduciton
-  !   !----------------------------------------------------------------------
-  !   use md_forcing, only: climate_type
-
-  !   type(vegn_tile_type), intent(inout) :: vegn
-  !   type(climate_type), intent(in) :: forcing
-
-  !   ! local variables
-  !   type(cohort_type), pointer :: cc    ! current cohort
-  !   integer :: i
-  !   real   :: tair, tsoil ! temperature of soil, degC
-  !   real   :: theta ! soil wetness, unitless
-
-  !   ! real :: C_input  ! carbon assimilated per tree per fast time step
-  !   ! real :: dBL, dBR, dBSW ! leaf and fine root carbon tendencies
-  !   ! real :: turnoverC  ! temporary var for several calculations
-
-  !   real :: NSC_supply, LR_demand, LR_deficit
-  !   real :: LeafGrowthMin,  RootGrowthMin, NSCtarget, v
-  !   real :: LR_growth, WS_growth
-  !   real :: R_days, fNSC, fLFR, fStem
-
-  !   ! Climatic variable
-  !   tair  = forcing%Tair - 273.16   ! conversion to degC
-  !   tsoil = forcing%tsoil - 273.16  ! conversion to degC
-  !   theta = (vegn%wcl(2)-WILTPT)/(FLDCAP-WILTPT)
-
-  !   ! Carbon gain trhough photosynthesis
-  !   call vegen_C_gain_ForestESS(forcing, vegn)
-
-  !   ! Update soil water
-  !   ! some call here
-
-  !   ! Respiration and allocation for growth
-  !   do i = 1, vegn%n_cohorts
-
-  !     cc => vegn%cohorts(i)
-  !     associate ( sp => spdata(cc%species) )
-
-  !     ! increment tha cohort age
-  !     cc%age = cc%age + myinterface%dt_fast_yr
-
-  !     ! Maintenance respiration
-  !     call plant_respiration(cc, forcing%Tair) ! get resp per tree per time step  xxx check: time step / units of leaf respiration?
-  !     cc%resp = cc%resp + (cc%resg * myinterface%step_seconds)/seconds_per_day ! put growth respiration to tot resp
-  !     cc%npp  = cc%gpp  - cc%resp ! kgC tree-1 step-1
-
-  !     ! detach photosynthesis model from plant growth
-  !     cc%nsc = cc%nsc + cc%npp
-  !     cc%NSN = cc%NSN + cc%fixedN
-
-  !     end associate
-  !   enddo
-  !   cc => null()
-
-  !   ! update soil carbon
-  !   call SOMdecomposition(vegn, tsoil, theta)
-    
-  !   !! Nitrogen uptake
-  !   call vegn_N_uptake(vegn, tsoil)
-
-  ! end subroutine vegn_CNW_budget_daily
-
   !========================================================================
   !============= Plant physiology =========================================
   !========================================================================
@@ -660,141 +584,9 @@ contains
     cc%resr = r_root + r_Nfix ! tree-1 step-1
   end subroutine plant_respiration
 
-  !------------------------------------------------------------------------
-  ! Subroutines from ForestESS
-  !------------------------------------------------------------------------
-  ! subroutine vegen_C_gain_ForestESS(forcing, vegn)
-  !   !//////////////////////////////////////////////////////////////////////
-  !   ! Carbon assimilation.
-  !   ! Calculate daily carbon gain per tree based on V and self-shading of leaves
-  !   ! It is used to generate daily GPP (photosynthesis)
-  !   ! This subroutine can be replaced by a photosynthesis model working at hourly 
-  !   ! time scale
-  !   !
-  !   ! Adopted from ForestESS.
-  !   ! 
-  !   ! Changed to daily, Weng 2016-11-25
-  !   ! include Nitrogen uptake and carbon budget
-  !   ! carbon_gain is calculated here to drive plant growth and reproduciton
-  !   !----------------------------------------------------------------------
-  !   use md_forcing, only: climate_type
-  !   type(climate_type), intent(in):: forcing
-  !   type(vegn_tile_type), intent(inout) :: vegn
-
-  !   ! local variables
-  !   type(cohort_type), pointer :: cc    ! current cohort
-  !   logical :: extra_light_in_lower_layers
-  !   real :: f_light(10)      ! light fraction of each layer
-  !   real :: V_annual     ! max V for each layer
-  !   real :: f_gap ! additional GPP for lower layer cohorts due to gaps
-  !   integer :: i, layer
-
-  !   f_gap = 0.2 ! 0.1
-    
-  !   ! update accumulative LAI for each corwn layer
-  !   vegn%CAI      = 0.0
-  !   vegn%LAI      = 0.0
-  !   vegn%LAIlayer = 0.0
-
-  !   do i = 1, vegn%n_cohorts
-  !     cc => vegn%cohorts(i)
-  !     associate ( sp => spdata(cc%species) )
-  !     cc%leafarea = leaf_area_from_biomass(cc%bl, cc%species, cc%layer, cc%firstlayer)
-  !     cc%lai      = cc%leafarea / (cc%crownarea *(1.0 - sp%internal_gap_frac))
-
-  !     layer = Max (1, Min(cc%layer,9)) + 1 ! next layer
-
-  !     ! LAI above this layer: Layer1: 0; Layer2: LAI of Layer1 cohorts; ...
-  !     vegn%LAIlayer(layer) = vegn%LAIlayer(layer) + cc%leafarea * cc%nindivs
-  !     vegn%LAI = vegn%LAI + cc%leafarea * cc%nindivs
-  !     vegn%CAI = vegn%CAI + cc%crownarea * cc%nindivs
-  !     end associate
-  !   enddo
-
-  !   ! Light fraction
-  !   f_light(1) = 1.0
-  !   do i =2, layer !MIN(int(vegn%CAI+1.0),9)
-  !       f_light(i) = f_light(i-1) * &
-  !                   (exp(-0.5 * vegn%LAIlayer(i)) * (1. - f_gap) + f_gap)
-  !   enddo
-
-  !   !do i =1, layer !MIN(int(vegn%CAI+1.0),9)
-  !   !    write(*,*)'f_light',layer,i,vegn%LAIlayer(i),f_light(i)
-  !   !enddo
-    
-  !   ! Assumption: no gaps  --> GPP of understory trees is too low!
-  !   ! Assimilation of carbon for each cohort considering their light envrionment
-  !   do i = 1, vegn%n_cohorts
-  !     cc => vegn%cohorts(i)
-
-  !     layer = Max (1, Min(cc%layer,9))
-
-  !     ! Photosynthesis can be calculated by a photosynthesis model
-  !     V_annual = f_light(layer) * spdata(cc%species)%Vannual
-
-  !     if(cc%status == LEAF_ON) then
-  !       ! Add temperature response function of photosynthesis
-  !       cc%gpp = V_annual/0.5 * (1.0 - exp(-0.5 * cc%LAI))  &
-  !               * cc%crownarea * myinterface%dt_fast_yr                &
-  !               * exp(9000.0 * (1./298.16 - 1./vegn%tc_daily)) ! temperature response function
-
-  !              ! =1.2/0.5/cc%layer**2 * (1.0 - exp(-0.5* cc%LAI)) & ! 0.5 & !
-  !              ! * cc%crownarea * myinterface%dt_fast_yr
-  !     else
-  !       cc%gpp = 0.0
-  !     endif
-  !   enddo
-
-  !   cc => null()
-
-  ! end subroutine vegen_C_gain_ForestESS
-
-
-  ! subroutine plant_respiration_ForestESS(cc, tsoil)
-  !   !//////////////////////////////////////////////////////////////////////
-  !   ! Autotrophic respiration.
-  !   ! Adopted from ForestESS.
-  !   !----------------------------------------------------------------------
-  !   type(cohort_type), intent(inout) :: cc
-  !   real, intent(in) :: tsoil
-    
-  !   real :: tf,tfs ! thermal inhibition factors for above- and below-ground biomass
-  !   real :: r_leaf, r_stem, r_root
-  !   real :: Acambium  ! cambium area, m2/tree
-  !   ! real :: LeafN     ! leaf nitrogen, kgN/Tree
-  !   real :: NSCtarget ! used to regulation respiration rate
-    
-  !   integer :: sp ! shorthand for cohort species
-    
-  !   sp = cc%species
-
-  !   ! temperature response function
-  !   tf  = exp(9000.0*(1.0/298.16-1.0/tsoil))
-    
-  !   ! tfs = thermal_inhibition(tsoil)  ! original
-  !   tfs = tf ! Rm_T_response_function(tsoil) ! Weng 2014-01-14
-  
-  !   ! With nitrogen model, leaf respiration is a function of leaf nitrogen
-  !   NSCtarget = 3.0 * (cc%bl_max + cc%br_max)
-
-  !   Acambium = PI * cc%DBH * cc%height * 1.2
-
-  !   ! LeafN    = spdata(sp)%LNA * cc%leafarea
-  !   r_stem   =  spdata(sp)%gamma_SW * Acambium * tf * myinterface%dt_fast_yr ! kgC tree-1 step-1
-  !   r_root   =  spdata(sp)%gamma_FR * cc%rootN * tf * myinterface%dt_fast_yr ! root respiration ~ root N
-  !   r_leaf   =  spdata(sp)%gamma_LN * cc%leafN * tf * myinterface%dt_fast_yr
-
-  !   cc%resp = (r_leaf + r_stem + r_root) !* max(0.0, cc%nsc/NSCtarget)
-  !   cc%resl = r_leaf !* max(0.0, cc%nsc/NSCtarget)
-  !   cc%resr = r_root  !* max(0.0, cc%nsc/NSCtarget)
-
-  ! end subroutine plant_respiration_ForestESS
-
   !========================================================================
   !========= Plant growth =================================================
   !========================================================================
-  ! Subroutines from BiomeE-Allocation
-  !------------------------------------------------------------------------
 
   subroutine fetch_CN_for_growth(cc)
     !////////////////////////////////////////////////////////////////
@@ -1872,7 +1664,7 @@ contains
   subroutine vegn_N_uptake(vegn, tsoil)
     !//////////////////////////////////////////////////////////////////////
     ! Mineral N uptake from the soil
-    ! Adopted from ForestESS.
+    ! Code from BiomeE-Allocation
     !----------------------------------------------------------------------
     type(vegn_tile_type), intent(inout) :: vegn
     real, intent(in) :: tsoil ! average temperature of soil, deg K
@@ -1880,15 +1672,8 @@ contains
     ! local variables
     type(cohort_type),pointer :: cc
 
-    !-----------------------------------------------------
-    ! ForestESS:
-    ! real    :: rho_N_up0 = 0.02 ! hourly N uptake rate, fraction of the total mineral N
-    ! real    :: N_roots0  = 0.1  ! root biomass at half max N-uptake rate,kg C m-2
-    !=====================================================
-    ! BiomeE-Allocation
     real    :: rho_N_up0 = 0.1 ! 0.05 ! hourly N uptake rate, fraction of the total mineral N
     real    :: N_roots0  = 0.4  ! root biomass at half max N-uptake rate,kg C m-2
-    !-----------------------------------------------------
 
     real    :: totNup    ! kgN m-2
     real    :: avgNup
@@ -1899,7 +1684,7 @@ contains
     ! xxx try
     vegn%mineralN = 0.2
 
-    !! Nitrogen uptake parameter
+    ! Nitrogen uptake parameter
     ! It considers competition here. How much N one can absorp depends on 
     ! how many roots it has and how many roots other individuals have.
     N_Roots  = 0.0
@@ -1911,17 +1696,8 @@ contains
         cc => vegn%cohorts(i)
         associate (sp => spdata(cc%species))
 
-        ! A scheme for deciduous to get enough N:
-        !-----------------------------------------------------
-        ! ForestESS:
-        ! cc%NSNmax = 0.2 * cc%crownarea  ! 5*(cc%bl_max/sp%CNleaf0 + cc%br_max/sp%CNroot0)) !
-        ! NSN_not_full = (cc%NSN < cc%NSNmax) !
-        ! if (NSN_not_full) N_Roots = N_Roots + cc%br * cc%nindivs
-        !=====================================================
-        ! BiomeE-Allocation
         cc%NSNmax = sp%fNSNmax*(cc%bl_max/(sp%CNleaf0*sp%leafLS)+cc%br_max/sp%CNroot0) !5.0 * (cc%bl_max/sp%CNleaf0 + cc%br_max/sp%CNroot0)) !
         if (cc%NSN < cc%NSNmax) N_Roots = N_Roots + cc%br * cc%nindivs
-        !-----------------------------------------------------
 
         end associate
       enddo
@@ -1931,14 +1707,7 @@ contains
       if (N_roots>0.0) then
 
         ! Add a temperature response equation herefor rho_N_up0 (Zhu Qing 2016)
-        !-----------------------------------------------------
-        ! ForestESS:
-        ! rho_N_up = 1.-exp(-rho_N_up0 * N_roots/(N_roots0+N_roots) * hours_per_year * myinterface%dt_fast_yr) ! rate at given root density and time period
-        !=====================================================
-        ! BiomeE-Allocation:
-        rho_N_up = rho_N_up0 * N_roots / (N_roots0 + N_roots) * hours_per_year * myinterface%dt_fast_yr
-        !-----------------------------------------------------
-        
+        rho_N_up = rho_N_up0 * N_roots / (N_roots0 + N_roots) * hours_per_year * myinterface%dt_fast_yr        
 
         totNup = rho_N_up * vegn%mineralN * exp(9000.0 * (1./298.16 - 1./tsoil)) ! kgN m-2 time step-1
 
@@ -1972,7 +1741,6 @@ contains
     ! Soil organic matter decomposition and N mineralization
     !
     ! Code from BiomeE-Allocation
-    ! Parts are adopted from ForestESS, but commented out here.
     !
     ! Nitrogen mineralization and immoblization with microbial C & N pools
     ! it's a new decomposition model with coupled C & N pools and variable 
@@ -1996,11 +1764,6 @@ contains
     real :: CNfast, CNslow
     real :: A  ! decomp rate reduction due to moisture and temperature    
 
-    ! ! ForestESS:
-    ! real :: etaN = 0.05  ! loss rate of Nmineral with runoff - this is from ForestESS
-    ! runoff = vegn%runoff * myinterface%dt_fast_yr !kgH2O m-2 yr-1 ->kgH2O m-2/time step
-
-    ! BiomeE-Allocation:
     runoff = vegn%runoff  !* myinterface%dt_fast_yr !kgH2O m-2 yr-1 ->kgH2O m-2/time step, weng 2017-10-15
   
     ! CN ratios of soil C pools
@@ -2027,6 +1790,7 @@ contains
     else
       CUEslow = CUE0
     end if
+
     ! update C and N pools
     ! Carbon pools
     vegn%microbialC  = vegn%microbialC - micr_C_loss &
@@ -2035,15 +1799,6 @@ contains
     vegn%metabolicL = vegn%metabolicL - fast_L_loss
     vegn%structuralL = vegn%structuralL - slow_L_loss
 
-    ! ! DON loss, revised by Weng. 2016-03-03
-    ! !--------------------------------------------------------------
-    ! ! ForestESS:
-    ! fDON        = 0.0
-    ! DON_fast    = fDON*fast_L_loss/CNfast*(1.0-exp(-etaN*runoff))
-    ! DON_slow    = fDON*slow_L_loss/CNslow*(1.0-exp(-etaN*runoff))
-    ! DON_loss    = DON_fast + DON_slow
-    !==============================================================
-    ! BiomeE-Allocation:
     fDON        = 0.25 ! 0.25 ! * myinterface%dt_fast_yr ! 0.05 !* myinterface%dt_fast_yr
     runoff      = 0.2 ! 0.2 ! mm day-1
     
@@ -2052,7 +1807,6 @@ contains
     DON_fast    = fDON * fast_L_loss/CNfast * (etaN*runoff)
     DON_slow    = fDON * slow_L_loss/CNslow * (etaN*runoff)
     DON_loss    = DON_fast + DON_slow
-    !--------------------------------------------------------------
 
     ! Update Nitrogen pools
     vegn%microbialN= vegn%microbialC/CNm
@@ -2072,15 +1826,8 @@ contains
     slow_N_free = MAX(0.0, slow_L_loss*(1./CNslow - CUEslow/CNm))
 
 
-    !--------------------------------------------------------------
-    ! ForestESS:
-    ! N_loss = MAX(0.,vegn%mineralN) * (1.0-exp(-etaN*runoff - A*K_nitrogen * myinterface%dt_fast_yr))
-    !==============================================================
-    ! BiomeE-Allocation:
     N_loss = vegn%mineralN * MIN(0.25, (A * K_nitrogen * myinterface%dt_fast_yr + etaN*runoff))
-    !--------------------------------------------------------------
 
-    ! BiomeE-Allocation
     vegn%Nloss_yr = vegn%Nloss_yr + N_loss + DON_loss
 
     vegn%mineralN = vegn%mineralN - N_loss     &
@@ -2139,6 +1886,7 @@ contains
     Td = t1**tshr*t2 
     if (soil_temp > -10) Td = Td+0.05 
     if (Td > 1.) Td = 1. 
+
     ! EFFECT OF MOISTURE
     ! Linn and Doran, 1984, Soil Sci. Amer. J. 48:1267-1272
     ! This differs from the Century Wd
@@ -2156,116 +1904,9 @@ contains
   end function A_function
 
 
-  !------------------------------------------------------------------------
-  ! Subroutines from ForestESS
-  !------------------------------------------------------------------------
-  ! subroutine carbon_for_growth_ForestESS(cc)
-  !   !//////////////////////////////////////////////////////////////////////
-  !   ! Determine how much of NSC is used for growth.
-  !   ! Adopted from ForestESS.
-  !   !----------------------------------------------------------------------
-  !   type(cohort_type), intent(inout) :: cc
-
-  !   ! local variables
-  !   real :: NSC_supply,LR_demand,LR_deficit
-  !   real :: NSCtarget
-  !   !real :: LR_growth,WS_growth
-  !   real :: R_days,fNSC,fLFR,fsup
-
-  !   ! Grab carbon from NSC pool and put them into "carbon_gain"
-  !   !   modified 9/3/2013 based on Steve's suggestions
-  !   associate ( sp => spdata(cc%species) )
-
-  !   R_days = 5.0
-  !   fNSC = 0.05 * days_per_year * myinterface%dt_fast_yr ! 0.2(daily) -->0.2/24 (hourly) 2014-10-22
-  !   fLFR = 0.2 * days_per_year * myinterface%dt_fast_yr
-  !   fsup = myinterface%dt_fast_yr/spdata(cc%species)%tauNSC  ! 0.05
-  !   NSCtarget = 3.0 * (cc%bl_max + cc%br_max)
-
-  !   LR_demand = 0.0
-  !   NSC_supply = 0.0
-
-  !   if (cc%nsc > 0. .and. cc%status == LEAF_ON) then
-  !     LR_deficit = max(cc%bl_max + cc%br_max - cc%bl - cc%br, 0.0)
-  !     LR_demand  = min(fLFR * LR_deficit, fNSC * cc%nsc)
-  !     NSC_supply =  cc%nsc * fsup ! max((cc%nsc - NSCtarget)*fsup,0.0) ! Weng 2014-01-23 for smoothing dDBH
-  !   end if
-  !   cc%nsc  = cc%nsc - (LR_demand + NSC_supply)
-
-  !   ! Deduct growth respirtion from (LR_demand + NSC_supply)
-  !   cc%resg    = GR_factor/(1.+GR_factor) * (LR_demand + NSC_supply) ! kgC tree-1 step-1
-  !   LR_demand  = LR_demand  /(1.+ GR_factor) ! for building up tissues
-  !   NSC_supply = NSC_supply /(1.+ GR_factor)
-
-  !   ! carbon_gain is used to drive plant growth and reproduction
-  !   cc%C_growth = cc%C_growth + (LR_demand + NSC_supply)
-  !   end associate
-    
-  ! end subroutine carbon_for_growth_ForestESS
-
-
-  ! subroutine vegn_leaf_fine_root_turnover_ForestESS(vegn, tsoil, theta)
-  !   !//////////////////////////////////////////////////////////////////////
-  !   ! Biomass turnover (litterfall)
-  !   ! Adopted from ForestESS.
-  !   !----------------------------------------------------------------------
-  !   type(vegn_tile_type), intent(inout) :: vegn
-  !   real, intent(in) :: tsoil ! average temperature of soil, deg K
-  !   real, intent(in) :: theta ! average soil wetness, unitless
-
-  !   ! local variables
-  !   type(cohort_type), pointer :: cc    ! current cohort
-  !   real :: dBL, dBR! leaf and fine root carbon tendencies
-  !   real :: turnoverC,turnoverN  ! temporary var for several calculations
-  !   integer :: i
-
-  !   ! update plant carbon and nitrogen for all cohorts
-  !   do i = 1, vegn%n_cohorts
-      
-  !     cc => vegn%cohorts(i)
-  !     associate ( sp => spdata(cc%species) )
-
-  !     ! Turnover of leaves and roots regardless of STATUS according to leaf
-  !     ! longevity. Deciduous: 0; Evergreen 0.035/LMa
-  !     ! root turnover
-  !     dBL = cc%bl * sp%alpha_L  * myinterface%dt_fast_yr
-  !     dBR = cc%br * sp%alpha_FR * myinterface%dt_fast_yr
-
-  !     ! update leafN and rootN
-  !     turnoverN = 0.0
-  !     if (cc%bl>0.0) then
-  !       turnoverN = dBL / cc%bl * cc%leafN
-  !       cc%leafN = cc%leafN * (1.0 - dBL/cc%bl)
-  !     endif
-
-  !     if (cc%br>0.0) then
-  !       turnoverN = turnoverN + dBR/cc%br*cc%rootN
-  !       cc%rootN = cc%rootN * (1.0 - dBR/cc%br)
-  !     endif
-
-  !     cc%bl     = cc%bl - dBL
-  !     cc%br     = cc%br - dBR
-  !     turnoverC = dBL + dBR
-
-  !     ! add turnover of leaf and root pools to soil carbon pools
-  !     vegn%metabolicL=vegn%metabolicL +    fsc_fine *turnoverC * cc%nindivs
-  !     vegn%structuralL=vegn%structuralL + (1-fsc_fine)*turnoverC * cc%nindivs
-
-  !     ! Nitrogen pool
-  !     vegn%metabolicN = vegn%metabolicN +     fsc_fine  * turnoverN * cc%nindivs
-  !     vegn%structuralN = vegn%structuralN + (1.-fsc_fine) * turnoverN * cc%nindivs
-
-  !     END ASSOCIATE
-  !   enddo
-
-  ! end subroutine vegn_leaf_fine_root_turnover_ForestESS
-
-
   !=======================================================================
   !=================== Cohort management =================================
   !=======================================================================
-  ! Subroutines from BiomeE-Allocation
-  !------------------------------------------------------------------------
 
   subroutine rank_descending(x, idx)
     !////////////////////////////////////////////////////////////////
@@ -2286,6 +1927,8 @@ contains
     call mergerank(x, idx, n, t)
     deallocate(t)
   end subroutine rank_descending
+
+
   subroutine merge(x, a, na, b, nb, c, nc)
     !////////////////////////////////////////////////////////////////
     ! based on:
@@ -2433,32 +2076,38 @@ contains
       !   x1 = 0.5
       !   x2 = 0.5
       !endif
+
       ! update number of individuals in merged cohort
       c2%nindivs = c1%nindivs + c2%nindivs
-      !  Carbon
+
+      ! Carbon
       c2%bl  = x1*c1%bl  + x2*c2%bl
       c2%br  = x1*c1%br  + x2*c2%br
       c2%bsw = x1*c1%bsw + x2*c2%bsw
       c2%bHW = x1*c1%bHW + x2*c2%bHW
       c2%seedC = x1*c1%seedC + x2*c2%seedC
       c2%nsc = x1*c1%nsc + x2*c2%nsc
-      !   Allometry
+
+      ! Allometry
       c2%dbh = x1*c1%dbh + x2*c2%dbh
       c2%height = x1*c1%height + x2*c2%height
       c2%crownarea = x1*c1%crownarea + x2*c2%crownarea
       c2%age = x1*c1%age + x2*c2%age
       c2%C_growth = x1*c1%C_growth + x2*c2%C_growth
       c2%topyear = x1*c1%topyear + x2*c2%topyear
-      !  Nitrogen
+
+      ! Nitrogen
       c2%leafN = x1*c1%leafN + x2*c2%leafN
       c2%rootN = x1*c1%rootN + x2*c2%rootN
       c2%sapwN = x1*c1%sapwN + x2*c2%sapwN
       c2%woodN = x1*c1%woodN + x2*c2%woodN
       c2%seedN = x1*c1%seedN + x2*c2%seedN
       c2%NSN   = x1*c1%NSN   + x2*c2%NSN
+      
       !  calculate the resulting dry heat capacity
       c2%leafarea = leaf_area_from_biomass(c2%bl, c2%species, c2%layer, c2%firstlayer)
     endif
+
   end subroutine merge_cohorts
 
 
@@ -2516,7 +2165,7 @@ contains
     
     call rootarea_and_verticalprofile(cc)
     
-    !    N pools
+    ! N pools
     cc%NSN    = 5.0*(cc%bl_max/sp%CNleaf0 + cc%br_max/sp%CNroot0)
     cc%leafN  = cc%bl/sp%CNleaf0
     cc%rootN  = cc%br/sp%CNroot0
@@ -2609,6 +2258,7 @@ contains
       associate (sp => spdata(i) )
         LAIfixedN  = 0.5 * sp%Nfixrate0 * sp%CNleaf0 * sp%leafLS
         LAImineralN = 0.5*vegn%previousN*sp%CNleaf0*sp%leafLS/sp%LMA
+
         !LAImineralN = vegn%previousN/(sp%LMA/(sp%CNleaf0*sp%leafLS)+sp%phiRL*sp%alpha_FR/sp%SRA /sp%CNroot0)
         LAI_nitrogen = LAIfixedN + LAImineralN
         spdata(i)%LAImax = MAX(LAImin, MIN(LAI_nitrogen,sp%LAI_light))

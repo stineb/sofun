@@ -255,24 +255,21 @@ program main
   call read_FACEforcing( forcingData, datalines, days_data, yr_data, timestep ) !! ORNL
   ! call read_NACPforcing( forcingData, datalines, days_data, yr_data, timestep ) !!US-WCrforcing
   
+  ! record some useful variables that are determined by the SR that reads the forcing
   if (daily) timestep = 24.0
-
   myinterface%steps_per_day = int(24.0/timestep)
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0 * 3600.0 / myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
   ntstepsyear = myinterface%steps_per_day * 365
-
   if (daily) ntstepsyear_forcing = ntstepsyear * timestep
-
-  write(*,*) myinterface%steps_per_day, myinterface%dt_fast_yr, myinterface%step_seconds
-  
   totyears = myinterface%params_siml%runyears
   totdays  = int(totyears/yr_data+1) * days_data
   myinterface%params_siml%equi_days = totdays - days_data
-
-  ! record some variables that are determined by the SR that reads the forcing
   myinterface%datalines = datalines
 
+  print*, myinterface%steps_per_day, myinterface%dt_fast_yr, myinterface%step_seconds
+
+  ! allocate memory
   allocate(myinterface%climate(ntstepsyear))
   allocate(myinterface%pco2(ntstepsyear))
 
