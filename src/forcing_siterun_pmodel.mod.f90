@@ -11,7 +11,8 @@ module md_forcing
   !----------------------------------------------------------------
   use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu, dummy
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
-    getvalreal, monthly2daily_weather, monthly2daily
+    getvalreal, monthly2daily_weather, monthly2daily, calc_patm
+
   use md_grid, only: gridtype, domaininfo_type  
 
   implicit none
@@ -102,6 +103,8 @@ contains
     else
       out_climate(:,1)%dsnow = 0.0
     end if
+
+    out_climate(:,1)%dpatm = calc_patm( grid(1)%elv)
 
     return
     999  format (I4.4)

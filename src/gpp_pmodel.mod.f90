@@ -28,6 +28,10 @@ module md_gpp
   !----------------------------------------------------------------
   ! load core parameters
   use md_params_core, only: nmonth, npft, nlu, c_molmass, h2o_molmass, maxgrid, ndayyear, dummy, kTkelvin
+  use md_tile, only: tile_type, tile_fluxes_type
+  use md_interface, only: interface
+  use md_forcing, only: climate_type, vegcover_type
+  use md_plant, only: params_pft_plant
 
   implicit none
 
@@ -91,6 +95,7 @@ module md_gpp
   type outtype_pmodel
     real :: gammastar           ! temperature-dependent photorespiratory compensation point (Pa)
     real :: kmm                 ! Michaelis-Menten coefficient (Pa)
+    real :: ca                  ! leaf-external (ambient) partial pressure, (Pa)
     real :: ci                  ! leaf-internal partial pressure, (Pa)
     real :: chi                 ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: xi                  ! relative cost parameter, Eq. 9 in Stocker et al., 2019 GMD
@@ -98,6 +103,8 @@ module md_gpp
     real :: lue                 ! light use efficiency (mol CO2 / mol photon)
     real :: assim               ! leaf-level assimilation rate (mol CO2 m-2 s-1)
     real :: gs                  ! stomatal conductance to CO2 (mol C Pa-1 m-2 s-1)
+    real :: gs_unitfapar        ! stomatal conductance to CO2 per unit fapar (mol C Pa-1 m-2 s-1)
+    real :: gs_unitiabs         ! stomatal conductance to CO2 per unit absorbed light (mol C Pa-1 m-2 s-1)
     real :: gpp                 ! gross primary productivity (g CO2 m-2 d-1)
     real :: vcmax               ! canopy-level maximum carboxylation capacity per unit ground area (mol CO2 m-2 s-1)
     real :: jmax                ! canopy-level maximum rate of electron transport (mol m-2 s-1)
@@ -158,7 +165,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( tile, tile_fluxes, co2, climate, do_soilmstress, do_tempstress, init)
+  subroutine gpp( tile, tile_fluxes, co2, climate, vegcover, do_soilmstress, do_tempstress, init)
     !//////////////////////////////////////////////////////////////////
     ! Wrapper function to call to P-model. 
     ! Calculates meteorological conditions with memory based on daily
@@ -166,14 +173,15 @@ contains
     ! Calculates soil moisture and temperature stress functions.
     ! Calls P-model.
     !------------------------------------------------------------------
-    use md_plant, only: params_pft_plant, plant_type, plant_fluxes_type
+    ! use md_plant, only: params_pft_plant, plant_type, plant_fluxes_type
     use md_sofunutils, only: dampen_variability
 
-    ! input-only arguments
+    ! arguments
     type(tile_type), dimension(nlu), intent(inout) :: tile
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
     real, intent(in)    :: co2                               ! atmospheric CO2 (ppm)
     type(climate_type)  :: climate
+    type(vegcover_type) :: vegcover
     logical, intent(in) :: do_soilmstress                    ! whether empirical soil miosture stress function is applied to GPP
     logical, intent(in) :: do_tempstress                     ! whether empirical temperature stress function is applied to GPP
     logical, intent(in) :: init                              ! is true on the very first simulation day (first subroutine call of each gridcell)
@@ -248,7 +256,7 @@ contains
         ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
         !----------------------------------------------------------------
         if (do_soilmstress) then
-          soilmstress = calc_soilmstress( soil(lu)%phy%wscal, soil(lu)%phy%rlmalpha, params_pft_plant(pft)%grass )
+          soilmstress = calc_soilmstress( tile(lu)%soil%phy%wscal, 0.0, params_pft_plant(pft)%grass )
         else
           soilmstress = 1.0
         end if
@@ -263,7 +271,7 @@ contains
         end if
 
         ! GPP
-        tile_fluxes(lu)%plant(pft)%dgpp = calc_dgpp( tile(lu)%canopy%fapar, tile(lu)%canopy%fpc_grid, climate%dppfd, out_pmodel%lue, ftemp_kphio, soilmstress )
+        tile_fluxes(lu)%canopy%dgpp = calc_dgpp( tile(lu)%canopy%fapar, tile(lu)%plant(pft)%fpc_grid, climate%dppfd, out_pmodel%lue, ftemp_kphio, soilmstress )
 
         ! !----------------------------------------------------------------
         ! ! xxx test
@@ -288,27 +296,29 @@ contains
         !----------------------------------------------------------------
         ! Dark respiration
         !----------------------------------------------------------------
-        tile_fluxes(lu)%plant(pft)%drd = calc_drd( climate%dfapar, fpc_grid(pft), climate%dppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
+        tile_fluxes(lu)%canopy%drd = calc_drd( vegcover%dfapar, tile(lu)%plant(pft)%fpc_grid, climate%dppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
 
         !----------------------------------------------------------------
         ! Leaf-level assimilation rate
         !----------------------------------------------------------------
-        tile_fluxes(lu)%plant(pft)%assim = calc_dassim( tile_fluxes(lu)%plant(pft)%dgpp, tile_fluxes(lu)%canopy%dayl )
+        tile_fluxes(lu)%canopy%assim = calc_dassim( tile_fluxes(lu)%canopy%dgpp, tile_fluxes(lu)%canopy%dayl )
 
         !----------------------------------------------------------------
         ! stomatal conductance
         !----------------------------------------------------------------
-        tile_fluxes(lu)%plant(pft)%dgs = calc_dgs( dassim(pft), climate%dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
+        tile_fluxes(lu)%canopy%dgs = calc_dgs( dassim(pft), climate%dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
 
-        print*,'set-point gs:' dassim * dgs_unitiabs
+        ! print*,'set-point gs:' dassim * dgs_unitiabs
 
         !----------------------------------------------------------------
         ! canopy conductance
         !----------------------------------------------------------------
-        tile(lu)%canopy%conductance = calc_g_canopy( tile_fluxes(lu)%plant(pft)%dgs, tile(lu)%canopy%lai, tk )
+        tile(lu)%canopy%dgc = calc_g_canopy( tile_fluxes(lu)%canopy%dgs, tile(lu)%canopy%lai, tk )
 
-        print*,'dgs per unit day (not second) - should be equal to what gpp/(ca-ci) in pmodel(): ', dgs_unitiabs * gpp / c_molmass
-        stop
+        ! tile(lu)%plant%vcmax25 = out_pmodel%vcmax25
+
+        ! print*,'dgs per unit day (not second) - should be equal to what gpp/(ca-ci) in pmodel(): ', dgs_unitiabs * gpp / c_molmass
+        ! stop
 
         ! ! Canopy-level Vcmax (actually changes only monthly)
         ! dvcmax_canop(pft) = calc_vcmax_canop( dfapar, out_pmodel%vcmax_unitiabs, meanmppfd )
@@ -318,16 +328,10 @@ contains
 
       else  
 
-        tile_fluxes(lu)%plant(pft)%dgpp = 0.0
-        tile_fluxes(lu)%plant(pft)%drd  = 0.0
-        ! dtransp = 0.0
-        ! dvcmax_canop(pft)         = 0.0
-        ! dvcmax_leaf(pft)          = 0.0
+        tile_fluxes(lu)%canopy%dgpp = 0.0
+        tile_fluxes(lu)%canopy%drd  = 0.0
 
       end if 
-
-      ! ! xxx debug
-      ! dgpp = fapar
 
     end do
 
@@ -391,7 +395,7 @@ contains
 
   !     do moy=1,nmonth
 
-  !       out_pmodel(pft,moy) = pmodel( params_pft_gpp(pft)%kphio, fapar = dummy, ppfd = dummy, co2 = co2, tc = mtemp(moy), vpd = mvpd(moy), elv = elv, c4 = params_pft_plant(pft)%c4, method_optci = "prentice14", method_jmaxlim = "wang17" )
+  !       out_pmodel(pft,moy) = pmodel( params_pft_gpp(pft)%kphio, fapar = dummy, ppfd = dummy, co2 = co2, tc = mtemp(moy), vpd = mvpd(moy), elv = elv, c4 = tile%plant%params%c4, method_optci = "prentice14", method_jmaxlim = "wang17" )
 
   !     end do
   !   end do
@@ -463,7 +467,7 @@ contains
 
     ! Leaf-level assimilation rate, average over daylight hours
     ! dgs = dassim * dgs_unitiabs
-    dgs = (1.0 + xi / sqrt(vpd)) * assim / (ca - gammastar)
+    dgs = (1.0 + xi / sqrt(vpd)) * dassim / (ca - gammastar)
     print*,'instantaneous gs: ', dgs 
     
   end function calc_dgs
@@ -585,6 +589,8 @@ contains
     real :: gammastar           ! photorespiratory compensation point - Gamma-star (Pa)
     real :: ca                  ! ambient CO2 partial pressure, (Pa)
     real :: gs                  ! stomatal conductance to CO2 (mol CO2 Pa-1 m-2 s-1)
+    real :: gs_unitfapar        ! stomatal conductance to CO2 (mol CO2 Pa-1 m-2 s-1)
+    real :: gs_unitiabs         ! stomatal conductance to CO2 (mol CO2 Pa-1 m-2 s-1)
     real :: ci                  ! leaf-internal partial pressure, (Pa)
     real :: chi                 ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: xi                  ! relative cost parameter, Eq. 9 in Stocker et al., 2019
@@ -618,6 +624,9 @@ contains
 
     real, parameter :: theta = 0.85
     real, parameter :: c_cost = 0.05336251
+
+    ! xxx test
+    real :: gs_test
 
     type(outtype_chi) :: out_optchi
 
@@ -884,7 +893,7 @@ contains
 
           ! xxx text
           gs_test = (gpp / c_molmass) / (ca - ci)
-          print*,'pmodel(): gs, gs_test ', gs, gs_test
+          ! print*,'pmodel(): gs, gs_test ', gs, gs_test
 
           ! Derive Jmax using again A_J = A_C
           fact_jmaxlim = vcmax * (ci + 2.0 * gammastar) / (kphio * iabs * (ci + kmm))
@@ -945,6 +954,7 @@ contains
     ! construct list for output
     out_pmodel%gammastar        = gammastar
     out_pmodel%kmm              = kmm
+    out_pmodel%ca               = ca
     out_pmodel%ci               = ci
     out_pmodel%chi              = chi
     out_pmodel%xi               = xi
@@ -1644,9 +1654,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Subroutine reads module-specific parameters from input file.
     !----------------------------------------------------------------
-    use md_interface, only: interface
     use md_sofunutils, only: getparreal
-    use md_plant, only: params_pft_plant
 
     ! local variables
     integer :: pft
@@ -1701,8 +1709,7 @@ contains
     !----------------------------------------------------------------
     use netcdf
     use md_io_netcdf, only: init_nc_3D_time, check
-    use md_interface, only: interface
-
+    
     ! local variables
     character(len=256) :: prefix
 
@@ -1864,7 +1871,7 @@ contains
   end subroutine initoutput_gpp
 
 
-  subroutine getout_daily_gpp( out_pmodel, plant_fluxes, jpngr, doy )
+  subroutine getout_daily_gpp( tile_fluxes, jpngr, doy )
     !////////////////////////////////////////////////////////////////
     ! Called daily to gather daily output variables.
     !
@@ -1877,10 +1884,9 @@ contains
     use md_plant, only: plant_fluxes_type
 
     ! argument
-    type(outtype_pmodel), dimension(npft), intent(in)    :: out_pmodel
-    type(plant_fluxes_type), dimension(npft), intent(in) :: plant_fluxes
-    integer, intent(in)                                    :: jpngr
-    integer, intent(in)                                    :: doy
+    type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: doy
 
     ! local
     integer :: it
@@ -1892,10 +1898,9 @@ contains
     !----------------------------------------------------------------
     it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
 
-    ! sum over PFT
-    if (interface%params_siml%loutdgpp   ) outdgpp(it,jpngr)    = outdgpp(it,jpngr)    + sum(plant_fluxes(:)%dgpp)    / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + sum(plant_fluxes(:)%drd)     / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + sum(plant_fluxes(:)%dtransp) / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdgpp   ) outdgpp(it,jpngr)    = outdgpp(it,jpngr)    + tile_fluxes(1)%canopy%dgpp    / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + tile_fluxes(1)%canopy%drd     / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + tile_fluxes(1)%canopy%dtransp / real( interface%params_siml%outdt )
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
@@ -1904,35 +1909,35 @@ contains
     ! store all daily values for outputting annual maximum
     ! if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
 
-    outdvcmax(1,doy)      = dvcmax_canop(1)
-    outdvcmax25(1,doy)    = out_pmodel(1)%ftemp_inst_vcmax * dvcmax_canop(1)
+    ! outdvcmax(1,doy)      = dvcmax_canop(1)
+    ! outdvcmax25(1,doy)    = out_pmodel(1)%ftemp_inst_vcmax * dvcmax_canop(1)
 
     ! weighted by daily GPP
     if (interface%params_siml%loutgpp) then
 
-      outagpp(:,jpngr)        = outagpp(:,jpngr)        + plant_fluxes(:)%dgpp
+      outagpp(:,jpngr)        = outagpp(:,jpngr) + tile_fluxes(:)%canopy%dgpp
 
-      outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * plant_fluxes(:)%dgpp
-      outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * plant_fluxes(:)%dgpp
-      outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * plant_fluxes(:)%dgpp
-      outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * plant_fluxes(:)%dgpp
-      outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * plant_fluxes(:)%dgpp
+      ! outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * tile_fluxes(:)%canopy%dgpp
+      ! outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * tile_fluxes(:)%canopy%dgpp
+      ! outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * tile_fluxes(:)%canopy%dgpp
+      ! outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * tile_fluxes(:)%canopy%dgpp
+      ! outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * tile_fluxes(:)%canopy%dgpp
 
-      if (doy==ndayyear) then
-        if (sum(outagpp(:,jpngr))==0.0) then
-          outachi       (:,jpngr) = dummy
-          outaiwue      (:,jpngr) = dummy
-          outaci        (:,jpngr) = dummy
-          outags        (:,jpngr) = dummy
-          outavcmax_leaf(:,jpngr) = dummy
-        else
-          outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
-          outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
-          outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
-          outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
-          outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
-        end if
-      end if
+      ! if (doy==ndayyear) then
+      !   if (sum(outagpp(:,jpngr))==0.0) then
+      !     outachi       (:,jpngr) = dummy
+      !     outaiwue      (:,jpngr) = dummy
+      !     outaci        (:,jpngr) = dummy
+      !     outags        (:,jpngr) = dummy
+      !     outavcmax_leaf(:,jpngr) = dummy
+      !   else
+      !     outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
+      !     outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
+      !     outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
+      !     outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
+      !     outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
+      !   end if
+      ! end if
 
     end if
 
@@ -1980,8 +1985,7 @@ contains
     !-------------------------------------------------------------------------
     use netcdf
     use md_io_netcdf, only: write_nc_2D, write_nc_3D_time, check
-    use md_interface, only: interface
-
+    
     if ( .not. interface%steering%spinup ) then
       !-------------------------------------------------------------------------
       ! Annual GPP

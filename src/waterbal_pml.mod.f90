@@ -22,7 +22,11 @@ module md_waterbal
   ! ...
   !----------------------------------------------------------------
   use md_params_core, only: ndayyear, nmonth, nlu, maxgrid, kTo, kR, &
-    kMv, kMa, kfFEC, secs_per_day, dummy
+    kMv, kMa, kfFEC, secs_per_day, pi, dummy
+  use md_params_core, only: ndayyear, ndaymonth, npft, kTkelvin
+  use md_tile, only: tile_type, tile_fluxes_type
+  use md_forcing, only: climate_type
+  use md_grid, only: gridtype
 
   implicit none
 
@@ -166,14 +170,8 @@ contains
 
   subroutine waterbal( tile, tile_fluxes, grid, climate, doy ) !, lai, fapar, h_canopy, g_stomata )
     !/////////////////////////////////////////////////////////////////////////
-    ! Calculates daily and monthly quantities for one year
+    ! Calculates soil water balance
     !-------------------------------------------------------------------------
-    use md_params_core, only: ndayyear, ndaymonth, npft, kTkelvin
-    use md_tile, only: tile_type, tile_fluxes_type
-    use md_forcing, only: climate_type
-    use md_grid, only: gridtype
-    use md_forcing, only: climate_type
-
     ! arguments
     type(tile_type), dimension(nlu), intent(inout)        :: tile
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
@@ -213,15 +211,16 @@ contains
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       g_aero = calc_g_aero( climate%dvwind, tile(lu)%canopy%height )
 
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Net radiation (J m-2 d-1)
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      out_netrad = calc_netrad( tile_fluxes(lu)%canopy%nu, tile_fluxes(lu)%canopy%lambda, grid%lat, doy, grid%elv, climate%dfsun, climate%dtemp )
+      ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! ! Net radiation (J m-2 d-1)
+      ! ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! call calc_netrad( tile_fluxes(lu), grid, climate, doy )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Canopy transpiration and soil evaporation
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      out_et = calc_et( climate%dtemp, climate%dprec, climate%dpatm, tile(lu)%canopy%lai, tile(lu)%canopy%fapar, out_netrad%rn, climate%dvpd, tile(lu)%canopy%conductance, g_aero )
+      ! out_et = calc_et( climate%dtemp, climate%dprec, climate%dpatm, tile(lu)%canopy%lai, tile(lu)%canopy%fapar, out_netrad%rn, climate%dvpd, tile(lu)%canopy%conductance, g_aero )
+      call calc_et( tile(lu), tile_fluxes(lu), climate )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Update soil moisture and snow pack
@@ -299,10 +298,8 @@ contains
     ! arguments
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
     type(gridtype), intent(inout) :: grid
-    integer, intent(in) :: doy        ! day of year
-    real, intent(in) :: lat           ! latitude, degrees
-    real, intent(in) :: elv           ! elevation, metres
     real, intent(in) :: sf            ! fraction of sunshine hours 
+    integer, intent(in) :: doy        ! day of year
 
     ! local variables
     real    :: dr                    ! distance factor
@@ -328,7 +325,7 @@ contains
     ! fore a compromise.
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Berger (1978)
-    out_berger = get_berger_tls( doy )
+    out_berger  = get_berger_tls( doy )
     grid%nu     = out_berger%nu
     grid%lambda = out_berger%lambda
 
@@ -545,7 +542,7 @@ contains
   end function calc_et
 
 
-  function calc_netrad( nu, lambda, lat, doy, elv, sf, tc ) result( out_netrad )
+  subroutine calc_netrad( tile_fluxes, grid, climate, doy ) result( out_netrad )
     !/////////////////////////////////////////////////////////////////////////
     ! This subroutine calculates daily quantities required for evapotranspiration
     ! calculations. 
@@ -555,13 +552,10 @@ contains
     use md_sofunutils, only: calc_patm
 
     ! arguments
-    real,    intent(in) :: nu
-    real,    intent(in) :: lambda
-    real,    intent(in) :: lat           ! latitude, degrees
-    integer, intent(in) :: doy           ! day of the year (formerly 'n')
-    real,    intent(in) :: elv           ! elevation, metres
-    real,    intent(in) :: sf            ! fraction of sunshine hours
-    real,    intent(in) :: tc            ! mean daily air temperature, C
+    type(tile_fluxes_type), intent(inout) :: tile_fluxes
+    type(gridtype), intent(in)            :: grid
+    type(climate_type), intent(in)        :: climate
+    integer, intent(in)                   :: doy          ! day of year
 
     ! function return variable
     type(outtype_netrad)  :: out_netrad

@@ -9,7 +9,8 @@ module md_tile
   implicit none
 
   private
-  public tile_type, tile_fluxes_type, initglobal_tile, psoilphystype, soil_type, initdaily_tile_fluxes
+  public tile_type, tile_fluxes_type, initglobal_tile, psoilphystype, &
+    soil_type, initdaily_tile_fluxes, params_canopy, getpar_modl_canopy
 
   !----------------------------------------------------------------
   ! physical soil state variables with memory from year to year (~pools)
@@ -17,9 +18,9 @@ module md_tile
   type psoilphystype
     real :: temp        ! soil temperature [deg C]
     real :: wcont       ! liquid soil water mass [mm = kg/m2]
-    real :: wscal       ! relative soil water content, between 0 and 1
+    real :: wscal       ! relative soil water content, between 0 (PWP) and 1 (FC)
     real :: snow        ! snow depth in liquid-water-equivalents [mm = kg/m2]
-    real :: rlmalpha    ! rolling mean of annual mean alpha (AET/PET)
+    ! real :: rlmalpha    ! rolling mean of annual mean alpha (AET/PET)
   end type psoilphystype
 
   !----------------------------------------------------------------
@@ -30,6 +31,12 @@ module md_tile
     type(paramtype_soil) :: params   ! soil parameters
   end type soil_type
 
+  type paramtype_canopy
+    real :: kbeer             ! canopy light extinction coefficient
+  end type paramtype_canopy
+
+  type(paramtype_canopy) :: params_canopy
+
   !----------------------------------------------------------------
   ! Canopy type
   ! Contains tile-level aggregated variables related to the canopy
@@ -38,7 +45,7 @@ module md_tile
     real :: lai            ! leaf area index 
     real :: fapar          ! fraction of absorbed photosynthetically active radiation (unitless)
     real :: height         ! canopy height (m)
-    real :: conductance    ! canopy conductance, upscaled from leaf-level stomatal conductance (m s-1)
+    real :: dgc            ! canopy conductance, upscaled from leaf-level stomatal conductance (m s-1)
     real :: fpc_grid       ! fractional projective cover (sum of crownarea by canopy plants)
   end type canopy_type
 
@@ -57,15 +64,17 @@ module md_tile
   ! Variables without memory (not necessarily just fluxes)
   !----------------------------------------------------------------
   type canopy_fluxes_type
+
     ! water
     real :: dro             ! daily runoff (mm d-1)
     real :: dfleach         ! daily fraction of soil water going to runoff (used for calculating leaching)
     real :: dwbal           ! daily water balance as precipitation and snow melt minus runoff and evapotranspiration (mm d-1)
-    real :: econ            ! water-to-energy conversion factor (econ), m^3/J
+    real :: econ            ! water-to-energy conversion factor (m^3/J)
     real :: drn             ! daily total net radiation (J/m2/d)
     real :: drnn            ! nighttime total net radiation (J m-1 d-1)
     real :: rnl             ! net longwave radiation (W m-2)
     real :: dcn             ! daily total condensation (mm d-1)
+    real :: deet            ! daily total equilibrium evapotranspiration (mm d-1)
     real :: dpet            ! daily total potential evapotranspiration (mm d-1)
     real :: dpet_e          ! daily total potential evapotranspiration (J m-2 d-1)
     real :: daet            ! daily total (actual) evapotranspiration (mm d-1)
@@ -74,7 +83,14 @@ module md_tile
     real :: daet_e_soil     ! daily soil evaporation (J m-2 d-1)
     real :: daet_canop      ! daily canopy transpiration (mm d-1)
     real :: daet_e_canop    ! daily canopy transpiration (J m-2 d-1)
-    ! real :: sw        ! evaporative supply rate (mm/h)
+    real :: cpa             ! alpha = equilibrium ET over potential ET (EET/PET, unitless)
+
+    real :: dtransp         ! work in progress
+
+    ! biogeophysics
+    real :: dgs             ! stomatal conductance
+    real :: dgc             ! canopy conductance
+
     ! real :: rho_air         ! density of air (g m-3)
     ! real :: sat_slope       ! slope of saturation vap press temp curve, Pa/K 
     ! real :: lv              ! enthalpy of vaporization, J/kg
@@ -83,13 +99,12 @@ module md_tile
     ! carbon 
     real :: dgpp
     real :: drd
+    real :: assim             ! leaf-level assimilation rate
 
     ! radiation
     real :: ppfd_splash
-    real :: dayl
-    real :: dra
-    real :: nu
-    real :: lambda
+    real :: dayl             ! day length (h)
+    real :: dra              ! daily top-of-atmosphere solar radiation (J/m^2/d)
 
     ! real, dimension(ndayyear) :: dayl               ! day length (hours)
     ! real, dimension(ndayyear) :: dra                ! daily TOA solar irradiation (J/m2)
@@ -105,6 +120,25 @@ module md_tile
   end type tile_fluxes_type
 
 contains
+
+
+  ! function get_fapar( tile, params_ca ) result( fapar )
+  !   !////////////////////////////////////////////////////////////////
+  !   ! FOLIAGE PROJECTIVE COVER 
+  !   ! = Fraction of Absorbed Photosynthetically Active Radiation
+  !   ! Function returns fractional plant cover an individual
+  !   ! Eq. 7 in Sitch et al., 2003
+  !   !----------------------------------------------------------------
+  !   ! arguments
+  !   type(tile_type), intent(in) :: tile
+
+  !   ! function return variable
+  !   real :: fapar
+
+  !   fapar = ( 1.0 - exp( -1.0 * tile%canopy%params%kbeer * tile%canopy%lai) )
+
+  ! end function get_fapar
+
 
   subroutine initglobal_tile( tile, ngridcells )
     !////////////////////////////////////////////////////////////////
@@ -163,7 +197,7 @@ contains
     canopy%lai         = 0.0
     canopy%fapar       = 0.0
     canopy%height      = 0.0
-    canopy%conductance = 0.0
+    canopy%dgc         = 0.0
     canopy%fpc_grid    = 0.0
 
   end subroutine initglobal_canopy
@@ -192,7 +226,7 @@ contains
     phy%wcont    = 50.0
     phy%temp     = 10.0
     phy%snow     = 0.0
-    phy%rlmalpha = 0.0
+    ! phy%rlmalpha = 0.0
 
   end subroutine initglobal_soil_phy
 
@@ -228,8 +262,8 @@ contains
     tile_fluxes(:)%canopy%ppfd_splash = 0.0
     tile_fluxes(:)%canopy%dayl = 0.0
     tile_fluxes(:)%canopy%dra = 0.0
-    tile_fluxes(:)%canopy%nu = 0.0
-    tile_fluxes(:)%canopy%lambda = 0.0
+    ! tile_fluxes(:)%canopy%nu = 0.0
+    ! tile_fluxes(:)%canopy%lambda = 0.0
 
     do pft = 1,npft
       tile_fluxes(:)%plant(npft)%dgpp     = 0.0
@@ -241,5 +275,29 @@ contains
     ! call initdaily_plant( tile_fluxes(:)%plant(:) )
 
   end subroutine initdaily_tile_fluxes
+
+
+  subroutine getpar_modl_canopy()
+    !////////////////////////////////////////////////////////////////
+    !  Subroutine reads model parameters from input file.
+    !  It was necessary to separate this SR from module md_plant
+    !  because this SR uses module md_waterbal, which also uses
+    !  _plant.
+    ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
+    ! contact: b.stocker@imperial.ac.uk
+    !----------------------------------------------------------------    
+    use md_sofunutils, only: getparreal
+    use md_plant, only: getpar_modl_plant
+
+    ! local variable
+    integer :: lu
+
+    !----------------------------------------------------------------
+    ! NON-PFT DEPENDENT PARAMETERS
+    !----------------------------------------------------------------
+    ! canopy light extinction coefficient for Beer's Law
+    params_canopy%kbeer = getparreal( 'params/params_canopy.dat', 'kbeer' )
+
+  end subroutine getpar_modl_canopy
 
 end module md_tile
