@@ -27,7 +27,8 @@ import os.path
 ## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
-name = 'global'
+# name = 'global'
+name = 'fluxnet2015'
 
 ##--------------------------------------------------------------------
 ## For an example simulation (simulation name 'EXAMPLE_global'), set 
@@ -39,13 +40,13 @@ example = False
 ## Manually et the root directory for the local mirror of 
 ## /work/bstocker/labprentice/data
 ##--------------------------------------------------------------------
-dataroot = '/cluster/home/bestocke/data/'
-mydataroot = '/cluster/home/bestocke/data/'
+# dataroot = '/cluster/home/bestocke/data/'
+# mydataroot = '/cluster/home/bestocke/data/'
 
 # dataroot = '/Users/bestocke/data/'
 # mydataroot = '/Users/bestocke/data/'
-# dataroot = '/Users/benjaminstocker/data/'
-# mydataroot = '/Users/benjaminstocker/data/'
+dataroot = '/Users/benjaminstocker/data/'
+mydataroot = '/Users/benjaminstocker/data/'
 # dataroot = '/rds/general/project/lab-prentice-realm-data/live/data/'
 # mydataroot = '/rds/general/user/bstocker/home/mydata/'
 
@@ -54,7 +55,7 @@ mydataroot = '/cluster/home/bestocke/data/'
 ##--------------------------------------------------------------------
 ## link output direcories
 os.system( 'unlink output_nc' )
-os.system( 'ln -svf ~/sofun_outputs/output_nc_' + name + '_sofun output_nc'  )
+os.system( 'ln -svf ~/sofun_outputs/output_nc_' + name + ' output_nc'  )
 
 ##--------------------------------------------------------------------
 ## Copy parameter files
@@ -193,18 +194,19 @@ else:
 	##--------------------------------------
 	## SITE-SCALE SIMULATIONS
 	##--------------------------------------
-
-	## use same site and simulation parameter files for cnmodel and cmodel simulations
-	if name == 'fluxnet_fixalloc':
-	  	simsuite_climate_link = 'fluxnet_cnmodel'
-	elif name == 'olson_cmodel':
-	  	simsuite_climate_link = 'olson'
-	elif name == 'campi_cmodel':
-	  	simsuite_climate_link = 'campi'
-	elif name == 'fluxnet2015_cmodel':
-	  	simsuite_climate_link = 'fluxnet2015'
-	else:
-	  	simsuite_climate_link = simsuite
+	# ## use same site and simulation parameter files for cnmodel and cmodel simulations
+	# if name == 'fluxnet_fixalloc':
+	#   	name_climate_link = 'fluxnet_cnmodel'
+	# elif name == 'olson_cmodel':
+	#   	name_climate_link = 'olson'
+	# elif name == 'campi_cmodel':
+	#   	name_climate_link = 'campi'
+	# elif name == 'fluxnet2015_cmodel':
+	#   	name_climate_link = 'fluxnet2015'
+	# elif name == 'fluxnet2015':
+	#   	name_climate_link = 'fluxnet2015'
+	# else:
+	#   	name_climate_link = name
 
 
 	os.system( 'unlink run')
@@ -212,5 +214,6 @@ else:
 	os.system( 'unlink input/global')
 	os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/run .')
 	os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/site_paramfils .')
+	os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/sitedata input/.')
 
 

@@ -234,7 +234,7 @@ contains
       ! land use category (gridcell tile)
       lu = params_pft_plant(pft)%lu_category
 
-      if ( tile(lu)%canopy%fpc_grid > 0.0 .and. tile_fluxes(lu)%canopy%dayl > 0.0 .and. climate%dtemp > -5.0 ) then
+      if ( tile(lu)%plant(pft)%fpc_grid > 0.0 .and. tile_fluxes(lu)%canopy%dayl > 0.0 .and. climate%dtemp > -5.0 ) then
         !----------------------------------------------------------------
         ! P-model call to get a list of variables that are acclimated to
         ! slowly varying conditions
@@ -303,17 +303,19 @@ contains
         !----------------------------------------------------------------
         tile_fluxes(lu)%canopy%assim = calc_dassim( tile_fluxes(lu)%canopy%dgpp, tile_fluxes(lu)%canopy%dayl )
 
-        !----------------------------------------------------------------
-        ! stomatal conductance
-        !----------------------------------------------------------------
-        tile_fluxes(lu)%canopy%dgs = calc_dgs( dassim(pft), climate%dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
+        ! !----------------------------------------------------------------
+        ! ! stomatal conductance
+        ! !----------------------------------------------------------------
+        ! print*,'3'
+        ! tile_fluxes(lu)%canopy%dgs = calc_dgs( dassim(pft), climate%dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
 
-        ! print*,'set-point gs:' dassim * dgs_unitiabs
+        ! ! print*,'set-point gs:' dassim * dgs_unitiabs
 
-        !----------------------------------------------------------------
-        ! canopy conductance
-        !----------------------------------------------------------------
-        tile(lu)%canopy%dgc = calc_g_canopy( tile_fluxes(lu)%canopy%dgs, tile(lu)%canopy%lai, tk )
+        ! !----------------------------------------------------------------
+        ! ! canopy conductance
+        ! !----------------------------------------------------------------
+        ! print*,'4'
+        ! tile(lu)%canopy%dgc = calc_g_canopy( tile_fluxes(lu)%canopy%dgs, tile(lu)%canopy%lai, tk )
 
         ! tile(lu)%plant%vcmax25 = out_pmodel%vcmax25
 
@@ -468,7 +470,7 @@ contains
     ! Leaf-level assimilation rate, average over daylight hours
     ! dgs = dassim * dgs_unitiabs
     dgs = (1.0 + xi / sqrt(vpd)) * dassim / (ca - gammastar)
-    print*,'instantaneous gs: ', dgs 
+    ! print*,'instantaneous gs: ', dgs 
     
   end function calc_dgs
 
@@ -1834,8 +1836,8 @@ contains
 
     ! daily
     if (interface%steering%init.and.interface%params_siml%loutdgpp    ) allocate( outdgpp(interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd(interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and.interface%params_siml%loutdrd    )  allocate( outdrd(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and.interface%params_siml%loutdtransp)  allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
 
     if (interface%params_siml%loutdgpp )   outdgpp(:,:)    = 0.0
     if (interface%params_siml%loutdrd    ) outdrd(:,:)     = 0.0

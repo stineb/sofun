@@ -38,7 +38,7 @@ contains
           ! if (sum(fpc_grid_prescr(:))==0.0) print*,'sum of fpc_grid',sum(fpc_grid_prescr(:))
 
           if (fapar_prescr/=dummy) tile(lu)%canopy%fapar = fapar_prescr
-          tile(lu)%plant(pft)%fpc_grid= fpc_grid_prescr(pft)
+          tile(lu)%plant(pft)%fpc_grid = fpc_grid_prescr(pft)
 
           ! ! get annually updated leaf traits (vary because of variations in light and CO2)
           ! call get_leaftraits( plant(pft), solar%meanmppfd(:), out_pmodel(pft,:)%actnv_unitiabs )

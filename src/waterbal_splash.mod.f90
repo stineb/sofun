@@ -22,8 +22,7 @@ module md_waterbal
   ! ...
   !----------------------------------------------------------------
   use md_params_core, only: ndayyear, nmonth, nlu, maxgrid, kTo, kR, &
-    kMv, kMa, kfFEC, secs_per_day, pi, dummy
-  use md_params_core, only: ndayyear, ndaymonth, npft, kTkelvin
+    kMv, kMa, kfFEC, secs_per_day, pi, dummy, kGsc, ndaymonth, kTkelvin
   use md_tile, only: tile_type, tile_fluxes_type
   use md_forcing, only: climate_type
   use md_grid, only: gridtype
@@ -65,7 +64,7 @@ module md_waterbal
   real :: kd                ! angular coefficient of transmittivity (Linacre, 1968)
   real :: ke                ! eccentricity for 2000 CE (Berger, 1978)
   real :: keps              ! obliquity for 2000 CE, degrees (Berger, 1978)
-  real :: kGsc              ! solar constant, W/m^2 (Kopp & Lean, 2011)
+  ! real :: kGsc              ! solar constant, W/m^2 (Kopp & Lean, 2011)
   real :: kw                ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
   real :: komega            ! longitude of perihelion for 2000 CE, degrees (Berger, 1978)
   real :: vpdstress_par_a   ! Parameter for Oren et al.-VPD stress function (see calc_vpdstress())
@@ -908,8 +907,9 @@ contains
     ! obliquity for 2000 CE, degrees (Berger, 1978)
     keps     = getparreal( 'params/params_waterbal_splash.dat', 'keps' )
 
-    ! solar constant, W/m^2 (Kopp & Lean, 2011)
-    kGsc     = getparreal( 'params/params_waterbal_splash.dat', 'kGsc' )
+    ! defined in params_core now
+    ! ! solar constant, W/m^2 (Kopp & Lean, 2011)
+    ! kGsc     = getparreal( 'params/params_waterbal_splash.dat', 'kGsc' )
     
     ! entrainment factor (Lhomme, 1997; Priestley & Taylor, 1972)
     kw       = getparreal( 'params/params_waterbal_splash.dat', 'kw' )

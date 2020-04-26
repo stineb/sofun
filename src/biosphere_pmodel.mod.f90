@@ -171,7 +171,7 @@ contains
             if (verbose) print*,'calling vegdynamics() ... '
             call vegdynamics( tile(:,jpngr), &
                               interface%vegcover(doy,jpngr)%dfapar, &
-                              interface%fpc_grid(doy,jpngr) &
+                              interface%fpc_grid(:,jpngr) &
                               )
             if (verbose) print*,'... done'
 

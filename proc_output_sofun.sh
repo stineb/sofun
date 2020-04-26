@@ -8,7 +8,7 @@ proc_sitescale_site(){
 	##-------------------------------------
 	## Daily
 	##-------------------------------------
-	## GPP
+	## WCONT
 	cdo -O mergetime output_nc/$1.????.d.wcont.nc   output_nc/$1.d.wcont.nc
 	rm output_nc/$1.????.d.wcont.nc
 
@@ -20,7 +20,7 @@ proc_sitescale_site(){
 	cdo -O mergetime output_nc/$1.????.d.aet.nc   output_nc/$1.d.aet.nc
 	rm output_nc/$1.????.d.aet.nc
 
-	## WCONT
+	## GPP
 	cdo -O mergetime output_nc/$1.????.d.gpp.nc   output_nc/$1.d.gpp.nc
 	rm output_nc/$1.????.d.gpp.nc
 

@@ -129,6 +129,13 @@ program main
                                         interface%params_siml%fapar_forcing_source &
                                         )    
 
+
+    interface%fpc_grid(:,:) = get_fpc_grid( &
+                                            interface%domaininfo, &
+                                            interface%grid, &
+                                            interface%params_siml &
+                                            )
+
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
     !----------------------------------------------------------------
