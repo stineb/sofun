@@ -92,10 +92,19 @@ contains
   !============= Plant physiology =========================================
   !========================================================================
 
-  ! Subroutines from BiomeE-Allocation
-  !------------------------------------------------------------------------
   subroutine vegn_photosynthesis(forcing, vegn)
-
+    !//////////////////////////////////////////////////////////////////////
+    ! PHOTOSYNTHESIS
+    ! Calculates light availability and photosynthesis for each cohort 
+    ! and sets the following cohort-level variables:
+    ! - An_op   
+    ! - An_cl   
+    ! - w_scale 
+    ! - transp  
+    ! - gpp     
+    !
+    ! Subroutines from BiomeE-Allocation
+    !------------------------------------------------------------------------
     use md_forcing, only: climate_type
 
     type(climate_type), intent(in):: forcing
