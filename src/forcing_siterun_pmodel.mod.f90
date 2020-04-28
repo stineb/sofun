@@ -134,7 +134,7 @@ contains
     end if
     ! write(0,*) 'GETCO2: use CO2 data of year ', readyear
     pco2 = getvalreal( 'sitedata/co2/'//trim(domaininfo%domain_name)//'/'//trim(co2_forcing_file), readyear )
-  
+    
   end function getco2
 
 
