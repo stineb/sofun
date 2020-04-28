@@ -37,20 +37,6 @@ module md_waterbal
     writeout_nc_waterbal
     ! get_rlm_waterbal, init_rlm_waterbal, getrlm_daily_waterbal
 
-  !----------------------------------------------------------------
-  ! Public, module-specific state variables
-  !----------------------------------------------------------------
-  ! ! Collection of solar radiation-related variables used across modules
-  ! ! Variables are a function of latitude, elevation, and 
-  ! ! sunshine fraction (all variables independent of soil moisture)
-  ! type solartype
-  !   real, dimension(ndayyear) :: dayl        ! day length (hours)
-  !   real, dimension(ndayyear) :: dra         ! daily TOA solar irradiation (J/m2)
-  !   real, dimension(ndayyear) :: dppfd       ! daily total PPFD (mol m-2 d-1)
-  !   real, dimension(nmonth)   :: mppfd       ! monthly total PPFD (mol m-2 month-1)
-  !   real, dimension(nmonth)   :: meanmppfd   ! monthly mean PPFD, averaged over daylight seconds (mol m-2 s-1)
-  ! end type solartype
-
   !-----------------------------------------------------------------------
   ! Uncertain (unknown) parameters. Runtime read-in
   !-----------------------------------------------------------------------
@@ -83,56 +69,11 @@ module md_waterbal
   real :: rv                           ! variable substitute for v
   real :: rw                           ! variable substitute (W/m^2)
 
-  ! ! Orbit parameters 
-  ! type outtype_berger
-  !   real :: nu
-  !   real :: lambda
-  ! end type outtype_berger
-
-  ! ! Radiation variables. aet, sw, and cpa are affected by soil moisture.
-  ! type evaptype
-  !   real :: rn         ! daily net radiation (J/m2/d)
-  !   real :: rnn        ! nighttime net radiation (J/m^2/d)
-  !   real :: rnl        ! net longwave radiation (W/m^2)
-  !   real :: eet        ! daily EET (mm d-1)
-  !   real :: pet        ! daily PET (mm d-1)
-  !   real :: pet_e      ! daily PET (J m-2 d-1)
-  !   real :: cn         ! daily condensation (mm d-1)
-  !   real :: aet        ! daily AET (mm d-1)
-  !   real :: aet_e      ! daily AET (J m-2 d-1)
-  !   real :: cpa        ! Cramer-Prentice-Alpha = AET / EET (unitless)
-  !   real :: econ       ! water-to-energy conversion factor (econ), m^3/J
-  ! end type evaptype
-
-  ! ! SPLASH state variables
-  ! type( evaptype ) , dimension(nlu) :: evap
-
   ! holds return variables of function get_snow_rain()
   type outtype_snow_rain
     real :: snow_updated     ! snow depth in water equivalents (mm)
     real :: liquid_to_soil   ! water 
   end type outtype_snow_rain
-
-
-  ! Holds output of function calc_et 
-  type outtype_et
-    real :: cn             ! daily condensation (mm d-1)
-    real :: pet            ! daily potential evapotranspiration (mm d-1)
-    real :: pet_e          ! daily potential evapotranspiration (J m-2 d-1)
-    real :: aet            ! daily actual evapotranspiration (mm d-1)
-    real :: aet_e          ! daily actual evapotranspiration (J m-2 d-1)
-    real :: aet_soil       ! daily soil evaporation (mm d-1)
-    real :: aet_e_soil     ! daily soil evaporation (J m-2 d-1)
-    real :: aet_canop      ! daily canopy evaporation (mm d-1)
-    real :: aet_e_canop    ! daily canopy evaporation (J m-2 d-1)
-  end type outtype_et
-
-
-  type outtype_netrad
-    real :: rnl            ! net longwave radiation (W m-2)
-    real :: rn             ! daytime total net radiation (J m-2 d-1)
-    real :: rnn            ! nighttime total net radiation (J m-2 d-1)
-  end type outtype_netrad
 
 
   !----------------------------------------------------------------
@@ -198,7 +139,6 @@ module md_waterbal
 
   character(len=7) :: in_ppfd       ! information whether PPFD is prescribed from meteo file for global attribute in NetCDF file
 
-
   logical, parameter :: splashtest = .false.
 
 contains
@@ -214,40 +154,7 @@ contains
     type(climate_type), intent(in)                        :: climate
     integer, intent(in) :: doy          ! day of year
 
-    ! ! arguments
-    ! type( soil_type ), dimension(nlu), intent(inout)        :: soil
-    ! type( tile_fluxes_type ), dimension(nlu), intent(inout) :: tile_fluxes
-    ! type(plant_fluxes_type), dimension(npft), intent(inout) :: plant_fluxes  ! derived type containing plant-related flux variables  (overwritten at each time step)
-    ! integer, intent(in) :: doy    ! day of year
-    ! integer, intent(in) :: jpngr  ! gridcell number
-    ! real, intent(in)    :: lat    ! latitude (degrees)
-    ! real, intent(in)    :: elv    ! altitude (m)
-    ! real, intent(in)    :: pr     ! daily precip as rain (liquid) (mm) 
-    ! real, intent(in)    :: sn     ! daily precip as snow (mm water equivalent) 
-    ! real, intent(in)    :: tc     ! mean monthly temperature (deg C)
-    ! real, intent(in)    :: sf     ! mean monthly sunshine fraction (unitless)
-    ! real, intent(in)    :: netrad ! net radiation (W m-2), may be dummy (in which case this is not used)
-    ! real, intent(in)    :: vpd    ! vapour pressure deficit (Pa)
-    ! real, intent(in)    :: fapar  ! fraction of absorbed photosynthetically active radiation (unitless)
-
-    ! ! local variables
-    ! real :: wcont_prev                   ! soil moisture (water content) before being updated (mm)
-    ! real :: wbal                         ! daily water balance (mm), temporary variable
-
-    ! integer :: lu                        ! land unit (gridcell tile)
-    ! integer :: moy                       ! month of year
-    ! integer :: idx                       ! day of year corresponding to yesterday
-    ! integer :: dm                        ! day of month
-
-    ! type( outtype_snow_rain )   :: out_snow_rain
-
-    ! ! for the case netrad is prescribed following SWBM
-    ! real, parameter :: beta = 0.66
-    ! real, parameter :: exp_et = 0.06
-
     ! local variables
-    type(outtype_netrad)    :: out_netrad
-    type(outtype_et)        :: out_et
     type(outtype_snow_rain) :: out_snow_rain
     real                    :: g_aero
     real                    :: g_canopy
@@ -263,17 +170,16 @@ contains
       !---------------------------------------------------------
       ! Canopy transpiration and soil evaporation
       !---------------------------------------------------------
-      ! out_et = calc_et( climate%dtemp, climate%dprec, climate%dpatm, tile(lu)%canopy%lai, tile(lu)%canopy%fapar, out_netrad%rn, climate%dvpd, tile(lu)%canopy%conductance, g_aero )
       call calc_et( tile(lu), tile_fluxes(lu), grid, climate, sw )
 
       !---------------------------------------------------------
       ! Update soil moisture and snow pack
       !---------------------------------------------------------
-      out_snow_rain = get_snow_rain( climate%dprec + out_et%cn, climate%dsnow, climate%dtemp, tile(lu)%soil%phy%snow )
+      out_snow_rain = get_snow_rain( climate%dprec + tile_fluxes(lu)%canopy%dcn, climate%dsnow, climate%dtemp, tile(lu)%soil%phy%snow )
       tile(lu)%soil%phy%snow = out_snow_rain%snow_updated 
 
       ! Update soil moisture
-      tile(lu)%soil%phy%wcont = tile(lu)%soil%phy%wcont + out_snow_rain%liquid_to_soil - out_et%aet
+      tile(lu)%soil%phy%wcont = tile(lu)%soil%phy%wcont + out_snow_rain%liquid_to_soil - tile_fluxes(lu)%canopy%daet
 
       ! Bucket model for runoff generation
       if (tile(lu)%soil%phy%wcont > tile(lu)%soil%params%whc) then
@@ -294,7 +200,7 @@ contains
         ! Bucket is empty
         ! -----------------------------------
         ! set soil moisture to zero
-        out_et%aet = out_et%aet + tile(lu)%soil%phy%wcont
+        tile_fluxes(lu)%canopy%daet = tile_fluxes(lu)%canopy%daet + tile(lu)%soil%phy%wcont
         tile(lu)%soil%phy%wcont        = 0.0
         tile_fluxes(lu)%canopy%dro     = 0.0
         tile_fluxes(lu)%canopy%dfleach = 0.0
@@ -308,109 +214,6 @@ contains
 
       ! water scalar (fraction of plant-available water holding capacity; water storage at wilting point is already accounted for in tile(lu)%soil%params%whc)
       tile(lu)%soil%phy%wscal = tile(lu)%soil%phy%wcont / tile(lu)%soil%params%whc
-
-!       ! save daily water fluxes
-!       tile_fluxes(lu)%canopy%dwbal        = out_snow_rain%liquid_to_soil
-!       tile_fluxes(lu)%canopy%dpet         = out_et%pet
-!       tile_fluxes(lu)%canopy%dpet         = out_et%pet
-!       tile_fluxes(lu)%canopy%daet         = out_et%aet
-!       tile_fluxes(lu)%canopy%daet_e       = out_et%aet_e
-!       tile_fluxes(lu)%canopy%daet_soil    = out_et%aet_soil
-!       tile_fluxes(lu)%canopy%daet_e_soil  = out_et%aet_e_soil
-!       tile_fluxes(lu)%canopy%daet_canop   = out_et%aet_canop
-!       tile_fluxes(lu)%canopy%daet_e_canop = out_et%aet_e_canop
-
-! xxx
-!       real :: dfleach         ! daily fraction of soil water going to runoff (used for calculating leaching)
-!       real :: dwbal           ! daily water balance as precipitation and snow melt minus runoff and evapotranspiration (mm d-1)
-!       real :: econ            ! water-to-energy conversion factor (econ), m^3/J
-!       real :: drn             ! daily total net radiation (J/m2/d)
-!       real :: drnn            ! nighttime total net radiation (J m-1 d-1)
-!       real :: rnl             ! net longwave radiation (W m-2)
-!       real :: dcn             ! daily total condensation (mm d-1)
-!       real :: dpet            ! daily total potential evapotranspiration (mm d-1)
-!       real :: dpet_e          ! daily total potential evapotranspiration (J m-2 d-1)
-!       real :: daet            ! daily total (actual) evapotranspiration (mm d-1)
-!       real :: daet_e          ! daily total (actual) evapotranspiration (J m-2 d-1)
-!       real :: daet_soil       ! daily soil evaporation (mm d-1)
-!       real :: daet_e_soil     ! daily soil evaporation (J m-2 d-1)
-!       real :: daet_canop      ! daily canopy transpiration (mm d-1)
-!       real :: daet_e_canop    ! daily canopy transpiration (J m-2 d-1)
-
-! xxxxxxx
-
-!       ! Calculate evaporative supply rate, mm/h
-!       tile_fluxes(lu)%sw = kCw * soil(lu)%phy%wcont / soil(lu)%params%whc
-
-!       ! Calculate radiation and evaporation quantities
-!       ! print*,'calling evap with arguments ', lat, doy, elv, sf, tc, tile_fluxes(lu)%sw
-!       evap(lu) = get_evap( lat, doy, elv, sf, tc, tile_fluxes(lu)%sw, netrad )
-
-!       ! ! Overwrite AET calculated by get_evap(), instead using vdpstress * fapar * pet
-!       ! evap(lu)%aet = calc_vdpstress( vpd ) * fapar * evap(lu)%pet
-!       ! evap(lu)%aet_e = evap(lu)%aet / (evap(lu)%econ * 1000.0)
-
-!       ! take acual evaporation
-!       if (npft>1) stop 'waterbal_splash: Think of soething when npft > 1.'
-!       plant_fluxes(:)%dlatenth = evap(lu)%aet_e
-
-!       if (netrad/=dummy) then
-!         !---------------------------------------------------------
-!         ! 21. Estimate daily AET (out_evap%aet), mm d-1
-!         ! WARNING: This follows SWBM not SPLASH
-!         ! Needs to be done here because wcont is not available in get_evap()
-!         !---------------------------------------------------------
-!         ! calculate actual ET from potential ET and Eq. 2 in Orth et al., 2013, limited to <=1
-!         evap(lu)%aet = evap(lu)%pet * beta * min( 1.0, ( soil(lu)%phy%wcont / soil(lu)%params%whc )**exp_et )
-!         ! print*,'aet: ', evap(lu)%aet
-
-!         evap(lu)%cpa = max( 0.0, evap(lu)%aet / evap(lu)%eet )
-!       end if
-
-
-!       ! Update soil moisture and snow pack
-!       out_snow_rain = get_snow_rain( pr + evap(lu)%cn, sn, tc, soil(lu)%phy%snow )
-!       soil(lu)%phy%snow = out_snow_rain%snow_updated 
-
-!       ! Update soil moisture
-!       soil(lu)%phy%wcont = soil(lu)%phy%wcont + out_snow_rain%liquid_to_soil - evap(lu)%aet
-
-!       ! Bucket model for runoff generation
-!       if (soil(lu)%phy%wcont>soil(lu)%params%whc) then
-!         ! -----------------------------------
-!         ! Bucket is full 
-!         ! -----------------------------------
-!         ! * determine NO3 leaching fraction 
-!         tile_fluxes(lu)%dfleach = 1.0 - soil(lu)%params%whc / soil(lu)%phy%wcont
-
-!         ! * add remaining water to monthly runoff total
-!         tile_fluxes(lu)%dro = soil(lu)%phy%wcont - soil(lu)%params%whc
-
-!         ! * set soil moisture to capacity
-!         soil(lu)%phy%wcont = soil(lu)%params%whc
-
-!       elseif (soil(lu)%phy%wcont<0.0) then
-!         ! -----------------------------------
-!         ! Bucket is empty
-!         ! -----------------------------------
-!         ! * set soil moisture to zero
-!         evap(lu)%aet            = evap(lu)%aet + soil(lu)%phy%wcont
-!         soil(lu)%phy%wcont      = 0.0
-!         tile_fluxes(lu)%dro     = 0.0
-!         tile_fluxes(lu)%dfleach = 0.0
-
-!       else
-!         ! No runoff occurrs
-!         tile_fluxes(lu)%dro     = 0.0
-!         tile_fluxes(lu)%dfleach = 0.0
-
-!       end if
-
-!       ! water scalar
-!       soil(lu)%phy%wscal = soil(lu)%phy%wcont / soil(lu)%params%whc
-
-!       ! save daily water balance for output
-!       tile_fluxes(lu)%dwbal = out_snow_rain%liquid_to_soil
 
     end do
 
@@ -433,16 +236,6 @@ contains
     type(gridtype), intent(inout)                         :: grid
     type(climate_type), intent(in)                        :: climate
     integer, intent(in)                                   :: doy        ! day of year
-
-    ! ! function return variable
-    ! type( solartype ) :: out_solar
-
-    ! real, dimension(2) :: out_ru_rv      ! function return variable containing 'ru' and 'rv'.
-
-    ! real, dimension(ndayyear) :: daysecs ! daylight seconds for each DOY
-    ! real, dimension(nmonth)   :: monsecs ! daylight seconds for each MOY
-
-    ! type(outtype_berger) :: out_berger    ! stores output of function berger_tls
 
     !---------------------------------------------------------
     ! 2. Calculate heliocentric longitudes (nu and lambda), degrees
@@ -537,15 +330,6 @@ contains
     ! adopted bugfix from Python version (iss#13)
     tile_fluxes(:)%canopy%drnn = (86400.0/pi)*(radians(rw*ru*(hs-hn)) + rw*rv*(dgsin(hs)-dgsin(hn)) - tile_fluxes(:)%canopy%rnl * (pi - radians(hn)))
 
-    !---------------------------------------------------------
-    ! Daily condensation, mm d-1
-    !---------------------------------------------------------
-    if (tile_fluxes(1)%canopy%drn < 0.0) then
-      tile_fluxes(:)%canopy%dcn = 1000.0 * tile_fluxes(:)%canopy%econ * abs(tile_fluxes(:)%canopy%drn)
-    else
-      tile_fluxes(:)%canopy%dcn = 0.0
-    end if
-
 
     if (splashtest) then
       print*,'transmittivity, tau: ', tau
@@ -563,7 +347,6 @@ contains
   end subroutine solar
 
 
-  ! subroutine calc_et( lat, doy, elv, sf, tc, sw, netrad ) result( out_evap )
   subroutine calc_et( tile, tile_fluxes, grid, climate, sw )
     !/////////////////////////////////////////////////////////////////////////
     !
@@ -578,33 +361,12 @@ contains
     type(climate_type), intent(in)        :: climate
     real, intent(in)                      :: sw            ! evaporative supply rate, mm/hr
 
-    ! real,    intent(in) :: lat           ! latitude, degrees
-    ! integer, intent(in) :: doy           ! day of the year (formerly 'n')
-    ! real,    intent(in) :: elv           ! elevation, metres
-    ! real,    intent(in) :: sf            ! fraction of sunshine hours
-    ! real,    intent(in) :: tc            ! mean daily air temperature, C
-    ! real,    intent(in) :: netrad        ! net radiation, integrated over day (J m-2 d-1)
-
     ! local variables
     real :: gamma                           ! psychrometric constant (Pa K-1) ! xxx Zhang et al. use it in units of (kPa K-1), probably they use sat_slope in kPa/K, too.
     real :: sat_slope                       ! slope of saturation vapour pressure vs. temperature curve, Pa K-1
     real :: rho_air                         ! density of air (g m-3)
     real :: lv                              ! enthalpy of vaporization, J/kg
     real :: rho_water                       ! density of water (g m-3)
-
-    ! real :: dr                           ! distance factor
-    ! real :: delta                        ! declination angle 
-    ! real :: ru                           ! variable substitute for u
-    ! real :: rv                           ! variable substitute for v
-    ! real :: hs                           ! sunset hour angle
-    ! real :: tau                          ! transmittivity (unitless)
-    ! real :: rw                           ! variable substitute (W/m^2)
-    ! real :: hn                           ! net radiation cross-over hour angle
-    ! real :: sat_slope                    ! slope of saturation vap press temp curve, Pa/K
-    ! real :: pw                           ! density of water, kg/m^3
-    ! real :: lv                           ! enthalpy of vaporization, J/kg
-    ! real :: gamma                        ! psychrometric constant, Pa/K
-    ! real :: econ                         ! Eq. 58, SPLASH 2.0 Documentation
 
     real :: rx                           ! variable substitute (mm/hr)/(W/m^2)
     real :: hi, cos_hi                   ! intersection hour angle, degrees
@@ -632,6 +394,11 @@ contains
     ! Eq. 51, SPLASH 2.0 Documentation
     ! out_evap%econ = 1.0 / ( lv * rho_water ) ! this is to convert energy into mass (water)
     tile_fluxes%canopy%econ = sat_slope / (lv * rho_water * (sat_slope + gamma)) ! MORE PRECISELY - this is to convert energy into mass (water)
+
+    !---------------------------------------------------------
+    ! Daily condensation, mm d-1
+    !---------------------------------------------------------
+    tile_fluxes%canopy%dcn = 1000.0 * tile_fluxes%canopy%econ * abs(tile_fluxes%canopy%drnn)
 
     !---------------------------------------------------------
     ! 17. Estimate daily EET, mm d-1
@@ -808,17 +575,8 @@ contains
     real, intent(in) :: delta
     real, intent(in) :: lat
 
-    ! ! local variables
-    ! real :: ru, rv
-
-    ! ! function return variable
-    ! real, dimension(2) :: out_ru_rv
-
     ru = dgsin(delta) * dgsin(lat)
     rv = dgcos(delta) * dgcos(lat)
-
-    ! out_ru_rv(1) = ru
-    ! out_ru_rv(2) = rv
 
   end subroutine calc_ru_rv
 

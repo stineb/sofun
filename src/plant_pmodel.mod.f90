@@ -195,37 +195,37 @@ contains
     pft = 0
     if ( interface%params_siml%lTrE ) then
       pft = pft + 1
-      params_pft_plant = getpftparams( 'TrE' )
+      params_pft_plant(pft) = getpftparams( 'TrE' )
     end if
 
     if ( interface%params_siml%lTNE ) then
       pft = pft + 1
-      params_pft_plant = getpftparams( 'TNE' )
+      params_pft_plant(pft) = getpftparams( 'TNE' )
     end if
 
     if ( interface%params_siml%lTrD ) then
       pft = pft + 1
-      params_pft_plant = getpftparams( 'TrD' )
+      params_pft_plant(pft) = getpftparams( 'TrD' )
     end if
 
     if ( interface%params_siml%lTND ) then
       pft = pft + 1
-      params_pft_plant = getpftparams( 'TND' )
+      params_pft_plant(pft) = getpftparams( 'TND' )
     end if
 
     if ( interface%params_siml%lGr3 ) then
       pft = pft + 1
-      params_pft_plant = getpftparams( 'Gr3' )
+      params_pft_plant(pft) = getpftparams( 'Gr3' )
     end if
 
     if ( interface%params_siml%lGN3 ) then
       pft = pft + 1
-      params_pft_plant = getpftparams( 'GN3' )
+      params_pft_plant(pft) = getpftparams( 'GN3' )
     end if
 
     if ( interface%params_siml%lGr4 ) then
       pft = pft + 1
-      params_pft_plant = getpftparams( 'Gr4' )
+      params_pft_plant(pft) = getpftparams( 'Gr4' )
     end if
 
     npft_site = pft
@@ -359,6 +359,8 @@ contains
     plant%acrown    = 0.0
 
     ! canpopy state variables
+    plant%vcmax25          = 0.0
+    plant%jmax25           = 0.0
     plant%narea            = 0.0
     plant%narea_metabolic  = 0.0
     plant%narea_structural = 0.0

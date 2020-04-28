@@ -23,18 +23,17 @@ module md_params_soil
     real :: fsand
     real :: fclay
     real :: fsilt
-  end type
+  end type paramtype_soil
 
 contains
 
-  function getsoil( domaininfo, grid ) result( params_soil )
+  function getsoil( domaininfo ) result( params_soil )
     !////////////////////////////////////////////////////////////////
     ! Function to "translate" the soil code into numerical soil 
     ! parameters. The soil code is contained in 'domaininfo'.
     !----------------------------------------------------------------
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo
-    type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
 
     ! function return variable
     type(paramtype_soil) :: params_soil

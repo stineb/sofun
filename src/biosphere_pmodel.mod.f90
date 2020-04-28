@@ -7,7 +7,7 @@ module md_biosphere
   use md_waterbal, only: waterbal, solar, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, initio_nc_waterbal, writeout_nc_waterbal !, get_rlm_waterbal, getrlm_daily_waterbal  ! , init_rlm_waterbal
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initoutput_gpp, gpp, getout_daily_gpp, getout_annual_gpp, initio_nc_gpp, writeout_nc_gpp
   use md_vegdynamics, only: vegdynamics
-  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile_fluxes, getpar_modl_canopy
+  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile_fluxes, getpar_modl_tile
   use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_nc_forcing, writeout_nc_forcing
   use md_soiltemp, only: getout_daily_soiltemp, soiltemp, initoutput_soiltemp
   ! use md_sofunutils, only: calc_patm
@@ -24,11 +24,7 @@ module md_biosphere
   type(tile_type),        allocatable, dimension(:,:) :: tile             ! has gridcell-dimension because values are stored between years
   type(tile_fluxes_type), allocatable, dimension(:)   :: tile_fluxes      ! has no gridcell-dimension values need not be recorded
 
-  ! type(plant_type),        allocatable, dimension(:,:) :: plant            ! has gridcell-dimension because values are stored between years
-  ! type(plant_fluxes_type), allocatable, dimension(:)   :: plant_fluxes     ! has no gridcell-dimension values need not be recorded
-
-  ! ! derived types from L2 modules
-  ! type(solartype) :: solar
+  logical, parameter      :: verbose = .false.     ! change by hand for debugging etc.
 
 contains
 
@@ -50,7 +46,6 @@ contains
     ! local variables
     integer :: dm, moy, jpngr, doy
     logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
-    logical, parameter      :: verbose = .false.     ! change by hand for debugging etc.
 
     !----------------------------------------------------------------
     ! INITIALISATIONS
@@ -62,7 +57,7 @@ contains
       ! read model parameters that may be varied for optimisation
       !----------------------------------------------------------------
       if (verbose) print*, 'getpar_modl() ...'
-      call getpar_modl_canopy()
+      call getpar_modl_tile()
       call getpar_modl_plant()
       call getpar_modl_waterbal()
       call getpar_modl_gpp()
@@ -74,8 +69,6 @@ contains
       if (verbose) print*, 'initglobal_() ...'
       allocate( tile(nlu, size(interface%grid)) )
       allocate( tile_fluxes(nlu) )
-      ! allocate( plant(       npft, size(interface%grid)) )
-      ! allocate( plant_fluxes(npft                      ) )
       call initglobal_tile(  tile(:,:),  size(interface%grid) )
       if (verbose) print*, '... done'
 
@@ -242,6 +235,7 @@ contains
             out_biosphere%gpp(doy)     = tile_fluxes(1)%canopy%dgpp
             out_biosphere%transp(doy)  = tile_fluxes(1)%canopy%daet
             out_biosphere%latenth(doy) = tile_fluxes(1)%canopy%daet_e
+            out_biosphere%pet(doy)     = tile_fluxes(1)%canopy%dpet
 
             init_daily = .false.
 

@@ -50,6 +50,7 @@ module md_interface
     real, dimension(ndayyear) :: fapar
     real, dimension(ndayyear) :: transp
     real, dimension(ndayyear) :: latenth
+    real, dimension(ndayyear) :: pet
   end type outtype_biosphere
 
   !----------------------------------------------------------------

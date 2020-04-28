@@ -3,14 +3,15 @@ module md_tile
   ! Holds all tile-specific variables and procedurs
   ! --------------------------------------------------------------
   use md_params_core, only: npft, nlu
-  use md_params_soil, only: paramtype_soil
   use md_plant, only: plant_type, plant_fluxes_type, initglobal_plant
+  use md_params_soil, only: paramtype_soil
 
   implicit none
 
   private
   public tile_type, tile_fluxes_type, initglobal_tile, psoilphystype, &
-    soil_type, initdaily_tile_fluxes, params_canopy, getpar_modl_canopy
+    soil_type, initdaily_tile_fluxes, params_canopy, getpar_modl_canopy, &
+    getpar_modl_tile
 
   !----------------------------------------------------------------
   ! physical soil state variables with memory from year to year (~pools)
@@ -167,16 +168,20 @@ contains
         
         tile(lu,jpngr)%luno = lu
 
+        ! Copy soil parameters
+        print*,'1'
+        tile(lu,jpngr)%soil%params = interface%soilparams(jpngr)
+
         ! initialise soil variables
+        print*,'2'
         call initglobal_soil( tile(lu,jpngr)%soil )
 
-        ! Copy soil parameters
-         tile(lu,jpngr)%soil%params = interface%soilparams(jpngr)
-
         ! initialise canopy variables
+        print*,'3'
         call initglobal_canopy( tile(lu,jpngr)%canopy )
 
         ! initialise plant variables
+        print*,'4'
         call initglobal_plant( tile(lu,jpngr)%plant(:), ngridcells )
 
       end do
@@ -212,6 +217,8 @@ contains
 
     call initglobal_soil_phy( soil%phy )
 
+    soil%phy%wscal = soil%phy%wcont / soil%params%whc
+
   end subroutine initglobal_soil
 
 
@@ -223,9 +230,9 @@ contains
     type(psoilphystype), intent(inout) :: phy
 
     ! initialise physical soil variables
-    phy%wcont    = 50.0
-    phy%temp     = 10.0
-    phy%snow     = 0.0
+    phy%wcont = 150.0
+    phy%temp  = 10.0
+    phy%snow  = 0.0
     ! phy%rlmalpha = 0.0
 
   end subroutine initglobal_soil_phy
@@ -235,8 +242,6 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Initialises all daily variables within derived type 'soilphys'.
     !----------------------------------------------------------------
-    use md_params_core, only: npft
-
     ! arguments
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
 
@@ -275,6 +280,20 @@ contains
     ! call initdaily_plant( tile_fluxes(:)%plant(:) )
 
   end subroutine initdaily_tile_fluxes
+
+
+  subroutine getpar_modl_tile()
+    !////////////////////////////////////////////////////////////////
+    !  Subroutine reads model parameters from input file.
+    !  It was necessary to separate this SR from module md_plant
+    !  because this SR uses module md_waterbal, which also uses
+    !  _plant.
+    ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
+    ! contact: b.stocker@imperial.ac.uk
+    !----------------------------------------------------------------    
+    call getpar_modl_canopy()
+
+  end subroutine getpar_modl_tile
 
 
   subroutine getpar_modl_canopy()

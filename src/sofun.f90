@@ -84,13 +84,10 @@ program main
   ! vectorise 2D array, keeping only land gridcells
   interface%grid(:) = getgrid( interface%domaininfo, params_domain )
 
-  ! Obtain land unit dependent parameters, define decomposition _rates
-  !call luparameters
-
   !----------------------------------------------------------------
   ! GET SOIL PARAMETERS
   !----------------------------------------------------------------
-  interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
+  interface%soilparams(:) = getsoil( interface%domaininfo )
 
   !----------------------------------------------------------------
   ! GET VEGETATION COVER (fractional projective cover by PFT)
