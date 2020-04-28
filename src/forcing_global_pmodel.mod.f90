@@ -11,7 +11,7 @@ module md_forcing
   !----------------------------------------------------------------
   use md_params_core, only: nmonth, ndaymonth, lunat, ndayyear, maxgrid, nlu, dummy
   use md_sofunutils, only: daily2monthly, read1year_daily, read1year_monthly, &
-    getvalreal, monthly2daily_weather, monthly2daily
+    getvalreal, monthly2daily_weather, monthly2daily, calc_patm
   use md_grid, only: gridtype, domaininfo_type
   use netcdf
   use md_io_netcdf, only: check
@@ -557,6 +557,8 @@ contains
                           in_netrad, &
                           out_climate(:) &
                           )
+
+    out_climate(:)%dpatm(:) = calc_patm( grid(1)%elv )
 
   end function getclimate
 

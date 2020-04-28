@@ -27,7 +27,11 @@ module md_gpp
   ! Tyler Davis.
   !----------------------------------------------------------------
   ! load core parameters
-  use md_params_core, only: nmonth, npft, nlu, c_molmass, h2o_molmass, maxgrid, ndayyear, dummy
+  use md_params_core, only: nmonth, npft, nlu, c_molmass, h2o_molmass, maxgrid, ndayyear, dummy, kTkelvin
+  use md_tile, only: tile_type, tile_fluxes_type
+  use md_interface, only: interface
+  use md_forcing, only: climate_type, vegcover_type
+  use md_plant, only: params_pft_plant
 
   implicit none
 
@@ -41,7 +45,7 @@ module md_gpp
   ! Module-specific state variables
   !----------------------------------------------------------------
   real, dimension(npft) :: dassim           ! daily leaf-level assimilation rate (per unit leaf area) [gC/m2/d]
-  real, dimension(npft) :: dgs              ! stomatal conductance (per unit leaf area, average daily) [mol H2O m-2 s-1]  
+  real, dimension(npft) :: dgs              ! stomatal conductance (per unit leaf area, average daily) [mol CO2 Pa-1 m-2 s-1]  
   real, dimension(npft) :: dvcmax_canop     ! canopy-level Vcmax [gCO2/m2-ground/s]
   real, dimension(npft) :: dvcmax_leaf      ! leaf-level Vcmax [gCO2/m2-leaf/s]
 
@@ -91,13 +95,16 @@ module md_gpp
   type outtype_pmodel
     real :: gammastar           ! temperature-dependent photorespiratory compensation point (Pa)
     real :: kmm                 ! Michaelis-Menten coefficient (Pa)
+    real :: ca                  ! leaf-external (ambient) partial pressure, (Pa)
     real :: ci                  ! leaf-internal partial pressure, (Pa)
     real :: chi                 ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: xi                  ! relative cost parameter, Eq. 9 in Stocker et al., 2019 GMD
     real :: iwue                ! intrinsic water use efficiency = A / gs = ca - ci = ca ( 1 - chi ) , unitless
     real :: lue                 ! light use efficiency (mol CO2 / mol photon)
     real :: assim               ! leaf-level assimilation rate (mol CO2 m-2 s-1)
-    real :: gs                  ! stomatal conductance to CO2, expressed per units absorbed light (mol H2O m-2 m-1 / (mol light m-2))
+    real :: gs                  ! stomatal conductance to CO2 (mol C Pa-1 m-2 s-1)
+    real :: gs_unitfapar        ! stomatal conductance to CO2 per unit fapar (mol C Pa-1 m-2 s-1)
+    real :: gs_unitiabs         ! stomatal conductance to CO2 per unit absorbed light (mol C Pa-1 m-2 s-1)
     real :: gpp                 ! gross primary productivity (g CO2 m-2 d-1)
     real :: vcmax               ! canopy-level maximum carboxylation capacity per unit ground area (mol CO2 m-2 s-1)
     real :: jmax                ! canopy-level maximum rate of electron transport (mol m-2 s-1)
@@ -158,7 +165,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( co2, dtemp, dvpd, dpatm, dppfd, dfapar, fpc_grid, dayl, meanmppfd, wscal, rlmalpha, do_soilmstress, do_tempstress, dgpp, drd, dtransp, init)
+  subroutine gpp( tile, tile_fluxes, co2, climate, vegcover, do_soilmstress, do_tempstress, init)
     !//////////////////////////////////////////////////////////////////
     ! Wrapper function to call to P-model. 
     ! Calculates meteorological conditions with memory based on daily
@@ -166,36 +173,32 @@ contains
     ! Calculates soil moisture and temperature stress functions.
     ! Calls P-model.
     !------------------------------------------------------------------
-    use md_plant, only: params_pft_plant, plant_type, plant_fluxes_type
+    ! use md_plant, only: params_pft_plant, plant_type, plant_fluxes_type
     use md_sofunutils, only: dampen_variability
 
-    ! input-only arguments
-    real, intent(in)                      :: co2             ! atmospheric CO2 (ppm)
-    real, intent(in)                      :: dtemp           ! daily varying air temperature (deg C)
-    real, intent(in)                      :: dvpd            ! daily varying vapour pressure deficit (Pa)
-    real, intent(in)                      :: dpatm           ! daily varying atmospheric pressure (Pa)
-    real, intent(in)                      :: dppfd           ! daily total photon flux density, mol m-2
-    real, intent(in)                      :: dfapar          ! daily varying fraction of absorbed photosynthetically active radiation (unitless)
-    real, dimension(npft), intent(in)     :: fpc_grid        ! fractional plant cover
-    real, intent(in)                      :: dayl            ! day length (h)
-    real, intent(in)                      :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
-    real, dimension(nlu), intent(in)      :: wscal           ! relative soil water content (unitless)
-    real, dimension(nlu), intent(in)      :: rlmalpha        ! rolling mean alpha (mean annual AET/PET, unitless)
-    logical, intent(in)                   :: do_soilmstress  ! whether empirical soil miosture stress function is applied to GPP
-    logical, intent(in)                   :: do_tempstress   ! whether empirical temperature stress function is applied to GPP
-    logical, intent(in)                   :: init            ! is true on the very first simulation day (first subroutine call of each gridcell)
+    ! arguments
+    type(tile_type), dimension(nlu), intent(inout) :: tile
+    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
+    real, intent(in)    :: co2                               ! atmospheric CO2 (ppm)
+    type(climate_type)  :: climate
+    type(vegcover_type) :: vegcover
+    logical, intent(in) :: do_soilmstress                    ! whether empirical soil miosture stress function is applied to GPP
+    logical, intent(in) :: do_tempstress                     ! whether empirical temperature stress function is applied to GPP
+    logical, intent(in) :: init                              ! is true on the very first simulation day (first subroutine call of each gridcell)
 
-    ! input-output arguments
-    real, dimension(npft), intent(inout)  :: dgpp            ! daily total gross primary productivity (gC m-2 d-1)
-    real, dimension(npft), intent(inout)  :: drd             ! daily total dark respiraiton (gC m-2 d-1)
-    real, dimension(npft), intent(inout)  :: dtransp         ! daily total transpiration (XXX)
+    ! ! input-output arguments
+    ! real, dimension(npft), intent(inout)  :: dgpp            ! daily total gross primary productivity (gC m-2 d-1)
+    ! real, dimension(npft), intent(inout)  :: drd             ! daily total dark respiraiton (gC m-2 d-1)
+    ! real, dimension(npft), intent(inout)  :: dtransp         ! daily total transpiration (XXX)
 
     ! local variables
-    type( outtype_pmodel ) :: out_pmodel                     ! list of P-model output variables
+    type( outtype_pmodel ) :: out_pmodel_c3                     ! list of P-model output variables
     integer    :: pft
     integer    :: lu
+    real       :: iabs
     real       :: soilmstress
     real       :: ftemp_kphio
+    real       :: tk
 
     real, save :: co2_memory
     real, save :: vpd_memory
@@ -211,182 +214,174 @@ contains
     !----------------------------------------------------------------
     if (init) then
       co2_memory  = co2
-      temp_memory = dtemp
-      vpd_memory  = dvpd
-      patm_memory = dpatm
+      temp_memory = climate%dtemp
+      vpd_memory  = climate%dvpd
+      patm_memory = climate%dpatm
     end if 
 
-    co2_memory  = dampen_variability( co2,    params_gpp%tau_acclim, co2_memory )
-    temp_memory = dampen_variability( dtemp,  params_gpp%tau_acclim, temp_memory )
-    vpd_memory  = dampen_variability( dvpd,   params_gpp%tau_acclim, vpd_memory )
-    patm_memory = dampen_variability( dpatm,  params_gpp%tau_acclim, patm_memory )
+    co2_memory  = dampen_variability( co2,            params_gpp%tau_acclim, co2_memory )
+    temp_memory = dampen_variability( climate%dtemp,  params_gpp%tau_acclim, temp_memory )
+    vpd_memory  = dampen_variability( climate%dvpd,   params_gpp%tau_acclim, vpd_memory )
+    patm_memory = dampen_variability( climate%dpatm,  params_gpp%tau_acclim, patm_memory )
 
+    tk = climate%dtemp + kTkelvin
+
+    if ( tile_fluxes(1)%canopy%dayl > 0.0 .and. climate%dtemp > -5.0 ) then
+      !----------------------------------------------------------------
+      ! P-model call for C3 plants to get a list of variables that are 
+      ! acclimated to slowly varying conditions
+      !----------------------------------------------------------------
+      out_pmodel_c3 = pmodel(  &
+                            kphio          = params_pft_gpp(1)%kphio, &
+                            fapar          = tile(1)%canopy%fapar, &
+                            ppfd           = climate%dppfd, &
+                            co2            = co2_memory, &
+                            tc             = temp_memory, &
+                            vpd            = vpd_memory, &
+                            patm           = patm_memory, &
+                            c4             = .false., &
+                            method_optci   = "prentice14", &
+                            method_jmaxlim = "wang17" &
+                            )
+    end if
+
+    ! simple:
+    lu = 1
+    pft = 1
+    iabs = tile(lu)%canopy%fapar * climate%dppfd * tile(lu)%plant(pft)%fpc_grid
 
     !----------------------------------------------------------------
-    ! CALCULATE PREDICTED GPP FROM P-model
-    ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
+    ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
     !----------------------------------------------------------------
-    do pft=1,npft
+    if (do_soilmstress) then
+      soilmstress = calc_soilmstress( tile(1)%soil%phy%wscal, 0.0, params_pft_plant(1)%grass )
+    else
+      soilmstress = 1.0
+    end if    
 
-      ! land use category (gridcell tile)
-      lu = params_pft_plant(pft)%lu_category
+    !----------------------------------------------------------------
+    ! Include instantaneous temperature effect on quantum yield efficiency
+    !----------------------------------------------------------------
+    if (do_tempstress) then
+      ftemp_kphio = calc_ftemp_kphio( climate%dtemp )
+    else
+      ftemp_kphio = 1.0
+    end if
 
-      if ( fpc_grid(pft) > 0.0 .and. dayl > 0.0 .and. dtemp > -5.0 ) then
-        !----------------------------------------------------------------
-        ! P-model call to get a list of variables that are acclimated to
-        ! slowly varying conditions
-        !----------------------------------------------------------------
-        out_pmodel = pmodel(  &
-                              kphio          = params_pft_gpp(pft)%kphio, &
-                              fapar          = dfapar, &
-                              ppfd           = dppfd, &
-                              co2            = co2_memory, &
-                              tc             = temp_memory, &
-                              vpd            = vpd_memory, &
-                              patm           = patm_memory, &
-                              c4             = params_pft_plant(pft)%c4, &
-                              method_optci   = "prentice14", &
-                              method_jmaxlim = "wang17" &
-                              )
+    !----------------------------------------------------------------
+    ! GPP
+    !----------------------------------------------------------------
+    tile_fluxes(lu)%canopy%dgpp = iabs * out_pmodel_c3%lue * ftemp_kphio * soilmstress
 
-        !----------------------------------------------------------------
-        ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
-        !----------------------------------------------------------------
-        if (do_soilmstress) then
-          soilmstress = calc_soilmstress( wscal(lu), rlmalpha(lu), params_pft_plant(pft)%grass )
-        else
-          soilmstress = 1.0
-        end if
-
-        !----------------------------------------------------------------
-        ! Include instantaneous temperature effect on quantum yield efficiency
-        !----------------------------------------------------------------
-        if (do_tempstress) then
-          ftemp_kphio = calc_ftemp_kphio( dtemp )
-        else
-          ftemp_kphio = 1.0
-        end if
-
-        ! GPP
-        dgpp = calc_dgpp( dfapar, fpc_grid(pft), dppfd, out_pmodel%lue, ftemp_kphio, soilmstress )
-
-        ! !----------------------------------------------------------------
-        ! ! xxx test
-        ! !----------------------------------------------------------------
-        ! ! light-limited assimilation rate
-        ! fact_jmaxlim = 1.0 / sqrt(1.0 + (4.0 * params_pft_gpp(pft)%kphio * dfapar * dppfd / out_pmodel%jmax)**2)
-        ! a_j = params_pft_gpp(pft)%kphio * dfapar * dppfd * (out_pmodel%ci - out_pmodel%gammastar)/(out_pmodel%ci + 2 * out_pmodel%gammastar) * fact_jmaxlim
-
-        ! ! Rubisco-limited assimilation rate
-        ! a_c = out_pmodel%vcmax * (out_pmodel%ci - out_pmodel%gammastar)/(out_pmodel%ci + out_pmodel%kmm)
-
-        ! ! output from pmodel()
-        ! a_returned = out_pmodel%gpp / c_molmass
-
-        ! print*,'a_j, a_c, a_returned, dgpp : ', a_j, a_c, a_returned, dgpp / c_molmass
-        ! !----------------------------------------------------------------
+    !----------------------------------------------------------------
+    ! Dark respiration
+    !----------------------------------------------------------------
+    tile_fluxes(lu)%canopy%drd = iabs * out_pmodel_c3%rd_unitiabs * ftemp_kphio * soilmstress * c_molmass
 
 
-        ! ! transpiration
-        ! ! dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, ftemp_kphio, soilmstress )
-        ! dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, dtemp )
+    ! !----------------------------------------------------------------
+    ! ! CALCULATE PREDICTED GPP FROM P-model output
+    ! ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
+    ! !----------------------------------------------------------------
+    ! do pft=1,npft
 
-        ! Dark respiration
-        drd = calc_drd( dfapar, fpc_grid(pft), meanmppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
+    !   print*,'params_pft_plant(pft)%lu_category ', params_pft_plant(pft)%lu_category
+    !   print*,'tile(lu)%plant(pft)%fpc_grid', tile(lu)%plant(pft)%fpc_grid
+    !   print*,'tile_fluxes(lu)%canopy%dayl', tile_fluxes(lu)%canopy%dayl
+    !   print*,'climate%dtemp', climate%dtemp
 
-        ! Leaf-level assimilation rate
-        dassim(pft) = calc_dassim( dppfd, out_pmodel%lue, dayl, ftemp_kphio, soilmstress )
+    !   ! land use category (gridcell tile)
+    !   lu = params_pft_plant(pft)%lu_category
+    !     !----------------------------------------------------------------
+    !     ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
+    !     !----------------------------------------------------------------
+    !     print*,'tile(lu)%soil%phy%wscal ', tile(lu)%soil%phy%wscal
+    !     print*,'params_pft_plant(pft)%grass ', params_pft_plant(pft)%grass
+    !     print*,'do_soilmstress ', do_soilmstress
+    !     if (do_soilmstress) then
+    !       ! soilmstress = calc_soilmstress( tile(lu)%soil%phy%wscal, 0.0, params_pft_plant(pft)%grass )
+    !       soilmstress = 1.0
+    !     else
+    !       soilmstress = 1.0
+    !     end if
 
-        ! ! stomatal conductance
-        ! dgs(pft) = calc_dgs( dppfd, out_pmodel%gs_unitiabs, dayl, ftemp_kphio, soilmstress )
+    !     !----------------------------------------------------------------
+    !     ! Include instantaneous temperature effect on quantum yield efficiency
+    !     !----------------------------------------------------------------
+    !     if (do_tempstress) then
+    !       ftemp_kphio = calc_ftemp_kphio( climate%dtemp )
+    !     else
+    !       ftemp_kphio = 1.0
+    !     end if
 
-        ! ! Canopy-level Vcmax (actually changes only monthly)
-        ! dvcmax_canop(pft) = calc_vcmax_canop( dfapar, out_pmodel%vcmax_unitiabs, meanmppfd )
+    !     ! GPP
+    !     tile_fluxes(lu)%canopy%dgpp = calc_dgpp( tile(lu)%canopy%fapar, tile(lu)%plant(pft)%fpc_grid, climate%dppfd, out_pmodel%lue, ftemp_kphio, soilmstress )
 
-        ! ! Leaf-level Vcmax
-        ! dvcmax_leaf(pft) = out_pmodel%vcmax_unitiabs * meanmppfd
+    !     !----------------------------------------------------------------
+    !     ! xxx test
+    !     !----------------------------------------------------------------
+    !     ! light-limited assimilation rate
+    !     fact_jmaxlim = 1.0 / sqrt(1.0 + (4.0 * params_pft_gpp(pft)%kphio * dfapar * dppfd / out_pmodel%jmax)**2)
+    !     a_j = params_pft_gpp(pft)%kphio * dfapar * dppfd * (out_pmodel%ci - out_pmodel%gammastar)/(out_pmodel%ci + 2 * out_pmodel%gammastar) * fact_jmaxlim
 
-      else  
+    !     ! Rubisco-limited assimilation rate
+    !     a_c = out_pmodel%vcmax * (out_pmodel%ci - out_pmodel%gammastar)/(out_pmodel%ci + out_pmodel%kmm)
 
-        dgpp    = 0.0
-        drd     = 0.0
-        dtransp = 0.0
-        ! dvcmax_canop(pft)         = 0.0
-        ! dvcmax_leaf(pft)          = 0.0
+    !     ! output from pmodel()
+    !     a_returned = out_pmodel%gpp / c_molmass
 
-      end if 
+    !     print*,'a_j, a_c, a_returned, dgpp : ', a_j, a_c, a_returned, dgpp / c_molmass
+    !     !----------------------------------------------------------------
 
-      ! ! xxx debug
-      ! dgpp = fapar
+    !     ! transpiration
+    !     ! dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, ftemp_kphio, soilmstress )
+    !     dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, climate%dtemp )
 
-    end do
+    !     !----------------------------------------------------------------
+    !     ! Dark respiration
+    !     !----------------------------------------------------------------
+    !     tile_fluxes(lu)%canopy%drd = calc_drd( vegcover%dfapar, tile(lu)%plant(pft)%fpc_grid, climate%dppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
+
+    !     !----------------------------------------------------------------
+    !     ! Leaf-level assimilation rate
+    !     !----------------------------------------------------------------
+    !     tile_fluxes(lu)%canopy%assim = calc_dassim( tile_fluxes(lu)%canopy%dgpp, tile_fluxes(lu)%canopy%dayl )
+
+    !     ! !----------------------------------------------------------------
+    !     ! ! stomatal conductance
+    !     ! !----------------------------------------------------------------
+    !     ! print*,'3'
+    !     ! tile_fluxes(lu)%canopy%dgs = calc_dgs( dassim(pft), climate%dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
+
+    !     ! ! print*,'set-point gs:' dassim * dgs_unitiabs
+
+    !     ! !----------------------------------------------------------------
+    !     ! ! canopy conductance
+    !     ! !----------------------------------------------------------------
+    !     ! print*,'4'
+    !     ! tile(lu)%canopy%dgc = calc_g_canopy( tile_fluxes(lu)%canopy%dgs, tile(lu)%canopy%lai, tk )
+
+    !     ! tile(lu)%plant%vcmax25 = out_pmodel%vcmax25
+
+    !     ! print*,'dgs per unit day (not second) - should be equal to what gpp/(ca-ci) in pmodel(): ', dgs_unitiabs * gpp / c_molmass
+    !     ! stop
+
+    !     ! ! Canopy-level Vcmax (actually changes only monthly)
+    !     ! dvcmax_canop(pft) = calc_vcmax_canop( dfapar, out_pmodel%vcmax_unitiabs, meanmppfd )
+
+    !     ! ! Leaf-level Vcmax
+    !     ! dvcmax_leaf(pft) = out_pmodel%vcmax_unitiabs * meanmppfd
+
+    !   else  
+
+    !     tile_fluxes(lu)%canopy%dgpp = 0.0
+    !     tile_fluxes(lu)%canopy%drd  = 0.0
+
+    !   end if 
+
+    ! end do
 
   end subroutine gpp
-
-
-  ! function getlue( co2, dtemp, dvpd, elv ) result( out_pmodel )
-  !   !//////////////////////////////////////////////////////////////////
-  !   ! Wrapper function for invoking function calls of pmodel() to 
-  !   ! calculate light use efficiency and other quantities normalised to
-  !   ! absorbed light as a function of ambient conditions averaged over
-  !   ! a given period (month used within SOFUN).
-  !   !
-  !   ! This is designed for use within SOFUN. For other applications, 
-  !   ! adapt the function call to pmodel() appropriately.
-  !   !------------------------------------------------------------------
-  !   use md_plant, only: params_pft_plant
-  !   use md_sofunutils, only: daily2monthly
-
-  !   ! arguments
-  !   real, intent(in)                      :: co2      ! atmospheric CO2 (ppm)
-  !   real, dimension(ndayyear), intent(in) :: dtemp    ! daily air temperature (deg C)
-  !   real, dimension(ndayyear), intent(in) :: dvpd     ! daily vapour pressure deficit (Pa)
-  !   real, intent(in)                      :: elv      ! elevation above sea level (m)
-
-  !   ! function return variable
-  !   type(outtype_pmodel) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
-
-  !   ! local variables
-  !   real, dimension(ndayyear) :: mydtemp
-  !   real, dimension(nmonth)   :: mtemp      ! monthly air temperature (deg C)
-  !   real, dimension(nmonth)   :: mvpd       ! monthly vapour pressure deficit (Pa)
-  !   integer                   :: moy, pft
-  !   integer                   :: doy
-
-  !   ! ! xxx test
-  !   ! real, dimension(nmonth)   :: mppfd
-  !   ! real :: myco2
-  !   ! real :: myelv
-
-  !   ! locally used daily temperature (may be different from globally used one)
-  !   mydtemp(:) = dtemp(:)
-
-  !   ! Get monthly averages
-  !   mtemp(:) = daily2monthly( mydtemp(:), "mean" )
-  !   mvpd(:)  = daily2monthly( dvpd(:), "mean" )
-
-  !   ! ! xxx try out: -- THIS WORKS PERFECTLY -- 
-  !   ! print*, 'WARNING: TEST INPUT FOR COMPARISON WITH OPTI7.R'
-  !   ! myco2   = 376.0
-  !   ! myelv   = 450.0
-  !   ! mtemp = (/0.4879904, 6.1999985, 7.4999870, 9.6999003, 13.1999913, 19.6999227, 18.6000030, 18.0999577, 13.8999807, 10.7000307, 7.2999217, 4.4999644/)
-  !   ! mvpd  = (/113.0432, 338.4469, 327.1185, 313.8799, 247.9747, 925.9489, 633.8551, 497.6772, 168.7784, 227.1889, 213.0142, 172.6035/)
-  !   ! mppfd = (/223.8286, 315.2295, 547.4822, 807.4035, 945.9020, 1194.1227, 1040.5228, 1058.4161, 814.2580, 408.5199, 268.9183, 191.4482/)
-
-  !   !------------------------------------------------------------------
-  !   ! Run P-model for monthly averages and store monthly variables 
-  !   ! per unit absorbed light (not corrected for soil moisture)
-  !   !------------------------------------------------------------------
-  !   do pft=1,npft
-
-  !     do moy=1,nmonth
-
-  !       out_pmodel(pft,moy) = pmodel( params_pft_gpp(pft)%kphio, fapar = dummy, ppfd = dummy, co2 = co2, tc = mtemp(moy), vpd = mvpd(moy), elv = elv, c4 = params_pft_plant(pft)%c4, method_optci = "prentice14", method_jmaxlim = "wang17" )
-
-  !     end do
-  !   end do
-
-  ! end function getlue
 
 
   function calc_dgpp( fapar, fpc_grid, dppfd, lue, ftemp_kphio, soilmstress ) result( my_dgpp )
@@ -411,24 +406,21 @@ contains
   end function calc_dgpp
 
 
-  function calc_dassim( dppfd, lue, daylength, ftemp_kphio, soilmstress ) result( my_dassim )
+  function calc_dassim( dgpp, daylength ) result( my_dassim )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level assimilation rate, mean over daylight hours.
-    ! Not described in Stocker et al., XXX.
+    ! Calculates assimilation rate, mean over daylight hours.
+    ! Use *_unitfapar to get something representative of top-of-canopy.
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in) :: dppfd           ! daily total photon flux density (mol m-2)
-    real, intent(in) :: lue             ! light use efficiency, (mol CO2 / mol photon)
+    real, intent(in) :: dgpp            ! daily total GPP (g CO2 m-2 d-1)
     real, intent(in) :: daylength       ! day length (h)
-    real, intent(in) :: ftemp_kphio      ! this day's air temperature (deg C)
-    real, intent(in) :: soilmstress     ! soil moisture stress factor (unitless)
 
     ! function return variable
-    real :: my_dassim                   ! leaf-level assimilation rate, mean over daylight hours ( mol CO2 m-2 s-1 )
+    real :: my_dassim                   ! canopy mean assimilation rate, mean over daylight hours (mol CO2 m-2 s-1)
 
-    ! Leaf-level assimilation rate, average over daylight hours
+    ! Assimilation rate, average over daylight hours
     if (daylength>0.0) then
-      my_dassim = dppfd * soilmstress * lue * ftemp_kphio / ( 60.0 * 60.0 * daylength )
+      my_dassim = dgpp / ( 60.0 * 60.0 * daylength * c_molmass )
     else
       my_dassim = 0.0
     end if
@@ -436,32 +428,33 @@ contains
   end function calc_dassim
 
 
-  function calc_dgs( dppfd, dgs_unitiabs, daylength, ftemp_kphio, soilmstress ) result( dgs )
+  function calc_dgs( dassim, vpd, ca, gammastar, xi ) result( dgs )
     !//////////////////////////////////////////////////////////////////
-    ! Calculates leaf-level stomatal conductance to H2O, mean over daylight hours
-    ! Not described in Stocker et al., XXX.
+    ! Calculates leaf-level stomatal conductance to CO2.
+    ! This uses instantaneous VPD and is therefore not calculated inside
+    ! the P-model function. The slope parameter 'xi' is representative
+    ! for the acclimated response.
     !------------------------------------------------------------------
     ! arguments
-    real, intent(in) :: dppfd           ! daily total photon flux density, mol m-2
-    real, intent(in) :: dgs_unitiabs    ! stomatal conductance per unit absorbed light (mol H2O m-2 s-1 / mol light)
-    real, intent(in) :: daylength       ! day length (h)
-    real, intent(in) :: ftemp_kphio      ! this day's air temperature, deg C
-    real, intent(in) :: soilmstress     ! soil moisture stress factor
+    real, intent(in) :: dassim          ! daily mean assimilation rate (mol CO2 m-2 s-1)
+    real, intent(in) :: vpd             ! vapour pressure deficit (Pa)
+    real, intent(in) :: ca              ! ambient CO2 partial pressure (Pa)
+    real, intent(in) :: gammastar       ! CO2 compensation point (Pa)
+    real, intent(in) :: xi              ! slope parameter of stomatal response derived from P-model optimality, corresponding to sqrt(beta*(K+gammastar)/(1.6*etastar)) (Pa)
+    ! real, intent(in) :: dgs_unitiabs    ! stomatal conductance per unit absorbed light (mol CO2 Pa-1 m-2 s-1 / mol light)
 
     ! function return variable
-    real :: dgs                         ! leaf-level stomatal conductance to H2O, mean over daylight hours ( mol H2O m-2 s-1 )
+    real :: dgs                         ! leaf-level stomatal conductance to H2O, mean over daylight hours ( mol CO2 Pa-1 m-2 s-1 )
 
     ! Leaf-level assimilation rate, average over daylight hours
-    if (daylength>0.0) then
-      dgs = dppfd * soilmstress * dgs_unitiabs * ftemp_kphio / ( 60.0 * 60.0 * daylength )
-    else
-      dgs = 0.0
-    end if
+    ! dgs = dassim * dgs_unitiabs
+    dgs = (1.0 + xi / sqrt(vpd)) * dassim / (ca - gammastar)
+    ! print*,'instantaneous gs: ', dgs 
     
   end function calc_dgs
 
 
-  function calc_drd( fapar, fpc_grid, meanmppfd, rd_unitiabs, ftemp_kphio, soilmstress ) result( my_drd )
+  function calc_drd( fapar, fpc_grid, dppfd, rd_unitiabs, ftemp_kphio, soilmstress ) result( my_drd )
     !//////////////////////////////////////////////////////////////////
     ! Calculates daily total dark respiration (Rd) based on monthly mean 
     ! PPFD (assumes acclimation on a monthly time scale).
@@ -470,7 +463,7 @@ contains
     ! arguments
     real, intent(in) :: fapar           ! fraction of absorbed photosynthetically active radiation
     real, intent(in) :: fpc_grid        ! foliar projective cover
-    real, intent(in) :: meanmppfd       ! monthly mean PPFD (mol m-2 s-1)
+    real, intent(in) :: dppfd           ! daily total photon flux density (mol m-2)
     real, intent(in) :: rd_unitiabs
     real, intent(in) :: ftemp_kphio      ! this day's air temperature, deg C
     real, intent(in) :: soilmstress     ! soil moisture stress factor
@@ -479,7 +472,7 @@ contains
     real :: my_drd
 
     ! Dark respiration takes place during night and day (24 hours)
-    my_drd = fapar * fpc_grid * meanmppfd * soilmstress * rd_unitiabs * ftemp_kphio * 60.0 * 60.0 * 24.0 * c_molmass
+    my_drd = fapar * fpc_grid * dppfd * soilmstress * rd_unitiabs * ftemp_kphio * c_molmass
 
   end function calc_drd
 
@@ -527,6 +520,28 @@ contains
   end function calc_vcmax_canop
 
 
+  function calc_g_canopy( g_stomata, lai, tk ) result( g_canopy )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Calculates canopy conductance, proportional to the leaf area index.
+    ! Since g_stomata is taken here from the photosynthesis module, we don't 
+    ! use Eq. 8 in Zhang et al. (2017).
+    !-------------------------------------------------------------------------
+    use md_params_core, only: kR
+
+    ! arguments
+    real, intent(in) :: g_stomata      ! stomatal conductance (mol CO2 Pa-1 m-2 s-1)
+    real, intent(in) :: lai            ! leaf area index, single-sided (unitless)
+    real, intent(in) :: tk             ! (leaf) temperature (K)
+
+    ! function return variable
+    real :: g_canopy    ! canopy conductance (m s-1)
+
+    ! canopy conductance scales with LAI. Including unit conversion to m s-1.
+    g_canopy = 1.6 * g_stomata * kR * tk * lai
+
+  end function calc_g_canopy
+
+
   function pmodel( kphio, fapar, ppfd, co2, tc, vpd, patm, c4, method_optci, method_jmaxlim ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
     ! Implements the P-model, providing predictions for ci, Vcmax, and 
@@ -554,7 +569,9 @@ contains
     real :: kmm                 ! Michaelis-Menten coefficient (Pa)
     real :: gammastar           ! photorespiratory compensation point - Gamma-star (Pa)
     real :: ca                  ! ambient CO2 partial pressure, (Pa)
-    real :: gs                  ! stomatal conductance to H2O, expressed per units absorbed light (mol H2O m-2 m-1 / (mol light m-2))
+    real :: gs                  ! stomatal conductance to CO2 (mol CO2 Pa-1 m-2 s-1)
+    real :: gs_unitfapar        ! stomatal conductance to CO2 (mol CO2 Pa-1 m-2 s-1)
+    real :: gs_unitiabs         ! stomatal conductance to CO2 (mol CO2 Pa-1 m-2 s-1)
     real :: ci                  ! leaf-internal partial pressure, (Pa)
     real :: chi                 ! = ci/ca, leaf-internal to ambient CO2 partial pressure, ci/ca (unitless)
     real :: xi                  ! relative cost parameter, Eq. 9 in Stocker et al., 2019
@@ -588,6 +605,9 @@ contains
 
     real, parameter :: theta = 0.85
     real, parameter :: c_cost = 0.05336251
+
+    ! xxx test
+    real :: gs_test
 
     type(outtype_chi) :: out_optchi
 
@@ -662,9 +682,6 @@ contains
       !-----------------------------------------------------------------------
       ! Corrolary preditions
       !-----------------------------------------------------------------------
-      ! ! stomatal conductance
-      ! gs = gpp  / ( ca - ci )
-
       ! intrinsic water use efficiency 
       iwue = ( ca - ci ) / ( 1.6 * patm )
 
@@ -780,8 +797,8 @@ contains
       ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
       actnv_unitiabs  = vcmax25_unitiabs  * n_v
 
-      !   ! stomatal conductance to H2O, expressed per unit absorbed light
-      !   gs_unitiabs = 1.6 * lue * patm / ( ca - ci )
+      ! stomatal conductance to CO2, expressed per unit absorbed light
+      gs_unitiabs = (lue / c_molmass) / ( ca - ci )
 
 
       if (ppfd /= dummy) then
@@ -791,9 +808,6 @@ contains
         !-----------------------------------------------------------------------
         ! ! leaf-level assimilation rate
         ! assim = lue * ppfd
-
-        ! ! stomatal conductance to CO2
-        ! gs = assim  / ( ca - ci )
 
         ! ! Transpiration (E)
         ! transp = 1.6 * gs * vpd
@@ -809,6 +823,9 @@ contains
 
         ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
         actnv_unitfapar = ppfd * actnv_unitiabs
+
+        ! stomatal conductance to CO2, expressed per unit absorbed fAPAR
+        gs_unitfapar = ppfd * gs_unitiabs
 
 
         if (fapar /= dummy) then
@@ -851,6 +868,13 @@ contains
 
           ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
           actnv = iabs * actnv_unitiabs ! = vcmax25 * n_v
+
+          ! stomatal conductance to CO2
+          gs = iabs * gs_unitiabs
+
+          ! xxx text
+          gs_test = (gpp / c_molmass) / (ca - ci)
+          ! print*,'pmodel(): gs, gs_test ', gs, gs_test
 
           ! Derive Jmax using again A_J = A_C
           fact_jmaxlim = vcmax * (ci + 2.0 * gammastar) / (kphio * iabs * (ci + kmm))
@@ -911,6 +935,7 @@ contains
     ! construct list for output
     out_pmodel%gammastar        = gammastar
     out_pmodel%kmm              = kmm
+    out_pmodel%ca               = ca
     out_pmodel%ci               = ci
     out_pmodel%chi              = chi
     out_pmodel%xi               = xi
@@ -930,6 +955,9 @@ contains
     out_pmodel%actnv            = actnv
     out_pmodel%actnv_unitfapar  = actnv_unitfapar
     out_pmodel%actnv_unitiabs   = actnv_unitiabs
+    out_pmodel%gs_unitiabs      = gs_unitiabs
+    out_pmodel%gs_unitfapar     = gs_unitfapar
+    out_pmodel%gs               = gs
 
 
   end function pmodel
@@ -1176,7 +1204,7 @@ contains
     kc = kc25 * calc_ftemp_arrhenius( tk, dhac )
     ko = ko25 * calc_ftemp_arrhenius( tk, dhao )
 
-    po  = kco * (1.0d-6) * patm ! O2 partial pressure
+    po  = kco * (1.0e-6) * patm ! O2 partial pressure
     kmm = kc * (1.0 + po/ko)
 
   end function calc_kmm
@@ -1598,7 +1626,7 @@ contains
     ! function return variable
     real :: ftemp
 
-    ftemp = 0.352 + 0.022 * dtemp - 3.4d-4 * dtemp**2
+    ftemp = 0.352 + 0.022 * dtemp - 3.4e-4 * dtemp**2
 
   end function calc_ftemp_kphio
 
@@ -1607,9 +1635,7 @@ contains
     !////////////////////////////////////////////////////////////////
     ! Subroutine reads module-specific parameters from input file.
     !----------------------------------------------------------------
-    use md_interface, only: interface
     use md_sofunutils, only: getparreal
-    use md_plant, only: params_pft_plant
 
     ! local variables
     integer :: pft
@@ -1664,8 +1690,7 @@ contains
     !----------------------------------------------------------------
     use netcdf
     use md_io_netcdf, only: init_nc_3D_time, check
-    use md_interface, only: interface
-
+    
     ! local variables
     character(len=256) :: prefix
 
@@ -1790,8 +1815,8 @@ contains
 
     ! daily
     if (interface%steering%init.and.interface%params_siml%loutdgpp    ) allocate( outdgpp(interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init.and.interface%params_siml%loutdrd    ) allocate( outdrd(interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init.and.interface%params_siml%loutdtransp) allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and.interface%params_siml%loutdrd    )  allocate( outdrd(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init.and.interface%params_siml%loutdtransp)  allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
 
     if (interface%params_siml%loutdgpp )   outdgpp(:,:)    = 0.0
     if (interface%params_siml%loutdrd    ) outdrd(:,:)     = 0.0
@@ -1827,7 +1852,7 @@ contains
   end subroutine initoutput_gpp
 
 
-  subroutine getout_daily_gpp( out_pmodel, plant_fluxes, jpngr, doy )
+  subroutine getout_daily_gpp( tile_fluxes, jpngr, doy )
     !////////////////////////////////////////////////////////////////
     ! Called daily to gather daily output variables.
     !
@@ -1840,10 +1865,9 @@ contains
     use md_plant, only: plant_fluxes_type
 
     ! argument
-    type(outtype_pmodel), dimension(npft), intent(in)    :: out_pmodel
-    type(plant_fluxes_type), dimension(npft), intent(in) :: plant_fluxes
-    integer, intent(in)                                    :: jpngr
-    integer, intent(in)                                    :: doy
+    type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
+    integer, intent(in) :: jpngr
+    integer, intent(in) :: doy
 
     ! local
     integer :: it
@@ -1855,10 +1879,9 @@ contains
     !----------------------------------------------------------------
     it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
 
-    ! sum over PFT
-    if (interface%params_siml%loutdgpp   ) outdgpp(it,jpngr)    = outdgpp(it,jpngr)    + sum(plant_fluxes(:)%dgpp)    / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + sum(plant_fluxes(:)%drd)     / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + sum(plant_fluxes(:)%dtransp) / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdgpp   ) outdgpp(it,jpngr)    = outdgpp(it,jpngr)    + tile_fluxes(1)%canopy%dgpp    / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + tile_fluxes(1)%canopy%drd     / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + tile_fluxes(1)%canopy%dtransp / real( interface%params_siml%outdt )
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
@@ -1867,35 +1890,35 @@ contains
     ! store all daily values for outputting annual maximum
     ! if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
 
-    outdvcmax(1,doy)      = dvcmax_canop(1)
-    outdvcmax25(1,doy)    = out_pmodel(1)%ftemp_inst_vcmax * dvcmax_canop(1)
+    ! outdvcmax(1,doy)      = dvcmax_canop(1)
+    ! outdvcmax25(1,doy)    = out_pmodel(1)%ftemp_inst_vcmax * dvcmax_canop(1)
 
     ! weighted by daily GPP
     if (interface%params_siml%loutgpp) then
 
-      outagpp(:,jpngr)        = outagpp(:,jpngr)        + plant_fluxes(:)%dgpp
+      outagpp(:,jpngr)        = outagpp(:,jpngr) + tile_fluxes(:)%canopy%dgpp
 
-      outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * plant_fluxes(:)%dgpp
-      outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * plant_fluxes(:)%dgpp
-      outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * plant_fluxes(:)%dgpp
-      outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * plant_fluxes(:)%dgpp
-      outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * plant_fluxes(:)%dgpp
+      ! outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * tile_fluxes(:)%canopy%dgpp
+      ! outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * tile_fluxes(:)%canopy%dgpp
+      ! outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * tile_fluxes(:)%canopy%dgpp
+      ! outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * tile_fluxes(:)%canopy%dgpp
+      ! outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * tile_fluxes(:)%canopy%dgpp
 
-      if (doy==ndayyear) then
-        if (sum(outagpp(:,jpngr))==0.0) then
-          outachi       (:,jpngr) = dummy
-          outaiwue      (:,jpngr) = dummy
-          outaci        (:,jpngr) = dummy
-          outags        (:,jpngr) = dummy
-          outavcmax_leaf(:,jpngr) = dummy
-        else
-          outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
-          outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
-          outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
-          outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
-          outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
-        end if
-      end if
+      ! if (doy==ndayyear) then
+      !   if (sum(outagpp(:,jpngr))==0.0) then
+      !     outachi       (:,jpngr) = dummy
+      !     outaiwue      (:,jpngr) = dummy
+      !     outaci        (:,jpngr) = dummy
+      !     outags        (:,jpngr) = dummy
+      !     outavcmax_leaf(:,jpngr) = dummy
+      !   else
+      !     outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
+      !     outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
+      !     outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
+      !     outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
+      !     outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
+      !   end if
+      ! end if
 
     end if
 
@@ -1932,74 +1955,6 @@ contains
   end subroutine getout_annual_gpp
 
 
-  ! subroutine writeout_ascii_gpp()
-  !   !/////////////////////////////////////////////////////////////////////////
-  !   ! Write module-specific ASCII output.
-  !   !
-  !   ! This is designed for use within SOFUN and requires arguments as
-  !   ! derived-types, defined elsewhere. For other applications, implement 
-  !   ! the function calls (e.g., calc_dgpp()) differently and 
-  !   ! comment/delete this subroutine.
-  !   !-------------------------------------------------------------------------
-  !   use md_interface
-
-  !   ! local variables
-  !   real :: itime
-  !   integer :: it, jpngr
-
-  !   ! xxx implement this: sum over gridcells? single output per gridcell?
-  !   if (maxgrid>1) stop 'writeout_ascii_gpp: think of something ...'
-  !   jpngr = 1
-
-  !   !-------------------------------------------------------------------------
-  !   ! DAILY OUTPUT
-  !   !-------------------------------------------------------------------------
-  !   if ( .not. interface%steering%spinup &
-  !        .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-  !        .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
-
-  !     ! Write daily output only during transient simulation
-  !     do it=1,interface%params_siml%outnt
-
-  !       ! Define 'itime' as a decimal number corresponding to day in the year + year
-  !       itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
-        
-  !       if (interface%params_siml%loutdgpp  )  write(101,999) itime, outdgpp(it,jpngr)
-  !       if (interface%params_siml%loutdrd    ) write(135,999) itime, outdrd(it,jpngr)
-  !       if (interface%params_siml%loutdtransp) write(114,999) itime, outdtransp(it,jpngr)
-
-  !     end do
-
-  !   end if
-
-  !   !-------------------------------------------------------------------------
-  !   ! ANNUAL OUTPUT
-  !   ! Write annual value, summed over all PFTs / LUs
-  !   ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-  !   !-------------------------------------------------------------------------
-  !   if (interface%params_siml%loutgpp) then
-  
-  !     itime = real(interface%steering%outyear)
-
-  !     write(310,999) itime, sum(outagpp(:,jpngr))
-  !     write(323,999) itime, sum(outavcmax(:,jpngr))
-  !     write(654,999) itime, sum(outavcmax_25(:,jpngr))
-  !     write(653,999) itime, sum(outalue(:,jpngr))
-  !     write(652,999) itime, sum(outachi(:,jpngr))
-  !     write(658,999) itime, sum(outaiwue(:,jpngr)) * 1e6 / 1.6 ! converting from unitless to micro-mol CO2 / mol H2O
-  !     write(655,999) itime, sum(outaci(:,jpngr))
-  !     write(656,999) itime, sum(outags(:,jpngr))
-  !     write(657,999) itime, sum(outavcmax_leaf(:,jpngr))
-
-  !   end if
-
-  !   return
-    
-  !   999 format (F20.8,F20.8)
-
-  ! end subroutine writeout_ascii_gpp
-
-
   subroutine writeout_nc_gpp()
     !/////////////////////////////////////////////////////////////////////////
     ! Writes module-specific NetCDF output
@@ -2011,8 +1966,7 @@ contains
     !-------------------------------------------------------------------------
     use netcdf
     use md_io_netcdf, only: write_nc_2D, write_nc_3D_time, check
-    use md_interface, only: interface
-
+    
     if ( .not. interface%steering%spinup ) then
       !-------------------------------------------------------------------------
       ! Annual GPP
