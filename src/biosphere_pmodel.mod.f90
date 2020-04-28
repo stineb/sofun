@@ -2,15 +2,15 @@ module md_biosphere
 
   use md_params_core
   use md_classdefs
-  use md_plant, only: plant_type, plant_fluxes_type, initdaily_plant, initglobal_plant, getout_daily_plant, getout_annual_plant, getpar_modl_plant, initoutput_plant
+  use md_plant, only: plant_type, plant_fluxes_type, initglobal_plant, getout_daily_plant, getout_annual_plant, getpar_modl_plant, initoutput_plant
   use md_params_soil, only: paramtype_soil
-  use md_waterbal, only: solartype, waterbal, get_solar, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, initio_nc_waterbal, writeout_nc_waterbal, init_rlm_waterbal, get_rlm_waterbal, getrlm_daily_waterbal
+  use md_waterbal, only: waterbal, solar, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, initio_nc_waterbal, writeout_nc_waterbal !, get_rlm_waterbal, getrlm_daily_waterbal  ! , init_rlm_waterbal
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initoutput_gpp, gpp, getout_daily_gpp, getout_annual_gpp, initio_nc_gpp, writeout_nc_gpp
   use md_vegdynamics, only: vegdynamics
-  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile
+  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile_fluxes, getpar_modl_tile
   use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_nc_forcing, writeout_nc_forcing
   use md_soiltemp, only: getout_daily_soiltemp, soiltemp, initoutput_soiltemp
-  use md_sofunutils, only: calc_patm
+  ! use md_sofunutils, only: calc_patm
 
   implicit none
 
@@ -21,14 +21,10 @@ module md_biosphere
   ! Module-specific (private) variables
   !----------------------------------------------------------------
   ! derived types from L1 modules
-  type( tile_type ),         allocatable, dimension(:,:) :: tile
-  type( tile_fluxes_type ),  allocatable, dimension(:)   :: tile_fluxes
-  type( plant_type ),        allocatable, dimension(:,:) :: plant
-  type( plant_fluxes_type ), allocatable, dimension(:)   :: plant_fluxes
+  type(tile_type),        allocatable, dimension(:,:) :: tile             ! has gridcell-dimension because values are stored between years
+  type(tile_fluxes_type), allocatable, dimension(:)   :: tile_fluxes      ! has no gridcell-dimension values need not be recorded
 
-  ! derived types from L2 modules
-  type( solartype )                              :: solar
-  type( outtype_pmodel ), dimension(npft,nmonth) :: out_pmodel ! P-model output variables for each month and PFT determined beforehand (per unit fAPAR and PPFD only)
+  logical, parameter      :: verbose = .false.     ! change by hand for debugging etc.
 
 contains
 
@@ -50,7 +46,6 @@ contains
     ! local variables
     integer :: dm, moy, jpngr, doy
     logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
-    logical, parameter      :: verbose = .false.     ! change by hand for debugging etc.
 
     !----------------------------------------------------------------
     ! INITIALISATIONS
@@ -62,6 +57,7 @@ contains
       ! read model parameters that may be varied for optimisation
       !----------------------------------------------------------------
       if (verbose) print*, 'getpar_modl() ...'
+      call getpar_modl_tile()
       call getpar_modl_plant()
       call getpar_modl_waterbal()
       call getpar_modl_gpp()
@@ -71,12 +67,8 @@ contains
       ! Initialise pool variables and/or read from restart file (not implemented)
       !----------------------------------------------------------------
       if (verbose) print*, 'initglobal_() ...'
-      allocate( tile(  nlu,  size(interface%grid) ) )
-      allocate( tile_fluxes(  nlu ) )
-      allocate( plant( npft, size(interface%grid) ) )
-      allocate( plant_fluxes( npft ) )
-
-      call initglobal_plant( plant(:,:), size(interface%grid) )
+      allocate( tile(nlu, size(interface%grid)) )
+      allocate( tile_fluxes(nlu) )
       call initglobal_tile(  tile(:,:),  size(interface%grid) )
       if (verbose) print*, '... done'
 
@@ -106,8 +98,8 @@ contains
       if (verbose) print*, '... done'
     end if
 
-    ! additional initialisation for rolling annual mean calculations (also needed in calibration mode)
-    call init_rlm_waterbal( size(interface%grid) )
+    ! ! additional initialisation for rolling annual mean calculations (also needed in calibration mode)
+    ! call init_rlm_waterbal( size(interface%grid) )
 
     !----------------------------------------------------------------
     ! LOOP THROUGH GRIDCELLS
@@ -121,49 +113,10 @@ contains
         if (verbose) print*,'JPNGR: ', jpngr
         if (verbose) print*,'----------------------'
 
-        !----------------------------------------------------------------
-        ! Get radiation based on daily temperature, sunshine fraction, and 
-        ! elevation.
-        ! This is not compatible with a daily biosphere-climate coupling. I.e., 
-        ! there is a daily loop within 'get_solar'!
-        !----------------------------------------------------------------
-        if (verbose) print*,'calling get_solar() ... '
-        if (verbose) print*,'    with argument lat = ', interface%grid(jpngr)%lat
-        if (verbose) print*,'    with argument elv = ', interface%grid(jpngr)%elv
-        if (verbose) print*,'    with argument dfsun (ann. mean) = ', sum( interface%climate(jpngr)%dfsun(:) / ndayyear )
-        if (verbose) print*,'    with argument dppfd (ann. mean) = ', sum( interface%climate(jpngr)%dppfd(:) / ndayyear )
-        solar = get_solar( &
-                          interface%grid(jpngr)%lat, & 
-                          interface%grid(jpngr)%elv, & 
-                          interface%climate(jpngr)%dfsun(:), & 
-                          interface%climate(jpngr)%dppfd(:)  &
-                          )
-        if (verbose) print*,'... done'
-
         ! !----------------------------------------------------------------
-        ! ! Run P-model
-        ! ! to get monthly light use efficiency, Rd, and Vcmax per unit of 
-        ! ! light absorbed light.
-        ! ! Photosynthetic parameters acclimate at ~monthly time scale
+        ! ! calculate constant atmospheric pressure as a function of elevation
         ! !----------------------------------------------------------------
-        ! if (verbose) print*,'calling getlue() ... '
-        ! if (verbose) print*,'    with argument CO2  = ', interface%pco2
-        ! if (verbose) print*,'    with argument temp.= ', interface%climate(jpngr)%dtemp(1:10)
-        ! if (verbose) print*,'    with argument VPD  = ', interface%climate(jpngr)%dvpd(1:10)
-        ! if (verbose) print*,'    with argument elv. = ', interface%grid(jpngr)%elv
-        ! out_pmodel(:,:) = getlue( &
-        !                           interface%pco2, & 
-        !                           interface%climate(jpngr)%dtemp(:), & 
-        !                           interface%climate(jpngr)%dvpd(:), & 
-        !                           interface%grid(jpngr)%elv & 
-        !                           )
-
-        if (verbose) print*,'... done'
-
-        !----------------------------------------------------------------
-        ! calculate constant atmospheric pressure as a function of elevation
-        !----------------------------------------------------------------
-        interface%climate(jpngr)%dpatm(:) = calc_patm(interface%grid(jpngr)%elv)
+        ! interface%climate(jpngr)%dpatm(:) = calc_patm(interface%grid(jpngr)%elv)
 
         !----------------------------------------------------------------
         ! LOOP THROUGH MONTHS
@@ -185,10 +138,24 @@ contains
             ! initialise daily updated variables 
             !----------------------------------------------------------------
             if (verbose) print*,'calling initdaily_() ...'
-            call initdaily_plant( plant_fluxes(:) )
-            call initdaily_tile( tile_fluxes(:) )
+            call initdaily_tile_fluxes( tile_fluxes(:) )
             if (verbose) print*,'... done.'
 
+            !----------------------------------------------------------------
+            ! Get radiation based on daily temperature, sunshine fraction, and 
+            ! elevation.
+            !----------------------------------------------------------------
+            if (verbose) print*,'calling solar() ... '
+            if (verbose) print*,'    with argument lat = ', interface%grid(jpngr)%lat
+            if (verbose) print*,'    with argument elv = ', interface%grid(jpngr)%elv
+            if (verbose) print*,'    with argument dfsun (ann. mean) = ', sum( interface%climate(:,jpngr)%dfsun / ndayyear )
+            if (verbose) print*,'    with argument dppfd (ann. mean) = ', sum( interface%climate(:,jpngr)%dppfd / ndayyear )
+            call solar( tile_fluxes(:), &
+                        interface%grid(jpngr), & 
+                        interface%climate(doy,jpngr),  &
+                        doy &
+                        )
+            if (verbose) print*,'... done'
 
             !----------------------------------------------------------------
             ! update canopy and tile variables and simulate daily 
@@ -196,10 +163,7 @@ contains
             !----------------------------------------------------------------
             if (verbose) print*,'calling vegdynamics() ... '
             call vegdynamics( tile(:,jpngr), &
-                              plant(:,jpngr), &
-                              solar, &
-                              out_pmodel(:,:), &
-                              interface%vegcover(jpngr)%dfapar(doy), &
+                              interface%vegcover(doy,jpngr)%dfapar, &
                               interface%fpc_grid(:,jpngr) &
                               )
             if (verbose) print*,'... done'
@@ -209,23 +173,13 @@ contains
             ! calculate GPP
             !----------------------------------------------------------------
             if (verbose) print*,'calling gpp() ... '
-            call gpp( &
-                      interface%pco2, & 
-                      interface%climate(jpngr)%dtemp(doy), & 
-                      interface%climate(jpngr)%dvpd(doy), & 
-                      interface%climate(jpngr)%dpatm(doy), &
-                      interface%climate(jpngr)%dppfd(doy), &
-                      interface%vegcover(jpngr)%dfapar(doy), &
-                      plant(:,jpngr)%fpc_grid, &
-                      solar%dayl(doy), &
-                      solar%meanmppfd(moy), &
-                      tile(:,jpngr)%soil%phy%wscal, &
-                      tile(:,jpngr)%soil%phy%rlmalpha, &
+            call gpp( tile(:,jpngr), &
+                      tile_fluxes(:), &
+                      interface%pco2, &
+                      interface%climate(doy,jpngr), &
+                      interface%vegcover(doy,jpngr), &
                       interface%params_siml%soilmstress, &
                       interface%params_siml%tempstress, &
-                      plant_fluxes(:)%dgpp, &
-                      plant_fluxes(:)%drd, &
-                      plant_fluxes(:)%dtransp, &
                       init_daily &
                       )
             if (verbose) print*,'... done'
@@ -234,25 +188,15 @@ contains
             ! get soil moisture, and runoff
             !----------------------------------------------------------------
             if (verbose) print*,'calling waterbal() ... '
-            ! print*,'lon,lat,ilon,ilat,jpngr', interface%grid(jpngr)%lon, interface%grid(jpngr)%lat, interface%grid(jpngr)%ilon, interface%grid(jpngr)%ilat, jpngr
-            call waterbal( &
-                          tile(:,jpngr)%soil, &
-                          tile_fluxes(:), &
-                          plant_fluxes(:), &
-                          doy, &
-                          jpngr, & 
-                          interface%grid(jpngr)%lat,             & 
-                          interface%grid(jpngr)%elv,             & 
-                          interface%climate(jpngr)%dprec(doy),   & 
-                          interface%climate(jpngr)%dsnow(doy),   & 
-                          interface%climate(jpngr)%dtemp(doy),   & 
-                          interface%climate(jpngr)%dfsun(doy),   &
-                          interface%climate(jpngr)%dnetrad(doy), &
-                          interface%climate(jpngr)%dvpd(doy),    &
-                          interface%vegcover(jpngr)%dfapar(doy)  &
-                          )
+            call waterbal(  tile(:,jpngr), &
+                            tile_fluxes(:), &
+                            interface%grid(jpngr), &
+                            interface%climate(doy,jpngr), &
+                            doy &
+                            )
             if (verbose) print*,'... done'
 
+          
             ! !----------------------------------------------------------------
             ! ! calculate soil temperature
             ! !----------------------------------------------------------------
@@ -273,24 +217,25 @@ contains
             !----------------------------------------------------------------
             if (.not.interface%params_siml%is_calib) then
               if (verbose) print*,'calling getout_daily() ... '
-              call getout_daily_waterbal( jpngr, moy, doy, solar, tile(:,jpngr)%soil%phy, tile_fluxes(:) )
-              call getout_daily_gpp( out_pmodel(:,moy), plant_fluxes(:), jpngr, doy )
-              call getout_daily_plant( plant(:,jpngr), plant_fluxes(:), jpngr, moy, doy )
+              call getout_daily_waterbal( tile(:,jpngr), tile_fluxes(:), jpngr, moy, doy )
+              call getout_daily_gpp( tile_fluxes(:), jpngr, doy )
+              ! call getout_daily_plant( tile(:,jpngr)%plant(:), jpngr, moy, doy )
               call getout_daily_forcing( jpngr, moy, doy )
               call getout_daily_soiltemp( jpngr, moy, doy, tile(:,jpngr)%soil%phy )
               if (verbose) print*,'... done'
             end if
 
-            call getrlm_daily_waterbal( jpngr, doy )
+            ! call getrlm_daily_waterbal( tile_fluxes(:), jpngr, doy )
 
             !----------------------------------------------------------------
             ! populate function return variable
             !----------------------------------------------------------------
             !if (npft>1) stop 'think about npft > 1'
-            out_biosphere%fapar(doy)   = plant(1,jpngr)%fapar_ind
-            out_biosphere%gpp(doy)     = plant_fluxes(1)%dgpp
-            out_biosphere%transp(doy)  = plant_fluxes(1)%dtransp
-            out_biosphere%latenth(doy) = plant_fluxes(1)%dlatenth
+            out_biosphere%fapar(doy)   = tile(1,1)%canopy%fapar
+            out_biosphere%gpp(doy)     = tile_fluxes(1)%canopy%dgpp
+            out_biosphere%transp(doy)  = tile_fluxes(1)%canopy%daet
+            out_biosphere%latenth(doy) = tile_fluxes(1)%canopy%daet_e
+            out_biosphere%pet(doy)     = tile_fluxes(1)%canopy%dpet
 
             init_daily = .false.
 
@@ -303,7 +248,7 @@ contains
         !----------------------------------------------------------------
         if (.not.interface%params_siml%is_calib) then
           if (verbose) print*,'calling getout_annual_() ... '
-          call getout_annual_plant( plant(:,jpngr), jpngr )
+          ! call getout_annual_plant( tile(:)%plant(:), jpngr )
           call getout_annual_gpp( jpngr )
           if (verbose) print*,'... done'
         end if
@@ -311,10 +256,10 @@ contains
       end if
     end do gridcellloop
 
-    !----------------------------------------------------------------
-    ! Get rolling multi-year averages (needs to store entire arrays)
-    !----------------------------------------------------------------
-    call get_rlm_waterbal( tile(:,:)%soil%phy, interface%steering%init )
+    ! !----------------------------------------------------------------
+    ! ! Get rolling multi-year averages (needs to store entire arrays)
+    ! !----------------------------------------------------------------
+    ! call get_rlm_waterbal( tile(:,:)%soil%phy, interface%steering%init )
 
     !----------------------------------------------------------------
     ! Write to NetCDF output
@@ -334,8 +279,7 @@ contains
       !----------------------------------------------------------------
       deallocate( tile )
       deallocate( tile_fluxes )
-      deallocate( plant )
-      deallocate( plant_fluxes )
+      
     end if
 
     if (verbose) print*,'Done with biosphere for this year. Guete Rutsch!'

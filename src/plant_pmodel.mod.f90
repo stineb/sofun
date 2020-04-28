@@ -7,18 +7,40 @@ module md_plant
   ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
-  use md_params_core
+  use md_params_core, only: ndayyear, npft, nlu, lunat
+  use md_interface, only: interface
 
   implicit none
 
   private
-  public plant_type, plant_fluxes_type, getpar_modl_plant, params_pft_plant, &
-    initdaily_plant, initoutput_plant, initio_plant, getout_daily_plant,     &
-    writeout_ascii_plant, maxdoy, initglobal_plant, get_leaftraits,          &
-    getout_annual_plant
+  public plant_type, plant_fluxes_type, getpar_modl_plant, &
+    initoutput_plant, getout_daily_plant, &
+    initglobal_plant, &
+    getout_annual_plant, &
+    params_pft_plant
+    ! get_leaftraits, 
 
   !----------------------------------------------------------------
   ! Public, module-specific state variables
+  !----------------------------------------------------------------
+
+  ! PFT-DEPENDENT PARAMETERS
+  type params_pft_plant_type
+    character(len=4) :: pftname    ! standard PFT name with 4 characters length
+    integer :: lu_category         ! land use category associated with PFT
+    logical, dimension(nlu) :: islu! islu(ipft,ilu) is true if ipft belongs to ilu
+    logical :: grass               ! boolean for growth form 'grass'
+    logical :: tree                ! boolean for growth form 'tree'
+    logical :: nfixer              ! whether plant is capable of symbiotically fixing N
+    logical :: c3                  ! whether plant follows C3 photosynthesis
+    logical :: c4                  ! whether plant follows C4 photosynthesis
+    real    :: sla                 ! specific leaf area (m2 gC-1)
+    real    :: lma                 ! leaf mass per area (gC m-2)
+    real    :: r_ntolma            ! constant ratio of structural N to C (LMA) (gN/gC)
+  end type params_pft_plant_type
+
+  type(params_pft_plant_type), dimension(npft) :: params_pft_plant
+
   !----------------------------------------------------------------
   ! Pools and other variables with year-to-year memory
   !----------------------------------------------------------------
@@ -34,6 +56,8 @@ module md_plant
     real :: acrown              ! crown area
 
     ! leaf traits
+    real :: vcmax25             ! canopy-level Vcmax25 (Vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
+    real :: jmax25              ! total leaf N per unit leaf area (gN m-2)
     real :: narea               ! total leaf N per unit leaf area (gN m-2)
     real :: narea_metabolic     ! metabolic leaf N per unit leaf area (gN m-2)
     real :: narea_structural    ! structural leaf N per unit leaf area (gN m-2)
@@ -53,37 +77,11 @@ module md_plant
 
     real :: dgpp     ! daily gross primary production [gC/m2/d]           
     real :: drd      ! daily dark respiration [gC/m2/d]
+    real :: assim    ! daily assimilation (mol CO2 m-2 s-1)
     real :: dtransp  ! daily transpiration [mm]
     real :: dlatenth ! daily latent heat flux [J m-2 d-1]
 
   end type plant_fluxes_type
-
-  !-----------------------------------------------------------------------
-  ! Parameters. Runtime read-in
-  !-----------------------------------------------------------------------
-  ! NON PFT-DEPENDENT PARAMETERS
-  type params_plant_type
-    real :: kbeer             ! canopy light extinction coefficient
-  end type params_plant_type
-
-  type( params_plant_type ) :: params_plant
-
-  ! PFT-DEPENDENT PARAMETERS
-  type params_pft_plant_type
-    character(len=4) :: pftname    ! standard PFT name with 4 characters length
-    integer :: lu_category         ! land use category associated with PFT
-    logical, dimension(nlu) :: islu! islu(ipft,ilu) is true if ipft belongs to ilu
-    logical :: grass               ! boolean for growth form 'grass'
-    logical :: tree                ! boolean for growth form 'tree'
-    logical :: nfixer              ! whether plant is capable of symbiotically fixing N
-    logical :: c3                  ! whether plant follows C3 photosynthesis
-    logical :: c4                  ! whether plant follows C4 photosynthesis
-    real    :: sla                 ! specific leaf area (m2 gC-1)
-    real    :: lma                 ! leaf mass per area (gC m-2)
-    real    :: r_ntolma            ! constant ratio of structural N to C (LMA) (gN/gC)
-  end type params_pft_plant_type
-
-  type( params_pft_plant_type ), dimension(npft) :: params_pft_plant
 
   !----------------------------------------------------------------
   ! Module-specific output variables
@@ -102,94 +100,76 @@ module md_plant
 
 contains
 
-  function get_fapar( lai ) result( fapar )
-    !////////////////////////////////////////////////////////////////
-    ! FOLIAGE PROJECTIVE COVER 
-    ! = Fraction of Absorbed Photosynthetically Active Radiation
-    ! Function returns fractional plant cover an individual
-    ! Eq. 7 in Sitch et al., 2003
-    !----------------------------------------------------------------
-    ! arguments
-    real, intent(in) :: lai
+  ! function get_leaf_n_metabolic_canopy( mylai, meanmppfd, nv, myfapar ) result( mynleaf_metabolic )
+  !   !////////////////////////////////////////////////////////////////
+  !   ! Calculates metabolic leaf N at canopy-level, determined by 
+  !   ! light conditions (meanmppfd) and the Rubisco-N per unit absorbed
+  !   ! light.
+  !   !----------------------------------------------------------------
+  !   use md_params_core, only: nmonth
 
-    ! function return variable
-    real :: fapar
+  !   ! arguments
+  !   real, intent(in)                    :: mylai
+  !   real, dimension(nmonth), intent(in) :: meanmppfd
+  !   real, dimension(nmonth), intent(in) :: nv
+  !   real, intent(in), optional          :: myfapar
 
-    fapar = ( 1.0 - exp( -1.0 * params_plant%kbeer * lai) )
+  !   ! function return variable
+  !   real :: mynleaf_metabolic  ! mol N m-2-ground
 
-  end function get_fapar
+  !   ! local variables
+  !   real :: maxnv
 
+  !   ! Metabolic N is predicted and is optimised at a monthly time scale. 
+  !   ! Leaf traits are calculated based on metabolic N => cellwall N => cellwall C / LMA
+  !   ! Leaves get thinner at the bottom of the canopy => increasing LAI through the season comes at a declining C and N cost
+  !   ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
+  !   ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
+  !   maxnv = maxval( meanmppfd(:) * nv(:) )
 
-  function get_leaf_n_metabolic_canopy( mylai, meanmppfd, nv, myfapar ) result( mynleaf_metabolic )
-    !////////////////////////////////////////////////////////////////
-    ! Calculates metabolic leaf N at canopy-level, determined by 
-    ! light conditions (meanmppfd) and the Rubisco-N per unit absorbed
-    ! light.
-    !----------------------------------------------------------------
-    use md_params_core, only: nmonth
+  !   if (present(myfapar)) then
+  !     mynleaf_metabolic = maxnv * myfapar
+  !   else
+  !     mynleaf_metabolic = maxnv * get_fapar( mylai )
+  !   end if
 
-    ! arguments
-    real, intent(in)                    :: mylai
-    real, dimension(nmonth), intent(in) :: meanmppfd
-    real, dimension(nmonth), intent(in) :: nv
-    real, intent(in), optional          :: myfapar
-
-    ! function return variable
-    real :: mynleaf_metabolic  ! mol N m-2-ground
-
-    ! local variables
-    real :: maxnv
-
-    ! Metabolic N is predicted and is optimised at a monthly time scale. 
-    ! Leaf traits are calculated based on metabolic N => cellwall N => cellwall C / LMA
-    ! Leaves get thinner at the bottom of the canopy => increasing LAI through the season comes at a declining C and N cost
-    ! Monthly variations in metabolic N, determined by variations in meanmppfd and nv should not result in variations in leaf traits. 
-    ! In order to prevent this, assume annual maximum metabolic N, part of which is deactivated during months with lower insolation (and Rd reduced.)
-    maxnv = maxval( meanmppfd(:) * nv(:) )
-
-    if (present(myfapar)) then
-      mynleaf_metabolic = maxnv * myfapar
-    else
-      mynleaf_metabolic = maxnv * get_fapar( mylai )
-    end if
-
-  end function get_leaf_n_metabolic_canopy
+  ! end function get_leaf_n_metabolic_canopy
 
 
-  subroutine get_leaftraits( plant, meanmppfd, nv )
-    !////////////////////////////////////////////////////////////////
-    ! Calculates leaf traits based on (predicted) metabolic Narea and
-    ! (prescribed) parameters that relate structural to metabolic
-    ! Narea and Carea to structural Narea:
-    ! Narea_metabolic  = predicted
-    ! Narea_structural = rN:C_struct * LMA
-    !----------------------------------------------------------------
-    use md_params_core, only: c_content_of_biomass, nmonth, n_molmass, c_molmass
+  ! subroutine get_leaftraits( plant, meanmppfd, nv )
+  !   !////////////////////////////////////////////////////////////////
+  !   ! Calculates leaf traits based on (predicted) metabolic Narea and
+  !   ! (prescribed) parameters that relate structural to metabolic
+  !   ! Narea and Carea to structural Narea:
+  !   ! Narea_metabolic  = predicted
+  !   ! Narea_structural = rN:C_struct * LMA
+  !   !----------------------------------------------------------------
+  !   use md_params_core, only: c_content_of_biomass, nmonth, n_molmass, c_molmass
 
-    ! arguments
-    type( plant_type ), intent(inout)   :: plant
-    real, dimension(nmonth), intent(in) :: meanmppfd
-    real, dimension(nmonth), intent(in) :: nv
+  !   ! arguments
+  !   type( plant_type ), intent(inout)   :: plant
+  !   real, dimension(nmonth), intent(in) :: meanmppfd
+  !   real, dimension(nmonth), intent(in) :: nv
 
-    ! local variables
-    real :: narea_metabolic_canopy   ! g N m-2-ground
+  !   ! local variables
+  !   real :: narea_metabolic_canopy   ! g N m-2-ground
 
-    ! canopy-level, in units of gN / m2-ground 
-    narea_metabolic_canopy  = n_molmass * get_leaf_n_metabolic_canopy(  -9999.9, meanmppfd(:), nv(:), plant%fapar_ind )
+  !   ! canopy-level, in units of gN / m2-ground 
+  !   narea_metabolic_canopy  = n_molmass * get_leaf_n_metabolic_canopy(  -9999.9, meanmppfd(:), nv(:), plant%fapar_ind )
 
-    ! leaf-level, in units of gN / m2-leaf 
-    ! assume narea_metabolic is representative of the outer canopy, therefore divide by 1.0 (or just leave)
-    plant%narea_metabolic  = narea_metabolic_canopy / 1.0
-    plant%narea_structural = params_pft_plant(plant%pftno)%r_ntolma * params_pft_plant(plant%pftno)%lma
-    plant%narea            = plant%narea_metabolic + plant%narea_structural
-    plant%lma              = params_pft_plant(plant%pftno)%lma
+  !   ! leaf-level, in units of gN / m2-leaf 
+  !   ! assume narea_metabolic is representative of the outer canopy, therefore divide by 1.0 (or just leave)
+  !   plant%narea_metabolic  = narea_metabolic_canopy / 1.0
+  !   plant%narea_structural = params_pft_plant(plant%pftno)%r_ntolma * params_pft_plant(plant%pftno)%lma
+  !   plant%narea            = plant%narea_metabolic + plant%narea_structural
+  !   plant%lma              = params_pft_plant(plant%pftno)%lma
 
-    ! additional traits
-    plant%nmass            = plant%narea / ( plant%lma / c_content_of_biomass )
-    plant%r_cton_leaf      = params_pft_plant(plant%pftno)%lma / plant%narea
-    plant%r_ntoc_leaf      = 1.0 / plant%r_cton_leaf
+  !   ! additional traits
+  !   plant%nmass            = plant%narea / ( plant%lma / c_content_of_biomass )
+  !   plant%r_cton_leaf      = params_pft_plant(plant%pftno)%lma / plant%narea
+  !   plant%r_ntoc_leaf      = 1.0 / plant%r_cton_leaf
 
-  end subroutine get_leaftraits
+  ! end subroutine get_leaftraits
 
 
   subroutine getpar_modl_plant()
@@ -202,17 +182,10 @@ contains
     ! contact: b.stocker@imperial.ac.uk
     !----------------------------------------------------------------    
     use md_sofunutils, only: getparreal
-    use md_interface
 
     ! local variables
     integer :: pft
     integer :: npft_site
-
-    !----------------------------------------------------------------
-    ! NON-PFT DEPENDENT PARAMETERS
-    !----------------------------------------------------------------
-    ! canopy light extinction coefficient for Beer's Law
-    params_plant%kbeer = getparreal( 'params/params_plant.dat', 'kbeer' )
 
     !----------------------------------------------------------------
     ! PFT DEPENDENT PARAMETERS
@@ -386,6 +359,8 @@ contains
     plant%acrown    = 0.0
 
     ! canpopy state variables
+    plant%vcmax25          = 0.0
+    plant%jmax25           = 0.0
     plant%narea            = 0.0
     plant%narea_metabolic  = 0.0
     plant%narea_structural = 0.0
@@ -398,19 +373,20 @@ contains
   end subroutine initpft
 
 
-  subroutine initdaily_plant( plant_fluxes )
+  ! subroutine initdaily_plant( plant_fluxes )
 
-    !////////////////////////////////////////////////////////////////
-    ! Initialises all daily variables with zero.
-    !----------------------------------------------------------------
-    ! arguments
-    type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
+  !   !////////////////////////////////////////////////////////////////
+  !   ! Initialises all daily variables with zero.
+  !   !----------------------------------------------------------------
+  !   ! arguments
+  !   type( plant_fluxes_type ), dimension(npft), intent(inout) :: plant_fluxes
 
-    plant_fluxes(:)%dgpp    = 0.0
-    plant_fluxes(:)%drd     = 0.0
-    plant_fluxes(:)%dtransp = 0.0
+  !   plant_fluxes(:)%dgpp     = 0.0
+  !   plant_fluxes(:)%drd      = 0.0
+  !   plant_fluxes(:)%dtransp  = 0.0
+  !   plant_fluxes(:)%dlatenth = 0.0
 
-  end subroutine initdaily_plant
+  ! end subroutine initdaily_plant
 
 
   subroutine initoutput_plant( ngridcells )
@@ -418,8 +394,6 @@ contains
     ! Initialises all daily variables with zero.
     ! Called at the beginning of each year by 'biosphere'.
     !----------------------------------------------------------------
-    use md_interface, only: interface
-
     ! arguments
     integer, intent(in) :: ngridcells
     
@@ -445,53 +419,6 @@ contains
   end subroutine initoutput_plant
 
 
-  subroutine initio_plant()
-    !////////////////////////////////////////////////////////////////
-    ! Opens input/output files.
-    !----------------------------------------------------------------
-    use md_interface, only: interface
-
-    ! local variables
-    character(len=256) :: prefix
-    character(len=256) :: filnam
-
-    prefix = "./output/"//trim(interface%params_siml%runname)
-
-    !////////////////////////////////////////////////////////////////
-    ! DAILY OUTPUT: OPEN ASCII OUTPUT FILES 
-    !----------------------------------------------------------------
-
-
-    !////////////////////////////////////////////////////////////////
-    ! ANNUAL OUTPUT: OPEN ASCII OUTPUT FILES
-    !----------------------------------------------------------------
-    if (interface%params_siml%loutplant) then
-
-      ! METABOLIC NAREA (AT ANNUAL LAI MAXIMUM)
-      filnam=trim(prefix)//'.a.narea_mb.out'
-      open(319,file=filnam,err=999,status='unknown')
-
-      ! CELL WALL NAREA (AT ANNUAL LAI MAXIMUM)
-      filnam=trim(prefix)//'.a.narea_cw.out'
-      open(320,file=filnam,err=999,status='unknown')
-
-      ! LEAF C:N RATIO (AT ANNUAL LAI MAXIMUM)
-      filnam=trim(prefix)//'.a.cton_lm.out'
-      open(321,file=filnam,err=999,status='unknown')
-
-      ! LMA (AT ANNUAL LAI MAXIMUM)
-      filnam=trim(prefix)//'.a.lma.out'
-      open(322,file=filnam,err=999,status='unknown')
-
-    end if
-
-    return
-
-    999  stop 'INITIO: error opening output files'
-
-  end subroutine initio_plant
-
-
   subroutine getout_daily_plant( plant, plant_fluxes, jpngr, moy, doy )
     !////////////////////////////////////////////////////////////////
     ! SR called daily to sum up daily output variables.
@@ -500,9 +427,6 @@ contains
     ! global just for this, but are collected inside the subroutine 
     ! where they are defined.
     !----------------------------------------------------------------
-    use md_params_core, only: ndayyear, npft
-    use md_interface, only: interface
-
     ! arguments
     type(plant_type), dimension(npft), intent(in) :: plant
     type(plant_fluxes_type), dimension(npft), intent(in) :: plant_fluxes
@@ -536,9 +460,6 @@ contains
     !////////////////////////////////////////////////////////////////
     !  SR called once a year to gather annual output variables.
     !----------------------------------------------------------------
-    use md_params_core, only: ndayyear, npft
-    use md_interface, only: interface
-
     ! arguments
     type( plant_type ), dimension(npft), intent(in) :: plant
     integer, intent(in)                             :: jpngr
@@ -558,62 +479,5 @@ contains
 
   end subroutine getout_annual_plant
 
-
-  subroutine writeout_ascii_plant()
-    !/////////////////////////////////////////////////////////////////////////
-    ! Write daily ASCII output
-    ! Copyright (C) 2015, see LICENSE, Benjamin David Stocker
-    ! contact: b.stocker@imperial.ac.uk
-    !-------------------------------------------------------------------------
-    use md_params_core, only: ndayyear
-    use md_interface, only: interface
-
-    ! local variables
-    real :: itime
-    integer :: it, moy, jpngr
-
-    ! xxx implement this: sum over gridcells? single output per gridcell?
-    if (maxgrid>1) stop 'writeout_ascii: think of something ...'
-    jpngr = 1
-
-    !-------------------------------------------------------------------------
-    ! DAILY OUTPUT
-    ! Write daily value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    ! if ( .not. interface%steering%spinup &
-    !      .and. interface%steering%outyear>=interface%params_siml%daily_out_startyr &
-    !      .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
-
-    !   ! Write daily output only during transient simulation
-    !   do it=1,interface%params_siml%outnt
-
-    !     ! Define 'itime' as a decimal number corresponding to day in the year + year
-    !     itime = real(interface%steering%outyear) + real( it - 1 ) * interface%params_siml%outdt / real( ndayyear )
-        
-    !   end do
-    ! end if
-
-    !-------------------------------------------------------------------------
-    ! ANNUAL OUTPUT
-    ! Write annual value, summed over all PFTs / LUs
-    ! xxx implement taking sum over PFTs (and gridcells) in this land use category
-    !-------------------------------------------------------------------------
-    if (interface%params_siml%loutplant) then
-
-      itime = real(interface%steering%outyear)
-
-      write(319,999) itime, sum(outanarea_mb(:,jpngr))
-      write(320,999) itime, sum(outanarea_cw(:,jpngr))
-      write(321,999) itime, sum(outacton_lm(:,jpngr))
-      write(322,999) itime, sum(outalma(:,jpngr))
-
-    end if
-
-    return
-
-    999 format (F20.8,F20.8)
-
-  end subroutine writeout_ascii_plant
 
 end module md_plant
