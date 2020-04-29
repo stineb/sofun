@@ -30,7 +30,7 @@ module md_gpp
 
   ! PFT-DEPENDENT PARAMETERS
   type pftparamstype_gpp
-    real :: kphio = 0.05    ! hard-coded here, is a calibratable parameter in P-model
+    real :: kphio = 0.08    ! hard-coded here, is a calibratable parameter in P-model
   end type pftparamstype_gpp
 
   type(pftparamstype_gpp) :: params_pft_gpp
@@ -69,7 +69,7 @@ contains
     !------------------------------------------------------------------------
     use md_forcing, only: climate_type
     use md_photosynth, only: pmodel, outtype_pmodel
-    use md_params_core, only: kTkelvin
+    use md_params_core, only: kTkelvin, kfFEC
     use md_sofunutils, only: dampen_variability
 
     type(climate_type), intent(in):: forcing
@@ -80,7 +80,7 @@ contains
     type(cohort_type), pointer :: cc
     real   :: kappa  ! light extinction coefficient of corwn layers
     real   :: f_light(10) = 0.0, f_apar(10) = 0.0      ! incident light fraction, and aborbed light fraction of each layer
-    real   :: LAIlayer(10), crownarea_layer(10), accuCAI, f_gap, f_apar_cohort ! additional GPP for lower layer cohorts due to gaps
+    real   :: LAIlayer(10), crownarea_layer(10), accuCAI, f_gap, f_apar_cohort, rad_top ! additional GPP for lower layer cohorts due to gaps
     integer:: i, layer
 
     real :: tk
@@ -163,16 +163,19 @@ contains
         ! Get light aborbed by cohort, dividing fAPAR up by crown areas
         !----------------------------------------------------------------
         layer = max(1, min(cc%layer,9))
-        f_apar_cohort = f_apar(layer) * cc%crownarea / crownarea_layer(layer)
+        ! f_apar_cohort = f_apar(layer)  !* cc%crownarea / crownarea_layer(layer)
+        f_apar_cohort = f_light(layer) !* cc%crownarea / crownarea_layer(layer)
+        print*,'f_apar_cohort ', f_apar_cohort
 
         !----------------------------------------------------------------
         ! P-model call for C3 plants to get a list of variables that are 
         ! acclimated to slowly varying conditions
         !----------------------------------------------------------------
         if (f_apar_cohort > 0.0 .and. forcing%PAR > 0.0) then
+
           out_pmodel = pmodel( &
                               fapar          = f_apar_cohort, &
-                              ppfd           = (forcing%PAR * 1e-6), &    ! required in mol m-2 s-1
+                              ppfd           = forcing%radiation * kfFEC * 1.0e-6, &       ! converting W m-2 to mol m-2 s-1     (forcing%PAR * 1e-6), &    ! required in mol m-2 s-1
                               co2            = co2_memory, &
                               tc             = temp_memory, &
                               vpd            = vpd_memory, &
@@ -192,8 +195,22 @@ contains
           cc%w_scale = -9999
 
           ! copy to cohort variables
-          cc%resl    = out_pmodel%rd  * myinterface%step_seconds * mol_C     ! kgC step-1 tree-1
-          cc%gpp     = out_pmodel%gpp * myinterface%step_seconds             ! kgC step-1 tree-1
+          cc%resl    = out_pmodel%rd  * cc%crownarea * myinterface%step_seconds * mol_C     ! kgC step-1 tree-1
+          cc%gpp     = out_pmodel%gpp * cc%crownarea * myinterface%step_seconds * 1.0e-3 * 500.0   ! kgC step-1 tree-1
+          ! cc%resl    = out_pmodel%rd  * myinterface%step_seconds * mol_C     ! kgC step-1 tree-1
+          ! cc%gpp     = out_pmodel%gpp * myinterface%step_seconds * 1.0e-3 * 500.0   ! kgC step-1 tree-1
+
+          ! !===============================
+          ! ! XXX hack:
+          ! !===============================
+          ! rad_top  = f_light(layer) * forcing%radiation ! downward radiation at the top of the canopy, W/m2
+          ! cc%An_op   = 1e-8 * rad_top  ! molC s-1 m-2 of leaves
+          ! cc%An_cl   = 1e-9 * rad_top  ! molC s-1 m-2 of leaves
+          ! cc%w_scale = 0.0
+          ! cc%transp  = 0.0
+          ! cc%resl    = cc%An_cl              * mol_C * cc%leafarea * myinterface%step_seconds ! fnsc*spdata(sp)%gamma_LN  * cc%leafN * tf * myinterface%dt_fast_yr  ! tree-1 step-1
+          ! cc%gpp     = (cc%An_op + cc%An_cl) * mol_C * cc%leafarea * myinterface%step_seconds ! kgC step-1 tree-1
+
 
         else
 

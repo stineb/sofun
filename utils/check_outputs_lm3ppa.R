@@ -80,3 +80,49 @@ ggplot() +
   geom_line(aes(x = year, y = GPP_lm3ppa_pmodel), data = df_test, color = 'royalblue')
 
 ## ok, identical
+
+
+##--------------------------------
+## Checking daily and hourly consistency (using hack: constant LUE)
+##--------------------------------
+## Annual outputs
+df_d <- read_csv("~/sofun/output/lm3ppa_hackdaily/Annual_tile_test.csv")
+df_h <- read_csv("~/sofun/output/lm3ppa_hackhourly/Annual_tile_test.csv")
+
+df_test <- select(df_d, year, GPP_d = GPP) %>% 
+  left_join(select(df_h, year, GPP_h = GPP), by = "year")
+
+ggplot() +
+  geom_point(aes(x = GPP_h, y = GPP_d), data = df_test) +
+  geom_abline(intercept=0, slope=1, linetype="dotted")
+
+
+##--------------------------------
+## Checking SOFUN implementation of BiomeE-Allocation agains P-model in LM3-PPA
+##--------------------------------
+## Annual outputs
+df_orig <- read_csv("~/sofun/output/lm3ppa_runlm3ppa/Annual_tile_test.csv")
+df_lm3ppa_pmodel <- read_csv("~/sofun/output/lm3ppa_lm3ppa_pmodel/Annual_tile_test.csv")
+
+df_test <- select(df_orig, year, GPP_orig = GPP) %>% 
+  left_join(select(df_lm3ppa_pmodel, year, GPP_lm3ppa_pmodel = GPP), by = "year")
+
+ggplot() +
+  geom_line(aes(x = year, y = GPP_orig), data = df_test) +
+  geom_line(aes(x = year, y = GPP_lm3ppa_pmodel), data = df_test, color = 'royalblue')
+  
+
+##--------------------------------
+## Checking daily hack consistency between original and pmodel implementation
+##--------------------------------
+## Annual outputs
+df_d <- read_csv("~/sofun/output/lm3ppa_hackdaily/Annual_tile_test.csv")
+df_h <- read_csv("~/sofun/output/lm3ppa_hackdaily_pmodel/Annual_tile_test.csv")
+
+df_test <- select(df_d, year, GPP_d = GPP) %>% 
+  left_join(select(df_h, year, GPP_h = GPP), by = "year")
+
+ggplot() +
+  geom_point(aes(x = GPP_h, y = GPP_d), data = df_test) +
+  geom_abline(intercept=0, slope=1, linetype="dotted")
+

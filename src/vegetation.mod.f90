@@ -135,7 +135,6 @@ contains
     r_stem   = fnsc*spdata(sp)%gamma_SW  * Acambium * tf * myinterface%dt_fast_yr ! kgC tree-1 step-1
     r_root   = fnsc*spdata(sp)%gamma_FR  * cc%rootN * tf * myinterface%dt_fast_yr ! root respiration ~ root N    
     cc%resp = cc%resl + r_stem + r_root + r_Nfix   !kgC tree-1 step-1
-    ! cc%resl = cc%resl + r_stem !tree-1 step-1 xxx this is weird, removed it (BS)
     cc%resr = r_root + r_Nfix ! tree-1 step-1
 
   end subroutine plant_respiration

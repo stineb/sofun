@@ -261,7 +261,11 @@ program main
   myinterface%dt_fast_yr = 1.0/(365.0 * myinterface%steps_per_day)
   myinterface%step_seconds = 24.0 * 3600.0 / myinterface%steps_per_day ! seconds_per_year * dt_fast_yr
   ntstepsyear = myinterface%steps_per_day * 365
-  if (daily) ntstepsyear_forcing = ntstepsyear * timestep
+  if (daily) then 
+    ntstepsyear_forcing = ntstepsyear * timestep
+  else
+    ntstepsyear_forcing = ntstepsyear
+  end if
   totyears = myinterface%params_siml%runyears
   totdays  = int(totyears/yr_data+1) * days_data
   myinterface%params_siml%equi_days = totdays - days_data

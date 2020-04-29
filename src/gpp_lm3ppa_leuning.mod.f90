@@ -92,6 +92,10 @@ contains
         ! Convert forcing data
         layer    = Max (1, Min(cc%layer,9))
         rad_top  = f_light(layer) * forcing%radiation ! downward radiation at the top of the canopy, W/m2
+
+        !===============================
+        ! ORIGINAL
+        !===============================
         rad_net  = f_light(layer) * forcing%radiation * 0.9 ! net radiation absorbed by the canopy, W/m2
         p_surf   = forcing%P_air  ! Pa
         TairK    = forcing%Tair ! K
@@ -112,6 +116,9 @@ contains
           ! output:
           psyn, resp, w_scale2, transp )
 
+        ! ! psyn/rad_top is on the order of 1e-8; psyn/rad_top is on the order of -1e-9
+        ! if (rad_top > 0.0) print*,'psyn/rad_top, resp/rad_top', psyn/rad_top, resp/rad_top
+
         ! store the calculated photosynthesis, photorespiration, and transpiration for future use in growth
         cc%An_op   = psyn  ! molC s-1 m-2 of leaves
         cc%An_cl   = -resp  ! molC s-1 m-2 of leaves
@@ -120,10 +127,15 @@ contains
         cc%resl    = -resp         * mol_C * cc%leafarea * myinterface%step_seconds ! fnsc*spdata(sp)%gamma_LN  * cc%leafN * tf * myinterface%dt_fast_yr  ! tree-1 step-1
         cc%gpp     = (psyn - resp) * mol_C * cc%leafarea * myinterface%step_seconds ! kgC step-1 tree-1
 
-        ! if (rad_top > 0.0) print*,'psyn/rad_top, resp/rad_top ', psyn/rad_top, resp/rad_top
-
-        ! ! psyn/rad_top is on the order of 1e-8; psyn/rad_top is on the order of -1e-9
-        ! if (rad_top > 0.0) print*,'psyn/rad_top, resp/rad_top', psyn/rad_top, resp/rad_top
+        !===============================
+        ! XXX hack:
+        !===============================
+        ! cc%An_op   = 1e-8 * rad_top  ! molC s-1 m-2 of leaves
+        ! cc%An_cl   = 1e-9 * rad_top  ! molC s-1 m-2 of leaves
+        ! cc%w_scale = 0.0
+        ! cc%transp  = 0.0
+        ! cc%resl    = cc%An_cl              * mol_C * cc%leafarea * myinterface%step_seconds ! fnsc*spdata(sp)%gamma_LN  * cc%leafN * tf * myinterface%dt_fast_yr  ! tree-1 step-1
+        ! cc%gpp     = (cc%An_op + cc%An_cl) * mol_C * cc%leafarea * myinterface%step_seconds ! kgC step-1 tree-1
 
         if (isnan(cc%gpp)) stop '"gpp" is a NaN'
 
