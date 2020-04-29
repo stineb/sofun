@@ -26,7 +26,7 @@ SPLASH_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.m
 SWBM_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 params_siml.mod.f90 params_domain_siterun.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_wmodel.mod.f90 interface_biosphere.mod.f90 tile_wmodel.mod.f90 waterbal_swbm.mod.f90 soiltemp_sitch.mod.f90 biosphere_wmodel.mod.f90
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL:
-PMODEL_MODS=params_core_pmodel.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 params_siml_pmodel.mod.f90 params_domain_siterun.mod.f90 grid_siterun_pmodel.mod.f90 params_soil_pmodel.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere_pmodel.mod.f90 plant_pmodel.mod.f90 tile_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
+PMODEL_MODS=params_core_pmodel.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 params_siml_pmodel.mod.f90 params_domain_siterun.mod.f90 grid_siterun_pmodel.mod.f90 params_soil_pmodel.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere_pmodel.mod.f90 plant_pmodel.mod.f90 tile_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 photosynth_pmodel.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
 
 # List of source code files for reduced setup, executing SPLASH and P-MODEL:
 DEMO_PMODEL_MODS=params_core.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 interface_demo_pmodel.mod.f90 plant_demo_pmodel.mod.f90 gpp_pmodel.mod.f90 
@@ -46,8 +46,11 @@ GSWBM_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mo
 # List of source code files for reduced setup, executing the C-only model
 CMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 io_netcdf.mod.f90 rates.mod.f90 params_siml.mod.f90 params_domain_siterun.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun_pmodel.mod.f90 interface_biosphere.mod.f90 tile_cmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 lambertw.mod.f90 plant_cmodel.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 vegdynamics_fix.mod.f90 turnover.mod.f90 npp.mod.f90 littersom_lpj.mod.f90 allocation_cmodel.mod.f90 biosphere_cmodel.mod.f90
 
-# List of source code files for 'lm3ppa' setup (implementation of ForestESS model code)
-LM3PPA_MODS=params_core_lm3ppa.mod.f90 classdefs.mod.f90 params_siml_lm3ppa.mod.f90 grid_siterun_lm3ppa.mod.f90 params_soil_lm3ppa.mod.f90 forcing_siterun_lm3ppa.mod.f90 interface_biosphere_lm3ppa.mod.f90 datatypes.mod.f90 soil.mod.f90 vegetation.mod.f90 biosphere_lm3ppa.mod.f90 #tile_pmodel.mod.f90 plant_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
+# List of source code files for 'lm3ppa' setup, using gs_Leuning() photosynthesis (straight implementation of BiomeE-Allocation model code)
+LM3PPA_MODS=params_core_lm3ppa.mod.f90 classdefs.mod.f90 params_siml_lm3ppa.mod.f90 grid_siterun_lm3ppa.mod.f90 params_soil_lm3ppa.mod.f90 forcing_siterun_lm3ppa.mod.f90 interface_biosphere_lm3ppa.mod.f90 datatypes.mod.f90 soil.mod.f90 gpp_lm3ppa_leuning.mod.f90 vegetation.mod.f90 biosphere_lm3ppa.mod.f90 #tile_pmodel.mod.f90 plant_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
+
+# List of source code files for 'lm3ppa' setup, using P-model photosynthesis (rest is BiomeE-Allocation model code)
+LM3PPA_PMODEL_MODS=params_core_lm3ppa.mod.f90 sofunutils.mod.f90 classdefs.mod.f90 params_siml_lm3ppa.mod.f90 grid_siterun_lm3ppa.mod.f90 params_soil_lm3ppa.mod.f90 forcing_siterun_lm3ppa.mod.f90 interface_biosphere_lm3ppa.mod.f90 datatypes.mod.f90 soil.mod.f90 photosynth_pmodel.mod.f90 gpp_lm3ppa_pmodel.mod.f90 vegetation.mod.f90 biosphere_lm3ppa.mod.f90 #tile_pmodel.mod.f90 plant_pmodel.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 gpp_pmodel.mod.f90 vegdynamics_pmodel.mod.f90 biosphere_pmodel.mod.f90
 
 # List of source code files for reduced setup, executing the full CN-only model:
 CNMODEL_MODS=params_core.mod.f90 classdefs.mod.f90 sofunutils.mod.f90 params_siml.mod.f90 params_domain.mod.f90 grid_siterun.mod.f90 params_soil.mod.f90 forcing_siterun.mod.f90 interface_biosphere.mod.f90 rates.mod.f90 waterbal_splash.mod.f90 soiltemp_sitch.mod.f90 lambertw.mod.f90 plant.mod.f90 gpp_pmodel.mod.f90 phenology_lpx.mod.f90 findroot_fzeroin.mod.f90 turnover.mod.f90 npp.mod.f90 vegdynamics_fix.mod.f90 ntransform_xuri.mod.f90 littersom_lpj.mod.f90 nuptake.mod.f90 allocation_cnmodel.mod.f90 landuse.mod.f90
@@ -109,6 +112,11 @@ LM3PPA_OBJS=$(MAIN_LM3PPA:.f90=.o)
 LM3PPA_MODOBJS=$(LM3PPA_MODS:.f90=.o)
 DBGLM3PPA_OBJS=$(MAIN_LM3PPA:.f90=.do)
 DBGLM3PPA_MODOBJS=$(LM3PPA_MODS:.f90=.do)
+
+LM3PPA_OBJS=$(MAIN_LM3PPA:.f90=.o)
+LM3PPA_PMODEL_MODOBJS=$(LM3PPA_PMODEL_MODS:.f90=.o)
+DBGLM3PPA_OBJS=$(MAIN_LM3PPA:.f90=.do)
+DBGLM3PPA_PMODEL_MODOBJS=$(LM3PPA_PMODEL_MODS:.f90=.do)
 
 SIMSUITE_OBJS=$(MAIN_SIMSUITE:.f90=.o)
 SIMSUITE_MODOBJS=$(CMODEL_MODS:.f90=.o)
@@ -261,6 +269,13 @@ lm3ppa: $(LM3PPA_MODOBJS) $(LM3PPA_OBJS)
 	# cp $(CDFARCHIVE) $(ARCHIVE)
 	ar r $(ARCHIVE) $(LM3PPA_MODOBJS) $(LM3PPA_OBJS) 
 
+# Implementation of BiomeE model with P-model photosynthesis
+lm3ppa_pmodel: $(LM3PPA_PMODEL_MODOBJS) $(LM3PPA_OBJS)
+		# $(MAKE) -C cdfcode
+		-rm $(ARCHIVE)
+		# cp $(CDFARCHIVE) $(ARCHIVE)
+		ar r $(ARCHIVE) $(LM3PPA_PMODEL_MODOBJS) $(LM3PPA_OBJS) 	
+
 # full model setup: CN-model
 cnmodel: $(CNMODEL_MODOBJS) $(CNMODEL_OBJS)
 	# $(MAKE) -C cdfcode
@@ -403,6 +418,9 @@ $(DBGCMODEL_OBJS): %.do: %.f90
 	$(FCOM) -c -o $@ $(DEBUGFLAGS) $*.f90
 
 $(LM3PPA_MODOBJS): %.o: %.f90
+	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
+
+$(LM3PPA_PMODEL_MODOBJS): %.o: %.f90
 	$(FCOM) -c -o $@ $(COMPFLAGS) $*.f90
 
 $(LM3PPA_OBJS): %.o: %.f90

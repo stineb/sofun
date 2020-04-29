@@ -10,7 +10,7 @@ module md_forcing
   ! contact: b.stocker@imperial.ac.uk
   !----------------------------------------------------------------
   use, intrinsic :: iso_fortran_env, dp=>real64, sp=>real32, in=>int32
-  use md_params_core, only: ntstepsyear, ndayyear
+  use md_params_core, only: ntstepsyear, ndayyear, kTkelvin
 
   implicit none
 
@@ -18,19 +18,23 @@ module md_forcing
   public climate_type, getclimate, getco2, forcingData
 
   type :: climate_type
-     integer :: year          ! Year
-     integer :: doy           ! day of the year
-     real    :: hod           ! hour of the day
-     real    :: PAR           ! umol m-2 s-1
-     real    :: radiation     ! W/m2
-     real    :: Tair          ! air temperature,  K
-     real    :: Tsoil         ! soil temperature, K
-     real    :: RH            ! relative humidity
-     real    :: rain          ! kgH2O m-2 s-1
-     real    :: windU         ! wind velocity (m s-1)
-     real    :: P_air         ! pa
-     real    :: CO2           ! ppm
-     real    :: soilwater     ! soil moisture, vol/vol
+    integer :: year          ! Year
+    integer :: doy           ! day of the year
+    real    :: hod           ! hour of the day
+    real    :: PAR           ! umol m-2 s-1
+    real    :: radiation     ! W/m2
+    real    :: Tair          ! air temperature,  K
+    real    :: Tsoil         ! soil temperature, K
+    real    :: RH            ! relative humidity
+    real    :: rain          ! kgH2O m-2 s-1
+    real    :: windU         ! wind velocity (m s-1)
+    real    :: P_air         ! pa
+    real    :: CO2           ! ppm
+    real    :: soilwater     ! soil moisture, vol/vol
+
+    ! new:
+    real    :: vpd           ! vapour pressure deficit (Pa)
+
   end type climate_type
 
   ! Input forcing data
@@ -39,7 +43,7 @@ module md_forcing
 
 contains
 
-  function getclimate( nt, ntstepsyear, ntstepsyear_forcing, daily, forcing, climateyear_idx, climateyear ) result ( out_climate )
+  function getclimate( nt, ntstepsyear, ntstepsyear_forcing, daily, forcing, climateyear_idx, climateyear, elv ) result ( out_climate )
     !////////////////////////////////////////////////////////////////
     ! This function invokes file format specific "sub-functions/routines"
     ! to read from NetCDF. This nesting is necessary because this 
@@ -53,9 +57,10 @@ contains
     logical, intent(in) :: daily
     type(climate_type), dimension(nt), intent(in) :: forcing
     integer, intent(in) :: climateyear_idx, climateyear
+    real, intent(in)    :: elv
 
     ! local variables
-    integer :: idx_start, idx_end
+    integer :: idx_start, idx_end, it
 
     ! function return variable
     type(climate_type), dimension(ntstepsyear) :: out_climate
@@ -63,10 +68,16 @@ contains
     idx_start = (climateyear_idx - 1) * ntstepsyear_forcing + 1
     idx_end   = idx_start + ntstepsyear_forcing - 1
 
+    out_climate(:) = forcing(idx_start:idx_end)      
+
+    ! get additional variables
+    do it=1,ntstepsyear
+      out_climate(it)%vpd  = calc_vpd_rh( out_climate(it)%RH, (out_climate(it)%Tair - kTkelvin) )
+    end do
+
+    ! aggregate to daily
     if (daily) then
       out_climate(:) = aggregate_climate_byday( forcing(idx_start:idx_end) )
-    else
-      out_climate(:) = forcing(idx_start:idx_end)      
     end if
 
   end function getclimate
@@ -164,5 +175,26 @@ contains
     end do
   
   end function aggregate_co2_byday
+
+
+  function calc_vpd_rh( rh, tc ) result( vpd )
+    !////////////////////////////////////////////////////////////////////////
+    ! Calculates vapor pressure deficit
+    !-----------------------------------------------------------------------
+    ! arguments
+    real, intent(in)    :: rh      ! relative humidity (%)
+    real, intent(in)    :: tc      ! daily mean air temperature (deg C), daily varying from WATCH-WFDEI (ACTUALLY NOT USED)
+
+    ! function return variable
+    real :: vpd         ! vapor pressure deficit as the mean of vpd_min and vpd_max
+
+    ! local variables
+    real :: esat       ! saturation water vapor pressure (Pa) at given air temperature
+
+    esat = 611.0 * exp( (17.27 * tc)/(tc + 237.3) )
+
+    vpd = esat * (1.0 - rh / 100.0)
+
+  end function calc_vpd_rh
 
 end module md_forcing
