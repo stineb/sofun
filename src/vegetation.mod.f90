@@ -1665,6 +1665,7 @@ contains
       
       !  calculate the resulting dry heat capacity
       c2%leafarea = leaf_area_from_biomass(c2%bl, c2%species, c2%layer, c2%firstlayer)
+      call init_cohort_allometry(c2) !Enseng comments
     endif
 
   end subroutine merge_cohorts
