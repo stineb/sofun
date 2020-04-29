@@ -41,7 +41,7 @@ module md_params_core
   real, parameter :: kMv = 18.02                 ! molecular weight of water vapor, g/mol (Tsilingiris, 2008)
   real, parameter :: kMa = 28.963                ! molecular weight of dry air, g/mol (Tsilingiris, 2008) XXX this was in SPLASH (WITH 1E-3 IN EQUATION) XXX
   real, parameter :: kfFEC = 2.04                ! from flux to energy conversion, umol/J (Meek et al., 1984)
-  real, parameter :: kPo = 101325                ! standard atmosphere, Pa (Allen, 1973)
+  real, parameter :: kPo = 101325.0              ! standard atmosphere, Pa (Allen, 1973)
   real, parameter :: kL  = 0.0065                ! temperature lapse rate, K/m (Cavcar, 2000)
   real, parameter :: kG  = 9.80665               ! gravitational acceleration, m/s^2 (Allen, 1973)
   real, parameter :: k_karman = 0.41             ! Von Karman constant; from bigleaf R package

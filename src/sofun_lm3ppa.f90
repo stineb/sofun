@@ -307,7 +307,8 @@ program main
                                         daily, &
                                         forcingData, &
                                         myinterface%steering%climateyear_idx, &
-                                        myinterface%steering%climateyear &
+                                        myinterface%steering%climateyear, &
+                                        myinterface%grid%elv &
                                         )
 
     ! ! Get annual, gobally uniform CO2

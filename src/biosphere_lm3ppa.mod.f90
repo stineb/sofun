@@ -16,7 +16,7 @@ module md_biosphere
 
 contains
 
-  subroutine biosphere_annual(out_biosphere)
+  subroutine biosphere_annual( out_biosphere )
     !////////////////////////////////////////////////////////////////
     ! function BIOSPHERE_annual calculates net ecosystem exchange (nee)
     ! in response to environmental boundary conditions (atmospheric 
@@ -33,7 +33,7 @@ contains
 
     ! ! local variables
     integer :: dm, moy, jpngr, doy
-    ! logical, save           :: init_daily = .true.   ! is true only on the first day of the simulation 
+    logical, save :: init = .true.   ! is true only on the first day of the simulation 
     logical, parameter :: verbose = .false.       ! change by hand for debugging etc.
 
     !----------------------------------------------------------------
@@ -212,9 +212,10 @@ contains
           !----------------------------------------------------------------
           ! Fast time step processes with (half-)hourly forcing
           !----------------------------------------------------------------
-          call vegn_CNW_budget(vegn, myinterface%climate(idata))
+          call vegn_CNW_budget(vegn, myinterface%climate(idata), init)
           call hourly_diagnostics(vegn, myinterface%climate(idata), iyears, idoy, i, idays, fno1, out_biosphere%hourly_tile(idata) )
-
+          init = .false.
+          
         enddo fastloop
 
         !-------------------------------------------------
@@ -228,10 +229,10 @@ contains
         
         ! Determine start and end of season and maximum leaf (root) mass
         call vegn_phenology(vegn)
-
+        
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
         call vegn_growth_EW(vegn)
-
+        
       end do dayloop
 
     end do monthloop
