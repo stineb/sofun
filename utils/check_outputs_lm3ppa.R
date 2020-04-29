@@ -34,6 +34,20 @@ ggplot() +
   geom_abline(intercept=0, slope=1, linetype="dotted")
   
 
+##--------------------------------
+## Comparing latest development with reference
+##--------------------------------
+## Annual outputs
+df     <- read_csv("~/sofun/output/Annual_tile_test.csv")
+df_ref <- read_csv("~/sofun/output/lm3ppa_pmodel_runlm3ppa_pmodel/Annual_tile_test.csv")
+
+df_test <- select(df_ref, year, LAI_ref = LAI) %>% 
+  left_join(select(df, year, LAI = LAI), by = "year")
+
+ggplot() +
+  geom_point(aes(x = LAI_ref, y = LAI), data = df_test) +
+  geom_abline(intercept=0, slope=1, linetype="dotted")
+
 
 ##--------------------------------
 ## Comparing SOFUN branches lm3ppa_pmodel with lm3ppa
