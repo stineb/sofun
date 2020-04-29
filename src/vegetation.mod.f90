@@ -55,11 +55,11 @@ contains
 
     ! Photosynsthesis
     call gpp( forcing, vegn, init )
-
-    ! ! xxx try
-    ! ! Update soil water
-    ! call SoilWaterDynamicsLayer(forcing,vegn)
-
+    
+    ! xxx try
+    ! Update soil water
+    call SoilWaterDynamicsLayer(forcing,vegn)
+    
     ! Respiration and allocation for growth
     do i = 1, vegn%n_cohorts
 
@@ -79,15 +79,16 @@ contains
       cc%nsc = cc%nsc + cc%npp
       cc%NSN = cc%NSN + cc%fixedN
 
+      
       end associate
     enddo ! all cohorts
-
+    
     ! update soil carbon
     call SOMdecomposition( vegn, forcing%tsoil, theta )
-
+    
     ! Nitrogen uptake
     call vegn_N_uptake( vegn, forcing%tsoil )
-
+    
   end subroutine vegn_CNW_budget
 
   !========================================================================

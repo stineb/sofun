@@ -229,10 +229,10 @@ contains
         
         ! Determine start and end of season and maximum leaf (root) mass
         call vegn_phenology(vegn)
-
+        
         ! Produce new biomass from 'carbon_gain' (is zero afterwards)
         call vegn_growth_EW(vegn)
-
+        
       end do dayloop
 
     end do monthloop

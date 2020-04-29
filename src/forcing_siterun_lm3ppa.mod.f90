@@ -29,7 +29,7 @@ module md_forcing
     real    :: rain          ! kgH2O m-2 s-1
     real    :: windU         ! wind velocity (m s-1)
     real    :: P_air         ! pa
-    real    :: CO2           ! ppm
+    real    :: CO2           ! mol CO2/mol dry air
     real    :: soilwater     ! soil moisture, vol/vol
 
     ! new:
@@ -186,7 +186,7 @@ contains
     real, intent(in)    :: tc      ! daily mean air temperature (deg C), daily varying from WATCH-WFDEI (ACTUALLY NOT USED)
 
     ! function return variable
-    real :: vpd         ! vapor pressure deficit as the mean of vpd_min and vpd_max
+    real :: vpd         ! vapor pressure deficit (Pa)
 
     ! local variables
     real :: esat       ! saturation water vapor pressure (Pa) at given air temperature

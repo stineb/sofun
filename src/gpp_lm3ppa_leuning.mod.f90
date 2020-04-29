@@ -79,6 +79,13 @@ contains
       f_light(i) = f_light(i-1) * (exp(0.0 - kappa * LAIlayer(i-1)) + f_gap)
     enddo
 
+    print*,'f_light(:)', f_light(:)
+
+    ! fraction of light absorbed by layer
+    do i=1,layer
+      if (f_light(i) < f_light(i+1) ) stop 'negative fapar'
+    end do    
+
     ! Photosynthesis
     accuCAI = 0.0
 

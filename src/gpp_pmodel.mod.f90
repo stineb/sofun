@@ -147,6 +147,19 @@ contains
       ! P-model call for C3 plants to get a list of variables that are 
       ! acclimated to slowly varying conditions
       !----------------------------------------------------------------
+      print*,'fapar'          , tile(1)%canopy%fapar
+      print*,'ppfd'           , climate%dppfd
+      print*,'co2'            , co2_memory
+      print*,'tc'             , temp_memory
+      print*,'vpd'            , vpd_memory
+      print*,'patm'           , patm_memory
+      print*,'c4'             , .false.
+      print*,'method_optci'   , "prentice14"
+      print*,'method_jmaxlim' , "wang17"
+      print*,'kphio'          , params_pft_gpp(1)%kphio
+      print*,'beta'           , params_gpp%beta
+      print*,'rd_to_vcmax'    , params_gpp%rd_to_vcmax
+
       out_pmodel = pmodel( &
                           fapar          = tile(1)%canopy%fapar, &
                           ppfd           = climate%dppfd, &
