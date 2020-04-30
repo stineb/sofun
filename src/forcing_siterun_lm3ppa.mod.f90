@@ -182,7 +182,7 @@ contains
     ! Calculates vapor pressure deficit
     !-----------------------------------------------------------------------
     ! arguments
-    real, intent(in)    :: rh      ! relative humidity (%)
+    real, intent(in)    :: rh      ! relative humidity (fraction, <1)
     real, intent(in)    :: tc      ! daily mean air temperature (deg C), daily varying from WATCH-WFDEI (ACTUALLY NOT USED)
 
     ! function return variable
@@ -193,7 +193,7 @@ contains
 
     esat = 611.0 * exp( (17.27 * tc)/(tc + 237.3) )
 
-    vpd = esat * (1.0 - rh / 100.0)
+    vpd = esat * (1.0 - rh)
 
   end function calc_vpd_rh
 

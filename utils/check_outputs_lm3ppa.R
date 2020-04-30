@@ -72,12 +72,13 @@ ggplot() +
 df_lm3ppa        <- read_csv("~/sofun/output/lm3ppa_runlm3ppa/Annual_tile_test.csv")
 df_lm3ppa_pmodel <- read_csv("~/sofun/output/lm3ppa_runlm3ppa_pmodel/Annual_tile_test.csv")
 
-df_test <- select(df_lm3ppa, year, GPP_lm3ppa = GPP) %>% 
-  left_join(select(df_lm3ppa_pmodel, year, GPP_lm3ppa_pmodel = GPP), by = "year")
+ggplot() +
+  geom_line(aes(x = year, y = GPP), data = df_lm3ppa) +
+  geom_line(aes(x = year, y = GPP), data = df_lm3ppa_pmodel, color = 'royalblue')
 
 ggplot() +
-  geom_line(aes(x = year, y = GPP_lm3ppa), data = df_test) +
-  geom_line(aes(x = year, y = GPP_lm3ppa_pmodel), data = df_test, color = 'royalblue')
+  geom_line(aes(x = year, y = LAI), data = df_lm3ppa) +
+  geom_line(aes(x = year, y = LAI), data = df_lm3ppa_pmodel, color = 'royalblue')
 
 
 ##--------------------------------
