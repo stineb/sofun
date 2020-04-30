@@ -69,8 +69,8 @@ ggplot() +
 ## Comparing LM3-PPA with different photosynthesis: gs_Leuning() vs. P-model
 ##--------------------------------
 ## Annual outputs
-df_lm3ppa        <- read_csv("~/sofun/output/lm3ppa_pmodel_runlm3ppa/Annual_tile_test.csv")
-df_lm3ppa_pmodel <- read_csv("~/sofun/output/lm3ppa_pmodel_runlm3ppa_pmodel/Annual_tile_test.csv")
+df_lm3ppa        <- read_csv("~/sofun/output/lm3ppa_runlm3ppa/Annual_tile_test.csv")
+df_lm3ppa_pmodel <- read_csv("~/sofun/output/lm3ppa_runlm3ppa_pmodel/Annual_tile_test.csv")
 
 df_test <- select(df_lm3ppa, year, GPP_lm3ppa = GPP) %>% 
   left_join(select(df_lm3ppa_pmodel, year, GPP_lm3ppa_pmodel = GPP), by = "year")
@@ -78,8 +78,6 @@ df_test <- select(df_lm3ppa, year, GPP_lm3ppa = GPP) %>%
 ggplot() +
   geom_line(aes(x = year, y = GPP_lm3ppa), data = df_test) +
   geom_line(aes(x = year, y = GPP_lm3ppa_pmodel), data = df_test, color = 'royalblue')
-
-## ok, identical
 
 
 ##--------------------------------
@@ -126,3 +124,6 @@ ggplot() +
   geom_point(aes(x = GPP_h, y = GPP_d), data = df_test) +
   geom_abline(intercept=0, slope=1, linetype="dotted")
 
+ggplot() +
+  geom_line(aes(x = year, y = GPP_d), data = df_test) +
+  geom_line(aes(x = year, y = GPP_h), data = df_test, color = 'royalblue')

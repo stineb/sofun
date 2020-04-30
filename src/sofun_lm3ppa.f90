@@ -73,7 +73,7 @@ program main
   real, dimension(:,:,:), allocatable:: out_annual_cohorts   !fno2
 
   ! whether fast time step processes are simulated. If .false., then C, N, and W balance is simulated daily.
-  logical, parameter :: daily = .true.
+  logical, parameter :: daily = .false.
 
   !----------------------------------------------------------------
   ! DECLARATIONS TO READ FROM NAMELIST FILE
