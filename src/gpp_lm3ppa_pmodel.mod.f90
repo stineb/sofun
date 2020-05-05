@@ -91,6 +91,8 @@ contains
 
     type(outtype_pmodel) :: out_pmodel      ! list of P-model output variables
 
+    logical, parameter :: verbose = .false.
+
     !----------------------------------------------------------------
     ! Calculate environmental conditions with memory, time scale 
     ! relevant for Rubisco turnover
@@ -181,6 +183,19 @@ contains
           ! cc%resl    = cc%An_cl              * mol_C * myinterface%step_seconds ! kgC tree-1 step-1
           ! cc%gpp     = (cc%An_op + cc%An_cl) * mol_C * myinterface%step_seconds ! kgC step-1 tree-1
           ! !===============================
+          if (verbose) print*,'calling pmodel...'
+          if (verbose) print*,'      fapar'          , fapar_tree
+          if (verbose) print*,'      ppfd'           , f_light(layer) * forcing%PAR * 1.0e-6    ! required in mol m-2 s-1
+          if (verbose) print*,'      co2'            , co2_memory
+          if (verbose) print*,'      tc'             , temp_memory
+          if (verbose) print*,'      vpd'            , vpd_memory
+          if (verbose) print*,'      patm'           , patm_memory
+          if (verbose) print*,'      c4'             , .false.
+          if (verbose) print*,'      method_optci'   , "prentice14"
+          if (verbose) print*,'      method_jmaxlim' , "wang17"
+          if (verbose) print*,'      kphio'          , params_pft_gpp%kphio
+          if (verbose) print*,'      beta'           , params_gpp%beta
+          if (verbose) print*,'      rd_to_vcmax'    , params_gpp%rd_to_vcmax
 
           out_pmodel = pmodel( &
                               fapar          = fapar_tree, &
@@ -196,6 +211,7 @@ contains
                               beta           = params_gpp%beta, &
                               rd_to_vcmax    = params_gpp%rd_to_vcmax &
                               )
+          if (verbose) print*,'done.'
 
           ! irrelevant variables for this setup  
           cc%An_op   = 0.0

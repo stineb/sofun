@@ -80,6 +80,22 @@ ggplot() +
   geom_line(aes(x = year, y = LAI), data = df_lm3ppa) +
   geom_line(aes(x = year, y = LAI), data = df_lm3ppa_pmodel, color = 'royalblue')
 
+##--------------------------------
+## Comparing LM3-PPA with P-model from SOFUN and rsofun
+##--------------------------------
+## Annual outputs
+df_sofun <- read_csv("~/sofun/output/lm3ppa_runlm3ppa_pmodel/Annual_tile_test.csv")
+load("~/rsofun/output/out_lm3ppa_pmodel.RData")
+df_rsofun <- out$output_annual_tile
+
+ggplot() +
+  geom_line(aes(x = year, y = GPP), data = df_sofun) +
+  geom_line(aes(x = year, y = GPP), data = df_rsofun, color = 'royalblue')
+
+ggplot() +
+  geom_line(aes(x = year, y = LAI), data = df_sofun) +
+  geom_line(aes(x = year, y = LAI), data = df_rsofun, color = 'royalblue')
+
 
 ##--------------------------------
 ## Checking daily and hourly consistency (using hack: constant LUE)

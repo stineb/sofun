@@ -55,7 +55,7 @@ contains
 
     ! Photosynsthesis
     call gpp( forcing, vegn, init )
-    
+        
     ! xxx try
     ! Update soil water
     call SoilWaterDynamicsLayer(forcing,vegn)
@@ -1915,7 +1915,7 @@ contains
         cx%status  = LEAF_OFF ! ON=1, OFF=0 ! ON
         cx%layer   = 1
         cx%species = myinterface%init_cohort%init_cohort_species(i) 
-        cx%ccID    =  i
+        cx%ccID    = i
         cx%nsc     = myinterface%init_cohort%init_cohort_nsc(i)
         cx%nindivs = myinterface%init_cohort%init_cohort_nindivs(i) ! trees/m2
         cx%bsw     = myinterface%init_cohort%init_cohort_bsw(i)

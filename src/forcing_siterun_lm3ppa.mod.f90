@@ -77,7 +77,7 @@ contains
 
     ! aggregate to daily
     if (daily) then
-      out_climate(:) = aggregate_climate_byday( forcing(idx_start:idx_end) )
+      out_climate(:) = aggregate_climate_byday( out_climate(:) )
     end if
 
   end function getclimate
@@ -119,6 +119,7 @@ contains
       forcing_agg(doy)%P_air     = sum( forcing(idx_start:idx_end)%P_air ) / nt_day       ! pa
       forcing_agg(doy)%CO2       = sum( forcing(idx_start:idx_end)%CO2 ) / nt_day         ! ppm
       forcing_agg(doy)%soilwater = sum( forcing(idx_start:idx_end)%soilwater ) / nt_day   ! soil moisture, vol/vol
+      forcing_agg(doy)%vpd       = sum( forcing(idx_start:idx_end)%vpd ) / nt_day   ! soil moisture, vol/vol
 
     end do
 
@@ -193,7 +194,7 @@ contains
 
     esat = 611.0 * exp( (17.27 * tc)/(tc + 237.3) )
 
-    vpd = esat * (1.0 - rh)
+    vpd = esat * (1.0 - min(rh, 1.0))
 
   end function calc_vpd_rh
 
