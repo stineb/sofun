@@ -1,6 +1,4 @@
 module md_vegetation
-
-  ! Subroutines adopted from file 'esdvm.F90' from the ForestESS repository.
   
   use datatypes
   use md_soil
@@ -1873,7 +1871,7 @@ contains
   !==================== Vegetation initializations =======================
   !=======================================================================
 
-  subroutine initialize_vegn_tile(vegn,nCohorts)
+  subroutine initialize_vegn_tile( vegn, nCohorts )
     !////////////////////////////////////////////////////////////////
     ! Code from BiomeE-Allocation
     !---------------------------------------------------------------

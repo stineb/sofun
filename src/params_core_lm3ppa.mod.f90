@@ -1,4 +1,4 @@
-module md_params_core
+module md_params_core_lm3ppa
   !////////////////////////////////////////////////////////////////
   ! This module contains parameters that are not modified, but needed
   ! to define variables, dimension lengths, etc.
@@ -55,4 +55,4 @@ module md_params_core
   ! needed here
   real, parameter :: dummy = -9999.0             ! arbitrary dummy value
 
-end module md_params_core
+end module md_params_core_lm3ppa

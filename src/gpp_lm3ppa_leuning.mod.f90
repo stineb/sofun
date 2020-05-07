@@ -13,7 +13,7 @@ module md_gpp
 
 contains
 
-  subroutine gpp( forcing, vegn, init)
+  subroutine gpp( forcing, vegn, init )
     !//////////////////////////////////////////////////////////////////////
     ! GPP
     ! Calculates light availability and photosynthesis for each cohort 

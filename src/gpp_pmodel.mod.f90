@@ -88,7 +88,6 @@ contains
     ! Calculates soil moisture and temperature stress functions.
     ! Calls P-model.
     !------------------------------------------------------------------
-    ! use md_plant, only: params_pft_plant, plant_type, plant_fluxes_type
     use md_sofunutils, only: dampen_variability
     use md_photosynth, only: pmodel, outtype_pmodel
 
@@ -101,11 +100,6 @@ contains
     logical, intent(in) :: do_soilmstress                    ! whether empirical soil miosture stress function is applied to GPP
     logical, intent(in) :: do_tempstress                     ! whether empirical temperature stress function is applied to GPP
     logical, intent(in) :: init                              ! is true on the very first simulation day (first subroutine call of each gridcell)
-
-    ! ! input-output arguments
-    ! real, dimension(npft), intent(inout)  :: dgpp            ! daily total gross primary productivity (gC m-2 d-1)
-    ! real, dimension(npft), intent(inout)  :: drd             ! daily total dark respiraiton (gC m-2 d-1)
-    ! real, dimension(npft), intent(inout)  :: dtransp         ! daily total transpiration (XXX)
 
     ! local variables
     type(outtype_pmodel) :: out_pmodel                     ! list of P-model output variables
@@ -481,11 +475,9 @@ contains
     ! function return variable
     real :: outstress
 
-
     if (soilm > x1) then
       outstress = 1.0
     else
-      ! print*,'soilm_par_a, soilm_par_b, meanalpha', params_gpp%soilm_par_a, params_gpp%soilm_par_b, meanalpha
 
       y0 = (params_gpp%soilm_par_a + params_gpp%soilm_par_b * meanalpha)
 
