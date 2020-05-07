@@ -1067,9 +1067,8 @@ contains
     enddo
     
     ! if (myinterface%params_siml%outputdaily .and. iday > myinterface%params_siml%equi_days) then
+    call summarize_tile(vegn) 
     if (.not. myinterface%steering%spinup) then 
-
-      call summarize_tile(vegn) 
 
       out_daily_tile%year      = iyears
       out_daily_tile%doy       = idoy
