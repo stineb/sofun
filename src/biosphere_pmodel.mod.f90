@@ -244,6 +244,11 @@ contains
         end do monthloop
 
         !----------------------------------------------------------------
+        ! Statistical relationships with GPP to get N uptake
+        !----------------------------------------------------------------
+        call nuptake_impl( tile_fluxes(:), interface%steering%init )
+
+        !----------------------------------------------------------------
         ! collect annual output
         !----------------------------------------------------------------
         if (.not.interface%params_siml%is_calib) then

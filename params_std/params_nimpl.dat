@@ -1,0 +1,12 @@
+###############################################################
+# PMODEL PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+cnsoil_bp                               99999999.999
+age_bp                                  12345897.000
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 
