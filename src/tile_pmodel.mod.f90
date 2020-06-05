@@ -66,6 +66,8 @@ module md_tile
   !----------------------------------------------------------------
   type canopy_fluxes_type
 
+    ! daily
+    !----------------------------------------------------------------
     ! water
     real :: dro             ! daily runoff (mm d-1)
     real :: dfleach         ! daily fraction of soil water going to runoff (used for calculating leaching)
@@ -106,6 +108,11 @@ module md_tile
     real :: ppfd_splash
     real :: dayl             ! day length (h)
     real :: dra              ! daily top-of-atmosphere solar radiation (J/m^2/d)
+
+    ! annual
+    !----------------------------------------------------------------
+    ! carbon 
+    real :: agpp
 
     ! real, dimension(ndayyear) :: dayl               ! day length (hours)
     ! real, dimension(ndayyear) :: dra                ! daily TOA solar irradiation (J/m2)

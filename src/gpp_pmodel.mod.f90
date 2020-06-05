@@ -1799,7 +1799,7 @@ contains
   end subroutine initio_nc_gpp
 
 
-  subroutine initoutput_gpp( ngridcells )
+  subroutine initoutput_gpp( tile_fluxes, ngridcells )
     !////////////////////////////////////////////////////////////////
     ! Initialises module-specific output variables
     !
@@ -1811,12 +1811,18 @@ contains
     use md_interface
 
     ! arguments
+    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
     integer, intent(in) :: ngridcells
 
+    !----------------------------------------------------------------
+    ! Model variables (not output variables)
+    !----------------------------------------------------------------
+    tile_fluxes(:)%canopy%agpp = 0.0
+
     ! daily
-    if (interface%steering%init.and.interface%params_siml%loutdgpp    ) allocate( outdgpp(interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init.and.interface%params_siml%loutdrd    )  allocate( outdrd(interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init.and.interface%params_siml%loutdtransp)  allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init .and. interface%params_siml%loutdgpp    ) allocate( outdgpp(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init .and. interface%params_siml%loutdrd    )  allocate( outdrd(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init .and. interface%params_siml%loutdtransp)  allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
 
     if (interface%params_siml%loutdgpp )   outdgpp(:,:)    = 0.0
     if (interface%params_siml%loutdrd    ) outdrd(:,:)     = 0.0
@@ -1837,7 +1843,6 @@ contains
         allocate( outaiwue      (npft,ngridcells) )
       end if
 
-      outagpp(:,:)        = 0.0
       outavcmax(:,:)      = 0.0
       outavcmax_25(:,:)   = 0.0
       outavcmax_leaf(:,:) = 0.0
@@ -1865,12 +1870,17 @@ contains
     use md_plant, only: plant_fluxes_type
 
     ! argument
-    type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
+    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
     integer, intent(in) :: jpngr
     integer, intent(in) :: doy
 
     ! local
     integer :: it
+
+    !----------------------------------------------------------------
+    ! Annual sums, model variables (not output variables)
+    !----------------------------------------------------------------
+    tile_fluxes(:)%canopy%agpp = tile_fluxes(:)%canopy%agpp + tile_fluxes(:)%canopy%dgpp 
 
     !----------------------------------------------------------------
     ! DAILY FOR HIGH FREQUENCY OUTPUT
@@ -1893,40 +1903,37 @@ contains
     ! outdvcmax(1,doy)      = dvcmax_canop(1)
     ! outdvcmax25(1,doy)    = out_pmodel(1)%ftemp_inst_vcmax * dvcmax_canop(1)
 
-    ! weighted by daily GPP
-    if (interface%params_siml%loutgpp) then
+    ! ! weighted by daily GPP
+    ! if (interface%params_siml%loutgpp) then
 
-      outagpp(:,jpngr)        = outagpp(:,jpngr) + tile_fluxes(:)%canopy%dgpp
+    !   outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * tile_fluxes(:)%canopy%dgpp
+    !   outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * tile_fluxes(:)%canopy%dgpp
+    !   outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * tile_fluxes(:)%canopy%dgpp
+    !   outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * tile_fluxes(:)%canopy%dgpp
+    !   outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * tile_fluxes(:)%canopy%dgpp
 
-      ! outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * tile_fluxes(:)%canopy%dgpp
-      ! outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * tile_fluxes(:)%canopy%dgpp
-      ! outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * tile_fluxes(:)%canopy%dgpp
-      ! outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * tile_fluxes(:)%canopy%dgpp
-      ! outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * tile_fluxes(:)%canopy%dgpp
+    !   if (doy==ndayyear) then
+    !     if (sum(outagpp(:,jpngr))==0.0) then
+    !       outachi       (:,jpngr) = dummy
+    !       outaiwue      (:,jpngr) = dummy
+    !       outaci        (:,jpngr) = dummy
+    !       outags        (:,jpngr) = dummy
+    !       outavcmax_leaf(:,jpngr) = dummy
+    !     else
+    !       outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
+    !       outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
+    !       outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
+    !       outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
+    !       outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
+    !     end if
+    !   end if
 
-      ! if (doy==ndayyear) then
-      !   if (sum(outagpp(:,jpngr))==0.0) then
-      !     outachi       (:,jpngr) = dummy
-      !     outaiwue      (:,jpngr) = dummy
-      !     outaci        (:,jpngr) = dummy
-      !     outags        (:,jpngr) = dummy
-      !     outavcmax_leaf(:,jpngr) = dummy
-      !   else
-      !     outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
-      !     outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
-      !     outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
-      !     outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
-      !     outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
-      !   end if
-      ! end if
-
-    end if
-
+    ! end if
 
   end subroutine getout_daily_gpp
 
 
-  subroutine getout_annual_gpp( jpngr )
+  subroutine getout_annual_gpp( jpngr, tile_fluxes )
     !////////////////////////////////////////////////////////////////
     ! Called once a year to gather annual output variables.
     !
@@ -1939,12 +1946,16 @@ contains
 
     ! arguments
     integer, intent(in) :: jpngr
+    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
 
     ! local variables
     integer :: pft
 
     ! outanrlarea(jpngr) = anrlarea
     if (interface%params_siml%loutgpp) then
+
+      outagpp(:,jpngr) = tile_fluxes(:)%canopy%agpp
+
       ! xxx to do: get vcmax at annual maximum (of monthly values)
       do pft=1,npft
         outavcmax(pft,jpngr)    = maxval(outdvcmax(pft,:))

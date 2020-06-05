@@ -91,7 +91,7 @@ contains
     if (.not.interface%params_siml%is_calib) then
       if (verbose) print*, 'initoutput_() ...'
       call initoutput_waterbal( size(interface%grid) )
-      call initoutput_gpp(      size(interface%grid) )
+      call initoutput_gpp( tile_fluxes(:), size(interface%grid) )
       call initoutput_plant(    size(interface%grid) )
       call initoutput_forcing(  size(interface%grid) )
       call initoutput_soiltemp( size(interface%grid) )
@@ -249,7 +249,7 @@ contains
         if (.not.interface%params_siml%is_calib) then
           if (verbose) print*,'calling getout_annual_() ... '
           ! call getout_annual_plant( tile(:)%plant(:), jpngr )
-          call getout_annual_gpp( jpngr )
+          call getout_annual_gpp( jpngr, tile_fluxes(:) )
           if (verbose) print*,'... done'
         end if
 
