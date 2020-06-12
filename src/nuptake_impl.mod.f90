@@ -13,7 +13,7 @@ module md_nuptake_impl
   public objectsxxx
 
   !----------------------------------------------------------------
-  ! Variables without memory (not necessarily just fluxes)
+  ! Variables without memory (not necessarily just fluxes; just define the type) 
   !----------------------------------------------------------------
   type canopy_nimpl_fluxes_type
     real :: anpp        ! annual total net primary production (gC m-2 yr-1)
@@ -21,6 +21,10 @@ module md_nuptake_impl
     real :: abnpp       ! annual belowground net primary production (gC m-2 yr-1)
     real :: alnpp       ! annual net primary production for leaf production (gC m-2 yr-1)
     real :: awnpp       ! annual net primary production for wood production (gC m-2 yr-1)
+    real :: leafcn      ! the ratio of leaf carbon per mass to leaf nitrogen per mass (unitness)
+    real :: alnf        ! annual laef nitrogen flux (gC m-2 yr-2)
+    real :: awnf        ! annual wood nitrogen flux (gC m-2 yr-2)
+    real :: abnf        ! annual belowground(root) nitrogen flux (gC m-2 yr-2)
   end type canopy_nimpl_fluxes_type
 
   type tile_nimpl_fluxes_type
@@ -28,7 +32,7 @@ module md_nuptake_impl
   end type tile_nimpl_fluxes_type
 
   !----------------------------------------------------------------
-  ! object containing module-specific fluxes
+  ! object containing module-specific fluxes (create this new object)
   !----------------------------------------------------------------
   type(tile_nimpl_fluxes_type), allocatable, dimension(:) :: tile_nimpl_fluxes
 
@@ -45,12 +49,30 @@ module md_nuptake_impl
     real :: intersect_bp
 
     ! ANPP:GPP model
-    xxx
+    real :: cnsoil_anpp
+    real :: age_anpp
+    real :: fapar_anpp
+    real :: alpha_anpp
+    real :: intersect_anpp
 
-  end type coef_nimpl_type
+    ! ALNPP:NPP model
+    real :: PPFD_alnpp
+    real :: Tg_alnpp
+    real :: vpd_alnpp
+    real :: intersect_alnpp
+
+    ! Leaf C:N model
+    real :: Vcmax25_leafcn
+    real :: LMA_leafcn
+    real :: intersect_leafcn
+
+    ! Constant ratio
+    real :: root_cn
+    real :: wood_cn
+
+  end type coef_nimpl_type  
 
   type(coef_nimpl_type) :: coef_nimpl
-
 
   !----------------------------------------------------------------
   ! Predictor fields
@@ -63,19 +85,45 @@ module md_nuptake_impl
     real :: alpha
 
     ! ANPP:GPP model
-    xxx
+    real :: cnsoil
+    real :: age
+    real :: fapar
+    real :: alpha
+
+    ! ALNPP:NPP model
+    real :: PPFD
+    real :: Tg
+    real :: vpd
+
+    ! Leaf C:N model
+    real :: Vcmax25
+    real :: LMA
 
   end type preds_nimpl_type
 
   type(preds_nimpl_type), dimension(:), allocatable :: preds_nimpl
 
   !----------------------------------------------------------------
-  ! Specify file and variable names for NetCDF reading
+  ! Specify file and variable names for NetCDF reading xxx (variable name needs double check)
   !----------------------------------------------------------------
-  character(len=100), parameter :: filnam_cnsoil = "actual_file_name.nc"
+  character(len=100), parameter :: filnam_cnsoil = "soilcn.nc"
   character(len=100), parameter :: varnam_cnsoil = "actual_variable_name"
-  xxx
-
+  character(len=100), parameter :: filnam_age    = "age.nc"
+  character(len=100), parameter :: varnam_age    = "actual_variable_name"
+  character(len=100), parameter :: filnam_fapar  = "fapar.nc"
+  character(len=100), parameter :: varnam_fapar  = "actual_variable_name"
+  character(len=100), parameter :: filnam_alpha  = "alpha.nc"
+  character(len=100), parameter :: varnam_alpha  = "actual_variable_name"
+  character(len=100), parameter :: filnam_PPFD   = "PPFD.nc"
+  character(len=100), parameter :: varnam_PPFD   = "actual_variable_name"
+  character(len=100), parameter :: filnam_Tg     = "Tg.nc"
+  character(len=100), parameter :: varnam_Tg     = "actual_variable_name"
+  character(len=100), parameter :: filnam_vpd    = "vpd.nc"
+  character(len=100), parameter :: varnam_vpd    = "actual_variable_name"
+  character(len=100), parameter :: filnam_Vcmax25= "Vcmax25.nc"
+  character(len=100), parameter :: varnam_Vcmax25= "actual_variable_name"
+  character(len=100), parameter :: filnam_LMA    = "LMA.nc"
+  character(len=100), parameter :: varnam_LMA    = "actual_variable_name"
 contains
 
   subroutine nuptake_impl( tile_fluxes, init )
@@ -103,8 +151,19 @@ contains
       call get_preds_nc( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
 
       ! ANPP:GPP model
-      xxx
+      call get_preds_nc( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
+      call get_preds_nc( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
+      call get_preds_nc( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
+      call get_preds_nc( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
 
+      ! ALNPP:NPP model
+      call get_preds_nc( trim(filnam_PPFD), trim(varnam_PPFD), domaininfo, grid, preds_nimpl(:)%PPFD )
+      call get_preds_nc( trim(filnam_Tg),    trim(varnam_Tg),    domaininfo, grid, preds_nimpl(:)%Tg )
+      call get_preds_nc( trim(filnam_vpd),  trim(varnam_vpd),  domaininfo, grid, preds_nimpl(:)%vpd )
+
+      ! Leaf C:N model
+      call get_preds_nc( trim(filnam_Vcmax25), trim(varnam_Vcmax25), domaininfo, grid, preds_nimpl(:)%Vcmax25 )
+      call get_preds_nc( trim(filnam_LMA),    trim(varnam_LMA),    domaininfo, grid, preds_nimpl(:)%LMA )
 
       !--------------------------------------------------------------
       ! Read coefficients, populates 'coef_nimpl'
@@ -116,25 +175,57 @@ contains
 
     !--------------------------------------------------------------
     ! Predict using statistical models
+    !Note that some data was log-transfromed (cnsoil, age, PPFD, vpd, Vcmax25, lma) while some are not (alpha, fAPAR, Tg)
+    !All ratios were using logit function (logit(y)=x), therefore we should convert them into y = 1/(1+ exp(-x))
+    ! leaf c/n model were using log function, so it should be exp in advance
     !--------------------------------------------------------------
     ! XXX loop or make tile_nimpl_fluxes a field?
-    tile_nimpl_fluxes(lu)%canopy%anpp = coef_nimpl%cnsoil_bp * preds_nimpl(:)%cnsoil + coef_nimpl%age_bp * preds_nimpl(:)%age + xxx + coef_nimpl%intersect_bp
-
-    ! xxx todo: other linear models for prediction
+    tile_nimpl_fluxes(lu)%canopy%anpp = tile_fluxes(lu)%canopy%agpp * (1/(1+EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(:)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(:)%age) + coef_nimpl%fapar_bp * preds_nimpl(:)%fapar +coef_nimpl%alpha_bp * preds_nimpl(:)%alpha + coef_nimpl%intersect_bp))))
+    tile_nimpl_fluxes(lu)%canopy%aanpp = tile_fluxes(lu)%canopy%agpp * (1/(1+EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(:)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(:)%age) + coef_nimpl%fapar_anpp * preds_nimpl(:)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(:)%alpha + coef_nimpl%intersect_anpp))))
+    tile_nimpl_fluxes(lu)%canopy%abnpp = tile_nimpl_fluxes(lu)%canopy%anpp - tile_nimpl_fluxes(lu)%canopy%aanpp
+    tile_nimpl_fluxes(lu)%canopy%alnpp = tile_nimpl_fluxes(lu)%canopy%aanpp * (1/(1+EXP(-(coef_nimpl%PPFD_alnpp * LOG(preds_nimpl(:)%PPFD) + coef_nimpl%Tg_alnpp * preds_nimpl(:)%Tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(:)%vpd) + coef_nimpl%intersect_alnpp))))
+    tile_nimpl_fluxes(lu)%canopy%awnpp = tile_nimpl_fluxes(lu)%canopy%aanpp - tile_nimpl_fluxes(lu)%canopy%alnpp
+    tile_nimpl_fluxes(lu)%canopy%leafcn = EXP(coef_nimpl%Vcmax25_leafcn * LOG(preds_nimpl(:)%Vcmax25) + coef_nimpl%LMA_leafcn * LOG(preds_nimpl(:)%LMA) + coef_nimpl%intersect_leafcn)
+    tile_nimpl_fluxes(lu)%canopy%alnf = tile_nimpl_fluxes(lu)%canopy%alnpp/tile_nimpl_fluxes(lu)%canopy%leafcn 
+    tile_nimpl_fluxes(lu)%canopy%awnf = tile_nimpl_fluxes(lu)%canopy%awnpp/coef_nimpl%wood_cn
+    tile_nimpl_fluxes(lu)%canopy%abnf = tile_nimpl_fluxes(lu)%canopy%abnpp/coef_nimpl%root_cn
 
   end subroutine nuptake_impl
 
 
   subroutine getpar_nimpl()
     !////////////////////////////////////////////////////////////////
-    ! xxx here comes a description
+    !Extract all coeffients and constant in a dat file
     !--------------------------------------------------------------
     use md_sofunutils, only: getparreal
-
+    ! BP/GPP model
     coef_nimpl%cnsoil_bp  = getparreal( 'params/params_nimpl.dat', 'cnsoil_bp' )
     coef_nimpl%age_bp     = getparreal( 'params/params_nimpl.dat', 'age_bp' )
+    coef_nimpl%fapar_bp  = getparreal( 'params/params_nimpl.dat', 'fapar_bp' )
+    coef_nimpl%alpha_bp     = getparreal( 'params/params_nimpl.dat', 'alpha_bp' )
+    coef_nimpl%intersect_bp     = getparreal( 'params/params_nimpl.dat', 'intersect_bp' )
 
-    xxx read other coefficients and C:N ratios in different tissues from the same file
+    ! ANPP/GPP model
+    coef_nimpl%cnsoil_anpp  = getparreal( 'params/params_nimpl.dat', 'cnsoil_anpp' )
+    coef_nimpl%age_anpp     = getparreal( 'params/params_nimpl.dat', 'age_anpp' )
+    coef_nimpl%fapar_anpp  = getparreal( 'params/params_nimpl.dat', 'fapar_anpp' )
+    coef_nimpl%alpha_anpp     = getparreal( 'params/params_nimpl.dat', 'alpha_anpp' )
+    coef_nimpl%intersect_anpp     = getparreal( 'params/params_nimpl.dat', 'intersect_anpp' )
+
+    ! ALNPP/NPP model
+    coef_nimpl%PPFD_alnpp = getparreal( 'params/params_nimpl.dat', 'PPFD_alnpp' )
+    coef_nimpl%Tg_alnpp = getparreal( 'params/params_nimpl.dat', 'Tg_alnpp' )
+    coef_nimpl%vpd_alnpp = getparreal( 'params/params_nimpl.dat', 'vpd_alnpp' )
+    coef_nimpl%intersect_alnpp     = getparreal( 'params/params_nimpl.dat', 'intersect_alnpp' )
+    
+    ! Leaf C:N model
+    coef_nimpl%Vcmax25_leafcn = getparreal( 'params/params_nimpl.dat', 'Vcmax25_leafcn' )
+    coef_nimpl%LMA_leafcn = getparreal( 'params/params_nimpl.dat', 'LMA_leafcn' )
+    coef_nimpl%intersect_leafcn     = getparreal( 'params/params_nimpl.dat', 'intersect_leafcn' )
+
+    ! Constant
+    coef_nimpl%root_cn = getparreal( 'params/params_nimpl.dat', 'root_cn' )
+    coef_nimpl%wood_cn = getparreal( 'params/params_nimpl.dat', 'wood_cn' )
 
   end subroutine getpar_nimpl
 
