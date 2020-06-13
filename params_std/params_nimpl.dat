@@ -29,7 +29,7 @@ LMA_leafcn								0.4470
 Vcmax25_leafcn							-0.1068
 intersect_leafcn						1.5878
 
-#constant ratio - derived from TRY database
+#constant ratio - derived from TRY database (N=2365 for root; N=13 for wood)
 root_cn									42
 wood_cn									97
 
