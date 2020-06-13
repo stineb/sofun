@@ -10,7 +10,7 @@ module md_nuptake_impl
 
   implicit none
   private
-  public objectsxxx
+  public objects
 
   !----------------------------------------------------------------
   ! Variables without memory (not necessarily just fluxes; just define the type) 
@@ -104,7 +104,7 @@ module md_nuptake_impl
   type(preds_nimpl_type), dimension(:), allocatable :: preds_nimpl
 
   !----------------------------------------------------------------
-  ! Specify file and variable names for NetCDF reading xxx (variable name needs double check)
+  ! Specify file and variable names for NetCDF reading (variable name needs double check)
   !----------------------------------------------------------------
   character(len=100), parameter :: filnam_cnsoil = "soilcn.nc"
   character(len=100), parameter :: varnam_cnsoil = "actual_variable_name"
