@@ -27,13 +27,14 @@ module md_params_soil
 
 contains
 
-  function getsoil( domaininfo ) result( params_soil )
+  function getsoil( domaininfo, grid ) result( params_soil )
     !////////////////////////////////////////////////////////////////
     ! Function to "translate" the soil code into numerical soil 
     ! parameters. The soil code is contained in 'domaininfo'.
     !----------------------------------------------------------------
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid  ! dummy. is added here to make it compatible with global simulation setup
 
     ! function return variable
     type(paramtype_soil) :: params_soil

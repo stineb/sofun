@@ -27,8 +27,8 @@ import os.path
 ## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
-# name = 'global'
-name = 'fluxnet2015'
+name = 'global'
+# name = 'fluxnet2015'
 
 ##--------------------------------------------------------------------
 ## For an example simulation (simulation name 'EXAMPLE_global'), set 
@@ -187,7 +187,7 @@ if name == 'global':
 	else:
 		os.system( 'unlink run')
 		os.system( 'unlink site_paramfils')
-		os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/run run')
+		os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/run .')
 		os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/site_paramfils site_paramfils')
 
 else:

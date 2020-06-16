@@ -87,7 +87,7 @@ program main
   !----------------------------------------------------------------
   ! GET SOIL PARAMETERS
   !----------------------------------------------------------------
-  interface%soilparams(:) = getsoil( interface%domaininfo )
+  interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
 
   !----------------------------------------------------------------
   ! GET VEGETATION COVER (fractional projective cover by PFT)
