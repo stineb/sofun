@@ -178,7 +178,7 @@ contains
         call initglobal_canopy( tile(lu,jpngr)%canopy )
 
         ! initialise plant variables
-        call initglobal_plant( tile(lu,jpngr)%plant(:), ngridcells )
+        call initglobal_plant( tile(lu,jpngr)%plant(:) )
 
       end do
     end do
