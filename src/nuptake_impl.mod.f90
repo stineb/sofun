@@ -104,26 +104,26 @@ module md_nuptake_impl
   type(preds_nimpl_type), dimension(:), allocatable :: preds_nimpl
 
   !----------------------------------------------------------------
-  ! Specify file and variable names for NetCDF reading (variable name needs double check)
+  ! Specify file and variable names for NetCDF reading (Vcmax25 may need additional input from SOFUN)
   !----------------------------------------------------------------
   character(len=100), parameter :: filnam_cnsoil = "soilcn.nc"
-  character(len=100), parameter :: varnam_cnsoil = "actual_variable_name"
+  character(len=100), parameter :: varnam_cnsoil = "CNrt"
   character(len=100), parameter :: filnam_age    = "age.nc"
-  character(len=100), parameter :: varnam_age    = "actual_variable_name"
+  character(len=100), parameter :: varnam_age    = "age"
   character(len=100), parameter :: filnam_fapar  = "fapar.nc"
-  character(len=100), parameter :: varnam_fapar  = "actual_variable_name"
+  character(len=100), parameter :: varnam_fapar  = "fAPAR"
   character(len=100), parameter :: filnam_alpha  = "alpha.nc"
-  character(len=100), parameter :: varnam_alpha  = "actual_variable_name"
+  character(len=100), parameter :: varnam_alpha  = "alpha"
   character(len=100), parameter :: filnam_PPFD   = "PPFD.nc"
-  character(len=100), parameter :: varnam_PPFD   = "actual_variable_name"
+  character(len=100), parameter :: varnam_PPFD   = "PPFD"
   character(len=100), parameter :: filnam_Tg     = "Tg.nc"
-  character(len=100), parameter :: varnam_Tg     = "actual_variable_name"
+  character(len=100), parameter :: varnam_Tg     = "Tg"
   character(len=100), parameter :: filnam_vpd    = "vpd.nc"
-  character(len=100), parameter :: varnam_vpd    = "actual_variable_name"
+  character(len=100), parameter :: varnam_vpd    = "vpd"
   character(len=100), parameter :: filnam_Vcmax25= "Vcmax25.nc"
   character(len=100), parameter :: varnam_Vcmax25= "actual_variable_name"
   character(len=100), parameter :: filnam_LMA    = "LMA.nc"
-  character(len=100), parameter :: varnam_LMA    = "actual_variable_name"
+  character(len=100), parameter :: varnam_LMA    = "LMA"
 contains
 
   subroutine nuptake_impl( tile_fluxes, init )
