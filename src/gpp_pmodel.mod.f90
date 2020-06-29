@@ -1548,7 +1548,7 @@ contains
     !         in strongly water-stressed months
     !-----------------------------------------------------------------------
     ! argument
-    real, intent(in) :: soilm                 ! soil water content (fraction)
+    real, intent(in) :: soilm                 ! soil water content, experssed as a fraction of plant-available water content: (soilm - PWP)/(FP - PWP)
     real, intent(in) :: meanalpha             ! mean annual AET/PET, average over multiple years (fraction)
     logical, intent(in), optional :: isgrass  ! vegetation cover information to distinguish sensitivity to low soil moisture
 
