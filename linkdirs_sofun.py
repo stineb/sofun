@@ -33,38 +33,43 @@ name = 'example'
 
 ##--------------------------------------------------------------------
 ## Manually edit the root directory for the local mirror of 
-## the data directory (e.g., /cluster/home/bestocke/data on Euler; this
-## is used for linking input files).
+## the data directory (e.g., /cluster/home/bestocke/data on Euler.
 ##--------------------------------------------------------------------
-dataroot = '/cluster/home/bestocke/data/'   # to run on Euler
-# dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
+dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
+# dataroot = '/cluster/work/climate/bestocke/data'     # to run on Euler
+
+##--------------------------------------------------------------------
+## Manually edit the root directory for SOFUN inputS 
+##--------------------------------------------------------------------
+inputroot = '~/sofun_inputs'
 
 ##--------------------------------------------------------------------
 ## Link directories
 ##--------------------------------------------------------------------
 ## link output direcory
 os.system( 'unlink output_nc' )
-os.system( 'ln -svf ~/sofun_outputs/output_nc_' + name + ' output_nc'  )
+dir = '~/sofun_outputs/output_nc_' + name
 
-## link input directory
-os.system( 'unlink input/global')
-os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/sitedata input/.')
+if not(os.path.isdir(dir)):
+	print('WARNING: creating output directory that has not existed before: ' + dir)
+	os.system('mkdir ' + dir)
 
+os.system( 'ln -svf ' + dir + ' output_nc'  )
 
 ## link 'run' directory (containing simulation parameter files)
 os.system( 'unlink run')
-if example:
+if name == 'example':
 	os.system( 'ln -sv run_EXAMPLE run')
 else:
-	os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/run .')
+	os.system( 'ln -svf ' + inputroot + '/input_' + name + '_sofun/run .')
 
 
 ## link 'site_paramfils' directory (containing site parameter files) 
 os.system( 'unlink site_paramfils')
-if example:
+if name == 'example':
 	os.system( 'ln -sv site_paramfils_EXAMPLE site_paramfils')
 else:
-	os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/site_paramfils site_paramfils')
+	os.system( 'ln -svf ' + inputroot + '/input_' + name + '_sofun/site_paramfils site_paramfils')
 
 
 ##--------------------------------------------------------------------
@@ -183,4 +188,17 @@ if name == 'global':
 	## daily maximum temperature
 	src = dataroot + 'cru/ts_4.01/cru_ts4.01.1901.2016.tmx.dat.nc'
 	os.system( 'ln -svf ' + src + ' ' + dst )
+
+elif name == 'example':
+
+	# os.system( 'ln -sv ./input_EXAMPLE_sofun/sitedata input')
+	here = os.getcwd()
+	os.system( 'ln -svf ' + here + '/input_EXAMPLE_sofun/sitedata/ input')
+	os.system( 'cp input_EXAMPLE_sofun/dfapar_source.txt input/' )
+
+else:
+
+	os.system( 'unlink input/global')
+	os.system( 'ln -svf ' + inputroot + '/input_' + name + '_sofun/sitedata input/sitedata')
+
 

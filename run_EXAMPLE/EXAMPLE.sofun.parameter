@@ -6,7 +6,7 @@
 # write value behind this position:    |->
 
 # Standard site name (reading <sitename>.parameter)
-sitename                                global
+sitename                                EXAMPLE
 
 # Model spinup setting
 spinup                                  .true.
@@ -14,8 +14,8 @@ spinupyears                             10
 recycle                                 1
 
 # Start and length of simulation in years (AD)
-firstyeartrend                          2000
-nyeartrend                              17
+firstyeartrend                          2004
+nyeartrend                              11
 
 # Model parameter file (not PFT-specific)
 modparfil                               params_modl.dat
@@ -27,6 +27,9 @@ ndep_nhx_forcing_file                   XXXnhxdepfilnamXXX
 nfert_noy_forcing_file                  XXXnoyfertfilnamXXX
 nfert_nhx_forcing_file                  XXXnhxfertfilnamXXX
 do_grharvest_forcing_file               XXXgrharvestfilnamXXX
+
+# # Select one of 'fapar3g', 'evi_modis', or 'fpar_modis' (not implemented). Needed only for lonlat simulations.
+# fapar_forcing_source                    fapar3g
 
 # switch for applying soil moisture stress function on GPP
 soilmstress                             .true.
@@ -44,8 +47,8 @@ const_ndep_year                         -9999
 const_nfert_year                        -9999
 
 # limit period for which daily output is written
-daily_out_startyr                       2000
-daily_out_endyr                         2016
+daily_out_startyr                       2004
+daily_out_endyr                         2014
 
 # NetCDF output periodicity (d)
 outdt                                   1
@@ -61,26 +64,25 @@ lGr4                                    .false.
 
 # Module-specific booleans defining whether a set of variables is written to annual output
 loutplant                               .false.
-loutgpp                                 .true.
-loutwaterbal                            .true.
+loutgpp                                 .false.
+loutwaterbal                            .false.
 loutforcing                             .false.
 
 # Module-specific booleans whether a single variable is written to daily output
 loutdgpp                                .true.
 loutdrd                                 .false.
 loutdtransp                             .false.
-loutdwcont                              .true.
-loutdaet                                .true.
-loutdpet                                .true.
-loutdalpha                              .false.
+loutdwcont                              .false.
+loutdaet                                .false.
+loutdpet                                .false.
+loutdnetrad                             .false.
+loutdwbal                               .false.
 loutdtemp                               .false.
 loutdfapar                              .false.
 loutdtemp_soil                          .false.
-loutdnetrad                             .false.
-loutdwbal                               .false.
 
 # Variables used as calibration targets (written to separate output)
-lcalibgpp                               .false.
+lcalibgpp                               .true.
 lcalibfapar                             .false.
 lcalibtransp                            .false.
 lcaliblatenth                           .false.

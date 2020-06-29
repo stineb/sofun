@@ -1,0 +1,17 @@
+###############################################################
+# SITE-SPECIFIC PARAMETERS FOR THE SOFUN MODEL
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+longitude                               8.3650
+latitude                                47.4781
+altitude                                689
+
+# soil code, defines all soil parameters
+soilcode                                1
+whc                                     292.4555
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 
