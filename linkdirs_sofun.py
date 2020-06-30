@@ -27,9 +27,9 @@ import os.path
 ## /work/bstocker/labprentice/data on Imperial's HPC CX1 server into the 
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
-name = 'global'
+# name = 'global'
 # name = 'fluxnet2015'
-# name = 'example'
+name = 'example'
 
 ##--------------------------------------------------------------------
 ## Manually edit the root directory for the local mirror of 

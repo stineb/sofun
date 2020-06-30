@@ -89,10 +89,10 @@ program main
   !----------------------------------------------------------------
   interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
 
-  !----------------------------------------------------------------
-  ! GET VEGETATION COVER (fractional projective cover by PFT)
-  !----------------------------------------------------------------
-  interface%fpc_grid(:,:) = get_fpc_grid( interface%domaininfo, interface%grid(:), interface%params_siml )
+  ! !----------------------------------------------------------------
+  ! ! GET VEGETATION COVER (fractional projective cover by PFT)
+  ! !----------------------------------------------------------------
+  ! interface%fpc_grid(:,:) = get_fpc_grid( interface%domaininfo, interface%grid(:), interface%params_siml )
 
 
   ! LOOP THROUGH YEARS
