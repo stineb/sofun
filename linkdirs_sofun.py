@@ -62,7 +62,7 @@ os.system( 'unlink run')
 if name == 'example':
 	os.system( 'ln -sv run_EXAMPLE run')
 else:
-	os.system( 'ln -svf ' + inputroot + '/input_' + name + '_sofun/run .')
+	os.system( 'ln -svf ' + inputroot + '/input_' + name + '_sofun/run run')
 
 
 ## link 'site_paramfils' directory (containing site parameter files) 
