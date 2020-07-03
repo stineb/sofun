@@ -176,20 +176,16 @@ contains
         tile(lu,jpngr)%luno = lu
 
         ! Copy soil parameters
-        print*,'1'
         tile(lu,jpngr)%soil%params = interface%soilparams(jpngr)
 
         ! initialise soil variables
-        print*,'2'
         call initglobal_soil( tile(lu,jpngr)%soil )
 
         ! initialise canopy variables
-        print*,'3'
         call initglobal_canopy( tile(lu,jpngr)%canopy )
 
         ! initialise plant variables
-        print*,'4'
-        call initglobal_plant( tile(lu,jpngr)%plant(:), ngridcells )
+        call initglobal_plant( tile(lu,jpngr)%plant(:) )
 
       end do
     end do

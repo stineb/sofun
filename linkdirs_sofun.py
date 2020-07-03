@@ -28,34 +28,50 @@ import os.path
 ## input directory structure required for SOFUN.
 ##--------------------------------------------------------------------
 # name = 'global'
-name = 'fluxnet2015'
+# name = 'fluxnet2015'
+name = 'example'
 
 ##--------------------------------------------------------------------
-## For an example simulation (simulation name 'EXAMPLE_global'), set 
-## this to true 
+## Manually edit the root directory for the local mirror of 
+## the data directory (e.g., /cluster/home/bestocke/data on Euler.
 ##--------------------------------------------------------------------
-example = False
+dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
+# dataroot = '/cluster/work/climate/bestocke/data'     # to run on Euler
 
 ##--------------------------------------------------------------------
-## Manually et the root directory for the local mirror of 
-## /work/bstocker/labprentice/data
+## Manually edit the root directory for SOFUN inputS 
 ##--------------------------------------------------------------------
-# dataroot = '/cluster/home/bestocke/data/'
-# mydataroot = '/cluster/home/bestocke/data/'
-
-# dataroot = '/Users/bestocke/data/'
-# mydataroot = '/Users/bestocke/data/'
-dataroot = '/Users/benjaminstocker/data/'
-mydataroot = '/Users/benjaminstocker/data/'
-# dataroot = '/rds/general/project/lab-prentice-realm-data/live/data/'
-# mydataroot = '/rds/general/user/bstocker/home/mydata/'
+inputroot = '~/sofun_inputs'
+outputroot = '~/sofun_outputs'
 
 ##--------------------------------------------------------------------
 ## Link directories
 ##--------------------------------------------------------------------
-## link output direcories
+## link output direcory
 os.system( 'unlink output_nc' )
-os.system( 'ln -svf ~/sofun_outputs/output_nc_' + name + ' output_nc'  )
+dir = outputroot + '/output_nc_' + name
+
+if not(os.path.isdir(dir)):
+	print('WARNING: creating output directory that has not existed before: ' + dir)
+	os.system('mkdir ' + dir)
+
+os.system( 'ln -svf ' + dir + ' output_nc'  )
+
+## link 'run' directory (containing simulation parameter files)
+os.system( 'unlink run')
+if name == 'example':
+	os.system( 'ln -sv run_EXAMPLE run')
+else:
+	os.system( 'ln -svf ' + inputroot + '/input_' + name + '_sofun/run run')
+
+
+## link 'site_paramfils' directory (containing site parameter files) 
+os.system( 'unlink site_paramfils')
+if name == 'example':
+	os.system( 'ln -sv site_paramfils_EXAMPLE site_paramfils')
+else:
+	os.system( 'ln -svf ' + inputroot + '/input_' + name + '_sofun/site_paramfils site_paramfils')
+
 
 ##--------------------------------------------------------------------
 ## Copy parameter files
@@ -106,10 +122,9 @@ if name == 'global':
 	## soil
 	##--------------------------------------
 	dirn = 'input/global/soil'
-        ## WARNING: using mydataroot for soil files!
 	os.system( 'mkdir -p ' + dirn )
-	call(['ln', '-svf', mydataroot + 'soil/soilgrids/whc_soilgrids_halfdeg_FILLED.nc', dirn ])
-	call(['ln', '-svf', mydataroot + 'soil/hwsd/soil_type_hwsd_halfdeg.cdf', dirn ])
+	call(['ln', '-svf', dataroot + 'soil/soilgrids/whc_soilgrids_halfdeg_FILLED.nc', dirn ])
+	call(['ln', '-svf', dataroot + 'soil/hwsd/soil_type_hwsd_halfdeg.cdf', dirn ])
 
 	## land cover
 	##--------------------------------------
@@ -175,45 +190,16 @@ if name == 'global':
 	src = dataroot + 'cru/ts_4.01/cru_ts4.01.1901.2016.tmx.dat.nc'
 	os.system( 'ln -svf ' + src + ' ' + dst )
 
+elif name == 'example':
 
-	## Other directories
-	##--------------------------------------
-	## link 'run' and 'site_paramfils' directories
-	if example:
-		os.system( 'unlink run')
-		os.system( 'unlink site_paramfils')
-		os.system( 'ln -sv run_EXAMPLE run')
-		os.system( 'ln -sv site_paramfils_EXAMPLE site_paramfils')
-	else:
-		os.system( 'unlink run')
-		os.system( 'unlink site_paramfils')
-		os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/run run')
-		os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/site_paramfils site_paramfils')
+	# os.system( 'ln -sv ./input_EXAMPLE_sofun/sitedata input')
+	here = os.getcwd()
+	os.system( 'ln -svf ' + here + '/input_EXAMPLE_sofun/sitedata/ input')
+	os.system( 'cp input_EXAMPLE_sofun/dfapar_source.txt input/' )
 
 else:
-	##--------------------------------------
-	## SITE-SCALE SIMULATIONS
-	##--------------------------------------
-	# ## use same site and simulation parameter files for cnmodel and cmodel simulations
-	# if name == 'fluxnet_fixalloc':
-	#   	name_climate_link = 'fluxnet_cnmodel'
-	# elif name == 'olson_cmodel':
-	#   	name_climate_link = 'olson'
-	# elif name == 'campi_cmodel':
-	#   	name_climate_link = 'campi'
-	# elif name == 'fluxnet2015_cmodel':
-	#   	name_climate_link = 'fluxnet2015'
-	# elif name == 'fluxnet2015':
-	#   	name_climate_link = 'fluxnet2015'
-	# else:
-	#   	name_climate_link = name
 
-
-	os.system( 'unlink run')
-	os.system( 'unlink site_paramfils')
 	os.system( 'unlink input/global')
-	os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/run .')
-	os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/site_paramfils .')
-	os.system( 'ln -svf ~/sofun_inputs/input_' + name + '_sofun/sitedata input/.')
+	os.system( 'ln -svf ' + inputroot + '/input_' + name + '_sofun/sitedata input/sitedata')
 
 

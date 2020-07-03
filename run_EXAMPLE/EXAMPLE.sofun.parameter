@@ -1,0 +1,92 @@
+###############################################################
+# SIMULATION PARAMETERS FOR THE SOFUN MODEL
+# read in by SR getpar_siml
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+# Standard site name (reading <sitename>.parameter)
+sitename                                EXAMPLE
+
+# Model spinup setting
+spinup                                  .true.
+spinupyears                             10
+recycle                                 1
+
+# Start and length of simulation in years (AD)
+firstyeartrend                          2004
+nyeartrend                              11
+
+# Model parameter file (not PFT-specific)
+modparfil                               params_modl.dat
+
+# input files
+co2_forcing_file                        cCO2_rcp85_const850-1765.dat
+ndep_noy_forcing_file                   XXXnoydepfilnamXXX
+ndep_nhx_forcing_file                   XXXnhxdepfilnamXXX
+nfert_noy_forcing_file                  XXXnoyfertfilnamXXX
+nfert_nhx_forcing_file                  XXXnhxfertfilnamXXX
+do_grharvest_forcing_file               XXXgrharvestfilnamXXX
+
+# # Select one of 'fapar3g', 'evi_modis', or 'fpar_modis' (not implemented). Needed only for lonlat simulations.
+# fapar_forcing_source                    fapar3g
+
+# switch for applying soil moisture stress function on GPP
+soilmstress                             .true.
+tempstress                              .true.
+
+# switches for reading data in as forcing or calculating it online
+in_ppfd                                 .true.
+in_netrad                               .false.
+
+# switches for constant environmental boundary conditions
+const_clim_year                         -9999
+const_lu_year                           -9999
+const_co2_year                          -9999
+const_ndep_year                         -9999
+const_nfert_year                        -9999
+
+# limit period for which daily output is written
+daily_out_startyr                       2004
+daily_out_endyr                         2014
+
+# NetCDF output periodicity (d)
+outdt                                   1
+
+# boolean defining which PFTs to include (lpft1: pftcode=1)
+lTrE                                    .false.
+lTNE                                    .false.
+lTrD                                    .false.
+lTND                                    .false.
+lGr3                                    .true.
+lGN3                                    .false.
+lGr4                                    .false.
+
+# Module-specific booleans defining whether a set of variables is written to annual output
+loutplant                               .false.
+loutgpp                                 .false.
+loutwaterbal                            .false.
+loutforcing                             .false.
+
+# Module-specific booleans whether a single variable is written to daily output
+loutdgpp                                .true.
+loutdrd                                 .false.
+loutdtransp                             .false.
+loutdwcont                              .false.
+loutdaet                                .false.
+loutdpet                                .false.
+loutdnetrad                             .false.
+loutdwbal                               .false.
+loutdtemp                               .false.
+loutdfapar                              .false.
+loutdtemp_soil                          .false.
+
+# Variables used as calibration targets (written to separate output)
+lcalibgpp                               .true.
+lcalibfapar                             .false.
+lcalibtransp                            .false.
+lcaliblatenth                           .false.
+
+#                                      |
+# write value behind this position:    |->
+## EOF 

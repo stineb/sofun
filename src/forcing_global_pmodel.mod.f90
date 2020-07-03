@@ -24,20 +24,20 @@ module md_forcing
     vegcover_type
 
   type climate_type
-    real, dimension(ndayyear) :: dtemp  ! deg C
-    real, dimension(ndayyear) :: dprec  ! mm d-1
-    real, dimension(ndayyear) :: dsnow  ! mm d-1 water equivalents
-    real, dimension(ndayyear) :: dfsun  ! unitless
-    real, dimension(ndayyear) :: dvpd   ! Pa
-    real, dimension(ndayyear) :: dtmin  ! deg C
-    real, dimension(ndayyear) :: dtmax  ! deg C
-    real, dimension(ndayyear) :: dppfd  ! mol m-2 d-1
-    real, dimension(ndayyear) :: dpatm  ! Pa
-    real, dimension(ndayyear) :: dnetrad! W m-2
+    real :: dtemp  ! deg C
+    real :: dprec  ! mm d-1
+    real :: dsnow  ! mm d-1 water equivalents
+    real :: dfsun  ! unitless
+    real :: dvpd   ! Pa
+    real :: dtmin  ! deg C
+    real :: dtmax  ! deg C
+    real :: dppfd  ! mol m-2 d-1
+    real :: dpatm  ! Pa
+    real :: dnetrad! W m-2
   end type climate_type
 
   type vegcover_type
-    real, dimension(ndayyear) :: dfapar ! fraction of absorbed photosynthetically active radiation
+    real :: dfapar ! fraction of absorbed photosynthetically active radiation
   end type vegcover_type
 
   type landuse_type
@@ -148,7 +148,7 @@ contains
     character(len=*), intent(in) :: fapar_forcing_source
 
     ! function return variable
-    type( vegcover_type ), dimension(domaininfo%maxgrid) :: out_vegcover
+    type( vegcover_type ), dimension(ndayyear,domaininfo%maxgrid) :: out_vegcover
 
     ! local variables
     integer :: ncid, varid
@@ -306,9 +306,9 @@ contains
           doy = doy + 1
           tmp = fapar_arr(ilon(jpngr),ilat(jpngr),moy)
           if ( tmp/=ncfillvalue ) then
-            out_vegcover(jpngr)%dfapar(doy) = tmp
+            out_vegcover(doy,jpngr)%dfapar = tmp
           else
-            out_vegcover(jpngr)%dfapar(doy) = 0.0
+            out_vegcover(doy,jpngr)%dfapar = 0.0
           end if
         end do
       end do
@@ -537,10 +537,10 @@ contains
     logical, intent(in) :: in_netrad
 
     ! function return variable
-    type( climate_type ), dimension(domaininfo%maxgrid) :: out_climate
+    type( climate_type ), dimension(ndayyear,domaininfo%maxgrid) :: out_climate
 
     ! first get ccov, tmin, and tmax
-    out_climate(:) =  getclimate_cru( &
+    out_climate(:,:) =  getclimate_cru( &
                                       domaininfo, &
                                       grid, &
                                       init, &
@@ -555,10 +555,10 @@ contains
                           climateyear, &
                           in_ppfd,  &
                           in_netrad, &
-                          out_climate(:) &
+                          out_climate(:,:) &
                           )
 
-    out_climate(:)%dpatm(:) = calc_patm( grid(1)%elv )
+    out_climate(:,:)%dpatm = calc_patm( grid(1)%elv )
 
   end function getclimate
 
@@ -577,7 +577,7 @@ contains
     integer, intent(in) :: climateyear
     logical, intent(in) :: in_ppfd
     logical, intent(in) :: in_netrad
-    type( climate_type ), dimension(domaininfo%maxgrid), intent(inout) :: inout_climate
+    type( climate_type ), dimension(ndayyear,domaininfo%maxgrid), intent(inout) :: inout_climate
 
     ! local variables
     integer :: doy, dom, moy
@@ -780,37 +780,37 @@ contains
           if ( temp_arr(ilon(jpngr),ilat(jpngr),dom)/=ncfillvalue ) then
             
             ! required input variables
-            inout_climate(jpngr)%dtemp(doy) = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
-            inout_climate(jpngr)%dprec(doy) = prec_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
-            inout_climate(jpngr)%dsnow(doy) = snow_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
-            inout_climate(jpngr)%dvpd(doy)  = calc_vpd( qair_arr(ilon(jpngr),ilat(jpngr),dom), inout_climate(jpngr)%dtemp(doy), inout_climate(jpngr)%dtmin(doy), inout_climate(jpngr)%dtmax(doy), grid(jpngr)%elv )
+            inout_climate(doy,jpngr)%dtemp = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
+            inout_climate(doy,jpngr)%dprec = prec_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            inout_climate(doy,jpngr)%dsnow = snow_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            inout_climate(doy,jpngr)%dvpd  = calc_vpd( qair_arr(ilon(jpngr),ilat(jpngr),dom), inout_climate(doy,jpngr)%dtemp, inout_climate(doy,jpngr)%dtmin, inout_climate(doy,jpngr)%dtmax, grid(jpngr)%elv )
 
             ! optional input variables
             if (in_ppfd) then
-              inout_climate(jpngr)%dppfd(doy) = 1.0e-6 * rswd_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0 * kfFEC ! W m-2 -> mol m-2 d-1
+              inout_climate(doy,jpngr)%dppfd = 1.0e-6 * rswd_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0 * kfFEC ! W m-2 -> mol m-2 d-1
             else
-              inout_climate(jpngr)%dppfd(doy) = dummy
+              inout_climate(doy,jpngr)%dppfd = dummy
             end if
 
             ! if ( in_netrad .and. in_ppfd ) then
-            !   inout_climate(jpngr)%dfsun(doy) = dummy
+            !   inout_climate(doy,jpngr)%dfsun = dummy
             ! else
-            !   inout_climate(jpngr)%dfsun(doy) = 1111
+            !   inout_climate(doy,jpngr)%dfsun = 1111
             ! end if
 
             if (in_netrad) then
-              inout_climate(jpngr)%dnetrad(:) = 1111.0
+              inout_climate(doy,jpngr)%dnetrad = 1111.0
             else
-              inout_climate(jpngr)%dnetrad(doy) = dummy
+              inout_climate(doy,jpngr)%dnetrad = dummy
             end if
 
           else
             nmissing = nmissing + 1
-            inout_climate(jpngr)%dtemp(doy) = dummy
-            inout_climate(jpngr)%dprec(doy) = dummy
-            inout_climate(jpngr)%dsnow(doy) = dummy
-            inout_climate(jpngr)%dppfd(doy) = dummy
-            inout_climate(jpngr)%dvpd (doy) = dummy
+            inout_climate(doy,jpngr)%dtemp = dummy
+            inout_climate(doy,jpngr)%dprec = dummy
+            inout_climate(doy,jpngr)%dsnow = dummy
+            inout_climate(doy,jpngr)%dppfd = dummy
+            inout_climate(doy,jpngr)%dvpd = dummy
             grid(jpngr)%dogridcell = .false.
           end if
 
@@ -847,7 +847,7 @@ contains
     integer, intent(in) :: climateyear
 
     ! function return variable
-    type( climate_type ), dimension(domaininfo%maxgrid) :: out_climate
+    type( climate_type ), dimension(ndayyear,domaininfo%maxgrid) :: out_climate
 
     ! local variables
     integer :: doy, dom, moy, read_idx
@@ -987,13 +987,13 @@ contains
         domloop: do dom=1,ndaymonth(moy)
           doy = doy + 1
           if ( ccov/=ncfillvalue ) then
-            out_climate(jpngr)%dfsun(doy) = ( 100.0 - ccov ) / 100.0
-            out_climate(jpngr)%dtmin(doy) = tmin
-            out_climate(jpngr)%dtmax(doy) = tmax
+            out_climate(doy,jpngr)%dfsun = ( 100.0 - ccov ) / 100.0
+            out_climate(doy,jpngr)%dtmin = tmin
+            out_climate(doy,jpngr)%dtmax = tmax
           else
-            out_climate(jpngr)%dfsun(doy) = dummy
-            out_climate(jpngr)%dtmin(doy) = dummy
-            out_climate(jpngr)%dtmax(doy) = dummy
+            out_climate(doy,jpngr)%dfsun = dummy
+            out_climate(doy,jpngr)%dtmin = dummy
+            out_climate(doy,jpngr)%dtmax = dummy
           end if
         end do domloop
       end do monthloop
