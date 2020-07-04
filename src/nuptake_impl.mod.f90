@@ -106,23 +106,23 @@ module md_nuptake_impl
   !----------------------------------------------------------------
   ! Specify file and variable names for NetCDF reading (Vcmax25 may need additional input from SOFUN)
   !----------------------------------------------------------------
-  character(len=100), parameter :: filnam_cnsoil = "soilcn.nc"
+  character(len=100), parameter :: filnam_cnsoil = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/CNrt.nc"
   character(len=100), parameter :: varnam_cnsoil = "CNrt"
-  character(len=100), parameter :: filnam_age    = "age.nc"
+  character(len=100), parameter :: filnam_age    = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/age.nc"
   character(len=100), parameter :: varnam_age    = "age"
-  character(len=100), parameter :: filnam_fapar  = "fapar.nc"
+  character(len=100), parameter :: filnam_fapar  = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/fAPAR.nc"
   character(len=100), parameter :: varnam_fapar  = "fAPAR"
-  character(len=100), parameter :: filnam_alpha  = "alpha.nc"
+  character(len=100), parameter :: filnam_alpha  = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/alpha.nc"
   character(len=100), parameter :: varnam_alpha  = "alpha"
-  character(len=100), parameter :: filnam_PPFD   = "PPFD.nc"
+  character(len=100), parameter :: filnam_PPFD   = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/PPFD.nc"
   character(len=100), parameter :: varnam_PPFD   = "PPFD"
-  character(len=100), parameter :: filnam_Tg     = "Tg.nc"
+  character(len=100), parameter :: filnam_Tg     = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/Tg.nc"
   character(len=100), parameter :: varnam_Tg     = "Tg"
-  character(len=100), parameter :: filnam_vpd    = "vpd.nc"
+  character(len=100), parameter :: filnam_vpd    = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/vpd.nc"
   character(len=100), parameter :: varnam_vpd    = "vpd"
-  character(len=100), parameter :: filnam_Vcmax25= "Vcmax25.nc"
-  character(len=100), parameter :: varnam_Vcmax25= "actual_variable_name"
-  character(len=100), parameter :: filnam_LMA    = "LMA.nc"
+  character(len=100), parameter :: filnam_Vcmax25= "Vcmax25.nc" # needs further work
+  character(len=100), parameter :: varnam_Vcmax25= "Vcmax25" # needs further work
+  character(len=100), parameter :: filnam_LMA    = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/LMA.nc"
   character(len=100), parameter :: varnam_LMA    = "LMA"
 contains
 
@@ -179,7 +179,7 @@ contains
     !All ratios were using logit function (logit(y)=x), therefore we should convert them into y = 1/(1+ exp(-x))
     ! leaf c/n model were using log function, so it should be exp in advance
     !--------------------------------------------------------------
-    ! XXX loop or make tile_nimpl_fluxes a field?
+    ! Make tile_nimpl_fluxes a field
     tile_nimpl_fluxes(lu)%canopy%anpp = tile_fluxes(lu)%canopy%agpp * (1/(1+EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(:)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(:)%age) + coef_nimpl%fapar_bp * preds_nimpl(:)%fapar +coef_nimpl%alpha_bp * preds_nimpl(:)%alpha + coef_nimpl%intersect_bp))))
     tile_nimpl_fluxes(lu)%canopy%aanpp = tile_fluxes(lu)%canopy%agpp * (1/(1+EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(:)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(:)%age) + coef_nimpl%fapar_anpp * preds_nimpl(:)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(:)%alpha + coef_nimpl%intersect_anpp))))
     tile_nimpl_fluxes(lu)%canopy%abnpp = tile_nimpl_fluxes(lu)%canopy%anpp - tile_nimpl_fluxes(lu)%canopy%aanpp
