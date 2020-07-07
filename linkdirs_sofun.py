@@ -29,14 +29,15 @@ import os.path
 ##--------------------------------------------------------------------
 # name = 'global'
 # name = 'fluxnet2015'
-name = 'example'
+name = 'global'
 
 ##--------------------------------------------------------------------
 ## Manually edit the root directory for the local mirror of 
 ## the data directory (e.g., /cluster/home/bestocke/data on Euler.
 ##--------------------------------------------------------------------
-dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
+# dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
 # dataroot = '/cluster/work/climate/bestocke/data'     # to run on Euler
+dataroot = '/Users/bestocke/data/'     # to run on Beni's Laptop
 
 ##--------------------------------------------------------------------
 ## Manually edit the root directory for SOFUN inputS 
@@ -130,8 +131,14 @@ if name == 'global':
 	##--------------------------------------
 	dirn = 'input/global/landcover'
 	os.system( 'mkdir -p ' + dirn )
-	call(['ln', '-svf', dataroot + 'landcover/modis_landcover_halfdeg_2010_FILLED.nc', dirn ])
+	# call(['ln', '-svf', dataroot + 'landcover/modis_landcover_halfdeg_2010_FILLED.nc', dirn ])
+	call(['ln', '-svf', dataroot + 'c4_still/final/c4_percentage.nc', dirn ])
 
+	## nimpl predictors
+	##--------------------------------------
+	dirn = 'input/global/nimpl'
+	os.system( 'mkdir -p ' + dirn )
+	call(['ln', '-svf', dataroot + 'XXXX', dirn ])
 
 	## WATCH-WFDEI climate input data
 	##--------------------------------------

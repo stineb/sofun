@@ -89,17 +89,17 @@ program main
   !----------------------------------------------------------------
   interface%soilparams(:) = getsoil( interface%domaininfo, interface%grid(:) )
 
-  ! !----------------------------------------------------------------
-  ! ! GET VEGETATION COVER (fractional projective cover by PFT)
-  ! !----------------------------------------------------------------
-  ! interface%fpc_grid(:,:) = get_fpc_grid( interface%domaininfo, interface%grid(:), interface%params_siml )
+  !----------------------------------------------------------------
+  ! GET VEGETATION COVER (fractional projective cover by PFT)
+  !----------------------------------------------------------------
+  interface%fpc_grid(:,:) = get_fpc_grid( interface%domaininfo, interface%grid(:), interface%params_siml )
 
 
   ! LOOP THROUGH YEARS
   write(0,*) 'SOFUN site-level run: ', runname
   print*, '-------------------START OF SIMULATION--------------------'
 
-  do yr=1,interface%params_siml%runyears
+  yearloop: do yr=1,interface%params_siml%runyears
 
     !----------------------------------------------------------------
     ! Define simulations "steering" variables (forcingyear, etc.)
@@ -125,13 +125,6 @@ program main
                                         interface%steering%forcingyear, &
                                         interface%params_siml%fapar_forcing_source &
                                         )    
-
-
-    interface%fpc_grid(:,:) = get_fpc_grid( &
-                                            interface%domaininfo, &
-                                            interface%grid, &
-                                            interface%params_siml &
-                                            )
 
     !----------------------------------------------------------------
     ! Get external (environmental) forcing
@@ -212,7 +205,7 @@ program main
     if (verbose) print*,'... done.'
     !----------------------------------------------------------------
 
-  enddo
+  enddo yearloop
 
   print*, '--------------END OF SIMULATION---------------'
 

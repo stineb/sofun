@@ -106,24 +106,25 @@ module md_nuptake_impl
   !----------------------------------------------------------------
   ! Specify file and variable names for NetCDF reading (Vcmax25 may need additional input from SOFUN)
   !----------------------------------------------------------------
-  character(len=100), parameter :: filnam_cnsoil = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/CNrt.nc"
+  character(len=100), parameter :: filnam_cnsoil = "./input/global/nimpl/CNrt.nc"
   character(len=100), parameter :: varnam_cnsoil = "CNrt"
-  character(len=100), parameter :: filnam_age    = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/age.nc"
+  character(len=100), parameter :: filnam_age    = "./input/global/nimpl/age.nc"
   character(len=100), parameter :: varnam_age    = "age"
-  character(len=100), parameter :: filnam_fapar  = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/fAPAR.nc"
+  character(len=100), parameter :: filnam_fapar  = "./input/global/nimpl/fAPAR.nc"
   character(len=100), parameter :: varnam_fapar  = "fAPAR"
-  character(len=100), parameter :: filnam_alpha  = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/alpha.nc"
+  character(len=100), parameter :: filnam_alpha  = "./input/global/nimpl/alpha.nc"
   character(len=100), parameter :: varnam_alpha  = "alpha"
-  character(len=100), parameter :: filnam_PPFD   = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/PPFD.nc"
+  character(len=100), parameter :: filnam_PPFD   = "./input/global/nimpl/PPFD.nc"
   character(len=100), parameter :: varnam_PPFD   = "PPFD"
-  character(len=100), parameter :: filnam_Tg     = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/Tg.nc"
+  character(len=100), parameter :: filnam_Tg     = "./input/global/nimpl/Tg.nc"
   character(len=100), parameter :: varnam_Tg     = "Tg"
-  character(len=100), parameter :: filnam_vpd    = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/vpd.nc"
+  character(len=100), parameter :: filnam_vpd    = "./input/global/nimpl/vpd.nc"
   character(len=100), parameter :: varnam_vpd    = "vpd"
-  character(len=100), parameter :: filnam_Vcmax25= "Vcmax25.nc" # needs further work
-  character(len=100), parameter :: varnam_Vcmax25= "Vcmax25" # needs further work
-  character(len=100), parameter :: filnam_LMA    = "/cluster/work/climate/bestocke/data/nimpl_sofun_inputs/map/Final_ncfile/LMA.nc"
+  character(len=100), parameter :: filnam_Vcmax25= "Vcmax25.nc"  ! needs further work
+  character(len=100), parameter :: varnam_Vcmax25= "Vcmax25"     ! needs further work
+  character(len=100), parameter :: filnam_LMA    = "./input/global/nimpl/LMA.nc"
   character(len=100), parameter :: varnam_LMA    = "LMA"
+  
 contains
 
   subroutine nuptake_impl( tile_fluxes, init )

@@ -231,28 +231,64 @@ contains
       ! P-model call for C3 plants to get a list of variables that are 
       ! acclimated to slowly varying conditions
       !----------------------------------------------------------------
-      do pft=1,npft
-        out_pmodel = pmodel( &
-                              kphio          = params_pft_gpp(pft)%kphio, &
-                              fapar          = tile(1)%canopy%fapar, &
-                              ppfd           = climate%dppfd, &
-                              co2            = co2_memory, &
-                              tc             = temp_memory, &
-                              vpd            = vpd_memory, &
-                              patm           = patm_memory, &
-                              c4             = params_pft_plant(pft)%c4, &
-                              method_optci   = "prentice14", &
-                              method_jmaxlim = "wang17" &
-                              )
+      pftloop: do pft=1,npft
+
+        if (tile(lu)%plant(pft)%fpc_grid > 0.0) then
+          
+          ! PFT is present 
+          out_pmodel = pmodel( &
+                      kphio          = params_pft_gpp(pft)%kphio, &
+                      fapar          = tile(1)%canopy%fapar, &
+                      ppfd           = climate%dppfd, &
+                      co2            = co2_memory, &
+                      tc             = temp_memory, &
+                      vpd            = vpd_memory, &
+                      patm           = patm_memory, &
+                      c4             = params_pft_plant(pft)%c4, &
+                      method_optci   = "prentice14", &
+                      method_jmaxlim = "wang17" &
+                      )
+
+        else
+
+          ! PFT is not present 
+          out_pmodel%gammastar        = 0.0
+          out_pmodel%kmm              = 0.0
+          out_pmodel%ca               = 0.0
+          out_pmodel%ci               = 0.0
+          out_pmodel%chi              = 0.0
+          out_pmodel%xi               = 0.0
+          out_pmodel%iwue             = 0.0
+          out_pmodel%lue              = 0.0
+          out_pmodel%gpp              = 0.0
+          out_pmodel%vcmax            = 0.0
+          out_pmodel%jmax             = 0.0
+          out_pmodel%vcmax25          = 0.0
+          out_pmodel%vcmax_unitfapar  = 0.0
+          out_pmodel%vcmax_unitiabs   = 0.0
+          out_pmodel%ftemp_inst_vcmax = 0.0
+          out_pmodel%ftemp_inst_rd    = 0.0
+          out_pmodel%rd               = 0.0
+          out_pmodel%rd_unitfapar     = 0.0
+          out_pmodel%rd_unitiabs      = 0.0
+          out_pmodel%actnv            = 0.0
+          out_pmodel%actnv_unitfapar  = 0.0
+          out_pmodel%actnv_unitiabs   = 0.0
+          out_pmodel%gs_unitiabs      = 0.0
+          out_pmodel%gs_unitfapar     = 0.0
+          out_pmodel%gs               = 0.0
+
+        end if
 
         ! simple:
         lu = 1
 
-        !----------------------------------------------------------------
-        ! xxx try:
-        tile(lu)%plant(pft)%fpc_grid = 0.5
-        !----------------------------------------------------------------
+        ! !----------------------------------------------------------------
+        ! ! xxx try:
+        ! tile(lu)%plant(pft)%fpc_grid = 0.5
+        ! !----------------------------------------------------------------
 
+        ! absorbed PPFD
         iabs = tile(lu)%canopy%fapar * climate%dppfd * tile(lu)%plant(pft)%fpc_grid
 
         !----------------------------------------------------------------
@@ -386,7 +422,7 @@ contains
         !   end if 
 
         ! end do
-      end do
+      end do pftloop
     end if
 
   end subroutine gpp
