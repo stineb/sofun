@@ -138,7 +138,7 @@ if name == 'global':
 	##--------------------------------------
 	dirn = 'input/global/nimpl'
 	os.system( 'mkdir -p ' + dirn )
-	call(['ln', '-svf', dataroot + 'XXXX', dirn ])
+	call(['ln', '-svf', dataroot + 'nimpl_sofun_inputs/map/Final_ncfile', dirn ])
 
 	## WATCH-WFDEI climate input data
 	##--------------------------------------
