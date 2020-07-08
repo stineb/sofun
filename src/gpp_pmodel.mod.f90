@@ -276,13 +276,11 @@ contains
         !----------------------------------------------------------------
         ! GPP
         !----------------------------------------------------------------
-        ! tile_fluxes(lu)%canopy%dgpp = iabs * out_pmodel%lue * ftemp_kphio * soilmstress
         tile_fluxes(lu)%plant(pft)%dgpp = iabs * out_pmodel%lue * ftemp_kphio * soilmstress
 
         !----------------------------------------------------------------
         ! Dark respiration
         !----------------------------------------------------------------
-        ! tile_fluxes(lu)%canopy%drd = iabs * out_pmodel%rd_unitiabs * ftemp_kphio * soilmstress * c_molmass
         tile_fluxes(lu)%plant(pft)%drd = iabs * out_pmodel%rd_unitiabs * ftemp_kphio * soilmstress * c_molmass
 
         ! !----------------------------------------------------------------
