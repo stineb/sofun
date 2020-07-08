@@ -7,9 +7,10 @@ module md_biosphere
   use md_waterbal, only: waterbal, solar, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, initio_nc_waterbal, writeout_nc_waterbal !, get_rlm_waterbal, getrlm_daily_waterbal  ! , init_rlm_waterbal
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initoutput_gpp, gpp, getout_daily_gpp, getout_annual_gpp, initio_nc_gpp, writeout_nc_gpp
   use md_vegdynamics, only: vegdynamics
-  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile_fluxes, getpar_modl_tile
+  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile_fluxes, getpar_modl_tile, diag_daily, init_annual
   use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_nc_forcing, writeout_nc_forcing
   use md_soiltemp, only: getout_daily_soiltemp, soiltemp, initoutput_soiltemp
+  use md_nuptake_impl, only: nuptake_impl, get_preds_nimpl, getpar_nimpl
   ! use md_sofunutils, only: calc_patm
 
   implicit none
@@ -24,7 +25,7 @@ module md_biosphere
   type(tile_type),        allocatable, dimension(:,:) :: tile             ! has gridcell-dimension because values are stored between years
   type(tile_fluxes_type), allocatable, dimension(:)   :: tile_fluxes      ! has no gridcell-dimension values need not be recorded
 
-  logical, parameter      :: verbose = .false.     ! change by hand for debugging etc.
+  logical, parameter :: verbose = .false.     ! change by hand for debugging etc.
 
 contains
 
@@ -61,6 +62,7 @@ contains
       call getpar_modl_plant()
       call getpar_modl_waterbal()
       call getpar_modl_gpp()
+      call getpar_nimpl()
       if (verbose) print*, '... done'
 
       !----------------------------------------------------------------
@@ -71,6 +73,11 @@ contains
       allocate( tile_fluxes(nlu) )
       call initglobal_tile(  tile(:,:),  size(interface%grid) )
       if (verbose) print*, '... done'
+
+      !----------------------------------------------------------------
+      ! Get nimpl predictor fields (only available inside nimpl module)
+      !----------------------------------------------------------------
+      call get_preds_nimpl( interface%domaininfo, interface%grid )
 
     endif 
 
@@ -117,6 +124,11 @@ contains
         ! ! calculate constant atmospheric pressure as a function of elevation
         ! !----------------------------------------------------------------
         ! interface%climate(jpngr)%dpatm(:) = calc_patm(interface%grid(jpngr)%elv)
+
+        !----------------------------------------------------------------
+        ! Set annual sums to zero
+        !----------------------------------------------------------------
+        call init_annual( tile_fluxes(:) )
 
         !----------------------------------------------------------------
         ! LOOP THROUGH MONTHS
@@ -196,7 +208,11 @@ contains
                             )
             if (verbose) print*,'... done'
 
-          
+            !----------------------------------------------------------------
+            ! daily diagnostics (sum over plant within canopy, iterative sum over days)
+            !----------------------------------------------------------------
+            call diag_daily( tile_fluxes(:) )
+
             ! !----------------------------------------------------------------
             ! ! calculate soil temperature
             ! !----------------------------------------------------------------
@@ -246,7 +262,7 @@ contains
         !----------------------------------------------------------------
         ! Statistical relationships with GPP to get N uptake
         !----------------------------------------------------------------
-        call nuptake_impl( tile_fluxes(:), interface%steering%init )
+        call nuptake_impl( jpngr, tile(:,jpngr), tile_fluxes(:), interface%steering%init )
 
         !----------------------------------------------------------------
         ! collect annual output

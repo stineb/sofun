@@ -5,17 +5,18 @@ module md_nuptake_impl
   !--------------------------------------------------------------
   ! load modules
   use md_params_core
-  use md_tile, only: tile_fluxes_type
+  use md_tile, only: tile_type, tile_fluxes_type
   use md_interface, only: interface
+  use md_grid, only: gridtype, domaininfo_type
 
   implicit none
   private
-  public objects
+  public nuptake_impl, get_preds_nimpl, getpar_nimpl
 
   !----------------------------------------------------------------
   ! Variables without memory (not necessarily just fluxes; just define the type) 
   !----------------------------------------------------------------
-  type canopy_nimpl_fluxes_type
+  type plant_nimpl_fluxes_type
     real :: anpp        ! annual total net primary production (gC m-2 yr-1)
     real :: aanpp       ! annual aboveground net primary production (gC m-2 yr-1)
     real :: abnpp       ! annual belowground net primary production (gC m-2 yr-1)
@@ -25,16 +26,16 @@ module md_nuptake_impl
     real :: alnf        ! annual laef nitrogen flux (gC m-2 yr-2)
     real :: awnf        ! annual wood nitrogen flux (gC m-2 yr-2)
     real :: abnf        ! annual belowground(root) nitrogen flux (gC m-2 yr-2)
-  end type canopy_nimpl_fluxes_type
+  end type plant_nimpl_fluxes_type
 
   type tile_nimpl_fluxes_type
-    type(canopy_nimpl_fluxes_type) :: canopy
+    type(plant_nimpl_fluxes_type), dimension(npft) :: plant
   end type tile_nimpl_fluxes_type
 
   !----------------------------------------------------------------
   ! object containing module-specific fluxes (create this new object)
   !----------------------------------------------------------------
-  type(tile_nimpl_fluxes_type), allocatable, dimension(:) :: tile_nimpl_fluxes
+  type(tile_nimpl_fluxes_type), dimension(nlu) :: tile_nimpl_fluxes
 
   !----------------------------------------------------------------
   ! Coefficients of statistical models
@@ -56,14 +57,14 @@ module md_nuptake_impl
     real :: intersect_anpp
 
     ! ALNPP:NPP model
-    real :: PPFD_alnpp
-    real :: Tg_alnpp
+    real :: ppfd_alnpp
+    real :: tg_alnpp
     real :: vpd_alnpp
     real :: intersect_alnpp
 
     ! Leaf C:N model
-    real :: Vcmax25_leafcn
-    real :: LMA_leafcn
+    real :: vcmax25_leafcn
+    real :: lma_leafcn
     real :: intersect_leafcn
 
     ! Constant ratio
@@ -78,27 +79,14 @@ module md_nuptake_impl
   ! Predictor fields
   !----------------------------------------------------------------
   type preds_nimpl_type
-    ! BP:GPP model
     real :: cnsoil
     real :: age
     real :: fapar
     real :: alpha
-
-    ! ANPP:GPP model
-    real :: cnsoil
-    real :: age
-    real :: fapar
-    real :: alpha
-
-    ! ALNPP:NPP model
-    real :: PPFD
-    real :: Tg
+    real :: ppfd
+    real :: tg
     real :: vpd
-
-    ! Leaf C:N model
-    real :: Vcmax25
-    real :: LMA
-
+    real :: lma
   end type preds_nimpl_type
 
   type(preds_nimpl_type), dimension(:), allocatable :: preds_nimpl
@@ -114,65 +102,32 @@ module md_nuptake_impl
   character(len=100), parameter :: varnam_fapar  = "fAPAR"
   character(len=100), parameter :: filnam_alpha  = "./input/global/nimpl/alpha.nc"
   character(len=100), parameter :: varnam_alpha  = "alpha"
-  character(len=100), parameter :: filnam_PPFD   = "./input/global/nimpl/PPFD.nc"
-  character(len=100), parameter :: varnam_PPFD   = "PPFD"
+  character(len=100), parameter :: filnam_ppfd   = "./input/global/nimpl/PPFD.nc"
+  character(len=100), parameter :: varnam_ppfd   = "PPFD"
   character(len=100), parameter :: filnam_Tg     = "./input/global/nimpl/Tg.nc"
   character(len=100), parameter :: varnam_Tg     = "Tg"
   character(len=100), parameter :: filnam_vpd    = "./input/global/nimpl/vpd.nc"
   character(len=100), parameter :: varnam_vpd    = "vpd"
-  character(len=100), parameter :: filnam_Vcmax25= "Vcmax25.nc"  ! needs further work
-  character(len=100), parameter :: varnam_Vcmax25= "Vcmax25"     ! needs further work
-  character(len=100), parameter :: filnam_LMA    = "./input/global/nimpl/LMA.nc"
-  character(len=100), parameter :: varnam_LMA    = "LMA"
+  ! character(len=100), parameter :: filnam_vcmax25= "Vcmax25.nc"  ! needs further work
+  ! character(len=100), parameter :: varnam_vcmax25= "Vcmax25"     ! needs further work
+  character(len=100), parameter :: filnam_lma    = "./input/global/nimpl/LMA.nc"
+  character(len=100), parameter :: varnam_lma    = "LMA"
   
 contains
 
-  subroutine nuptake_impl( tile_fluxes, init )
+  subroutine nuptake_impl( jpngr, tile, tile_fluxes, init )
     !////////////////////////////////////////////////////////////////
     ! Determines all the downstream fluxes as a function of GPP
     ! using pre-defined statistical relationships
     !--------------------------------------------------------------
     ! arguments
+    integer, intent(in) :: jpngr
+    type(tile_type), dimension(nlu), intent(in) :: tile
     type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
     logical, intent(in) :: init
 
-    if (init) then
-
-      ! allocate memory
-      allocate( preds_nimpl(size(interface%grid)) )
-      allocate( tile_fluxes(nlu) )
-
-      !--------------------------------------------------------------
-      ! Read predictor fields from files, populates 'preds_nimpl'
-      !--------------------------------------------------------------
-      ! BP:GPP model
-      call get_preds_nc( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
-      call get_preds_nc( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
-      call get_preds_nc( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
-      call get_preds_nc( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
-
-      ! ANPP:GPP model
-      call get_preds_nc( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
-      call get_preds_nc( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
-      call get_preds_nc( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
-      call get_preds_nc( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
-
-      ! ALNPP:NPP model
-      call get_preds_nc( trim(filnam_PPFD), trim(varnam_PPFD), domaininfo, grid, preds_nimpl(:)%PPFD )
-      call get_preds_nc( trim(filnam_Tg),    trim(varnam_Tg),    domaininfo, grid, preds_nimpl(:)%Tg )
-      call get_preds_nc( trim(filnam_vpd),  trim(varnam_vpd),  domaininfo, grid, preds_nimpl(:)%vpd )
-
-      ! Leaf C:N model
-      call get_preds_nc( trim(filnam_Vcmax25), trim(varnam_Vcmax25), domaininfo, grid, preds_nimpl(:)%Vcmax25 )
-      call get_preds_nc( trim(filnam_LMA),    trim(varnam_LMA),    domaininfo, grid, preds_nimpl(:)%LMA )
-
-      !--------------------------------------------------------------
-      ! Read coefficients, populates 'coef_nimpl'
-      !--------------------------------------------------------------
-      ! BP:GPP model
-      call getpar_nimpl()
-
-    end if
+    ! local variable
+    integer :: lu, pft
 
     !--------------------------------------------------------------
     ! Predict using statistical models
@@ -181,17 +136,63 @@ contains
     ! leaf c/n model were using log function, so it should be exp in advance
     !--------------------------------------------------------------
     ! Make tile_nimpl_fluxes a field
-    tile_nimpl_fluxes(lu)%canopy%anpp = tile_fluxes(lu)%canopy%agpp * (1/(1+EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(:)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(:)%age) + coef_nimpl%fapar_bp * preds_nimpl(:)%fapar +coef_nimpl%alpha_bp * preds_nimpl(:)%alpha + coef_nimpl%intersect_bp))))
-    tile_nimpl_fluxes(lu)%canopy%aanpp = tile_fluxes(lu)%canopy%agpp * (1/(1+EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(:)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(:)%age) + coef_nimpl%fapar_anpp * preds_nimpl(:)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(:)%alpha + coef_nimpl%intersect_anpp))))
-    tile_nimpl_fluxes(lu)%canopy%abnpp = tile_nimpl_fluxes(lu)%canopy%anpp - tile_nimpl_fluxes(lu)%canopy%aanpp
-    tile_nimpl_fluxes(lu)%canopy%alnpp = tile_nimpl_fluxes(lu)%canopy%aanpp * (1/(1+EXP(-(coef_nimpl%PPFD_alnpp * LOG(preds_nimpl(:)%PPFD) + coef_nimpl%Tg_alnpp * preds_nimpl(:)%Tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(:)%vpd) + coef_nimpl%intersect_alnpp))))
-    tile_nimpl_fluxes(lu)%canopy%awnpp = tile_nimpl_fluxes(lu)%canopy%aanpp - tile_nimpl_fluxes(lu)%canopy%alnpp
-    tile_nimpl_fluxes(lu)%canopy%leafcn = EXP(coef_nimpl%Vcmax25_leafcn * LOG(preds_nimpl(:)%Vcmax25) + coef_nimpl%LMA_leafcn * LOG(preds_nimpl(:)%LMA) + coef_nimpl%intersect_leafcn)
-    tile_nimpl_fluxes(lu)%canopy%alnf = tile_nimpl_fluxes(lu)%canopy%alnpp/tile_nimpl_fluxes(lu)%canopy%leafcn 
-    tile_nimpl_fluxes(lu)%canopy%awnf = tile_nimpl_fluxes(lu)%canopy%awnpp/coef_nimpl%wood_cn
-    tile_nimpl_fluxes(lu)%canopy%abnf = tile_nimpl_fluxes(lu)%canopy%abnpp/coef_nimpl%root_cn
+    lu = 1
+    do pft = 1,npft
+      tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
+      tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_anpp))))
+      tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
+      tile_nimpl_fluxes(lu)%plant(pft)%alnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp * (1/(1+EXP(-(coef_nimpl%ppfd_alnpp * LOG(preds_nimpl(jpngr)%ppfd) + coef_nimpl%tg_alnpp * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_alnpp))))
+      tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
+
+      tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile(lu)%plant(pft)%vcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
+
+      ! tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp/tile_nimpl_fluxes(lu)%plant(pft)%leafcn 
+      tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
+      tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
+    end do
 
   end subroutine nuptake_impl
+
+
+  subroutine get_preds_nimpl( domaininfo, grid )
+    !////////////////////////////////////////////////////////////////
+    ! Some explanations XXX 
+    !----------------------------------------------------------------
+    ! arguments
+    use md_params_core, only: npft
+
+    ! arguments
+    type( domaininfo_type ), intent(in) :: domaininfo
+    type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
+
+    ! allocate memory
+    allocate( preds_nimpl(domaininfo%maxgrid) )
+
+    !--------------------------------------------------------------
+    ! Read predictor fields from files, populates 'preds_nimpl'
+    !--------------------------------------------------------------
+    ! BP:GPP model
+    call get_preds_nc_byvar( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
+    call get_preds_nc_byvar( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
+    call get_preds_nc_byvar( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
+    call get_preds_nc_byvar( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
+
+    ! ANPP:GPP model
+    call get_preds_nc_byvar( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
+    call get_preds_nc_byvar( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
+    call get_preds_nc_byvar( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
+    call get_preds_nc_byvar( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
+
+    ! ALNPP:NPP model
+    call get_preds_nc_byvar( trim(filnam_ppfd), trim(varnam_ppfd), domaininfo, grid, preds_nimpl(:)%ppfd )
+    call get_preds_nc_byvar( trim(filnam_tg),   trim(varnam_tg),   domaininfo, grid, preds_nimpl(:)%tg )
+    call get_preds_nc_byvar( trim(filnam_vpd),  trim(varnam_vpd),  domaininfo, grid, preds_nimpl(:)%vpd )
+
+    ! Leaf C:N model
+    ! call get_preds_nc_byvar( trim(filnam_vcmax25), trim(varnam_vcmax25), domaininfo, grid, preds_nimpl(:)%vcmax25 )
+    call get_preds_nc_byvar( trim(filnam_lma),     trim(varnam_lma),     domaininfo, grid, preds_nimpl(:)%lma )
+
+  end subroutine get_preds_nimpl
 
 
   subroutine getpar_nimpl()
@@ -214,14 +215,14 @@ contains
     coef_nimpl%intersect_anpp     = getparreal( 'params/params_nimpl.dat', 'intersect_anpp' )
 
     ! ALNPP/NPP model
-    coef_nimpl%PPFD_alnpp = getparreal( 'params/params_nimpl.dat', 'PPFD_alnpp' )
-    coef_nimpl%Tg_alnpp = getparreal( 'params/params_nimpl.dat', 'Tg_alnpp' )
+    coef_nimpl%ppfd_alnpp = getparreal( 'params/params_nimpl.dat', 'ppfd_alnpp' )
+    coef_nimpl%tg_alnpp = getparreal( 'params/params_nimpl.dat', 'tg_alnpp' )
     coef_nimpl%vpd_alnpp = getparreal( 'params/params_nimpl.dat', 'vpd_alnpp' )
     coef_nimpl%intersect_alnpp     = getparreal( 'params/params_nimpl.dat', 'intersect_alnpp' )
     
     ! Leaf C:N model
-    coef_nimpl%Vcmax25_leafcn = getparreal( 'params/params_nimpl.dat', 'Vcmax25_leafcn' )
-    coef_nimpl%LMA_leafcn = getparreal( 'params/params_nimpl.dat', 'LMA_leafcn' )
+    ! coef_nimpl%vcmax25_leafcn = getparreal( 'params/params_nimpl.dat', 'vcmax25_leafcn' )
+    coef_nimpl%lma_leafcn = getparreal( 'params/params_nimpl.dat', 'lma_leafcn' )
     coef_nimpl%intersect_leafcn     = getparreal( 'params/params_nimpl.dat', 'intersect_leafcn' )
 
     ! Constant
@@ -231,15 +232,16 @@ contains
   end subroutine getpar_nimpl
 
 
-  subroutine get_preds_nc( filnam, varname, domaininfo, grid, pred )
+  subroutine get_preds_nc_byvar( filnam, varname, domaininfo, grid, pred )
     !////////////////////////////////////////////////////////////////
     ! xxx add explanation here
     !----------------------------------------------------------------
     use netcdf
+    use md_io_netcdf, only: check
 
     ! arguments
-    character(len=100) :: filnam
-    character(len=100) :: varname
+    character(len=*) :: filnam
+    character(len=*) :: varname
     type( domaininfo_type ), intent(in) :: domaininfo
     type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
     real, dimension(domaininfo%maxgrid), intent(out) :: pred
@@ -303,8 +305,11 @@ contains
     dlon = lon_arr(2) - lon_arr(1)
     dlat = lat_arr(2) - lat_arr(1)
 
-    if (dlon/=domaininfo%dlon) stop 'Longitude resolution of FPC input file is not identical with model grid.'
-    if (dlat/=domaininfo%dlat) stop 'latitude resolution of FPC input file is not identical with model grid.'
+    print*,'dlon', dlon
+    print*,'dlat', dlat
+
+    if (dlon/=domaininfo%dlon) stop 'Longitude resolution of nimpl predictor file is not identical with model grid.'
+    if (dlat/=domaininfo%dlat) stop 'latitude resolution of nimpl predictor file is not identical with model grid.'
 
     ! get index associations
     do jpngr=1,domaininfo%maxgrid
@@ -337,8 +342,10 @@ contains
     ! close NetCDF files
     call check( nf90_close( ncid ) )
 
-    ! read from array to define field      
-    pred(:) = pred_arr(ilon(:),ilat(:))
+    ! read from array to define field    
+    do jpngr=1,domaininfo%maxgrid
+      pred(jpngr) = pred_arr(ilon(jpngr),ilat(jpngr))
+    end do
 
     ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
     deallocate( pred_arr )
@@ -347,7 +354,6 @@ contains
 
     return
 
-  end subroutine get_preds_nc
-
+  end subroutine get_preds_nc_byvar
 
 end module md_nuptake_impl

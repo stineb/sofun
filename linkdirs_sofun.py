@@ -35,9 +35,9 @@ name = 'global'
 ## Manually edit the root directory for the local mirror of 
 ## the data directory (e.g., /cluster/home/bestocke/data on Euler.
 ##--------------------------------------------------------------------
-# dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
+dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
 # dataroot = '/cluster/work/climate/bestocke/data'     # to run on Euler
-dataroot = '/Users/bestocke/data/'     # to run on Beni's Laptop
+# dataroot = '/Users/bestocke/data/'     # to run on Beni's Laptop
 
 ##--------------------------------------------------------------------
 ## Manually edit the root directory for SOFUN inputS 
@@ -136,9 +136,19 @@ if name == 'global':
 
 	## nimpl predictors
 	##--------------------------------------
-	dirn = 'input/global/nimpl'
-	os.system( 'mkdir -p ' + dirn )
-	call(['ln', '-svf', dataroot + 'nimpl_sofun_inputs/map/Final_ncfile', dirn ])
+	src = dataroot + 'nimpl_sofun_inputs/map/Final_ncfile/*'
+	dst = 'input/global/nimpl'
+	if not os.path.isdir( dst ):
+		os.system( 'mkdir -p ' + dst )
+	os.system( 'ln -svf ' + src + ' ' + dst )
+
+	## c4 percentage
+	##--------------------------------------
+	src = dataroot + 'c4_still/final/c4_percentage.nc'
+	dst = 'input/global/landcover'
+	if not os.path.isdir( dst ):
+		os.system( 'mkdir -p ' + dst )
+	os.system( 'ln -svf ' + src + ' ' + dst )	
 
 	## WATCH-WFDEI climate input data
 	##--------------------------------------
