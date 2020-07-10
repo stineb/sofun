@@ -291,22 +291,22 @@ contains
     allocate( lon_arr(nlon_arr) )
     allocate( lat_arr(nlat_arr) )
 
-    ! Get longitude and latitude values
-    call check( nf90_get_var( ncid, londimid, lon_arr ) )
-    call check( nf90_get_var( ncid, latdimid, lat_arr ) )
+    !! Get longitude and latitude values
+    !call check( nf90_get_var( ncid, londimid, lon_arr ) )
+    !call check( nf90_get_var( ncid, latdimid, lat_arr ) )
 
-    ! ! xxx try:
-    ! lon_arr = (/ (i, i = 1,nlon_arr) /)
-    ! lon_arr = (lon_arr - 1) * 0.5 - 180.0 + 0.25 
-    ! lat_arr = (/ (i, i = 1,nlat_arr) /)
-    ! lat_arr = (lat_arr - 1) * 0.5 - 90.0 + 0.25 
+    ! xxx try:
+    lon_arr = (/ (i, i = 1,nlon_arr) /)
+    lon_arr = (lon_arr - 1) * 0.5 - 180.0 + 0.25 
+    lat_arr = (/ (i, i = 1,nlat_arr) /)
+    lat_arr = (lat_arr - 1) * 0.5 - 90.0 + 0.25 
 
     ! Check if the resolution of the climate input files is identical to the model grid resolution
     dlon = lon_arr(2) - lon_arr(1)
     dlat = lat_arr(2) - lat_arr(1)
 
-    print*,'dlon', dlon
-    print*,'dlat', dlat
+    !print*,'dlon', dlon
+    !print*,'dlat', dlat
 
     if (dlon/=domaininfo%dlon) stop 'Longitude resolution of nimpl predictor file is not identical with model grid.'
     if (dlat/=domaininfo%dlat) stop 'latitude resolution of nimpl predictor file is not identical with model grid.'
