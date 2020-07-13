@@ -68,6 +68,7 @@ module md_params_siml
     logical :: loutgpp
     logical :: loutwaterbal
     logical :: loutforcing
+    logical :: loutnimpl
 
     ! Module-specific booleans whether a single variable is written to daily output
     logical :: loutdgpp
@@ -340,6 +341,7 @@ contains
     out_getpar_siml%loutplant     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
     out_getpar_siml%loutgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutgpp' )
     out_getpar_siml%loutwaterbal  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal' )
+    out_getpar_siml%loutnimpl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnimpl' )
 
     ! Module-specific booleans whether a single variable is written to daily output
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )

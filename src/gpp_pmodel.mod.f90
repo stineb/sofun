@@ -845,7 +845,12 @@ contains
       actnv_unitiabs  = vcmax25_unitiabs  * n_v
 
       ! stomatal conductance to CO2, expressed per unit absorbed light
-      gs_unitiabs = (lue / c_molmass) / ( ca - ci )
+      if (c4) then
+        ! xxx to be addressed: what's the stomatal conductance in C4?
+        gs_unitiabs = 9999.0
+      else
+        gs_unitiabs = (lue / c_molmass) / ( ca - ci )
+      end if
 
 
       if (ppfd /= dummy) then
@@ -1856,7 +1861,7 @@ contains
   end subroutine initio_nc_gpp
 
 
-  subroutine initoutput_gpp( tile_fluxes, ngridcells )
+  subroutine initoutput_gpp( ngridcells )
     !////////////////////////////////////////////////////////////////
     ! Initialises module-specific output variables
     !
@@ -1868,7 +1873,6 @@ contains
     use md_interface
 
     ! arguments
-    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
     integer, intent(in) :: ngridcells
 
     ! daily
