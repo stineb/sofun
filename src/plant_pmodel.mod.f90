@@ -75,11 +75,15 @@ module md_plant
   !----------------------------------------------------------------
   type plant_fluxes_type
 
+    ! daily variables
     real :: dgpp     ! daily gross primary production [gC/m2/d]           
     real :: drd      ! daily dark respiration [gC/m2/d]
     real :: assim    ! daily assimilation (mol CO2 m-2 s-1)
     real :: dtransp  ! daily transpiration [mm]
     real :: dlatenth ! daily latent heat flux [J m-2 d-1]
+
+    ! annual variables
+    real :: agpp     ! daily gross primary production [gC/m2/yr]           
 
   end type plant_fluxes_type
 

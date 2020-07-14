@@ -237,17 +237,17 @@ contains
           
           ! PFT is present 
           out_pmodel = pmodel( &
-                      kphio          = params_pft_gpp(pft)%kphio, &
-                      fapar          = tile(1)%canopy%fapar, &
-                      ppfd           = climate%dppfd, &
-                      co2            = co2_memory, &
-                      tc             = temp_memory, &
-                      vpd            = vpd_memory, &
-                      patm           = patm_memory, &
-                      c4             = params_pft_plant(pft)%c4, &
-                      method_optci   = "prentice14", &
-                      method_jmaxlim = "wang17" &
-                      )
+                        kphio          = params_pft_gpp(pft)%kphio, &
+                        fapar          = tile(1)%canopy%fapar, &
+                        ppfd           = climate%dppfd, &
+                        co2            = co2_memory, &
+                        tc             = temp_memory, &
+                        vpd            = vpd_memory, &
+                        patm           = patm_memory, &
+                        c4             = params_pft_plant(pft)%c4, &
+                        method_optci   = "prentice14", &
+                        method_jmaxlim = "wang17" &
+                        )
 
         else
 
@@ -320,6 +320,14 @@ contains
         !----------------------------------------------------------------
         ! tile_fluxes(lu)%canopy%drd = iabs * out_pmodel%rd_unitiabs * ftemp_kphio * soilmstress * c_molmass
         tile_fluxes(lu)%plant(pft)%drd = iabs * out_pmodel%rd_unitiabs * ftemp_kphio * soilmstress * c_molmass
+
+        !----------------------------------------------------------------
+        ! Vcmax25
+        !----------------------------------------------------------------
+        !Here we may consider Vcmax25 >0, otherwise it will cause FPE in nuptake
+        !if (out_pmodel%vcmax25 > 0.0) then
+        tile(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
+        !end if
 
         ! !----------------------------------------------------------------
         ! ! CALCULATE PREDICTED GPP FROM P-model output
@@ -402,8 +410,6 @@ contains
         !     ! !----------------------------------------------------------------
         !     ! print*,'4'
         !     ! tile(lu)%canopy%dgc = calc_g_canopy( tile_fluxes(lu)%canopy%dgs, tile(lu)%canopy%lai, tk )
-
-        !     ! tile(lu)%plant%vcmax25 = out_pmodel%vcmax25
 
         !     ! print*,'dgs per unit day (not second) - should be equal to what gpp/(ca-ci) in pmodel(): ', dgs_unitiabs * gpp / c_molmass
         !     ! stop
@@ -842,7 +848,12 @@ contains
       actnv_unitiabs  = vcmax25_unitiabs  * n_v
 
       ! stomatal conductance to CO2, expressed per unit absorbed light
-      gs_unitiabs = (lue / c_molmass) / ( ca - ci )
+      if (c4) then
+        ! xxx to be addressed: what's the stomatal conductance in C4?
+        gs_unitiabs = 9999.0
+      else
+        gs_unitiabs = (lue / c_molmass) / ( ca - ci )
+      end if
 
 
       if (ppfd /= dummy) then
@@ -916,8 +927,8 @@ contains
           ! stomatal conductance to CO2
           gs = iabs * gs_unitiabs
 
-          ! xxx text
-          gs_test = (gpp / c_molmass) / (ca - ci)
+          ! xxx text here we have ignored gs_test, otherwise it will cause FPE
+          !gs_test = (gpp / c_molmass) / (ca - ci)
           ! print*,'pmodel(): gs, gs_test ', gs, gs_test
 
           ! Derive Jmax using again A_J = A_C
@@ -1721,7 +1732,7 @@ contains
       if (interface%params_siml%is_calib) then
         params_pft_gpp(pft)%kphio = interface%params_calib%kphio  ! is provided through standard input
       else
-        params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_'//params_pft_plant(pft)%pftname )
+        params_pft_gpp(pft)%kphio = getparreal( 'params/params_gpp_pmodel.dat', 'kphio_Gr3' )
       end if
 
     end do
@@ -1853,7 +1864,7 @@ contains
   end subroutine initio_nc_gpp
 
 
-  subroutine initoutput_gpp( tile_fluxes, ngridcells )
+  subroutine initoutput_gpp( ngridcells )
     !////////////////////////////////////////////////////////////////
     ! Initialises module-specific output variables
     !
@@ -1865,13 +1876,7 @@ contains
     use md_interface
 
     ! arguments
-    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
     integer, intent(in) :: ngridcells
-
-    !----------------------------------------------------------------
-    ! Model variables (not output variables)
-    !----------------------------------------------------------------
-    tile_fluxes(:)%canopy%agpp = 0.0
 
     ! daily
     if (interface%steering%init .and. interface%params_siml%loutdgpp    ) allocate( outdgpp(interface%params_siml%outnt,ngridcells) )
@@ -1930,19 +1935,6 @@ contains
 
     ! local
     integer :: it, lu
-
-    !----------------------------------------------------------------
-    ! Sum over PFTs to get canopy-level quantities
-    !----------------------------------------------------------------
-    do lu=1,nlu
-      tile_fluxes(lu)%canopy%dgpp = sum(tile_fluxes(lu)%plant(:)%dgpp)
-      tile_fluxes(lu)%canopy%drd = sum(tile_fluxes(lu)%plant(:)%drd)
-    end do
-
-    !----------------------------------------------------------------
-    ! Annual sums, model variables (not output variables)
-    !----------------------------------------------------------------
-    tile_fluxes(:)%canopy%agpp = tile_fluxes(:)%canopy%agpp + tile_fluxes(:)%canopy%dgpp 
 
     !----------------------------------------------------------------
     ! DAILY FOR HIGH FREQUENCY OUTPUT

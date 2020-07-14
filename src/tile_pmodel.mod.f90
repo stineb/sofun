@@ -11,7 +11,7 @@ module md_tile
   private
   public tile_type, tile_fluxes_type, initglobal_tile, psoilphystype, &
     soil_type, initdaily_tile_fluxes, params_canopy, getpar_modl_canopy, &
-    getpar_modl_tile
+    getpar_modl_tile, diag_daily, init_annual
 
   !----------------------------------------------------------------
   ! physical soil state variables with memory from year to year (~pools)
@@ -321,5 +321,60 @@ contains
     params_canopy%kbeer = getparreal( 'params/params_canopy.dat', 'kbeer' )
 
   end subroutine getpar_modl_canopy
+
+
+  subroutine init_annual( tile_fluxes )
+    !////////////////////////////////////////////////////////////////
+    ! Set (iterative) annual sums to zero
+    !----------------------------------------------------------------
+    ! arguments
+    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
+
+    ! local
+    integer :: pft
+
+    ! canopy-level
+    tile_fluxes(:)%canopy%agpp = 0.0
+
+    ! pft-level
+    do pft = 1,npft
+      tile_fluxes(:)%plant(pft)%agpp = 0.0
+    end do
+
+  end subroutine init_annual
+
+
+  subroutine diag_daily( tile_fluxes )
+    !////////////////////////////////////////////////////////////////
+    ! Daily diagnostics
+    ! - sum over PFTs (plant) within LU (canopy) 
+    ! - iterative sum over days
+    !----------------------------------------------------------------
+    ! arguments
+    type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
+
+    ! local
+    integer :: lu, pft
+
+    !----------------------------------------------------------------
+    ! Sum over PFTs to get canopy-level quantities
+    !----------------------------------------------------------------
+    do lu=1,nlu
+      tile_fluxes(lu)%canopy%dgpp = sum(tile_fluxes(lu)%plant(:)%dgpp)
+      tile_fluxes(lu)%canopy%drd  = sum(tile_fluxes(lu)%plant(:)%drd)
+    end do
+
+    !----------------------------------------------------------------
+    ! Incrementally add daily to annual variables
+    !----------------------------------------------------------------
+    ! canopy-level
+    tile_fluxes(:)%canopy%agpp = tile_fluxes(:)%canopy%agpp + tile_fluxes(:)%canopy%dgpp 
+
+    ! pft-level
+    do pft = 1,npft
+      tile_fluxes(:)%plant(pft)%agpp = tile_fluxes(:)%plant(pft)%agpp + tile_fluxes(:)%plant(pft)%dgpp 
+    end do
+
+  end subroutine diag_daily  
 
 end module md_tile
