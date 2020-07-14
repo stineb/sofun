@@ -324,6 +324,7 @@ contains
         !----------------------------------------------------------------
         ! Vcmax25
         !----------------------------------------------------------------
+        !Here we may consider Vcmax25 >0, otherwise it will cause FPE in nuptake
         !if (out_pmodel%vcmax25 > 0.0) then
         tile(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
         !end if
@@ -926,7 +927,7 @@ contains
           ! stomatal conductance to CO2
           gs = iabs * gs_unitiabs
 
-          ! xxx text
+          ! xxx text here we have ignored gs_test, otherwise it will cause FPE
           !gs_test = (gpp / c_molmass) / (ca - ci)
           ! print*,'pmodel(): gs, gs_test ', gs, gs_test
 

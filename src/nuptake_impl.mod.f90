@@ -170,6 +170,7 @@ contains
         tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
         !print*,'tile_nimpl_fluxes(lu)%plant(pft)%awnpp', tile_nimpl_fluxes(lu)%plant(pft)%awnpp
         !print*,'6'
+        !here we add two if function to prevent FPE
         if (tile(lu)%plant(pft)%vcmax25 > 0.0) then
           tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile(lu)%plant(pft)%vcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
         end if
