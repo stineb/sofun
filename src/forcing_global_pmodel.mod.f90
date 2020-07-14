@@ -664,6 +664,7 @@ contains
 
             ! C4-PFT
             fpc_grid_field(pft,jpngr) = tmp
+            
           end if
 
         else if (npft==1) then
