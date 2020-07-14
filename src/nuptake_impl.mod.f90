@@ -158,23 +158,25 @@ contains
 
       lu = 1
       do pft = 1,npft
-        ! print*,'1'
+        !print*,'1'
         tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
-        ! print*,'2'
+        !print*,'2'
         tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_anpp))))
-        ! print*,'3'
+        !print*,'3'
         tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
-        ! print*,'4'
+        !print*,'4'
         tile_nimpl_fluxes(lu)%plant(pft)%alnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp * (1/(1+EXP(-(coef_nimpl%ppfd_alnpp * LOG(preds_nimpl(jpngr)%ppfd) + coef_nimpl%tg_alnpp * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_alnpp))))
-        ! print*,'5'
+        !print*,'5'
         tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
-        ! print*,'tile_nimpl_fluxes(lu)%plant(pft)%alnpp', tile_nimpl_fluxes(lu)%plant(pft)%alnpp
-        ! print*,'6'
-
-        tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile(lu)%plant(pft)%vcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
-        ! print*,'7'
-
-        ! tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp/tile_nimpl_fluxes(lu)%plant(pft)%leafcn 
+        !print*,'tile_nimpl_fluxes(lu)%plant(pft)%awnpp', tile_nimpl_fluxes(lu)%plant(pft)%awnpp
+        !print*,'6'
+        if (tile(lu)%plant(pft)%vcmax25 > 0.0) then
+          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile(lu)%plant(pft)%vcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
+        end if
+        !print*,'7'
+        if (tile_nimpl_fluxes(lu)%plant(pft)%leafcn > 0.0) then
+          tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp/tile_nimpl_fluxes(lu)%plant(pft)%leafcn 
+        end if
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
       end do
@@ -182,21 +184,21 @@ contains
     else
 
       lu = 1
-      ! print*,'1'
+      !print*,'1'
       tile_nimpl_fluxes(lu)%plant(:)%anpp  = dummy
-      ! print*,'2'
+      !print*,'2'
       tile_nimpl_fluxes(lu)%plant(:)%aanpp = dummy
-      ! print*,'3'
+      !print*,'3'
       tile_nimpl_fluxes(lu)%plant(:)%abnpp = dummy
-      ! print*,'4'
+      !print*,'4'
       tile_nimpl_fluxes(lu)%plant(:)%alnpp = dummy
-      ! print*,'5'
+      !print*,'5'
       tile_nimpl_fluxes(lu)%plant(:)%awnpp = dummy
-      ! print*,'6'
+      !print*,'6'
       tile_nimpl_fluxes(lu)%plant(:)%leafcn = dummy
-      ! print*,'7'
+      !print*,'7'
 
-      ! tile_nimpl_fluxes(lu)%plant(:)%alnf = dummy
+      tile_nimpl_fluxes(lu)%plant(:)%alnf = dummy
       tile_nimpl_fluxes(lu)%plant(:)%awnf = dummy
       tile_nimpl_fluxes(lu)%plant(:)%abnf = dummy
 

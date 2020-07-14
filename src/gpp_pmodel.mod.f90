@@ -324,7 +324,9 @@ contains
         !----------------------------------------------------------------
         ! Vcmax25
         !----------------------------------------------------------------
+        !if (out_pmodel%vcmax25 > 0.0) then
         tile(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
+        !end if
 
         ! !----------------------------------------------------------------
         ! ! CALCULATE PREDICTED GPP FROM P-model output
@@ -925,7 +927,7 @@ contains
           gs = iabs * gs_unitiabs
 
           ! xxx text
-          gs_test = (gpp / c_molmass) / (ca - ci)
+          !gs_test = (gpp / c_molmass) / (ca - ci)
           ! print*,'pmodel(): gs, gs_test ', gs, gs_test
 
           ! Derive Jmax using again A_J = A_C
