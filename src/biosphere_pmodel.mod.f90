@@ -264,7 +264,7 @@ contains
         !----------------------------------------------------------------
         ! Statistical relationships with GPP to get N uptake
         !----------------------------------------------------------------
-        call nuptake_impl( jpngr, interface%grid(jpngr)%dogridcell, tile(:,jpngr), tile_fluxes(:), interface%steering%init )
+        !call nuptake_impl( jpngr, interface%grid(jpngr)%dogridcell, tile(:,jpngr), tile_fluxes(:), interface%steering%init )
 
         !----------------------------------------------------------------
         ! collect annual output
