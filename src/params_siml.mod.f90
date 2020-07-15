@@ -306,7 +306,7 @@ contains
     out_getpar_siml%lGN3 = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGN3' )
     out_getpar_siml%lGr4 = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGr4' )
 
-    npft_local = 2
+    npft_local = 1
 
     ! temporary solution to this
     print*,'found ', npft_local, ' activated PFTs.'

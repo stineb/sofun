@@ -852,7 +852,7 @@ contains
         ! xxx to be addressed: what's the stomatal conductance in C4?
         gs_unitiabs = 9999.0
       else
-        gs_unitiabs = (lue / c_molmass) / ( ca - ci )
+        gs_unitiabs = (lue / c_molmass) / ( ca - ci + 0.1 )
       end if
 
 
