@@ -306,8 +306,14 @@ contains
     out_getpar_siml%lGN3 = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGN3' )
     out_getpar_siml%lGr4 = getparlogical( 'run/'//runname//'.sofun.parameter', 'lGr4' )
 
-    npft_local = 1
-
+    npft_local = 0
+    if (out_getpar_siml%lTrE) npft_local = npft_local + 1
+    if (out_getpar_siml%lTNE) npft_local = npft_local + 1
+    if (out_getpar_siml%lTrD) npft_local = npft_local + 1
+    if (out_getpar_siml%lTND) npft_local = npft_local + 1
+    if (out_getpar_siml%lGr3) npft_local = npft_local + 1
+    if (out_getpar_siml%lGr4) npft_local = npft_local + 1
+    if (out_getpar_siml%lGN3) npft_local = npft_local + 1
     ! temporary solution to this
     print*,'found ', npft_local, ' activated PFTs.'
     if (npft/=npft_local) stop 'GETPAR_SIML: adjust number of activated PFTs by hand in params_core.'
