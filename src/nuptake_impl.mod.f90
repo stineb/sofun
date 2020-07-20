@@ -119,16 +119,37 @@ module md_nuptake_impl
   !----------------------------------------------------------------
   ! annual
   real, dimension(:), allocatable :: outanpp
-  ! xxx complement
+  real, dimension(:), allocatable :: outaanpp
+  real, dimension(:), allocatable :: outabnpp
+  real, dimension(:), allocatable :: outalnpp
+  real, dimension(:), allocatable :: outawnpp
+  real, dimension(:), allocatable :: outleafcn
+  real, dimension(:), allocatable :: outalnf
+  real, dimension(:), allocatable :: outawnf
+  real, dimension(:), allocatable :: outabnf
 
   !----------------------------------------------------------------
   ! Module-specific NetCDF output file and variable names
   !----------------------------------------------------------------
   character(len=256) :: ncoutfilnam_anpp
-  ! xxx complement
+  character(len=256) :: ncoutfilnam_aanpp
+  character(len=256) :: ncoutfilnam_abnpp
+  character(len=256) :: ncoutfilnam_alnpp
+  character(len=256) :: ncoutfilnam_awnpp
+  character(len=256) :: ncoutfilnam_leafcn
+  character(len=256) :: ncoutfilnam_lnf
+  character(len=256) :: ncoutfilnam_wnf
+  character(len=256) :: ncoutfilnam_bnf
 
   character(len=*), parameter :: NPP_NAME = "npp"
-  ! xxx complement
+  character(len=*), parameter :: ANPP_NAME = "anpp"
+  character(len=*), parameter :: BNPP_NAME = "abnpp"
+  character(len=*), parameter :: LNPP_NAME = "alnpp"
+  character(len=*), parameter :: WNPP_NAME = "awnpp"
+  character(len=*), parameter :: LEAFCN_NAME = "leafcn"
+  character(len=*), parameter :: LNF_NAME = "lnf"
+  character(len=*), parameter :: WNF_NAME = "wnf"
+  character(len=*), parameter :: BNF_NAME = "bnf"
 
 contains
 
@@ -174,9 +195,13 @@ contains
         if (tile(lu)%plant(pft)%vcmax25 > 0.0) then
           tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile(lu)%plant(pft)%vcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
         end if
+        !if (tile(lu)%plant(pft)%vcmax25 > 0.0) then
+          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = tile(lu)%plant(pft)%vcmax25
+        !end if
+        !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = tile_nimpl_fluxes(lu)%plant(pft)%anpp + tile(lu)%plant(pft)%vcmax25
         !print*,'7'
         if (tile_nimpl_fluxes(lu)%plant(pft)%leafcn > 0.0) then
-          tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp/tile_nimpl_fluxes(lu)%plant(pft)%leafcn 
+          tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp/tile_nimpl_fluxes(lu)%plant(pft)%leafcn
         end if
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
@@ -435,7 +460,7 @@ contains
     character(len=256) :: prefix
 
     character(len=*), parameter :: TITLE = "SOFUN GP-model output, module md_nimpl"
-    character(len=12) :: coef_age_bp_char
+    !character(len=12) :: coef_age_bp_char
 
     integer :: jpngr, doy
 
@@ -443,14 +468,14 @@ contains
     write(year_char,999) interface%steering%outyear
 
     ! convert parameter values to charaters
-    write(coef_age_bp_char,888) coef_nimpl%age_bp
+    !write(coef_age_bp_char,888) coef_nimpl%age_bp
     ! xxx complement. this is like as.character()
 
     prefix = "./output_nc/"//trim(interface%params_siml%runname)
 
     if ( .not. interface%steering%spinup ) then
       !----------------------------------------------------------------
-      ! Annual NPP output file 
+      ! Annual NPP output file (anpp)
       !----------------------------------------------------------------
       if (interface%params_siml%loutnimpl) then
         ncoutfilnam_anpp = trim(prefix)//'.'//year_char//".a.npp.nc"
@@ -466,14 +491,188 @@ contains
                           varnam   = NPP_NAME, &
                           varunits = "gC m-2 yr-1", &
                           longnam  = "annual net primary productivivty", &
-                          title    = TITLE, &
-                          globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          title    = TITLE & 
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
                           ! XXX add more attributes XXX
                           )
       end if
-
+      !----------------------------------------------------------------
+      ! Annual ANPP output file (aanpp)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_aanpp = trim(prefix)//'.'//year_char//".a.anpp.nc"
+        print*,'initialising ', trim(ncoutfilnam_aanpp), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_aanpp), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = ANPP_NAME, &
+                          varunits = "gC m-2 yr-1", &
+                          longnam  = "annual aboveground net primary productivivty", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )      
+      end if
+      !----------------------------------------------------------------
+      ! Annual BNPP output file (abnpp)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_abnpp = trim(prefix)//'.'//year_char//".a.bnpp.nc"
+        print*,'initialising ', trim(ncoutfilnam_abnpp), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_abnpp), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = BNPP_NAME, &
+                          varunits = "gC m-2 yr-1", &
+                          longnam  = "annual belowground net primary productivivty", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )      
+      end if
+      !----------------------------------------------------------------
+      ! Annual leaf NPP output file (alnpp)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_alnpp = trim(prefix)//'.'//year_char//".a.lnpp.nc"
+        print*,'initialising ', trim(ncoutfilnam_alnpp), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_alnpp), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = LNPP_NAME, &
+                          varunits = "gC m-2 yr-1", &
+                          longnam  = "annual leaf net primary productivivty", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )   
+      end if
+      !----------------------------------------------------------------
+      ! Annual wood NPP output file (awnpp)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_awnpp = trim(prefix)//'.'//year_char//".a.wnpp.nc"
+        print*,'initialising ', trim(ncoutfilnam_awnpp), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_awnpp), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = WNPP_NAME, &
+                          varunits = "gC m-2 yr-1", &
+                          longnam  = "annual wood net primary productivivty", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )
+      end if
+      !----------------------------------------------------------------
+      ! Annual leaf C/N output file (leafcn)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_leafcn = trim(prefix)//'.'//year_char//".a.leafcn.nc"
+        print*,'initialising ', trim(ncoutfilnam_leafcn), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_leafcn), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = LEAFCN_NAME, &
+                          varunits = "unitness", &
+                          longnam  = "leaf carbon to nitrogen ratio", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )                              
+      end if
+      !----------------------------------------------------------------
+      ! Annual leaf nitrogen flux output file (lnf)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_lnf = trim(prefix)//'.'//year_char//".a.lnf.nc"
+        print*,'initialising ', trim(ncoutfilnam_lnf), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_lnf), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = LNF_NAME, &
+                          varunits = "gN m-2 yr-1", &
+                          longnam  = "Nitrogen flux at leaf compartment", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )   
+      end if
+      !----------------------------------------------------------------
+      ! Annual wood nitrogen flux output file (wnf)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_wnf = trim(prefix)//'.'//year_char//".a.wnf.nc"
+        print*,'initialising ', trim(ncoutfilnam_wnf), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_wnf), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = WNF_NAME, &
+                          varunits = "gN m-2 yr-1", &
+                          longnam  = "Nitrogen flux at wood compartment", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )   
+      end if
+      !----------------------------------------------------------------
+      ! Annual belowground nitrogen flux output file (bnf)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_bnf = trim(prefix)//'.'//year_char//".a.bnf.nc"
+        print*,'initialising ', trim(ncoutfilnam_bnf), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_bnf), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = BNF_NAME, &
+                          varunits = "gN m-2 yr-1", &
+                          longnam  = "Nitrogen flux at belowground compartment", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )
+      end if
       ! xxx complement
-
     end if
 
     888  format (F12.6)  ! for numeric (decimals)
@@ -501,10 +700,26 @@ contains
 
       if (interface%steering%init) then
         allocate( outanpp(ngridcells) )
+        allocate( outaanpp(ngridcells) )
+        allocate( outabnpp(ngridcells) )
+        allocate( outalnpp(ngridcells) )
+        allocate( outawnpp(ngridcells) )
+        allocate( outleafcn(ngridcells) )
+        allocate( outalnf(ngridcells) )
+        allocate( outawnf(ngridcells) )
+        allocate( outabnf(ngridcells) )        
         ! xxx complement
       end if
 
       outanpp(:) = 0.0
+      outaanpp(:) = 0.0
+      outabnpp(:) = 0.0
+      outalnpp(:) = 0.0
+      outawnpp(:) = 0.0
+      outleafcn(:) = 0.0
+      outalnf(:) = 0.0
+      outawnf(:) = 0.0
+      outabnf(:) = 0.0
       ! xxx complement
     
     end if
@@ -536,6 +751,14 @@ contains
       lu = 1
       !if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
       outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * tile(lu)%plant(:)%fpc_grid )
+      outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * tile(lu)%plant(:)%fpc_grid )
+      outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * tile(lu)%plant(:)%fpc_grid )
+      outalnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnpp * tile(lu)%plant(:)%fpc_grid )
+      outawnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnpp * tile(lu)%plant(:)%fpc_grid )
+      outleafcn(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%leafcn * tile(lu)%plant(:)%fpc_grid )
+      outalnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf * tile(lu)%plant(:)%fpc_grid )
+      outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * tile(lu)%plant(:)%fpc_grid )
+      outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * tile(lu)%plant(:)%fpc_grid )
       
       ! xxx complement
 
@@ -571,9 +794,120 @@ contains
                                                               interface%grid(:)%dogridcell, &
                                                               outanpp(:) &
                                                               )
-
+    
+      !-------------------------------------------------------------------------
+      ! Annual ANPP
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_aanpp), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_aanpp), &
+                                                              ANPP_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outaanpp(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual BNPP
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_abnpp), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_abnpp), &
+                                                              BNPP_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outabnpp(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual LNPP
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_alnpp), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_alnpp), &
+                                                              LNPP_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outalnpp(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual WNPP
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_awnpp), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_awnpp), &
+                                                              WNPP_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outawnpp(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual leafcn
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_leafcn), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_leafcn), &
+                                                              LEAFCN_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outleafcn(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual lnf
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_lnf), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_lnf), &
+                                                              LNF_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outalnf(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual wnf
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_wnf), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_wnf), &
+                                                              WNF_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outawnf(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual bnf
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_bnf), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_bnf), &
+                                                              BNF_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outabnf(:) &
+                                                              )
       ! xxx complement
-
     end if
 
   end subroutine writeout_nc_nimpl
