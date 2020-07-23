@@ -193,8 +193,9 @@ contains
         !print*,'6'
         !here we add two if function to prevent FPE
         if (tile(lu)%plant(pft)%vcmax25 > 0.0) then
-          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile(lu)%plant(pft)%vcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
+          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile(lu)%plant(pft)%vcmax25 * 1000000 / 86400) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
         end if
+        !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = tile(lu)%plant(pft)%vcmax25
         !if (tile(lu)%plant(pft)%vcmax25 > 0.0) then
           !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = tile(lu)%plant(pft)%vcmax25
         !end if
@@ -749,7 +750,7 @@ contains
     if (interface%params_siml%loutnimpl) then
 
       lu = 1
-      !if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
+      if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
       outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * tile(lu)%plant(:)%fpc_grid )
       outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * tile(lu)%plant(:)%fpc_grid )
       outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * tile(lu)%plant(:)%fpc_grid )
