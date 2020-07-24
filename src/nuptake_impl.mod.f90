@@ -27,6 +27,8 @@ module md_nuptake_impl
     real :: alnf        ! annual laef nitrogen flux (gC m-2 yr-2)
     real :: awnf        ! annual wood nitrogen flux (gC m-2 yr-2)
     real :: abnf        ! annual belowground(root) nitrogen flux (gC m-2 yr-2)
+    real :: annualgpp   ! annual gross primary production (gC m-2 yr-1)
+    real :: annualvcmax25 ! annual maximum carboxylation capacity (umol m-2 s-1)
   end type plant_nimpl_fluxes_type
 
   type tile_nimpl_fluxes_type
@@ -127,7 +129,8 @@ module md_nuptake_impl
   real, dimension(:), allocatable :: outalnf
   real, dimension(:), allocatable :: outawnf
   real, dimension(:), allocatable :: outabnf
-
+  real, dimension(:), allocatable :: outannualgpp
+  real, dimension(:), allocatable :: outannualvcmax25
   !----------------------------------------------------------------
   ! Module-specific NetCDF output file and variable names
   !----------------------------------------------------------------
@@ -140,6 +143,8 @@ module md_nuptake_impl
   character(len=256) :: ncoutfilnam_lnf
   character(len=256) :: ncoutfilnam_wnf
   character(len=256) :: ncoutfilnam_bnf
+  character(len=256) :: ncoutfilnam_annualgpp
+  character(len=256) :: ncoutfilnam_annualvcmax25
 
   character(len=*), parameter :: NPP_NAME = "npp"
   character(len=*), parameter :: ANPP_NAME = "anpp"
@@ -150,6 +155,8 @@ module md_nuptake_impl
   character(len=*), parameter :: LNF_NAME = "lnf"
   character(len=*), parameter :: WNF_NAME = "wnf"
   character(len=*), parameter :: BNF_NAME = "bnf"
+  character(len=*), parameter :: ANNUALGPP_NAME = "gpp"
+  character(len=*), parameter :: ANNUALVCMAX25_NAME = "vcmax25"
 
 contains
 
@@ -206,6 +213,10 @@ contains
         end if
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
+        !print*,'8'
+        tile_nimpl_fluxes(lu)%plant(pft)%annualgpp = tile_fluxes(lu)%plant(pft)%agpp
+        !print*,"9" convert "mol m-2 d-1" to "umol m-2 s-1"
+        tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25 = tile(lu)%plant(pft)%vcmax25 * 1000000 / 86400 
       end do
 
     else
@@ -301,7 +312,7 @@ contains
     coef_nimpl%intersect_alnpp     = getparreal( 'params/params_nimpl.dat', 'intersect_alnpp' )
     
     ! Leaf C:N model
-    ! coef_nimpl%vcmax25_leafcn = getparreal( 'params/params_nimpl.dat', 'vcmax25_leafcn' )
+    coef_nimpl%vcmax25_leafcn = getparreal( 'params/params_nimpl.dat', 'vcmax25_leafcn' )
     coef_nimpl%lma_leafcn = getparreal( 'params/params_nimpl.dat', 'lma_leafcn' )
     coef_nimpl%intersect_leafcn     = getparreal( 'params/params_nimpl.dat', 'intersect_leafcn' )
 
@@ -673,6 +684,50 @@ contains
                           ! XXX add more attributes XXX
                           )
       end if
+      !----------------------------------------------------------------
+      ! Annual gross primary production (annualgpp)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_annualgpp = trim(prefix)//'.'//year_char//".a.annualgpp.nc"
+        print*,'initialising ', trim(ncoutfilnam_annualgpp), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_annualgpp), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = ANNUALGPP_NAME, &
+                          varunits = "gC m-2 yr-1", &
+                          longnam  = "Annual Gross primary production", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )
+      end if
+      !----------------------------------------------------------------
+      ! Annual vcmax25 (annualvcmax25)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_annualvcmax25 = trim(prefix)//'.'//year_char//".a.annualvcmax25.nc"
+        print*,'initialising ', trim(ncoutfilnam_annualvcmax25), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_annualvcmax25), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = ANNUALVCMAX25_NAME, &
+                          varunits = "umol m-2 s-1", &
+                          longnam  = "Annual maximum carboxylation capacity", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )
+      end if
       ! xxx complement
     end if
 
@@ -708,7 +763,9 @@ contains
         allocate( outleafcn(ngridcells) )
         allocate( outalnf(ngridcells) )
         allocate( outawnf(ngridcells) )
-        allocate( outabnf(ngridcells) )        
+        allocate( outabnf(ngridcells) )
+        allocate( outannualgpp(ngridcells) )
+        allocate( outannualvcmax25(ngridcells) )        
         ! xxx complement
       end if
 
@@ -721,6 +778,8 @@ contains
       outalnf(:) = 0.0
       outawnf(:) = 0.0
       outabnf(:) = 0.0
+      outannualgpp(:) = 0.0
+      outannualvcmax25(:) = 0.0
       ! xxx complement
     
     end if
@@ -760,7 +819,8 @@ contains
       outalnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf * tile(lu)%plant(:)%fpc_grid )
       outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * tile(lu)%plant(:)%fpc_grid )
       outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * tile(lu)%plant(:)%fpc_grid )
-      
+      outannualgpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%annualgpp * tile(lu)%plant(:)%fpc_grid )
+      outannualvcmax25(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%annualvcmax25 * tile(lu)%plant(:)%fpc_grid )      
       ! xxx complement
 
     end if
@@ -907,6 +967,34 @@ contains
                                                               interface%grid(:)%ilat, &
                                                               interface%grid(:)%dogridcell, &
                                                               outabnf(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual annualgpp
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_annualgpp), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_annualgpp), &
+                                                              ANNUALGPP_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outannualgpp(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual annualvcmax25
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_annualvcmax25), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_annualvcmax25), &
+                                                              ANNUALVCMAX25_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outannualvcmax25(:) &
                                                               )
       ! xxx complement
     end if
