@@ -809,7 +809,7 @@ contains
     if (interface%params_siml%loutnimpl) then
 
       lu = 1
-      if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
+      !if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
       outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * tile(lu)%plant(:)%fpc_grid )
       outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * tile(lu)%plant(:)%fpc_grid )
       outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * tile(lu)%plant(:)%fpc_grid )
