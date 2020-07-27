@@ -148,15 +148,15 @@ module md_nuptake_impl
 
   character(len=*), parameter :: NPP_NAME = "npp"
   character(len=*), parameter :: ANPP_NAME = "anpp"
-  character(len=*), parameter :: BNPP_NAME = "abnpp"
-  character(len=*), parameter :: LNPP_NAME = "alnpp"
-  character(len=*), parameter :: WNPP_NAME = "awnpp"
+  character(len=*), parameter :: BNPP_NAME = "bnpp"
+  character(len=*), parameter :: LNPP_NAME = "lnpp"
+  character(len=*), parameter :: WNPP_NAME = "wnpp"
   character(len=*), parameter :: LEAFCN_NAME = "leafcn"
   character(len=*), parameter :: LNF_NAME = "lnf"
   character(len=*), parameter :: WNF_NAME = "wnf"
   character(len=*), parameter :: BNF_NAME = "bnf"
-  character(len=*), parameter :: ANNUALGPP_NAME = "gpp"
-  character(len=*), parameter :: ANNUALVCMAX25_NAME = "vcmax25"
+  character(len=*), parameter :: ANNUALGPP_NAME = "annualgpp"
+  character(len=*), parameter :: ANNUALVCMAX25_NAME = "annualvcmax25"
 
 contains
 

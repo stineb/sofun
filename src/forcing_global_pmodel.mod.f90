@@ -680,7 +680,7 @@ contains
           if (jpngr==1) print*,'GET_FPC_GRID: npft=1 ==> assuming all is C3'
 
           pft = 1
-          fpc_grid_field(pft,jpngr) = 1.0 - tmp
+          fpc_grid_field(pft,jpngr) = 1.0 !- tmp
 
         else
 
