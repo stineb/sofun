@@ -141,27 +141,29 @@ module md_gpp
 
   ! annual
   real, dimension(:,:), allocatable :: outagpp
-  real, dimension(:,:), allocatable :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
-  real, dimension(:,:), allocatable :: outavcmax_25     ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
-  real, dimension(:,:), allocatable :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
-  real, dimension(:,:), allocatable :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
-  real, dimension(:,:), allocatable :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
-  real, dimension(:,:), allocatable :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (ppm)
-  real, dimension(:,:), allocatable :: outags           ! stomatal conductance to H2O, mean across growing season, weighted by daily GPP (mol H2O m-2 s-1)
-  real, dimension(:,:), allocatable :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP [micro-mol CO2 / mol H2O]
+  ! real, dimension(:,:), allocatable :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  real, dimension(:,:), allocatable :: outavcmax25     ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  ! real, dimension(:,:), allocatable :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
+  ! real, dimension(:,:), allocatable :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
+  ! real, dimension(:,:), allocatable :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
+  ! real, dimension(:,:), allocatable :: outaci           ! leaf-internal CO2 partial pressure, mean across growing season, weighted by daily GPP (ppm)
+  ! real, dimension(:,:), allocatable :: outags           ! stomatal conductance to H2O, mean across growing season, weighted by daily GPP (mol H2O m-2 s-1)
+  ! real, dimension(:,:), allocatable :: outaiwue         ! intrinsic water use efficiency, weighted by daily GPP [micro-mol CO2 / mol H2O]
 
-  ! These are stored as dayly variables for annual output
-  ! at day of year when LAI is at its maximum.
-  real, dimension(npft,ndayyear) :: outdvcmax
-  real, dimension(npft,ndayyear) :: outdvcmax25
+  ! ! These are stored as dayly variables for annual output
+  ! ! at day of year when LAI is at its maximum.
+  ! real, dimension(npft,ndayyear) :: outdvcmax
+  ! real, dimension(npft,ndayyear) :: outdvcmax25
 
   !----------------------------------------------------------------
   ! Module-specific NetCDF output file and variable names
   !----------------------------------------------------------------
   character(len=256) :: ncoutfilnam_dgpp
   character(len=256) :: ncoutfilnam_agpp
+  character(len=256) :: ncoutfilnam_avcmax25
 
   character(len=*), parameter :: GPP_NAME="gpp"
+  character(len=*), parameter :: VCMAX25_NAME="vcmax25"
 
 contains
 
@@ -1820,7 +1822,35 @@ contains
                           globatt7_nam = "soilmstress",          globatt7_val = soilmstress_char,  &
                           globatt8_nam = "tempstress",           globatt8_val = tempstress_char    &
                           )
+
+        !----------------------------------------------------------------
+        ! Annual Vcmax25 output file 
+        !----------------------------------------------------------------
+        ncoutfilnam_avcmax25 = trim(prefix)//'.'//year_char//".a.vcmax25.nc"
+        print*,'initialising ', trim(ncoutfilnam_avcmax25), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_avcmax25), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = VCMAX25_NAME, &
+                          varunits = "gC m-2 yr-1", &
+                          longnam  = "Maximum rate of carboxylation capacity, normalised to 25 deg C, annual mean weighted by daily GPP.", &
+                          title    = TITLE, &
+                          globatt1_nam = "fapar_source",         globatt1_val = interface%params_siml%fapar_forcing_source, &
+                          globatt2_nam = "param_beta",           globatt2_val = beta_char, &
+                          globatt3_nam = "param_rd_to_vcmax",    globatt3_val = rd_to_vcmax_char, &
+                          globatt4_nam = "param_kphio_GrC3",     globatt4_val = kphio_char,  &
+                          globatt5_nam = "param_soilm_par_a",    globatt5_val = soilm_par_a_char,  &
+                          globatt6_nam = "param_soilm_par_b",    globatt6_val = soilm_par_b_char,  &
+                          globatt7_nam = "soilmstress",          globatt7_val = soilmstress_char,  &
+                          globatt8_nam = "tempstress",           globatt8_val = tempstress_char    &
+                          )
       end if
+
 
       if ( interface%steering%outyear>=interface%params_siml%daily_out_startyr .and. &
         interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
@@ -1892,24 +1922,25 @@ contains
 
       if (interface%steering%init) then
         allocate( outagpp       (npft,ngridcells) )
-        allocate( outavcmax     (npft,ngridcells) )
-        allocate( outavcmax_25  (npft,ngridcells) )
-        allocate( outavcmax_leaf(npft,ngridcells) )
-        allocate( outalue       (npft,ngridcells) )
-        allocate( outachi       (npft,ngridcells) )
-        allocate( outaci        (npft,ngridcells) )
-        allocate( outags        (npft,ngridcells) )
-        allocate( outaiwue      (npft,ngridcells) )
+        ! allocate( outavcmax     (npft,ngridcells) )
+        allocate( outavcmax25  (npft,ngridcells) )
+        ! allocate( outavcmax_leaf(npft,ngridcells) )
+        ! allocate( outalue       (npft,ngridcells) )
+        ! allocate( outachi       (npft,ngridcells) )
+        ! allocate( outaci        (npft,ngridcells) )
+        ! allocate( outags        (npft,ngridcells) )
+        ! allocate( outaiwue      (npft,ngridcells) )
       end if
 
-      outavcmax(:,:)      = 0.0
-      outavcmax_25(:,:)   = 0.0
-      outavcmax_leaf(:,:) = 0.0
-      outachi(:,:)        = 0.0
-      outaiwue(:,:)       = 0.0
-      outalue(:,:)        = 0.0
-      outaci(:,:)         = 0.0
-      outags(:,:)         = 0.0
+      outagpp(:,:)        = 0.0
+      ! outavcmax(:,:)      = 0.0
+      outavcmax25(:,:)   = 0.0
+      ! outavcmax_leaf(:,:) = 0.0
+      ! outachi(:,:)        = 0.0
+      ! outaiwue(:,:)       = 0.0
+      ! outalue(:,:)        = 0.0
+      ! outaci(:,:)         = 0.0
+      ! outags(:,:)         = 0.0
     
     end if
 
@@ -1951,38 +1982,39 @@ contains
     ! ANNUAL SUM OVER DAILY VALUES
     ! Collect annual output variables
     !----------------------------------------------------------------
-    ! store all daily values for outputting annual maximum
-    ! if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
+    ! store all daily values for outputting annual maximum or mean or whatever
+    if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
 
-    ! outdvcmax(1,doy)      = dvcmax_canop(1)
-    ! outdvcmax25(1,doy)    = out_pmodel(1)%ftemp_inst_vcmax * dvcmax_canop(1)
+    ! annual GPP is already part of the tile-plant structure, no need to sum it up here, is directly calculated in 'getout_annual_gpp'
 
-    ! ! weighted by daily GPP
-    ! if (interface%params_siml%loutgpp) then
+    ! weighted by daily GPP
+    if (interface%params_siml%loutgpp) then
 
-    !   outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * tile_fluxes(:)%canopy%dgpp
-    !   outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * tile_fluxes(:)%canopy%dgpp
-    !   outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * tile_fluxes(:)%canopy%dgpp
-    !   outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * tile_fluxes(:)%canopy%dgpp
-    !   outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * tile_fluxes(:)%canopy%dgpp
+      outavcmax25(:,jpngr) = outavcmax25(:,jpngr) + tile(lu)%plant(:)%vcmax25 * tile(lu)%plant(:)%dgpp
 
-    !   if (doy==ndayyear) then
-    !     if (sum(outagpp(:,jpngr))==0.0) then
-    !       outachi       (:,jpngr) = dummy
-    !       outaiwue      (:,jpngr) = dummy
-    !       outaci        (:,jpngr) = dummy
-    !       outags        (:,jpngr) = dummy
-    !       outavcmax_leaf(:,jpngr) = dummy
-    !     else
-    !       outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
-    !       outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
-    !       outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
-    !       outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
-    !       outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
-    !     end if
-    !   end if
+      outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * tile_fluxes(:)%canopy%dgpp
+      outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * tile_fluxes(:)%canopy%dgpp
+      outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * tile_fluxes(:)%canopy%dgpp
+      outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * tile_fluxes(:)%canopy%dgpp
+      outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * tile_fluxes(:)%canopy%dgpp
 
-    ! end if
+      if (doy==ndayyear) then
+        if (sum(outagpp(:,jpngr))==0.0) then
+          outachi       (:,jpngr) = dummy
+          outaiwue      (:,jpngr) = dummy
+          outaci        (:,jpngr) = dummy
+          outags        (:,jpngr) = dummy
+          outavcmax_leaf(:,jpngr) = dummy
+        else
+          outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
+          outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
+          outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
+          outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
+          outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
+        end if
+      end if
+
+    end if
 
   end subroutine getout_daily_gpp
 
@@ -2013,7 +2045,7 @@ contains
       ! xxx to do: get vcmax at annual maximum (of monthly values)
       do pft=1,npft
         outavcmax(pft,jpngr)    = maxval(outdvcmax(pft,:))
-        outavcmax_25(pft,jpngr) = maxval(outdvcmax25(pft,:))
+        outavcmax25(pft,jpngr) = maxval(outdvcmax25(pft,:))
       end do
     end if
 
