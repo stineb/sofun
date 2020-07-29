@@ -204,6 +204,7 @@ contains
     real, save :: vpd_memory
     real, save :: temp_memory
     real, save :: patm_memory
+    real, save :: iabs_memory
 
     ! xxx test
     real :: a_c, a_j, a_returned, fact_jmaxlim
@@ -217,175 +218,195 @@ contains
       temp_memory = climate%dtemp
       vpd_memory  = climate%dvpd
       patm_memory = climate%dpatm
+      iabs_memory = climate%dppfd
     end if 
 
     co2_memory  = dampen_variability( co2,            params_gpp%tau_acclim, co2_memory )
     temp_memory = dampen_variability( climate%dtemp,  params_gpp%tau_acclim, temp_memory )
     vpd_memory  = dampen_variability( climate%dvpd,   params_gpp%tau_acclim, vpd_memory )
     patm_memory = dampen_variability( climate%dpatm,  params_gpp%tau_acclim, patm_memory )
+    iabs_memory = dampen_variability( climate%dppfd,  params_gpp%tau_acclim, iabs_memory )
 
     tk = climate%dtemp + kTkelvin
 
-    if ( tile_fluxes(1)%canopy%dayl > 0.0 .and. climate%dtemp > -5.0 ) then
+    pftloop: do pft=1,npft
       !----------------------------------------------------------------
-      ! P-model call for C3 plants to get a list of variables that are 
+      ! P-model call to get a list of variables that are 
       ! acclimated to slowly varying conditions
       !----------------------------------------------------------------
-      do pft=1,npft
+      if (tile(lu)%plant(pft)%fpc_grid > 0.0 .and. &      ! PFT is present
+          tile_fluxes(1)%canopy%dayl > 0.0 .and.   &      ! no arctic night
+          climate%dtemp > -5.0) then                      ! daily mean temperature above minus 5 deg C
+        
+        ! PFT is present 
         out_pmodel = pmodel( &
-                              kphio          = params_pft_gpp(pft)%kphio, &
-                              fapar          = tile(1)%canopy%fapar, &
-                              ppfd           = climate%dppfd, &
-                              co2            = co2_memory, &
-                              tc             = temp_memory, &
-                              vpd            = vpd_memory, &
-                              patm           = patm_memory, &
-                              c4             = params_pft_plant(pft)%c4, &
-                              method_optci   = "prentice14", &
-                              method_jmaxlim = "wang17" &
-                              )
+                            kphio          = params_pft_gpp(pft)%kphio, &
+                            iabs           = iabs_memory, &
+                            co2            = co2_memory, &
+                            tc             = temp_memory, &
+                            vpd            = vpd_memory, &
+                            patm           = patm_memory, &
+                            c4             = params_pft_plant(pft)%c4, &
+                            method_optci   = "prentice14", &
+                            method_jmaxlim = "wang17" &
+                            )
 
-        ! simple:
-        lu = 1
+      else
 
-        !----------------------------------------------------------------
-        ! xxx try:
-        tile(lu)%plant(pft)%fpc_grid = 0.5
-        !----------------------------------------------------------------
+        ! PFT is not present 
+        out_pmodel = zero_pmodel()
 
-        iabs = tile(lu)%canopy%fapar * climate%dppfd * tile(lu)%plant(pft)%fpc_grid
+      end if
 
-        !----------------------------------------------------------------
-        ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
-        !----------------------------------------------------------------
-        if (do_soilmstress) then
-          soilmstress = calc_soilmstress( tile(1)%soil%phy%wscal, 0.0, params_pft_plant(1)%grass )
-        else
-          soilmstress = 1.0
-        end if    
+      ! simple:
+      lu = 1
 
-        !----------------------------------------------------------------
-        ! Include instantaneous temperature effect on quantum yield efficiency
-        !----------------------------------------------------------------
-        if (do_tempstress) then
-          ftemp_kphio = calc_ftemp_kphio( climate%dtemp, params_pft_plant(pft)%c4 )
-        else
-          ftemp_kphio = 1.0
-        end if
+      ! !----------------------------------------------------------------
+      ! ! xxx try:
+      ! tile(lu)%plant(pft)%fpc_grid = 0.5
+      ! !----------------------------------------------------------------
 
-        !----------------------------------------------------------------
-        ! GPP
-        !----------------------------------------------------------------
-        tile_fluxes(lu)%plant(pft)%dgpp = iabs * out_pmodel%lue * ftemp_kphio * soilmstress
+      ! absorbed PPFD
+      iabs = tile(lu)%canopy%fapar * climate%dppfd * tile(lu)%plant(pft)%fpc_grid
 
-        !----------------------------------------------------------------
-        ! Dark respiration
-        !----------------------------------------------------------------
-        tile_fluxes(lu)%plant(pft)%drd = iabs * out_pmodel%rd_unitiabs * ftemp_kphio * soilmstress * c_molmass
+      !----------------------------------------------------------------
+      ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
+      !----------------------------------------------------------------
+      if (do_soilmstress) then
+        soilmstress = calc_soilmstress( tile(1)%soil%phy%wscal, 0.0, params_pft_plant(1)%grass )
+      else
+        soilmstress = 1.0
+      end if    
 
-        ! !----------------------------------------------------------------
-        ! ! CALCULATE PREDICTED GPP FROM P-model output
-        ! ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
-        ! !----------------------------------------------------------------
-        ! do pft=1,npft
+      !----------------------------------------------------------------
+      ! Include instantaneous temperature effect on quantum yield efficiency
+      !----------------------------------------------------------------
+      if (do_tempstress) then
+        ftemp_kphio = calc_ftemp_kphio( climate%dtemp, params_pft_plant(pft)%c4 )
+      else
+        ftemp_kphio = 1.0
+      end if
 
-        !   print*,'params_pft_plant(pft)%lu_category ', params_pft_plant(pft)%lu_category
-        !   print*,'tile(lu)%plant(pft)%fpc_grid', tile(lu)%plant(pft)%fpc_grid
-        !   print*,'tile_fluxes(lu)%canopy%dayl', tile_fluxes(lu)%canopy%dayl
-        !   print*,'climate%dtemp', climate%dtemp
+      !----------------------------------------------------------------
+      ! GPP
+      !----------------------------------------------------------------
+      ! tile_fluxes(lu)%canopy%dgpp = iabs * out_pmodel%lue * ftemp_kphio * soilmstress
+      tile_fluxes(lu)%plant(pft)%dgpp = iabs * out_pmodel%lue * ftemp_kphio * soilmstress
 
-        !   ! land use category (gridcell tile)
-        !   lu = params_pft_plant(pft)%lu_category
-        !     !----------------------------------------------------------------
-        !     ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
-        !     !----------------------------------------------------------------
-        !     print*,'tile(lu)%soil%phy%wscal ', tile(lu)%soil%phy%wscal
-        !     print*,'params_pft_plant(pft)%grass ', params_pft_plant(pft)%grass
-        !     print*,'do_soilmstress ', do_soilmstress
-        !     if (do_soilmstress) then
-        !       ! soilmstress = calc_soilmstress( tile(lu)%soil%phy%wscal, 0.0, params_pft_plant(pft)%grass )
-        !       soilmstress = 1.0
-        !     else
-        !       soilmstress = 1.0
-        !     end if
+      !----------------------------------------------------------------
+      ! Dark respiration
+      !----------------------------------------------------------------
+      ! tile_fluxes(lu)%canopy%drd = iabs * out_pmodel%rd_unitiabs * ftemp_kphio * soilmstress * c_molmass
+      tile_fluxes(lu)%plant(pft)%drd = iabs * out_pmodel%rd_unitiabs * ftemp_kphio * soilmstress * c_molmass
 
-        !     !----------------------------------------------------------------
-        !     ! Include instantaneous temperature effect on quantum yield efficiency
-        !     !----------------------------------------------------------------
-        !     if (do_tempstress) then
-        !       ftemp_kphio = calc_ftemp_kphio( climate%dtemp )
-        !     else
-        !       ftemp_kphio = 1.0
-        !     end if
+      !----------------------------------------------------------------
+      ! Vcmax25
+      !----------------------------------------------------------------
+      !Here we may consider Vcmax25 >0, otherwise it will cause FPE in nuptake
+      !if (out_pmodel%vcmax25 > 0.0) then
+      tile(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
+      !end if
 
-        !     ! GPP
-        !     tile_fluxes(lu)%canopy%dgpp = calc_dgpp( tile(lu)%canopy%fapar, tile(lu)%plant(pft)%fpc_grid, climate%dppfd, out_pmodel%lue, ftemp_kphio, soilmstress )
+      ! !----------------------------------------------------------------
+      ! ! CALCULATE PREDICTED GPP FROM P-model output
+      ! ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
+      ! !----------------------------------------------------------------
+      ! do pft=1,npft
 
-        !     !----------------------------------------------------------------
-        !     ! xxx test
-        !     !----------------------------------------------------------------
-        !     ! light-limited assimilation rate
-        !     fact_jmaxlim = 1.0 / sqrt(1.0 + (4.0 * params_pft_gpp(pft)%kphio * dfapar * dppfd / out_pmodel%jmax)**2)
-        !     a_j = params_pft_gpp(pft)%kphio * dfapar * dppfd * (out_pmodel%ci - out_pmodel%gammastar)/(out_pmodel%ci + 2 * out_pmodel%gammastar) * fact_jmaxlim
+      !   print*,'params_pft_plant(pft)%lu_category ', params_pft_plant(pft)%lu_category
+      !   print*,'tile(lu)%plant(pft)%fpc_grid', tile(lu)%plant(pft)%fpc_grid
+      !   print*,'tile_fluxes(lu)%canopy%dayl', tile_fluxes(lu)%canopy%dayl
+      !   print*,'climate%dtemp', climate%dtemp
 
-        !     ! Rubisco-limited assimilation rate
-        !     a_c = out_pmodel%vcmax * (out_pmodel%ci - out_pmodel%gammastar)/(out_pmodel%ci + out_pmodel%kmm)
+      !   ! land use category (gridcell tile)
+      !   lu = params_pft_plant(pft)%lu_category
+      !     !----------------------------------------------------------------
+      !     ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
+      !     !----------------------------------------------------------------
+      !     print*,'tile(lu)%soil%phy%wscal ', tile(lu)%soil%phy%wscal
+      !     print*,'params_pft_plant(pft)%grass ', params_pft_plant(pft)%grass
+      !     print*,'do_soilmstress ', do_soilmstress
+      !     if (do_soilmstress) then
+      !       ! soilmstress = calc_soilmstress( tile(lu)%soil%phy%wscal, 0.0, params_pft_plant(pft)%grass )
+      !       soilmstress = 1.0
+      !     else
+      !       soilmstress = 1.0
+      !     end if
 
-        !     ! output from pmodel()
-        !     a_returned = out_pmodel%gpp / c_molmass
+      !     !----------------------------------------------------------------
+      !     ! Include instantaneous temperature effect on quantum yield efficiency
+      !     !----------------------------------------------------------------
+      !     if (do_tempstress) then
+      !       ftemp_kphio = calc_ftemp_kphio( climate%dtemp )
+      !     else
+      !       ftemp_kphio = 1.0
+      !     end if
 
-        !     print*,'a_j, a_c, a_returned, dgpp : ', a_j, a_c, a_returned, dgpp / c_molmass
-        !     !----------------------------------------------------------------
+      !     ! GPP
+      !     tile_fluxes(lu)%canopy%dgpp = calc_dgpp( tile(lu)%canopy%fapar, tile(lu)%plant(pft)%fpc_grid, climate%dppfd, out_pmodel%lue, ftemp_kphio, soilmstress )
 
-        !     ! transpiration
-        !     ! dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, ftemp_kphio, soilmstress )
-        !     dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, climate%dtemp )
+      !     !----------------------------------------------------------------
+      !     ! xxx test
+      !     !----------------------------------------------------------------
+      !     ! light-limited assimilation rate
+      !     fact_jmaxlim = 1.0 / sqrt(1.0 + (4.0 * params_pft_gpp(pft)%kphio * dfapar * dppfd / out_pmodel%jmax)**2)
+      !     a_j = params_pft_gpp(pft)%kphio * dfapar * dppfd * (out_pmodel%ci - out_pmodel%gammastar)/(out_pmodel%ci + 2 * out_pmodel%gammastar) * fact_jmaxlim
 
-        !     !----------------------------------------------------------------
-        !     ! Dark respiration
-        !     !----------------------------------------------------------------
-        !     tile_fluxes(lu)%canopy%drd = calc_drd( vegcover%dfapar, tile(lu)%plant(pft)%fpc_grid, climate%dppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
+      !     ! Rubisco-limited assimilation rate
+      !     a_c = out_pmodel%vcmax * (out_pmodel%ci - out_pmodel%gammastar)/(out_pmodel%ci + out_pmodel%kmm)
 
-        !     !----------------------------------------------------------------
-        !     ! Leaf-level assimilation rate
-        !     !----------------------------------------------------------------
-        !     tile_fluxes(lu)%canopy%assim = calc_dassim( tile_fluxes(lu)%canopy%dgpp, tile_fluxes(lu)%canopy%dayl )
+      !     ! output from pmodel()
+      !     a_returned = out_pmodel%gpp / c_molmass
 
-        !     ! !----------------------------------------------------------------
-        !     ! ! stomatal conductance
-        !     ! !----------------------------------------------------------------
-        !     ! print*,'3'
-        !     ! tile_fluxes(lu)%canopy%dgs = calc_dgs( dassim(pft), climate%dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
+      !     print*,'a_j, a_c, a_returned, dgpp : ', a_j, a_c, a_returned, dgpp / c_molmass
+      !     !----------------------------------------------------------------
 
-        !     ! ! print*,'set-point gs:' dassim * dgs_unitiabs
+      !     ! transpiration
+      !     ! dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, ftemp_kphio, soilmstress )
+      !     dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, climate%dtemp )
 
-        !     ! !----------------------------------------------------------------
-        !     ! ! canopy conductance
-        !     ! !----------------------------------------------------------------
-        !     ! print*,'4'
-        !     ! tile(lu)%canopy%dgc = calc_g_canopy( tile_fluxes(lu)%canopy%dgs, tile(lu)%canopy%lai, tk )
+      !     !----------------------------------------------------------------
+      !     ! Dark respiration
+      !     !----------------------------------------------------------------
+      !     tile_fluxes(lu)%canopy%drd = calc_drd( vegcover%dfapar, tile(lu)%plant(pft)%fpc_grid, climate%dppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
 
-        !     ! tile(lu)%plant%vcmax25 = out_pmodel%vcmax25
+      !     !----------------------------------------------------------------
+      !     ! Leaf-level assimilation rate
+      !     !----------------------------------------------------------------
+      !     tile_fluxes(lu)%canopy%assim = calc_dassim( tile_fluxes(lu)%canopy%dgpp, tile_fluxes(lu)%canopy%dayl )
 
-        !     ! print*,'dgs per unit day (not second) - should be equal to what gpp/(ca-ci) in pmodel(): ', dgs_unitiabs * gpp / c_molmass
-        !     ! stop
+      !     ! !----------------------------------------------------------------
+      !     ! ! stomatal conductance
+      !     ! !----------------------------------------------------------------
+      !     ! print*,'3'
+      !     ! tile_fluxes(lu)%canopy%dgs = calc_dgs( dassim(pft), climate%dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
 
-        !     ! ! Canopy-level Vcmax (actually changes only monthly)
-        !     ! dvcmax_canop(pft) = calc_vcmax_canop( dfapar, out_pmodel%vcmax_unitiabs, meanmppfd )
+      !     ! ! print*,'set-point gs:' dassim * dgs_unitiabs
 
-        !     ! ! Leaf-level Vcmax
-        !     ! dvcmax_leaf(pft) = out_pmodel%vcmax_unitiabs * meanmppfd
+      !     ! !----------------------------------------------------------------
+      !     ! ! canopy conductance
+      !     ! !----------------------------------------------------------------
+      !     ! print*,'4'
+      !     ! tile(lu)%canopy%dgc = calc_g_canopy( tile_fluxes(lu)%canopy%dgs, tile(lu)%canopy%lai, tk )
 
-        !   else  
+      !     ! print*,'dgs per unit day (not second) - should be equal to what gpp/(ca-ci) in pmodel(): ', dgs_unitiabs * gpp / c_molmass
+      !     ! stop
 
-        !     tile_fluxes(lu)%canopy%dgpp = 0.0
-        !     tile_fluxes(lu)%canopy%drd  = 0.0
+      !     ! ! Canopy-level Vcmax (actually changes only monthly)
+      !     ! dvcmax_canop(pft) = calc_vcmax_canop( dfapar, out_pmodel%vcmax_unitiabs, meanmppfd )
 
-        !   end if 
+      !     ! ! Leaf-level Vcmax
+      !     ! dvcmax_leaf(pft) = out_pmodel%vcmax_unitiabs * meanmppfd
 
-        ! end do
-      end do
-    end if
+      !   else  
+
+      !     tile_fluxes(lu)%canopy%dgpp = 0.0
+      !     tile_fluxes(lu)%canopy%drd  = 0.0
+
+      !   end if 
+
+      ! end do
+    end do pftloop
 
   end subroutine gpp
 
@@ -548,7 +569,43 @@ contains
   end function calc_g_canopy
 
 
-  function pmodel( kphio, fapar, ppfd, co2, tc, vpd, patm, c4, method_optci, method_jmaxlim ) result( out_pmodel )
+  function zero_pmodel() result( out_pmodel )
+    !//////////////////////////////////////////////////////////////////
+    ! Sets all P-model quantities to zero
+    !------------------------------------------------------------------
+    ! function return value
+    type(outtype_pmodel) :: out_pmodel
+
+    out_pmodel%gammastar        = 0.0
+    out_pmodel%kmm              = 0.0
+    out_pmodel%ca               = 0.0
+    out_pmodel%ci               = 0.0
+    out_pmodel%chi              = 0.0
+    out_pmodel%xi               = 0.0
+    out_pmodel%iwue             = 0.0
+    out_pmodel%lue              = 0.0
+    out_pmodel%gpp              = 0.0
+    out_pmodel%vcmax            = 0.0
+    out_pmodel%jmax             = 0.0
+    out_pmodel%vcmax25          = 0.0
+    out_pmodel%vcmax_unitfapar  = 0.0
+    out_pmodel%vcmax_unitiabs   = 0.0
+    out_pmodel%ftemp_inst_vcmax = 0.0
+    out_pmodel%ftemp_inst_rd    = 0.0
+    out_pmodel%rd               = 0.0
+    out_pmodel%rd_unitfapar     = 0.0
+    out_pmodel%rd_unitiabs      = 0.0
+    out_pmodel%actnv            = 0.0
+    out_pmodel%actnv_unitfapar  = 0.0
+    out_pmodel%actnv_unitiabs   = 0.0
+    out_pmodel%gs_unitiabs      = 0.0
+    out_pmodel%gs_unitfapar     = 0.0
+    out_pmodel%gs               = 0.0
+
+  end function zero_pmodel
+
+
+  function pmodel( kphio, iabs, co2, tc, vpd, patm, c4, method_optci, method_jmaxlim ) result( out_pmodel )
     !//////////////////////////////////////////////////////////////////
     ! Implements the P-model, providing predictions for ci, Vcmax, and 
     ! light use efficiency, etc. 
@@ -557,8 +614,7 @@ contains
     !------------------------------------------------------------------
     ! arguments
     real, intent(in) :: kphio        ! apparent quantum yield efficiency       
-    real, intent(in) :: fapar        ! fraction of absorbed photosynthetically active radiation (unitless) 
-    real, intent(in) :: ppfd         ! photon flux density (mol/m2)
+    real, intent(in) :: iabs         ! incident photon flux density (mol/m2)
     real, intent(in) :: co2          ! atmospheric CO2 concentration (ppm), relevant for fast responses
     real, intent(in) :: tc           ! air temperature (deg C), relevant for fast responses
     real, intent(in) :: vpd          ! vapor pressure (Pa), relevant for fast responses
@@ -571,7 +627,6 @@ contains
     type(outtype_pmodel) :: out_pmodel
 
     ! local variables
-    real :: iabs                ! absorbed photosynthetically active radiation (mol/m2)
     real :: kmm                 ! Michaelis-Menten coefficient (Pa)
     real :: gammastar           ! photorespiratory compensation point - Gamma-star (Pa)
     real :: ca                  ! ambient CO2 partial pressure, (Pa)
@@ -618,330 +673,281 @@ contains
     type(outtype_chi) :: out_optchi
 
     ! Prevent floating point exception for extremely low temperatures
-    if (tc > -20.0) then
-      !-----------------------------------------------------------------------
-      ! Calculate photosynthesis model parameters depending on temperature, pressure, and CO2.
-      !-----------------------------------------------------------------------
-      ! ambient CO2 partial pression (Pa)
-      ca = co2_to_ca( co2, patm )
+    !-----------------------------------------------------------------------
+    ! Calculate photosynthesis model parameters depending on temperature, pressure, and CO2.
+    !-----------------------------------------------------------------------
+    ! ambient CO2 partial pression (Pa)
+    ca = co2_to_ca( co2, patm )
 
-      ! photorespiratory compensation point - Gamma-star (Pa)
-      gammastar = calc_gammastar( tc, patm )
+    ! photorespiratory compensation point - Gamma-star (Pa)
+    gammastar = calc_gammastar( tc, patm )
 
-      ! ! XXX PMODEL_TEST: ok
-      ! print*,'tc        ', tc
-      ! print*,'patm      ', patm
-      ! print*,'elv       ', elv
-      ! print*,'vpd       : ', vpd
-      ! print*,'gammastar ', gammastar
+    ! ! XXX PMODEL_TEST: ok
+    ! print*,'tc        ', tc
+    ! print*,'patm      ', patm
+    ! print*,'elv       ', elv
+    ! print*,'vpd       : ', vpd
+    ! print*,'gammastar ', gammastar
 
-      ! Michaelis-Menten coef. (Pa)
-      kmm  = calc_kmm( tc, patm )
+    ! Michaelis-Menten coef. (Pa)
+    kmm  = calc_kmm( tc, patm )
+    
+    ! ! XXX PMODEL_TEST: ok
+    ! print*, 'kmm ', kmm
+
+    ! viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
+    ns      = calc_viscosity_h2o( tc, patm )  ! Pa s 
+    ns25    = calc_viscosity_h2o( kTo, kPo )  ! Pa s 
+    ns_star = ns / ns25                       ! (unitless)
+
+    ! ! XXX PMODEL_TEST: ok
+    ! print*, 'ns_star ', ns_star
+
+    !-----------------------------------------------------------------------
+    ! Optimal ci
+    ! The heart of the P-model: calculate ci:ca ratio (chi) and additional terms
+    !-----------------------------------------------------------------------
+    if (c4) then
+
+      out_optchi = calc_chi_c4()
+
+    else
+
+      select case (method_optci)
+
+        case ("prentice14")
+
+          !-----------------------------------------------------------------------
+          ! B.2 FULL FORMULATION
+          !-----------------------------------------------------------------------
+          out_optchi = calc_optimal_chi( kmm, gammastar, ns_star, ca, vpd )
+        
+        case default
+
+          stop 'PMODEL: select valid method'
+
+      end select
+
+    end if 
+
+    ! ratio of leaf internal to ambient CO2
+    chi = out_optchi%chi
+
+    ! ! XXX PMODEL_TEST: ok
+    ! print*, 'chi ', chi
+
+    ! leaf-internal CO2 partial pressure (Pa)
+    ci = out_optchi%ci
+
+    !-----------------------------------------------------------------------
+    ! Corrolary preditions
+    !-----------------------------------------------------------------------
+    ! intrinsic water use efficiency 
+    iwue = ( ca - ci ) / ( 1.6 * patm )
+
+    !-----------------------------------------------------------------------
+    ! Vcmax and light use efficiency
+    !-----------------------------------------------------------------------
+    if (c4) then
+      ! Identical to method_jmaxlim = "wang17"
+
+      ! Include effect of Jmax limitation.
+      ! In this case, out_optchi%mj = 1, and mprime = 0.669
+      mprime = calc_mprime( out_optchi%mj )
+
+      ! Light use efficiency (gpp per unit absorbed light)
+      lue = kphio * mprime * c_molmass  ! in g CO2 m-2 s-1 / (mol light m-2 s-1)
+
+      ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
+      vcmax_unitiabs = kphio * out_optchi%mjoc * mprime / out_optchi%mj
+
+
+    else if (method_jmaxlim=="wang17") then
+
+      ! Include effect of Jmax limitation
+      mprime = calc_mprime( out_optchi%mj )
+
+      ! Light use efficiency (gpp per unit absorbed light)
+      lue = kphio * mprime * c_molmass  ! in g CO2 m-2 s-1 / (mol light m-2 s-1)
+
+      ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
+      vcmax_unitiabs = kphio * out_optchi%mjoc * mprime / out_optchi%mj
+
+      ! ! xxx test
+      ! print*,'kphio           : ', kphio
+      ! print*,'out_optchi%mjoc : ', out_optchi%mjoc 
+      ! print*,'mprime          : ', mprime
+      ! print*,'out_optchi%mj   : ', out_optchi%mj
+      ! stop 
+
+
+    else if (method_jmaxlim=="smith19") then
+
+      ! mc = (ci - gammastar) / (ci + kmm)                       ! Eq. 6
+      ! print(paste("mc should be equal: ", mc, out_optchi%mc ) )
+
+      ! mj = (ci - gammastar) / (ci + 2.0 * gammastar)           ! Eq. 8
+      ! print(paste("mj should be equal: ", mj, out_optchi%mj ) )
+
+      ! mjoc = (ci + kmm) / (ci + 2.0 * gammastar)               ! mj/mc, used in several instances below
+      ! print(paste("mjoc should be equal: ", mjoc, out_optchi%mjoc ) )
+
+      omega = calc_omega( theta = theta, c_cost = c_cost, m = out_optchi%mj )             ! Eq. S4
+      omega_star = 1.0 + omega - sqrt( (1.0 + omega)**2 - (4.0 * theta * omega) )       ! Eq. 18
       
-      ! ! XXX PMODEL_TEST: ok
-      ! print*, 'kmm ', kmm
+      ! calculate Vcmax-star, which corresponds to Vcmax at a reference temperature 'tcref'
+      vcmax_unitiabs_star  = kphio * out_optchi%mjoc * omega_star / (8.0 * theta)               ! Eq. 19
+      
+      ! tcref is the optimum temperature in K, assumed to be the temperature at which Vcmax* is operating. 
+      ! tcref is estimated based on its relationship to growth temperature following Kattge & Knorr 2007
+      tcref = 0.44 * tc + 24.92
 
-      ! viscosity correction factor = viscosity( temp, press )/viscosity( 25 degC, 1013.25 Pa) 
-      ns      = calc_viscosity_h2o( tc, patm )  ! Pa s 
-      ns25    = calc_viscosity_h2o( kTo, kPo )  ! Pa s 
-      ns_star = ns / ns25                       ! (unitless)
+      ! calculated acclimated Vcmax at prevailing growth temperatures
+      ftemp_inst_vcmax = calc_ftemp_inst_vcmax( tc, tc, tcref = tcref )
+      vcmax_unitiabs = vcmax_unitiabs_star * ftemp_inst_vcmax   ! Eq. 20
+      
+      ! calculate Jmax
+      jmax_over_vcmax = (8.0 * theta * omega) / (out_optchi%mjoc * omega_star)             ! Eq. 15 / Eq. 19
+      jmax_prime = jmax_over_vcmax * vcmax_unitiabs 
 
-      ! ! XXX PMODEL_TEST: ok
-      ! print*, 'ns_star ', ns_star
+      ! light use efficiency
+      lue = c_molmass * kphio * out_optchi%mj * omega_star / (8.0 * theta) ! * calc_ftemp_inst_vcmax( tc, tc, tcref = tcref )     ! treat theta as a calibratable parameter
 
+
+    else if (method_jmaxlim=="none") then
+
+      ! Light use efficiency (gpp per unit absorbed light)
+      lue = kphio * out_optchi%mj * c_molmass
+
+      ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
+      vcmax_unitiabs = kphio * out_optchi%mjoc
+
+    else
+
+      stop 'PMODEL: select valid method'
+
+    end if
+
+    ! ! XXX PMODEL_TEST: ok
+    ! print*, 'mj ', out_optchi%mj
+
+    ! ! XXX PMODEL_TEST: ok
+    ! print*, 'chi ', chi
+
+    ! ! XXX PMODEL_TEST: ok
+    ! print*, 'mprime ', mprime
+
+    ! ! XXX PMODEL_TEST: ok
+    ! print*, 'lue ', lue
+
+    ! ! XXX PMODEL_TEST: ok
+    ! print*, 'kphio ', kphio
+
+    !-----------------------------------------------------------------------
+    ! Corrolary preditions (This is prelimirary!)
+    !-----------------------------------------------------------------------
+    ! Vcmax25 (vcmax normalized to 25 deg C)
+    ftemp_inst_vcmax  = calc_ftemp_inst_vcmax( tc, tc, tcref = 25.0 )
+    vcmax25_unitiabs  = vcmax_unitiabs  / ftemp_inst_vcmax
+
+    ! Dark respiration at growth temperature
+    ftemp_inst_rd = calc_ftemp_inst_rd( tc )
+    rd_unitiabs  = params_gpp%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitiabs 
+
+    ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
+    actnv_unitiabs  = vcmax25_unitiabs  * n_v
+
+    ! stomatal conductance to CO2, expressed per unit absorbed light
+    gs_unitiabs = (lue / c_molmass) / ( ca - ci )
+
+
+    if (iabs /= dummy) then
       !-----------------------------------------------------------------------
-      ! Optimal ci
-      ! The heart of the P-model: calculate ci:ca ratio (chi) and additional terms
+      ! Calculate quantities scaling with absorbed light
       !-----------------------------------------------------------------------
-      if (c4) then
+      ! XXX PMODEL_TEST: ok
+      ! print*, 'iabs ', iabs
 
-        out_optchi = calc_chi_c4()
-
-      else
-
-        select case (method_optci)
-
-          case ("prentice14")
-
-            !-----------------------------------------------------------------------
-            ! B.2 FULL FORMULATION
-            !-----------------------------------------------------------------------
-            out_optchi = calc_optimal_chi( kmm, gammastar, ns_star, ca, vpd )
-          
-          case default
-
-            stop 'PMODEL: select valid method'
-
-        end select
-
-      end if 
-
-      ! ratio of leaf internal to ambient CO2
-      chi = out_optchi%chi
-
-      ! ! XXX PMODEL_TEST: ok
-      ! print*, 'chi ', chi
-
-      ! leaf-internal CO2 partial pressure (Pa)
-      ci = out_optchi%ci
-
+      ! Canopy-level quantities 
+      ! Defined per unit ground level -> scaling with aborbed light (iabs)
       !-----------------------------------------------------------------------
-      ! Corrolary preditions
-      !-----------------------------------------------------------------------
-      ! intrinsic water use efficiency 
-      iwue = ( ca - ci ) / ( 1.6 * patm )
-
-      !-----------------------------------------------------------------------
-      ! Vcmax and light use efficiency
-      !-----------------------------------------------------------------------
-      if (c4) then
-        ! Identical to method_jmaxlim = "wang17"
-
-        ! Include effect of Jmax limitation.
-        ! In this case, out_optchi%mj = 1, and mprime = 0.669
-        mprime = calc_mprime( out_optchi%mj )
-
-        ! Light use efficiency (gpp per unit absorbed light)
-        lue = kphio * mprime * c_molmass  ! in g CO2 m-2 s-1 / (mol light m-2 s-1)
-
-        ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
-        vcmax_unitiabs = kphio * out_optchi%mjoc * mprime / out_optchi%mj
-
-
-      else if (method_jmaxlim=="wang17") then
-
-        ! Include effect of Jmax limitation
-        mprime = calc_mprime( out_optchi%mj )
-
-        ! Light use efficiency (gpp per unit absorbed light)
-        lue = kphio * mprime * c_molmass  ! in g CO2 m-2 s-1 / (mol light m-2 s-1)
-
-        ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
-        vcmax_unitiabs = kphio * out_optchi%mjoc * mprime / out_optchi%mj
-
-        ! ! xxx test
-        ! print*,'kphio           : ', kphio
-        ! print*,'out_optchi%mjoc : ', out_optchi%mjoc 
-        ! print*,'mprime          : ', mprime
-        ! print*,'out_optchi%mj   : ', out_optchi%mj
-        ! stop 
-
-
-      else if (method_jmaxlim=="smith19") then
-
-        ! mc = (ci - gammastar) / (ci + kmm)                       ! Eq. 6
-        ! print(paste("mc should be equal: ", mc, out_optchi%mc ) )
-
-        ! mj = (ci - gammastar) / (ci + 2.0 * gammastar)           ! Eq. 8
-        ! print(paste("mj should be equal: ", mj, out_optchi%mj ) )
-
-        ! mjoc = (ci + kmm) / (ci + 2.0 * gammastar)               ! mj/mc, used in several instances below
-        ! print(paste("mjoc should be equal: ", mjoc, out_optchi%mjoc ) )
-
-        omega = calc_omega( theta = theta, c_cost = c_cost, m = out_optchi%mj )             ! Eq. S4
-        omega_star = 1.0 + omega - sqrt( (1.0 + omega)**2 - (4.0 * theta * omega) )       ! Eq. 18
-        
-        ! calculate Vcmax-star, which corresponds to Vcmax at a reference temperature 'tcref'
-        vcmax_unitiabs_star  = kphio * out_optchi%mjoc * omega_star / (8.0 * theta)               ! Eq. 19
-        
-        ! tcref is the optimum temperature in K, assumed to be the temperature at which Vcmax* is operating. 
-        ! tcref is estimated based on its relationship to growth temperature following Kattge & Knorr 2007
-        tcref = 0.44 * tc + 24.92
-
-        ! calculated acclimated Vcmax at prevailing growth temperatures
-        ftemp_inst_vcmax = calc_ftemp_inst_vcmax( tc, tc, tcref = tcref )
-        vcmax_unitiabs = vcmax_unitiabs_star * ftemp_inst_vcmax   ! Eq. 20
-        
-        ! calculate Jmax
-        jmax_over_vcmax = (8.0 * theta * omega) / (out_optchi%mjoc * omega_star)             ! Eq. 15 / Eq. 19
-        jmax_prime = jmax_over_vcmax * vcmax_unitiabs 
-
-        ! light use efficiency
-        lue = c_molmass * kphio * out_optchi%mj * omega_star / (8.0 * theta) ! * calc_ftemp_inst_vcmax( tc, tc, tcref = tcref )     ! treat theta as a calibratable parameter
-
-
-      else if (method_jmaxlim=="none") then
-
-        ! Light use efficiency (gpp per unit absorbed light)
-        lue = kphio * out_optchi%mj * c_molmass
-
-        ! Vcmax normalised per unit absorbed PPFD (assuming iabs=1), with Jmax limitation
-        vcmax_unitiabs = kphio * out_optchi%mjoc
-
-      else
-
-        stop 'PMODEL: select valid method'
-
-      end if
+      ! Gross primary productivity
+      gpp = iabs * lue ! in g C m-2 s-1
 
       ! ! XXX PMODEL_TEST: ok
-      ! print*, 'mj ', out_optchi%mj
+      ! print*, 'gpp ', gpp
+
+      ! Vcmax per unit ground area is the product of the intrinsic quantum 
+      ! efficiency, the absorbed PAR, and 'n'
+      vcmax = iabs * vcmax_unitiabs  ! = iabs * kphio * n 
 
       ! ! XXX PMODEL_TEST: ok
-      ! print*, 'chi ', chi
+      ! print*, 'vcmax ', vcmax
+
+      ! (vcmax normalized to 25 deg C)
+      vcmax25 = iabs * vcmax25_unitiabs  ! = factor25_vcmax * vcmax
 
       ! ! XXX PMODEL_TEST: ok
-      ! print*, 'mprime ', mprime
+      ! print*, 'vcmax25 ', vcmax25
+
+      ! Dark respiration
+      rd = iabs * rd_unitiabs ! = rd_to_vcmax * vcmax
 
       ! ! XXX PMODEL_TEST: ok
-      ! print*, 'lue ', lue
-
-      ! ! XXX PMODEL_TEST: ok
-      ! print*, 'kphio ', kphio
-
-      !-----------------------------------------------------------------------
-      ! Corrolary preditions (This is prelimirary!)
-      !-----------------------------------------------------------------------
-      ! Vcmax25 (vcmax normalized to 25 deg C)
-      ftemp_inst_vcmax  = calc_ftemp_inst_vcmax( tc, tc, tcref = 25.0 )
-      vcmax25_unitiabs  = vcmax_unitiabs  / ftemp_inst_vcmax
-
-      ! Dark respiration at growth temperature
-      ftemp_inst_rd = calc_ftemp_inst_rd( tc )
-      rd_unitiabs  = params_gpp%rd_to_vcmax * (ftemp_inst_rd / ftemp_inst_vcmax) * vcmax_unitiabs 
+      ! print*, 'rd ', rd
 
       ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
-      actnv_unitiabs  = vcmax25_unitiabs  * n_v
+      actnv = iabs * actnv_unitiabs ! = vcmax25 * n_v
 
-      ! stomatal conductance to CO2, expressed per unit absorbed light
-      gs_unitiabs = (lue / c_molmass) / ( ca - ci )
+      ! stomatal conductance to CO2
+      gs = iabs * gs_unitiabs
 
+      ! xxx text
+      ! gs_test = (gpp / c_molmass) / (ca - ci)
+      ! print*,'pmodel(): gs, gs_test ', gs, gs_test
 
-      if (ppfd /= dummy) then
-        !-----------------------------------------------------------------------
-        ! Calculate quantities scaling with light assuming fAPAR = 1
-        ! representing leaf-level at the top of the canopy.
-        !-----------------------------------------------------------------------
-        ! ! leaf-level assimilation rate
-        ! assim = lue * ppfd
-
-        ! ! Transpiration (E)
-        ! transp = 1.6 * gs * vpd
-
-        ! Vcmax normalised per unit fAPAR (assuming fAPAR=1)
-        vcmax_unitfapar = ppfd * vcmax_unitiabs
-
-        ! Vcmax25 (vcmax normalized to 25 deg C)
-        vcmax25_unitfapar = ppfd * vcmax25_unitiabs
-
-        ! Dark respiration per unit fAPAR (assuming fAPAR=1)
-        rd_unitfapar = ppfd * rd_unitiabs
-
-        ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
-        actnv_unitfapar = ppfd * actnv_unitiabs
-
-        ! stomatal conductance to CO2, expressed per unit absorbed fAPAR
-        gs_unitfapar = ppfd * gs_unitiabs
-
-
-        if (fapar /= dummy) then
-          !-----------------------------------------------------------------------
-          ! Calculate quantities scaling with absorbed light
-          !-----------------------------------------------------------------------
-          ! absorbed photosynthetically active radiation (mol/m2)
-          iabs = fapar * ppfd 
-
-          ! XXX PMODEL_TEST: ok
-          ! print*, 'iabs ', iabs
-
-          ! Canopy-level quantities 
-          ! Defined per unit ground level -> scaling with aborbed light (iabs)
-          !-----------------------------------------------------------------------
-          ! Gross primary productivity
-          gpp = iabs * lue ! in g C m-2 s-1
-
-          ! ! XXX PMODEL_TEST: ok
-          ! print*, 'gpp ', gpp
-
-          ! Vcmax per unit ground area is the product of the intrinsic quantum 
-          ! efficiency, the absorbed PAR, and 'n'
-          vcmax = iabs * vcmax_unitiabs  ! = iabs * kphio * n 
-
-          ! ! XXX PMODEL_TEST: ok
-          ! print*, 'vcmax ', vcmax
-
-          ! (vcmax normalized to 25 deg C)
-          vcmax25 = iabs * vcmax25_unitiabs  ! = factor25_vcmax * vcmax
-
-          ! ! XXX PMODEL_TEST: ok
-          ! print*, 'vcmax25 ', vcmax25
-
-          ! Dark respiration
-          rd = iabs * rd_unitiabs ! = rd_to_vcmax * vcmax
-
-          ! ! XXX PMODEL_TEST: ok
-          ! print*, 'rd ', rd
-
-          ! active metabolic leaf N (canopy-level), mol N/m2-ground (same equations as for nitrogen content per unit leaf area, gN/m2-leaf)
-          actnv = iabs * actnv_unitiabs ! = vcmax25 * n_v
-
-          ! stomatal conductance to CO2
-          gs = iabs * gs_unitiabs
-
-          ! xxx text
-          gs_test = (gpp / c_molmass) / (ca - ci)
-          ! print*,'pmodel(): gs, gs_test ', gs, gs_test
-
-          ! Derive Jmax using again A_J = A_C
-          if (iabs==0.0) then
-            fact_jmaxlim = 1.0
-            jmax = 0.0
-          else
-            fact_jmaxlim = vcmax * (ci + 2.0 * gammastar) / (kphio * iabs * (ci + kmm))
-            jmax = 4.0 * kphio * iabs / sqrt( (1.0/fact_jmaxlim)**2 - 1.0 )
-          end if
-
-        else
-
-          gpp     = dummy
-          vcmax   = dummy
-          vcmax25 = dummy
-          rd      = dummy
-          actnv   = dummy
-          jmax    = dummy
-
-        end if
-
+      ! Derive Jmax using again A_J = A_C
+      if (iabs==0.0) then
+        fact_jmaxlim = 1.0
+        jmax = 0.0
+        jmax25 = 0.0
       else
+        fact_jmaxlim = vcmax * (ci + 2.0 * gammastar) / (kphio * iabs * (ci + kmm))
+        jmax = 4.0 * kphio * iabs / sqrt( (1.0/fact_jmaxlim)**2 - 1.0 )
 
-        vcmax_unitfapar   = dummy
-        vcmax25_unitfapar = dummy
-        rd_unitfapar      = dummy
-        actnv_unitfapar   = dummy
-        
-        gpp               = dummy
-        vcmax             = dummy
-        vcmax25           = dummy
-        rd                = dummy
-        actnv             = dummy
-        jmax              = dummy
+        ! for normalization using temperature response from Duursma et al., 2015, implemented in plantecophys R package
+        ftemp_inst_jmax  = calc_ftemp_inst_jmax( tc, tc, tcref = 25.0 )
+        jmax25  = jmax  / ftemp_inst_jmax
 
       end if
 
     else
 
-      actnv_unitiabs   = 0.0
-      actnv_unitfapar  = 0.0
-      actnv            = 0.0
-      rd_unitiabs      = 0.0
-      rd_unitfapar     = 0.0
-      rd               = 0.0
-      ftemp_inst_rd    = 0.0
-      ftemp_inst_vcmax = 0.0
-      vcmax_unitiabs   = 0.0
-      vcmax_unitfapar  = 0.0
-      vcmax25          = 0.0
-      vcmax            = 0.0
-      jmax             = 0.0
-      gpp              = 0.0
-      lue              = 0.0
-      iwue             = 0.0
-      chi              = 0.0
-      ci               = 0.0
-      kmm              = 0.0
-      gammastar        = 0.0
+      gpp     = dummy
+      vcmax   = dummy
+      vcmax25 = dummy
+      rd      = dummy
+      actnv   = dummy
+      jmax    = dummy
 
     end if
+
+  else
+
+    vcmax_unitfapar   = dummy
+    vcmax25_unitfapar = dummy
+    rd_unitfapar      = dummy
+    actnv_unitfapar   = dummy
+    
+    gpp               = dummy
+    vcmax             = dummy
+    vcmax25           = dummy
+    rd                = dummy
+    actnv             = dummy
+    jmax              = dummy
+
+  end if
+
 
     ! construct list for output
     out_pmodel%gammastar        = gammastar
