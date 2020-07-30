@@ -272,7 +272,7 @@ contains
       ! tile(lu)%plant(pft)%fpc_grid = 0.5
       ! !----------------------------------------------------------------
 
-      ! absorbed PPFD
+      ! absorbed PPFD, separated by fractional PFT cover (fpc_grid)
       iabs = tile(lu)%canopy%fapar * climate%dppfd * tile(lu)%plant(pft)%fpc_grid
 
       !----------------------------------------------------------------
@@ -1863,7 +1863,7 @@ contains
   end subroutine initoutput_gpp
 
 
-  subroutine getout_daily_gpp( tile_fluxes, jpngr, doy )
+  subroutine getout_daily_gpp( tile, tile_fluxes, jpngr, doy )
     !////////////////////////////////////////////////////////////////
     ! Called daily to gather daily output variables.
     !
@@ -1876,6 +1876,7 @@ contains
     use md_plant, only: plant_fluxes_type
 
     ! argument
+    type(tile_type), dimension(nlu), intent(inout) :: tile
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
     integer, intent(in) :: jpngr
     integer, intent(in) :: doy
@@ -1890,9 +1891,9 @@ contains
     !----------------------------------------------------------------
     it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
 
-    if (interface%params_siml%loutdgpp   ) outdgpp(it,jpngr)    = outdgpp(it,jpngr)    + tile_fluxes(1)%canopy%dgpp    / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + tile_fluxes(1)%canopy%drd     / real( interface%params_siml%outdt )
-    if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + tile_fluxes(1)%canopy%dtransp / real( interface%params_siml%outdt )
+    if (interface%params_siml%loutdgpp   ) outdgpp(it,jpngr)    = outdgpp(it,jpngr)    + tile_fluxes(1)%canopy%dgpp    / real( interface%params_siml%outdt )   ! take canopy-level quantity for output
+    if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + tile_fluxes(1)%canopy%drd     / real( interface%params_siml%outdt )   ! take canopy-level quantity for output
+    if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + tile_fluxes(1)%canopy%dtransp / real( interface%params_siml%outdt )   ! take canopy-level quantity for output
 
     !----------------------------------------------------------------
     ! ANNUAL SUM OVER DAILY VALUES
@@ -1906,7 +1907,7 @@ contains
     ! Annual mean weighted by daily GPP, aggregated across PFTs
     if (interface%params_siml%loutgpp) then
 
-      outavcmax25(jpngr) = outavcmax25(jpngr) + tile(lu)%plant(:)%vcmax25 * tile(lu)%plant(:)%dgpp xxxxx
+      outavcmax25(jpngr) = outavcmax25(jpngr) + sum( tile(lu)%plant(:)%vcmax25 * tile_fluxes(lu)%plant(:)%dgpp )   ! dgpp is already weighted by fpc_grid
 
       ! outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * tile_fluxes(:)%canopy%dgpp
       ! outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * tile_fluxes(:)%canopy%dgpp
@@ -1915,20 +1916,24 @@ contains
       ! outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * tile_fluxes(:)%canopy%dgpp
 
       if (doy==ndayyear) then
-        if (sum(outagpp(:,jpngr))==0.0) then
-          outavcmax25   (:,jpngr) = dummy
-          ! outachi       (:,jpngr) = dummy
-          ! outaiwue      (:,jpngr) = dummy
-          ! outaci        (:,jpngr) = dummy
-          ! outags        (:,jpngr) = dummy
-          ! outavcmax_leaf(:,jpngr) = dummy
+        if (outagpp(jpngr)==0.0) then
+          
+          outavcmax25(jpngr) = dummy
+
+          ! outachi       (jpngr) = dummy
+          ! outaiwue      (jpngr) = dummy
+          ! outaci        (jpngr) = dummy
+          ! outags        (jpngr) = dummy
+          ! outavcmax_leaf(jpngr) = dummy
         else
-          outavcmax25   (:,jpngr) = outavcmax25   (:,jpngr) / outagpp(:,jpngr)
-          ! outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
-          ! outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
-          ! outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
-          ! outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
-          ! outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
+          
+          outavcmax25(jpngr) = outavcmax25(jpngr) / outagpp(jpngr)
+
+          ! outachi       (jpngr) = outachi       (jpngr) / outagpp(jpngr)
+          ! outaiwue      (jpngr) = outaiwue      (jpngr) / outagpp(jpngr)
+          ! outaci        (jpngr) = outaci        (jpngr) / outagpp(jpngr)
+          ! outags        (jpngr) = outags        (jpngr) / outagpp(jpngr)
+          ! outavcmax_leaf(jpngr) = outavcmax_leaf(jpngr) / outagpp(jpngr)
         end if
       end if
 
@@ -1955,9 +1960,9 @@ contains
     ! local variables
     integer :: pft
 
-    ! outanrlarea(jpngr) = anrlarea
     if (interface%params_siml%loutgpp) then
 
+      ! 'tile_fluxes(:)%canopy%agpp' is already area-weighted by 'fpc_grid'
       outagpp(jpngr) = sum( tile_fluxes(:)%canopy%agpp )
 
       ! ! xxx to do: get vcmax at annual maximum (of monthly values)
@@ -1996,7 +2001,7 @@ contains
                                                               interface%grid(:)%ilon, &
                                                               interface%grid(:)%ilat, &
                                                               interface%grid(:)%dogridcell, &
-                                                              sum( outagpp(:,:), dim=1 ) &
+                                                              outagpp &
                                                               )
 
 
@@ -2012,7 +2017,7 @@ contains
                                                               interface%grid(:)%ilon, &
                                                               interface%grid(:)%ilat, &
                                                               interface%grid(:)%dogridcell, &
-                                                              sum( outavcmax25(:,:), dim=1 ) &
+                                                              outavcmax25 &
                                                               )
 
 

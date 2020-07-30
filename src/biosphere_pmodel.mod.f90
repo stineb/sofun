@@ -236,7 +236,7 @@ contains
             if (.not.interface%params_siml%is_calib) then
               if (verbose) print*,'calling getout_daily() ... '
               call getout_daily_waterbal( tile(:,jpngr), tile_fluxes(:), jpngr, moy, doy )
-              call getout_daily_gpp( tile_fluxes(:), jpngr, doy )
+              call getout_daily_gpp( tile(:,jpngr), tile_fluxes(:), jpngr, doy )
               ! call getout_daily_plant( tile(:,jpngr)%plant(:), jpngr, moy, doy )
               call getout_daily_forcing( jpngr, moy, doy )
               call getout_daily_soiltemp( jpngr, moy, doy, tile(:,jpngr)%soil%phy )
