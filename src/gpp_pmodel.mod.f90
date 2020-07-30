@@ -140,9 +140,8 @@ module md_gpp
   real, allocatable, dimension(:,:) :: outdtransp ! daily transpiration [mm]
 
   ! annual
-  real, dimension(:,:), allocatable :: outagpp
-  ! real, dimension(:,:), allocatable :: outavcmax        ! canopy-level caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
-  real, dimension(:,:), allocatable :: outavcmax25     ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
+  real, dimension(:), allocatable :: outagpp
+  real, dimension(:), allocatable :: outavcmax25     ! canopy-level normalised caboxylation capacity at annual maximum [mol CO2 m-2 s-1]
   ! real, dimension(:,:), allocatable :: outavcmax_leaf   ! leaf-level maximum caboxylation capacity, annual mean of daily values, weighted by daily assimilation rate [mol CO2 m-2 s-1]
   ! real, dimension(:,:), allocatable :: outalue          ! light use efficiency, mean across growing season, weighted by daily GPP
   ! real, dimension(:,:), allocatable :: outachi          ! ratio leaf-internal to ambient CO2 partial pressure, mean across growing season, weighted by daily GPP
@@ -206,7 +205,7 @@ contains
     real, save :: vpd_memory
     real, save :: temp_memory
     real, save :: patm_memory
-    real, save :: iabs_memory
+    real, save :: ppfd_memory
 
     ! xxx test
     real :: a_c, a_j, a_returned, fact_jmaxlim
@@ -220,14 +219,14 @@ contains
       temp_memory = climate%dtemp
       vpd_memory  = climate%dvpd
       patm_memory = climate%dpatm
-      iabs_memory = climate%dppfd
+      ppfd_memory = climate%dppfd
     end if 
 
     co2_memory  = dampen_variability( co2,           params_gpp%tau_acclim, co2_memory )
     temp_memory = dampen_variability( climate%dtemp, params_gpp%tau_acclim, temp_memory )
     vpd_memory  = dampen_variability( climate%dvpd,  params_gpp%tau_acclim, vpd_memory )
     patm_memory = dampen_variability( climate%dpatm, params_gpp%tau_acclim, patm_memory )
-    iabs_memory = dampen_variability( climate%dppfd, params_gpp%tau_acclim, patm_memory )
+    ppfd_memory = dampen_variability( climate%dppfd, params_gpp%tau_acclim, ppfd_memory )
 
     tk = climate%dtemp + kTkelvin
 
@@ -239,20 +238,22 @@ contains
       if (tile(lu)%plant(pft)%fpc_grid > 0.0 .and. &      ! PFT is present
           tile_fluxes(1)%canopy%dayl > 0.0 .and.   &      ! no arctic night
           climate%dtemp > -5.0) then                      ! daily mean temperature above minus 5 deg C
-        
-        ! PFT is present 
-        out_pmodel = pmodel( &
-                            kphio          = params_pft_gpp(pft)%kphio, &
-                            fapar          = tile(1)%canopy%fapar, &
-                            ppfd           = climate%dppfd, &
-                            co2            = co2_memory, &
-                            tc             = temp_memory, &
-                            vpd            = vpd_memory, &
-                            patm           = patm_memory, &
-                            c4             = params_pft_plant(pft)%c4, &
-                            method_optci   = "prentice14", &
-                            method_jmaxlim = "wang17" &
-                            )
+
+        !----------------------------------------------------------------
+        ! With fAPAR = 1.0 (full light) for simulating Vcmax25
+        !----------------------------------------------------------------
+        out_pmodel = pmodel(  &
+                              kphio          = params_pft_gpp(pft)%kphio, &
+                              fapar          = 1.0, &
+                              ppfd           = ppfd_memory, &
+                              co2            = co2_memory, &
+                              tc             = temp_memory, &
+                              vpd            = vpd_memory, &
+                              patm           = patm_memory, &
+                              c4             = params_pft_plant(pft)%c4, &
+                              method_optci   = "prentice14", &
+                              method_jmaxlim = "wang17" &
+                              )
 
       else
 
@@ -263,6 +264,8 @@ contains
 
       ! simple:
       lu = 1
+
+      print*,'tile(lu)%plant(pft)%fpc_grid ', tile(lu)%plant(pft)%fpc_grid
 
       ! !----------------------------------------------------------------
       ! ! xxx try:
@@ -293,122 +296,18 @@ contains
       !----------------------------------------------------------------
       ! GPP
       !----------------------------------------------------------------
-      ! tile_fluxes(lu)%canopy%dgpp = iabs * out_pmodel%lue * ftemp_kphio * soilmstress
       tile_fluxes(lu)%plant(pft)%dgpp = iabs * out_pmodel%lue * ftemp_kphio * soilmstress
 
       !----------------------------------------------------------------
       ! Dark respiration
       !----------------------------------------------------------------
-      ! tile_fluxes(lu)%canopy%drd = iabs * out_pmodel%rd_unitiabs * ftemp_kphio * soilmstress * c_molmass
       tile_fluxes(lu)%plant(pft)%drd = iabs * out_pmodel%rd_unitiabs * ftemp_kphio * soilmstress * c_molmass
 
       !----------------------------------------------------------------
       ! Vcmax25
       !----------------------------------------------------------------
-      !Here we may consider Vcmax25 >0, otherwise it will cause FPE in nuptake
-      !if (out_pmodel%vcmax25 > 0.0) then
       tile(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
-      !end if
 
-      ! !----------------------------------------------------------------
-      ! ! CALCULATE PREDICTED GPP FROM P-model output
-      ! ! using instantaneous (daily) LAI, PPFD, Cramer-Prentice-alpha
-      ! !----------------------------------------------------------------
-      ! do pft=1,npft
-
-      !   print*,'params_pft_plant(pft)%lu_category ', params_pft_plant(pft)%lu_category
-      !   print*,'tile(lu)%plant(pft)%fpc_grid', tile(lu)%plant(pft)%fpc_grid
-      !   print*,'tile_fluxes(lu)%canopy%dayl', tile_fluxes(lu)%canopy%dayl
-      !   print*,'climate%dtemp', climate%dtemp
-
-      !   ! land use category (gridcell tile)
-      !   lu = params_pft_plant(pft)%lu_category
-      !     !----------------------------------------------------------------
-      !     ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
-      !     !----------------------------------------------------------------
-      !     print*,'tile(lu)%soil%phy%wscal ', tile(lu)%soil%phy%wscal
-      !     print*,'params_pft_plant(pft)%grass ', params_pft_plant(pft)%grass
-      !     print*,'do_soilmstress ', do_soilmstress
-      !     if (do_soilmstress) then
-      !       ! soilmstress = calc_soilmstress( tile(lu)%soil%phy%wscal, 0.0, params_pft_plant(pft)%grass )
-      !       soilmstress = 1.0
-      !     else
-      !       soilmstress = 1.0
-      !     end if
-
-      !     !----------------------------------------------------------------
-      !     ! Include instantaneous temperature effect on quantum yield efficiency
-      !     !----------------------------------------------------------------
-      !     if (do_tempstress) then
-      !       ftemp_kphio = calc_ftemp_kphio( climate%dtemp )
-      !     else
-      !       ftemp_kphio = 1.0
-      !     end if
-
-      !     ! GPP
-      !     tile_fluxes(lu)%canopy%dgpp = calc_dgpp( tile(lu)%canopy%fapar, tile(lu)%plant(pft)%fpc_grid, climate%dppfd, out_pmodel%lue, ftemp_kphio, soilmstress )
-
-      !     !----------------------------------------------------------------
-      !     ! xxx test
-      !     !----------------------------------------------------------------
-      !     ! light-limited assimilation rate
-      !     fact_jmaxlim = 1.0 / sqrt(1.0 + (4.0 * params_pft_gpp(pft)%kphio * dfapar * dppfd / out_pmodel%jmax)**2)
-      !     a_j = params_pft_gpp(pft)%kphio * dfapar * dppfd * (out_pmodel%ci - out_pmodel%gammastar)/(out_pmodel%ci + 2 * out_pmodel%gammastar) * fact_jmaxlim
-
-      !     ! Rubisco-limited assimilation rate
-      !     a_c = out_pmodel%vcmax * (out_pmodel%ci - out_pmodel%gammastar)/(out_pmodel%ci + out_pmodel%kmm)
-
-      !     ! output from pmodel()
-      !     a_returned = out_pmodel%gpp / c_molmass
-
-      !     print*,'a_j, a_c, a_returned, dgpp : ', a_j, a_c, a_returned, dgpp / c_molmass
-      !     !----------------------------------------------------------------
-
-      !     ! transpiration
-      !     ! dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, ftemp_kphio, soilmstress )
-      !     dtransp(pft) = calc_dtransp( dfapar, plant(pft)%acrown, dppfd, out_pmodel%transp_unitiabs, climate%dtemp )
-
-      !     !----------------------------------------------------------------
-      !     ! Dark respiration
-      !     !----------------------------------------------------------------
-      !     tile_fluxes(lu)%canopy%drd = calc_drd( vegcover%dfapar, tile(lu)%plant(pft)%fpc_grid, climate%dppfd, out_pmodel%rd_unitiabs, ftemp_kphio, soilmstress )
-
-      !     !----------------------------------------------------------------
-      !     ! Leaf-level assimilation rate
-      !     !----------------------------------------------------------------
-      !     tile_fluxes(lu)%canopy%assim = calc_dassim( tile_fluxes(lu)%canopy%dgpp, tile_fluxes(lu)%canopy%dayl )
-
-      !     ! !----------------------------------------------------------------
-      !     ! ! stomatal conductance
-      !     ! !----------------------------------------------------------------
-      !     ! print*,'3'
-      !     ! tile_fluxes(lu)%canopy%dgs = calc_dgs( dassim(pft), climate%dvpd, out_pmodel%ca, out_pmodel%gammastar, out_pmodel%xi )
-
-      !     ! ! print*,'set-point gs:' dassim * dgs_unitiabs
-
-      !     ! !----------------------------------------------------------------
-      !     ! ! canopy conductance
-      !     ! !----------------------------------------------------------------
-      !     ! print*,'4'
-      !     ! tile(lu)%canopy%dgc = calc_g_canopy( tile_fluxes(lu)%canopy%dgs, tile(lu)%canopy%lai, tk )
-
-      !     ! print*,'dgs per unit day (not second) - should be equal to what gpp/(ca-ci) in pmodel(): ', dgs_unitiabs * gpp / c_molmass
-      !     ! stop
-
-      !     ! ! Canopy-level Vcmax (actually changes only monthly)
-      !     ! dvcmax_canop(pft) = calc_vcmax_canop( dfapar, out_pmodel%vcmax_unitiabs, meanmppfd )
-
-      !     ! ! Leaf-level Vcmax
-      !     ! dvcmax_leaf(pft) = out_pmodel%vcmax_unitiabs * meanmppfd
-
-      !   else  
-
-      !     tile_fluxes(lu)%canopy%dgpp = 0.0
-      !     tile_fluxes(lu)%canopy%drd  = 0.0
-
-      !   end if 
-
-      ! end do
     end do pftloop
 
   end subroutine gpp
@@ -1935,20 +1834,23 @@ contains
     if (interface%params_siml%loutgpp) then
 
       if (interface%steering%init) then
-        allocate( outagpp       (npft,ngridcells) )
-        ! allocate( outavcmax     (npft,ngridcells) )
-        allocate( outavcmax25  (npft,ngridcells) )
-        ! allocate( outavcmax_leaf(npft,ngridcells) )
-        ! allocate( outalue       (npft,ngridcells) )
-        ! allocate( outachi       (npft,ngridcells) )
-        ! allocate( outaci        (npft,ngridcells) )
-        ! allocate( outags        (npft,ngridcells) )
-        ! allocate( outaiwue      (npft,ngridcells) )
+
+        allocate( outagpp      (ngridcells) )
+        allocate( outavcmax25  (ngridcells) )
+
+        ! allocate( outavcmax     (ngridcells) )
+        ! allocate( outavcmax_leaf(ngridcells) )
+        ! allocate( outalue       (ngridcells) )
+        ! allocate( outachi       (ngridcells) )
+        ! allocate( outaci        (ngridcells) )
+        ! allocate( outags        (ngridcells) )
+        ! allocate( outaiwue      (ngridcells) )
       end if
 
-      outagpp(:,:)        = 0.0
+      outagpp(:)     = 0.0
+      outavcmax25(:) = 0.0
+
       ! outavcmax(:,:)      = 0.0
-      outavcmax25(:,:)   = 0.0
       ! outavcmax_leaf(:,:) = 0.0
       ! outachi(:,:)        = 0.0
       ! outaiwue(:,:)       = 0.0
@@ -2001,30 +1903,32 @@ contains
 
     ! annual GPP is already part of the tile-plant structure, no need to sum it up here, is directly calculated in 'getout_annual_gpp'
 
-    ! weighted by daily GPP
+    ! Annual mean weighted by daily GPP, aggregated across PFTs
     if (interface%params_siml%loutgpp) then
 
-      outavcmax25(:,jpngr) = outavcmax25(:,jpngr) + tile(lu)%plant(:)%vcmax25 * tile(lu)%plant(:)%dgpp
+      outavcmax25(jpngr) = outavcmax25(jpngr) + tile(lu)%plant(:)%vcmax25 * tile(lu)%plant(:)%dgpp xxxxx
 
-      outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * tile_fluxes(:)%canopy%dgpp
-      outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * tile_fluxes(:)%canopy%dgpp
-      outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * tile_fluxes(:)%canopy%dgpp
-      outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * tile_fluxes(:)%canopy%dgpp
-      outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * tile_fluxes(:)%canopy%dgpp
+      ! outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * tile_fluxes(:)%canopy%dgpp
+      ! outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * tile_fluxes(:)%canopy%dgpp
+      ! outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * tile_fluxes(:)%canopy%dgpp
+      ! outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * tile_fluxes(:)%canopy%dgpp
+      ! outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * tile_fluxes(:)%canopy%dgpp
 
       if (doy==ndayyear) then
         if (sum(outagpp(:,jpngr))==0.0) then
-          outachi       (:,jpngr) = dummy
-          outaiwue      (:,jpngr) = dummy
-          outaci        (:,jpngr) = dummy
-          outags        (:,jpngr) = dummy
-          outavcmax_leaf(:,jpngr) = dummy
+          outavcmax25   (:,jpngr) = dummy
+          ! outachi       (:,jpngr) = dummy
+          ! outaiwue      (:,jpngr) = dummy
+          ! outaci        (:,jpngr) = dummy
+          ! outags        (:,jpngr) = dummy
+          ! outavcmax_leaf(:,jpngr) = dummy
         else
-          outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
-          outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
-          outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
-          outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
-          outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
+          outavcmax25   (:,jpngr) = outavcmax25   (:,jpngr) / outagpp(:,jpngr)
+          ! outachi       (:,jpngr) = outachi       (:,jpngr) / outagpp(:,jpngr)
+          ! outaiwue      (:,jpngr) = outaiwue      (:,jpngr) / outagpp(:,jpngr)
+          ! outaci        (:,jpngr) = outaci        (:,jpngr) / outagpp(:,jpngr)
+          ! outags        (:,jpngr) = outags        (:,jpngr) / outagpp(:,jpngr)
+          ! outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) / outagpp(:,jpngr)
         end if
       end if
 
@@ -2054,13 +1958,14 @@ contains
     ! outanrlarea(jpngr) = anrlarea
     if (interface%params_siml%loutgpp) then
 
-      outagpp(:,jpngr) = tile_fluxes(:)%canopy%agpp
+      outagpp(jpngr) = sum( tile_fluxes(:)%canopy%agpp )
 
-      ! xxx to do: get vcmax at annual maximum (of monthly values)
-      do pft=1,npft
-        outavcmax(pft,jpngr)    = maxval(outdvcmax(pft,:))
-        outavcmax25(pft,jpngr) = maxval(outdvcmax25(pft,:))
-      end do
+      ! ! xxx to do: get vcmax at annual maximum (of monthly values)
+      ! do pft=1,npft
+      !   outavcmax(pft,jpngr)   = maxval(outdvcmax(pft,:))
+      !   outavcmax25(pft,jpngr) = maxval(outdvcmax25(pft,:))
+      ! end do
+
     end if
 
   end subroutine getout_annual_gpp
@@ -2080,7 +1985,7 @@ contains
     
     if ( .not. interface%steering%spinup ) then
       !-------------------------------------------------------------------------
-      ! Annual GPP
+      ! Annual GPP by PFT
       !-------------------------------------------------------------------------
       if (interface%params_siml%loutgpp) print*,'writing ', trim(ncoutfilnam_agpp), '...'
       if (interface%params_siml%loutgpp) call write_nc_2D( trim(ncoutfilnam_agpp), &
@@ -2093,6 +1998,23 @@ contains
                                                               interface%grid(:)%dogridcell, &
                                                               sum( outagpp(:,:), dim=1 ) &
                                                               )
+
+
+      !-------------------------------------------------------------------------
+      ! Annual mean Vcmax25
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutgpp) print*,'writing ', trim(ncoutfilnam_agpp), '...'
+      if (interface%params_siml%loutgpp) call write_nc_2D( trim(ncoutfilnam_agpp), &
+                                                              VCMAX25_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              sum( outavcmax25(:,:), dim=1 ) &
+                                                              )
+
 
       if (       interface%steering%outyear>=interface%params_siml%daily_out_startyr &
            .and. interface%steering%outyear<=interface%params_siml%daily_out_endyr ) then
