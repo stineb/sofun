@@ -264,7 +264,7 @@ contains
       ! simple:
       lu = 1
 
-      print*,'tile(lu)%plant(pft)%fpc_grid ', tile(lu)%plant(pft)%fpc_grid
+      !print*,'tile(lu)%plant(pft)%fpc_grid ', tile(lu)%plant(pft)%fpc_grid
 
       ! !----------------------------------------------------------------
       ! ! xxx try:
@@ -306,7 +306,7 @@ contains
       ! Vcmax25
       !----------------------------------------------------------------
       tile(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
-
+      !print*,'tile(lu)%plant(pft)%vcmax25        ', tile(lu)%plant(pft)%vcmax25
     end do pftloop
 
   end subroutine gpp
@@ -827,8 +827,8 @@ contains
           vcmax25 = iabs * vcmax25_unitiabs  ! = factor25_vcmax * vcmax
 
           ! ! XXX PMODEL_TEST: ok
-          ! print*, 'vcmax25 ', vcmax25
-
+          !print*, 'vcmax25 ', vcmax25
+          !print*, 'vcmax25 ', vcmax25_unitiabs
           ! Dark respiration
           rd = iabs * rd_unitiabs ! = rd_to_vcmax * vcmax
 
@@ -1957,8 +1957,8 @@ contains
       !-------------------------------------------------------------------------
       ! Annual mean Vcmax25
       !-------------------------------------------------------------------------
-      if (interface%params_siml%loutgpp) print*,'writing ', trim(ncoutfilnam_agpp), '...'
-      if (interface%params_siml%loutgpp) call write_nc_2D( trim(ncoutfilnam_agpp), &
+      if (interface%params_siml%loutgpp) print*,'writing ', trim(ncoutfilnam_avcmax25), '...'
+      if (interface%params_siml%loutgpp) call write_nc_2D( trim(ncoutfilnam_avcmax25), &
                                                               VCMAX25_NAME, &
                                                               interface%domaininfo%maxgrid, &
                                                               interface%domaininfo%nlon, &
