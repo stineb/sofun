@@ -55,8 +55,9 @@ module md_plant
     real :: fapar_ind           ! fraction of absorbed photosynthetically active radiation
     real :: acrown              ! crown area
 
-    ! leaf traits
-    real :: vcmax25             ! canopy-level Vcmax25 (Vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
+    ! leaf traits taken from last year's annual values (required for allocation)
+    real :: vcmax25             ! Vcmax25 (Vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
+    
     real :: jmax25              ! total leaf N per unit leaf area (gN m-2)
     real :: narea               ! total leaf N per unit leaf area (gN m-2)
     real :: narea_metabolic     ! metabolic leaf N per unit leaf area (gN m-2)
@@ -81,9 +82,11 @@ module md_plant
     real :: assim    ! daily assimilation (mol CO2 m-2 s-1)
     real :: dtransp  ! daily transpiration [mm]
     real :: dlatenth ! daily latent heat flux [J m-2 d-1]
+    real :: vcmax25  ! daily varying Vcmax25 (Vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
 
     ! annual variables
     real :: agpp     ! daily gross primary production [gC/m2/yr]           
+    real :: avcmax25 ! annual Vcmax, normalised to 25 deg C, now taken as the annual maximum 
 
   end type plant_fluxes_type
 

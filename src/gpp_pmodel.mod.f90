@@ -236,8 +236,7 @@ contains
       ! acclimated to slowly varying conditions
       !----------------------------------------------------------------
       if (tile(lu)%plant(pft)%fpc_grid > 0.0 .and. &      ! PFT is present
-          tile_fluxes(1)%canopy%dayl > 0.0 .and.   &      ! no arctic night
-          climate%dtemp > -5.0) then                      ! daily mean temperature above minus 5 deg C
+          tile_fluxes(1)%canopy%dayl > 0.0) then          ! no arctic night
 
         !----------------------------------------------------------------
         ! With fAPAR = 1.0 (full light) for simulating Vcmax25
@@ -1750,8 +1749,8 @@ contains
                           outdt    = 365, &
                           outnt    = 1, &
                           varnam   = VCMAX25_NAME, &
-                          varunits = "gC m-2 yr-1", &
-                          longnam  = "Maximum rate of carboxylation capacity, normalised to 25 deg C, annual mean weighted by daily GPP.", &
+                          varunits = "mol CO2 m-2 s-1", &
+                          longnam  = "Maximum rate of carboxylation capacity, normalised to 25 deg C, annual maximum of daily values.", &
                           title    = TITLE, &
                           globatt1_nam = "fapar_source",         globatt1_val = interface%params_siml%fapar_forcing_source, &
                           globatt2_nam = "param_beta",           globatt2_val = beta_char, &
@@ -1822,11 +1821,11 @@ contains
     integer, intent(in) :: ngridcells
 
     ! daily
-    if (interface%steering%init .and. interface%params_siml%loutdgpp    ) allocate( outdgpp(interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init .and. interface%params_siml%loutdrd    )  allocate( outdrd(interface%params_siml%outnt,ngridcells) )
-    if (interface%steering%init .and. interface%params_siml%loutdtransp)  allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init .and. interface%params_siml%loutdgpp   ) allocate( outdgpp   (interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init .and. interface%params_siml%loutdrd    ) allocate( outdrd    (interface%params_siml%outnt,ngridcells) )
+    if (interface%steering%init .and. interface%params_siml%loutdtransp) allocate( outdtransp(interface%params_siml%outnt,ngridcells) )
 
-    if (interface%params_siml%loutdgpp )   outdgpp(:,:)    = 0.0
+    if (interface%params_siml%loutdgpp   ) outdgpp(:,:)    = 0.0
     if (interface%params_siml%loutdrd    ) outdrd(:,:)     = 0.0
     if (interface%params_siml%loutdtransp) outdtransp(:,:) = 0.0
 
@@ -1835,8 +1834,8 @@ contains
 
       if (interface%steering%init) then
 
-        allocate( outagpp      (ngridcells) )
-        allocate( outavcmax25  (ngridcells) )
+        allocate( outagpp    (ngridcells) )
+        allocate( outavcmax25(ngridcells) )
 
         ! allocate( outavcmax     (ngridcells) )
         ! allocate( outavcmax_leaf(ngridcells) )
@@ -1895,50 +1894,6 @@ contains
     if (interface%params_siml%loutdrd    ) outdrd(it,jpngr)     = outdrd(it,jpngr)     + tile_fluxes(1)%canopy%drd     / real( interface%params_siml%outdt )   ! take canopy-level quantity for output
     if (interface%params_siml%loutdtransp) outdtransp(it,jpngr) = outdtransp(it,jpngr) + tile_fluxes(1)%canopy%dtransp / real( interface%params_siml%outdt )   ! take canopy-level quantity for output
 
-    !----------------------------------------------------------------
-    ! ANNUAL SUM OVER DAILY VALUES
-    ! Collect annual output variables
-    !----------------------------------------------------------------
-    ! store all daily values for outputting annual maximum or mean or whatever
-    if (npft>1) stop 'getout_daily_gpp not implemented for npft>1'
-
-    ! annual GPP is already part of the tile-plant structure, no need to sum it up here, is directly calculated in 'getout_annual_gpp'
-
-    ! Annual mean weighted by daily GPP, aggregated across PFTs
-    if (interface%params_siml%loutgpp) then
-
-      outavcmax25(jpngr) = outavcmax25(jpngr) + sum( tile(lu)%plant(:)%vcmax25 * tile_fluxes(lu)%plant(:)%dgpp )   ! dgpp is already weighted by fpc_grid
-
-      ! outachi       (:,jpngr) = outachi       (:,jpngr) + out_pmodel(1)%chi  * tile_fluxes(:)%canopy%dgpp
-      ! outaci        (:,jpngr) = outaci        (:,jpngr) + out_pmodel(1)%ci   * tile_fluxes(:)%canopy%dgpp
-      ! outags        (:,jpngr) = outags        (:,jpngr) + dgs(:)             * tile_fluxes(:)%canopy%dgpp
-      ! outavcmax_leaf(:,jpngr) = outavcmax_leaf(:,jpngr) + dvcmax_leaf(1)     * tile_fluxes(:)%canopy%dgpp
-      ! outaiwue      (:,jpngr) = outaiwue      (:,jpngr) + out_pmodel(1)%iwue * tile_fluxes(:)%canopy%dgpp
-
-      if (doy==ndayyear) then
-        if (outagpp(jpngr)==0.0) then
-          
-          outavcmax25(jpngr) = dummy
-
-          ! outachi       (jpngr) = dummy
-          ! outaiwue      (jpngr) = dummy
-          ! outaci        (jpngr) = dummy
-          ! outags        (jpngr) = dummy
-          ! outavcmax_leaf(jpngr) = dummy
-        else
-          
-          outavcmax25(jpngr) = outavcmax25(jpngr) / outagpp(jpngr)
-
-          ! outachi       (jpngr) = outachi       (jpngr) / outagpp(jpngr)
-          ! outaiwue      (jpngr) = outaiwue      (jpngr) / outagpp(jpngr)
-          ! outaci        (jpngr) = outaci        (jpngr) / outagpp(jpngr)
-          ! outags        (jpngr) = outags        (jpngr) / outagpp(jpngr)
-          ! outavcmax_leaf(jpngr) = outavcmax_leaf(jpngr) / outagpp(jpngr)
-        end if
-      end if
-
-    end if
-
   end subroutine getout_daily_gpp
 
 
@@ -1962,14 +1917,8 @@ contains
 
     if (interface%params_siml%loutgpp) then
 
-      ! 'tile_fluxes(:)%canopy%agpp' is already area-weighted by 'fpc_grid'
-      outagpp(jpngr) = sum( tile_fluxes(:)%canopy%agpp )
-
-      ! ! xxx to do: get vcmax at annual maximum (of monthly values)
-      ! do pft=1,npft
-      !   outavcmax(pft,jpngr)   = maxval(outdvcmax(pft,:))
-      !   outavcmax25(pft,jpngr) = maxval(outdvcmax25(pft,:))
-      ! end do
+      outagpp(jpngr)     = tile_fluxes(1)%canopy%agpp     ! take only LU = 1
+      outavcmax25(jpngr) = tile_fluxes(1)%canopy%avcmax25 ! take only LU = 1
 
     end if
 

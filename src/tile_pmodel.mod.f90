@@ -11,7 +11,7 @@ module md_tile
   private
   public tile_type, tile_fluxes_type, initglobal_tile, psoilphystype, &
     soil_type, initdaily_tile_fluxes, params_canopy, getpar_modl_canopy, &
-    getpar_modl_tile, diag_daily, init_annual
+    getpar_modl_tile, diag_daily, diag_annual, init_annual
 
   !----------------------------------------------------------------
   ! physical soil state variables with memory from year to year (~pools)
@@ -103,6 +103,7 @@ module md_tile
     real :: dgpp
     real :: drd
     real :: assim             ! leaf-level assimilation rate
+    real :: vcmax25           ! daily varying Vcmax, normalised to 25 deg C
 
     ! radiation
     real :: ppfd_splash
@@ -113,6 +114,7 @@ module md_tile
     !----------------------------------------------------------------
     ! carbon 
     real :: agpp
+    real :: avcmax25          ! annual Vcmax, normalised to 25 deg C, now taken as the annual maximum 
 
     ! real, dimension(ndayyear) :: dayl               ! day length (hours)
     ! real, dimension(ndayyear) :: dra                ! daily TOA solar irradiation (J/m2)
@@ -334,23 +336,28 @@ contains
     integer :: pft
 
     ! canopy-level
-    tile_fluxes(:)%canopy%agpp = 0.0
+    tile_fluxes(:)%canopy%agpp     = 0.0
+    tile_fluxes(:)%canopy%avcmax25 = 0.0
 
     ! pft-level
     do pft = 1,npft
-      tile_fluxes(:)%plant(pft)%agpp = 0.0
+      tile_fluxes(:)%plant(pft)%agpp     = 0.0
+      tile_fluxes(:)%plant(pft)%avcmax25 = 0.0
     end do
 
   end subroutine init_annual
 
 
-  subroutine diag_daily( tile_fluxes )
+  subroutine diag_daily( tile, tile_fluxes )
     !////////////////////////////////////////////////////////////////
     ! Daily diagnostics
     ! - sum over PFTs (plant) within LU (canopy) 
     ! - iterative sum over days
     !----------------------------------------------------------------
+    use md_params_core, only: eps
+
     ! arguments
+    type(tile_type), intent(in) :: tile
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
 
     ! local
@@ -359,22 +366,53 @@ contains
     !----------------------------------------------------------------
     ! Sum over PFTs to get canopy-level quantities
     !----------------------------------------------------------------
+    if (abs(sum(tile(lu)%plant(:)%fpc_grid)) > eps) stop 'diag_daily: PFT-sum over fpc_grid should be 1.0 but is not.'
+
     do lu=1,nlu
-      tile_fluxes(lu)%canopy%dgpp = sum(tile_fluxes(lu)%plant(:)%dgpp)
-      tile_fluxes(lu)%canopy%drd  = sum(tile_fluxes(lu)%plant(:)%drd)
+      tile_fluxes(lu)%canopy%dgpp    = sum(tile_fluxes(lu)%plant(:)%dgpp)
+      tile_fluxes(lu)%canopy%drd     = sum(tile_fluxes(lu)%plant(:)%drd)
+      tile_fluxes(lu)%canopy%vcmax25 = sum(tile_fluxes(lu)%plant(:)%vcmax25 * tile(lu)%plant(:)%fpc_grid)      ! is not yet weighted by fpc_grid
     end do
 
     !----------------------------------------------------------------
-    ! Incrementally add daily to annual variables
+    ! Annual variables
     !----------------------------------------------------------------
     ! canopy-level
-    tile_fluxes(:)%canopy%agpp = tile_fluxes(:)%canopy%agpp + tile_fluxes(:)%canopy%dgpp 
+    tile_fluxes(:)%canopy%agpp = tile_fluxes(:)%canopy%agpp + tile_fluxes(:)%canopy%dgpp    ! annual sum
+    if (tile_fluxes(:)%canopy%vcmax25 > tile_fluxes(:)%canopy%avcmax25) tile_fluxes(:)%canopy%avcmax25 = tile_fluxes(:)%canopy%vcmax25   ! annual maximum
 
     ! pft-level
     do pft = 1,npft
-      tile_fluxes(:)%plant(pft)%agpp = tile_fluxes(:)%plant(pft)%agpp + tile_fluxes(:)%plant(pft)%dgpp 
+      tile_fluxes(:)%plant(pft)%agpp = tile_fluxes(:)%plant(pft)%agpp + tile_fluxes(:)%plant(pft)%dgpp    ! annual sum
+      if (tile_fluxes(lu)%plant(pft)%vcmax25 > tile_fluxes(lu)%plant(pft)%avcmax25) tile_fluxes(lu)%plant(pft)%avcmax25 = tile_fluxes(lu)%plant(pft)%vcmax25  ! annual maximum
     end do
 
-  end subroutine diag_daily  
+  end subroutine diag_daily
+
+
+  subroutine diag_annual( tile, tile_fluxes )
+    !////////////////////////////////////////////////////////////////
+    ! Daily diagnostics
+    ! - sum over PFTs (plant) within LU (canopy) 
+    ! - iterative sum over days
+    !----------------------------------------------------------------
+    use md_params_core, only: eps
+
+    ! arguments
+    type(tile_type), intent(inout) :: tile
+    type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
+
+    ! local
+    integer :: lu, pft
+
+    !----------------------------------------------------------------
+    ! Store plant traits required for next year's allocation
+    !----------------------------------------------------------------
+    ! pft-level
+    do pft = 1,npft
+      tile(:)%plant(pft)%vcmax25 = tile_fluxes(:)%plant(pft)%avcmax25
+    end do
+
+  end subroutine diag_annual
 
 end module md_tile

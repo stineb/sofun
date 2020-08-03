@@ -7,7 +7,7 @@ module md_biosphere
   use md_waterbal, only: waterbal, solar, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, initio_nc_waterbal, writeout_nc_waterbal !, get_rlm_waterbal, getrlm_daily_waterbal  ! , init_rlm_waterbal
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initoutput_gpp, gpp, getout_daily_gpp, getout_annual_gpp, initio_nc_gpp, writeout_nc_gpp
   use md_vegdynamics, only: vegdynamics
-  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile_fluxes, getpar_modl_tile, diag_daily, init_annual
+  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile_fluxes, getpar_modl_tile, diag_daily, diag_annual, init_annual
   use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_nc_forcing, writeout_nc_forcing
   use md_soiltemp, only: getout_daily_soiltemp, soiltemp, initoutput_soiltemp
   use md_nuptake_impl, only: nuptake_impl, get_preds_nimpl, getpar_nimpl, initio_nc_nimpl, initoutput_nimpl, getout_annual_nimpl, writeout_nc_nimpl
@@ -213,7 +213,7 @@ contains
             !----------------------------------------------------------------
             ! daily diagnostics (sum over plant within canopy, iterative sum over days)
             !----------------------------------------------------------------
-            call diag_daily( tile_fluxes(:) )
+            call diag_daily( tile(:,jpngr), tile_fluxes(:) )
 
             ! !----------------------------------------------------------------
             ! ! calculate soil temperature
@@ -260,6 +260,11 @@ contains
           end do dayloop
 
         end do monthloop
+
+        !----------------------------------------------------------------
+        ! annual diagnostics
+        !----------------------------------------------------------------
+        call diag_annual( tile(:,jpngr), tile_fluxes(:) )
 
         !----------------------------------------------------------------
         ! Statistical relationships with GPP to get N uptake
