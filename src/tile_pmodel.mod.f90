@@ -357,7 +357,7 @@ contains
     use md_params_core, only: eps
 
     ! arguments
-    type(tile_type), intent(in) :: tile
+    type(tile_type), dimension(nlu), intent(in) :: tile
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
 
     ! local
@@ -379,12 +379,16 @@ contains
     !----------------------------------------------------------------
     ! canopy-level
     tile_fluxes(:)%canopy%agpp = tile_fluxes(:)%canopy%agpp + tile_fluxes(:)%canopy%dgpp    ! annual sum
-    if (tile_fluxes(:)%canopy%vcmax25 > tile_fluxes(:)%canopy%avcmax25) tile_fluxes(:)%canopy%avcmax25 = tile_fluxes(:)%canopy%vcmax25   ! annual maximum
-
+    do lu = 1,nlu
+      if (tile_fluxes(lu)%canopy%vcmax25 > tile_fluxes(lu)%canopy%avcmax25) tile_fluxes(lu)%canopy%avcmax25 = tile_fluxes(lu)%canopy%vcmax25   ! annual maximum
+    end do
+      
     ! pft-level
-    do pft = 1,npft
-      tile_fluxes(:)%plant(pft)%agpp = tile_fluxes(:)%plant(pft)%agpp + tile_fluxes(:)%plant(pft)%dgpp    ! annual sum
-      if (tile_fluxes(lu)%plant(pft)%vcmax25 > tile_fluxes(lu)%plant(pft)%avcmax25) tile_fluxes(lu)%plant(pft)%avcmax25 = tile_fluxes(lu)%plant(pft)%vcmax25  ! annual maximum
+    do lu = 1,nlu
+      do pft = 1,npft
+        tile_fluxes(lu)%plant(pft)%agpp = tile_fluxes(lu)%plant(pft)%agpp + tile_fluxes(lu)%plant(pft)%dgpp    ! annual sum
+        if (tile_fluxes(lu)%plant(pft)%vcmax25 > tile_fluxes(lu)%plant(pft)%avcmax25) tile_fluxes(lu)%plant(pft)%avcmax25 = tile_fluxes(lu)%plant(pft)%vcmax25  ! annual maximum
+      end do
     end do
 
   end subroutine diag_daily
@@ -399,7 +403,7 @@ contains
     use md_params_core, only: eps
 
     ! arguments
-    type(tile_type), intent(inout) :: tile
+    type(tile_type), dimension(nlu), intent(inout) :: tile
     type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
 
     ! local
