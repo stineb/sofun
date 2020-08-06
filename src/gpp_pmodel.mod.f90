@@ -222,9 +222,9 @@ contains
       ppfd_memory = climate%dppfd
     end if 
 
-    co2_memory  = dampen_variability( co2,           params_gpp%tau_acclim, co2_memory )
+    co2_memory  = dampen_variability( co2,           params_gpp%tau_acclim, co2_memory  )
     temp_memory = dampen_variability( climate%dtemp, params_gpp%tau_acclim, temp_memory )
-    vpd_memory  = dampen_variability( climate%dvpd,  params_gpp%tau_acclim, vpd_memory )
+    vpd_memory  = dampen_variability( climate%dvpd,  params_gpp%tau_acclim, vpd_memory  )
     patm_memory = dampen_variability( climate%dpatm, params_gpp%tau_acclim, patm_memory )
     ppfd_memory = dampen_variability( climate%dppfd, params_gpp%tau_acclim, ppfd_memory )
 
