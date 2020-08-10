@@ -27,6 +27,7 @@ module md_waterbal
   use md_forcing, only: climate_type
   use md_grid, only: gridtype
   use md_interface, only: interface
+  use md_sofunutils
 
   implicit none
 
@@ -175,7 +176,12 @@ contains
       !---------------------------------------------------------
       ! Update soil moisture and snow pack
       !---------------------------------------------------------
-      out_snow_rain = get_snow_rain( climate%dprec + tile_fluxes(lu)%canopy%dcn, climate%dsnow, climate%dtemp, tile(lu)%soil%phy%snow )
+      out_snow_rain = get_snow_rain( &
+        climate%dprec * interface%params_siml%secs_per_tstep + tile_fluxes(lu)%canopy%dcn, &
+        climate%dsnow * interface%params_siml%secs_per_tstep, &
+        climate%dtemp, &
+        tile(lu)%soil%phy%snow &
+        )
       tile(lu)%soil%phy%snow = out_snow_rain%snow_updated 
 
       ! Update soil moisture
@@ -229,7 +235,6 @@ contains
     ! - daily extraterrestrial solar radiation (dra), J/m^2
     ! - daily PPFD (dppfd), mol/m^2
     !-------------------------------------------------------------------------  
-    use md_sofunutils, only: daily2monthly
 
     ! arguments
     type(tile_fluxes_type), dimension(nlu), intent(inout) :: tile_fluxes
@@ -247,8 +252,6 @@ contains
     !---------------------------------------------------------
     ! Berger (1978)
     call get_berger_tls( doy, grid )
-    ! grid%nu     = out_berger%nu
-    ! grid%lambda = out_berger%lambda
 
     !---------------------------------------------------------
     ! 3. Calculate distance factor (dr), unitless
@@ -258,12 +261,12 @@ contains
     !---------------------------------------------------------
     ! 4. Calculate declination angle (delta), degrees
     !---------------------------------------------------------
-    delta = calc_delta( grid%lambda )
+    grid%decl_angle = calc_decl_angle( grid%lambda )
 
     !---------------------------------------------------------
     ! 5. Calculate variable substitutes (ru and rv), unitless
     !---------------------------------------------------------
-    call calc_ru_rv( delta, grid%lat )
+    call calc_ru_rv( grid%decl_angle, grid%lat )
 
     !---------------------------------------------------------
     ! 6. Calculate the sunset hour angle (hs), degrees
@@ -271,9 +274,9 @@ contains
     hs = calc_hs( ru, rv )
 
     !---------------------------------------------------------
-    ! 6.a Calculate day length from sunset hour angle, h
+    ! 6.a Calculate day length from sunset hour angle, seconds
     !---------------------------------------------------------
-    tile_fluxes(:)%canopy%dayl = 24.0 * hs / 180.0  ! hs is in degrees (pi = 180 deg)
+    grid%dayl = 24.0 * 60 * 60 * hs / 180.0  ! hs is in degrees (pi = 180 deg)
 
     !---------------------------------------------------------
     ! 7. Calculate daily extraterrestrial solar radiation (dra), J/m^2/d
@@ -338,7 +341,7 @@ contains
       print*,'true anomaly, nu: ', grid%nu
       print*,'true longitude, lambda: ', grid%lambda
       print*,'distance factor, dr: ', dr
-      print*,'declination, delta: ', delta
+      print*,'declination, grid%decl_angle: ', grid%decl_angle
       print*,'variable substitute, ru: ', ru
       print*,'variable substitute, rv: ', rv
       print*,'daily PPFD: ', tile_fluxes(:)%canopy%ppfd_splash
@@ -352,7 +355,6 @@ contains
     !
     !-------------------------------------------------------------------------  
     use md_params_core, only: ndayyear, pi, dummy
-    use md_sofunutils, only: calc_patm
 
     ! arguments
     type(tile_type), intent(inout)        :: tile
@@ -550,7 +552,7 @@ contains
   end function calc_dr
 
 
-  function calc_delta( lambda ) result( delta )
+  function calc_decl_angle( lambda ) result( delta )
     !---------------------------------------------------------
     ! Calculates declination angle (delta), degrees
     !---------------------------------------------------------
@@ -564,7 +566,7 @@ contains
     delta = asin( dgsin( lambda ) * dgsin( keps ) )   ! xxx use asin with single-precision compilation
     delta = degrees( delta )
 
-  end function calc_delta
+  end function calc_decl_angle
 
 
   subroutine calc_ru_rv( delta, lat )
@@ -634,8 +636,6 @@ contains
     ! Subroutine reads waterbalance module-specific parameters 
     ! from input file
     !----------------------------------------------------------------
-    use md_sofunutils, only: getparreal
-
     print*,'reading waterbal parameters ...'
 
     ! constant for dRnl (Monteith & Unsworth, 1990)
@@ -709,77 +709,6 @@ contains
 
   ! xxx put these functions into a 'contain' within calling SR?
 
-  function dgcos( x ) result( dgcos_out )
-    !----------------------------------------------------------------   
-    ! Calculates the cosine of an angle given in degrees. Equal to 
-    ! 'dsin' in Python version.
-    !----------------------------------------------------------------   
-    use md_params_core, only: pi
-
-    ! arguments
-    real, intent(in) :: x  ! angle, degrees (0-360)
-
-    ! function return value
-    real :: dgcos_out ! cosine value of x when x is in degrees
-
-    !dgcos = dcos(x*pi/180.0)
-    dgcos_out = cos(x*pi/180.0)  ! xxx use cos with single-precision compilation
-
-  end function dgcos
-
-
-  function dgsin( x ) result( dgsin_out )
-    !----------------------------------------------------------------   
-    ! Calculates the sinus of an angle given in degrees. Equal to 
-    ! 'dsin' in Python version.
-    !----------------------------------------------------------------   
-    use md_params_core, only: pi
-
-    ! arguments
-    real, intent(in) :: x  ! angle, degrees (0-360)
-
-    ! function return value
-    real :: dgsin_out ! sinus value of x when x is in degrees
-
-    !dgsin_out = dsin(x*pi/180.0)
-    dgsin_out = sin(x*pi/180.0)   ! xxx use cos with single-precision compilation
-
-  end function dgsin
-
-
-  function degrees( x ) result( degrees_out )
-    !----------------------------------------------------------------   
-    ! Returns corresponding degrees if x is given in radians
-    !----------------------------------------------------------------   
-    use md_params_core, only: pi
-
-    ! arguments
-    real, intent(in) :: x  ! angle, radians
-
-    ! function return value
-    real :: degrees_out
-
-    degrees_out = x*180.0/pi
-
-  end function degrees
-
-
-  function radians( x ) result( radians_out )
-    !----------------------------------------------------------------   
-    ! Returns corresponding radians if x is given in degrees
-    !----------------------------------------------------------------   
-    use md_params_core, only: pi
-
-    ! arguments
-    real, intent(in) :: x  ! angle, radians
-
-    ! function return value
-    real :: radians_out
-
-    radians_out = x*pi/180.0
-
-  end function radians
-
 
   subroutine get_berger_tls( day, grid )
     !----------------------------------------------------------------   
@@ -830,15 +759,15 @@ contains
     ! True longitude:
     grid%lambda = anv + komega
     if (grid%lambda < 0.0) then
-        grid%lambda = grid%lambda + 360.0
+      grid%lambda = grid%lambda + 360.0
     else if (grid%lambda > 360.0) then
-        grid%lambda = grid%lambda - 360.0
+      grid%lambda = grid%lambda - 360.0
     endif
 
     ! True anomaly:
     grid%nu = (grid%lambda - komega)
     if (grid%nu < 0.0) then
-        grid%nu = grid%nu + 360.0
+      grid%nu = grid%nu + 360.0
     endif
 
   end subroutine get_berger_tls

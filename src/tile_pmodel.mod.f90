@@ -107,7 +107,6 @@ module md_tile
 
     ! radiation
     real :: ppfd_splash
-    real :: dayl             ! day length (h)
     real :: dra              ! daily top-of-atmosphere solar radiation (J/m^2/d)
 
     ! annual
@@ -116,7 +115,6 @@ module md_tile
     real :: agpp
     real :: avcmax25          ! annual Vcmax, normalised to 25 deg C, now taken as the annual maximum 
 
-    ! real, dimension(ndayyear) :: dayl               ! day length (hours)
     ! real, dimension(ndayyear) :: dra                ! daily TOA solar irradiation (J/m2)
     ! real, dimension(ndayyear) :: dppfd_splash       ! daily total PPFD (mol m-2 d-1)
     ! real, dimension(nmonth)   :: mppfd_splash       ! monthly total PPFD (mol m-2 month-1)
@@ -270,7 +268,6 @@ contains
     tile_fluxes(:)%canopy%dgpp = 0.0
     tile_fluxes(:)%canopy%drd = 0.0
     tile_fluxes(:)%canopy%ppfd_splash = 0.0
-    tile_fluxes(:)%canopy%dayl = 0.0
     tile_fluxes(:)%canopy%dra = 0.0
     ! tile_fluxes(:)%canopy%nu = 0.0
     ! tile_fluxes(:)%canopy%lambda = 0.0

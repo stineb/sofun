@@ -25,6 +25,7 @@ module md_params_siml
     integer :: daily_out_endyr ! last year where daily output is written
     integer :: outdt           ! output periodicity
     integer :: outnt           ! number of output time steps per year
+    real    :: secs_per_tstep  ! number of seconds per time step (now daily => 60 * 60 * 24)
     
     logical :: do_spinup            ! whether this simulation does spinup 
     logical :: is_calib             ! whether this simulation is a calibration simulation (overriding parameters and no output)
@@ -296,6 +297,9 @@ contains
       out_getpar_siml%runyears = out_getpar_siml%nyeartrend
       out_getpar_siml%spinupyears = 0
     endif
+
+    ! time step in number of seconds
+    out_getpar_siml%secs_per_tstep    = real(getparint( 'run/'//runname//'.sofun.parameter', 'secs_per_tstep' ))
 
     ! activated PFTs
     out_getpar_siml%lTrE = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTrE' )

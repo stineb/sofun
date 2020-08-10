@@ -24,16 +24,16 @@ module md_forcing
     vegcover_type
 
   type climate_type
-    real :: dtemp  ! deg C
-    real :: dprec  ! mm d-1
-    real :: dsnow  ! mm d-1 water equivalents
-    real :: dfsun  ! unitless
-    real :: dvpd   ! Pa
-    real :: dtmin  ! deg C
-    real :: dtmax  ! deg C
-    real :: dppfd  ! mol m-2 d-1
-    real :: dpatm  ! Pa
-    real :: dnetrad! W m-2
+    real :: dtemp    ! deg C
+    real :: dprec    ! mm s-1 (daily mean)
+    real :: dsnow    ! mm s-1 water equivalents (daily mean) 
+    real :: dfsun    ! unitless
+    real :: dvpd     ! Pa
+    real :: dtmin    ! deg C
+    real :: dtmax    ! deg C
+    real :: dppfd    ! mol m-2 s-1 (daily mean)
+    real :: dpatm    ! Pa
+    real :: dnetrad  ! W m-2 (daily mean)
   end type climate_type
 
   type vegcover_type
@@ -968,13 +968,13 @@ contains
             
             ! required input variables
             inout_climate(doy,jpngr)%dtemp = temp_arr(ilon(jpngr),ilat(jpngr),dom) - 273.15  ! conversion from Kelving to Celsius
-            inout_climate(doy,jpngr)%dprec = prec_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
-            inout_climate(doy,jpngr)%dsnow = snow_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0  ! kg/m2/s -> mm/day
+            inout_climate(doy,jpngr)%dprec = prec_arr(ilon(jpngr),ilat(jpngr),dom)           ! mm s-1 = kg m-2 s-1
+            inout_climate(doy,jpngr)%dsnow = snow_arr(ilon(jpngr),ilat(jpngr),dom)           ! mm s-1 = kg m-2 s-1
             inout_climate(doy,jpngr)%dvpd  = calc_vpd( qair_arr(ilon(jpngr),ilat(jpngr),dom), inout_climate(doy,jpngr)%dtemp, inout_climate(doy,jpngr)%dtmin, inout_climate(doy,jpngr)%dtmax, grid(jpngr)%elv )
 
             ! optional input variables
             if (in_ppfd) then
-              inout_climate(doy,jpngr)%dppfd = 1.0e-6 * rswd_arr(ilon(jpngr),ilat(jpngr),dom) * 60.0 * 60.0 * 24.0 * kfFEC ! W m-2 -> mol m-2 d-1
+              inout_climate(doy,jpngr)%dppfd = 1.0e-6 * rswd_arr(ilon(jpngr),ilat(jpngr),dom) * kfFEC ! W m-2 -> mol m-2 s-1
             else
               inout_climate(doy,jpngr)%dppfd = dummy
             end if
