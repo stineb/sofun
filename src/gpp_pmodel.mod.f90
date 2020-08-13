@@ -1918,7 +1918,7 @@ contains
     if (interface%params_siml%loutgpp) then
 
       outagpp(jpngr)     = tile_fluxes(1)%canopy%agpp     ! take only LU = 1
-      outavcmax25(jpngr) = tile_fluxes(1)%canopy%avcmax25 ! take only LU = 1
+      outavcmax25(jpngr) = tile_fluxes(1)%canopy%finalavcmax25 ! take only LU = 1
 
     end if
 
