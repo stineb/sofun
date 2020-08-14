@@ -771,8 +771,12 @@ contains
       jmax25 = 0.0
     else
       fact_jmaxlim = vcmax * (ci + 2.0 * gammastar) / (kphio * ppfd * (ci + kmm))
-      jmax = 4.0 * kphio * ppfd / sqrt( (1.0/fact_jmaxlim)**2 - 1.0 )
-
+      !print*,'fact_jmaxlim       ', fact_jmaxlim
+      if (fact_jmaxlim >= 1 .or. fact_jmaxlim <= 0) then
+        jmax = dummy
+      else
+        jmax = 4.0 * kphio * ppfd / sqrt( (1.0/fact_jmaxlim)**2 - 1.0 )
+      end if
       ! for normalization using temperature response from Duursma et al., 2015, implemented in plantecophys R package
       ftemp_inst_jmax  = calc_ftemp_inst_jmax( tc, tc, tcref = 25.0 )
       jmax25  = jmax  / ftemp_inst_jmax
@@ -1106,7 +1110,25 @@ contains
         ! to follow a sine curve, with daylight hours determined by latitude and month
         ! based on (Jones et al. 2013) as used in Peng et al. (in review)
         !----------------------------------------------------------------
-        rx = -1.0 * tan(grid%lat) * tan(radians(grid%decl_angle))   ! decl: monthly average solar declination XXX how to calculate the declination angle
+        rx = -1.0 * tan(radians(grid%lat)) * tan(radians(grid%decl_angle))   ! decl: monthly average solar declination XXX how to calculate the declination angle
+
+        if (rx < -1) then
+          !print*,'rx       ', rx
+          rx = -1 !some grid data has outlier (-1.01 or -1.02), let's just assume them approximate to -1 so that no FPE
+          !print*,'grid%lat       ', grid%lat
+          !print*,'grid%decl_angle       ', grid%decl_angle
+          !print*,'rx < -1      ', rx
+        !else  
+        end if
+ 
+        if (rx >= 1) then
+          rx = 0.99 !some grid data has outlier (1 or 1.01), let's just assume them approximate to 1 so that no FPE
+          !print*,'grid%lat       ', grid%lat
+          !print*,'grid%decl_angle       ', grid%decl_angle
+          !print*,'rx > 1      ', rx
+        !else  
+        end if
+
         tcgrowth_cru = climate%dtmax * (0.5 + (1.0 - rx**2) / (2.0 * acos(rx))) + &
                        climate%dtmin * (0.5 - (1.0 - rx**2) / (2.0 * acos(rx)))
         tcmean_cru   = (climate%dtmax + climate%dtmin) / 2.0
@@ -1121,7 +1143,13 @@ contains
         !----------------------------------------------------------------
         ! Daytime mean radiation
         !----------------------------------------------------------------
-        climate_acclimation%dppfd = climate%dppfd * interface%params_siml%secs_per_tstep / grid%dayl
+        if (grid%dayl==0.0) then
+          climate_acclimation%dppfd = 0.0
+        else  
+          climate_acclimation%dppfd = climate%dppfd * interface%params_siml%secs_per_tstep / grid%dayl
+        end if
+
+        !climate_acclimation%dppfd = climate%dppfd * interface%params_siml%secs_per_tstep / grid%dayl
 
         !----------------------------------------------------------------
         ! vpd is based on Tmin and Tmax and represents a daily (24.0) mean
@@ -2025,7 +2053,7 @@ contains
     if (interface%params_siml%loutgpp) then
 
       outagpp(jpngr)     = tile_fluxes(1)%canopy%agpp     ! take only LU = 1
-      outavcmax25(jpngr) = tile_fluxes(1)%canopy%avcmax25 ! take only LU = 1
+      outavcmax25(jpngr) = tile_fluxes(1)%canopy%finalavcmax25 ! take only LU = 1
 
     end if
 
