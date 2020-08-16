@@ -1112,34 +1112,35 @@ contains
         !----------------------------------------------------------------
         rx = -1.0 * tan(radians(grid%lat)) * tan(radians(grid%decl_angle))   ! decl: monthly average solar declination XXX how to calculate the declination angle
 
-        if (rx < -1) then
+        !if (rx < -1) then
           !print*,'rx       ', rx
-          rx = -1 !some grid data has outlier (-1.01 or -1.02), let's just assume them approximate to -1 so that no FPE
+        !  rx = -1 !some grid data has outlier (-1.01 or -1.02), let's just assume them approximate to -1 so that no FPE
           !print*,'grid%lat       ', grid%lat
           !print*,'grid%decl_angle       ', grid%decl_angle
           !print*,'rx < -1      ', rx
         !else  
-        end if
+        !end if
  
-        if (rx >= 1) then
-          rx = 0.99 !some grid data has outlier (1 or 1.01), let's just assume them approximate to 1 so that no FPE
+        !if (rx >= 1) then
+        !  rx = 0.99 !some grid data has outlier (1 or 1.01), let's just assume them approximate to 1 so that no FPE
           !print*,'grid%lat       ', grid%lat
           !print*,'grid%decl_angle       ', grid%decl_angle
           !print*,'rx > 1      ', rx
         !else  
-        end if
-
-        tcgrowth_cru = climate%dtmax * (0.5 + (1.0 - rx**2) / (2.0 * acos(rx))) + &
-                       climate%dtmin * (0.5 - (1.0 - rx**2) / (2.0 * acos(rx)))
-        tcmean_cru   = (climate%dtmax + climate%dtmin) / 2.0
-
+        !end if
+        if (rx > -1 .and. rx < 1) then
+          tcgrowth_cru = climate%dtmax * (0.5 + (1.0 - rx**2) / (2.0 * acos(rx))) + &
+          climate%dtmin * (0.5 - (1.0 - rx**2) / (2.0 * acos(rx)))
+          tcmean_cru   = (climate%dtmax + climate%dtmin) / 2.0
         !----------------------------------------------------------------
         ! Take difference of daytime temperature to mean temperature based on 
         ! monthly CRU data (using Tmin and Tmax) and add it to the daily mean
         ! temperature based on daily WATCH-WFDEI data (Tmin and Tmax not available)
         !----------------------------------------------------------------
-        climate_acclimation%dtemp = climate%dtemp + tcgrowth_cru - tcmean_cru
-
+          climate_acclimation%dtemp = climate%dtemp + tcgrowth_cru - tcmean_cru
+        else
+          climate_acclimation%dtemp = climate%dtemp
+        end if  
         !----------------------------------------------------------------
         ! Daytime mean radiation
         !----------------------------------------------------------------
