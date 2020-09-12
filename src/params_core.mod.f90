@@ -13,7 +13,7 @@ module md_params_core
   real,    parameter :: secs_per_day = 86400.0   ! number of seconds in a day
   integer, parameter :: maxgrid = 1              ! number of spatial gridcells (dummy dimension for later code extension)
   integer, parameter :: nbucket = 2              ! number of buckets for soil water model
-  integer, parameter :: npft = 1                 ! number of PFTs
+  integer, parameter :: npft = 2                 ! number of PFTs
   integer, parameter :: nlu = 1                  ! number of land units (tiles)
   integer, parameter :: lunat = 1                ! ID of natural land unit
   integer, parameter :: lucrop = 2               ! ID of crop land unit

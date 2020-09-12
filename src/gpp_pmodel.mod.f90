@@ -311,6 +311,10 @@ contains
       ! Vcmax25
       !----------------------------------------------------------------
       tile(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
+      tile_fluxes(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
+      !print*,'tile_fluxes(lu)%plant(pft)%vcmax25      ', tile_fluxes(lu)%plant(pft)%vcmax25
+
+
       
 
     end do pftloop
@@ -755,7 +759,7 @@ contains
     !-----------------------------------------------------------------------
     ! Vcmax25 (vcmax normalized to 25 deg C)
     ftemp_inst_vcmax  = calc_ftemp_inst_vcmax( tc, tc, tcref = 25.0 )
-    vcmax25  = vcmax  / ftemp_inst_vcmax
+    vcmax25  = 1000000 * vcmax  / ftemp_inst_vcmax
 
     ! ! Dark respiration at growth temperature
     ! ftemp_inst_rd = calc_ftemp_inst_rd( tc )
@@ -1034,7 +1038,7 @@ contains
     if (mprime > 0) then
       mprime = sqrt(mprime)
     else
-      print*,'negative mprime (', mprime, '). Setting to zero.'
+      !print*,'negative mprime (', mprime, '). Setting to zero.'
       mprime = 0.0
     end if 
     
@@ -2053,8 +2057,13 @@ contains
 
     if (interface%params_siml%loutgpp) then
 
-      outagpp(jpngr)     = tile_fluxes(1)%canopy%agpp     ! take only LU = 1
-      outavcmax25(jpngr) = tile_fluxes(1)%canopy%finalavcmax25 ! take only LU = 1
+    !canopy level
+      !outagpp(jpngr)     = tile_fluxes(1)%canopy%agpp     ! take only LU = 1
+      !outavcmax25(jpngr) = tile_fluxes(1)%canopy%avcmax25 ! take only LU = 1
+    !pft level
+      outagpp(jpngr)     = tile_fluxes(1)%plant(pft)%agpp     ! take only LU = 1
+      outavcmax25(jpngr) = tile_fluxes(1)%plant(pft)%avcmax25 ! take only LU = 1
+      !print*,'tile_fluxes(1)%plant(pft)%avcmax25        ', tile_fluxes(1)%plant(pft)%avcmax25
 
     end if
 

@@ -196,11 +196,13 @@ contains
         tile_nimpl_fluxes(lu)%plant(pft)%alnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp * (1/(1+EXP(-(coef_nimpl%ppfd_alnpp * LOG(preds_nimpl(jpngr)%ppfd) + coef_nimpl%tg_alnpp * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_alnpp))))
         !print*,'5'
         tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
-        !print*,'tile_nimpl_fluxes(lu)%plant(pft)%awnpp', tile_nimpl_fluxes(lu)%plant(pft)%awnpp
+        !print*,'tile_fluxes(lu)%plant(pft)%agpp', tile_fluxes(lu)%plant(pft)%agpp
         !print*,'6'
         !here we add two if function to prevent FPE
-        if (tile(lu)%plant(pft)%vcmax25 > 0.0) then
-          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile(lu)%plant(pft)%vcmax25 * 1000000 / 86400) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
+        if (tile_fluxes(lu)%plant(pft)%avcmax25 > 0.0) then
+          !print*,'tile_fluxes(lu)%plant(pft)%avcmax25', tile_fluxes(lu)%plant(pft)%avcmax25
+          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile_fluxes(lu)%plant(pft)%avcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
+          !print*,'tile_nimpl_fluxes(lu)%plant(pft)%leafcn', tile_nimpl_fluxes(lu)%plant(pft)%leafcn
         end if
         !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = tile(lu)%plant(pft)%vcmax25
         !if (tile(lu)%plant(pft)%vcmax25 > 0.0) then
@@ -216,7 +218,7 @@ contains
         !print*,'8'
         tile_nimpl_fluxes(lu)%plant(pft)%annualgpp = tile_fluxes(lu)%plant(pft)%agpp
         !print*,"9" convert "mol m-2 d-1" to "umol m-2 s-1"
-        tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25 = tile(lu)%plant(pft)%vcmax25 * 1000000 / 86400 
+        tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25 = tile_fluxes(lu)%plant(pft)%avcmax25 
       end do
 
     else
