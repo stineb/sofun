@@ -23,7 +23,7 @@ module md_nuptake_impl
     real :: abnpp       ! annual belowground net primary production (gC m-2 yr-1)
     real :: alnpp       ! annual net primary production for leaf production (gC m-2 yr-1)
     real :: awnpp       ! annual net primary production for wood production (gC m-2 yr-1)
-    real :: leafcn      ! the ratio of leaf carbon per mass to leaf nitrogen per mass (unitness)
+    real :: leafcn      ! the ratio of leaf nitrogen per mass to leaf carbon per mass (unitness)
     real :: alnf        ! annual laef nitrogen flux (gC m-2 yr-2)
     real :: awnf        ! annual wood nitrogen flux (gC m-2 yr-2)
     real :: abnf        ! annual belowground(root) nitrogen flux (gC m-2 yr-2)
@@ -198,21 +198,16 @@ contains
         tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
         !print*,'tile_fluxes(lu)%plant(pft)%agpp', tile_fluxes(lu)%plant(pft)%agpp
         !print*,'6'
-        !here we add two if function to prevent FPE
-        if (tile_fluxes(lu)%plant(pft)%avcmax25 > 0.0) then
-          !print*,'tile_fluxes(lu)%plant(pft)%avcmax25', tile_fluxes(lu)%plant(pft)%avcmax25
-          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile_fluxes(lu)%plant(pft)%avcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
-          !print*,'tile_nimpl_fluxes(lu)%plant(pft)%leafcn', tile_nimpl_fluxes(lu)%plant(pft)%leafcn
+        !prevent FPE
+        if (preds_nimpl(jpngr)%lma > 0.0) then
+          !here leafcn presents leaf n/c, leaf n/c = Nstructure/Cmass + (Nrubisco/Cmass)*(Vcmax25/LMA)
+          !Nstructure = 0.01201, Nrubisco = 0.007493, Cmass = 0.4638, as derived from statistical model (location provided later)
+          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile_fluxes(lu)%plant(pft)%avcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
+          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.01201/0.4638) + (0.007493/0.4638)*(tile_fluxes(lu)%plant(pft)%avcmax25)/(preds_nimpl(jpngr)%lma)
         end if
-        !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = tile(lu)%plant(pft)%vcmax25
-        !if (tile(lu)%plant(pft)%vcmax25 > 0.0) then
-          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = tile(lu)%plant(pft)%vcmax25
+        !if (tile_nimpl_fluxes(lu)%plant(pft)%leafcn > 0.0) then
+        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn
         !end if
-        !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = tile_nimpl_fluxes(lu)%plant(pft)%anpp + tile(lu)%plant(pft)%vcmax25
-        !print*,'7'
-        if (tile_nimpl_fluxes(lu)%plant(pft)%leafcn > 0.0) then
-          tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp/tile_nimpl_fluxes(lu)%plant(pft)%leafcn
-        end if
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
         !print*,'8'
@@ -821,8 +816,8 @@ contains
       outalnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf * tile(lu)%plant(:)%fpc_grid )
       outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * tile(lu)%plant(:)%fpc_grid )
       outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * tile(lu)%plant(:)%fpc_grid )
-      outannualgpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%annualgpp * tile(lu)%plant(:)%fpc_grid )
-      outannualvcmax25(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%annualvcmax25 * tile(lu)%plant(:)%fpc_grid )      
+      outannualgpp(jpngr) = tile_nimpl_fluxes(lu)%plant(pft)%annualgpp
+      outannualvcmax25(jpngr) = tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25      
       ! xxx complement
 
     end if

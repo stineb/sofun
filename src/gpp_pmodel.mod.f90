@@ -759,7 +759,7 @@ contains
     !-----------------------------------------------------------------------
     ! Vcmax25 (vcmax normalized to 25 deg C)
     ftemp_inst_vcmax  = calc_ftemp_inst_vcmax( tc, tc, tcref = 25.0 )
-    vcmax25  = 1000000 * vcmax  / ftemp_inst_vcmax
+    vcmax25  = 1000000 * vcmax  / ftemp_inst_vcmax ! convert unit from mol/m2/s to umol/m2/s
 
     ! ! Dark respiration at growth temperature
     ! ftemp_inst_rd = calc_ftemp_inst_rd( tc )
@@ -2058,12 +2058,15 @@ contains
     if (interface%params_siml%loutgpp) then
 
     !canopy level
-      !outagpp(jpngr)     = tile_fluxes(1)%canopy%agpp     ! take only LU = 1
-      !outavcmax25(jpngr) = tile_fluxes(1)%canopy%avcmax25 ! take only LU = 1
+      outagpp(jpngr)     = tile_fluxes(1)%canopy%agpp     ! take only LU = 1
+      outavcmax25(jpngr) = tile_fluxes(1)%canopy%avcmax25 ! take only LU = 1
     !pft level
-      outagpp(jpngr)     = tile_fluxes(1)%plant(pft)%agpp     ! take only LU = 1
-      outavcmax25(jpngr) = tile_fluxes(1)%plant(pft)%avcmax25 ! take only LU = 1
-      !print*,'tile_fluxes(1)%plant(pft)%avcmax25        ', tile_fluxes(1)%plant(pft)%avcmax25
+      !outagpp(jpngr)     = tile_fluxes(1)%plant(pft)%agpp     ! canopy and pft level were the same!
+      !outavcmax25(jpngr) = tile_fluxes(1)%plant(pft)%avcmax25 ! canopy and pft level were the same!
+      !print*,'tile_fluxes(1)%canopy%agpp        ', tile_fluxes(1)%canopy%agpp 
+      !print*,'tile_fluxes(1)%plant(pft)%agpp       ', tile_fluxes(1)%plant(pft)%agpp
+      !print*,'tile_fluxes(1)%canopy%avcmax25        ', tile_fluxes(1)%canopy%avcmax25 
+      !print*,'tile_fluxes(1)%plant(pft)%avcmax25        ', tile_fluxes(1)%plant(pft)%avcmax25 
 
     end if
 
