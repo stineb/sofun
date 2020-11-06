@@ -191,6 +191,7 @@ contains
                       interface%pco2, &
                       interface%climate(doy,jpngr), &
                       interface%vegcover(doy,jpngr), &
+                      interface%grid(jpngr), &
                       interface%params_siml%soilmstress, &
                       interface%params_siml%tempstress, &
                       init_daily &
