@@ -199,11 +199,10 @@ contains
         !print*,'tile_fluxes(lu)%plant(pft)%agpp', tile_fluxes(lu)%plant(pft)%agpp
         !print*,'6'
         !prevent FPE
-        if (preds_nimpl(jpngr)%lma > 0.0) then
+        if ((preds_nimpl(jpngr)%lma > 0.0).and.(tile_fluxes(lu)%plant(pft)%avcmax25 > 0.0)) then
           !here leafcn presents leaf n/c, leaf n/c = Nstructure/Cmass + (Nrubisco/Cmass)*(Vcmax25/LMA)
-          !Nstructure = 0.01201, Nrubisco = 0.007493, Cmass = 0.4638, as derived from statistical model (location provided later)
-          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile_fluxes(lu)%plant(pft)%avcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
-          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.01201/0.4638) + (0.007493/0.4638)*(tile_fluxes(lu)%plant(pft)%avcmax25)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
+          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(-0.1066 * LOG(tile_fluxes(lu)%plant(pft)%avcmax25) + 0.5255 * LOG(preds_nimpl(jpngr)%lma) + 1.2614)
+          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.0161/0.47) + (0.0041/0.47)*(tile_fluxes(lu)%plant(pft)%avcmax25)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
         end if
         !if (tile_nimpl_fluxes(lu)%plant(pft)%leafcn > 0.0) then
         tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn!it is actually leaf n/c here...
