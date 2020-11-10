@@ -113,8 +113,8 @@ module md_tile
     !----------------------------------------------------------------
     ! carbon 
     real :: agpp
-    real :: avcmax25          ! annual Vcmax, normalised to 25 deg C, now taken as the annual maximum 
-    real :: finalavcmax25     ! create a "finalavcmax25" function which is final weighted-sum vcmax25
+    real :: avcmax25_mean         ! annual Vcmax, normalised to 25 deg C, GPP-weighted mean
+    real :: avcmax25_max          ! annual Vcmax, normalised to 25 deg C, annual maximum
 
     ! real, dimension(ndayyear) :: dra                ! daily TOA solar irradiation (J/m2)
     ! real, dimension(ndayyear) :: dppfd_splash       ! daily total PPFD (mol m-2 d-1)
@@ -334,13 +334,15 @@ contains
     integer :: pft
 
     ! canopy-level
-    tile_fluxes(:)%canopy%agpp     = 0.0
-    tile_fluxes(:)%canopy%avcmax25 = 0.0
-    tile_fluxes(:)%canopy%finalavcmax25 = 0.0 ! create a "finalavcmax25" function which is final weighted-sum vcmax25
+    tile_fluxes(:)%canopy%agpp          = 0.0
+    tile_fluxes(:)%canopy%avcmax25_mean = 0.0
+    tile_fluxes(:)%canopy%avcmax25_max  = 0.0
+    
     ! pft-level
     do pft = 1,npft
-      tile_fluxes(:)%plant(pft)%agpp     = 0.0
-      tile_fluxes(:)%plant(pft)%avcmax25 = 0.0
+      tile_fluxes(:)%plant(pft)%agpp          = 0.0
+      tile_fluxes(:)%plant(pft)%avcmax25_mean = 0.0
+      tile_fluxes(:)%plant(pft)%avcmax25_max  = 0.0
     end do
 
   end subroutine init_annual
@@ -365,7 +367,6 @@ contains
     ! Sum over PFTs to get canopy-level quantities
     !----------------------------------------------------------------
     !if (abs(sum(tile(lu)%plant(:)%fpc_grid)) > eps) stop 'diag_daily: PFT-sum over fpc_grid should be 1.0 but is not.'
-
     do lu=1,nlu
       tile_fluxes(lu)%canopy%dgpp    = sum(tile_fluxes(lu)%plant(:)%dgpp)
       tile_fluxes(lu)%canopy%drd     = sum(tile_fluxes(lu)%plant(:)%drd)
@@ -375,34 +376,35 @@ contains
     !----------------------------------------------------------------
     ! Annual variables
     !----------------------------------------------------------------
-    ! canopy-level
-    tile_fluxes(:)%canopy%agpp = tile_fluxes(:)%canopy%agpp + tile_fluxes(:)%canopy%dgpp    ! annual sum
+    ! Canopy-level
+    !----------------------------------------------------------------
+    ! Annual sum
+    tile_fluxes(:)%canopy%agpp = tile_fluxes(:)%canopy%agpp + tile_fluxes(:)%canopy%dgpp
 
-    do lu = 1,nlu
-      !if (tile_fluxes(lu)%canopy%vcmax25 > tile_fluxes(lu)%canopy%avcmax25) tile_fluxes(lu)%canopy%avcmax25 = tile_fluxes(lu)%canopy%vcmax25   ! annual maximum
-      !tile_fluxes(lu)%canopy%avcmax25 = tile_fluxes(lu)%canopy%avcmax25 + tile_fluxes(lu)%canopy%vcmax25 * tile_fluxes(:)%canopy%dgpp ! annual weighted mean 
-      tile_fluxes(lu)%canopy%avcmax25 = tile_fluxes(lu)%canopy%avcmax25 + sum(tile_fluxes(:)%canopy%vcmax25 * tile_fluxes(:)%canopy%dgpp) ! annual weighted mean     
-      !tile_fluxes(lu)%canopy%finalavcmax25 = tile_fluxes(lu)%canopy%avcmax25 / tile_fluxes(lu)%canopy%agpp 
-      if (tile_fluxes(lu)%canopy%agpp==0.0) then
-        tile_fluxes(lu)%canopy%finalavcmax25 = 0.0
-      else  
-        tile_fluxes(lu)%canopy%finalavcmax25 = tile_fluxes(lu)%canopy%avcmax25 / tile_fluxes(lu)%canopy%agpp
-      end if
-    end do
+    ! GPP-weighted annual mean
+    tile_fluxes(lu)%canopy%avcmax25_mean = tile_fluxes(lu)%canopy%avcmax25_mean + tile_fluxes(lu)%canopy%vcmax25 * tile_fluxes(lu)%canopy%dgpp
 
-    ! pft-level
-    do lu = 1,nlu
-      do pft = 1,npft
-        tile_fluxes(lu)%plant(pft)%agpp = tile_fluxes(lu)%plant(pft)%agpp + tile_fluxes(lu)%plant(pft)%dgpp    ! annual sum
+    ! Annual maximum
+    if (tile_fluxes(lu)%canopy%vcmax25 > tile_fluxes(lu)%canopy%avcmax25_max) tile_fluxes(lu)%canopy%avcmax25_max = tile_fluxes(lu)%canopy%vcmax25
 
-        ! ! annual weighted mean
-        ! tile_fluxes(lu)%plant(pft)%avcmax25 = tile_fluxes(lu)%plant(pft)%avcmax25 + tile_fluxes(lu)%plant(pft)%vcmax25 * tile_fluxes(lu)%plant(pft)%dgpp
-        
-        ! annual maximum
-        if (tile_fluxes(lu)%plant(pft)%vcmax25 > tile_fluxes(lu)%plant(pft)%avcmax25) tile_fluxes(lu)%plant(pft)%avcmax25 = tile_fluxes(lu)%plant(pft)%vcmax25
+    !----------------------------------------------------------------
+    ! PFT-level
+    !----------------------------------------------------------------
+    do lu=1,nlu
 
+      ! Annual sum
+      tile_fluxes(lu)%plant(:)%agpp = tile_fluxes(lu)%plant(:)%agpp + tile_fluxes(lu)%plant(:)%dgpp
+
+      ! GPP-weighted annual mean
+      tile_fluxes(lu)%plant(:)%avcmax25_mean = tile_fluxes(lu)%plant(:)%avcmax25_mean + tile_fluxes(lu)%plant(:)%vcmax25 * tile_fluxes(lu)%plant(:)%dgpp
+
+      ! Annual maximum
+      do pft=1,npft
+        if (tile_fluxes(lu)%plant(pft)%vcmax25 > tile_fluxes(lu)%plant(pft)%avcmax25_max) tile_fluxes(lu)%plant(pft)%avcmax25_max = tile_fluxes(lu)%plant(pft)%vcmax25
       end do
+        
     end do
+
   end subroutine diag_daily
 
 
@@ -432,8 +434,14 @@ contains
     ! ! for weighted-mean vcmax25 at canopy level
     !tile_fluxes(lu)%canopy%avcmax25 = tile_fluxes(lu)%canopy%avcmax25 / tile_fluxes(lu)%canopy%agpp
     ! ! for weighted-mean vcmax25 at pft-level
+
+    !----------------------------------------------------------------
+    ! Divide by annual total GPP for GPP-weighted sums 
+    !----------------------------------------------------------------
+    tile_fluxes(:)%canopy%avcmax25_mean = tile_fluxes(:)%canopy%avcmax25_mean / tile_fluxes(:)%canopy%agpp
+
     do pft = 1,npft
-      tile_fluxes(lu)%plant(pft)%avcmax25 = tile_fluxes(lu)%plant(pft)%avcmax25 / tile_fluxes(lu)%plant(pft)%agpp
+      tile_fluxes(:)%plant(pft)%avcmax25_mean = tile_fluxes(:)%plant(pft)%avcmax25_mean / tile_fluxes(:)%plant(pft)%agpp
     end do
 
   end subroutine diag_annual

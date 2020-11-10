@@ -76,7 +76,7 @@ module md_plant
   !----------------------------------------------------------------
   type plant_fluxes_type
 
-    ! daily variables
+    ! daily updated variables
     real :: dgpp     ! daily gross primary production [gC/m2/d]           
     real :: drd      ! daily dark respiration [gC/m2/d]
     real :: assim    ! daily assimilation (mol CO2 m-2 s-1)
@@ -85,8 +85,9 @@ module md_plant
     real :: vcmax25  ! daily varying Vcmax25 (Vcmax normalized to 25 deg C) (mol CO2 m-2 s-1)
 
     ! annual variables
-    real :: agpp     ! daily gross primary production [gC/m2/yr]           
-    real :: avcmax25 ! annual Vcmax, normalised to 25 deg C, now taken as the annual maximum 
+    real :: agpp             ! annual total gross primary production [gC/m2/yr]           
+    real :: avcmax25_mean    ! annual Vcmax, normalised to 25 deg C, GPP-weighted mean
+    real :: avcmax25_max     ! annual Vcmax, normalised to 25 deg C, annual maximum
 
   end type plant_fluxes_type
 
@@ -328,8 +329,6 @@ contains
     !  June 2014
     !  b.stocker@imperial.ac.uk
     !----------------------------------------------------------------
-    use md_params_core, only: npft
-
     ! argument
     type( plant_type ), dimension(npft), intent(inout) :: plant
 

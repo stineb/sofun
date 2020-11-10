@@ -2055,10 +2055,11 @@ contains
 
     if (interface%params_siml%loutgpp) then
 
-    !canopy level
-      outagpp(jpngr)     = tile_fluxes(1)%canopy%agpp     ! take only LU = 1
-      outavcmax25(jpngr) = tile_fluxes(1)%canopy%avcmax25 ! take only LU = 1
-      !pft level
+      ! canopy level
+      outagpp(jpngr)     = tile_fluxes(1)%canopy%agpp          ! take only LU = 1
+      outavcmax25(jpngr) = tile_fluxes(1)%canopy%avcmax25_mean ! take GPP-weighted mean, only LU = 1
+
+      ! pft level
       !outagpp(jpngr)     = tile_fluxes(1)%plant(pft)%agpp     ! canopy and pft level were the same!
       !outavcmax25(jpngr) = tile_fluxes(1)%plant(pft)%avcmax25 ! canopy and pft level were the same!
       !print*,'tile_fluxes(1)%canopy%agpp        ', tile_fluxes(1)%canopy%agpp 
