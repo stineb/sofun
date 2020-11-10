@@ -7,8 +7,8 @@
 # beta   244.033
 beta                                    146.000000
 rd_to_vcmax                             0.01400000
-soilm_par_a                             0.3334928
-soilm_par_b                             1.456023
+soilm_par_a                             0.33349283
+soilm_par_b                             1.45602286
 tau_acclim                              10.0000000
 
 kphio_Gr3                               0.09423773
