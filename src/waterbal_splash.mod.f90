@@ -80,7 +80,7 @@ module md_waterbal
   !----------------------------------------------------------------
   ! MODULE-SPECIFIC, KNOWN PARAMETERS
   !----------------------------------------------------------------
-  logical :: outenergy = .true.
+  logical :: outenergy = .false.
 
   !----------------------------------------------------------------
   ! Module-specific rolling mean variables
@@ -376,7 +376,6 @@ contains
     ! real, dimension(2) :: out_ru_rv      ! function return variable containing 'ru' and 'rv'.
 
     ! out_et = calc_et( climate%dtemp, climate%dprec, climate%dpatm, tile(lu)%canopy%lai, tile(lu)%canopy%fapar, out_netrad%rn, climate%dvpd, tile(lu)%canopy%conductance, g_aero )
-
 
     !---------------------------------------------------------
     ! Calculate water-to-energy conversion (econ), m^3/J

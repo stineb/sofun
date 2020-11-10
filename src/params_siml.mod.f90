@@ -25,7 +25,7 @@ module md_params_siml
     integer :: daily_out_endyr ! last year where daily output is written
     integer :: outdt           ! output periodicity
     integer :: outnt           ! number of output time steps per year
-    real    :: secs_per_tstep  ! number of seconds per time step (now daily => 60 * 60 * 24)
+    integer :: secs_per_tstep  ! number of seconds per time step (now daily => 60 * 60 * 24)
     
     logical :: do_spinup            ! whether this simulation does spinup 
     logical :: is_calib             ! whether this simulation is a calibration simulation (overriding parameters and no output)
@@ -69,7 +69,6 @@ module md_params_siml
     logical :: loutgpp
     logical :: loutwaterbal
     logical :: loutforcing
-    logical :: loutnimpl
 
     ! Module-specific booleans whether a single variable is written to daily output
     logical :: loutdgpp
@@ -299,7 +298,7 @@ contains
     endif
 
     ! time step in number of seconds
-    out_getpar_siml%secs_per_tstep    = real(getparint( 'run/'//runname//'.sofun.parameter', 'secs_per_tstep' ))
+    out_getpar_siml%secs_per_tstep = getparint( 'run/'//runname//'.sofun.parameter', 'secs_per_tstep' )
 
     ! activated PFTs
     out_getpar_siml%lTrE = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTrE' )
@@ -351,7 +350,6 @@ contains
     out_getpar_siml%loutplant     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
     out_getpar_siml%loutgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutgpp' )
     out_getpar_siml%loutwaterbal  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal' )
-    out_getpar_siml%loutnimpl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnimpl' )
 
     ! Module-specific booleans whether a single variable is written to daily output
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )

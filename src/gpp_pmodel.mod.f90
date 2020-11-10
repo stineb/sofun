@@ -218,7 +218,8 @@ contains
     ! which photosynthesis is acclimated to (daytime mean, or mid-day
     ! mean) 
     !----------------------------------------------------------------
-    climate_acclimation = calc_climate_acclimation( climate, grid, "daytime" )
+    ! climate_acclimation = calc_climate_acclimation( climate, grid, "daytime" )
+    climate_acclimation = climate
 
     !----------------------------------------------------------------
     ! Calculate environmental conditions with memory, time scale 
@@ -269,6 +270,20 @@ contains
                               method_optci   = "prentice14", &
                               method_jmaxlim = "wang17" &
                               )
+
+        ! ! xxx test
+        ! out_pmodel = pmodel(  &
+        !                       kphio          = 5.16605116e-02, &
+        !                       ppfd           = 1.77466325E-04, &
+        !                       co2            = 369.548828, &
+        !                       tc             = 7.46864176, &
+        !                       vpd            = 433.062012, &
+        !                       patm           = 98229.4453, &
+        !                       c4             = params_pft_plant(pft)%c4, &
+        !                       method_optci   = "prentice14", &
+        !                       method_jmaxlim = "wang17" &
+        !                       )
+
       else
 
         ! PFT is not present 
@@ -278,13 +293,6 @@ contains
 
       ! simple:
       lu = 1
-
-      !print*,'tile(lu)%plant(pft)%fpc_grid ', tile(lu)%plant(pft)%fpc_grid
-
-      ! !----------------------------------------------------------------
-      ! ! xxx try:
-      ! tile(lu)%plant(pft)%fpc_grid = 0.5
-      ! !----------------------------------------------------------------
 
       !----------------------------------------------------------------
       ! Calculate soil moisture stress as a function of soil moisture, mean alpha and vegetation type (grass or not)
@@ -300,7 +308,11 @@ contains
       ! This still does a linear scaling of daily GPP - knowingly wrong
       ! but not too dangerous...
       !----------------------------------------------------------------
-      tile_fluxes(lu)%plant(pft)%dgpp = tile(lu)%plant(pft)%fpc_grid * tile(lu)%canopy%fapar * climate%dppfd * interface%params_siml%secs_per_tstep * out_pmodel%lue * soilmstress
+      tile_fluxes(lu)%plant(pft)%dgpp = tile(lu)%plant(pft)%fpc_grid * tile(lu)%canopy%fapar * climate%dppfd * out_pmodel%lue * soilmstress * interface%params_siml%secs_per_tstep
+      ! if (out_pmodel%lue > 0.0) then
+      !   print*,'tile(lu)%plant(pft)%fpc_grid, tile(lu)%canopy%fapar, climate%dppfd, out_pmodel%lue, soilmstress, interface%params_siml%secs_per_tstep', tile(lu)%plant(pft)%fpc_grid, tile(lu)%canopy%fapar, climate%dppfd, out_pmodel%lue, soilmstress, interface%params_siml%secs_per_tstep
+      !   stop
+      ! end if
 
       !----------------------------------------------------------------
       ! Dark respiration
@@ -1082,96 +1094,96 @@ contains
   end function calc_omega
 
 
-  function calc_climate_acclimation( climate, grid, method ) result( climate_acclimation )
-    !//////////////////////////////////////////////////////////////////
-    ! Convert daily mean environmental conditions to conditions to
-    ! which photosynthesis is acclimated to (daytime mean, or mid-day
-    ! mean) 
-    ! References:
-    ! Jones, H. G. (2013) Microclimate: a Quantitative Approach to Environmental Plant
-    !   Pysiology, Cambridge Press
-    !------------------------------------------------------------------
-    ! argument  
-    type(climate_type) :: climate
-    type(gridtype)     :: grid
-    character(len=*)   :: method
+  ! function calc_climate_acclimation( climate, grid, method ) result( climate_acclimation )
+  !   !//////////////////////////////////////////////////////////////////
+  !   ! Convert daily mean environmental conditions to conditions to
+  !   ! which photosynthesis is acclimated to (daytime mean, or mid-day
+  !   ! mean) 
+  !   ! References:
+  !   ! Jones, H. G. (2013) Microclimate: a Quantitative Approach to Environmental Plant
+  !   !   Pysiology, Cambridge Press
+  !   !------------------------------------------------------------------
+  !   ! argument  
+  !   type(climate_type) :: climate
+  !   type(gridtype)     :: grid
+  !   character(len=*)   :: method
 
-    ! function return variable
-    type(climate_type) :: climate_acclimation
+  !   ! function return variable
+  !   type(climate_type) :: climate_acclimation
 
-    ! local variables
-    real :: rx, tcgrowth_cru, tcmean_cru
+  !   ! local variables
+  !   real :: rx, tcgrowth_cru, tcmean_cru
 
-    select case (method)
+  !   select case (method)
       
-      case ("daytime")
-        !----------------------------------------------------------------
-        ! Mean daytime values
-        !----------------------------------------------------------------
-        ! Daytime mean temperature assuming the diurnal temperature cycle 
-        ! to follow a sine curve, with daylight hours determined by latitude and month
-        ! based on (Jones et al. 2013) as used in Peng et al. (in review)
-        !----------------------------------------------------------------
-        rx = -1.0 * tan(radians(grid%lat)) * tan(radians(grid%decl_angle))   ! decl: monthly average solar declination XXX how to calculate the declination angle
+  !     case ("daytime")
+  !       !----------------------------------------------------------------
+  !       ! Mean daytime values
+  !       !----------------------------------------------------------------
+  !       ! Daytime mean temperature assuming the diurnal temperature cycle 
+  !       ! to follow a sine curve, with daylight hours determined by latitude and month
+  !       ! based on (Jones et al. 2013) as used in Peng et al. (in review)
+  !       !----------------------------------------------------------------
+  !       rx = -1.0 * tan(radians(grid%lat)) * tan(radians(grid%decl_angle))   ! decl: monthly average solar declination XXX how to calculate the declination angle
 
-        !if (rx < -1) then
-          !print*,'rx       ', rx
-        !  rx = -1 !some grid data has outlier (-1.01 or -1.02), let's just assume them approximate to -1 so that no FPE
-          !print*,'grid%lat       ', grid%lat
-          !print*,'grid%decl_angle       ', grid%decl_angle
-          !print*,'rx < -1      ', rx
-        !else  
-        !end if
+  !       !if (rx < -1) then
+  !         !print*,'rx       ', rx
+  !       !  rx = -1 !some grid data has outlier (-1.01 or -1.02), let's just assume them approximate to -1 so that no FPE
+  !         !print*,'grid%lat       ', grid%lat
+  !         !print*,'grid%decl_angle       ', grid%decl_angle
+  !         !print*,'rx < -1      ', rx
+  !       !else  
+  !       !end if
  
-        !if (rx >= 1) then
-        !  rx = 0.99 !some grid data has outlier (1 or 1.01), let's just assume them approximate to 1 so that no FPE
-          !print*,'grid%lat       ', grid%lat
-          !print*,'grid%decl_angle       ', grid%decl_angle
-          !print*,'rx > 1      ', rx
-        !else  
-        !end if
-        if (rx > -1 .and. rx < 1) then
-          tcgrowth_cru = climate%dtmax * (0.5 + (1.0 - rx**2) / (2.0 * acos(rx))) + &
-          climate%dtmin * (0.5 - (1.0 - rx**2) / (2.0 * acos(rx)))
-          tcmean_cru   = (climate%dtmax + climate%dtmin) / 2.0
-        !----------------------------------------------------------------
-        ! Take difference of daytime temperature to mean temperature based on 
-        ! monthly CRU data (using Tmin and Tmax) and add it to the daily mean
-        ! temperature based on daily WATCH-WFDEI data (Tmin and Tmax not available)
-        !----------------------------------------------------------------
-          climate_acclimation%dtemp = climate%dtemp + tcgrowth_cru - tcmean_cru
-        else
-          climate_acclimation%dtemp = climate%dtemp
-        end if  
-        !----------------------------------------------------------------
-        ! Daytime mean radiation
-        !----------------------------------------------------------------
-        if (grid%dayl==0.0) then
-          climate_acclimation%dppfd = 0.0
-        else  
-          climate_acclimation%dppfd = climate%dppfd * interface%params_siml%secs_per_tstep / grid%dayl
-        end if
+  !       !if (rx >= 1) then
+  !       !  rx = 0.99 !some grid data has outlier (1 or 1.01), let's just assume them approximate to 1 so that no FPE
+  !         !print*,'grid%lat       ', grid%lat
+  !         !print*,'grid%decl_angle       ', grid%decl_angle
+  !         !print*,'rx > 1      ', rx
+  !       !else  
+  !       !end if
+  !       if (rx > -1 .and. rx < 1) then
+  !         tcgrowth_cru = climate%dtmax * (0.5 + (1.0 - rx**2) / (2.0 * acos(rx))) + &
+  !         climate%dtmin * (0.5 - (1.0 - rx**2) / (2.0 * acos(rx)))
+  !         tcmean_cru   = (climate%dtmax + climate%dtmin) / 2.0
+  !       !----------------------------------------------------------------
+  !       ! Take difference of daytime temperature to mean temperature based on 
+  !       ! monthly CRU data (using Tmin and Tmax) and add it to the daily mean
+  !       ! temperature based on daily WATCH-WFDEI data (Tmin and Tmax not available)
+  !       !----------------------------------------------------------------
+  !         climate_acclimation%dtemp = climate%dtemp + tcgrowth_cru - tcmean_cru
+  !       else
+  !         climate_acclimation%dtemp = climate%dtemp
+  !       end if  
+  !       !----------------------------------------------------------------
+  !       ! Daytime mean radiation
+  !       !----------------------------------------------------------------
+  !       if (grid%dayl==0.0) then
+  !         climate_acclimation%dppfd = 0.0
+  !       else  
+  !         climate_acclimation%dppfd = climate%dppfd * interface%params_siml%secs_per_tstep / grid%dayl
+  !       end if
 
-        !climate_acclimation%dppfd = climate%dppfd * interface%params_siml%secs_per_tstep / grid%dayl
+  !       !climate_acclimation%dppfd = climate%dppfd * interface%params_siml%secs_per_tstep / grid%dayl
 
-        !----------------------------------------------------------------
-        ! vpd is based on Tmin and Tmax and represents a daily (24.0) mean
-        ! currently, we have no good method to derive daytime mean other than
-        ! using growth temperature and the common formula, but this is not 
-        ! used here (yet?).
-        !----------------------------------------------------------------
-        climate_acclimation%dvpd = climate%dvpd 
+  !       !----------------------------------------------------------------
+  !       ! vpd is based on Tmin and Tmax and represents a daily (24.0) mean
+  !       ! currently, we have no good method to derive daytime mean other than
+  !       ! using growth temperature and the common formula, but this is not 
+  !       ! used here (yet?).
+  !       !----------------------------------------------------------------
+  !       climate_acclimation%dvpd = climate%dvpd 
 
-        ! atmospheric pressure has no diurnal cycle
-        climate_acclimation%dpatm = climate%dpatm 
+  !       ! atmospheric pressure has no diurnal cycle
+  !       climate_acclimation%dpatm = climate%dpatm 
 
-      case default
+  !     case default
 
-        stop "calc_climate_acclimation: Provide valid method."
+  !       stop "calc_climate_acclimation: Provide valid method."
 
-    end select
+  !   end select
 
-  end function calc_climate_acclimation
+  ! end function calc_climate_acclimation
 
 
   ! function findroot_quadratic( aquad, bquad, cquad, return_smallroot ) result( root )
