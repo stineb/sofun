@@ -1,0 +1,38 @@
+###############################################################
+# PMODEL PARAMETERS
+#--------------------------------------------------------------
+#                                      |
+# write value behind this position:    |->
+
+#BP/GPP model
+cnsoil_bp                               -0.3677
+age_bp                                  -0.1552
+alpha_bp                                1.9144
+fapar_bp                                0.5791
+intersect_bp                            -1.1052
+
+#ANPP/GPP model
+cnsoil_anpp                             -0.6075
+age_anpp                                -0.1798
+alpha_anpp                              2.1287
+fapar_anpp                              0.8617
+intersect_anpp                          -1.3528
+
+#ALNPP/ANPP model
+ppfd_alnpp                              1.2350
+tg_alnpp                                0.0731
+vpd_alnpp                               -1.0192
+intersect_alnpp                         -9.2375
+
+#leaf C/N model
+lma_leafcn                              0.4470
+vcmax25_leafcn                          -0.1068
+intersect_leafcn                        1.5878
+
+#constant ratio - derived from TRY database (N=2365 for root; N=13 for wood)
+root_cn                                 42
+wood_cn                                 97
+
+#                                      |
+# write value *behind* this position:  |->
+## EOF 

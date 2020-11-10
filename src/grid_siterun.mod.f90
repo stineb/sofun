@@ -32,6 +32,7 @@ module md_grid
   end type domaininfo_type
 
   type gridtype
+    logical :: dogridcell
     integer :: ilon
     integer :: ilat
     real :: lon
@@ -39,9 +40,10 @@ module md_grid
     real :: elv
     real :: landfrac
     real :: area
-    logical :: dogridcell
     real :: nu               ! true anomaly (orbital parameter), recalculated each year for each gridcell in solar()
     real :: lambda           ! true longitude (orbital parameter), recalculated each year for each gridcell in solar()
+    real :: decl_angle       ! declination angle (degrees)
+    real :: dayl             ! day length (s), is updated daily in waterbal SR
   end type gridtype
 
 contains

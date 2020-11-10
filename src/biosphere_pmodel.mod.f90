@@ -7,10 +7,9 @@ module md_biosphere
   use md_waterbal, only: waterbal, solar, getout_daily_waterbal, initoutput_waterbal, getpar_modl_waterbal, initio_nc_waterbal, writeout_nc_waterbal !, get_rlm_waterbal, getrlm_daily_waterbal  ! , init_rlm_waterbal
   use md_gpp, only: outtype_pmodel, getpar_modl_gpp, initoutput_gpp, gpp, getout_daily_gpp, getout_annual_gpp, initio_nc_gpp, writeout_nc_gpp
   use md_vegdynamics, only: vegdynamics
-  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile_fluxes, getpar_modl_tile
+  use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile_fluxes, getpar_modl_tile, diag_daily, diag_annual, init_annual
   use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_nc_forcing, writeout_nc_forcing
   use md_soiltemp, only: getout_daily_soiltemp, soiltemp, initoutput_soiltemp
-  ! use md_sofunutils, only: calc_patm
 
   implicit none
 
@@ -24,7 +23,7 @@ module md_biosphere
   type(tile_type),        allocatable, dimension(:,:) :: tile             ! has gridcell-dimension because values are stored between years
   type(tile_fluxes_type), allocatable, dimension(:)   :: tile_fluxes      ! has no gridcell-dimension values need not be recorded
 
-  logical, parameter      :: verbose = .false.     ! change by hand for debugging etc.
+  logical, parameter :: verbose = .false.     ! change by hand for debugging etc.
 
 contains
 
@@ -119,9 +118,14 @@ contains
         ! interface%climate(jpngr)%dpatm(:) = calc_patm(interface%grid(jpngr)%elv)
 
         !----------------------------------------------------------------
+        ! Set annual sums to zero
+        !----------------------------------------------------------------
+        call init_annual( tile_fluxes(:) )
+
+        !----------------------------------------------------------------
         ! LOOP THROUGH MONTHS
         !----------------------------------------------------------------
-        doy=0
+        doy=0   ! day of the year
         monthloop: do moy=1,nmonth
 
           !----------------------------------------------------------------
@@ -168,7 +172,6 @@ contains
                               )
             if (verbose) print*,'... done'
 
-
             !----------------------------------------------------------------
             ! calculate GPP
             !----------------------------------------------------------------
@@ -178,6 +181,7 @@ contains
                       interface%pco2, &
                       interface%climate(doy,jpngr), &
                       interface%vegcover(doy,jpngr), &
+                      interface%grid(jpngr), &
                       interface%params_siml%soilmstress, &
                       interface%params_siml%tempstress, &
                       init_daily &
@@ -196,7 +200,11 @@ contains
                             )
             if (verbose) print*,'... done'
 
-          
+            !----------------------------------------------------------------
+            ! daily diagnostics (sum over plant within canopy, iterative sum over days)
+            !----------------------------------------------------------------
+            call diag_daily( tile(:,jpngr), tile_fluxes(:) )
+
             ! !----------------------------------------------------------------
             ! ! calculate soil temperature
             ! !----------------------------------------------------------------
@@ -218,7 +226,7 @@ contains
             if (.not.interface%params_siml%is_calib) then
               if (verbose) print*,'calling getout_daily() ... '
               call getout_daily_waterbal( tile(:,jpngr), tile_fluxes(:), jpngr, moy, doy )
-              call getout_daily_gpp( tile_fluxes(:), jpngr, doy )
+              call getout_daily_gpp( tile(:,jpngr), tile_fluxes(:), jpngr, doy )
               ! call getout_daily_plant( tile(:,jpngr)%plant(:), jpngr, moy, doy )
               call getout_daily_forcing( jpngr, moy, doy )
               call getout_daily_soiltemp( jpngr, moy, doy, tile(:,jpngr)%soil%phy )
@@ -244,12 +252,17 @@ contains
         end do monthloop
 
         !----------------------------------------------------------------
+        ! annual diagnostics
+        !----------------------------------------------------------------
+        call diag_annual( tile(:,jpngr), tile_fluxes(:) )
+
+        !----------------------------------------------------------------
         ! collect annual output
         !----------------------------------------------------------------
         if (.not.interface%params_siml%is_calib) then
           if (verbose) print*,'calling getout_annual_() ... '
           ! call getout_annual_plant( tile(:)%plant(:), jpngr )
-          call getout_annual_gpp( jpngr )
+          call getout_annual_gpp( jpngr, tile_fluxes(:) )
           if (verbose) print*,'... done'
         end if
 

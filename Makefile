@@ -7,7 +7,8 @@
 # Select configuration profile
 # Set PROFILE to one of benilaptop, cx1, euler, pgi, or beniimac
 ##################################
-PROFILE=beniimac
+# change PROFILE to euler
+PROFILE=benilaptop
 
 ##################
 # pgf profile

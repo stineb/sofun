@@ -29,14 +29,15 @@ import os.path
 ##--------------------------------------------------------------------
 name = 'global'
 # name = 'fluxnet2015'
-# name = 'example'
+
 
 ##--------------------------------------------------------------------
 ## Manually edit the root directory for the local mirror of 
 ## the data directory (e.g., /cluster/home/bestocke/data on Euler.
 ##--------------------------------------------------------------------
-dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
-# dataroot = '/cluster/work/climate/bestocke/data'     # to run on Euler
+#dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
+dataroot = '/cluster/work/climate/bestocke/data/'     # to run on Euler
+# dataroot = '/Users/bestocke/data/'     # to run on Beni's Laptop
 
 ##--------------------------------------------------------------------
 ## Manually edit the root directory for SOFUN inputS 
@@ -109,11 +110,11 @@ if name == 'global':
 	dirn = 'input/global/fapar'
 	os.system( 'mkdir -p ' + dirn )
 
-	# call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
-	# os.system('echo \'fapar_forcing_source                    fapar3g\' >./input/dfapar_source.txt')
+	call(['ln', '-svf', dataroot + 'fAPAR/fAPAR3g_v2/fAPAR3g_v2_1982_2016_FILLED.nc', dirn ])
+	os.system('echo \'fapar_forcing_source                    fapar3g\' >./input/dfapar_source.txt')
 
-	# call(['ln', '-svf', dataroot + 'modis_ndvi_evi_zmaw/halfdeg/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc', dirn ])
-	# os.system('echo \'fapar_forcing_source                    evi_modis\' >./input/dfapar_source.txt')
+	call(['ln', '-svf', dataroot + 'modis_ndvi_evi_zmaw/halfdeg/modis_vegetation__LPDAAC__v5__0.5deg_FILLED.nc', dirn ])
+        os.system('echo \'fapar_forcing_source                    evi_modis\' >./input/dfapar_source.txt')
 
 	call(['ln', '-svf', dataroot + 'modis_lai_fpar_zmaw/MODIS-C006_MOD15A2__LAI_FPAR__LPDAAC__GLOBAL_0.5degree__UHAM-ICDC__2000_2018__MON__fv0.02.nc', dirn ])
 	os.system('echo \'fapar_forcing_source                    fpar_modis\' >./input/dfapar_source.txt')
@@ -130,8 +131,24 @@ if name == 'global':
 	##--------------------------------------
 	dirn = 'input/global/landcover'
 	os.system( 'mkdir -p ' + dirn )
-	call(['ln', '-svf', dataroot + 'landcover/modis_landcover_halfdeg_2010_FILLED.nc', dirn ])
+	# call(['ln', '-svf', dataroot + 'landcover/modis_landcover_halfdeg_2010_FILLED.nc', dirn ])
+	call(['ln', '-svf', dataroot + 'c4_still/final/c4_percentage.nc', dirn ])
 
+	## nimpl predictors
+	##--------------------------------------
+	src = dataroot + 'nimpl_sofun_inputs/map/Final_ncfile/*'
+	dst = 'input/global/nimpl'
+	if not os.path.isdir( dst ):
+		os.system( 'mkdir -p ' + dst )
+	os.system( 'ln -svf ' + src + ' ' + dst )
+
+	## c4 percentage
+	##--------------------------------------
+	src = dataroot + 'c4_still/final/c4_percentage.nc'
+	dst = 'input/global/landcover'
+	if not os.path.isdir( dst ):
+		os.system( 'mkdir -p ' + dst )
+	os.system( 'ln -svf ' + src + ' ' + dst )	
 
 	## WATCH-WFDEI climate input data
 	##--------------------------------------

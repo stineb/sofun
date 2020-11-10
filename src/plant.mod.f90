@@ -508,21 +508,23 @@ contains
     ! important: Keep this order of reading PFT parameters fixed.
     !----------------------------------------------------------------
     pft = 0
-    if ( interface%params_siml%lTeBS ) then
-      pft = pft + 1
-      params_pft_plant(pft) = getpftparams( 'TeBS' )
+    ! if ( interface%params_siml%lTeBS ) then
+    !   pft = pft + 1
+    !   params_pft_plant(pft) = getpftparams( 'TeBS' )
 
-    else if ( interface%params_siml%lGrC3 ) then
-      pft = pft + 1
-      params_pft_plant(pft) = getpftparams( 'GrC3' )
+    ! else 
 
-    else if ( interface%params_siml%lGNC3 ) then
+    if ( interface%params_siml%lGr3 ) then
       pft = pft + 1
-      params_pft_plant(pft) = getpftparams( 'GNC3' )
+      params_pft_plant(pft) = getpftparams( 'Gr3' )
 
-    else if ( interface%params_siml%lGrC4 ) then
+    ! else if ( interface%params_siml%lGN3 ) then
+    !   pft = pft + 1
+    !   params_pft_plant(pft) = getpftparams( 'GNC3' )
+
+    else if ( interface%params_siml%lGr4 ) then
       pft = pft + 1
-      params_pft_plant(pft) = getpftparams( 'GrC4' )
+      params_pft_plant(pft) = getpftparams( 'Gr4' )
 
     else
       stop 'PLANT:GETPAR_MODL_PLANT: PFT name not valid. See run/<simulationname>.sofun.parameter'
@@ -551,9 +553,9 @@ contains
     out_getpftparams%pftname = pftname
 
     ! PFT names
-    ! GrC3 : C3 grass                          
-    ! GrC4 : C4 grass     
-    if (trim(pftname)=='GrC3') then
+    ! Gr3 : C3 grass                          
+    ! Gr4 : C4 grass     
+    if (trim(pftname)=='Gr3') then
       out_getpftparams%grass   = .true.
       out_getpftparams%tree    = .false.
       out_getpftparams%c3      = .true.
@@ -565,7 +567,7 @@ contains
       out_getpftparams%c3      = .true.
       out_getpftparams%c4      = .false.
       out_getpftparams%nfixer  = .true.
-    else if (trim(pftname)=='GrC4') then
+    else if (trim(pftname)=='Gr4') then
       out_getpftparams%grass   = .true.
       out_getpftparams%tree    = .false.
       out_getpftparams%c3      = .false.

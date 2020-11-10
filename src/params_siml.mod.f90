@@ -25,6 +25,7 @@ module md_params_siml
     integer :: daily_out_endyr ! last year where daily output is written
     integer :: outdt           ! output periodicity
     integer :: outnt           ! number of output time steps per year
+    real    :: secs_per_tstep  ! number of seconds per time step (now daily => 60 * 60 * 24)
     
     logical :: do_spinup            ! whether this simulation does spinup 
     logical :: is_calib             ! whether this simulation is a calibration simulation (overriding parameters and no output)
@@ -68,6 +69,7 @@ module md_params_siml
     logical :: loutgpp
     logical :: loutwaterbal
     logical :: loutforcing
+    logical :: loutnimpl
 
     ! Module-specific booleans whether a single variable is written to daily output
     logical :: loutdgpp
@@ -296,6 +298,9 @@ contains
       out_getpar_siml%spinupyears = 0
     endif
 
+    ! time step in number of seconds
+    out_getpar_siml%secs_per_tstep    = real(getparint( 'run/'//runname//'.sofun.parameter', 'secs_per_tstep' ))
+
     ! activated PFTs
     out_getpar_siml%lTrE = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTrE' )
     out_getpar_siml%lTNE = getparlogical( 'run/'//runname//'.sofun.parameter', 'lTNE' )
@@ -313,7 +318,6 @@ contains
     if (out_getpar_siml%lGr3) npft_local = npft_local + 1
     if (out_getpar_siml%lGr4) npft_local = npft_local + 1
     if (out_getpar_siml%lGN3) npft_local = npft_local + 1
-
     ! temporary solution to this
     print*,'found ', npft_local, ' activated PFTs.'
     if (npft/=npft_local) stop 'GETPAR_SIML: adjust number of activated PFTs by hand in params_core.'
@@ -329,7 +333,7 @@ contains
     call getparstring( 'run/'//runname//'.sofun.parameter', 'do_grharvest_forcing_file', out_getpar_siml%do_grharvest_forcing_file )
 
     ! Reading from a different file!
-    call getparstring( 'input/dfapar_source.txt', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
+    call getparstring( 'run/'//runname//'.sofun.parameter', 'fapar_forcing_source', out_getpar_siml%fapar_forcing_source )
 
     out_getpar_siml%in_netrad         = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_netrad' )
     out_getpar_siml%in_ppfd           = getparlogical( 'run/'//runname//'.sofun.parameter', 'in_ppfd' )
@@ -347,6 +351,7 @@ contains
     out_getpar_siml%loutplant     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
     out_getpar_siml%loutgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutgpp' )
     out_getpar_siml%loutwaterbal  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal' )
+    out_getpar_siml%loutnimpl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnimpl' )
 
     ! Module-specific booleans whether a single variable is written to daily output
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
