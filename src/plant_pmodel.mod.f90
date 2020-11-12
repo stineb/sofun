@@ -86,7 +86,8 @@ module md_plant
 
     ! annual variables
     real :: agpp             ! annual total gross primary production [gC/m2/yr]           
-    real :: avcmax25_mean    ! annual Vcmax, normalised to 25 deg C, GPP-weighted mean
+    real :: avcmax25_mean    ! Sum Vcmax, normalised to 25 deg C, of the year
+    real :: avcmax25_weightedmean ! annual Vcmax, normalised to 25 deg C, GPP-weighted mean
     real :: avcmax25_max     ! annual Vcmax, normalised to 25 deg C, annual maximum
 
   end type plant_fluxes_type

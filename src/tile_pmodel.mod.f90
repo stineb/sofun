@@ -345,6 +345,7 @@ contains
       tile_fluxes(:)%plant(pft)%agpp          = 0.0
       tile_fluxes(:)%plant(pft)%avcmax25_mean = 0.0
       tile_fluxes(:)%plant(pft)%avcmax25_max  = 0.0
+      tile_fluxes(:)%plant(pft)%avcmax25_weightedmean  = 0.0
     end do
 
   end subroutine init_annual
@@ -399,13 +400,23 @@ contains
     !----------------------------------------------------------------
     ! PFT-level
     !----------------------------------------------------------------
+    !weighted-sum
     do lu=1,nlu
+      tile_fluxes(lu)%plant(:)%agpp = tile_fluxes(lu)%plant(:)%agpp + tile_fluxes(lu)%plant(:)%dgpp
+      tile_fluxes(lu)%plant(:)%avcmax25_mean = tile_fluxes(lu)%plant(:)%avcmax25_mean + tile_fluxes(lu)%plant(:)%vcmax25 * tile_fluxes(lu)%plant(:)%dgpp
+      !print*,'tile_fluxes(lu)%plant(:)%avcmax25_mean', tile_fluxes(lu)%plant(:)%avcmax25_mean
+      if (tile_fluxes(lu)%plant(pft)%agpp == 0.0) then
+        tile_fluxes(lu)%plant(pft)%avcmax25_weightedmean = 0.0
+      else
+        tile_fluxes(lu)%plant(pft)%avcmax25_weightedmean = tile_fluxes(lu)%plant(pft)%avcmax25_mean / tile_fluxes(lu)%plant(pft)%agpp
+      end if
+    !Max              
       do pft=1,npft
         ! Annual maximum
         if (tile_fluxes(lu)%plant(pft)%vcmax25 > tile_fluxes(lu)%plant(pft)%avcmax25_max) tile_fluxes(lu)%plant(pft)%avcmax25_max = tile_fluxes(lu)%plant(pft)%vcmax25
         ! GPP-weighted annual mean
-        tile_fluxes(lu)%plant(:)%agpp = tile_fluxes(lu)%plant(:)%agpp + tile_fluxes(lu)%plant(:)%dgpp
-        tile_fluxes(lu)%plant(:)%avcmax25_mean = tile_fluxes(lu)%plant(:)%avcmax25_mean + tile_fluxes(lu)%plant(:)%avcmax25_mean * tile_fluxes(lu)%plant(:)%dgpp
+        !tile_fluxes(lu)%plant(:)%avcmax25_mean = tile_fluxes(lu)%plant(:)%avcmax25_mean + tile_fluxes(lu)%plant(:)%vcmax25 * tile_fluxes(lu)%plant(:)%dgpp
+        !print*,'tile_fluxes(lu)%plant(pft)%avcmax25_mean', tile_fluxes(lu)%plant(pft)%avcmax25_mean
       end do
         
     end do
@@ -446,12 +457,15 @@ contains
     !tile_fluxes(:)%canopy%avcmax25_mean = tile_fluxes(:)%canopy%avcmax25_mean / tile_fluxes(:)%canopy%agpp
 
     do pft = 1,npft
+      !max
       tile(:)%plant(pft)%vcmax25 = tile_fluxes(:)%plant(pft)%avcmax25_max
-      !if (tile_fluxes(:)%plant(pft)%agpp==0.0) then
-      !  tile_fluxes(:)%plant(pft)%avcmax25_mean = 0
-      !else
-      !  tile_fluxes(:)%plant(pft)%avcmax25_mean = tile_fluxes(:)%plant(pft)%avcmax25_mean / tile_fluxes(:)%plant(pft)%agpp
-      !end if
+      !weighted-sum - this does not work right now
+      if (tile_fluxes(lu)%plant(pft)%agpp == 0.0) then
+        tile_fluxes(:)%plant(pft)%avcmax25_weightedmean = 0.0
+      else
+        tile_fluxes(:)%plant(pft)%avcmax25_weightedmean = tile_fluxes(:)%plant(pft)%avcmax25_mean / tile_fluxes(:)%plant(pft)%agpp
+        !print*,'tile_fluxes(:)%plant(pft)%avcmax25_weightedmean', tile_fluxes(:)%plant(pft)%avcmax25_weightedmean
+      end if
     end do
 
   end subroutine diag_annual
