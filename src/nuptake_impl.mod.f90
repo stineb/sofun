@@ -203,7 +203,9 @@ contains
           !here leafcn presents leaf n/c, leaf n/c = Nstructure/Cmass + (Nrubisco/Cmass)*(Vcmax25/LMA)
           !Nstructure = 0.01201, Nrubisco = 0.007493, Cmass = 0.4638, as derived from statistical model (location provided later)
           !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile_fluxes(lu)%plant(pft)%avcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
+          !print*,'tile_fluxes(lu)%plant(pft)%avcmax25_max', tile_fluxes(lu)%plant(pft)%avcmax25_max
           tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.01201/0.4638) + (0.007493/0.4638)*(tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
+          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = 1*(tile_fluxes(lu)%plant(pft)%avcmax25_max)
         end if
         !if (tile_nimpl_fluxes(lu)%plant(pft)%leafcn > 0.0) then
         tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn!it is actually leaf n/c here...
@@ -213,7 +215,8 @@ contains
         !print*,'8'
         tile_nimpl_fluxes(lu)%plant(pft)%nuptake = (tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
         !print*,"9" convert "mol m-2 d-1" to "umol m-2 s-1"
-        tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25 = tile_fluxes(lu)%plant(pft)%avcmax25_max 
+        !print*,'tile_fluxes(lu)%plant(pft)%avcmax25_max', tile_fluxes(lu)%plant(pft)%avcmax25_max
+        tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25 = 1*(tile_fluxes(lu)%plant(pft)%avcmax25_max)
       end do
 
     else
@@ -817,7 +820,7 @@ contains
       outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * tile(lu)%plant(:)%fpc_grid )
       outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * tile(lu)%plant(:)%fpc_grid )
       outnuptake(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nuptake * tile(lu)%plant(:)%fpc_grid )
-      outannualvcmax25(jpngr) = tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25      
+      outannualvcmax25(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%annualvcmax25 * tile(lu)%plant(:)%fpc_grid )      
       ! xxx complement
 
     end if
