@@ -10,6 +10,8 @@ module md_biosphere
   use md_tile, only: tile_type, tile_fluxes_type, initglobal_tile, initdaily_tile_fluxes, getpar_modl_tile, diag_daily, diag_annual, init_annual
   use md_interface, only: getout_daily_forcing, initoutput_forcing, initio_nc_forcing, writeout_nc_forcing
   use md_soiltemp, only: getout_daily_soiltemp, soiltemp, initoutput_soiltemp
+  use md_nuptake_impl, only: nuptake_impl, get_preds_nimpl, getpar_nimpl, initio_nc_nimpl, initoutput_nimpl, getout_annual_nimpl, writeout_nc_nimpl
+  ! use md_sofunutils, only: calc_patm
 
   implicit none
 
@@ -60,6 +62,7 @@ contains
       call getpar_modl_plant()
       call getpar_modl_waterbal()
       call getpar_modl_gpp()
+      call getpar_nimpl()
       if (verbose) print*, '... done'
 
       !----------------------------------------------------------------
@@ -71,6 +74,11 @@ contains
       call initglobal_tile(  tile(:,:),  size(interface%grid) )
       if (verbose) print*, '... done'
 
+      !----------------------------------------------------------------
+      ! Get nimpl predictor fields (only available inside nimpl module)
+      !----------------------------------------------------------------
+      call get_preds_nimpl( interface%domaininfo, interface%grid )
+
     endif 
 
     !----------------------------------------------------------------
@@ -81,6 +89,7 @@ contains
       call initio_nc_forcing()
       call initio_nc_gpp()
       call initio_nc_waterbal()
+      call initio_nc_nimpl()
       if (verbose) print*, '... done'
     end if
     
@@ -94,6 +103,7 @@ contains
       call initoutput_plant(    size(interface%grid) )
       call initoutput_forcing(  size(interface%grid) )
       call initoutput_soiltemp( size(interface%grid) )
+      call initoutput_nimpl(    size(interface%grid) )
       if (verbose) print*, '... done'
     end if
 
@@ -125,7 +135,7 @@ contains
         !----------------------------------------------------------------
         ! LOOP THROUGH MONTHS
         !----------------------------------------------------------------
-        doy=0   ! day of the year
+        doy=0
         monthloop: do moy=1,nmonth
 
           !----------------------------------------------------------------
@@ -257,12 +267,18 @@ contains
         call diag_annual( tile(:,jpngr), tile_fluxes(:) )
 
         !----------------------------------------------------------------
+        ! Statistical relationships with GPP to get N uptake
+        !----------------------------------------------------------------
+        call nuptake_impl( jpngr, interface%grid(jpngr)%dogridcell, tile(:,jpngr), tile_fluxes(:), interface%steering%init )
+
+        !----------------------------------------------------------------
         ! collect annual output
         !----------------------------------------------------------------
         if (.not.interface%params_siml%is_calib) then
           if (verbose) print*,'calling getout_annual_() ... '
           ! call getout_annual_plant( tile(:)%plant(:), jpngr )
           call getout_annual_gpp( jpngr, tile_fluxes(:) )
+          call getout_annual_nimpl( jpngr, tile(:,jpngr) )
           if (verbose) print*,'... done'
         end if
 
@@ -282,6 +298,7 @@ contains
       call writeout_nc_forcing()
       call writeout_nc_gpp()
       call writeout_nc_waterbal()
+      call writeout_nc_nimpl()
       if (verbose) print*,'... done'
     end if
 
