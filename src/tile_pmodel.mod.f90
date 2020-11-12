@@ -386,8 +386,10 @@ contains
     !tile_fluxes(lu)%canopy%avcmax25_mean = tile_fluxes(lu)%canopy%avcmax25_mean + tile_fluxes(lu)%canopy%vcmax25 * tile_fluxes(lu)%canopy%dgpp
 
     ! Annual maximum
-    if (tile_fluxes(lu)%canopy%vcmax25 > tile_fluxes(lu)%canopy%avcmax25_max) tile_fluxes(lu)%canopy%avcmax25_max = tile_fluxes(lu)%canopy%vcmax25
-
+    do lu = 1,nlu
+      if (tile_fluxes(lu)%canopy%vcmax25 > tile_fluxes(lu)%canopy%avcmax25_max) tile_fluxes(lu)%canopy%avcmax25_max = tile_fluxes(lu)%canopy%vcmax25
+      !print*,'tile_fluxes(lu)%canopy%avcmax25_max', tile_fluxes(lu)%canopy%avcmax25_max 
+    end do 
     !----------------------------------------------------------------
     ! PFT-level
     !----------------------------------------------------------------
