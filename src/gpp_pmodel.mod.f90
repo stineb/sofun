@@ -2057,7 +2057,7 @@ contains
 
       ! canopy level
       outagpp(jpngr)     = tile_fluxes(1)%canopy%agpp          ! take only LU = 1
-      outavcmax25(jpngr) = tile_fluxes(1)%canopy%avcmax25_mean ! take GPP-weighted mean, only LU = 1
+      outavcmax25(jpngr) = tile_fluxes(1)%canopy%avcmax25_max ! take GPP-weighted mean, only LU = 1
 
       ! pft level
       !outagpp(jpngr)     = tile_fluxes(1)%plant(pft)%agpp     ! canopy and pft level were the same!
