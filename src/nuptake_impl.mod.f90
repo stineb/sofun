@@ -27,8 +27,8 @@ module md_nuptake_impl
     real :: alnf        ! annual laef nitrogen flux (gN m-2 yr-2)
     real :: awnf        ! annual wood nitrogen flux (gN m-2 yr-2)
     real :: abnf        ! annual belowground(root) nitrogen flux (gN m-2 yr-2)
-    real :: nuptake   ! annual nitrogen uptake in ecosystem (gN m-2 yr-1)
-    real :: annualvcmax25 ! annual maximum carboxylation capacity (umol m-2 s-1)
+    real :: nuptake     ! annual nitrogen uptake in ecosystem (gN m-2 yr-1)
+    real :: avcmax25    ! annual maximum carboxylation capacity (umol m-2 s-1)
   end type plant_nimpl_fluxes_type
 
   type tile_nimpl_fluxes_type
@@ -130,7 +130,7 @@ module md_nuptake_impl
   real, dimension(:), allocatable :: outawnf
   real, dimension(:), allocatable :: outabnf
   real, dimension(:), allocatable :: outnuptake
-  real, dimension(:), allocatable :: outannualvcmax25
+  real, dimension(:), allocatable :: outavcmax25
   !----------------------------------------------------------------
   ! Module-specific NetCDF output file and variable names
   !----------------------------------------------------------------
@@ -177,8 +177,8 @@ contains
 
     !--------------------------------------------------------------
     ! Predict using statistical models
-    !Note that some data was log-transfromed (cnsoil, age, PPFD, vpd, Vcmax25, lma) while some are not (alpha, fAPAR, Tg)
-    !All ratios were using logit function (logit(y)=x), therefore we should convert them into y = 1/(1+ exp(-x))
+    ! Note that some data was log-transfromed (cnsoil, age, PPFD, vpd, Vcmax25, lma) while some are not (alpha, fAPAR, Tg)
+    ! All ratios were using logit function (logit(y)=x), therefore we should convert them into y = 1/(1+ exp(-x))
     ! leaf c/n model were using log function, so it should be exp in advance
     !--------------------------------------------------------------
     ! Make tile_nimpl_fluxes a field
@@ -186,51 +186,61 @@ contains
 
       lu = 1
       do pft = 1,npft
-        !print*,'1'
-        tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
-        !print*,'2'
+
+        print*,'tile_fluxes(lu)%plant(pft)%agpp',tile_fluxes(lu)%plant(pft)%agpp 
+        print*,'coef_nimpl%cnsoil_bp', coef_nimpl%cnsoil_bp
+        print*,'(preds_nimpl(jpngr)%cnsoil)', (preds_nimpl(jpngr)%cnsoil)
+        print*,'LOG(preds_nimpl(jpngr)%cnsoil)', LOG(preds_nimpl(jpngr)%cnsoil)
+        print*,'coef_nimpl%age_bp', coef_nimpl%age_bp
+        print*,'LOG(preds_nimpl(jpngr)%age)', LOG(preds_nimpl(jpngr)%age)
+        print*,'preds_nimpl(jpngr)%fapar', preds_nimpl(jpngr)%fapar
+        print*,'preds_nimpl(jpngr)%alpha', preds_nimpl(jpngr)%alpha
+        print*,'coef_nimpl%intersect_bp', coef_nimpl%intersect_bp
+
+        print*,'1'
+        tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar + coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
+        print*,'2'
         tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_anpp))))
-        !print*,'3'
+        print*,'3'
         tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
-        !print*,'4'
+        print*,'4'
         tile_nimpl_fluxes(lu)%plant(pft)%alnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp * (1/(1+EXP(-(coef_nimpl%ppfd_alnpp * LOG(preds_nimpl(jpngr)%ppfd) + coef_nimpl%tg_alnpp * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_alnpp))))
-        !print*,'5'
+        print*,'5'
         tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
-        !print*,'tile_fluxes(lu)%plant(pft)%agpp', tile_fluxes(lu)%plant(pft)%agpp
-        !print*,'6'
+        print*,'tile_fluxes(lu)%plant(pft)%agpp', tile_fluxes(lu)%plant(pft)%agpp
+        print*,'6'
         !prevent FPE
-        if ((preds_nimpl(jpngr)%lma > 0.0).and.(tile_fluxes(lu)%plant(pft)%avcmax25 > 0.0)) then
-          !here leafcn presents leaf n/c, leaf n/c = Nstructure/Cmass + (Nrubisco/Cmass)*(Vcmax25/LMA)
-          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(-0.1066 * LOG(tile_fluxes(lu)%plant(pft)%avcmax25) + 0.5255 * LOG(preds_nimpl(jpngr)%lma) + 1.2614)
-          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.0161/0.47) + (0.0041/0.47)*(tile_fluxes(lu)%plant(pft)%avcmax25)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
+        if ((preds_nimpl(jpngr)%lma > 0.0).and.(tile_fluxes(lu)%plant(pft)%avcmax25_max > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.01201/0.4638) + (0.007493/0.4638) * (tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
         end if
         !if (tile_nimpl_fluxes(lu)%plant(pft)%leafcn > 0.0) then
-        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn!it is actually leaf n/c here...
+        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn !it is actually leaf n/c here...
         !end if
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
-        !print*,'8'
+        print*,'8'
         tile_nimpl_fluxes(lu)%plant(pft)%nuptake = (tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
-        !print*,"9" convert "mol m-2 d-1" to "umol m-2 s-1"
-        tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25 = tile_fluxes(lu)%plant(pft)%avcmax25 
+        print*,"9"
+        ! print*,'tile_fluxes(lu)%plant(pft)%avcmax25_max', tile_fluxes(lu)%plant(pft)%avcmax25_max
+        ! tile_nimpl_fluxes(lu)%plant(pft)%avcmax = 1*(tile_fluxes(lu)%plant(pft)%avcmax25_max)
       end do
 
     else
 
       lu = 1
-      !print*,'1'
+      print*,'1 b'
       tile_nimpl_fluxes(lu)%plant(:)%anpp  = dummy
-      !print*,'2'
+      print*,'2 b'
       tile_nimpl_fluxes(lu)%plant(:)%aanpp = dummy
-      !print*,'3'
+      print*,'3 b'
       tile_nimpl_fluxes(lu)%plant(:)%abnpp = dummy
-      !print*,'4'
+      print*,'4 b'
       tile_nimpl_fluxes(lu)%plant(:)%alnpp = dummy
-      !print*,'5'
+      print*,'5 b'
       tile_nimpl_fluxes(lu)%plant(:)%awnpp = dummy
-      !print*,'6'
+      print*,'6 b'
       tile_nimpl_fluxes(lu)%plant(:)%leafcn = dummy
-      !print*,'7'
+      print*,'7 b'
 
       tile_nimpl_fluxes(lu)%plant(:)%alnf = dummy
       tile_nimpl_fluxes(lu)%plant(:)%awnf = dummy
@@ -264,11 +274,11 @@ contains
     call get_preds_nc_byvar( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
     call get_preds_nc_byvar( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
 
-    ! ANPP:GPP model
-    call get_preds_nc_byvar( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
-    call get_preds_nc_byvar( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
-    call get_preds_nc_byvar( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
-    call get_preds_nc_byvar( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
+    ! ! ANPP:GPP model
+    ! call get_preds_nc_byvar( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
+    ! call get_preds_nc_byvar( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
+    ! call get_preds_nc_byvar( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
+    ! call get_preds_nc_byvar( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
 
     ! ALNPP:NPP model
     call get_preds_nc_byvar( trim(filnam_ppfd), trim(varnam_ppfd), domaininfo, grid, preds_nimpl(:)%ppfd )
@@ -761,7 +771,7 @@ contains
         allocate( outawnf(ngridcells) )
         allocate( outabnf(ngridcells) )
         allocate( outnuptake(ngridcells) )
-        allocate( outannualvcmax25(ngridcells) )        
+        allocate( outavcmax25(ngridcells) )        
         ! xxx complement
       end if
 
@@ -775,7 +785,7 @@ contains
       outawnf(:) = 0.0
       outabnf(:) = 0.0
       outnuptake(:) = 0.0
-      outannualvcmax25(:) = 0.0
+      outavcmax25(:) = 0.0
       ! xxx complement
     
     end if
@@ -783,7 +793,7 @@ contains
   end subroutine initoutput_nimpl
 
 
-  subroutine getout_annual_nimpl( jpngr, tile )
+  subroutine getout_annual_nimpl( jpngr, tile, tile_fluxes )
     !////////////////////////////////////////////////////////////////
     ! Called once a year to gather annual output variables.
     !
@@ -796,7 +806,8 @@ contains
 
     ! arguments
     integer, intent(in) :: jpngr
-    type(tile_type), dimension(nlu), intent(inout) :: tile
+    type(tile_type), dimension(nlu), intent(in) :: tile
+    type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
 
     ! local variables
     integer :: pft, lu
@@ -806,6 +817,8 @@ contains
 
       lu = 1
       !if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
+
+      ! grid-cell average across PFTs, weighted by their FPC grid 
       outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * tile(lu)%plant(:)%fpc_grid )
       outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * tile(lu)%plant(:)%fpc_grid )
       outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * tile(lu)%plant(:)%fpc_grid )
@@ -816,7 +829,8 @@ contains
       outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * tile(lu)%plant(:)%fpc_grid )
       outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * tile(lu)%plant(:)%fpc_grid )
       outnuptake(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nuptake * tile(lu)%plant(:)%fpc_grid )
-      outannualvcmax25(jpngr) = tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25      
+      outavcmax25(jpngr) = sum( tile_fluxes(lu)%plant(:)%avcmax25_max * tile(lu)%plant(:)%fpc_grid )
+
       ! xxx complement
 
     end if
@@ -990,7 +1004,7 @@ contains
                                                               interface%grid(:)%ilon, &
                                                               interface%grid(:)%ilat, &
                                                               interface%grid(:)%dogridcell, &
-                                                              outannualvcmax25(:) &
+                                                              outavcmax25(:) &
                                                               )
       ! xxx complement
     end if
