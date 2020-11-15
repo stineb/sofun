@@ -25,7 +25,7 @@ module md_biosphere
   type(tile_type),        allocatable, dimension(:,:) :: tile             ! has gridcell-dimension because values are stored between years
   type(tile_fluxes_type), allocatable, dimension(:)   :: tile_fluxes      ! has no gridcell-dimension values need not be recorded
 
-  logical, parameter :: verbose = .true.     ! change by hand for debugging etc.
+  logical, parameter :: verbose = .false.     ! change by hand for debugging etc.
 
 contains
 

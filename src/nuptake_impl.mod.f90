@@ -187,28 +187,29 @@ contains
       lu = 1
       do pft = 1,npft
 
-        print*,'tile_fluxes(lu)%plant(pft)%agpp',tile_fluxes(lu)%plant(pft)%agpp 
-        print*,'coef_nimpl%cnsoil_bp', coef_nimpl%cnsoil_bp
-        print*,'(preds_nimpl(jpngr)%cnsoil)', (preds_nimpl(jpngr)%cnsoil)
-        print*,'LOG(preds_nimpl(jpngr)%cnsoil)', LOG(preds_nimpl(jpngr)%cnsoil)
-        print*,'coef_nimpl%age_bp', coef_nimpl%age_bp
-        print*,'LOG(preds_nimpl(jpngr)%age)', LOG(preds_nimpl(jpngr)%age)
-        print*,'preds_nimpl(jpngr)%fapar', preds_nimpl(jpngr)%fapar
-        print*,'preds_nimpl(jpngr)%alpha', preds_nimpl(jpngr)%alpha
-        print*,'coef_nimpl%intersect_bp', coef_nimpl%intersect_bp
+        !print*,'tile_fluxes(lu)%plant(pft)%agpp',tile_fluxes(lu)%plant(pft)%agpp 
+        !print*,'coef_nimpl%cnsoil_bp', coef_nimpl%cnsoil_bp
+        !print*,'(preds_nimpl(jpngr)%cnsoil)', (preds_nimpl(jpngr)%cnsoil)
+        !print*,'LOG(preds_nimpl(jpngr)%cnsoil)', LOG(preds_nimpl(jpngr)%cnsoil)
+        !print*,'coef_nimpl%age_bp', coef_nimpl%age_bp
+        !print*,'LOG(preds_nimpl(jpngr)%age)', LOG(preds_nimpl(jpngr)%age)
+        !print*,'preds_nimpl(jpngr)%fapar', preds_nimpl(jpngr)%fapar
+        !print*,'preds_nimpl(jpngr)%alpha', preds_nimpl(jpngr)%alpha
+        !print*,'coef_nimpl%intersect_bp', coef_nimpl%intersect_bp
 
-        print*,'1'
-        tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar + coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
-        print*,'2'
-        tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_anpp))))
-        print*,'3'
+        if ((preds_nimpl(jpngr)%cnsoil > 0.0).and.(preds_nimpl(jpngr)%age > 0.0).and.(preds_nimpl(jpngr)%fapar > 0.0).and.(preds_nimpl(jpngr)%alpha > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
+          tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_anpp))))
+        end if
+
         tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
-        print*,'4'
-        tile_nimpl_fluxes(lu)%plant(pft)%alnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp * (1/(1+EXP(-(coef_nimpl%ppfd_alnpp * LOG(preds_nimpl(jpngr)%ppfd) + coef_nimpl%tg_alnpp * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_alnpp))))
-        print*,'5'
+        !print*,'4'
+        if ((preds_nimpl(jpngr)%ppfd > 0.0).and.(preds_nimpl(jpngr)%tg > 0.0).and.(preds_nimpl(jpngr)%vpd > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%alnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp * (1/(1+EXP(-(coef_nimpl%ppfd_alnpp * LOG(preds_nimpl(jpngr)%ppfd) + coef_nimpl%tg_alnpp * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_alnpp))))
+        end if
+        !print*,'5'
         tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
-        print*,'tile_fluxes(lu)%plant(pft)%agpp', tile_fluxes(lu)%plant(pft)%agpp
-        print*,'6'
+        
         !prevent FPE
         if ((preds_nimpl(jpngr)%lma > 0.0).and.(tile_fluxes(lu)%plant(pft)%avcmax25_max > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.01201/0.4638) + (0.007493/0.4638) * (tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
@@ -218,9 +219,9 @@ contains
         !end if
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
-        print*,'8'
+        !print*,'8'
         tile_nimpl_fluxes(lu)%plant(pft)%nuptake = (tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
-        print*,"9"
+        !print*,"9"
         ! print*,'tile_fluxes(lu)%plant(pft)%avcmax25_max', tile_fluxes(lu)%plant(pft)%avcmax25_max
         ! tile_nimpl_fluxes(lu)%plant(pft)%avcmax = 1*(tile_fluxes(lu)%plant(pft)%avcmax25_max)
       end do
@@ -228,19 +229,19 @@ contains
     else
 
       lu = 1
-      print*,'1 b'
+      !print*,'1 b'
       tile_nimpl_fluxes(lu)%plant(:)%anpp  = dummy
-      print*,'2 b'
+      !print*,'2 b'
       tile_nimpl_fluxes(lu)%plant(:)%aanpp = dummy
-      print*,'3 b'
+      !print*,'3 b'
       tile_nimpl_fluxes(lu)%plant(:)%abnpp = dummy
-      print*,'4 b'
+      !print*,'4 b'
       tile_nimpl_fluxes(lu)%plant(:)%alnpp = dummy
-      print*,'5 b'
+      !print*,'5 b'
       tile_nimpl_fluxes(lu)%plant(:)%awnpp = dummy
-      print*,'6 b'
+      !print*,'6 b'
       tile_nimpl_fluxes(lu)%plant(:)%leafcn = dummy
-      print*,'7 b'
+      !print*,'7 b'
 
       tile_nimpl_fluxes(lu)%plant(:)%alnf = dummy
       tile_nimpl_fluxes(lu)%plant(:)%awnf = dummy
