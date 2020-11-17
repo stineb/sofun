@@ -210,11 +210,17 @@ contains
         !print*,'5'
         tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
         
-        !prevent FPE
+        !model 1: Nmass ~ vcmax25/lma - r2 = 0.065
         if ((preds_nimpl(jpngr)%lma > 0.0).and.(tile_fluxes(lu)%plant(pft)%avcmax25_max > 0.0)) then
-          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.01201/0.4638) + (0.007493/0.4638) * (tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
-        end if
-        !if (tile_nimpl_fluxes(lu)%plant(pft)%leafcn > 0.0) then
+          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.014/0.4638) + (0.005/0.4638) * (tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
+          !model 1b: Nmass ~ vcmax25/lma + soil C/N.
+          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.017 + (0.005)*((tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)) + (-0.0003)*(preds_nimpl(jpngr)%cnsoil))/0.4638 !it is actually leaf n/c here...
+          !model 1c: Nmass ~ vcmax25 + lma + soil C/N. 
+          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.02922 + (-0.0004462)*(preds_nimpl(jpngr)%cnsoil) + 0.00002715*(tile_fluxes(lu)%plant(pft)%avcmax25_max) + (-0.00006713)*(preds_nimpl(jpngr)%lma))/0.4638 !it is actually leaf n/c here...
+        end if        
+        !model 2: Nmass ~ Tg + PPFD + LMA
+        !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.02035+ (-0.0001095)*preds_nimpl(jpngr)%tg + (0.00001875)*(preds_nimpl(jpngr)%ppfd) + (-0.00006863)*(preds_nimpl(jpngr)%lma))/0.4638  !it is actually leaf n/c here...the alternative model for PPFD + Tg + LMA     
+
         tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn !it is actually leaf n/c here...
         !end if
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
