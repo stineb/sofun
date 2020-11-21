@@ -183,41 +183,48 @@ contains
     !--------------------------------------------------------------
     ! Make tile_nimpl_fluxes a field
     if (dogridcell) then
-
       lu = 1
       do pft = 1,npft
-
-        !print*,'tile_fluxes(lu)%plant(pft)%agpp',tile_fluxes(lu)%plant(pft)%agpp 
-        !print*,'coef_nimpl%cnsoil_bp', coef_nimpl%cnsoil_bp
-        !print*,'(preds_nimpl(jpngr)%cnsoil)', (preds_nimpl(jpngr)%cnsoil)
-        !print*,'LOG(preds_nimpl(jpngr)%cnsoil)', LOG(preds_nimpl(jpngr)%cnsoil)
-        !print*,'coef_nimpl%age_bp', coef_nimpl%age_bp
-        !print*,'LOG(preds_nimpl(jpngr)%age)', LOG(preds_nimpl(jpngr)%age)
-        !print*,'preds_nimpl(jpngr)%fapar', preds_nimpl(jpngr)%fapar
-        !print*,'preds_nimpl(jpngr)%alpha', preds_nimpl(jpngr)%alpha
-        !print*,'coef_nimpl%intersect_bp', coef_nimpl%intersect_bp
-
         if ((preds_nimpl(jpngr)%cnsoil > 0.0).and.(preds_nimpl(jpngr)%age > 0.0).and.(preds_nimpl(jpngr)%fapar > 0.0).and.(preds_nimpl(jpngr)%alpha > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
           tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_anpp))))
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%anpp  = 0
+            tile_nimpl_fluxes(lu)%plant(pft)%aanpp  = 0
+            !print*,'tile_fluxes(lu)%plant(pft)%agpp',tile_fluxes(lu)%plant(pft)%agpp 
+            !print*,'jpngr',jpngr
+            !print*,'tile_nimpl_fluxes(lu)%plant(pft)%anpp',tile_nimpl_fluxes(lu)%plant(pft)%anpp
+            !print*,'jpngr',jpngr            
+            !print*,'preds_nimpl(jpngr)%cnsoil ',preds_nimpl(jpngr)%cnsoil 
+            !print*,'jpngr',jpngr
+            !print*,'preds_nimpl(jpngr)%age ',preds_nimpl(jpngr)%age
+            !print*,'jpngr',jpngr 
+            !print*,'preds_nimpl(jpngr)%fapar',preds_nimpl(jpngr)%fapar
+            !print*,'jpngr',jpngr 
+            !print*,'preds_nimpl(jpngr)%alpha ',preds_nimpl(jpngr)%alpha
+            !print*,'jpngr',jpngr
         end if
 
         tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
         !print*,'4'
-        if ((preds_nimpl(jpngr)%ppfd > 0.0).and.(preds_nimpl(jpngr)%tg > 0.0).and.(preds_nimpl(jpngr)%vpd > 0.0)) then
+        if ((preds_nimpl(jpngr)%ppfd > 0.0).and.(preds_nimpl(jpngr)%vpd > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%alnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp * (1/(1+EXP(-(coef_nimpl%ppfd_alnpp * LOG(preds_nimpl(jpngr)%ppfd) + coef_nimpl%tg_alnpp * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_alnpp))))
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%alnpp = 0
         end if
         !print*,'5'
         tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
         
-        !model 1: Nmass ~ vcmax25/lma - r2 = 0.065
-        if ((preds_nimpl(jpngr)%lma > 0.0).and.(tile_fluxes(lu)%plant(pft)%avcmax25_max > 0.0)) then
+        !model 1: Nmass ~ vcmax25/lma - r2 = 0.066
+        if ((preds_nimpl(jpngr)%lma > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.014/0.4638) + (0.005/0.4638) * (tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%leafcn = 0
+        end if      
           !model 1b: Nmass ~ vcmax25/lma + soil C/N.
           !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.017 + (0.005)*((tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)) + (-0.0003)*(preds_nimpl(jpngr)%cnsoil))/0.4638 !it is actually leaf n/c here...
           !model 1c: Nmass ~ vcmax25 + lma + soil C/N. 
           !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.02922 + (-0.0004462)*(preds_nimpl(jpngr)%cnsoil) + 0.00002715*(tile_fluxes(lu)%plant(pft)%avcmax25_max) + (-0.00006713)*(preds_nimpl(jpngr)%lma))/0.4638 !it is actually leaf n/c here...
-        end if        
         !model 2: Nmass ~ Tg + PPFD + LMA
         !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.02035+ (-0.0001095)*preds_nimpl(jpngr)%tg + (0.00001875)*(preds_nimpl(jpngr)%ppfd) + (-0.00006863)*(preds_nimpl(jpngr)%lma))/0.4638  !it is actually leaf n/c here...the alternative model for PPFD + Tg + LMA     
 
@@ -231,7 +238,6 @@ contains
         ! print*,'tile_fluxes(lu)%plant(pft)%avcmax25_max', tile_fluxes(lu)%plant(pft)%avcmax25_max
         ! tile_nimpl_fluxes(lu)%plant(pft)%avcmax = 1*(tile_fluxes(lu)%plant(pft)%avcmax25_max)
       end do
-
     else
 
       lu = 1
@@ -458,6 +464,8 @@ contains
       end if
 
     end do
+
+    !print*, 'lon,lat,pred',lon_arr(400),lat_arr(130),pred_arr(400,130)
 
     ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
     deallocate( pred_arr )
@@ -814,6 +822,7 @@ contains
     ! arguments
     integer, intent(in) :: jpngr
     type(tile_type), dimension(nlu), intent(in) :: tile
+    !type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
     type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
 
     ! local variables
@@ -823,10 +832,9 @@ contains
     if (interface%params_siml%loutnimpl) then
 
       lu = 1
-      !if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
-
+      if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
       ! grid-cell average across PFTs, weighted by their FPC grid 
-      outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * tile(lu)%plant(:)%fpc_grid )
+      outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * tile(lu)%plant(:)%fpc_grid)
       outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * tile(lu)%plant(:)%fpc_grid )
       outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * tile(lu)%plant(:)%fpc_grid )
       outalnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnpp * tile(lu)%plant(:)%fpc_grid )
@@ -837,8 +845,6 @@ contains
       outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * tile(lu)%plant(:)%fpc_grid )
       outnuptake(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nuptake * tile(lu)%plant(:)%fpc_grid )
       outavcmax25(jpngr) = sum( tile_fluxes(lu)%plant(:)%avcmax25_max * tile(lu)%plant(:)%fpc_grid )
-
-      ! xxx complement
 
     end if
 
