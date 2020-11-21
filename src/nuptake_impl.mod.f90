@@ -218,6 +218,10 @@ contains
         !model 1: Nmass ~ vcmax25/lma - r2 = 0.066
         if ((preds_nimpl(jpngr)%lma > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.014/0.4638) + (0.005/0.4638) * (tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
+          !print*,'tile_fluxes(lu)%plant(pft)%avcmax25_max ',tile_fluxes(lu)%plant(pft)%avcmax25_max
+          !print*,'jpngr',jpngr
+          !print*,'tile_nimpl_fluxes(lu)%plant(pft)%leafcn ',tile_nimpl_fluxes(lu)%plant(pft)%leafcn
+          !print*,'jpngr',jpngr          
           else
             tile_nimpl_fluxes(lu)%plant(pft)%leafcn = 0
         end if      
@@ -228,12 +232,12 @@ contains
         !model 2: Nmass ~ Tg + PPFD + LMA
         !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.02035+ (-0.0001095)*preds_nimpl(jpngr)%tg + (0.00001875)*(preds_nimpl(jpngr)%ppfd) + (-0.00006863)*(preds_nimpl(jpngr)%lma))/0.4638  !it is actually leaf n/c here...the alternative model for PPFD + Tg + LMA     
 
-        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn !it is actually leaf n/c here...
+        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn!it is actually leaf n/c here. 
         !end if
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
         !print*,'8'
-        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = (tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
+        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
         !print*,"9"
         ! print*,'tile_fluxes(lu)%plant(pft)%avcmax25_max', tile_fluxes(lu)%plant(pft)%avcmax25_max
         ! tile_nimpl_fluxes(lu)%plant(pft)%avcmax = 1*(tile_fluxes(lu)%plant(pft)%avcmax25_max)
@@ -834,17 +838,17 @@ contains
       lu = 1
       if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
       ! grid-cell average across PFTs, weighted by their FPC grid 
-      outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * 1.0)
-      outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * 1.0)
+      outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * 1.0 ) ! because npp was derived from gpp, while gpp has already been accounted by fpc_grid, there no need to multiply again!
+      outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * 1.0 )
       outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * 1.0)
       outalnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnpp * 1.0)
       outawnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnpp * 1.0)
-      outleafcn(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%leafcn * 1.0)
+      outleafcn(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%leafcn * tile(lu)%plant(:)%fpc_grid) !Because here leafcn was derived from c3 and c4 vcmax25 separately, which has not been accounted by fpc_grid yet
       outalnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf * 1.0)
       outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * 1.0)
       outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * 1.0)
-      outnuptake(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nuptake * 1.0)
-      outavcmax25(jpngr) = sum( tile_fluxes(lu)%plant(:)%avcmax25_max * 1.0)
+      outnuptake(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nuptake * 1.0 )
+      outavcmax25(jpngr) = sum( tile_fluxes(lu)%plant(:)%avcmax25_max * tile(lu)%plant(:)%fpc_grid ) !same above, in the end this result should be = canopy vcmax25
 
     end if
 
