@@ -834,17 +834,17 @@ contains
       lu = 1
       if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
       ! grid-cell average across PFTs, weighted by their FPC grid 
-      outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * tile(lu)%plant(:)%fpc_grid)
-      outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * tile(lu)%plant(:)%fpc_grid )
-      outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * tile(lu)%plant(:)%fpc_grid )
-      outalnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnpp * tile(lu)%plant(:)%fpc_grid )
-      outawnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnpp * tile(lu)%plant(:)%fpc_grid )
-      outleafcn(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%leafcn * tile(lu)%plant(:)%fpc_grid )
-      outalnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf * tile(lu)%plant(:)%fpc_grid )
-      outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * tile(lu)%plant(:)%fpc_grid )
-      outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * tile(lu)%plant(:)%fpc_grid )
-      outnuptake(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nuptake * tile(lu)%plant(:)%fpc_grid )
-      outavcmax25(jpngr) = sum( tile_fluxes(lu)%plant(:)%avcmax25_max * tile(lu)%plant(:)%fpc_grid )
+      outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * 1.0)
+      outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * 1.0)
+      outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * 1.0)
+      outalnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnpp * 1.0)
+      outawnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnpp * 1.0)
+      outleafcn(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%leafcn * 1.0)
+      outalnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf * 1.0)
+      outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * 1.0)
+      outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * 1.0)
+      outnuptake(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nuptake * 1.0)
+      outavcmax25(jpngr) = sum( tile_fluxes(lu)%plant(:)%avcmax25_max * 1.0)
 
     end if
 
