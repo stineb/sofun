@@ -69,7 +69,7 @@ module md_nuptake_impl
     ! Leaf C:N model
     real :: vcmax25_leafcn
     real :: lma_leafcn
-    real :: intersect_leafcn
+    real :: cmass_leafcn
 
     ! nre model
     real :: tg_nre
@@ -117,8 +117,6 @@ module md_nuptake_impl
   character(len=100), parameter :: varnam_Tg     = "Tg"
   character(len=100), parameter :: filnam_vpd    = "./input/global/nimpl/vpd.nc"
   character(len=100), parameter :: varnam_vpd    = "vpd"
-  ! character(len=100), parameter :: filnam_vcmax25= "Vcmax25.nc"  ! needs further work
-  ! character(len=100), parameter :: varnam_vcmax25= "Vcmax25"     ! needs further work
   character(len=100), parameter :: filnam_lma    = "./input/global/nimpl/LMA.nc"
   character(len=100), parameter :: varnam_lma    = "LMA"
   
@@ -226,11 +224,7 @@ contains
         
         !model 1: Nmass ~ vcmax25/lma - r2 = 0.066
         if ((preds_nimpl(jpngr)%lma > 0.0)) then
-          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.014/0.4638) + (0.005/0.4638) * (tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
-          !print*,'tile_fluxes(lu)%plant(pft)%avcmax25_max ',tile_fluxes(lu)%plant(pft)%avcmax25_max
-          !print*,'jpngr',jpngr
-          !print*,'tile_nimpl_fluxes(lu)%plant(pft)%leafcn ',tile_nimpl_fluxes(lu)%plant(pft)%leafcn
-          !print*,'jpngr',jpngr          
+          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (coef_nimpl%lma_leafcn/coef_nimpl%cmass_leafcn) + (coef_nimpl%vcmax25_leafcn/coef_nimpl%cmass_leafcn) * (tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...    
           else
             tile_nimpl_fluxes(lu)%plant(pft)%leafcn = 0
         end if      
@@ -353,7 +347,7 @@ contains
     ! Leaf C:N model
     coef_nimpl%vcmax25_leafcn = getparreal( 'params/params_nimpl.dat', 'vcmax25_leafcn' )
     coef_nimpl%lma_leafcn = getparreal( 'params/params_nimpl.dat', 'lma_leafcn' )
-    coef_nimpl%intersect_leafcn     = getparreal( 'params/params_nimpl.dat', 'intersect_leafcn' )
+    coef_nimpl%cmass_leafcn     = getparreal( 'params/params_nimpl.dat', 'cmass_leafcn' )
 
     ! leaf nre model
     coef_nimpl%tg_nre = getparreal( 'params/params_nimpl.dat', 'tg_nre' )
