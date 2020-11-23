@@ -195,9 +195,11 @@ contains
         if ((preds_nimpl(jpngr)%cnsoil > 0.0).and.(preds_nimpl(jpngr)%age > 0.0).and.(preds_nimpl(jpngr)%fapar > 0.0).and.(preds_nimpl(jpngr)%alpha > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
           tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_anpp))))
+          tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
           else
             tile_nimpl_fluxes(lu)%plant(pft)%anpp  = 0
             tile_nimpl_fluxes(lu)%plant(pft)%aanpp  = 0
+            tile_nimpl_fluxes(lu)%plant(pft)%abnpp = 0
             !print*,'tile_fluxes(lu)%plant(pft)%agpp',tile_fluxes(lu)%plant(pft)%agpp 
             !print*,'jpngr',jpngr
             !print*,'tile_nimpl_fluxes(lu)%plant(pft)%anpp',tile_nimpl_fluxes(lu)%plant(pft)%anpp
@@ -212,7 +214,7 @@ contains
             !print*,'jpngr',jpngr
         end if
 
-        tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
+        !tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
         !print*,'4'
         if ((preds_nimpl(jpngr)%ppfd > 0.0).and.(preds_nimpl(jpngr)%vpd > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%alnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp * (1/(1+EXP(-(coef_nimpl%ppfd_alnpp * LOG(preds_nimpl(jpngr)%ppfd) + coef_nimpl%tg_alnpp * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_alnpp))))
