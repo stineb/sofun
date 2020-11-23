@@ -220,8 +220,11 @@ contains
             tile_nimpl_fluxes(lu)%plant(pft)%alnpp = 0
         end if
         !print*,'5'
-        tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
-        
+        if ((preds_nimpl(jpngr)%cnsoil > 0.0).and.(preds_nimpl(jpngr)%age > 0.0).and.(preds_nimpl(jpngr)%fapar > 0.0).and.(preds_nimpl(jpngr)%alpha > 0.0).and.(preds_nimpl(jpngr)%ppfd > 0.0).and.(preds_nimpl(jpngr)%vpd > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%awnpp = 0
+        end if
         !model 1: Nmass ~ vcmax25/lma - r2 = 0.066
         if ((preds_nimpl(jpngr)%lma > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (coef_nimpl%lma_leafcn/coef_nimpl%cmass_leafcn) + (coef_nimpl%vcmax25_leafcn/coef_nimpl%cmass_leafcn) * (tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...    
