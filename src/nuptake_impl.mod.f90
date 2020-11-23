@@ -24,6 +24,7 @@ module md_nuptake_impl
     real :: alnpp       ! annual net primary production for leaf production (gC m-2 yr-1)
     real :: awnpp       ! annual net primary production for wood production (gC m-2 yr-1)
     real :: leafcn      ! the ratio of leaf nitrogen per mass to leaf carbon per mass (unitness)
+    real :: nre         ! nitrogen resorption efficiency of leaf
     real :: alnf        ! annual laef nitrogen flux (gN m-2 yr-2)
     real :: awnf        ! annual wood nitrogen flux (gN m-2 yr-2)
     real :: abnf        ! annual belowground(root) nitrogen flux (gN m-2 yr-2)
@@ -69,6 +70,11 @@ module md_nuptake_impl
     real :: vcmax25_leafcn
     real :: lma_leafcn
     real :: intersect_leafcn
+
+    ! nre model
+    real :: tg_nre
+    real :: vpd_nre
+    real :: intersect_nre    
 
     ! Constant ratio
     real :: root_cn
@@ -126,6 +132,7 @@ module md_nuptake_impl
   real, dimension(:), allocatable :: outalnpp
   real, dimension(:), allocatable :: outawnpp
   real, dimension(:), allocatable :: outleafcn
+  real, dimension(:), allocatable :: outnre
   real, dimension(:), allocatable :: outalnf
   real, dimension(:), allocatable :: outawnf
   real, dimension(:), allocatable :: outabnf
@@ -140,6 +147,7 @@ module md_nuptake_impl
   character(len=256) :: ncoutfilnam_alnpp
   character(len=256) :: ncoutfilnam_awnpp
   character(len=256) :: ncoutfilnam_leafcn
+  character(len=256) :: ncoutfilnam_nre
   character(len=256) :: ncoutfilnam_lnf
   character(len=256) :: ncoutfilnam_wnf
   character(len=256) :: ncoutfilnam_bnf
@@ -152,6 +160,7 @@ module md_nuptake_impl
   character(len=*), parameter :: LNPP_NAME = "lnpp"
   character(len=*), parameter :: WNPP_NAME = "wnpp"
   character(len=*), parameter :: LEAFCN_NAME = "leafcn"
+  character(len=*), parameter :: NRE_NAME = "nre"
   character(len=*), parameter :: LNF_NAME = "lnf"
   character(len=*), parameter :: WNF_NAME = "wnf"
   character(len=*), parameter :: BNF_NAME = "bnf"
@@ -231,13 +240,20 @@ contains
           !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.02922 + (-0.0004462)*(preds_nimpl(jpngr)%cnsoil) + 0.00002715*(tile_fluxes(lu)%plant(pft)%avcmax25_max) + (-0.00006713)*(preds_nimpl(jpngr)%lma))/0.4638 !it is actually leaf n/c here...
         !model 2: Nmass ~ Tg + PPFD + LMA
         !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.02035+ (-0.0001095)*preds_nimpl(jpngr)%tg + (0.00001875)*(preds_nimpl(jpngr)%ppfd) + (-0.00006863)*(preds_nimpl(jpngr)%lma))/0.4638  !it is actually leaf n/c here...the alternative model for PPFD + Tg + LMA     
+        
+        !nre
+        if (preds_nimpl(jpngr)%vpd > 0.0) then
+          tile_nimpl_fluxes(lu)%plant(pft)%nre = (1/(1+EXP(-(coef_nimpl%tg_nre * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_nre * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_nre))))
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%nre = 0
+        end if
 
-        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn!it is actually leaf n/c here. 
+        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)!it is actually leaf n/c here. 
         !end if
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
         !print*,'8'
-        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
+        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
         !print*,"9"
         ! print*,'tile_fluxes(lu)%plant(pft)%avcmax25_max', tile_fluxes(lu)%plant(pft)%avcmax25_max
         ! tile_nimpl_fluxes(lu)%plant(pft)%avcmax = 1*(tile_fluxes(lu)%plant(pft)%avcmax25_max)
@@ -258,7 +274,7 @@ contains
       !print*,'6 b'
       tile_nimpl_fluxes(lu)%plant(:)%leafcn = dummy
       !print*,'7 b'
-
+      tile_nimpl_fluxes(lu)%plant(:)%nre = dummy
       tile_nimpl_fluxes(lu)%plant(:)%alnf = dummy
       tile_nimpl_fluxes(lu)%plant(:)%awnf = dummy
       tile_nimpl_fluxes(lu)%plant(:)%abnf = dummy
@@ -285,7 +301,7 @@ contains
     !--------------------------------------------------------------
     ! Read predictor fields from files, populates 'preds_nimpl'
     !--------------------------------------------------------------
-    ! BP:GPP model
+    ! NPP:GPP model
     call get_preds_nc_byvar( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
     call get_preds_nc_byvar( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
     call get_preds_nc_byvar( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
@@ -338,6 +354,11 @@ contains
     coef_nimpl%vcmax25_leafcn = getparreal( 'params/params_nimpl.dat', 'vcmax25_leafcn' )
     coef_nimpl%lma_leafcn = getparreal( 'params/params_nimpl.dat', 'lma_leafcn' )
     coef_nimpl%intersect_leafcn     = getparreal( 'params/params_nimpl.dat', 'intersect_leafcn' )
+
+    ! leaf nre model
+    coef_nimpl%tg_nre = getparreal( 'params/params_nimpl.dat', 'tg_nre' )
+    coef_nimpl%vpd_nre = getparreal( 'params/params_nimpl.dat', 'vpd_nre' )
+    coef_nimpl%intersect_nre     = getparreal( 'params/params_nimpl.dat', 'intersect_nre' )
 
     ! Constant
     coef_nimpl%root_cn = getparreal( 'params/params_nimpl.dat', 'root_cn' )
@@ -644,6 +665,28 @@ contains
                           )                              
       end if
       !----------------------------------------------------------------
+      ! Annual leaf nitrogen efficiency (nre)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_nre = trim(prefix)//'.'//year_char//".a.nre.nc"
+        print*,'initialising ', trim(ncoutfilnam_nre), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_nre), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = NRE_NAME, &
+                          varunits = "unitness", &
+                          longnam  = "leaf nitrogen resorption efficiency", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )                              
+      end if
+      !----------------------------------------------------------------
       ! Annual leaf nitrogen flux output file (lnf)
       !----------------------------------------------------------------
       if (interface%params_siml%loutnimpl) then
@@ -786,6 +829,7 @@ contains
         allocate( outalnpp(ngridcells) )
         allocate( outawnpp(ngridcells) )
         allocate( outleafcn(ngridcells) )
+        allocate( outnre(ngridcells) )
         allocate( outalnf(ngridcells) )
         allocate( outawnf(ngridcells) )
         allocate( outabnf(ngridcells) )
@@ -800,6 +844,7 @@ contains
       outalnpp(:) = 0.0
       outawnpp(:) = 0.0
       outleafcn(:) = 0.0
+      outnre(:) = 0.0
       outalnf(:) = 0.0
       outawnf(:) = 0.0
       outabnf(:) = 0.0
@@ -837,6 +882,8 @@ contains
 
       lu = 1
       if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
+      !print*,'jpngr',jpngr
+      !print*,'sum(tile(lu)%plant(:)%fpc_grid)',sum(tile(lu)%plant(:)%fpc_grid)
       ! grid-cell average across PFTs, weighted by their FPC grid 
       outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * 1.0 ) ! because npp was derived from gpp, while gpp has already been accounted by fpc_grid, there no need to multiply again!
       outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * 1.0 )
@@ -844,6 +891,7 @@ contains
       outalnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnpp * 1.0)
       outawnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnpp * 1.0)
       outleafcn(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%leafcn * tile(lu)%plant(:)%fpc_grid) !Because here leafcn was derived from c3 and c4 vcmax25 separately, which has not been accounted by fpc_grid yet
+      outnre(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nre * 0.5)! There is no difference (classfication) between c3 and c4! They are the same value of c3 and c4, so let's just half-weight them.
       outalnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf * 1.0)
       outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * 1.0)
       outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * 1.0)
@@ -952,6 +1000,20 @@ contains
                                                               interface%grid(:)%ilat, &
                                                               interface%grid(:)%dogridcell, &
                                                               outleafcn(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual nre
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_nre), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_nre), &
+                                                              NRE_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outnre(:) &
                                                               )
       !-------------------------------------------------------------------------
       ! Annual lnf
