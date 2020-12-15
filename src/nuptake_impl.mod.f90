@@ -247,12 +247,17 @@ contains
             tile_nimpl_fluxes(lu)%plant(pft)%nre = 0
         end if
 
-        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)!it is actually leaf n/c here. 
-        !end if
+        !exclude nre in lnf????  
+        !tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)!it is actually leaf n/c here. 
+        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn!it is actually leaf n/c here. 
+        
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
-        !print*,'8'
-        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
+
+        !exclude nre in nuptake?????????          
+        !tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
+        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
+        
         !print*,"9"
         ! print*,'tile_fluxes(lu)%plant(pft)%avcmax25_max', tile_fluxes(lu)%plant(pft)%avcmax25_max
         ! tile_nimpl_fluxes(lu)%plant(pft)%avcmax = 1*(tile_fluxes(lu)%plant(pft)%avcmax25_max)
