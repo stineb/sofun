@@ -771,7 +771,11 @@ contains
       jmax = 0.0
       jmax25 = 0.0
     else
-      fact_jmaxlim = vcmax * (ci + 2.0 * gammastar) / (kphio * ppfd * (ci + kmm))
+      if (kphio==0.0) then
+        fact_jmaxlim = 0.0
+      else
+        fact_jmaxlim = vcmax * (ci + 2.0 * gammastar) / (kphio * ppfd * (ci + kmm))
+      end if
       !print*,'fact_jmaxlim       ', fact_jmaxlim
       if (fact_jmaxlim >= 1 .or. fact_jmaxlim <= 0) then
         jmax = dummy
@@ -1740,6 +1744,11 @@ contains
 
     if (c4) then
       ftemp = (-0.008 + 0.00375 * dtemp - 0.58e-4 * dtemp**2) * 8.0 ! Based on calibrated values by Shirley
+      if (ftemp < 0.0) then
+        ftemp = 0.0
+      else
+        ftemp = ftemp
+      end if
     else
       ftemp = 0.352 + 0.022 * dtemp - 3.4e-4 * dtemp**2  ! Based on Bernacchi et al., 2003
     end if
