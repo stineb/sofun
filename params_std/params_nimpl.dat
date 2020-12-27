@@ -25,9 +25,9 @@ vpd_alnpp                               -1.0192
 intersect_alnpp                         -9.2375
 
 #leaf C/N model
-lma_leafcn                              0.0144
-vcmax25_leafcn                          0.0050
-cmass_leafcn                            0.4638
+lma_leafcn                              0.0161
+vcmax25_leafcn                          0.0041
+cmass_leafcn                            0.5000
 
 #nre model
 tg_nre                                  -0.0679
