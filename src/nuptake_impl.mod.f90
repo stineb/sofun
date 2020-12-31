@@ -229,7 +229,9 @@ contains
         end if
         !model 1: Nmass ~ vcmax25/lma - r2 = 0.066
         if ((preds_nimpl(jpngr)%lma > 0.0)) then
-          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (coef_nimpl%lma_leafcn/coef_nimpl%cmass_leafcn) + (coef_nimpl%vcmax25_leafcn/coef_nimpl%cmass_leafcn) * (tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...    
+          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (coef_nimpl%lma_leafcn/coef_nimpl%cmass_leafcn) + (coef_nimpl%vcmax25_leafcn/coef_nimpl%cmass_leafcn) * (tile_fluxes(lu)%canopy%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...    
+          !print*,'tile_nimpl_fluxes(lu)%plant(pft)%leafcn',tile_nimpl_fluxes(lu)%plant(pft)%leafcn
+          !print*,'jpngr',jpngr
           else
             tile_nimpl_fluxes(lu)%plant(pft)%leafcn = 0
         end if      
@@ -894,7 +896,7 @@ contains
       outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * 1.0)
       outalnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnpp * 1.0)
       outawnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnpp * 1.0)
-      outleafcn(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%leafcn * tile(lu)%plant(:)%fpc_grid) !Because here leafcn was derived from c3 and c4 vcmax25 separately, which has not been accounted by fpc_grid yet
+      outleafcn(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%leafcn * 0.5) !Because here leafcn was derived from c3 and c4 vcmax25 separately, which has not been accounted by fpc_grid yet
       outnre(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nre * 0.5)! There is no difference (classfication) between c3 and c4! They are the same value of c3 and c4, so let's just half-weight them.
       outalnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf * 1.0)
       outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * 1.0)
