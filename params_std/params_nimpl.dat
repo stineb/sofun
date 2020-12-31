@@ -38,6 +38,18 @@ intersect_nre                           1.4541
 root_cn                                 42
 wood_cn                                 97
 
+#Grassland models
+#BP/GPP model
+cue_grass                               0.4046
+
+#ANPP/NPP model
+tg_anpp_grass                           0.0385
+alpha_anpp_grass                        1.8720
+intersect_anpp_grass                    -2.5642
+
+#Constant of root C/N
+root_cn_grass                           46
+
 #                                      |
 # write value *behind* this position:  |->
 ## EOF 
