@@ -459,6 +459,9 @@ contains
 
     end do
 
+    ! test
+    print*,'lon, lat, pred', lon_arr(400), lat_arr(130), pred_arr(400, 130)
+
     ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
     deallocate( pred_arr )
     deallocate( lon_arr )
