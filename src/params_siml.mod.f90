@@ -80,6 +80,7 @@ module md_params_siml
     logical :: loutdnetrad
     logical :: loutdwbal
     logical :: loutdtemp
+    logical :: loutdvpd
     logical :: loutdfapar
     logical :: loutdtemp_soil
 
@@ -361,6 +362,7 @@ contains
     out_getpar_siml%loutdnetrad    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnetrad' )
     out_getpar_siml%loutdwbal      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdwbal' )
     out_getpar_siml%loutdtemp      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp' )
+    out_getpar_siml%loutdvpd       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdvpd' )
     out_getpar_siml%loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
 
@@ -374,6 +376,7 @@ contains
     if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdaet   ) out_getpar_siml%loutwaterbal = .true.
     if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdwbal  ) out_getpar_siml%loutwaterbal = .true.
     if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdtemp  ) out_getpar_siml%loutforcing  = .true.
+    if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdvpd   ) out_getpar_siml%loutforcing  = .true.
     if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdfapar ) out_getpar_siml%loutforcing  = .true.
 
     ! boolean to define which variables are used as calibration target

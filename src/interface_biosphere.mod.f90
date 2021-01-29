@@ -66,6 +66,7 @@ module md_interface
   !----------------------------------------------------------------
   real, allocatable, dimension(:,:) :: outdtemp
   real, allocatable, dimension(:,:) :: outdfapar
+  real, allocatable, dimension(:,:) :: outdvpd
 
   !----------------------------------------------------------------
   ! Module-specific NetCDF output file and variable names
@@ -74,11 +75,13 @@ module md_interface
   character(len=256) :: ncoutfilnam_vegcover
   character(len=256) :: ncoutfilnam_temp
   character(len=256) :: ncoutfilnam_fapar
+  character(len=256) :: ncoutfilnam_vpd
 
   character(len=*), parameter :: FLAND_NAME="fland"
   character(len=*), parameter :: VEGCOVER_NAME="vegcover"
   character(len=*), parameter :: TEMP_NAME="temp"
   character(len=*), parameter :: FAPAR_NAME="fapar"
+  character(len=*), parameter :: VPD_NAME="vpd"
 
   ! !----------------------------------------------------------------
   ! ! Module-specific annual output variables
@@ -104,8 +107,11 @@ contains
       ! Allocate memory for daily output variables
       if (interface%steering%init .and. interface%params_siml%loutdtemp ) allocate( outdtemp (interface%params_siml%outnt,ngridcells) )
       if (interface%steering%init .and. interface%params_siml%loutdfapar) allocate( outdfapar(interface%params_siml%outnt,ngridcells) )
+      if (interface%steering%init .and. interface%params_siml%loutdvpd  ) allocate( outdvpd  (interface%params_siml%outnt,ngridcells) )
+
       if (interface%params_siml%loutdtemp ) outdtemp (:,:) = 0.0
       if (interface%params_siml%loutdfapar) outdfapar(:,:) = 0.0
+      if (interface%params_siml%loutdvpd  ) outdvpd  (:,:) = 0.0
 
     end if
 
@@ -216,6 +222,27 @@ contains
                               )
       end if
 
+      !----------------------------------------------------------------
+      ! VPD output file 
+      !----------------------------------------------------------------      
+      if (interface%params_siml%loutdvpd) then
+        ncoutfilnam_vpd = trim(prefix)//'.'//year_char//".d.vpd.nc"
+        print*,'initialising ', trim(ncoutfilnam_vpd), '...'
+        call init_nc_3D_time( filnam   = trim(ncoutfilnam_vpd), &
+                              nlon     = interface%domaininfo%nlon, &
+                              nlat     = interface%domaininfo%nlat, &
+                              lon      = interface%domaininfo%lon, &
+                              lat      = interface%domaininfo%lat, &
+                              outyear  = interface%steering%outyear, &
+                              outdt    = interface%params_siml%outdt, &
+                              outnt    = interface%params_siml%outnt, &
+                              varnam   = VPD_NAME, &
+                              varunits = "Pa", &
+                              longnam  = "daily mean vapour pressure deficit", &
+                              title    = TITLE &
+                              )
+      end if      
+
     end if
 
     999  format (I4.4)
@@ -248,6 +275,7 @@ contains
       it = floor( real( doy - 1 ) / real( interface%params_siml%outdt ) ) + 1
       if (interface%params_siml%loutdtemp)  outdtemp (it,jpngr) = outdtemp (it,jpngr) + interface%climate(doy,jpngr)%dtemp   / real( interface%params_siml%outdt )
       if (interface%params_siml%loutdfapar) outdfapar(it,jpngr) = outdfapar(it,jpngr) + interface%vegcover(doy,jpngr)%dfapar / real( interface%params_siml%outdt )
+      if (interface%params_siml%loutdvpd )  outdvpd  (it,jpngr) = outdvpd  (it,jpngr) + interface%climate(doy,jpngr)%dvpd    / real( interface%params_siml%outdt )
 
       ! !----------------------------------------------------------------
       ! ! ANNUAL SUM OVER DAILY VALUES
@@ -341,6 +369,23 @@ contains
                                                                       interface%grid(:)%dogridcell, &
                                                                       outdfapar(:,:) &
                                                                       )
+
+        !-------------------------------------------------------------------------
+        ! VPD
+        !-------------------------------------------------------------------------
+        if (interface%params_siml%loutdvpd) print*,'writing ', trim(ncoutfilnam_vpd), '...'
+        if (interface%params_siml%loutdvpd) call write_nc_3D_time( trim(ncoutfilnam_vpd), &
+                                                                      VPD_NAME, &
+                                                                      interface%domaininfo%maxgrid, &
+                                                                      interface%domaininfo%nlon, &
+                                                                      interface%domaininfo%nlat, &
+                                                                      interface%grid(:)%ilon, &
+                                                                      interface%grid(:)%ilat, &
+                                                                      interface%params_siml%outnt, &
+                                                                      interface%grid(:)%dogridcell, &
+                                                                      outdvpd(:,:) &
+                                                                      )
+
 
       end if
     end if
