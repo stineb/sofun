@@ -438,10 +438,22 @@ contains
     !----------------------------------------------------------------
     ! Divide by annual total GPP for GPP-weighted sums 
     !----------------------------------------------------------------
-    tile_fluxes(:)%canopy%avcmax25_mean = tile_fluxes(:)%canopy%avcmax25_mean / tile_fluxes(:)%canopy%agpp
+    do lu = 1,nlu
+      if (tile_fluxes(lu)%canopy%agpp > 0.0) then
 
-    do pft = 1,npft
-      tile_fluxes(:)%plant(pft)%avcmax25_mean = tile_fluxes(:)%plant(pft)%avcmax25_mean / tile_fluxes(:)%plant(pft)%agpp
+        tile_fluxes(lu)%canopy%avcmax25_mean = tile_fluxes(lu)%canopy%avcmax25_mean / tile_fluxes(lu)%canopy%agpp
+        do pft = 1,npft
+          tile_fluxes(lu)%plant(pft)%avcmax25_mean = tile_fluxes(lu)%plant(pft)%avcmax25_mean / tile_fluxes(lu)%plant(pft)%agpp
+        end do
+
+      else
+
+        tile_fluxes(lu)%canopy%avcmax25_mean = 0.0
+        do pft = 1,npft
+          tile_fluxes(lu)%plant(pft)%avcmax25_mean = 0.0
+        end do
+        
+      end if
     end do
 
   end subroutine diag_annual
