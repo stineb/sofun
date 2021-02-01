@@ -374,11 +374,12 @@ contains
     !----------------------------------------------------------------
     ! Sum over PFTs to get canopy-level quantities
     !----------------------------------------------------------------
-    !if (abs(sum(tile(lu)%plant(:)%fpc_grid)) > eps) stop 'diag_daily: PFT-sum over fpc_grid should be 1.0 but is not.'
+    if (abs(sum(tile(lu)%plant(:)%fpc_grid)) -1.0 > eps) stop 'diag_daily: PFT-sum over fpc_grid should be 1.0 but is not.'
     do lu=1,nlu
       tile_fluxes(lu)%canopy%dgpp    = sum(tile_fluxes(lu)%plant(:)%dgpp)
       tile_fluxes(lu)%canopy%drd     = sum(tile_fluxes(lu)%plant(:)%drd)
       tile_fluxes(lu)%canopy%vcmax25 = sum(tile_fluxes(lu)%plant(:)%vcmax25 * tile(lu)%plant(:)%fpc_grid)
+      !print*,'tile_fluxes(lu)%canopy%vcmax25',tile_fluxes(lu)%canopy%vcmax25
       tile_fluxes(lu)%canopy%jmax25  = sum(tile_fluxes(lu)%plant(:)%jmax25  * tile(lu)%plant(:)%fpc_grid)
       tile_fluxes(lu)%canopy%vcmax   = sum(tile_fluxes(lu)%plant(:)%vcmax   * tile(lu)%plant(:)%fpc_grid)
       tile_fluxes(lu)%canopy%jmax    = sum(tile_fluxes(lu)%plant(:)%jmax    * tile(lu)%plant(:)%fpc_grid)
@@ -394,10 +395,15 @@ contains
     tile_fluxes(:)%canopy%agpp = tile_fluxes(:)%canopy%agpp + tile_fluxes(:)%canopy%dgpp
 
     ! GPP-weighted annual mean
-    tile_fluxes(lu)%canopy%avcmax25_mean = tile_fluxes(lu)%canopy%avcmax25_mean + tile_fluxes(lu)%canopy%vcmax25 * tile_fluxes(lu)%canopy%dgpp
+    do lu=1,nlu
+      tile_fluxes(lu)%canopy%avcmax25_mean = tile_fluxes(lu)%canopy%avcmax25_mean + tile_fluxes(lu)%canopy%vcmax25 * tile_fluxes(lu)%canopy%dgpp
+    end do
 
     ! Annual maximum
-    if (tile_fluxes(lu)%canopy%vcmax25 > tile_fluxes(lu)%canopy%avcmax25_max) tile_fluxes(lu)%canopy%avcmax25_max = tile_fluxes(lu)%canopy%vcmax25
+    do lu=1,nlu
+      if (tile_fluxes(lu)%canopy%vcmax25 > tile_fluxes(lu)%canopy%avcmax25_max) tile_fluxes(lu)%canopy%avcmax25_max = tile_fluxes(lu)%canopy%vcmax25
+    end do
+    !print*,'tile_fluxes(lu)%canopy%vcmax25',tile_fluxes(lu)%canopy%vcmax25
 
 
     ! ! Annual maximum or weighted-sum
@@ -424,6 +430,7 @@ contains
 
       ! Annual sum
       tile_fluxes(lu)%plant(:)%agpp = tile_fluxes(lu)%plant(:)%agpp + tile_fluxes(lu)%plant(:)%dgpp
+      !print*,'tile_fluxes(lu)%plant(pft)%agpp',tile_fluxes(lu)%plant(:)%agpp
 
       ! GPP-weighted annual mean
       tile_fluxes(lu)%plant(:)%avcmax25_mean = tile_fluxes(lu)%plant(:)%avcmax25_mean + tile_fluxes(lu)%plant(:)%vcmax25 * tile_fluxes(lu)%plant(:)%dgpp
@@ -518,6 +525,7 @@ contains
         else
           tile_fluxes(lu)%plant(pft)%avcmax25_mean = 0.0
         end if
+        !print*,'tile_fluxes(lu)%plant(pft)%avcmax25_mean', tile_fluxes(lu)%plant(pft)%avcmax25_mean
       end do    
 
     end do

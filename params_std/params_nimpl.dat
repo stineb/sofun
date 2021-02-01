@@ -25,13 +25,30 @@ vpd_alnpp                               -1.0192
 intersect_alnpp                         -9.2375
 
 #leaf C/N model
-lma_leafcn                              0.4470
-vcmax25_leafcn                          -0.1068
-intersect_leafcn                        1.5878
+lma_leafcn                              0.0161
+vcmax25_leafcn                          0.0041
+cmass_leafcn                            0.5000
+
+#nre model
+tg_nre                                  -0.0679
+vpd_nre                                 0.4217
+intersect_nre                           1.4541
 
 #constant ratio - derived from TRY database (N=2365 for root; N=13 for wood)
 root_cn                                 42
 wood_cn                                 97
+
+#Grassland models
+#BP/GPP model
+cue_grass                               0.4046
+
+#ANPP/NPP model
+tg_anpp_grass                           0.0385
+alpha_anpp_grass                        1.8720
+intersect_anpp_grass                    -2.5642
+
+#Constant of root C/N
+root_cn_grass                           46
 
 #                                      |
 # write value *behind* this position:  |->
