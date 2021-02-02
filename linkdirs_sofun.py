@@ -35,8 +35,8 @@ name = 'global'
 ## Manually edit the root directory for the local mirror of 
 ## the data directory (e.g., /cluster/home/bestocke/data on Euler.
 ##--------------------------------------------------------------------
-#dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
-dataroot = '/cluster/work/climate/bestocke/data/'     # to run on Euler
+dataroot = '/Users/benjaminstocker/data/'     # to run on Beni's iMac
+# dataroot = '/cluster/work/climate/bestocke/data/'     # to run on Euler
 # dataroot = '/Users/bestocke/data/'     # to run on Beni's Laptop
 
 ##--------------------------------------------------------------------

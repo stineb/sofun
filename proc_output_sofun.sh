@@ -99,6 +99,10 @@ proc_global(){
 	cdo -O mergetime output_nc/$1.????.a.alpha.nc   output_nc/$1.a.alpha.nc
 	rm output_nc/$1.????.a.alpha.nc	
 
+	## VPD 
+	cdo -O mergetime output_nc/$1.????.a.vpd.nc   output_nc/$1.a.vpd.nc
+	rm output_nc/$1.????.a.vpd.nc	
+
 	
 	##-------------------------------------
 	## Daily
@@ -127,6 +131,9 @@ proc_global(){
 	cdo -O mergetime output_nc/$1.????.d.fapar.nc   output_nc/$1.d.fapar.nc
 	rm output_nc/$1.????.d.fapar.nc
 
+	## vpd
+	cdo -O mergetime output_nc/$1.????.d.vpd.nc output_nc/$1.d.vpd.nc
+	rm output_nc/$1.????.d.vpd.nc	
 
 	##-------------------------------------
 	## Take statistics

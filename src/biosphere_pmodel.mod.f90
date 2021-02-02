@@ -268,6 +268,7 @@ contains
 
       end if
     end do gridcellloop
+    if (verbose) print*,'... done with gridcell loop.'
 
     ! !----------------------------------------------------------------
     ! ! Get rolling multi-year averages (needs to store entire arrays)
