@@ -144,7 +144,7 @@ if name == 'global':
 
 	## c4 percentage
 	##--------------------------------------
-	src = dataroot + 'c4_still/final/c4_percentage.nc'
+	src = dataroot + 'c4_still/final/c4_percentage_revlat.nc'
 	dst = 'input/global/landcover'
 	if not os.path.isdir( dst ):
 		os.system( 'mkdir -p ' + dst )

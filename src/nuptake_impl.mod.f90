@@ -18,17 +18,26 @@ module md_nuptake_impl
   ! Variables without memory (not necessarily just fluxes; just define the type) 
   !----------------------------------------------------------------
   type plant_nimpl_fluxes_type
+    !Forest model
     real :: anpp        ! annual total net primary production (gC m-2 yr-1)
     real :: aanpp       ! annual aboveground net primary production (gC m-2 yr-1)
     real :: abnpp       ! annual belowground net primary production (gC m-2 yr-1)
     real :: alnpp       ! annual net primary production for leaf production (gC m-2 yr-1)
     real :: awnpp       ! annual net primary production for wood production (gC m-2 yr-1)
     real :: leafcn      ! the ratio of leaf nitrogen per mass to leaf carbon per mass (unitness)
-    real :: alnf        ! annual laef nitrogen flux (gN m-2 yr-2)
+    real :: nre         ! nitrogen resorption efficiency of leaf
+    real :: alnf        ! annual leaf nitrogen flux (gN m-2 yr-2)
     real :: awnf        ! annual wood nitrogen flux (gN m-2 yr-2)
     real :: abnf        ! annual belowground(root) nitrogen flux (gN m-2 yr-2)
-    real :: nuptake   ! annual nitrogen uptake in ecosystem (gN m-2 yr-1)
-    real :: annualvcmax25 ! annual maximum carboxylation capacity (umol m-2 s-1)
+    real :: nuptake     ! annual nitrogen uptake in ecosystem (gN m-2 yr-1)
+    real :: avcmax25    ! annual maximum carboxylation capacity (umol m-2 s-1)
+    !Grassland model    
+    real :: anpp_grass  ! annual total net primary production in grassland (gC m-2 yr-1)
+    real :: aanpp_grass  ! annual aboveground net primary production in grassland (gC m-2 yr-1)
+    real :: abnpp_grass  ! annual belowground net primary production in grassland (gC m-2 yr-1)
+    real :: alnf_grass        ! annual leaf nitrogen flux in grassland (gN m-2 yr-2)
+    real :: abnf_grass        ! annual belowground(root) nitrogen flux in grassland  (gN m-2 yr-2)
+    real :: nuptake_grass     ! annual nitrogen uptake in ecosystem in grassland (gN m-2 yr-1)
   end type plant_nimpl_fluxes_type
 
   type tile_nimpl_fluxes_type
@@ -45,6 +54,7 @@ module md_nuptake_impl
   !----------------------------------------------------------------
   type coef_nimpl_type
 
+    !!!Forest model below
     ! BP:GPP model
     real :: cnsoil_bp
     real :: age_bp
@@ -68,11 +78,29 @@ module md_nuptake_impl
     ! Leaf C:N model
     real :: vcmax25_leafcn
     real :: lma_leafcn
-    real :: intersect_leafcn
+    real :: cmass_leafcn
+
+    ! nre model
+    real :: tg_nre
+    real :: vpd_nre
+    real :: intersect_nre    
 
     ! Constant ratio
     real :: root_cn
     real :: wood_cn
+
+    !!!Grassland model below
+    ! NPP:GPP model
+    real :: cue_grass
+
+    ! ANPP:NPP model
+    real :: tg_anpp_grass
+    real :: alpha_anpp_grass
+    real :: intersect_anpp_grass
+
+    ! Constant ratio of root in grassland
+    real :: root_cn_grass
+
 
   end type coef_nimpl_type  
 
@@ -111,52 +139,77 @@ module md_nuptake_impl
   character(len=100), parameter :: varnam_Tg     = "Tg"
   character(len=100), parameter :: filnam_vpd    = "./input/global/nimpl/vpd.nc"
   character(len=100), parameter :: varnam_vpd    = "vpd"
-  ! character(len=100), parameter :: filnam_vcmax25= "Vcmax25.nc"  ! needs further work
-  ! character(len=100), parameter :: varnam_vcmax25= "Vcmax25"     ! needs further work
   character(len=100), parameter :: filnam_lma    = "./input/global/nimpl/LMA.nc"
   character(len=100), parameter :: varnam_lma    = "LMA"
   
   !----------------------------------------------------------------
   ! Module-specific output variables
   !----------------------------------------------------------------
-  ! annual
+  ! annual, forest
   real, dimension(:), allocatable :: outanpp
   real, dimension(:), allocatable :: outaanpp
   real, dimension(:), allocatable :: outabnpp
   real, dimension(:), allocatable :: outalnpp
   real, dimension(:), allocatable :: outawnpp
   real, dimension(:), allocatable :: outleafcn
+  real, dimension(:), allocatable :: outnre
   real, dimension(:), allocatable :: outalnf
   real, dimension(:), allocatable :: outawnf
   real, dimension(:), allocatable :: outabnf
   real, dimension(:), allocatable :: outnuptake
-  real, dimension(:), allocatable :: outannualvcmax25
+  real, dimension(:), allocatable :: outavcmax25
+  ! annual, grassland
+  real, dimension(:), allocatable :: outanpp_grass
+  real, dimension(:), allocatable :: outaanpp_grass
+  real, dimension(:), allocatable :: outabnpp_grass
+  real, dimension(:), allocatable :: outalnf_grass
+  real, dimension(:), allocatable :: outabnf_grass
+  real, dimension(:), allocatable :: outnuptake_grass
   !----------------------------------------------------------------
   ! Module-specific NetCDF output file and variable names
   !----------------------------------------------------------------
+  !Forest
   character(len=256) :: ncoutfilnam_anpp
   character(len=256) :: ncoutfilnam_aanpp
   character(len=256) :: ncoutfilnam_abnpp
   character(len=256) :: ncoutfilnam_alnpp
   character(len=256) :: ncoutfilnam_awnpp
   character(len=256) :: ncoutfilnam_leafcn
+  character(len=256) :: ncoutfilnam_nre
   character(len=256) :: ncoutfilnam_lnf
   character(len=256) :: ncoutfilnam_wnf
   character(len=256) :: ncoutfilnam_bnf
   character(len=256) :: ncoutfilnam_nuptake
   character(len=256) :: ncoutfilnam_annualvcmax25
+  !Grassland
+  character(len=256) :: ncoutfilnam_anpp_grass
+  character(len=256) :: ncoutfilnam_aanpp_grass
+  character(len=256) :: ncoutfilnam_abnpp_grass
+  character(len=256) :: ncoutfilnam_lnf_grass
+  character(len=256) :: ncoutfilnam_bnf_grass
+  character(len=256) :: ncoutfilnam_nuptake_grass
 
+  !Forest
   character(len=*), parameter :: NPP_NAME = "npp"
   character(len=*), parameter :: ANPP_NAME = "anpp"
   character(len=*), parameter :: BNPP_NAME = "bnpp"
   character(len=*), parameter :: LNPP_NAME = "lnpp"
   character(len=*), parameter :: WNPP_NAME = "wnpp"
   character(len=*), parameter :: LEAFCN_NAME = "leafcn"
+  character(len=*), parameter :: NRE_NAME = "nre"
   character(len=*), parameter :: LNF_NAME = "lnf"
   character(len=*), parameter :: WNF_NAME = "wnf"
   character(len=*), parameter :: BNF_NAME = "bnf"
   character(len=*), parameter :: nuptake_NAME = "nuptake"
   character(len=*), parameter :: ANNUALVCMAX25_NAME = "annualvcmax25"
+  !Grassland
+  character(len=*), parameter :: NPP_NAME_GRASS = "npp_grass"
+  character(len=*), parameter :: ANPP_NAME_GRASS = "anpp_grass"
+  character(len=*), parameter :: BNPP_NAME_GRASS = "bnpp_grass"
+  character(len=*), parameter :: LNF_NAME_GRASS = "lnf_grass"
+  character(len=*), parameter :: BNF_NAME_GRASS = "bnf_grass"
+  character(len=*), parameter :: nuptake_NAME_GRASS = "nuptake_grass"
+
 
 contains
 
@@ -177,65 +230,126 @@ contains
 
     !--------------------------------------------------------------
     ! Predict using statistical models
-    !Note that some data was log-transfromed (cnsoil, age, PPFD, vpd, Vcmax25, lma) while some are not (alpha, fAPAR, Tg)
-    !All ratios were using logit function (logit(y)=x), therefore we should convert them into y = 1/(1+ exp(-x))
+    ! Note that some data was log-transfromed (cnsoil, age, PPFD, vpd, Vcmax25, lma) while some are not (alpha, fAPAR, Tg)
+    ! All ratios were using logit function (logit(y)=x), therefore we should convert them into y = 1/(1+ exp(-x))
     ! leaf c/n model were using log function, so it should be exp in advance
     !--------------------------------------------------------------
     ! Make tile_nimpl_fluxes a field
     if (dogridcell) then
-
       lu = 1
       do pft = 1,npft
-        !print*,'1'
-        tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
-        !print*,'2'
-        tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_anpp))))
-        !print*,'3'
-        tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
-        !print*,'4'
-        tile_nimpl_fluxes(lu)%plant(pft)%alnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp * (1/(1+EXP(-(coef_nimpl%ppfd_alnpp * LOG(preds_nimpl(jpngr)%ppfd) + coef_nimpl%tg_alnpp * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_alnpp))))
-        !print*,'5'
-        tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
-        !print*,'tile_fluxes(lu)%plant(pft)%agpp', tile_fluxes(lu)%plant(pft)%agpp
-        !print*,'6'
-        !prevent FPE
-        if (preds_nimpl(jpngr)%lma > 0.0) then
-          !here leafcn presents leaf n/c, leaf n/c = Nstructure/Cmass + (Nrubisco/Cmass)*(Vcmax25/LMA)
-          !Nstructure = 0.01201, Nrubisco = 0.007493, Cmass = 0.4638, as derived from statistical model (location provided later)
-          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = EXP(coef_nimpl%vcmax25_leafcn * LOG(tile_fluxes(lu)%plant(pft)%avcmax25) + coef_nimpl%lma_leafcn * LOG(preds_nimpl(jpngr)%lma) + coef_nimpl%intersect_leafcn)
-          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.01201/0.4638) + (0.007493/0.4638)*(tile_fluxes(lu)%plant(pft)%avcmax25)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...
+        if ((preds_nimpl(jpngr)%cnsoil > 0.0).and.(preds_nimpl(jpngr)%age > 0.0).and.(preds_nimpl(jpngr)%fapar > 0.0).and.(preds_nimpl(jpngr)%alpha > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
+          tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_anpp))))
+          tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%anpp  = 0
+            tile_nimpl_fluxes(lu)%plant(pft)%aanpp  = 0
+            tile_nimpl_fluxes(lu)%plant(pft)%abnpp = 0
+            !print*,'tile_fluxes(lu)%plant(pft)%agpp',tile_fluxes(lu)%plant(pft)%agpp 
+            !print*,'jpngr',jpngr
+            !print*,'tile_nimpl_fluxes(lu)%plant(pft)%anpp',tile_nimpl_fluxes(lu)%plant(pft)%anpp
+            !print*,'jpngr',jpngr            
+            !print*,'preds_nimpl(jpngr)%cnsoil ',preds_nimpl(jpngr)%cnsoil 
+            !print*,'jpngr',jpngr
+            !print*,'preds_nimpl(jpngr)%age ',preds_nimpl(jpngr)%age
+            !print*,'jpngr',jpngr 
+            !print*,'preds_nimpl(jpngr)%fapar',preds_nimpl(jpngr)%fapar
+            !print*,'jpngr',jpngr 
+            !print*,'preds_nimpl(jpngr)%alpha ',preds_nimpl(jpngr)%alpha
+            !print*,'jpngr',jpngr
         end if
-        !if (tile_nimpl_fluxes(lu)%plant(pft)%leafcn > 0.0) then
-        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn!it is actually leaf n/c here...
-        !end if
+
+        !tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
+        !print*,'4'
+        if ((preds_nimpl(jpngr)%ppfd > 0.0).and.(preds_nimpl(jpngr)%vpd > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%alnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp * (1/(1+EXP(-(coef_nimpl%ppfd_alnpp * LOG(preds_nimpl(jpngr)%ppfd) + coef_nimpl%tg_alnpp * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_alnpp * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_alnpp))))
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%alnpp = 0
+        end if
+        !print*,'5'
+        if ((preds_nimpl(jpngr)%cnsoil > 0.0).and.(preds_nimpl(jpngr)%age > 0.0).and.(preds_nimpl(jpngr)%fapar > 0.0).and.(preds_nimpl(jpngr)%alpha > 0.0).and.(preds_nimpl(jpngr)%ppfd > 0.0).and.(preds_nimpl(jpngr)%vpd > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%awnpp = 0
+        end if
+        !model 1: Nmass ~ vcmax25/lma - r2 = 0.066
+        if ((preds_nimpl(jpngr)%lma > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (coef_nimpl%lma_leafcn/coef_nimpl%cmass_leafcn) + (coef_nimpl%vcmax25_leafcn/coef_nimpl%cmass_leafcn) * (tile_fluxes(lu)%canopy%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...    
+          !print*,'tile_nimpl_fluxes(lu)%plant(pft)%leafcn',tile_nimpl_fluxes(lu)%plant(pft)%leafcn
+          !print*,'jpngr',jpngr
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%leafcn = 0
+        end if      
+          !model 1b: Nmass ~ vcmax25/lma + soil C/N.
+          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.017 + (0.005)*((tile_fluxes(lu)%plant(pft)%avcmax25_max)/(preds_nimpl(jpngr)%lma)) + (-0.0003)*(preds_nimpl(jpngr)%cnsoil))/0.4638 !it is actually leaf n/c here...
+          !model 1c: Nmass ~ vcmax25 + lma + soil C/N. 
+          !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.02922 + (-0.0004462)*(preds_nimpl(jpngr)%cnsoil) + 0.00002715*(tile_fluxes(lu)%plant(pft)%avcmax25_max) + (-0.00006713)*(preds_nimpl(jpngr)%lma))/0.4638 !it is actually leaf n/c here...
+        !model 2: Nmass ~ Tg + PPFD + LMA
+        !tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (0.02035+ (-0.0001095)*preds_nimpl(jpngr)%tg + (0.00001875)*(preds_nimpl(jpngr)%ppfd) + (-0.00006863)*(preds_nimpl(jpngr)%lma))/0.4638  !it is actually leaf n/c here...the alternative model for PPFD + Tg + LMA     
+        
+        !nre
+        if (preds_nimpl(jpngr)%vpd > 0.0) then
+          tile_nimpl_fluxes(lu)%plant(pft)%nre = (1/(1+EXP(-(coef_nimpl%tg_nre * preds_nimpl(jpngr)%tg + coef_nimpl%vpd_nre * LOG(preds_nimpl(jpngr)%vpd) + coef_nimpl%intersect_nre))))
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%nre = 0
+        end if
+
+        !exclude nre in lnf????  
+        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)!it is actually leaf n/c here. 
+        !tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn!it is actually leaf n/c here. 
+        
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
-        !print*,'8'
-        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = (tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
-        !print*,"9" convert "mol m-2 d-1" to "umol m-2 s-1"
-        tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25 = tile_fluxes(lu)%plant(pft)%avcmax25 
-      end do
 
+        !exclude nre in nuptake?????????          
+        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
+        !tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
+
+        !!Grassland models
+        tile_nimpl_fluxes(lu)%plant(pft)%anpp_grass  = tile_fluxes(lu)%plant(pft)%agpp * coef_nimpl%cue_grass
+
+        if ((preds_nimpl(jpngr)%alpha > 0.0).and.(preds_nimpl(jpngr)%tg > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass = tile_nimpl_fluxes(lu)%plant(pft)%anpp_grass * (1/(1+EXP(-(coef_nimpl%alpha_anpp_grass * preds_nimpl(jpngr)%alpha + coef_nimpl%tg_anpp_grass * preds_nimpl(jpngr)%tg + coef_nimpl%intersect_anpp_grass))))
+          tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass = tile_nimpl_fluxes(lu)%plant(pft)%anpp_grass - tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass         
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass = 0
+            tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass = 0
+        end if        
+
+        tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)!it is actually leaf n/c here. 
+        tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass / coef_nimpl%root_cn_grass
+        tile_nimpl_fluxes(lu)%plant(pft)%nuptake_grass = (tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass / coef_nimpl%root_cn_grass)  + tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)
+
+      end do
     else
 
       lu = 1
-      !print*,'1'
+      !print*,'1 b'
       tile_nimpl_fluxes(lu)%plant(:)%anpp  = dummy
-      !print*,'2'
+      !print*,'2 b'
       tile_nimpl_fluxes(lu)%plant(:)%aanpp = dummy
-      !print*,'3'
+      !print*,'3 b'
       tile_nimpl_fluxes(lu)%plant(:)%abnpp = dummy
-      !print*,'4'
+      !print*,'4 b'
       tile_nimpl_fluxes(lu)%plant(:)%alnpp = dummy
-      !print*,'5'
+      !print*,'5 b'
       tile_nimpl_fluxes(lu)%plant(:)%awnpp = dummy
-      !print*,'6'
+      !print*,'6 b'
       tile_nimpl_fluxes(lu)%plant(:)%leafcn = dummy
-      !print*,'7'
-
+      !print*,'7 b'
+      tile_nimpl_fluxes(lu)%plant(:)%nre = dummy
       tile_nimpl_fluxes(lu)%plant(:)%alnf = dummy
       tile_nimpl_fluxes(lu)%plant(:)%awnf = dummy
       tile_nimpl_fluxes(lu)%plant(:)%abnf = dummy
+
+      !!Grassland models
+      tile_nimpl_fluxes(lu)%plant(:)%anpp_grass = dummy
+      tile_nimpl_fluxes(lu)%plant(:)%aanpp_grass = dummy
+      tile_nimpl_fluxes(lu)%plant(:)%abnpp_grass = dummy
+      tile_nimpl_fluxes(lu)%plant(:)%alnf_grass = dummy
+      tile_nimpl_fluxes(lu)%plant(:)%abnf_grass = dummy
+      tile_nimpl_fluxes(lu)%plant(:)%nuptake_grass = dummy       
 
     end if
 
@@ -259,17 +373,17 @@ contains
     !--------------------------------------------------------------
     ! Read predictor fields from files, populates 'preds_nimpl'
     !--------------------------------------------------------------
-    ! BP:GPP model
+    ! NPP:GPP model
     call get_preds_nc_byvar( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
     call get_preds_nc_byvar( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
     call get_preds_nc_byvar( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
     call get_preds_nc_byvar( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
 
-    ! ANPP:GPP model
-    call get_preds_nc_byvar( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
-    call get_preds_nc_byvar( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
-    call get_preds_nc_byvar( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
-    call get_preds_nc_byvar( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
+    ! ! ANPP:GPP model
+    ! call get_preds_nc_byvar( trim(filnam_cnsoil), trim(varnam_cnsoil), domaininfo, grid, preds_nimpl(:)%cnsoil )
+    ! call get_preds_nc_byvar( trim(filnam_age),    trim(varnam_age),    domaininfo, grid, preds_nimpl(:)%age )
+    ! call get_preds_nc_byvar( trim(filnam_fapar),  trim(varnam_fapar),  domaininfo, grid, preds_nimpl(:)%fapar )
+    ! call get_preds_nc_byvar( trim(filnam_alpha),  trim(varnam_alpha),  domaininfo, grid, preds_nimpl(:)%alpha )
 
     ! ALNPP:NPP model
     call get_preds_nc_byvar( trim(filnam_ppfd), trim(varnam_ppfd), domaininfo, grid, preds_nimpl(:)%ppfd )
@@ -288,6 +402,7 @@ contains
     !Extract all coeffients and constant in a dat file
     !--------------------------------------------------------------
     use md_sofunutils, only: getparreal
+    !!Forest models
     ! BP/GPP model
     coef_nimpl%cnsoil_bp  = getparreal( 'params/params_nimpl.dat', 'cnsoil_bp' )
     coef_nimpl%age_bp     = getparreal( 'params/params_nimpl.dat', 'age_bp' )
@@ -311,11 +426,26 @@ contains
     ! Leaf C:N model
     coef_nimpl%vcmax25_leafcn = getparreal( 'params/params_nimpl.dat', 'vcmax25_leafcn' )
     coef_nimpl%lma_leafcn = getparreal( 'params/params_nimpl.dat', 'lma_leafcn' )
-    coef_nimpl%intersect_leafcn     = getparreal( 'params/params_nimpl.dat', 'intersect_leafcn' )
+    coef_nimpl%cmass_leafcn     = getparreal( 'params/params_nimpl.dat', 'cmass_leafcn' )
+
+    ! leaf nre model
+    coef_nimpl%tg_nre = getparreal( 'params/params_nimpl.dat', 'tg_nre' )
+    coef_nimpl%vpd_nre = getparreal( 'params/params_nimpl.dat', 'vpd_nre' )
+    coef_nimpl%intersect_nre     = getparreal( 'params/params_nimpl.dat', 'intersect_nre' )
 
     ! Constant
     coef_nimpl%root_cn = getparreal( 'params/params_nimpl.dat', 'root_cn' )
     coef_nimpl%wood_cn = getparreal( 'params/params_nimpl.dat', 'wood_cn' )
+
+    !!Grassland models
+    ! BP/GPP model
+    coef_nimpl%cue_grass = getparreal( 'params/params_nimpl.dat', 'cue_grass' )
+    ! ANPP/NPP model
+    coef_nimpl%tg_anpp_grass = getparreal( 'params/params_nimpl.dat', 'tg_anpp_grass' )
+    coef_nimpl%alpha_anpp_grass = getparreal( 'params/params_nimpl.dat', 'alpha_anpp_grass' )
+    coef_nimpl%intersect_anpp_grass = getparreal( 'params/params_nimpl.dat', 'intersect_anpp_grass' )
+    ! Constant of root C/N
+    coef_nimpl%root_cn_grass = getparreal( 'params/params_nimpl.dat', 'root_cn_grass' )
 
   end subroutine getpar_nimpl
 
@@ -616,6 +746,28 @@ contains
                           )                              
       end if
       !----------------------------------------------------------------
+      ! Annual leaf nitrogen efficiency (nre)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_nre = trim(prefix)//'.'//year_char//".a.nre.nc"
+        print*,'initialising ', trim(ncoutfilnam_nre), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_nre), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = NRE_NAME, &
+                          varunits = "unitness", &
+                          longnam  = "leaf nitrogen resorption efficiency", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )                              
+      end if
+      !----------------------------------------------------------------
       ! Annual leaf nitrogen flux output file (lnf)
       !----------------------------------------------------------------
       if (interface%params_siml%loutnimpl) then
@@ -725,7 +877,139 @@ contains
                           ! XXX add more attributes XXX
                           )
       end if
-      ! xxx complement
+      !Grassland models
+      !----------------------------------------------------------------
+      ! Annual NPP output file in grassland (anpp_grass)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_anpp_grass = trim(prefix)//'.'//year_char//".a.npp_grass.nc"
+        print*,'initialising ', trim(ncoutfilnam_anpp_grass), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_anpp_grass), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = NPP_NAME_GRASS, &
+                          varunits = "gC m-2 yr-1", &
+                          longnam  = "annual net primary productivivty in grassland", &
+                          title    = TITLE & 
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )
+      end if
+      !----------------------------------------------------------------
+      ! Annual ANPP output file in grassland (aanpp_grass)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_aanpp_grass = trim(prefix)//'.'//year_char//".a.anpp_grass.nc"
+        print*,'initialising ', trim(ncoutfilnam_aanpp_grass), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_aanpp_grass), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = ANPP_NAME_GRASS, &
+                          varunits = "gC m-2 yr-1", &
+                          longnam  = "annual aboveground net primary productivivty in grassland", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )      
+      end if
+      !----------------------------------------------------------------
+      ! Annual BNPP output file in grassland (abnpp_grass)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_abnpp_grass = trim(prefix)//'.'//year_char//".a.bnpp_grass.nc"
+        print*,'initialising ', trim(ncoutfilnam_abnpp_grass), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_abnpp_grass), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = BNPP_NAME_GRASS, &
+                          varunits = "gC m-2 yr-1", &
+                          longnam  = "annual belowground net primary productivivty in grassland", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )      
+      end if
+      !----------------------------------------------------------------
+      ! Annual leaf nitrogen flux output file in grassland  (lnf_grass)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_lnf_grass = trim(prefix)//'.'//year_char//".a.lnf_grass.nc"
+        print*,'initialising ', trim(ncoutfilnam_lnf_grass), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_lnf_grass), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = LNF_NAME_GRASS, &
+                          varunits = "gN m-2 yr-1", &
+                          longnam  = "Nitrogen flux at leaf compartment in grassland", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )   
+      end if
+      !----------------------------------------------------------------
+      ! Annual belowground nitrogen flux output file in grassland (bnf_grass)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_bnf_grass = trim(prefix)//'.'//year_char//".a.bnf_grass.nc"
+        print*,'initialising ', trim(ncoutfilnam_bnf_grass), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_bnf_grass), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = BNF_NAME_GRASS, &
+                          varunits = "gN m-2 yr-1", &
+                          longnam  = "Nitrogen flux at belowground compartment in grassland", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )
+      end if
+      !----------------------------------------------------------------
+      ! Annual N uptake in ecosystem in grassland (nuptake_grass)
+      !----------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) then
+        ncoutfilnam_nuptake_grass = trim(prefix)//'.'//year_char//".a.nuptake_grass.nc"
+        print*,'initialising ', trim(ncoutfilnam_nuptake_grass), '...'
+        call init_nc_3D_time(  filnam  = trim(ncoutfilnam_nuptake_grass), &
+                          nlon     = interface%domaininfo%nlon, &
+                          nlat     = interface%domaininfo%nlat, &
+                          lon      = interface%domaininfo%lon, &
+                          lat      = interface%domaininfo%lat, &
+                          outyear  = interface%steering%outyear, &
+                          outdt    = 365, &
+                          outnt    = 1, &
+                          varnam   = nuptake_NAME_GRASS, &
+                          varunits = "gN m-2 yr-1", &
+                          longnam  = "Annual nitrogen uptake in ecosystem in grassland", &
+                          title    = TITLE &
+                          !globatt1_nam = "coef_age_bp", globatt1_val = coef_age_bp_char &
+                          ! XXX add more attributes XXX
+                          )
+      end if      
     end if
 
     888  format (F12.6)  ! for numeric (decimals)
@@ -752,39 +1036,53 @@ contains
     if (interface%params_siml%loutnimpl) then
 
       if (interface%steering%init) then
+        !Forest
         allocate( outanpp(ngridcells) )
         allocate( outaanpp(ngridcells) )
         allocate( outabnpp(ngridcells) )
         allocate( outalnpp(ngridcells) )
         allocate( outawnpp(ngridcells) )
         allocate( outleafcn(ngridcells) )
+        allocate( outnre(ngridcells) )
         allocate( outalnf(ngridcells) )
         allocate( outawnf(ngridcells) )
         allocate( outabnf(ngridcells) )
         allocate( outnuptake(ngridcells) )
-        allocate( outannualvcmax25(ngridcells) )        
-        ! xxx complement
+        allocate( outavcmax25(ngridcells) )
+        !Grassland
+        allocate( outanpp_grass(ngridcells) )  
+        allocate( outaanpp_grass(ngridcells) )        
+        allocate( outabnpp_grass(ngridcells) )
+        allocate( outalnf_grass(ngridcells) )
+        allocate( outabnf_grass(ngridcells) )
+        allocate( outnuptake_grass(ngridcells) )
       end if
-
+      !Forest
       outanpp(:) = 0.0
       outaanpp(:) = 0.0
       outabnpp(:) = 0.0
       outalnpp(:) = 0.0
       outawnpp(:) = 0.0
       outleafcn(:) = 0.0
+      outnre(:) = 0.0
       outalnf(:) = 0.0
       outawnf(:) = 0.0
       outabnf(:) = 0.0
       outnuptake(:) = 0.0
-      outannualvcmax25(:) = 0.0
-      ! xxx complement
-    
+      outavcmax25(:) = 0.0
+      !Grassland
+      outanpp_grass(:) = 0.0
+      outaanpp_grass(:) = 0.0
+      outabnpp_grass(:) = 0.0
+      outalnf_grass(:) = 0.0
+      outabnf_grass(:) = 0.0
+      outnuptake_grass(:) = 0.0    
     end if
 
   end subroutine initoutput_nimpl
 
 
-  subroutine getout_annual_nimpl( jpngr, tile )
+  subroutine getout_annual_nimpl( jpngr, tile, tile_fluxes )
     !////////////////////////////////////////////////////////////////
     ! Called once a year to gather annual output variables.
     !
@@ -797,7 +1095,9 @@ contains
 
     ! arguments
     integer, intent(in) :: jpngr
-    type(tile_type), dimension(nlu), intent(inout) :: tile
+    type(tile_type), dimension(nlu), intent(in) :: tile
+    !type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
+    type(tile_fluxes_type), dimension(nlu), intent(in) :: tile_fluxes
 
     ! local variables
     integer :: pft, lu
@@ -806,20 +1106,30 @@ contains
     if (interface%params_siml%loutnimpl) then
 
       lu = 1
-      !if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
-      outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * tile(lu)%plant(:)%fpc_grid )
-      outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * tile(lu)%plant(:)%fpc_grid )
-      outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * tile(lu)%plant(:)%fpc_grid )
-      outalnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnpp * tile(lu)%plant(:)%fpc_grid )
-      outawnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnpp * tile(lu)%plant(:)%fpc_grid )
-      outleafcn(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%leafcn * tile(lu)%plant(:)%fpc_grid )
-      outalnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf * tile(lu)%plant(:)%fpc_grid )
-      outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * tile(lu)%plant(:)%fpc_grid )
-      outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * tile(lu)%plant(:)%fpc_grid )
-      outnuptake(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nuptake * tile(lu)%plant(:)%fpc_grid )
-      outannualvcmax25(jpngr) = tile_nimpl_fluxes(lu)%plant(pft)%annualvcmax25      
-      ! xxx complement
-
+      if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
+      !print*,'jpngr',jpngr
+      !print*,'sum(tile(lu)%plant(:)%fpc_grid)',sum(tile(lu)%plant(:)%fpc_grid)
+      ! grid-cell average across PFTs, weighted by their FPC grid 
+      !Forest
+      outanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp * 1.0 ) ! because npp was derived from gpp, while gpp has already been accounted by fpc_grid, there no need to multiply again!
+      outaanpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp * 1.0 )
+      outabnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp * 1.0)
+      outalnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnpp * 1.0)
+      outawnpp(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnpp * 1.0)
+      outleafcn(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%leafcn * 0.5) !Because here leafcn was derived from canopy vcmax25 (has been applied by weighted-sum method already). So c3 and c4 leaf c/n is the same here, so just halve them here.
+      outnre(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nre * 0.5)! There is no difference (classfication) between c3 and c4! They are the same value of c3 and c4, so let's just half-weight them.
+      outalnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf * 1.0)
+      outawnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%awnf * 1.0)
+      outabnf(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf * 1.0)
+      outnuptake(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nuptake * 1.0 )
+      outavcmax25(jpngr) = sum( tile_fluxes(lu)%plant(:)%avcmax25_max * tile(lu)%plant(:)%fpc_grid) !same above, in the end this result should be = canopy vcmax25
+      !Grassland
+      outanpp_grass(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%anpp_grass * 1.0)
+      outaanpp_grass(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%aanpp_grass * 1.0)
+      outabnpp_grass(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnpp_grass * 1.0)
+      outalnf_grass(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%alnf_grass * 1.0)
+      outabnf_grass(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%abnf_grass * 1.0)
+      outnuptake_grass(jpngr) = sum( tile_nimpl_fluxes(lu)%plant(:)%nuptake_grass * 1.0)
     end if
 
   end subroutine getout_annual_nimpl
@@ -838,6 +1148,7 @@ contains
     use md_io_netcdf, only: write_nc_2D, write_nc_3D_time, check
     
     if ( .not. interface%steering%spinup ) then
+      !Forest model
       !-------------------------------------------------------------------------
       ! Annual NPP
       !-------------------------------------------------------------------------
@@ -924,6 +1235,20 @@ contains
                                                               outleafcn(:) &
                                                               )
       !-------------------------------------------------------------------------
+      ! Annual nre
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_nre), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_nre), &
+                                                              NRE_NAME, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outnre(:) &
+                                                              )
+      !-------------------------------------------------------------------------
       ! Annual lnf
       !-------------------------------------------------------------------------
       if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_lnf), '...'
@@ -980,7 +1305,7 @@ contains
                                                               outnuptake(:) &
                                                               )
       !-------------------------------------------------------------------------
-      ! Annual annualvcmax25
+      ! Annual annualvcmax25 --> not used anymore
       !-------------------------------------------------------------------------
       if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_annualvcmax25), '...'
       if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_annualvcmax25), &
@@ -991,9 +1316,94 @@ contains
                                                               interface%grid(:)%ilon, &
                                                               interface%grid(:)%ilat, &
                                                               interface%grid(:)%dogridcell, &
-                                                              outannualvcmax25(:) &
+                                                              outavcmax25(:) &
                                                               )
-      ! xxx complement
+      !Grassland model
+      !-------------------------------------------------------------------------
+      ! Annual NPP in grassland
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_anpp_grass), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_anpp_grass), &
+                                                              NPP_NAME_GRASS, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outanpp_grass(:) &
+                                                              )
+    
+      !-------------------------------------------------------------------------
+      ! Annual ANPP in grassland
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_aanpp_grass), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_aanpp_grass), &
+                                                              ANPP_NAME_GRASS, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outaanpp_grass(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual BNPP in grassland
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_abnpp_grass), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_abnpp_grass), &
+                                                              BNPP_NAME_GRASS, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outabnpp_grass(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual lnf in grassland
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_lnf_grass), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_lnf_grass), &
+                                                              LNF_NAME_GRASS, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outalnf_grass(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual bnf in grassland
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_bnf_grass), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_bnf_grass), &
+                                                              BNF_NAME_GRASS, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outabnf_grass(:) &
+                                                              )
+      !-------------------------------------------------------------------------
+      ! Annual nuptake in grassland
+      !-------------------------------------------------------------------------
+      if (interface%params_siml%loutnimpl) print*,'writing ', trim(ncoutfilnam_nuptake_grass), '...'
+      if (interface%params_siml%loutnimpl) call write_nc_2D( trim(ncoutfilnam_nuptake_grass), &
+                                                              nuptake_NAME_GRASS, &
+                                                              interface%domaininfo%maxgrid, &
+                                                              interface%domaininfo%nlon, &
+                                                              interface%domaininfo%nlat, &
+                                                              interface%grid(:)%ilon, &
+                                                              interface%grid(:)%ilat, &
+                                                              interface%grid(:)%dogridcell, &
+                                                              outnuptake_grass(:) &
+                                                              )
     end if
 
   end subroutine writeout_nc_nimpl
