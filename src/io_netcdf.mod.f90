@@ -64,7 +64,7 @@ contains
     character(len=*), parameter :: UNITS     = "units"
     character(len=*), parameter :: LAT_UNITS = "degrees_north"
     character(len=*), parameter :: LON_UNITS = "degrees_east"
-    character(len=*), parameter :: T_UNITS   = "days since 2001-1-1 0:0:0"
+    character(len=*), parameter :: T_UNITS   = "days since 2001-1-1 00:00:00"
 
     integer, dimension(outnt) :: tvals
 

@@ -288,7 +288,7 @@ contains
     out_getpar_siml%spinupyears       = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
     out_getpar_siml%recycle           = getparint( 'run/'//runname//'.sofun.parameter', 'recycle' )
     out_getpar_siml%outdt             = getparint( 'run/'//runname//'.sofun.parameter', 'outdt' )
-    out_getpar_siml%outnt = ceiling( real( ndayyear ) / real( out_getpar_siml%outdt ) )
+    out_getpar_siml%outnt             = ceiling( real( ndayyear ) / real( out_getpar_siml%outdt ) )
 
     out_getpar_siml%do_spinup         = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
 

@@ -87,11 +87,11 @@ proc_global(){
 	cdo -O mergetime output_nc/$1.????.a.gpp.nc   output_nc/$1.a.gpp.nc
 	rm output_nc/$1.????.a.gpp.nc
 
-	## AET
+	## PET
 	cdo -O mergetime output_nc/$1.????.a.pet.nc   output_nc/$1.a.pet.nc
 	rm output_nc/$1.????.a.pet.nc
 
-	## PET
+	## AET
 	cdo -O mergetime output_nc/$1.????.a.aet.nc   output_nc/$1.a.aet.nc
 	rm output_nc/$1.????.a.aet.nc
 
@@ -99,11 +99,11 @@ proc_global(){
 	cdo -O mergetime output_nc/$1.????.a.alpha.nc   output_nc/$1.a.alpha.nc
 	rm output_nc/$1.????.a.alpha.nc	
 
-	## VPD 
-	cdo -O mergetime output_nc/$1.????.a.vpd.nc   output_nc/$1.a.vpd.nc
-	rm output_nc/$1.????.a.vpd.nc	
+	## Vcmax25
+	cdo -O mergetime output_nc/$1.????.a.vcmax25.nc   output_nc/$1.a.vcmax25.nc
+	rm output_nc/$1.????.a.vcmax25.nc		
 
-	
+
 	##-------------------------------------
 	## Daily
 	##-------------------------------------
@@ -118,10 +118,6 @@ proc_global(){
 	## PET
 	cdo -O mergetime output_nc/$1.????.d.pet.nc   output_nc/$1.d.pet.nc
 	rm output_nc/$1.????.d.pet.nc
-
-	## GPP
-	cdo -O mergetime output_nc/$1.????.d.gpp.nc   output_nc/$1.d.gpp.nc
-	rm output_nc/$1.????.d.gpp.nc
 
 	## Soil water content
 	cdo -O mergetime output_nc/$1.????.d.wcont.nc   output_nc/$1.d.wcont.nc
@@ -142,6 +138,8 @@ proc_global(){
 	cdo -O timmean output_nc/$1.a.gpp.nc output_nc/$1.a.gpp_MEANANN.nc
 	cdo -O timmean output_nc/$1.a.aet.nc output_nc/$1.a.aet_MEANANN.nc
 	cdo -O timmean output_nc/$1.a.pet.nc output_nc/$1.a.pet_MEANANN.nc
+	cdo -O timmean output_nc/$1.a.alpha.nc output_nc/$1.a.alpha_MEANANN.nc
+	cdo -O timmean output_nc/$1.a.vcmax25.nc output_nc/$1.a.vcmax25_MEANANN.nc
 
 	return 0
 }
