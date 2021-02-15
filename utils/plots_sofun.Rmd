@@ -1,0 +1,75 @@
+---
+title: "Visualise SOFUN"
+author: "Beni Stocker"
+date: "2/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(rbeni)
+```
+
+This illustrates some common functionalities for reading and plotting NetCDF files in general and SOFUN outputs specifically. Functions are implemented by the [rbeni R package, available from GitHub](https://github.com/stineb/rbeni).
+
+## Read output
+
+Set directory where output is located. Output is written by SOFUN to `./output_nc`.
+```{r}
+dir <- "~/data/sofun_outputs/global_FULL_MODIS-C006_MOD15A2_v3.4/"
+```
+
+Annual
+
+```{r}
+nc_gpp <- read_nc_onefile(paste0(dir, "global_FULL_MODIS-C006_MOD15A2_v3.4.a.gpp.nc"),  varnam = "gpp")
+nc_pet <- read_nc_onefile(paste0(dir, "global_FULL_MODIS-C006_MOD15A2_v3.4.a.pet.nc"),  varnam = "pet")
+nc_alpha <- read_nc_onefile(paste0(dir, "global_FULL_MODIS-C006_MOD15A2_v3.4.a.alpha.nc"),  varnam = "alpha")
+```
+
+Daily: Take mean over daily values and read file.
+
+```{r}
+nc_wcont <- nc_timmean(paste0(dir,  "global_FULL_MODIS-C006_MOD15A2_v3.4.d.wcont.nc"))
+
+## providing argument return_ofil writes to file, separate step for reading
+system(paste0("cdo timmean ", dir, "global_FULL_MODIS-C006_MOD15A2_v3.4.d.vpd.nc ", dir, "global_FULL_MODIS-C006_MOD15A2_v3.4.a.vpd.nc"))
+nc_vpd <- read_nc_onefile(paste0(dir, "global_FULL_MODIS-C006_MOD15A2_v3.4.a.vpd.nc"),  varnam = "vpd") %>% 
+  nc_selyear(2010)
+```
+
+## Global maps
+
+Annual
+
+```{r}
+plot_map3(nc_gpp, varnam = "gpp", colorscale = viridis::cividis)
+plot_map3(nc_pet, varnam = "pet", colorscale = viridis::cividis)
+plot_map3(nc_alpha, varnam = "alpha", colorscale = viridis::cividis)
+# plot_map3(nc_wcont, varnam = "wcont", colorscale = viridis::cividis)
+
+plot_map3(nc_vpd, varnam = "vpd", colorscale = viridis::cividis, plot_title = "VPD", plot_subtitle = "Annual mean", legend_title = "(Pa)", latmin = -60, latmax = 85)
+ggsave("~/sofun/fig/vpd_map.pdf", width = 8, height = 6)
+```
+
+## Integrate globally
+
+```{r}
+df <- integrate_lonlat(paste0(dir,  "global_FULL_MODIS-C006_MOD15A2_v3.4.2000.a.gpp.nc"),  
+                       paste0(dir,  "global_FULL_MODIS-C006_MOD15A2_v3.4.fland.nc"), 
+                       varnam = "gpp")
+
+df <- integrate_lonlat(paste0(dir,  "global_FULL_MODIS-C006_MOD15A2_v3.4.a.vpd.nc"),  
+                       paste0(dir,  "global_FULL_MODIS-C006_MOD15A2_v3.4.fland.nc"), 
+                       varnam = "vpd")
+```
+
+And plot.
+```{r}
+df %>% 
+  ggplot(aes(x = date, y = vpd)) +
+  geom_line() +
+  labs(title = "VPD", subtitle = "Global mean, based on WATCH-WFDEI climate reanalysis data", y = "VPD (Pa)", x = "Year")
+ggsave("~/sofun/fig/vpd_globalmean.pdf", width = 6, height = 4)
+```

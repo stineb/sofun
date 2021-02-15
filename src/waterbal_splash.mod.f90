@@ -459,8 +459,8 @@ contains
     !---------------------------------------------------------
     ! 22. Calculate Cramer-Prentice-Alpha, (unitless)
     !---------------------------------------------------------
-    if (tile_fluxes%canopy%deet>0.0) then 
-      tile_fluxes%canopy%cpa = tile_fluxes%canopy%daet / tile_fluxes%canopy%deet
+    if (tile_fluxes%canopy%dpet>0.0) then 
+      tile_fluxes%canopy%cpa = tile_fluxes%canopy%daet / tile_fluxes%canopy%dpet
     else
       tile_fluxes%canopy%cpa = 1.0 + kw
     end if

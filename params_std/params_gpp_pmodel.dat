@@ -13,7 +13,7 @@ tau_acclim                              10.0000000
 
 kphio_Gr3                               0.09423773
 kphio_GN3                               0.09423773
-kphio_Gr4                               0.09423773
+kphio_Gr4                               1.00000000
 kphio_TND                               0.09423773
 kphio_TNE                               0.09423773
 kphio_TrD                               0.09423773

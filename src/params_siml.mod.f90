@@ -69,6 +69,7 @@ module md_params_siml
     logical :: loutgpp
     logical :: loutwaterbal
     logical :: loutforcing
+    logical :: loutnimpl
 
     ! Module-specific booleans whether a single variable is written to daily output
     logical :: loutdgpp
@@ -80,6 +81,7 @@ module md_params_siml
     logical :: loutdnetrad
     logical :: loutdwbal
     logical :: loutdtemp
+    logical :: loutdvpd
     logical :: loutdfapar
     logical :: loutdtemp_soil
 
@@ -286,7 +288,7 @@ contains
     out_getpar_siml%spinupyears       = getparint( 'run/'//runname//'.sofun.parameter', 'spinupyears' )
     out_getpar_siml%recycle           = getparint( 'run/'//runname//'.sofun.parameter', 'recycle' )
     out_getpar_siml%outdt             = getparint( 'run/'//runname//'.sofun.parameter', 'outdt' )
-    out_getpar_siml%outnt = ceiling( real( ndayyear ) / real( out_getpar_siml%outdt ) )
+    out_getpar_siml%outnt             = ceiling( real( ndayyear ) / real( out_getpar_siml%outdt ) )
 
     out_getpar_siml%do_spinup         = getparlogical( 'run/'//runname//'.sofun.parameter', 'spinup' )
 
@@ -350,6 +352,7 @@ contains
     out_getpar_siml%loutplant     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutplant' )
     out_getpar_siml%loutgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutgpp' )
     out_getpar_siml%loutwaterbal  = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutwaterbal' )
+    out_getpar_siml%loutnimpl     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutnimpl' )
 
     ! Module-specific booleans whether a single variable is written to daily output
     out_getpar_siml%loutdgpp       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdgpp' )
@@ -361,6 +364,7 @@ contains
     out_getpar_siml%loutdnetrad    = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdnetrad' )
     out_getpar_siml%loutdwbal      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdwbal' )
     out_getpar_siml%loutdtemp      = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp' )
+    out_getpar_siml%loutdvpd       = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdvpd' )
     out_getpar_siml%loutdfapar     = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdfapar' )
     out_getpar_siml%loutdtemp_soil = getparlogical( 'run/'//runname//'.sofun.parameter', 'loutdtemp_soil' )
 
@@ -374,6 +378,7 @@ contains
     if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdaet   ) out_getpar_siml%loutwaterbal = .true.
     if (.not.out_getpar_siml%loutwaterbal .and. out_getpar_siml%loutdwbal  ) out_getpar_siml%loutwaterbal = .true.
     if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdtemp  ) out_getpar_siml%loutforcing  = .true.
+    if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdvpd   ) out_getpar_siml%loutforcing  = .true.
     if (.not.out_getpar_siml%loutforcing  .and. out_getpar_siml%loutdfapar ) out_getpar_siml%loutforcing  = .true.
 
     ! boolean to define which variables are used as calibration target

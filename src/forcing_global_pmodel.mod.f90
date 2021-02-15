@@ -523,7 +523,8 @@ contains
 
   function get_fpc_grid( domaininfo, grid, params_siml ) result( fpc_grid_field )
     !////////////////////////////////////////////////////////////////
-    ! xxx add explanation here
+    ! Reads vegetation cover file to define fractional PFT coverage
+    ! for each PFT (currently distinguishing between C3 and C4)
     !----------------------------------------------------------------  ​
     use md_params_siml, only: paramstype_siml
     use md_params_core, only: npft, eps
@@ -531,7 +532,7 @@ contains
     ! arguments
     type( domaininfo_type ), intent(in) :: domaininfo
     type( gridtype ), dimension(domaininfo%maxgrid), intent(in) :: grid
-    type( paramstype_siml ), intent(in) :: params_siml
+    type( paramstype_siml ), intent(inout) :: params_siml
 
     ! function return variable
     real, dimension(npft,domaininfo%maxgrid) :: fpc_grid_field
@@ -554,7 +555,7 @@ contains
     character(len=3), parameter :: latname = "lat"
     ! character(len=100), parameter :: dimname_pft = "z"
     character(len=100), parameter :: varname = "c4"
-    character(len=100), parameter :: filnam = "./input/global/landcover/c4_percentage.nc"
+    character(len=100), parameter :: filnam = "./input/global/landcover/c4_percentage_revlat.nc"
 
     !----------------------------------------------------------------  
     ! Get vegetation cover information from file
@@ -638,6 +639,12 @@ contains
     ! close NetCDF files
     call check( nf90_close( ncid ) )
 
+    ! override: activate both C3 and C4
+    params_siml%lGr3 = .true.
+    params_siml%lGr4 = .true.
+
+    if (npft /= 2) stop 'Aborting. Set npft = 2.'
+
     ! read from array to define land cover 'fpc_grid_field'
     n_noinfo = 0
     gridcellloop: do jpngr=1,domaininfo%maxgrid
@@ -646,57 +653,24 @@ contains
       
       if ( tmp==ncfillvalue .and. grid(jpngr)%dogridcell ) then
 
-        n_noinfo = n_noinfo + 1
-        ! fpc_grid_field(:,jpngr) = 1.0 / real( npft )
+        ! For gridcells with missing information, assume 100% C3
+        ! C3-PFT (can be grass or not grass)
+        fpc_grid_field(1,jpngr) = 1.0
+
+        ! C4-PFT
+        fpc_grid_field(2,jpngr) = 0.0
 
       else        
 
-        fpc_grid_field(:,jpngr) = 0.0
+        ! C3-PFT (can be grass or not grass)
+        fpc_grid_field(1,jpngr) = 1.0 - tmp
 
-        if (npft==2) then
-          if (jpngr==1) print*,'GET_FPC_GRID: npft=2 ==> assuming distinction between C3 and C4 grasslands'
-
-          pft = 0
-
-          if ( params_siml%lGr3 ) then
-            ! xxx dirty: call all grass vegetation types 'Gr3'
-            pft = pft + 1
-
-            ! C3-PFT (can be grass or not grass)
-            fpc_grid_field(pft,jpngr) = 1.0 - tmp
-
-          end if
-
-          if ( params_siml%lGr4 ) then
-            ! xxx dirty: call all grass vegetation types 'Gr3'
-            pft = pft + 1
-
-            ! C4-PFT
-            fpc_grid_field(pft,jpngr) = tmp
-            
-          end if
-
-        else if (npft==1) then
-
-          if (jpngr==1) print*,'GET_FPC_GRID: npft=1 ==> assuming all is C3'
-
-          pft = 1
-          fpc_grid_field(pft,jpngr) = 1.0 !- tmp
-
-        else
-
-          stop 'GET_FPC_GRID: only implemented for npft = 1 or 2.'
-
-        end if
-
+        ! C4-PFT
+        fpc_grid_field(2,jpngr) = tmp
 
       end if
 
-      ! if ( abs(sum(fpc_grid_field(:,jpngr)) - 1.0)>eps .and. sum(fpc_grid_field(:,jpngr)) > 0.0 ) &
-      !   fpc_grid_field(:,jpngr) = fpc_grid_field(:,jpngr) / sum( fpc_grid_field(:,jpngr) )
-
     end do gridcellloop
-
 
     ! deallocate memory again (the problem is that climate input files are of unequal length in the record dimension)
     deallocate( vegtype_arr )

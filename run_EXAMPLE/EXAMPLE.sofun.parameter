@@ -78,6 +78,7 @@ loutdpet                                .false.
 loutdnetrad                             .false.
 loutdwbal                               .false.
 loutdtemp                               .false.
+loutdvpd                                .false.
 loutdfapar                              .false.
 loutdtemp_soil                          .false.
 
