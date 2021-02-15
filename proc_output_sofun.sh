@@ -135,6 +135,7 @@ proc_global(){
 	cdo -O timmean output_nc/$1.a.gpp.nc output_nc/$1.a.gpp_MEANANN.nc
 	cdo -O timmean output_nc/$1.a.aet.nc output_nc/$1.a.aet_MEANANN.nc
 	cdo -O timmean output_nc/$1.a.pet.nc output_nc/$1.a.pet_MEANANN.nc
+	cdo -O timmean output_nc/$1.a.alpha.nc output_nc/$1.a.alpha_MEANANN.nc
 
 	return 0
 }
