@@ -238,9 +238,9 @@ contains
     if (dogridcell) then
       lu = 1
       do pft = 1,npft
-        if ((preds_nimpl(jpngr)%cnsoil > 0.0).and.(preds_nimpl(jpngr)%age > 0.0).and.(preds_nimpl(jpngr)%fapar > 0.0).and.(preds_nimpl(jpngr)%alpha > 0.0)) then
-          tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_bp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_bp))))
-          tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar +coef_nimpl%alpha_anpp * preds_nimpl(jpngr)%alpha + coef_nimpl%intersect_anpp))))
+        if ((preds_nimpl(jpngr)%cnsoil > 0.0).and.(preds_nimpl(jpngr)%age > 0.0).and.(preds_nimpl(jpngr)%fapar > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%anpp  = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_bp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_bp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_bp * preds_nimpl(jpngr)%fapar + coef_nimpl%intersect_bp))))
+          tile_nimpl_fluxes(lu)%plant(pft)%aanpp = tile_fluxes(lu)%plant(pft)%agpp * (1/(1 + EXP(-(coef_nimpl%cnsoil_anpp * LOG(preds_nimpl(jpngr)%cnsoil) + coef_nimpl%age_anpp * LOG(preds_nimpl(jpngr)%age) + coef_nimpl%fapar_anpp * preds_nimpl(jpngr)%fapar+ coef_nimpl%intersect_anpp))))
           tile_nimpl_fluxes(lu)%plant(pft)%abnpp = tile_nimpl_fluxes(lu)%plant(pft)%anpp - tile_nimpl_fluxes(lu)%plant(pft)%aanpp
           else
             tile_nimpl_fluxes(lu)%plant(pft)%anpp  = 0
@@ -267,8 +267,8 @@ contains
           else
             tile_nimpl_fluxes(lu)%plant(pft)%alnpp = 0
         end if
-        !print*,'5'
-        if ((preds_nimpl(jpngr)%cnsoil > 0.0).and.(preds_nimpl(jpngr)%age > 0.0).and.(preds_nimpl(jpngr)%fapar > 0.0).and.(preds_nimpl(jpngr)%alpha > 0.0).and.(preds_nimpl(jpngr)%ppfd > 0.0).and.(preds_nimpl(jpngr)%vpd > 0.0)) then
+        !print*,'5' 
+        if ((preds_nimpl(jpngr)%cnsoil > 0.0).and.(preds_nimpl(jpngr)%age > 0.0).and.(preds_nimpl(jpngr)%fapar > 0.0).and.(preds_nimpl(jpngr)%ppfd > 0.0).and.(preds_nimpl(jpngr)%vpd > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%awnpp = tile_nimpl_fluxes(lu)%plant(pft)%aanpp - tile_nimpl_fluxes(lu)%plant(pft)%alnpp
           else
             tile_nimpl_fluxes(lu)%plant(pft)%awnpp = 0
@@ -295,31 +295,25 @@ contains
             tile_nimpl_fluxes(lu)%plant(pft)%nre = 0
         end if
 
-        !exclude nre in lnf????  
         tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)!it is actually leaf n/c here. 
         !tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn!it is actually leaf n/c here. 
         
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
 
-        !exclude nre in nuptake?????????          
-        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
-        !tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
+        !tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
+        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnf + tile_nimpl_fluxes(lu)%plant(pft)%awnf + tile_nimpl_fluxes(lu)%plant(pft)%abnf
 
         !!Grassland models
-        tile_nimpl_fluxes(lu)%plant(pft)%anpp_grass  = tile_fluxes(lu)%plant(pft)%agpp * coef_nimpl%cue_grass
+        !all coefficients are constant here - it can be just inputted directly
+        tile_nimpl_fluxes(lu)%plant(pft)%anpp_grass  = tile_fluxes(lu)%plant(pft)%agpp * 0.435 
+        tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass = tile_fluxes(lu)%plant(pft)%agpp * 0.228
 
-        if ((preds_nimpl(jpngr)%alpha > 0.0).and.(preds_nimpl(jpngr)%tg > 0.0)) then
-          tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass = tile_nimpl_fluxes(lu)%plant(pft)%anpp_grass * (1/(1+EXP(-(coef_nimpl%alpha_anpp_grass * preds_nimpl(jpngr)%alpha + coef_nimpl%tg_anpp_grass * preds_nimpl(jpngr)%tg + coef_nimpl%intersect_anpp_grass))))
-          tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass = tile_nimpl_fluxes(lu)%plant(pft)%anpp_grass - tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass         
-          else
-            tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass = 0
-            tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass = 0
-        end if        
+        tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass * (1/18) * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)
+        
+        tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass * (1/41)
 
-        tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)!it is actually leaf n/c here. 
-        tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass / coef_nimpl%root_cn_grass
-        tile_nimpl_fluxes(lu)%plant(pft)%nuptake_grass = (tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass / coef_nimpl%root_cn_grass)  + tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)
+        tile_nimpl_fluxes(lu)%plant(pft)%nuptake_grass = tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass + tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass
 
       end do
     else
@@ -1108,7 +1102,7 @@ contains
     if (interface%params_siml%loutnimpl) then
 
       lu = 1
-      if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
+      !if ( abs(sum(tile(lu)%plant(:)%fpc_grid) - 1.0) > eps ) stop 'getout_annual_nimpl(): fpc_grid does not sum up to 1.0'
       !print*,'jpngr',jpngr
       !print*,'sum(tile(lu)%plant(:)%fpc_grid)',sum(tile(lu)%plant(:)%fpc_grid)
       ! grid-cell average across PFTs, weighted by their FPC grid 

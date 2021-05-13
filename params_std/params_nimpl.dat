@@ -5,50 +5,50 @@
 # write value behind this position:    |->
 
 #BP/GPP model
-cnsoil_bp                               -0.3677
-age_bp                                  -0.1552
-alpha_bp                                1.9144
-fapar_bp                                0.5791
-intersect_bp                            -1.1052
+cnsoil_bp                               -0.36075
+age_bp                                  -0.16213
+alpha_bp                                0.0
+fapar_bp                                0.72793
+intersect_bp                            0.57014
 
 #ANPP/GPP model
-cnsoil_anpp                             -0.6075
-age_anpp                                -0.1798
-alpha_anpp                              2.1287
-fapar_anpp                              0.8617
-intersect_anpp                          -1.3528
+cnsoil_anpp                             -0.55151
+age_anpp                                -0.20050
+alpha_anpp                              0.0
+fapar_anpp                              1.06611
+intersect_anpp                          0.35817
 
 #ALNPP/ANPP model
-ppfd_alnpp                              1.2350
-tg_alnpp                                0.0731
-vpd_alnpp                               -1.0192
-intersect_alnpp                         -9.2375
+ppfd_alnpp                              0.97093
+tg_alnpp                                0.06453
+vpd_alnpp                               -0.80397
+intersect_alnpp                         -7.47165
 
 #leaf C/N model
-lma_leafcn                              0.0161
-vcmax25_leafcn                          0.0041
-cmass_leafcn                            0.5000
+lma_leafcn                              0.01599
+vcmax25_leafcn                          0.005992
+cmass_leafcn                            0.4600
 
 #nre model
-tg_nre                                  -0.0679
-vpd_nre                                 0.4217
-intersect_nre                           1.4541
+tg_nre                                  -0.064460
+vpd_nre                                 0.402850
+intersect_nre                           1.368935
 
-#constant ratio - derived from TRY database (N=2365 for root; N=13 for wood)
-root_cn                                 42
-wood_cn                                 97
+#constant ratio 
+root_cn                                 94
+wood_cn                                 100
 
 #Grassland models
 #BP/GPP model
-cue_grass                               0.4046
+cue_grass                               0.435
 
-#ANPP/NPP model
-tg_anpp_grass                           0.0385
-alpha_anpp_grass                        1.8720
-intersect_anpp_grass                    -2.5642
+#ANPP/NPP model - not used now since it is a constant
+tg_anpp_grass                           0.0126378
+alpha_anpp_grass                        -0.580933
+intersect_anpp_grass                    0.302399
 
 #Constant of root C/N
-root_cn_grass                           46
+root_cn_grass                           41
 
 #                                      |
 # write value *behind* this position:  |->
