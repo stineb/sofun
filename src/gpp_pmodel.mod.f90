@@ -1134,8 +1134,8 @@ contains
         !else  
         !end if
         if (rx > -1 .and. rx < 1) then
-          tcgrowth_cru = climate%dtmax * (0.5 + (1.0 - rx**2) / (2.0 * acos(rx))) + &
-          climate%dtmin * (0.5 - (1.0 - rx**2) / (2.0 * acos(rx)))
+          tcgrowth_cru = climate%dtmax * (0.5 + ((1.0 - rx**2)**(1/2)) / (2.0 * acos(rx))) + &
+          climate%dtmin * (0.5 - ((1.0 - rx**2)**(1/2)) / (2.0 * acos(rx)))
           tcmean_cru   = (climate%dtmax + climate%dtmin) / 2.0
         !----------------------------------------------------------------
         ! Take difference of daytime temperature to mean temperature based on 
