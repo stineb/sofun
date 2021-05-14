@@ -276,8 +276,6 @@ contains
         !model 1: Nmass ~ vcmax25/lma - r2 = 0.066
         if ((preds_nimpl(jpngr)%lma > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%leafcn = (coef_nimpl%lma_leafcn/coef_nimpl%cmass_leafcn) + (coef_nimpl%vcmax25_leafcn/coef_nimpl%cmass_leafcn) * (tile_fluxes(lu)%canopy%avcmax25_max)/(preds_nimpl(jpngr)%lma)!it is actually leaf n/c here...    
-          !print*,'tile_nimpl_fluxes(lu)%plant(pft)%leafcn',tile_nimpl_fluxes(lu)%plant(pft)%leafcn
-          !print*,'jpngr',jpngr
           else
             tile_nimpl_fluxes(lu)%plant(pft)%leafcn = 0
         end if      
@@ -302,7 +300,11 @@ contains
         tile_nimpl_fluxes(lu)%plant(pft)%abnf = tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn
 
         !tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre) + (tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn) + (tile_nimpl_fluxes(lu)%plant(pft)%abnpp / coef_nimpl%root_cn)
-        tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnf + tile_nimpl_fluxes(lu)%plant(pft)%awnf + tile_nimpl_fluxes(lu)%plant(pft)%abnf
+        if ((tile_nimpl_fluxes(lu)%plant(pft)%alnf > 0.0).and.(tile_nimpl_fluxes(lu)%plant(pft)%awnf > 0.0).and.(tile_nimpl_fluxes(lu)%plant(pft)%abnf > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%nuptake = tile_nimpl_fluxes(lu)%plant(pft)%alnf + tile_nimpl_fluxes(lu)%plant(pft)%awnf + tile_nimpl_fluxes(lu)%plant(pft)%abnf
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%nuptake = 0
+        end if
 
         !!Grassland models
         !all coefficients are constant here - it can be just inputted directly
@@ -313,8 +315,11 @@ contains
         
         tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass * (1/41)
 
-        tile_nimpl_fluxes(lu)%plant(pft)%nuptake_grass = tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass + tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass
-
+        if ((tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass > 0.0).and.(tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass > 0.0)) then
+          tile_nimpl_fluxes(lu)%plant(pft)%nuptake_grass = tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass + tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%nuptake_grass = 0
+        end if
       end do
     else
 
