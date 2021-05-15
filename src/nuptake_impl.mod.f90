@@ -201,7 +201,7 @@ module md_nuptake_impl
   character(len=*), parameter :: WNF_NAME = "wnf"
   character(len=*), parameter :: BNF_NAME = "bnf"
   character(len=*), parameter :: nuptake_NAME = "nuptake"
-  character(len=*), parameter :: ANNUALVCMAX25_NAME = "annualvcmax25"
+  character(len=*), parameter :: ANNUALVCMAX25_NAME = "annualvc25"
   !Grassland
   character(len=*), parameter :: NPP_NAME_GRASS = "npp_grass"
   character(len=*), parameter :: ANPP_NAME_GRASS = "anpp_grass"
@@ -293,7 +293,11 @@ contains
             tile_nimpl_fluxes(lu)%plant(pft)%nre = 0
         end if
 
-        tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)!it is actually leaf n/c here. 
+        if (tile_nimpl_fluxes(lu)%plant(pft)%nre > 0.0) then
+          tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)!it is actually leaf n/c here. 
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%alnf = 0
+        end if
         !tile_nimpl_fluxes(lu)%plant(pft)%alnf = tile_nimpl_fluxes(lu)%plant(pft)%alnpp * tile_nimpl_fluxes(lu)%plant(pft)%leafcn!it is actually leaf n/c here. 
         
         tile_nimpl_fluxes(lu)%plant(pft)%awnf = tile_nimpl_fluxes(lu)%plant(pft)%awnpp / coef_nimpl%wood_cn
@@ -310,10 +314,15 @@ contains
         !all coefficients are constant here - it can be just inputted directly
         tile_nimpl_fluxes(lu)%plant(pft)%anpp_grass  = tile_fluxes(lu)%plant(pft)%agpp * 0.435 
         tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass = tile_fluxes(lu)%plant(pft)%agpp * 0.228
+        tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass = tile_nimpl_fluxes(lu)%plant(pft)%anpp_grass - tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass
 
-        tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass * (1/18) * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre)
-        
-        tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass * (1/41)
+        if (tile_nimpl_fluxes(lu)%plant(pft)%nre > 0.0) then !as consistent with nre filter info above
+          tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%aanpp_grass * (1.0 - tile_nimpl_fluxes(lu)%plant(pft)%nre) / 18.0
+          else
+            tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass = 0
+        end if
+
+        tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass = tile_nimpl_fluxes(lu)%plant(pft)%abnpp_grass / 41.0
 
         if ((tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass > 0.0).and.(tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass > 0.0)) then
           tile_nimpl_fluxes(lu)%plant(pft)%nuptake_grass = tile_nimpl_fluxes(lu)%plant(pft)%alnf_grass + tile_nimpl_fluxes(lu)%plant(pft)%abnf_grass
@@ -860,7 +869,7 @@ contains
       ! Annual vcmax25 (annualvcmax25)
       !----------------------------------------------------------------
       if (interface%params_siml%loutnimpl) then
-        ncoutfilnam_annualvcmax25 = trim(prefix)//'.'//year_char//".a.annualvcmax25.nc"
+        ncoutfilnam_annualvcmax25 = trim(prefix)//'.'//year_char//".a.annualvc25.nc"
         print*,'initialising ', trim(ncoutfilnam_annualvcmax25), '...'
         call init_nc_3D_time(  filnam  = trim(ncoutfilnam_annualvcmax25), &
                           nlon     = interface%domaininfo%nlon, &

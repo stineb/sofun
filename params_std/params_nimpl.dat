@@ -35,8 +35,8 @@ vpd_nre                                 0.402850
 intersect_nre                           1.368935
 
 #constant ratio 
-root_cn                                 94
-wood_cn                                 100
+root_cn                                 94.0
+wood_cn                                 100.0
 
 #Grassland models
 #BP/GPP model
@@ -48,7 +48,7 @@ alpha_anpp_grass                        -0.580933
 intersect_anpp_grass                    0.302399
 
 #Constant of root C/N
-root_cn_grass                           41
+root_cn_grass                           41.0
 
 #                                      |
 # write value *behind* this position:  |->
