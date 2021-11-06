@@ -1186,7 +1186,7 @@ contains
   end subroutine init_rlm_waterbal
 
 
-  subroutine getout_daily_waterbal( tile, tile_fluxes, jpngr, moy, doy )
+  subroutine getout_daily_waterbal( tile, tile_fluxes, jpngr, doy )
     !////////////////////////////////////////////////////////////////
     ! Collect daily output variables
     ! so far not implemented for isotopes
@@ -1195,7 +1195,6 @@ contains
     type( tile_type ), dimension(nlu), intent(in)        :: tile
     type( tile_fluxes_type ), dimension(nlu), intent(in) :: tile_fluxes
     integer, intent(in)                                  :: jpngr
-    integer, intent(in)                                  :: moy    
     integer, intent(in)                                  :: doy    
 
     ! local variables
