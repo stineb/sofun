@@ -822,7 +822,7 @@ contains
     ! local variables
     real :: dclabl
 
-    if (clabl>0.0 .and. nlabl>0.0) then
+    if (clabl > 0.0 .and. nlabl > 0.0) then
 
       ! use remainder for allocation to roots
       mydcroot = min( params_plant%growtheff * clabl, params_pft_plant(pft)%r_cton_root * nlabl )

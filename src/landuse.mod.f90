@@ -29,8 +29,7 @@ contains
 
   subroutine grharvest( jpngr, doy )
     !////////////////////////////////////////////////////////////////
-    !  Annual vegetation biomass turnover, called at the end of the
-    !  year.
+    ! Annual grass biomass harvest.
     !----------------------------------------------------------------
     use md_classdefs
     use md_params_core, only: npft, eps
