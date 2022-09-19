@@ -193,8 +193,8 @@ contains
     type(outtype_netrad)    :: out_netrad
     type(outtype_et)        :: out_et
     type(outtype_snow_rain) :: out_snow_rain
-    real                    :: g_aero
-    real                    :: g_canopy
+    real                    :: g_aero         ! aerodynamic conductance (m s-1)
+    real                    :: g_canopy       ! canopy conductance (m s-1)
     integer                 :: lu             ! land unit (gridcell tile)
     real                    :: tk
 
@@ -217,16 +217,15 @@ contains
       ! call calc_netrad( tile_fluxes(lu), grid, climate, doy )
 
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! Canopy transpiration and soil evaporation
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      ! out_et = calc_et( climate%dtemp, climate%dprec, climate%dpatm, tile(lu)%canopy%lai, tile(lu)%canopy%fapar, out_netrad%rn, climate%dvpd, tile(lu)%canopy%conductance, g_aero )
-      call calc_et( tile(lu), tile_fluxes(lu), climate )
-
-      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       ! Update soil moisture and snow pack
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       out_snow_rain = get_snow_rain( climate%dprec + out_et%cn, climate%dsnow, climate%dtemp, tile(lu)%soil%phy%snow )
       tile(lu)%soil%phy%snow = out_snow_rain%snow_updated 
+
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      ! Canopy transpiration and soil evaporation
+      ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      call calc_et( tile(lu), tile_fluxes(lu), climate, out_snow_rain%liquid_to_soil, g_aero )
 
       ! Update soil moisture
       tile(lu)%soil%phy%wcont = tile(lu)%soil%phy%wcont + out_snow_rain%liquid_to_soil - out_et%aet
@@ -435,7 +434,7 @@ contains
   end subroutine solar
 
 
-  function calc_et( tc, pr, patm, lai, fapar, netrad, vpd, g_canopy, g_aero ) result( out_et )
+  subroutine calc_et( tile, tile_fluxes, climate, liquid_to_soil, g_aero )
     !/////////////////////////////////////////////////////////////////////////
     ! Returns ecosystem-level evapotranspiration as a function of LAI following
     ! Eq. 1 in Zhang et al., 2017 JGR (doi:10.1002/2017JD027025)
@@ -444,15 +443,21 @@ contains
     use md_sofunutils, only: dampen_variability
 
     ! arguments
-    real, intent(in) :: tc              ! air temperature (deg C)
-    real, intent(in) :: pr              ! precipitation (mm d-1)
-    real, intent(in) :: patm            ! atmospheric pressure (Pa)
-    real, intent(in) :: lai             ! leaf area index (m2-leaf m-2-ground)
-    real, intent(in) :: fapar           ! fraction of absorbed photosynthetically active radiation (unitless)
-    real, intent(in) :: netrad          ! net radiation (J m-2 d-1)   xxx in Zhang described as (MJ m-2 d-1)
-    real, intent(in) :: vpd             ! vapour pressure deficit of air (Pa)
-    real, intent(in) :: g_canopy        ! canopy conductance (m s-1)
+    type(tile_type), intent(inout) :: tile
+    type(tile_fluxes_type), intent(inout) :: tile_fluxes
+    type(climate_type), intent(in) :: climate
+    real, intent(in) :: liquid_to_soil  ! liquid water infiltrating the soil (mm d-1)
     real, intent(in) :: g_aero          ! aerodynamic conductance (m s-1)
+
+    ! real, intent(in) :: tc              ! air temperature (deg C)
+    ! real, intent(in) :: pr              ! precipitation (mm d-1)
+    ! real, intent(in) :: patm            ! atmospheric pressure (Pa)
+    ! real, intent(in) :: lai             ! leaf area index (m2-leaf m-2-ground)
+    ! real, intent(in) :: fapar           ! fraction of absorbed photosynthetically active radiation (unitless)
+    ! real, intent(in) :: netrad          ! net radiation (J m-2 d-1)   xxx in Zhang described as (MJ m-2 d-1)
+    ! real, intent(in) :: vpd             ! vapour pressure deficit of air (Pa)
+    ! real, intent(in) :: g_canopy        ! canopy conductance (m s-1)
+    ! real, intent(in) :: g_aero          ! aerodynamic conductance (m s-1)
 
     ! function return variable
     type(outtype_et) :: out_et
@@ -474,19 +479,19 @@ contains
     ! Calculate temperature and pressure-dependent quantities
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Density of (dry?) air
-    rho_air = calc_density_air(tc, patm)
+    rho_air = calc_density_air(climate%dtemp, climate%dpatm)
 
     ! Psychrometric constant, Pa/K
-    gamma = psychro(tc, patm)
+    gamma = psychro(climate%dtemp, climate%dpatm)
 
     ! Slope of saturation vap press temp curve, Pa/K
-    sat_slope = calc_sat_slope(tc)
+    sat_slope = calc_sat_slope(climate%dtemp)
 
     ! Enthalpy of vaporization, J/kg
-    lv = calc_enthalpy_vap(tc)
+    lv = calc_enthalpy_vap(climate%dtemp)
     
     ! Density of water, kg/m^3
-    rho_water = density_h2o(tc, patm)
+    rho_water = density_h2o(climate%dtemp, climate%dpatm)
 
     ! Eq. 51, SPLASH 2.0 Documentation
     ! out_evap%econ = 1.0 / ( lv * rho_water ) ! this is to convert energy into mass (water)
@@ -496,9 +501,9 @@ contains
     ! Daily condensation, mm d-1
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if (netrad < 0.0) then
-      out_et%cn = 1000.0 * econ * abs(netrad)
+      tile_fluxes%canopy%dcn = 1000.0 * econ * abs(netrad)
     else
-      out_et%cn = 0.0
+      tile_fluxes%canopy%dcn = 0.0
     end if
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -517,29 +522,29 @@ contains
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Calculate soil evaporation
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    out_et%pet_e = epsilon * e_avl_soil / (epsilon + 1.0) 
-    out_et%pet = out_et%pet_e * econ * 1000.0
-    p_over_pet = pr / out_et%pet
+    tile_fluxes%canopy%deet_e = epsilon * e_avl_soil / (epsilon + 1.0) 
+    tile_fluxes%canopy%deet = tile_fluxes%canopy%deet_e * econ * 1000.0
+    p_over_pet = liquid_to_soil / tile_fluxes%canopy%deet
 
-    p_over_pet_memory = dampen_variability( p_over_pet, 30.0, p_over_pet_memory )
+    p_over_pet_memory = dampen_variability( p_over_pet, 30.0, p_over_pet_memory )   ! corresponds to f in Zhang et al., 2017 Eq. 9
     
-    out_et%aet_soil = min(p_over_pet_memory, 1.0) * out_et%pet
-    out_et%aet_e_soil = out_et%aet_soil / (econ * 1000.0)
+    tile_fluxes%canopy%daet_soil = min(p_over_pet_memory, 1.0) * tile_fluxes%canopy%deet
+    tile_fluxes%canopy%daet_e_soil = tile_fluxes%canopy%daet_soil / (econ * 1000.0)
 
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ! Penman-Monteith Equation for canopy transpiration; Eq. 1 in Zhang et al., 2017
     ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    out_et%aet_e_canop = (epsilon * e_avl_canopy + (rho_air * cp / gamma) * vpd * g_aero) / (1.0 + epsilon + g_aero / g_canopy)
+    tile_fluxes%canopy%aet_e_canop = (epsilon * e_avl_canopy + (rho_air * cp / gamma) * vpd * g_aero) / (1.0 + epsilon + g_aero / g_canopy)  ! g_canopy from P-model!
 
     ! Total evapotranspiration 
-    out_et%aet_e     = out_et%aet_e_canop + out_et%aet_e_soil
+    tile_fluxes%canopy%aet_e     = tile_fluxes%canopy%aet_e_canop + tile_fluxes%canopy%daet_e_soil
 
     ! quantities in mm water (equivalent to kg m-2)
-    out_et%aet       = out_et%aet_e       * econ * 1000.0
-    out_et%aet_soil  = out_et%aet_e_soil  * econ * 1000.0
-    out_et%aet_canop = out_et%aet_e_canop * econ * 1000.0
+    tile_fluxes%canopy%aet       = tile_fluxes%canopy%aet_e       * econ * 1000.0
+    tile_fluxes%canopy%daet_soil  = tile_fluxes%canopy%daet_e_soil  * econ * 1000.0
+    tile_fluxes%canopy%aet_canop = tile_fluxes%canopy%aet_e_canop * econ * 1000.0
 
-  end function calc_et
+  end subroutine calc_et
 
 
   subroutine calc_netrad( tile_fluxes, grid, climate, doy ) result( out_netrad )

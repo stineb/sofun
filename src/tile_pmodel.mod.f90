@@ -77,6 +77,7 @@ module md_tile
     real :: drnn            ! nighttime total net radiation (J m-1 d-1)
     real :: rnl             ! net longwave radiation (W m-2)
     real :: dcn             ! daily total condensation (mm d-1)
+    real :: deet_e          ! daily total potential evapotranspiration (J m-2 d-1)
     real :: deet            ! daily total equilibrium evapotranspiration (mm d-1)
     real :: dpet            ! daily total potential evapotranspiration (mm d-1)
     real :: dpet_e          ! daily total potential evapotranspiration (J m-2 d-1)

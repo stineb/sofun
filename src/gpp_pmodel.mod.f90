@@ -324,7 +324,6 @@ contains
       !----------------------------------------------------------------
       ! tile(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
       tile_fluxes(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
-      
 
     end do pftloop
 
@@ -467,26 +466,26 @@ contains
   ! end function calc_vcmax_canop
 
 
-  ! function calc_g_canopy( g_stomata, lai, tk ) result( g_canopy )
-  !   !/////////////////////////////////////////////////////////////////////////
-  !   ! Calculates canopy conductance, proportional to the leaf area index.
-  !   ! Since g_stomata is taken here from the photosynthesis module, we don't 
-  !   ! use Eq. 8 in Zhang et al. (2017).
-  !   !-------------------------------------------------------------------------
-  !   use md_params_core, only: kR
+  function calc_g_canopy( g_stomata, lai, tk ) result( g_canopy )
+    !/////////////////////////////////////////////////////////////////////////
+    ! Calculates canopy conductance, proportional to the leaf area index.
+    ! Since g_stomata is taken here from the photosynthesis module, we don't 
+    ! use Eq. 8 in Zhang et al. (2017).
+    !-------------------------------------------------------------------------
+    use md_params_core, only: kR
 
-  !   ! arguments
-  !   real, intent(in) :: g_stomata      ! stomatal conductance (mol CO2 Pa-1 m-2 s-1)
-  !   real, intent(in) :: lai            ! leaf area index, single-sided (unitless)
-  !   real, intent(in) :: tk             ! (leaf) temperature (K)
+    ! arguments
+    real, intent(in) :: g_stomata      ! stomatal conductance (mol CO2 Pa-1 m-2 s-1)
+    real, intent(in) :: lai            ! leaf area index, single-sided (unitless)
+    real, intent(in) :: tk             ! (leaf) temperature (K)
 
-  !   ! function return variable
-  !   real :: g_canopy    ! canopy conductance (m s-1)
+    ! function return variable
+    real :: g_canopy    ! canopy conductance (m s-1)
 
-  !   ! canopy conductance scales with LAI. Including unit conversion to m s-1.
-  !   g_canopy = 1.6 * g_stomata * kR * tk * lai
+    ! canopy conductance scales with LAI. Including unit conversion to m s-1.
+    g_canopy = 1.6 * g_stomata * kR * tk * lai
 
-  ! end function calc_g_canopy
+  end function calc_g_canopy
 
 
   function zero_pmodel() result( out_pmodel )
