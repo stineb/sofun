@@ -325,6 +325,11 @@ contains
       ! tile(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
       tile_fluxes(lu)%plant(pft)%vcmax25 = out_pmodel%vcmax25
 
+      !----------------------------------------------------------------
+      ! Canopy conductance
+      !----------------------------------------------------------------
+      tile_fluxes(lu)%plant(pft)%g_canopy = calc_g_canopy( out_pmodel%gs_setpoint, tile(lu)%canopy%lai )
+
     end do pftloop
 
   end subroutine gpp
@@ -466,7 +471,7 @@ contains
   ! end function calc_vcmax_canop
 
 
-  function calc_g_canopy( g_stomata, lai, tk ) result( g_canopy )
+  function calc_g_canopy( g_stomata, lai ) result( g_canopy )
     !/////////////////////////////////////////////////////////////////////////
     ! Calculates canopy conductance, proportional to the leaf area index.
     ! Since g_stomata is taken here from the photosynthesis module, we don't 
@@ -477,13 +482,14 @@ contains
     ! arguments
     real, intent(in) :: g_stomata      ! stomatal conductance (mol CO2 Pa-1 m-2 s-1)
     real, intent(in) :: lai            ! leaf area index, single-sided (unitless)
-    real, intent(in) :: tk             ! (leaf) temperature (K)
+    ! real, intent(in) :: tk             ! (leaf) temperature (K)
 
     ! function return variable
     real :: g_canopy    ! canopy conductance (m s-1)
 
     ! canopy conductance scales with LAI. Including unit conversion to m s-1.
-    g_canopy = 1.6 * g_stomata * kR * tk * lai
+    ! g_canopy = 1.6 * g_stomata * kR * tk * lai
+    g_canopy = 1.6 / (0.044 * g_stomata) * lai
 
   end function calc_g_canopy
 

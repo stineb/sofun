@@ -110,6 +110,7 @@ module md_tile
     real :: vcmax             ! daily varying Vcmax (mol CO2 m-2 s-1)
     real :: jmax              ! daily varying Jmax (mol CO2 m-2 s-1)
     real :: gs_accl           ! acclimated stomatal conductance (xxx)
+    real :: g_canopy          ! acclimated canopy conductance to water vapour (m s-1)
 
     ! radiation
     real :: ppfd_splash
